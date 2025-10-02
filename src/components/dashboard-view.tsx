@@ -1,37 +1,50 @@
 "use client";
 
-import type { Employee, HousingAddress, Settings } from "@/types";
+import type { Employee, Settings } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList, Cell, Defs, Gradient, LinearGradient } from "recharts";
-import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList, Cell } from "recharts";
+import { ChartContainer } from "@/components/ui/chart";
 import { useMemo, useState } from "react";
-import { Building, UserCheck, UserMinus, Users } from "lucide-react";
-import { subDays, isWithinInterval } from "date-fns";
+import { Building, UserMinus, Users } from "lucide-react";
+import { subDays, isWithinInterval, format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "./ui/button";
 
 interface DashboardViewProps {
   employees: Employee[];
   settings: Settings;
+  onEditEmployee: (employee: Employee) => void;
 }
 
-export default function DashboardView({ employees, settings }: DashboardViewProps) {
+export default function DashboardView({ employees, settings, onEditEmployee }: DashboardViewProps) {
   const [isHousingDialogOpen, setIsHousingDialogOpen] = useState(false);
+  const [isCheckoutsDialogOpen, setIsCheckoutsDialogOpen] = useState(false);
+  
   const activeEmployees = useMemo(() => employees.filter(e => e.status === 'active'), [employees]);
   const apartmentsInUse = useMemo(() => [...new Set(activeEmployees.map(e => e.address))].length, [activeEmployees]);
   
-  const upcomingCheckouts = useMemo(() => {
+  const upcomingCheckoutsList = useMemo(() => {
     const today = new Date();
-    const next30Days = { start: today, end: subDays(today, -30) };
-    return activeEmployees.filter(e => e.contractEndDate && isWithinInterval(e.contractEndDate, next30Days)).length;
+    const next30Days = { start: today, end: new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000) };
+    return activeEmployees
+      .filter(e => e.contractEndDate && isWithinInterval(e.contractEndDate, next30Days))
+      .sort((a, b) => a.contractEndDate!.getTime() - b.contractEndDate!.getTime());
   }, [activeEmployees]);
+  
+  const upcomingCheckoutsCount = upcomingCheckoutsList.length;
+
+  const handleEmployeeClick = (employee: Employee) => {
+    setIsCheckoutsDialogOpen(false);
+    onEditEmployee(employee);
+  };
+
+  const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
 
   const kpiData = [
     { title: "Wszyscy pracownicy", value: activeEmployees.length, icon: Users, color: "text-blue-400" },
     { title: "Używane mieszkania", value: apartmentsInUse, icon: Building, color: "text-orange-400" },
-    { title: "Nadchodzące wykwaterowania (30 dni)", value: upcomingCheckouts, icon: UserMinus, color: "text-red-400" },
   ];
 
   const housingOverview = useMemo(() => {
@@ -133,6 +146,53 @@ export default function DashboardView({ employees, settings }: DashboardViewProp
             </CardContent>
           </Card>
         ))}
+
+        <Dialog open={isCheckoutsDialogOpen} onOpenChange={setIsCheckoutsDialogOpen}>
+            <DialogTrigger asChild>
+                <Card className="cursor-pointer hover:border-primary transition-colors">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Nadchodzące wykwaterowania (30 dni)</CardTitle>
+                        <UserMinus className="h-4 w-4 text-muted-foreground text-red-400" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{upcomingCheckoutsCount}</div>
+                    </CardContent>
+                </Card>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle>Pracownicy z nadchodzącym terminem wykwaterowania</DialogTitle>
+                </DialogHeader>
+                <div className="overflow-x-auto mt-4">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Pracownik</TableHead>
+                                <TableHead>Koordynator</TableHead>
+                                <TableHead>Adres</TableHead>
+                                <TableHead>Data wyjazdu</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {upcomingCheckoutsList.length > 0 ? (
+                                upcomingCheckoutsList.map(employee => (
+                                    <TableRow key={employee.id} onClick={() => handleEmployeeClick(employee)} className="cursor-pointer">
+                                        <TableCell className="font-medium">{employee.fullName}</TableCell>
+                                        <TableCell>{getCoordinatorName(employee.coordinatorId)}</TableCell>
+                                        <TableCell>{employee.address}</TableCell>
+                                        <TableCell>{employee.contractEndDate ? format(employee.contractEndDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="text-center">Brak pracowników z nadchodzącym terminem wyjazdu.</TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+            </DialogContent>
+        </Dialog>
       </div>
 
        <Dialog open={isHousingDialogOpen} onOpenChange={setIsHousingDialogOpen}>
@@ -200,3 +260,5 @@ export default function DashboardView({ employees, settings }: DashboardViewProp
     </div>
   );
 }
+
+    

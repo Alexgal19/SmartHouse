@@ -141,7 +141,7 @@ function MainContent() {
         
         switch (activeView) {
             case 'dashboard':
-                return <DashboardView employees={employees} settings={settings} />;
+                return <DashboardView employees={employees} settings={settings} onEditEmployee={handleEditEmployeeClick} />;
             case 'employees':
                 return <EmployeesView employees={employees} settings={settings} onAddEmployee={handleAddEmployeeClick} onEditEmployee={handleEditEmployeeClick} onDismissEmployee={handleDismissEmployee} onRestoreEmployee={handleRestoreEmployee} />;
             case 'settings':
@@ -149,12 +149,12 @@ function MainContent() {
             case 'inspections':
                 return <div className="text-center p-8 text-muted-foreground">Widok inspekcji jest w budowie.</div>;
             default:
-                return <DashboardView employees={employees} settings={settings} />;
+                return <DashboardView employees={employees} settings={settings} onEditEmployee={handleEditEmployeeClick} />;
         }
     };
 
     return (
-        <div className="flex h-screen w-full">
+        <div className="flex h-screen w-full bg-background">
              <Sidebar>
                 <SidebarHeader>
                     <div className="flex items-center gap-2 p-4">
@@ -183,6 +183,7 @@ function MainContent() {
                 </SidebarFooter>
             </Sidebar>
             <div className="flex flex-1 flex-col">
+                <Header user={mockUser} activeView={activeView} />
                 <main className="flex-1 overflow-y-auto p-4 sm:p-6">
                     {renderView()}
                 </main>
@@ -210,3 +211,5 @@ export default function MainLayout() {
         </SidebarProvider>
     );
 }
+
+    
