@@ -50,7 +50,7 @@ const employeeSchema = z.object({
 interface AddEmployeeFormProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSave: (data: Omit<Employee, 'id' | 'status'>) => Promise<void>;
+  onSave: (data: z.infer<typeof employeeSchema>) => Promise<void>;
   settings: Settings;
   employee?: Employee | null;
 }
@@ -66,9 +66,9 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
       address: employee?.address || "",
       roomNumber: employee?.roomNumber || "",
       zaklad: employee?.zaklad || "",
-      checkInDate: employee?.checkInDate || new Date(),
-      contractEndDate: employee?.contractEndDate,
-      checkOutDate: employee?.checkOutDate,
+      checkInDate: employee?.checkInDate instanceof Date ? employee.checkInDate : new Date(), 
+      contractEndDate: employee?.contractEndDate ?? undefined, 
+      checkOutDate: employee?.checkOutDate ?? undefined,
       comments: employee?.comments || "",
     },
   });
@@ -84,8 +84,8 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
             roomNumber: employee.roomNumber,
             zaklad: employee.zaklad,
             checkInDate: employee.checkInDate,
-            contractEndDate: employee.contractEndDate,
-            checkOutDate: employee.checkOutDate,
+            contractEndDate: employee.contractEndDate ?? undefined,
+            checkOutDate: employee.checkOutDate ?? undefined,
             comments: employee.comments,
         });
     } else {
@@ -107,8 +107,8 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
 
 
   const handleSubmit = async (values: z.infer<typeof employeeSchema>) => {
-    await onSave(values);
-    form.reset();
+    await onSave(values as any); 
+    form.reset(); 
     onOpenChange(false);
   };
 
@@ -153,7 +153,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Koordynator</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Wybierz koordynatora" />
@@ -177,11 +177,11 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Narodowość</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Wybierz narodowość" />
-                            </Trigger>
+                            </SelectTrigger>
                             </FormControl>
                             <SelectContent>
                             {settings.nationalities.map((n) => (
@@ -203,11 +203,11 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Adres</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Wybierz adres" />
-                            </Trigger>
+                            </SelectTrigger>
                             </FormControl>
                             <SelectContent>
                             {settings.addresses.map((a) => (
@@ -241,11 +241,11 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                 render={({ field }) => (
                     <FormItem>
                     <FormLabel>Zakład</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                         <SelectTrigger>
                             <SelectValue placeholder="Wybierz zakład" />
-                        </Trigger>
+                        </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                         {settings.departments.map((d) => (
@@ -283,6 +283,17 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                     )}
                 />
             </div>
+             <FormField
+              control={form.control}
+              name="checkOutDate"
+              render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                  <FormLabel className="mb-1.5">Data wymeldowania</FormLabel>
+                  <DatePicker value={field.value ?? undefined} onChange={field.onChange} />
+                  <FormMessage />
+                  </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="comments"
