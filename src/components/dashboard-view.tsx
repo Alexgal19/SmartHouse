@@ -2,7 +2,6 @@
 
 import type { Employee, Settings } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList, Cell } from "recharts";
 import { ChartContainer } from "@/components/ui/chart";
@@ -100,7 +99,7 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
       <CardContent className="pl-0 sm:pl-2">
         <ChartContainer config={chartConfig} className="h-64 w-full">
           <ResponsiveContainer>
-            <BarChart data={data} margin={{ top: 20, right: 20, left: -10, bottom: 5 }} barSize={isMobile ? 30: 50}>
+            <BarChart data={data} margin={{ top: 20, right: 20, left: isMobile ? -20 : -10, bottom: isMobile ? 15 : 5 }} barSize={isMobile ? 25 : 50}>
                <defs>
                 {chartColors.map((color, index) => (
                   <linearGradient id={color.id} x1="0" y1="0" x2="0" y2="1" key={index}>
@@ -110,7 +109,16 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
                 ))}
               </defs>
               <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border) / 0.5)" />
-              <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={10} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
+              <XAxis 
+                dataKey="name" 
+                tickLine={false} 
+                axisLine={false} 
+                tickMargin={10} 
+                tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} 
+                interval={0}
+                angle={isMobile ? -35 : 0}
+                dy={isMobile ? 10 : 0}
+              />
               <YAxis tickLine={false} axisLine={false} tickMargin={10} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
               <Tooltip 
                 cursor={{ fill: 'hsl(var(--accent) / 0.1)' }} 
