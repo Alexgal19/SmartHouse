@@ -58,14 +58,14 @@ const EmployeeTable = ({
       <TableBody>
         {employees.length > 0 ? (
           employees.map((employee) => (
-            <TableRow key={employee.id}>
+            <TableRow key={employee.id} onClick={() => onEdit(employee)} className="cursor-pointer">
               <TableCell className="font-medium">{employee.fullName}</TableCell>
               <TableCell>{getCoordinatorName(employee.coordinatorId)}</TableCell>
               <TableCell>{employee.address}</TableCell>
               <TableCell>{format(isDismissedTab ? employee.checkOutDate! : employee.checkInDate, 'dd-MM-yyyy')}</TableCell>
               <TableCell>{employee.contractStartDate ? format(employee.contractStartDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
               <TableCell>{employee.contractEndDate ? format(employee.contractEndDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
-              <TableCell>
+              <TableCell onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-8 w-8 p-0">
