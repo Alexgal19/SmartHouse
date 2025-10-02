@@ -77,11 +77,13 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
     },
   });
 
-  const showOldAddress = !!form.watch('oldAddress');
+  const watchedAddress = form.watch('address');
+  const [initialAddress, setInitialAddress] = useState<string | undefined>(undefined);
 
   React.useEffect(() => {
-    if (isOpen && employee) {
-        form.reset({
+    if (isOpen) {
+      if (employee) {
+        const defaultValues = {
             fullName: employee.fullName,
             coordinatorId: employee.coordinatorId,
             nationality: employee.nationality,
@@ -95,8 +97,10 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
             departureReportDate: employee.departureReportDate ?? undefined,
             comments: employee.comments,
             oldAddress: employee.oldAddress ?? undefined,
-        });
-    } else if (isOpen && !employee) {
+        };
+        form.reset(defaultValues);
+        setInitialAddress(employee.address);
+      } else {
         form.reset({
             fullName: "",
             coordinatorId: "",
@@ -112,8 +116,12 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
             comments: "",
             oldAddress: undefined,
         });
+        setInitialAddress(undefined);
+      }
     }
   }, [employee, isOpen, form]);
+
+  const showOldAddress = employee && watchedAddress !== initialAddress;
 
 
   const handleSubmit = async (values: z.infer<typeof employeeSchema>) => {
@@ -193,7 +201,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                     )}
                     />
             </div>
-            <div className="space-y-4">
+            <div className="space-y-2">
                 <FormField
                     control={form.control}
                     name="address"
@@ -222,7 +230,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                   <FormItem>
                     <FormLabel>Stara adresa</FormLabel>
                     <FormControl>
-                      <Input value={form.getValues('oldAddress') || ''} readOnly disabled className="bg-muted/50"/>
+                      <Input value={initialAddress || ''} readOnly disabled className="bg-muted/50"/>
                     </FormControl>
                   </FormItem>
                 )}
