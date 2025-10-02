@@ -72,14 +72,10 @@ function MainContent() {
         fetchData();
     }, [fetchData]);
 
-    const handleSaveEmployee = async (data: Omit<Employee, 'id' | 'status'>) => {
+    const handleSaveEmployee = async (data: Omit<Employee, 'id' | 'status'> & { oldAddress?: string | null }) => {
         try {
             if (editingEmployee) {
-                const updatedData = { ...data };
-                if (data.address !== editingEmployee.address) {
-                    updatedData.oldAddress = editingEmployee.address;
-                }
-                await updateEmployee(editingEmployee.id, updatedData);
+                await updateEmployee(editingEmployee.id, data);
                 toast({ title: "Sukces", description: "Dane pracownika zostały zaktualizowane." });
             } else {
                 await addEmployee(data);

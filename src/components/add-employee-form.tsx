@@ -121,11 +121,18 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
     }
   }, [employee, isOpen, form]);
 
-  const showOldAddress = employee && watchedAddress !== initialAddress;
+  const showOldAddress = employee?.oldAddress || (employee && watchedAddress !== initialAddress);
 
 
   const handleSubmit = async (values: z.infer<typeof employeeSchema>) => {
-    await onSave(values as any);
+    const dataToSave = { ...values };
+    if (employee && watchedAddress !== initialAddress) {
+      dataToSave.oldAddress = initialAddress;
+    } else if (employee) {
+      dataToSave.oldAddress = employee.oldAddress;
+    }
+    
+    await onSave(dataToSave as any);
     form.reset();
     onOpenChange(false);
   };
@@ -230,7 +237,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                   <FormItem>
                     <FormLabel>Stara adresa</FormLabel>
                     <FormControl>
-                      <Input value={initialAddress || ''} readOnly disabled className="bg-muted/50"/>
+                      <Input value={employee?.oldAddress || initialAddress || ''} readOnly disabled className="bg-muted/50"/>
                     </FormControl>
                   </FormItem>
                 )}
