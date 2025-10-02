@@ -184,13 +184,11 @@ function MainContent() {
                 </SidebarFooter>
             </Sidebar>
 
-            <div className={`flex flex-col sm:gap-4 ${isMobile ? 'pb-20' : 'sm:py-4 sm:pl-16'}`}>
-                <SidebarInset>
-                    <Header user={mockUser} activeView={activeView} />
-                    <main className="flex-1 p-4 sm:px-6 sm:py-0 space-y-4">
-                        {renderView()}
-                    </main>
-                </SidebarInset>
+            <div className={`flex flex-col sm:gap-4 ${isMobile ? 'pb-20' : 'sm:pl-14'}`}>
+                <Header user={mockUser} activeView={activeView} />
+                <main className="flex-1 p-4 sm:px-6 sm:py-0 space-y-4">
+                    {renderView()}
+                </main>
             </div>
             {isMobile && <MobileNav activeView={activeView} setActiveView={setActiveView} />}
             {settings && (
