@@ -86,8 +86,8 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
   const chartColors = [
     { from: 'hsl(var(--chart-1))', to: 'hsl(var(--chart-2))', id: 'grad1' },
     { from: 'hsl(var(--chart-2))', to: 'hsl(var(--chart-3))', id: 'grad2' },
-    { from: 'hsl(var(--chart-3))', to: 'hsl(var(--chart-4))', id: 'grad3' },
-    { from: 'hsl(var(--chart-4))', to: 'hsl(var(--chart-5))', id: 'grad4' },
+    { from: 'hsl(var(--chart-3))', to: 'hsl(var(--chart-4))', id: 'grad4' },
+    { from: 'hsl(var(--chart-4))', to: 'hsl(var(--chart-5))', id: 'grad5' },
     { from: 'hsl(var(--chart-5))', to: 'hsl(var(--chart-1))', id: 'grad5' },
   ];
 
