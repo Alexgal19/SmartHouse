@@ -154,6 +154,86 @@ const AddressManager = ({ items, onUpdate }: { items: HousingAddress[]; onUpdate
     );
 };
 
+// Specific Manager for Coordinators
+const CoordinatorManager = ({ items, onUpdate }: { items: Coordinator[]; onUpdate: (newItems: Coordinator[]) => void }) => {
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [currentCoordinator, setCurrentCoordinator] = useState<Partial<Coordinator> | null>(null);
+
+    const openDialog = (coordinator: Partial<Coordinator> | null = null) => {
+        setCurrentCoordinator(coordinator || { uid: '', name: '' });
+        setIsDialogOpen(true);
+    };
+
+    const handleSave = () => {
+        if (!currentCoordinator || !currentCoordinator.name) return;
+        let newItems;
+        if (currentCoordinator.uid && currentCoordinator.uid.startsWith('coord-')) { // Editing existing
+            newItems = items.map(item => item.uid === currentCoordinator.uid ? { ...item, ...currentCoordinator } as Coordinator : item);
+        } else { // Adding new
+            const newUid = `coord-${Date.now()}`;
+            newItems = [...items, { ...currentCoordinator, uid: newUid } as Coordinator];
+        }
+        onUpdate(newItems);
+        setIsDialogOpen(false);
+    };
+
+    const handleDelete = (uid: string) => {
+        onUpdate(items.filter(item => item.uid !== uid));
+    };
+
+    return (
+        <div>
+            <div className="flex items-center justify-end mb-4">
+                <Button onClick={() => openDialog()}><PlusCircle className="mr-2 h-4 w-4" />Dodaj Koordynatora</Button>
+            </div>
+            <div className="border rounded-md">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Imię i Nazwisko</TableHead>
+                            <TableHead>UID</TableHead>
+                            <TableHead className="text-right">Akcje</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {items.map(coordinator => (
+                            <TableRow key={coordinator.uid}>
+                                <TableCell>{coordinator.name}</TableCell>
+                                <TableCell className="font-mono text-xs">{coordinator.uid}</TableCell>
+                                <TableCell className="text-right">
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                            <DropdownMenuItem onClick={() => openDialog(coordinator)}>Edytuj</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleDelete(coordinator.uid)} className="text-destructive">Usuń</DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{currentCoordinator?.uid ? 'Edytuj koordynatora' : 'Dodaj nowego koordynatora'}</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <Label htmlFor="name">Imię i Nazwisko</Label>
+                        <Input id="name" value={currentCoordinator?.name || ''} onChange={(e) => setCurrentCoordinator(p => ({ ...p, name: e.target.value }))} />
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild><Button variant="outline">Anuluj</Button></DialogClose>
+                        <Button onClick={handleSave}>Zapisz</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
+    );
+};
+
+
 export default function SettingsView({ settings, onUpdateSettings }: SettingsViewProps) {
   return (
     <Card>
@@ -178,8 +258,7 @@ export default function SettingsView({ settings, onUpdateSettings }: SettingsVie
              <ListManager title="Zakłady" items={settings.departments} onUpdate={(newDepartments) => onUpdateSettings({ departments: newDepartments })} />
           </TabsContent>
           <TabsContent value="coordinators" className="mt-4">
-             {/* A dedicated manager for coordinators would be built similarly to AddressManager */}
-             <p className="text-muted-foreground text-center p-8">Zarządzanie koordynatorami (w budowie).</p>
+             <CoordinatorManager items={settings.coordinators} onUpdate={(newCoordinators) => onUpdateSettings({ coordinators: newCoordinators })} />
           </TabsContent>
         </Tabs>
       </CardContent>
