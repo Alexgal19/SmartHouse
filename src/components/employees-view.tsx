@@ -52,6 +52,7 @@ const EmployeeTable = ({
           <TableHead>Stara adresa</TableHead>
           <TableHead>Data zameldowania</TableHead>
           <TableHead>Data wymeldowania</TableHead>
+          <TableHead>Data zgłoszenia wyjazdu</TableHead>
           <TableHead>Umowa od</TableHead>
           <TableHead>Umowa do</TableHead>
           <TableHead><span className="sr-only">Akcje</span></TableHead>
@@ -67,6 +68,7 @@ const EmployeeTable = ({
               <TableCell>{employee.oldAddress || 'N/A'}</TableCell>
               <TableCell>{format(employee.checkInDate, 'dd-MM-yyyy')}</TableCell>
               <TableCell>{employee.checkOutDate ? format(employee.checkOutDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
+              <TableCell>{employee.departureReportDate ? format(employee.departureReportDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
               <TableCell>{employee.contractStartDate ? format(employee.contractStartDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
               <TableCell>{employee.contractEndDate ? format(employee.contractEndDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
               <TableCell onClick={(e) => e.stopPropagation()}>
@@ -91,7 +93,7 @@ const EmployeeTable = ({
           ))
         ) : (
           <TableRow>
-            <TableCell colSpan={9} className="text-center">Brak pracowników do wyświetlenia.</TableCell>
+            <TableCell colSpan={10} className="text-center">Brak pracowników do wyświetlenia.</TableCell>
           </TableRow>
         )}
       </TableBody>
