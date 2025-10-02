@@ -16,7 +16,8 @@ export type Employee = {
   zaklad: string; // department
   checkInDate: Date;
   checkOutDate: Date | null;
-  contractEndDate?: Date;
+  contractStartDate?: Date | null;
+  contractEndDate?: Date | null;
   comments?: string;
   status: 'active' | 'dismissed';
 };

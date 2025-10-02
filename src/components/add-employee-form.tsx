@@ -41,6 +41,7 @@ const employeeSchema = z.object({
   roomNumber: z.string().min(1, "Numer pokoju jest wymagany."),
   zaklad: z.string().min(1, "Zakład jest wymagany."),
   checkInDate: z.date({ required_error: "Data zameldowania jest wymagana." }),
+  contractStartDate: z.date().optional().nullable(),
   contractEndDate: z.date().optional().nullable(),
   checkOutDate: z.date().optional().nullable(),
   comments: z.string().optional(),
@@ -64,8 +65,9 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
       address: employee?.address || "",
       roomNumber: employee?.roomNumber || "",
       zaklad: employee?.zaklad || "",
-      checkInDate: employee?.checkInDate instanceof Date ? employee.checkInDate : new Date(), 
-      contractEndDate: employee?.contractEndDate ?? undefined, 
+      checkInDate: employee?.checkInDate instanceof Date ? employee.checkInDate : new Date(),
+      contractStartDate: employee?.contractStartDate ?? undefined,
+      contractEndDate: employee?.contractEndDate ?? undefined,
       checkOutDate: employee?.checkOutDate ?? undefined,
       comments: employee?.comments || "",
     },
@@ -81,6 +83,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
             roomNumber: employee.roomNumber,
             zaklad: employee.zaklad,
             checkInDate: employee.checkInDate,
+            contractStartDate: employee.contractStartDate ?? undefined,
             contractEndDate: employee.contractEndDate ?? undefined,
             checkOutDate: employee.checkOutDate ?? undefined,
             comments: employee.comments,
@@ -94,6 +97,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
             roomNumber: "",
             zaklad: "",
             checkInDate: new Date(),
+            contractStartDate: undefined,
             contractEndDate: undefined,
             checkOutDate: undefined,
             comments: "",
@@ -103,8 +107,8 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
 
 
   const handleSubmit = async (values: z.infer<typeof employeeSchema>) => {
-    await onSave(values as any); 
-    form.reset(); 
+    await onSave(values as any);
+    form.reset();
     onOpenChange(false);
   };
 
@@ -242,6 +246,30 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                     </FormItem>
                 )}
             />
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                  control={form.control}
+                  name="contractStartDate"
+                  render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                      <FormLabel className="mb-1.5">Umowa od</FormLabel>
+                      <DatePicker value={field.value ?? undefined} onChange={field.onChange} />
+                      <FormMessage />
+                      </FormItem>
+                  )}
+                />
+                <FormField
+                    control={form.control}
+                    name="contractEndDate"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                        <FormLabel className="mb-1.5">Umowa do</FormLabel>
+                        <DatePicker value={field.value ?? undefined} onChange={field.onChange} />
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                     control={form.control}
@@ -254,29 +282,18 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                         </FormItem>
                     )}
                 />
-                <FormField
-                    control={form.control}
-                    name="contractEndDate"
-                    render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                        <FormLabel className="mb-1.5">Koniec umowy</FormLabel>
-                        <DatePicker value={field.value ?? undefined} onChange={field.onChange} />
-                        <FormMessage />
-                        </FormItem>
-                    )}
+                 <FormField
+                  control={form.control}
+                  name="checkOutDate"
+                  render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                      <FormLabel className="mb-1.5">Data wymeldowania</FormLabel>
+                      <DatePicker value={field.value ?? undefined} onChange={field.onChange} />
+                      <FormMessage />
+                      </FormItem>
+                  )}
                 />
             </div>
-             <FormField
-              control={form.control}
-              name="checkOutDate"
-              render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                  <FormLabel className="mb-1.5">Data wymeldowania</FormLabel>
-                  <DatePicker value={field.value ?? undefined} onChange={field.onChange} />
-                  <FormMessage />
-                  </FormItem>
-              )}
-            />
             <FormField
               control={form.control}
               name="comments"
