@@ -94,7 +94,7 @@ function MainContent() {
         fetchData();
         const interval = setInterval(pollNotifications, 30000); // Poll for new notifications every 30 seconds
         return () => clearInterval(interval);
-    }, [fetchData, pollNotifications]);
+    }, [fetchData]);
 
     const handleSaveEmployee = async (data: Omit<Employee, 'id' | 'status'> & { oldAddress?: string | null }) => {
         try {
