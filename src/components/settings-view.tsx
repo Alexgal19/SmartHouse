@@ -113,13 +113,13 @@ const AddressManager = ({ items, onUpdate }: { items: HousingAddress[]; onUpdate
             <div className="flex items-center justify-end mb-4">
                 <Button onClick={() => openDialog()}><PlusCircle className="mr-2 h-4 w-4" />Dodaj Adres</Button>
             </div>
-            <div className="border rounded-md">
+            <div className="border rounded-md overflow-x-auto">
                 <Table>
                     <TableHeader><TableRow><TableHead>Adres</TableHead><TableHead>Pojemność</TableHead><TableHead className="text-right">Akcje</TableHead></TableRow></TableHeader>
                     <TableBody>
                         {items.map(address => (
                             <TableRow key={address.id}>
-                                <TableCell>{address.name}</TableCell>
+                                <TableCell className="whitespace-nowrap">{address.name}</TableCell>
                                 <TableCell>{address.capacity}</TableCell>
                                 <TableCell className="text-right">
                                     <DropdownMenu>
@@ -186,7 +186,7 @@ const CoordinatorManager = ({ items, onUpdate }: { items: Coordinator[]; onUpdat
             <div className="flex items-center justify-end mb-4">
                 <Button onClick={() => openDialog()}><PlusCircle className="mr-2 h-4 w-4" />Dodaj Koordynatora</Button>
             </div>
-            <div className="border rounded-md">
+            <div className="border rounded-md overflow-x-auto">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -198,8 +198,8 @@ const CoordinatorManager = ({ items, onUpdate }: { items: Coordinator[]; onUpdat
                     <TableBody>
                         {items.map(coordinator => (
                             <TableRow key={coordinator.uid}>
-                                <TableCell>{coordinator.name}</TableCell>
-                                <TableCell className="font-mono text-xs">{coordinator.uid}</TableCell>
+                                <TableCell className="whitespace-nowrap">{coordinator.name}</TableCell>
+                                <TableCell className="font-mono text-xs whitespace-nowrap">{coordinator.uid}</TableCell>
                                 <TableCell className="text-right">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
@@ -241,25 +241,27 @@ export default function SettingsView({ settings, onUpdateSettings }: SettingsVie
         <CardTitle>Ustawienia Aplikacji</CardTitle>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="addresses" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="addresses">Adresy</TabsTrigger>
-            <TabsTrigger value="nationalities">Narodowości</TabsTrigger>
-            <TabsTrigger value="departments">Zakłady</TabsTrigger>
-            <TabsTrigger value="coordinators">Koordynatorzy</TabsTrigger>
+        <Tabs defaultValue="addresses" className="w-full" orientation="vertical">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 md:flex md:flex-col md:w-auto md:items-start md:gap-2">
+            <TabsTrigger value="addresses" className="w-full justify-start">Adresy</TabsTrigger>
+            <TabsTrigger value="nationalities" className="w-full justify-start">Narodowości</TabsTrigger>
+            <TabsTrigger value="departments" className="w-full justify-start">Zakłady</TabsTrigger>
+            <TabsTrigger value="coordinators" className="w-full justify-start">Koordynatorzy</TabsTrigger>
           </TabsList>
-          <TabsContent value="addresses" className="mt-4">
-            <AddressManager items={settings.addresses} onUpdate={(newAddresses) => onUpdateSettings({ addresses: newAddresses })} />
-          </TabsContent>
-          <TabsContent value="nationalities" className="mt-4">
-             <ListManager title="Narodowości" items={settings.nationalities} onUpdate={(newNationalities) => onUpdateSettings({ nationalities: newNationalities })} />
-          </TabsContent>
-          <TabsContent value="departments" className="mt-4">
-             <ListManager title="Zakłady" items={settings.departments} onUpdate={(newDepartments) => onUpdateSettings({ departments: newDepartments })} />
-          </TabsContent>
-          <TabsContent value="coordinators" className="mt-4">
-             <CoordinatorManager items={settings.coordinators} onUpdate={(newCoordinators) => onUpdateSettings({ coordinators: newCoordinators })} />
-          </TabsContent>
+          <div className="md:border-l md:pl-6 mt-4 md:mt-0">
+            <TabsContent value="addresses" className="mt-0">
+              <AddressManager items={settings.addresses} onUpdate={(newAddresses) => onUpdateSettings({ addresses: newAddresses })} />
+            </TabsContent>
+            <TabsContent value="nationalities" className="mt-0">
+               <ListManager title="Narodowości" items={settings.nationalities} onUpdate={(newNationalities) => onUpdateSettings({ nationalities: newNationalities })} />
+            </TabsContent>
+            <TabsContent value="departments" className="mt-0">
+               <ListManager title="Zakłady" items={settings.departments} onUpdate={(newDepartments) => onUpdateSettings({ departments: newDepartments })} />
+            </TabsContent>
+            <TabsContent value="coordinators" className="mt-0">
+               <CoordinatorManager items={settings.coordinators} onUpdate={(newCoordinators) => onUpdateSettings({ coordinators: newCoordinators })} />
+            </TabsContent>
+          </div>
         </Tabs>
       </CardContent>
     </Card>

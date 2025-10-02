@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface EmployeesViewProps {
   employees: Employee[];
@@ -43,21 +44,22 @@ const EmployeeTable = ({
   isDismissedTab: boolean;
 }) => {
   const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
+  const isMobile = useIsMobile();
   
   return (
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>Imię i nazwisko</TableHead>
-          <TableHead>Płeć</TableHead>
+          {!isMobile && <TableHead>Płeć</TableHead>}
           <TableHead>Narodowość</TableHead>
-          <TableHead>Koordynator</TableHead>
+          {!isMobile && <TableHead>Koordynator</TableHead>}
           <TableHead>Adres</TableHead>
-          <TableHead>Stara adresa</TableHead>
-          <TableHead>Data zameldowania</TableHead>
-          <TableHead>Data wymeldowania</TableHead>
-          <TableHead>Data zgłoszenia wyjazdu</TableHead>
-          <TableHead>Umowa od</TableHead>
+          {!isMobile && <TableHead>Stara adresa</TableHead>}
+          {!isMobile && <TableHead>Data zameldowania</TableHead>}
+          {!isMobile && <TableHead>Data wymeldowania</TableHead>}
+          {!isMobile && <TableHead>Data zgłoszenia wyjazdu</TableHead>}
+          {!isMobile && <TableHead>Umowa od</TableHead>}
           <TableHead>Umowa do</TableHead>
           <TableHead><span className="sr-only">Akcje</span></TableHead>
         </TableRow>
@@ -67,15 +69,15 @@ const EmployeeTable = ({
           employees.map((employee) => (
             <TableRow key={employee.id} onClick={() => onEdit(employee)} className="cursor-pointer">
               <TableCell className="font-medium">{employee.fullName}</TableCell>
-              <TableCell>{employee.gender}</TableCell>
+              {!isMobile && <TableCell>{employee.gender}</TableCell>}
               <TableCell>{employee.nationality}</TableCell>
-              <TableCell>{getCoordinatorName(employee.coordinatorId)}</TableCell>
+              {!isMobile && <TableCell>{getCoordinatorName(employee.coordinatorId)}</TableCell>}
               <TableCell>{employee.address}</TableCell>
-              <TableCell>{employee.oldAddress || 'N/A'}</TableCell>
-              <TableCell>{format(employee.checkInDate, 'dd-MM-yyyy')}</TableCell>
-              <TableCell>{employee.checkOutDate ? format(employee.checkOutDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
-              <TableCell>{employee.departureReportDate ? format(employee.departureReportDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
-              <TableCell>{employee.contractStartDate ? format(employee.contractStartDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
+              {!isMobile && <TableCell>{employee.oldAddress || 'N/A'}</TableCell>}
+              {!isMobile && <TableCell>{format(employee.checkInDate, 'dd-MM-yyyy')}</TableCell>}
+              {!isMobile && <TableCell>{employee.checkOutDate ? format(employee.checkOutDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>}
+              {!isMobile && <TableCell>{employee.departureReportDate ? format(employee.departureReportDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>}
+              {!isMobile && <TableCell>{employee.contractStartDate ? format(employee.contractStartDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>}
               <TableCell>{employee.contractEndDate ? format(employee.contractEndDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
               <TableCell onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu>
@@ -99,7 +101,7 @@ const EmployeeTable = ({
           ))
         ) : (
           <TableRow>
-            <TableCell colSpan={12} className="text-center">Brak pracowników do wyświetlenia.</TableCell>
+            <TableCell colSpan={isMobile ? 5 : 12} className="text-center">Brak pracowników do wyświetlenia.</TableCell>
           </TableRow>
         )}
       </TableBody>
@@ -121,6 +123,7 @@ export default function EmployeesView({
   const [addressFilter, setAddressFilter] = useState('all');
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [nationalityFilter, setNationalityFilter] = useState('all');
+  const isMobile = useIsMobile();
 
   const filteredEmployees = useMemo(() => {
     return employees.filter(employee => {
@@ -153,29 +156,32 @@ export default function EmployeesView({
         <div className="flex items-center justify-between gap-4">
             <CardTitle>Zarządzanie pracownikami</CardTitle>
             <div className="flex items-center gap-2">
-                <Button onClick={onAddEmployee}><PlusCircle className="mr-2 h-4 w-4" /> Dodaj</Button>
+                <Button onClick={onAddEmployee} size={isMobile ? "icon" : "default"}>
+                  <PlusCircle className={isMobile ? "h-4 w-4" : "mr-2 h-4 w-4"} />
+                  <span className="hidden sm:inline">Dodaj</span>
+                </Button>
             </div>
         </div>
         <div className="mt-4">
             <Collapsible>
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 sm:gap-4">
                          <Input
-                            placeholder="Szukaj po imieniu i nazwisku..."
+                            placeholder="Szukaj..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full md:w-64"
+                            className="w-full max-w-xs"
                         />
                         <CollapsibleTrigger asChild>
-                             <Button variant="outline" className="gap-2">
+                             <Button variant="outline" size="sm" className="gap-2">
                                 <SlidersHorizontal className="h-4 w-4"/>
-                                Filtry
+                                <span className="hidden sm:inline">Filtry</span>
                             </Button>
                         </CollapsibleTrigger>
                         {hasActiveFilters && (
-                             <Button variant="ghost" onClick={resetFilters} className="text-muted-foreground gap-2">
+                             <Button variant="ghost" size="sm" onClick={resetFilters} className="text-muted-foreground gap-2">
                                 <X className="h-4 w-4" />
-                                Wyczyść filtry
+                                <span className="hidden sm:inline">Wyczyść</span>
                             </Button>
                         )}
                     </div>
