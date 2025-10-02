@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { useForm } from "react-hook-form";
+import React, { useState, useEffect } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import type { Employee, Settings } from "@/types";
@@ -44,6 +44,7 @@ const employeeSchema = z.object({
   contractStartDate: z.date().optional().nullable(),
   contractEndDate: z.date().optional().nullable(),
   checkOutDate: z.date().optional().nullable(),
+  departureReportDate: z.date().optional().nullable(),
   comments: z.string().optional(),
 });
 
@@ -59,19 +60,29 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
   const form = useForm<z.infer<typeof employeeSchema>>({
     resolver: zodResolver(employeeSchema),
     defaultValues: {
-      fullName: employee?.fullName || "",
-      coordinatorId: employee?.coordinatorId || "",
-      nationality: employee?.nationality || "",
-      address: employee?.address || "",
-      roomNumber: employee?.roomNumber || "",
-      zaklad: employee?.zaklad || "",
-      checkInDate: employee?.checkInDate instanceof Date ? employee.checkInDate : new Date(),
-      contractStartDate: employee?.contractStartDate ?? undefined,
-      contractEndDate: employee?.contractEndDate ?? undefined,
-      checkOutDate: employee?.checkOutDate ?? undefined,
-      comments: employee?.comments || "",
+      fullName: "",
+      coordinatorId: "",
+      nationality: "",
+      address: "",
+      roomNumber: "",
+      zaklad: "",
+      checkInDate: new Date(),
+      contractStartDate: undefined,
+      contractEndDate: undefined,
+      checkOutDate: undefined,
+      departureReportDate: undefined,
+      comments: "",
     },
   });
+
+  const [originalAddress, setOriginalAddress] = useState<string | undefined>(undefined);
+  
+  const currentAddress = useWatch({
+    control: form.control,
+    name: 'address'
+  });
+  
+  const showOldAddress = employee && originalAddress && currentAddress !== originalAddress;
 
   React.useEffect(() => {
     if (employee) {
@@ -86,8 +97,10 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
             contractStartDate: employee.contractStartDate ?? undefined,
             contractEndDate: employee.contractEndDate ?? undefined,
             checkOutDate: employee.checkOutDate ?? undefined,
+            departureReportDate: employee.departureReportDate ?? undefined,
             comments: employee.comments,
         });
+        setOriginalAddress(employee.address);
     } else {
         form.reset({
             fullName: "",
@@ -100,10 +113,12 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
             contractStartDate: undefined,
             contractEndDate: undefined,
             checkOutDate: undefined,
+            departureReportDate: undefined,
             comments: "",
         });
+        setOriginalAddress(undefined);
     }
-  }, [employee, form]);
+  }, [employee, form, isOpen]);
 
 
   const handleSubmit = async (values: z.infer<typeof employeeSchema>) => {
@@ -183,7 +198,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                     )}
                     />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
                 <FormField
                     control={form.control}
                     name="address"
@@ -208,6 +223,17 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                         </FormItem>
                     )}
                 />
+                 {showOldAddress && (
+                  <FormItem>
+                    <FormLabel>Stara adresa</FormLabel>
+                    <FormControl>
+                      <Input value={originalAddress} readOnly disabled className="bg-muted/50"/>
+                    </FormControl>
+                  </FormItem>
+                )}
+            </div>
+
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                     control={form.control}
                     name="roomNumber"
@@ -221,31 +247,31 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                         </FormItem>
                     )}
                 />
+                 <FormField
+                    control={form.control}
+                    name="zaklad"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Zakład</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Wybierz zakład" />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                            {settings.departments.map((d) => (
+                                <SelectItem key={d} value={d}>
+                                {d}
+                                </SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
             </div>
-            <FormField
-                control={form.control}
-                name="zaklad"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Zakład</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Wybierz zakład" />
-                        </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                        {settings.departments.map((d) => (
-                            <SelectItem key={d} value={d}>
-                            {d}
-                            </SelectItem>
-                        ))}
-                        </SelectContent>
-                    </Select>
-                    <FormMessage />
-                    </FormItem>
-                )}
-            />
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                   control={form.control}
@@ -294,6 +320,17 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                   )}
                 />
             </div>
+             <FormField
+                control={form.control}
+                name="departureReportDate"
+                render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                    <FormLabel className="mb-1.5">Data zgłoszenia wyjazdu</FormLabel>
+                    <DatePicker value={field.value ?? undefined} onChange={field.onChange} />
+                    <FormMessage />
+                    </FormItem>
+                )}
+            />
             <FormField
               control={form.control}
               name="comments"

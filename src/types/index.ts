@@ -18,6 +18,7 @@ export type Employee = {
   checkOutDate: Date | null;
   contractStartDate?: Date | null;
   contractEndDate?: Date | null;
+  departureReportDate?: Date | null;
   comments?: string;
   status: 'active' | 'dismissed';
 };
