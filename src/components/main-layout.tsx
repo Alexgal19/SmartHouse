@@ -92,9 +92,14 @@ function MainContent() {
 
     useEffect(() => {
         fetchData();
-        const interval = setInterval(pollNotifications, 30000); // Poll for new notifications every 30 seconds
-        return () => clearInterval(interval);
     }, [fetchData]);
+
+    useEffect(() => {
+      const interval = setInterval(() => {
+        pollNotifications();
+      }, 30000);
+      return () => clearInterval(interval);
+    }, [pollNotifications]);
 
     const handleSaveEmployee = async (data: Omit<Employee, 'id' | 'status'> & { oldAddress?: string | null }) => {
         try {

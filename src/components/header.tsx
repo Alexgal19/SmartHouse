@@ -35,7 +35,7 @@ export default function Header({ user, activeView, notifications, onNotification
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
-    <header className="sticky top-4 z-30 mx-4 flex h-16 items-center gap-4 rounded-2xl bg-card/60 px-4 shadow-lg shadow-orange-400/10 backdrop-blur-xl sm:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-card/60 px-4 backdrop-blur-xl sm:px-6">
       {!open && <div className="flex items-center gap-2 md:hidden">
         <Building className="h-6 w-6 text-primary" />
         <span className="font-semibold text-lg">SmartHouse</span>
