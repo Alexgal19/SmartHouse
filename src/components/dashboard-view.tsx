@@ -246,13 +246,15 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
           </DialogContent>
       </Dialog>
       
-      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
-        <ChartComponent data={employeesByCoordinator} title="Pracownicy wg koordynatora" />
-        <ChartComponent data={employeesByNationality} title="Pracownicy wg narodowości" />
-        <div className="lg:col-span-2">
-            <ChartComponent data={employeesByDepartment} title="Pracownicy wg zakładu" />
+      {!isMobile && (
+        <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
+          <ChartComponent data={employeesByCoordinator} title="Pracownicy wg koordynatora" />
+          <ChartComponent data={employeesByNationality} title="Pracownicy wg narodowości" />
+          <div className="lg:col-span-2">
+              <ChartComponent data={employeesByDepartment} title="Pracownicy wg zakładu" />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
