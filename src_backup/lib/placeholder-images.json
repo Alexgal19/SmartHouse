@@ -1,0 +1,28 @@
+{
+  "placeholderImages": [
+    {
+      "id": "user1",
+      "description": "Avatar for Jan Kowalski",
+      "imageUrl": "https://images.unsplash.com/photo-1641288883869-c463bc6c2a58?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxwZXJzb24lMjBtYW58ZW58MHx8fHwxNzU5NDEwMjA3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person man"
+    },
+    {
+      "id": "user2",
+      "description": "Avatar for Anna Nowak",
+      "imageUrl": "https://images.unsplash.com/photo-1683972449580-7e0837dee436?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxwZXJzb24lMjB3b21hbnxlbnwwfHx8fDE3NTk0MDA0OTZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person woman"
+    },
+    {
+      "id": "user3",
+      "description": "Avatar for Petro Ivanenko",
+      "imageUrl": "https://images.unsplash.com/photo-1590086782792-42dd2350140d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxwZXJzb24lMjBtYW58ZW58MHx8fHwxNzU5NDEwMjA3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person man"
+    },
+    {
+      "id": "user4",
+      "description": "Avatar for Maria Rodriguez",
+      "imageUrl": "https://images.unsplash.com/photo-1589998707217-9b550aa1dc1b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxwZXJzb24lMjB3b21hbnxlbnwwfHx8fDE3NTk0MDA0OTZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person woman"
+    }
+  ]
+}
