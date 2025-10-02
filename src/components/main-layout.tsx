@@ -154,10 +154,10 @@ function MainContent() {
     };
 
     return (
-        <div className="flex h-screen w-full bg-background">
+        <div className="flex h-screen w-full bg-muted/50">
              <Sidebar>
                 <SidebarHeader>
-                    <div className="flex items-center gap-2 p-4">
+                    <div className="flex items-center gap-2">
                         <Building className="h-8 w-8 text-primary" />
                         <span className="font-semibold text-xl group-data-[collapsible=icon]:hidden">SmartHouse</span>
                     </div>
@@ -184,7 +184,7 @@ function MainContent() {
             </Sidebar>
             <div className="flex flex-1 flex-col">
                 <Header user={mockUser} activeView={activeView} />
-                <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+                <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-20 md:pb-6">
                     {renderView()}
                 </main>
             </div>

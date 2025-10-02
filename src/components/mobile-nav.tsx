@@ -18,7 +18,7 @@ const navItems: { view: View; icon: React.ElementType; label: string }[] = [
 
 export function MobileNav({ activeView, setActiveView }: MobileNavProps) {
   return (
-    <div className="fixed bottom-0 left-0 z-40 w-full border-t bg-card/80 backdrop-blur-xl p-2 lg:hidden">
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] border bg-card/60 backdrop-blur-xl p-2 rounded-2xl shadow-lg shadow-black/10 lg:hidden">
       <div className="grid h-full max-w-lg grid-cols-4 mx-auto">
         {navItems.map((item) => (
           <Button
