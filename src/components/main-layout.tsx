@@ -60,9 +60,16 @@ function MainContent() {
                 getSettings(),
                 getNotifications()
             ]);
-            setEmployees(employeesData);
+            setEmployees(employeesData.map(e => ({
+                ...e,
+                checkInDate: new Date(e.checkInDate),
+                checkOutDate: e.checkOutDate ? new Date(e.checkOutDate) : null,
+                contractStartDate: e.contractStartDate ? new Date(e.contractStartDate) : null,
+                contractEndDate: e.contractEndDate ? new Date(e.contractEndDate) : null,
+                departureReportDate: e.departureReportDate ? new Date(e.departureReportDate) : null,
+            })));
             setSettings(settingsData);
-            setNotifications(notificationsData);
+            setNotifications(notificationsData.map(n => ({...n, createdAt: new Date(n.createdAt)})));
         } catch (error) {
             toast({
                 variant: "destructive",
@@ -73,23 +80,46 @@ function MainContent() {
             setIsLoading(false);
         }
     }, [toast]);
+    
+    const pollNotifications = useCallback(async () => {
+        try {
+            const notificationsData = await getNotifications();
+            setNotifications(notificationsData.map(n => ({...n, createdAt: new Date(n.createdAt)})));
+        } catch (error) {
+            console.error("Failed to poll notifications", error);
+        }
+    }, []);
 
     useEffect(() => {
         fetchData();
-        const interval = setInterval(fetchData, 30000); // Poll for new data every 30 seconds
+        const interval = setInterval(pollNotifications, 30000); // Poll for new notifications every 30 seconds
         return () => clearInterval(interval);
-    }, [fetchData]);
+    }, [fetchData, pollNotifications]);
 
     const handleSaveEmployee = async (data: Omit<Employee, 'id' | 'status'> & { oldAddress?: string | null }) => {
         try {
             if (editingEmployee) {
-                await updateEmployee(editingEmployee.id, data, mockUser);
+                const updatedEmployee = await updateEmployee(editingEmployee.id, data, mockUser);
+                setEmployees(prev => prev.map(e => e.id === editingEmployee.id ? {...updatedEmployee, 
+                    checkInDate: new Date(updatedEmployee.checkInDate),
+                    checkOutDate: updatedEmployee.checkOutDate ? new Date(updatedEmployee.checkOutDate) : null,
+                    contractStartDate: updatedEmployee.contractStartDate ? new Date(updatedEmployee.contractStartDate) : null,
+                    contractEndDate: updatedEmployee.contractEndDate ? new Date(updatedEmployee.contractEndDate) : null,
+                    departureReportDate: updatedEmployee.departureReportDate ? new Date(updatedEmployee.departureReportDate) : null,
+                } : e));
                 toast({ title: "Sukces", description: "Dane pracownika zostały zaktualizowane." });
             } else {
-                await addEmployee(data, mockUser);
+                const newEmployee = await addEmployee(data, mockUser);
+                setEmployees(prev => [...prev, {...newEmployee,
+                    checkInDate: new Date(newEmployee.checkInDate),
+                    checkOutDate: newEmployee.checkOutDate ? new Date(newEmployee.checkOutDate) : null,
+                    contractStartDate: newEmployee.contractStartDate ? new Date(newEmployee.contractStartDate) : null,
+                    contractEndDate: newEmployee.contractEndDate ? new Date(newEmployee.contractEndDate) : null,
+                    departureReportDate: newEmployee.departureReportDate ? new Date(newEmployee.departureReportDate) : null,
+                }]);
                 toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
             }
-            fetchData();
+            pollNotifications();
         } catch(e) {
              toast({ variant: "destructive", title: "Błąd", description: "Nie udało się zapisać pracownika." });
         }
@@ -99,7 +129,7 @@ function MainContent() {
         if (!settings) return;
         try {
             const updated = await updateSettings(newSettings);
-            setSettings(s => ({...s!, ...updated}));
+            setSettings(updated);
             toast({ title: "Sukces", description: "Ustawienia zostały zaktualizowane." });
         } catch(e) {
             toast({ variant: "destructive", title: "Błąd", description: "Nie udało się zapisać ustawień." });
@@ -130,9 +160,13 @@ function MainContent() {
 
     const handleDismissEmployee = async (employeeId: string) => {
         try {
-            await updateEmployee(employeeId, { status: 'dismissed', checkOutDate: new Date() }, mockUser);
+            const updatedEmployee = await updateEmployee(employeeId, { status: 'dismissed', checkOutDate: new Date() }, mockUser);
+            setEmployees(prev => prev.map(e => e.id === employeeId ? {
+                ...updatedEmployee,
+                checkOutDate: updatedEmployee.checkOutDate ? new Date(updatedEmployee.checkOutDate) : null
+            } : e));
             toast({ title: "Sukces", description: "Pracownik został zwolniony." });
-            fetchData();
+            pollNotifications();
         } catch(e) {
             toast({ variant: "destructive", title: "Błąd", description: "Nie udało się zwolnić pracownika." });
         }
@@ -140,9 +174,13 @@ function MainContent() {
 
     const handleRestoreEmployee = async (employeeId: string) => {
         try {
-            await updateEmployee(employeeId, { status: 'active', checkOutDate: null }, mockUser);
+            const updatedEmployee = await updateEmployee(employeeId, { status: 'active', checkOutDate: null }, mockUser);
+            setEmployees(prev => prev.map(e => e.id === employeeId ? {
+                ...updatedEmployee,
+                checkOutDate: null
+            } : e));
             toast({ title: "Sukces", description: "Pracownik został przywrócony." });
-            fetchData();
+            pollNotifications();
         } catch(e) {
             toast({ variant: "destructive", title: "Błąd", description: "Nie udało się przywrócić pracownika." });
         }
