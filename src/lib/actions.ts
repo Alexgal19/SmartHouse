@@ -97,8 +97,7 @@ export async function getSettings(): Promise<Settings> {
     }
 
     const rows = await sheet.getRows();
-    if (rows.length === 0) {
-      // If no settings, return default/initial settings
+    if (rows.length === 0 || !rows[0].get('settingsData')) {
       const defaultSettings: Settings = {
         id: 'global-settings',
         addresses: [],
@@ -107,8 +106,9 @@ export async function getSettings(): Promise<Settings> {
         coordinators: [],
         genders: ['Mężczyzna', 'Kobieta'],
       };
-      // And save them to the sheet for next time
-      await updateSettings(defaultSettings);
+      // Ensure headers are set
+      await sheet.setHeaderRow(['settingsData']);
+      const settingsRow = await sheet.addRow({ settingsData: JSON.stringify(defaultSettings) });
       return defaultSettings;
     }
 
@@ -119,13 +119,9 @@ export async function getSettings(): Promise<Settings> {
       throw new Error("Settings data not found in the sheet.");
     }
     
-    // Parse the JSON string from the cell
-    const settings: Settings = JSON.parse(settingsData);
-    
-    return settings;
+    return JSON.parse(settingsData);
   } catch (error) {
     console.error("Error fetching settings from Google Sheets:", error);
-    // Fallback to mock settings in case of an error to prevent app crash
     const mockSettings: Settings = {
         id: 'global-settings',
         addresses: [
@@ -160,8 +156,6 @@ export async function addEmployee(employeeData: Omit<Employee, 'id' | 'status'>)
             departureReportDate: employeeData.departureReportDate || null,
             comments: employeeData.comments || '',
             oldAddress: employeeData.oldAddress || null,
-            gender: employeeData.gender || 'Mężczyzna',
-            nationality: employeeData.nationality || '',
         };
 
         const serialized = serializeEmployee(newEmployee);
@@ -227,7 +221,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Se
         }
         
         const rows = await sheet.getRows();
-        const currentSettings = await getSettings();
+        const currentSettings = await getSettings(); // Fetch the latest full settings object
         const updatedSettings = { ...currentSettings, ...newSettings, id: 'global-settings' };
 
         const settingsJSON = JSON.stringify(updatedSettings);
@@ -237,6 +231,8 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Se
             settingsRow.set('settingsData', settingsJSON);
             await settingsRow.save();
         } else {
+            // If no rows exist, ensure headers are set and then add the row.
+            await sheet.setHeaderRow(['settingsData']);
             await sheet.addRow({ settingsData: settingsJSON });
         }
         
@@ -246,5 +242,3 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Se
         throw new Error("Could not update settings.");
     }
 }
-
-    
