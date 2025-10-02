@@ -112,8 +112,8 @@ export default function EmployeesView({
   onRestoreEmployee
 }: EmployeesViewProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [coordinatorFilter, setCoordinatorFilter] = useState('');
-  const [addressFilter, setAddressFilter] = useState('');
+  const [coordinatorFilter, setCoordinatorFilter] = useState('all');
+  const [addressFilter, setAddressFilter] = useState('all');
 
   const filteredEmployees = useMemo(() => {
     return employees.filter(employee => {
@@ -122,8 +122,8 @@ export default function EmployeesView({
         employee.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (settings.coordinators.find(c => c.uid === employee.coordinatorId)?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
       
-      const coordinatorMatch = coordinatorFilter === '' || employee.coordinatorId === coordinatorFilter;
-      const addressMatch = addressFilter === '' || employee.address === addressFilter;
+      const coordinatorMatch = coordinatorFilter === 'all' || employee.coordinatorId === coordinatorFilter;
+      const addressMatch = addressFilter === 'all' || employee.address === addressFilter;
 
       return searchMatch && coordinatorMatch && addressMatch;
     });
@@ -134,8 +134,8 @@ export default function EmployeesView({
   
   const resetFilters = () => {
     setSearchTerm('');
-    setCoordinatorFilter('');
-    setAddressFilter('');
+    setCoordinatorFilter('all');
+    setAddressFilter('all');
   };
 
   return (
@@ -159,7 +159,7 @@ export default function EmployeesView({
                 <SelectValue placeholder="Filtruj wg koordynatora" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Wszyscy koordynatorzy</SelectItem>
+                <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
                 {settings.coordinators.map(c => (
                   <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>
                 ))}
@@ -170,7 +170,7 @@ export default function EmployeesView({
                 <SelectValue placeholder="Filtruj wg adresu" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Wszystkie adresy</SelectItem>
+                <SelectItem value="all">Wszystkie adresy</SelectItem>
                 {settings.addresses.map(a => (
                   <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>
                 ))}
