@@ -10,7 +10,6 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarInset,
   useSidebar
 } from '@/components/ui/sidebar';
 import Header from './header';
@@ -23,7 +22,7 @@ import { Skeleton } from './ui/skeleton';
 import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings } from '@/lib/firebaseService';
 import type { Employee, Settings, User, View } from '@/types';
 import { useToast } from '@/hooks/use-toast';
-import { Building, ClipboardList, Home, Settings as SettingsIcon, Users, User as UserIcon } from 'lucide-react';
+import { Building, ClipboardList, Home, Settings as SettingsIcon, Users } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const mockUser: User = {
@@ -155,8 +154,8 @@ function MainContent() {
     };
 
     return (
-        <div className="flex min-h-screen w-full flex-col bg-muted/40">
-            <Sidebar variant='floating' collapsible='icon' side='left'>
+        <div className="flex min-h-screen w-full flex-col">
+            <Sidebar>
                 <SidebarHeader>
                     <div className="flex items-center gap-2 p-2">
                         <Building className="h-6 w-6 text-primary" />
@@ -186,7 +185,7 @@ function MainContent() {
 
             <div className={`flex flex-col sm:gap-4 ${isMobile ? 'pb-20' : 'sm:pl-14'}`}>
                  <Header user={mockUser} activeView={activeView} />
-                <main className="flex-1 p-4 sm:px-6 sm:py-0 space-y-4">
+                <main className="flex-1 p-4 sm:px-6 sm:py-0 space-y-4 bg-background">
                     {renderView()}
                 </main>
             </div>
