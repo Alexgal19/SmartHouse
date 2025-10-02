@@ -49,7 +49,7 @@ function MainContent() {
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
 
     const { toast } = useToast();
-    const { isMobile } = useSidebar();
+    const { isMobile, open } = useSidebar();
     
     const fetchData = useCallback(async () => {
         setIsLoading(true);
@@ -154,12 +154,12 @@ function MainContent() {
     };
 
     return (
-        <div className="flex min-h-screen w-full flex-col">
+        <div className="flex h-screen w-full">
             <Sidebar>
                 <SidebarHeader>
                     <div className="flex items-center gap-2 p-2">
-                        <Building className="h-6 w-6 text-primary" />
-                        <span className="font-semibold text-lg group-data-[collapsible=icon]:hidden">HR Housing Hub</span>
+                        <Building className="h-8 w-8 text-primary" />
+                        <span className="font-semibold text-xl group-data-[collapsible=icon]:hidden">HR Housing Hub</span>
                     </div>
                 </SidebarHeader>
                 <SidebarContent>
@@ -183,9 +183,9 @@ function MainContent() {
                 </SidebarFooter>
             </Sidebar>
 
-            <div className={`flex flex-col sm:gap-4 ${isMobile ? 'pb-20' : 'sm:pl-14'}`}>
+            <div className={`flex flex-1 flex-col ${isMobile ? 'pb-20' : ''}`}>
                  <Header user={mockUser} activeView={activeView} />
-                <main className="flex-1 p-4 sm:px-6 sm:py-0 space-y-4 bg-background">
+                <main className="flex-1 overflow-y-auto bg-muted/40 p-4 sm:p-6">
                     {renderView()}
                 </main>
             </div>

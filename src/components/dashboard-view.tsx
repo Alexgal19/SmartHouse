@@ -1,7 +1,7 @@
 "use client";
 
 import type { Employee, HousingAddress, Settings } from "@/types";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
@@ -70,7 +70,7 @@ export default function DashboardView({ employees, settings }: DashboardViewProp
       <CardHeader>
         <CardTitle>{title}</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pl-2">
         <ChartContainer config={chartConfig} className="h-64 w-full">
           <ResponsiveContainer>
             <BarChart data={data} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
@@ -105,6 +105,7 @@ export default function DashboardView({ employees, settings }: DashboardViewProp
       <Card>
         <CardHeader>
           <CardTitle>Przegląd zakwaterowania</CardTitle>
+          <CardDescription>Obłożenie i dostępność mieszkań.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -115,7 +116,7 @@ export default function DashboardView({ employees, settings }: DashboardViewProp
                   <TableHead className="text-center">Pojemność</TableHead>
                   <TableHead className="text-center">Zajęte</TableHead>
                   <TableHead className="text-center">Wolne</TableHead>
-                  <TableHead>Obłożenie</TableHead>
+                  <TableHead className="w-[150px]">Obłożenie</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -126,9 +127,9 @@ export default function DashboardView({ employees, settings }: DashboardViewProp
                     <TableCell className="text-center">{house.occupied}</TableCell>
                     <TableCell className="text-center">{house.available}</TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2 min-w-[120px]">
-                        <Progress value={house.occupancy} className="w-full" />
-                        <span className="text-xs text-muted-foreground">{Math.round(house.occupancy)}%</span>
+                      <div className="flex items-center gap-3">
+                        <Progress value={house.occupancy} className="w-full h-2" />
+                        <span className="text-sm font-medium text-muted-foreground">{Math.round(house.occupancy)}%</span>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -139,10 +140,12 @@ export default function DashboardView({ employees, settings }: DashboardViewProp
         </CardContent>
       </Card>
       
-      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
         <ChartComponent data={employeesByCoordinator} title="Pracownicy wg koordynatora" />
         <ChartComponent data={employeesByNationality} title="Pracownicy wg narodowości" />
-        <ChartComponent data={employeesByDepartment} title="Pracownicy wg zakładu" />
+        <div className="lg:col-span-2">
+            <ChartComponent data={employeesByDepartment} title="Pracownicy wg zakładu" />
+        </div>
       </div>
     </div>
   );
