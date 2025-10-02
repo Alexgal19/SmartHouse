@@ -17,7 +17,7 @@ import {
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { LogOut, Settings, UserCircle, Building, Bell } from "lucide-react";
+import { LogOut, Settings, UserCircle, Building, Bell, ArrowRight } from "lucide-react";
 import { SidebarTrigger } from "./ui/sidebar";
 import { useSidebar } from "./ui/sidebar";
 import { formatDistanceToNow } from 'date-fns';
@@ -61,13 +61,13 @@ export default function Header({ user, activeView, notifications, onNotification
                     <Bell className="h-5 w-5" />
                     {unreadCount > 0 && (
                         <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
-                           {unreadCount}
+                           {unreadCount > 10 ? '9+' : unreadCount}
                         </span>
                     )}
                     <span className="sr-only">Otwórz powiadomienia</span>
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-80 p-0">
+            <PopoverContent className="w-96 p-0">
                 <div className="p-4">
                   <h4 className="font-medium text-sm">Powiadomienia</h4>
                 </div>
@@ -81,8 +81,20 @@ export default function Header({ user, activeView, notifications, onNotification
                               notification.isRead ? 'border-transparent' : 'border-primary'
                             )}
                        >
-                           <p className="text-sm">{notification.message}</p>
-                           <p className="text-xs text-muted-foreground mt-1">
+                           <p className="text-sm font-medium">{notification.message}</p>
+                           {notification.changes && notification.changes.length > 0 && (
+                             <div className="mt-2 space-y-1 text-xs">
+                                {notification.changes.map((change, index) => (
+                                  <div key={index} className="flex items-center gap-2">
+                                     <span className="font-semibold">{change.field}:</span>
+                                     <span className="text-muted-foreground line-through">{change.oldValue}</span>
+                                     <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                     <span className="text-foreground">{change.newValue}</span>
+                                  </div>
+                                ))}
+                             </div>
+                           )}
+                           <p className="text-xs text-muted-foreground mt-2">
                                {formatDistanceToNow(notification.createdAt, { addSuffix: true, locale: pl })}
                            </p>
                        </div>

@@ -1,9 +1,10 @@
 
 "use server";
 
-import type { Employee, Settings, Notification, Coordinator } from '@/types';
+import type { Employee, Settings, Notification, Coordinator, NotificationChange } from '@/types';
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
+import { format } from 'date-fns';
 
 // --- Credentials - In a real production app, use environment variables ---
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
@@ -14,7 +15,7 @@ const SHEET_NAME_NOTIFICATIONS = 'Powiadomienia';
 
 const serviceAccountAuth = new JWT({
   email: "sheets-database-manager@hr-housing-hub-a2udq.iam.gserviceaccount.com",
-  key: "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC/Pogjqll3W46c\n3e/ktFVweN2TVq7bPcloNPlbGdIeN72MrjXsdpP8FdMDFywI+hWCQG0ouNnIiFJm\n67Rody5ul43LT0smTsliGkepNeUi6i4JLQL14sZGKvRyOa/Bs8JpIJ0Mb86VZTGY\n7gmgZjYDvkr7yv1UtURZBvzY6USMOCCZR6zvt9THswXgh3PVEhHFjiMHWxuLx/IV\nSaAxR53/kmv3Du17GtiYta2BaQMtYyUf2B8QRcY4aklxLMA8K7RKxTbgR/76b642\n7sFP4SmmTnjXo6YlIUvnAcY+WjLeF0OzKlAjNUX2hVptQP56oS1rd1vRBTLv0X16\nmX748CSVAgMBAAECggEABWlhE9VJs9Fw7ypuk+OweT7KUlWFHCoa7Wp2VegcpINC\nR11UpEzUsjDx6Cf7NIPTIPzuudTFQOHupv/rentI4pNCTWsAfuSC2VZSCc0/HyZO\nSC8wYsHYh3rGsQbF3O7XxP7JwuTVDTAwX5n4xsOtqpxzZb2gPonklbpXZFHxgSA2\n3w9clizXzHNdTNKCA/ooXFwn1snP4cRf2qWnwipbFqUFaUU9HSiSb6Ro9vbXKfNS\nJZsJmGI4txg+3w0EqHtAgryYv1RW7RdjNG2KjWwOBFeIDGPiR25ITQxuceqIzhzQ\nmPbV7SSEkLQRJiRjNlCNT+tom/KtZYn06jbBGm8O3wKBgQD2yMGgL15gwcqEcjdh\nAIyZR8UQm/wtgoZwU46G8wGOOBCv9dew+qUIMbAa8y1BKvmksjCMMf0vp9hn3SLw\nyT/XALTQ7jNMoPAj8ORaxvuU0J4ClRMEKu8nVkQkSLUSWECVWT+Uv1it+my6pkF0\nodEeQ/DlyAfMXk7pP2hRCa6FjwKBgQDGYtEOQ8aUWoF9vzt1ZQcvHoilyaIQZdja\nlY5RGzHw/upul3RWDcpIeExfop8hfqcOI6NnmlKmz2J33aFaLoic5N0vxivaQOIh\ndKpBrrSnWMEKzf9RzNckCVufkJnG6bIjyXbt6qsB+I7PGNo30lt292MMlyJZN6oi\ndefncBjJmwKBgCFwMkwyHuedWoN3tmk+Wc6rGtiVSiYgeXbe24ENjDhpAFnXRdKF\nI7dohCQirw8Vc54NRua4H0ZFx9zK6eEWY8AOKHHm1KydYex8x3RFYfFYExDmgh0e\ndCkwVytTbrV9n8KcxTCyfKGWPQVNYbEb++nN6uY3pFbcsHSKUugoF62hAoGAM8vj\nF11cwKksu/8s8AazrHrFZLvTY4Kj7tYzdTure2ejH8LNbhZlpSw7jJCyCZW+2jM1\n27vwLnthEzi7gwc5RfV/RpTwKCjeoauLNGD/692BcWe9bMcVuOP0lyGy9LtZdnyI\nX6/wfDBAYRP1DbQPi20l4EipgC/HbP3p0YR0BFcCgYEAil55HwxqHwKZO5tGgSFB\numU1tM3b6rpOvfIer9dUPqZN7+Pef9GaWQs2NvPIlSn0bEZnjevLk0QOnACLOwfk\nBDv783BdHhTbwPMH+TjKu4n2GwrHRF6T5bNgeGqVe8jvD+mzXe+KQO402s6r5Ue1\n9JhV9GM9wVmbgjsXlOfVxCg=\n-----END PRIVATE KEY-----\n".replace(/\\n/g, '\n'),
+  key: "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC/Pogjqll3W46c\n3e/ktFVweN2TVq7bPcloNPlbGdIeN72MrjXsdpP8FdMDFywI+hWCQG0ouNnIiFJm\n67Rody5ul43LT0smTsliGkepNeUi6i4JLQL14sZGKvRyOa/Bs8JpIJ0Mb86VZTGY\n7gmgZjYDvkr7yv1UtURZBvzY6USMOCCZR6zvt9THswXgh3PVEhHFjiMHWxuLx/IV\nSaAxR53/kmv3Du17GtiYta2BaQMtYyUf2B8QRcY4aklxLMA8K7RKxTbgR/76b642\n7sFP4SmmTnjXo6YlIUvnAcY+WjLeF0OzKlAjNUX2hVptQP56oS1rd1vRBTLv0X16\nmX748CSVAgMBAAECggEABWlhE9VJs9Fw7ypuk+OweT7KUlWFHCoa7Wp2VegcpINC\nR11UpEzUsjDx6Cf7NIPTIPzuudTFQOHupv/rentI4pNCTWsAfuSC2VZSCc0/HyZO\nSC8wYsHYh3rGsQbF3O7XxP7JwuTVDTAwX5n4xsOtqpxzZb2gPonklbpXZFHxgSA2\n3w9clizXzHNdTNKCA/ooXFwn1snP4cRf2qWnwipbFqUFaUU9HSiSb6Ro9vbXKfNS\nJZsJmGI4txg+3w0EqHtAgryYv1RW7RdjNG2KjWwOBFeIDGPiR25ITQxuceqIzhzQ\nmPbV7SSEkLQRJiRjNlCNT+tom/KtZYn06jbBGm8O3wKBgQD2yMGgL15gwcqEcjdh\nAIyZR8UQm/wtgoZwU46G8wGOOBCv9dew+qUIMbAa8y1BKvmksjCMMf0vp9hn3SLw\nyT/XALTQ7jNMoPAj8ORaxvuU0J4ClRMEKu8nVkQkSLUSWECVWT+Uv1it+my6pkF0\nodEeQ/DlyAfMXk7pP2hRCa6FjwKBgQDGYtEOQ8aUWoF9vzt1ZQcvHoilyaIQZdja\nlY5RGzHw/upul3RWDcpIeExfop8hfqcOI6NnmlKmz2J33aFaLoic5N0vxivaQOIh\ndKpBrrSnWMEKzf9RzNckCVufkJnG6bIjyXbt6qsB+I7PGNo30lt292MMlyJZN6oi\ndefncBjJmwKBgCFwMkwyHuedWoN3tmk+Wc6rGtiVSiYgeXbe24ENjDhpAFnXRdKF\nI7dohCQirw8Vc54NRua4H0ZFx9zK6eEWY8AOKHHm1KydYex8x3RFYfFYExDmgh0e\ndCkwVytTbrV9n8KcxTCyfKGWPQVNYbEb++nN6uY3pFbcsHSKUugoF62hAoGAM8vj\nF11cwKksu/8s8AazrHrFZLvTY4Kj7tYzdTure2ejH8LNbhZlpSw7jJCyCZW+2jM1\n27vwLnthEzi7gwc5RfV/RpTwKCjeoauLNGD/692BcWe9bMcVuOP0lyGy9LtZdnyI\nX6/wfDBAYRP1DbQPi20l4EipgC/HbP3p0YR0BFcCgYEAil55HwxqHwKZO5tGgSFB\numU1tM3b6rpOvfIer9dUPqZN7+Pef9GaWQs2NvPIlSn0bEZnjevLk0QOnACLOwfk\nBDv783BdHhTbwPMH+TjKu4n2GwrHRF6T5bNgeGqVe8jvD+mzXe/KQO402s6r5Ue1\n9JhV9GM9wVmbgjsXlOfVxCg=\n-----END PRIVATE KEY-----\n".replace(/\\n/g, '\n'),
   scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
 
@@ -85,6 +86,7 @@ const deserializeNotification = (row: any): Notification => {
     if (isNaN(createdAt.getTime())) {
         console.error(`Invalid date string for notification: ${createdAtString}`);
     }
+    const changesString = row.get('changes');
     return {
         id: row.get('id'),
         message: row.get('message'),
@@ -94,10 +96,11 @@ const deserializeNotification = (row: any): Notification => {
         coordinatorName: row.get('coordinatorName'),
         createdAt: createdAt,
         isRead: row.get('isRead') === 'TRUE',
+        changes: changesString ? JSON.parse(changesString) : [],
     };
 };
 
-const serializeNotification = (notification: Notification): Record<string, string> => {
+const serializeNotification = (notification: Omit<Notification, 'changes'> & { changes?: NotificationChange[] }): Record<string, string> => {
     return {
         id: notification.id,
         message: notification.message,
@@ -107,6 +110,7 @@ const serializeNotification = (notification: Notification): Record<string, strin
         coordinatorName: notification.coordinatorName,
         createdAt: notification.createdAt.toISOString(),
         isRead: String(notification.isRead).toUpperCase(),
+        changes: JSON.stringify(notification.changes || []),
     };
 };
 
@@ -183,29 +187,31 @@ export async function getSettings(): Promise<Settings> {
 const createNotification = async (
     actor: Coordinator,
     action: string,
-    employee: { id: string, fullName: string }
+    employee: { id: string, fullName: string },
+    changes: NotificationChange[] = []
 ) => {
     try {
         await doc.loadInfo();
-        const sheet = doc.sheetsByTitle[SHEET_NAME_NOTIFICATIONS];
+        let sheet = doc.sheetsByTitle[SHEET_NAME_NOTIFICATIONS];
         if (!sheet) {
-            await doc.addSheet({ title: SHEET_NAME_NOTIFICATIONS, headerValues: ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead'] });
+            sheet = await doc.addSheet({ title: SHEET_NAME_NOTIFICATIONS, headerValues: ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes'] });
         }
-        const notificationSheet = doc.sheetsByTitle[SHEET_NAME_NOTIFICATIONS];
 
-
+        const message = `${actor.name} ${action} pracownika ${employee.fullName}.`;
+        
         const newNotification: Notification = {
             id: `notif-${Date.now()}`,
-            message: `${actor.name} ${action} pracownika ${employee.fullName}.`,
+            message,
             employeeId: employee.id,
             employeeName: employee.fullName,
             coordinatorId: actor.uid,
             coordinatorName: actor.name,
             createdAt: new Date(),
             isRead: false,
+            changes
         };
 
-        await notificationSheet.addRow(serializeNotification(newNotification));
+        await sheet.addRow(serializeNotification(newNotification));
     } catch (e) {
         console.error("Could not create notification:", e);
     }
@@ -242,6 +248,52 @@ export async function addEmployee(employeeData: Omit<Employee, 'id' | 'status'>,
     }
 }
 
+const formatDate = (date: Date | null | undefined): string => {
+    if (!date || isNaN(date.getTime())) return 'N/A';
+    return format(date, 'dd-MM-yyyy');
+};
+
+const getChanges = (oldData: Employee, newData: Partial<Employee>): NotificationChange[] => {
+    const changes: NotificationChange[] = [];
+    const fieldLabels: Record<keyof Employee, string> = {
+        id: 'ID',
+        fullName: 'Imię i nazwisko',
+        coordinatorId: 'Koordynator',
+        nationality: 'Narodowość',
+        gender: 'Płeć',
+        address: 'Adres',
+        roomNumber: 'Numer pokoju',
+        zaklad: 'Zakład',
+        checkInDate: 'Data zameldowania',
+        checkOutDate: 'Data wymeldowania',
+        contractStartDate: 'Umowa od',
+        contractEndDate: 'Umowa do',
+        departureReportDate: 'Data zgłoszenia wyjazdu',
+        comments: 'Komentarze',
+        status: 'Status',
+        oldAddress: 'Stary adres',
+    };
+
+    for (const key in newData) {
+        const typedKey = key as keyof Employee;
+        const oldValue = oldData[typedKey];
+        const newValue = newData[typedKey];
+
+        // Format dates for comparison
+        const oldFormatted = oldValue instanceof Date ? formatDate(oldValue) : oldValue;
+        const newFormatted = newValue instanceof Date ? formatDate(newValue) : newValue;
+
+        if (String(oldFormatted ?? '') !== String(newFormatted ?? '')) {
+            changes.push({
+                field: fieldLabels[typedKey] || typedKey,
+                oldValue: String(oldFormatted ?? 'N/A'),
+                newValue: String(newFormatted ?? 'N/A'),
+            });
+        }
+    }
+    return changes;
+};
+
 export async function updateEmployee(employeeId: string, employeeData: Partial<Omit<Employee, 'id'>>, actor: Coordinator): Promise<Employee> {
     try {
         await doc.loadInfo();
@@ -256,9 +308,21 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
         }
         
         const rowToUpdate = rows[rowIndex];
-        
-        // Get current data, apply updates, then serialize for saving
         const currentData = deserializeEmployee(rowToUpdate);
+        
+        let action = 'zaktualizował(a) dane';
+        let changes: NotificationChange[] = [];
+        
+        if (employeeData.status) {
+            if (employeeData.status === 'dismissed') action = 'zwolnił(a)';
+            if (employeeData.status === 'active') action = 'przywrócił(a)';
+        } else {
+            changes = getChanges(currentData, employeeData);
+            if(changes.length === 0) {
+                 return currentData; // No changes, no update, no notification
+            }
+        }
+        
         const updatedData = { ...currentData, ...employeeData };
         const serializedData = serializeEmployee(updatedData);
 
@@ -273,8 +337,7 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
         const savedRows = await sheet.getRows();
         const finalEmployee = deserializeEmployee(savedRows[rowIndex]);
         
-        const action = employeeData.status === 'dismissed' ? 'zwolnił(a)' : (employeeData.status === 'active' ? 'przywrócił(a)' : 'zaktualizował(a) dane');
-        await createNotification(actor, action, finalEmployee);
+        await createNotification(actor, action, finalEmployee, changes);
 
         return finalEmployee;
 

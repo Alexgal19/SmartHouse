@@ -75,6 +75,12 @@ export type Coordinator = {
   name: string;
 };
 
+export type NotificationChange = {
+  field: string;
+  oldValue: string;
+  newValue: string;
+};
+
 export type Notification = {
   id: string;
   message: string;
@@ -84,6 +90,7 @@ export type Notification = {
   coordinatorName: string;
   createdAt: Date;
   isRead: boolean;
+  changes?: NotificationChange[];
 };
 
 export type View = 'dashboard' | 'employees' | 'settings' | 'inspections';
