@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { MoreHorizontal, PlusCircle, Trash2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 
 interface SettingsViewProps {
   settings: Settings;
