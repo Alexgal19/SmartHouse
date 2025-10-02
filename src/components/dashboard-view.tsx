@@ -66,31 +66,20 @@ export default function DashboardView({ employees, settings }: DashboardViewProp
 
  const chartConfig = {
     value: { label: "Pracownicy" },
-    // Define colors for each chart item if needed, matching with `chartColors`
-    "Marek Mostowiak": { color: "hsl(var(--chart-1))" },
-    "Ewa Malinowska": { color: "hsl(var(--chart-2))" },
-    "Juan Martinez": { color: "hsl(var(--chart-3))" },
-    "Polska": { color: "hsl(var(--chart-1))" },
-    "Ukraina": { color: "hsl(var(--chart-2))" },
-    "Hiszpania": { color: "hsl(var(--chart-3))" },
-    "Produkcja A": { color: "hsl(var(--chart-1))" },
-    "Logistyka": { color: "hsl(var(--chart-2))" },
-    "Produkcja B": { color: "hsl(var(--chart-3))" },
-    "Jakość": { color: "hsl(var(--chart-4))" },
   };
   
   const chartColors = [
-    { from: 'from-orange-500', to: 'to-orange-400', id: 'grad1' },
-    { from: 'from-amber-500', to: 'to-amber-400', id: 'grad2' },
-    { from: 'from-yellow-500', to: 'to-yellow-400', id: 'grad3' },
-    { from: 'from-lime-500', to: 'to-lime-400', id: 'grad4' },
-    { from: 'from-green-500', to: 'to-green-400', id: 'grad5' },
+    { from: 'hsl(var(--chart-1))', to: 'hsl(var(--chart-2))', id: 'grad1' },
+    { from: 'hsl(var(--chart-2))', to: 'hsl(var(--chart-3))', id: 'grad2' },
+    { from: 'hsl(var(--chart-3))', to: 'hsl(var(--chart-4))', id: 'grad3' },
+    { from: 'hsl(var(--chart-4))', to: 'hsl(var(--chart-5))', id: 'grad4' },
+    { from: 'hsl(var(--chart-5))', to: 'hsl(var(--chart-1))', id: 'grad5' },
   ];
 
   const ChartComponent = ({ data, title }: { data: {name: string, value: number}[], title: string }) => (
-    <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+    <Card>
       <CardHeader>
-        <CardTitle className="text-lg font-semibold text-gray-700">{title}</CardTitle>
+        <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent className="pl-2">
         <ChartContainer config={chartConfig} className="h-64 w-full">
@@ -99,8 +88,8 @@ export default function DashboardView({ employees, settings }: DashboardViewProp
                <defs>
                 {chartColors.map((color, index) => (
                   <linearGradient id={color.id} x1="0" y1="0" x2="0" y2="1" key={index}>
-                    <stop offset="5%" stopColor="var(--color-from)" stopOpacity={0.9}/>
-                    <stop offset="95%" stopColor="var(--color-to)" stopOpacity={0.9}/>
+                    <stop offset="5%" stopColor={color.from} stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor={color.to} stopOpacity={0.8}/>
                   </linearGradient>
                 ))}
               </defs>
@@ -108,9 +97,9 @@ export default function DashboardView({ employees, settings }: DashboardViewProp
               <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={10} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
               <YAxis tickLine={false} axisLine={false} tickMargin={10} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
               <Tooltip 
-                cursor={{ fill: 'hsl(var(--accent) / 0.2)' }} 
+                cursor={{ fill: 'hsl(var(--accent) / 0.1)' }} 
                 content={({ active, payload, label }) => active && payload && payload.length && (
-                    <div className="bg-background/80 backdrop-blur-sm p-3 rounded-lg border border-border shadow-lg">
+                    <div className="bg-background/95 p-3 rounded-lg border shadow-lg">
                         <p className="font-bold text-foreground">{label}</p>
                         <p className="text-sm text-primary">{`${payload[0].value} pracowników`}</p>
                     </div>
@@ -120,7 +109,7 @@ export default function DashboardView({ employees, settings }: DashboardViewProp
                 <LabelList dataKey="value" position="top" offset={10} className="fill-foreground font-semibold" />
                  {data.map((entry, index) => {
                     const color = chartColors[index % chartColors.length];
-                    return <Cell key={`cell-${index}`} fill={`url(#${color.id})`} style={{'--color-from': `hsl(var(--chart-${index+1}))`, '--color-to': `hsl(var(--chart-${(index+2)%5+1}))`} as React.CSSProperties}/>
+                    return <Cell key={`cell-${index}`} fill={`url(#${color.id})`} />
                  })}
               </Bar>
             </BarChart>
@@ -147,23 +136,24 @@ export default function DashboardView({ employees, settings }: DashboardViewProp
       </div>
 
        <Dialog open={isHousingDialogOpen} onOpenChange={setIsHousingDialogOpen}>
-          <Card 
-            className="cursor-pointer hover:border-primary transition-colors"
-            onClick={() => setIsHousingDialogOpen(true)}
-          >
-              <CardHeader>
-                  <CardTitle>Przegląd zakwaterowania</CardTitle>
-                  <CardDescription>Kliknij, aby zobaczyć obłożenie i dostępność mieszkań.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                 <div className="flex justify-between items-center">
-                    <div className="text-sm text-muted-foreground">
-                        {settings.addresses.length} dostępnych adresów
-                    </div>
-                     <Button variant="outline" size="sm">Zobacz szczegóły</Button>
-                 </div>
-              </CardContent>
-          </Card>
+          <DialogTrigger asChild>
+             <Card 
+                className="cursor-pointer hover:border-primary transition-colors"
+             >
+                <CardHeader>
+                    <CardTitle>Przegląd zakwaterowania</CardTitle>
+                    <CardDescription>Kliknij, aby zobaczyć obłożenie i dostępność mieszkań.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                   <div className="flex justify-between items-center">
+                      <div className="text-sm text-muted-foreground">
+                          {settings.addresses.length} dostępnych adresów
+                      </div>
+                       <Button variant="outline" size="sm">Zobacz szczegóły</Button>
+                   </div>
+                </CardContent>
+            </Card>
+          </DialogTrigger>
           <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
               <DialogTitle>Obłożenie i dostępność mieszkań</DialogTitle>
