@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { Employee, Settings } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ScrollArea } from './ui/scroll-area';
+import { Skeleton } from './ui/skeleton';
 
 interface EmployeesViewProps {
   employees: Employee[];
@@ -187,7 +188,7 @@ export default function EmployeesView({
   const [addressFilter, setAddressFilter] = useState('all');
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [nationalityFilter, setNationalityFilter] = useState('all');
-  const isMobile = useIsMobile();
+  const {isMobile, isMounted} = useIsMobile();
 
   const filteredEmployees = useMemo(() => {
     return employees.filter(employee => {
@@ -215,6 +216,23 @@ export default function EmployeesView({
   const hasActiveFilters = searchTerm !== '' || coordinatorFilter !== 'all' || addressFilter !== 'all' || departmentFilter !== 'all' || nationalityFilter !== 'all';
   
   const EmployeeListComponent = isMobile ? EmployeeCardList : EmployeeTable;
+
+  const renderContent = (list: Employee[], isDismissed: boolean) => {
+    if (!isMounted) {
+      return <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>;
+    }
+    return (
+      <EmployeeListComponent
+        employees={list}
+        settings={settings}
+        onEdit={onEditEmployee}
+        onDismiss={onDismissEmployee}
+        onRestore={onRestoreEmployee}
+        isDismissedTab={isDismissed}
+      />
+    );
+  };
+
 
   return (
     <Card>
@@ -300,26 +318,12 @@ export default function EmployeesView({
           </TabsList>
           <TabsContent value="active">
              <ScrollArea className="h-[50vh]">
-                <EmployeeListComponent
-                  employees={activeEmployees}
-                  settings={settings}
-                  onEdit={onEditEmployee}
-                  onDismiss={onDismissEmployee}
-                  onRestore={onRestoreEmployee}
-                  isDismissedTab={false}
-                />
+                {renderContent(activeEmployees, false)}
              </ScrollArea>
           </TabsContent>
           <TabsContent value="dismissed">
             <ScrollArea className="h-[50vh]">
-                <EmployeeListComponent
-                  employees={dismissedEmployees}
-                  settings={settings}
-                  onEdit={onEditEmployee}
-                  onDismiss={onDismissEmployee}
-                  onRestore={onRestoreEmployee}
-                  isDismissedTab={true}
-                />
+                {renderContent(dismissedEmployees, true)}
             </ScrollArea>
           </TabsContent>
         </Tabs>

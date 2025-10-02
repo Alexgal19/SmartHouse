@@ -31,7 +31,7 @@ const TabsList = React.forwardRef<
     ref={ref}
     className={cn(
       "inline-flex h-auto items-center justify-start rounded-md bg-muted p-1 text-muted-foreground overflow-x-auto",
-      "data-[orientation=vertical]:flex-col data-[orientation=vertical]:h-auto data-[orientation=vertical]:items-stretch data-[orientation=vertical]:bg-transparent data-[orientation=vertical]:p-0",
+      "data-[orientation=vertical]:flex-col data-[orientation=vertical]:h-auto data-[orientation=vertical]:items-stretch data-[orientation=vertical]:bg-transparent data-[orientation=vertical]:p-0 data-[orientation=vertical]:border-r",
       className
     )}
     {...props}
@@ -47,7 +47,7 @@ const TabsTrigger = React.forwardRef<
     ref={ref}
     className={cn(
       "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm",
-      "data-[orientation=vertical]:justify-start data-[orientation=vertical]:data-[state=active]:shadow-none data-[orientation=vertical]:data-[state=active]:border-r-2 data-[orientation=vertical]:data-[state=active]:border-primary data-[orientation=vertical]:rounded-none",
+      "data-[orientation=vertical]:justify-start data-[orientation=vertical]:data-[state=active]:shadow-none data-[orientation=vertical]:data-[state=active]:border-r-2 data-[orientation=vertical]:data-[state=active]:border-primary data-[orientation=vertical]:rounded-none data-[orientation=vertical]:-mr-px",
       className
     )}
     {...props}

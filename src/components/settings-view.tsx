@@ -222,7 +222,7 @@ const CoordinatorManager = ({ items, onUpdate }: { items: Coordinator[]; onUpdat
 
 
 export default function SettingsView({ settings, onUpdateSettings }: SettingsViewProps) {
-  const isMobile = useIsMobile();
+  const { isMobile } = useIsMobile();
   
   return (
     <Card>
@@ -231,7 +231,7 @@ export default function SettingsView({ settings, onUpdateSettings }: SettingsVie
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="addresses" className="w-full" orientation={isMobile ? "vertical" : "horizontal"}>
-          <TabsList className={cn("flex-wrap h-auto sm:h-10",!isMobile && "grid w-full grid-cols-4")}>
+          <TabsList className={cn("flex-wrap h-auto sm:h-10",isMobile ? "flex-col items-stretch" : "grid w-full grid-cols-4")}>
             <TabsTrigger value="addresses">Adresy</TabsTrigger>
             <TabsTrigger value="nationalities">Narodowości</TabsTrigger>
             <TabsTrigger value="departments">Zakłady</TabsTrigger>

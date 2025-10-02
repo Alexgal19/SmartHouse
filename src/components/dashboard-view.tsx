@@ -22,7 +22,7 @@ interface DashboardViewProps {
 export default function DashboardView({ employees, settings, onEditEmployee }: DashboardViewProps) {
   const [isHousingDialogOpen, setIsHousingDialogOpen] = useState(false);
   const [isCheckoutsDialogOpen, setIsCheckoutsDialogOpen] = useState(false);
-  const isMobile = useIsMobile();
+  const { isMobile } = useIsMobile();
   
   const activeEmployees = useMemo(() => employees.filter(e => e.status === 'active'), [employees]);
   const apartmentsInUse = useMemo(() => [...new Set(activeEmployees.map(e => e.address))].length, [activeEmployees]);

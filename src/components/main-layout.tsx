@@ -50,7 +50,7 @@ function MainContent() {
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
 
     const { toast } = useToast();
-    const { isMobile, open } = useSidebar();
+    const { isMobile } = useSidebar();
     
     const fetchData = useCallback(async () => {
         setIsLoading(true);
