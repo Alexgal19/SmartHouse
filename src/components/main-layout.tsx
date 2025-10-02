@@ -242,7 +242,7 @@ function MainContent() {
             </Sidebar>
             <div className="flex flex-1 flex-col">
                 <Header user={mockUser} activeView={activeView} notifications={notifications} onNotificationClick={handleNotificationClick} />
-                <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-20 md:pb-6">
+                <main className="flex-1 overflow-y-auto pt-2 sm:pt-4 px-4 sm:px-6 pb-20 md:pb-6">
                     {renderView()}
                 </main>
             </div>
