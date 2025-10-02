@@ -56,6 +56,7 @@ const deserializeEmployee = (row: any): Employee => {
         fullName: row.get('fullName'),
         coordinatorId: row.get('coordinatorId'),
         nationality: row.get('nationality'),
+        gender: row.get('gender') as 'Mężczyzna' | 'Kobieta',
         address: row.get('address'),
         roomNumber: row.get('roomNumber'),
         zaklad: row.get('zaklad'),
@@ -97,7 +98,7 @@ export async function getSettings(): Promise<Settings> {
       { id: 'addr-3', name: 'ul. Wrocławska 5, Poznań', capacity: 12 },
       { id: 'addr-4', name: 'ul. Polna 10, Gdańsk', capacity: 6 },
     ],
-    nationalities: ['Polska', 'Ukraina', 'Hiszpania', 'USA', 'Niemcy'],
+    nationalities: ['Polska', 'Ukraina', 'Białoruś', 'Gruzja', 'Mołdawia'],
     departments: ['Produkcja A', 'Produkcja B', 'Logistyka', 'Jakość', 'Administracja'],
     coordinators: [
       { uid: 'coord-1', name: 'Marek Mostowiak' },
@@ -105,6 +106,7 @@ export async function getSettings(): Promise<Settings> {
       { uid: 'coord-3', name: 'Juan Martinez' },
       { uid: 'coord-4', name: 'Emily White' },
     ],
+    genders: ['Mężczyzna', 'Kobieta'],
   };
    return Promise.resolve(mockSettings);
 }

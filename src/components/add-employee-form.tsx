@@ -37,6 +37,7 @@ const employeeSchema = z.object({
   fullName: z.string().min(3, "Imię i nazwisko musi mieć co najmniej 3 znaki."),
   coordinatorId: z.string().min(1, "Koordynator jest wymagany."),
   nationality: z.string().min(1, "Narodowość jest wymagana."),
+  gender: z.enum(["Mężczyzna", "Kobieta"], { required_error: "Płeć jest wymagana." }),
   address: z.string().min(1, "Adres jest wymagany."),
   roomNumber: z.string().min(1, "Numer pokoju jest wymagany."),
   zaklad: z.string().min(1, "Zakład jest wymagany."),
@@ -64,6 +65,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
       fullName: "",
       coordinatorId: "",
       nationality: "",
+      gender: "Mężczyzna",
       address: "",
       roomNumber: "",
       zaklad: "",
@@ -87,6 +89,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
             fullName: employee.fullName,
             coordinatorId: employee.coordinatorId,
             nationality: employee.nationality,
+            gender: employee.gender,
             address: employee.address,
             roomNumber: employee.roomNumber,
             zaklad: employee.zaklad,
@@ -105,6 +108,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
             fullName: "",
             coordinatorId: "",
             nationality: "",
+            gender: "Mężczyzna",
             address: "",
             roomNumber: "",
             zaklad: "",
@@ -121,7 +125,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
     }
   }, [employee, isOpen, form]);
 
-  const showOldAddress = employee?.oldAddress || (employee && watchedAddress !== initialAddress);
+  const showOldAddress = !!employee?.oldAddress || (employee && watchedAddress !== initialAddress && !!initialAddress);
 
 
   const handleSubmit = async (values: z.infer<typeof employeeSchema>) => {
@@ -185,20 +189,20 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                     />
                 <FormField
                     control={form.control}
-                    name="coordinatorId"
+                    name="gender"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Koordynator</FormLabel>
+                        <FormLabel>Płeć</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                             <SelectTrigger>
-                                <SelectValue placeholder="Wybierz koordynatora" />
+                                <SelectValue placeholder="Wybierz płeć" />
                             </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                            {settings.coordinators.map((c) => (
-                                <SelectItem key={c.uid} value={c.uid}>
-                                {c.name}
+                            {settings.genders.map((g) => (
+                                <SelectItem key={g} value={g}>
+                                {g}
                                 </SelectItem>
                             ))}
                             </SelectContent>
@@ -208,6 +212,30 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                     )}
                     />
             </div>
+             <FormField
+                control={form.control}
+                name="coordinatorId"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Koordynator</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Wybierz koordynatora" />
+                        </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                        {settings.coordinators.map((c) => (
+                            <SelectItem key={c.uid} value={c.uid}>
+                            {c.name}
+                            </SelectItem>
+                        ))}
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
             <div className="space-y-2">
                 <FormField
                     control={form.control}

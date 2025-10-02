@@ -49,6 +49,8 @@ const EmployeeTable = ({
       <TableHeader>
         <TableRow>
           <TableHead>Imię i nazwisko</TableHead>
+          <TableHead>Płeć</TableHead>
+          <TableHead>Narodowość</TableHead>
           <TableHead>Koordynator</TableHead>
           <TableHead>Adres</TableHead>
           <TableHead>Stara adresa</TableHead>
@@ -65,6 +67,8 @@ const EmployeeTable = ({
           employees.map((employee) => (
             <TableRow key={employee.id} onClick={() => onEdit(employee)} className="cursor-pointer">
               <TableCell className="font-medium">{employee.fullName}</TableCell>
+              <TableCell>{employee.gender}</TableCell>
+              <TableCell>{employee.nationality}</TableCell>
               <TableCell>{getCoordinatorName(employee.coordinatorId)}</TableCell>
               <TableCell>{employee.address}</TableCell>
               <TableCell>{employee.oldAddress || 'N/A'}</TableCell>
@@ -95,7 +99,7 @@ const EmployeeTable = ({
           ))
         ) : (
           <TableRow>
-            <TableCell colSpan={10} className="text-center">Brak pracowników do wyświetlenia.</TableCell>
+            <TableCell colSpan={12} className="text-center">Brak pracowników do wyświetlenia.</TableCell>
           </TableRow>
         )}
       </TableBody>

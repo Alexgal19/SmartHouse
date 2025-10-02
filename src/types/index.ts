@@ -11,6 +11,7 @@ export type Employee = {
   fullName: string;
   coordinatorId: string;
   nationality: string;
+  gender: 'Mężczyzna' | 'Kobieta';
   address: string;
   roomNumber: string;
   zaklad: string; // department
@@ -66,6 +67,7 @@ export type Settings = {
   nationalities: string[];
   departments: string[];
   coordinators: Coordinator[];
+  genders: ('Mężczyzna' | 'Kobieta')[];
 };
 
 export type Coordinator = {
