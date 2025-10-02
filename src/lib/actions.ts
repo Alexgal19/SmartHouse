@@ -19,22 +19,27 @@ const doc = new GoogleSpreadsheet(SPREADSHEET_ID, serviceAccountAuth);
 
 const parseDate = (dateStr: string | undefined | null): Date | null => {
   if (!dateStr) return null;
-  // Try parsing ISO string first
-  if (typeof dateStr === 'string' && dateStr.includes('T')) {
-      const date = new Date(dateStr);
-      if (!isNaN(date.getTime())) return date;
-  }
-  // Fallback for other formats or simple date strings if needed
+  // Handle both ISO string and YYYY-MM-DD formats
   const date = new Date(dateStr);
-  return isNaN(date.getTime()) ? null : date;
+   if (!isNaN(date.getTime())) {
+    // The date is valid. If it's a UTC string, the time will be midnight.
+    // If it's just 'YYYY-MM-DD', JS treats it as UTC midnight.
+    // To avoid timezone shifts when displaying, we can adjust it.
+    // By adding the timezone offset, we bring it to local midnight.
+    date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+    return date;
+  }
+  return null;
 };
+
 
 // Helper to serialize employee data for the sheet
 const serializeEmployee = (employee: Partial<Employee>): Record<string, string | number | boolean> => {
     const serialized: Record<string, string | number | boolean> = {};
     for (const [key, value] of Object.entries(employee)) {
         if (value instanceof Date) {
-            serialized[key] = value.toISOString();
+            // Format date as YYYY-MM-DD
+            serialized[key] = value.toISOString().split('T')[0];
         } else if (value !== null && value !== undefined) {
             serialized[key] = value.toString();
         } else {
@@ -182,29 +187,22 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
         
         const rowToUpdate = rows[rowIndex];
         
-        const updatedData = { ...rowToUpdate.toObject(), ...employeeData };
+        // Get current data, apply updates, then serialize for saving
+        const currentData = deserializeEmployee(rowToUpdate);
+        const updatedData = { ...currentData, ...employeeData };
+        const serializedData = serializeEmployee(updatedData);
 
-        for (const [key, value] of Object.entries(updatedData)) {
-            if (key === 'id' || typeof value === 'function' || key.startsWith('_')) continue;
-            
-            if (rowToUpdate.get(key) !== undefined) {
-                 if (value instanceof Date) {
-                    rowToUpdate.set(key, value.toISOString());
-                } else if (value === null || value === undefined) {
-                    rowToUpdate.set(key, '');
-                }
-                else {
-                    rowToUpdate.set(key, value);
-                }
+        for (const key of sheet.headerValues) {
+            if (key in serializedData) {
+                rowToUpdate.set(key, serializedData[key as keyof typeof serializedData]);
             }
         }
         
         await rowToUpdate.save();
 
-        // After saving, we need to create a new object that `deserializeEmployee` can handle,
-        // as rowToUpdate is a GoogleSpreadsheetRow which is a complex object.
-        const updatedRowObject = rows[rowIndex];
-        return deserializeEmployee(updatedRowObject);
+        // Re-fetch the row to get the most up-to-date data after save
+        const savedRows = await sheet.getRows();
+        return deserializeEmployee(savedRows[rowIndex]);
 
     } catch (error) {
         console.error("Error updating employee in Google Sheets:", error);
