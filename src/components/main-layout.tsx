@@ -19,7 +19,7 @@ import EmployeesView from './employees-view';
 import SettingsView from './settings-view';
 import { AddEmployeeForm } from './add-employee-form';
 import { Skeleton } from './ui/skeleton';
-import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings } from '@/lib/firebaseService';
+import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings } from '@/lib/actions';
 import type { Employee, Settings, User, View } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Building, ClipboardList, Home, Settings as SettingsIcon, Users } from 'lucide-react';

@@ -1,3 +1,5 @@
+"use server";
+
 import type { Employee, Settings } from '@/types';
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
@@ -17,6 +19,12 @@ const doc = new GoogleSpreadsheet(SPREADSHEET_ID, serviceAccountAuth);
 
 const parseDate = (dateStr: string | undefined | null): Date | null => {
   if (!dateStr) return null;
+  // Try parsing ISO string first
+  if (typeof dateStr === 'string' && dateStr.includes('T')) {
+      const date = new Date(dateStr);
+      if (!isNaN(date.getTime())) return date;
+  }
+  // Fallback for other formats or simple date strings if needed
   const date = new Date(dateStr);
   return isNaN(date.getTime()) ? null : date;
 };
@@ -38,6 +46,11 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
 
 // Helper to deserialize sheet row to Employee object
 const deserializeEmployee = (row: any): Employee => {
+    const checkInDate = parseDate(row.get('checkInDate'));
+    if (!checkInDate) {
+        throw new Error(`Invalid or missing checkInDate for employee row: ${row.get('id')}`);
+    }
+
     return {
         id: row.get('id'),
         fullName: row.get('fullName'),
@@ -46,16 +59,17 @@ const deserializeEmployee = (row: any): Employee => {
         address: row.get('address'),
         roomNumber: row.get('roomNumber'),
         zaklad: row.get('zaklad'),
-        checkInDate: new Date(row.get('checkInDate')),
+        checkInDate: checkInDate,
         checkOutDate: parseDate(row.get('checkOutDate')),
         contractStartDate: parseDate(row.get('contractStartDate')),
         contractEndDate: parseDate(row.get('contractEndDate')),
         departureReportDate: parseDate(row.get('departureReportDate')),
         comments: row.get('comments'),
-        status: row.get('status'),
+        status: row.get('status') as 'active' | 'dismissed',
         oldAddress: row.get('oldAddress') || null,
     };
 };
+
 
 export async function getEmployees(): Promise<Employee[]> {
   try {
@@ -105,18 +119,24 @@ export async function addEmployee(employeeData: Omit<Employee, 'id' | 'status'>)
             ...employeeData,
             id: `emp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
             status: 'active',
+            checkOutDate: null,
+            contractStartDate: employeeData.contractStartDate || null,
+            contractEndDate: employeeData.contractEndDate || null,
+            departureReportDate: employeeData.departureReportDate || null,
+            comments: employeeData.comments || '',
+            oldAddress: employeeData.oldAddress || null,
         };
 
         const serialized = serializeEmployee(newEmployee);
-        await sheet.addRow(serialized);
-        return newEmployee;
+        const row = await sheet.addRow(serialized);
+        return deserializeEmployee(row);
     } catch (error) {
         console.error("Error adding employee to Google Sheets:", error);
         throw new Error("Could not add employee.");
     }
 }
 
-export async function updateEmployee(employeeId: string, employeeData: Partial<Employee>): Promise<Employee> {
+export async function updateEmployee(employeeId: string, employeeData: Partial<Omit<Employee, 'id'>>): Promise<Employee> {
     try {
         await doc.loadInfo();
         const sheet = doc.sheetsByTitle[SHEET_NAME_EMPLOYEES];
@@ -131,12 +151,13 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<E
         
         const rowToUpdate = rows[rowIndex];
         
-        // Get current values and merge with new data
-        const currentEmployee = deserializeEmployee(rowToUpdate);
-        const updatedEmployeeData = { ...currentEmployee, ...employeeData };
+        const updatedData = { ...rowToUpdate, ...employeeData };
 
-        for (const [key, value] of Object.entries(updatedEmployeeData)) {
-            if (key !== 'id' && rowToUpdate.get(key) !== undefined) {
+        for (const [key, value] of Object.entries(updatedData)) {
+            // Skip id, and also internal properties of the row object
+            if (key === 'id' || typeof value === 'function' || key.startsWith('_')) continue;
+            
+            if (rowToUpdate.get(key) !== undefined) {
                  if (value instanceof Date) {
                     rowToUpdate.set(key, value.toISOString());
                 } else if (value === null || value === undefined) {
@@ -154,7 +175,9 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<E
 
     } catch (error) {
         console.error("Error updating employee in Google Sheets:", error);
-        throw new Error("Could not update employee.");
+        // The error object from the sheets library might not be serializable.
+        // It's safer to throw a generic error message.
+        throw new Error(`Could not update employee: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }
 
