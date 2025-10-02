@@ -78,7 +78,10 @@ export type Coordinator = {
 export type Notification = {
   id: string;
   message: string;
-  type: 'info' | 'warning' | 'alert';
+  employeeId: string;
+  employeeName: string;
+  coordinatorId: string;
+  coordinatorName: string;
   createdAt: Date;
   isRead: boolean;
 };

@@ -1,6 +1,6 @@
 "use client";
 
-import type { User, View } from "@/types";
+import type { User, View, Notification, Employee } from "@/types";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,15 +9,27 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { LogOut, Settings, UserCircle, Building } from "lucide-react";
+import { LogOut, Settings, UserCircle, Building, Bell } from "lucide-react";
 import { SidebarTrigger } from "./ui/sidebar";
 import { useSidebar } from "./ui/sidebar";
+import { formatDistanceToNow } from 'date-fns';
+import { pl } from 'date-fns/locale';
+import { ScrollArea } from "./ui/scroll-area";
+import { cn } from "@/lib/utils";
 
 interface HeaderProps {
   user: User;
   activeView: View;
+  notifications: Notification[];
+  onNotificationClick: (notification: Notification) => void;
 }
 
 const viewTitles: Record<View, string> = {
@@ -27,8 +39,10 @@ const viewTitles: Record<View, string> = {
   inspections: 'Inspekcje'
 }
 
-export default function Header({ user, activeView }: HeaderProps) {
+export default function Header({ user, activeView, notifications, onNotificationClick }: HeaderProps) {
     const { isMobile, open } = useSidebar();
+    const unreadCount = notifications.filter(n => !n.isRead).length;
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-xl px-4 sm:px-6">
       {!open && <div className="flex items-center gap-2 md:hidden">
@@ -41,7 +55,46 @@ export default function Header({ user, activeView }: HeaderProps) {
         <h1 className="text-xl font-semibold hidden md:block">{viewTitles[activeView]}</h1>
       </div>
       <div className="flex flex-1 items-center justify-end gap-4">
-        
+         <Popover>
+            <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative">
+                    <Bell className="h-5 w-5" />
+                    {unreadCount > 0 && (
+                        <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+                           {unreadCount}
+                        </span>
+                    )}
+                    <span className="sr-only">Otwórz powiadomienia</span>
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-0">
+                <div className="p-4">
+                  <h4 className="font-medium text-sm">Powiadomienia</h4>
+                </div>
+                <ScrollArea className="h-96">
+                  {notifications.length > 0 ? (
+                    notifications.map(notification => (
+                       <div key={notification.id} 
+                            onClick={() => onNotificationClick(notification)} 
+                            className={cn(
+                              "border-l-4 p-4 hover:bg-muted/50 cursor-pointer",
+                              notification.isRead ? 'border-transparent' : 'border-primary'
+                            )}
+                       >
+                           <p className="text-sm">{notification.message}</p>
+                           <p className="text-xs text-muted-foreground mt-1">
+                               {formatDistanceToNow(notification.createdAt, { addSuffix: true, locale: pl })}
+                           </p>
+                       </div>
+                    ))
+                  ) : (
+                    <div className="text-center text-sm text-muted-foreground p-8">
+                      Brak nowych powiadomień.
+                    </div>
+                  )}
+                </ScrollArea>
+            </PopoverContent>
+        </Popover>
       </div>
     </header>
   );

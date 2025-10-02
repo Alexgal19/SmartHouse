@@ -1,6 +1,6 @@
 "use server";
 
-import type { Employee, Settings } from '@/types';
+import type { Employee, Settings, Notification, Coordinator } from '@/types';
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
 
@@ -8,6 +8,8 @@ import { JWT } from 'google-auth-library';
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
 const SHEET_NAME_EMPLOYEES = 'Employees';
 const SHEET_NAME_SETTINGS = 'Settings';
+const SHEET_NAME_NOTIFICATIONS = 'Powiadomienia';
+
 
 const serviceAccountAuth = new JWT({
   email: "sheets-database-manager@hr-housing-hub-a2udq.iam.gserviceaccount.com",
@@ -76,6 +78,31 @@ const deserializeEmployee = (row: any): Employee => {
     };
 };
 
+const deserializeNotification = (row: any): Notification => {
+    return {
+        id: row.get('id'),
+        message: row.get('message'),
+        employeeId: row.get('employeeId'),
+        employeeName: row.get('employeeName'),
+        coordinatorId: row.get('coordinatorId'),
+        coordinatorName: row.get('coordinatorName'),
+        createdAt: new Date(row.get('createdAt')),
+        isRead: row.get('isRead') === 'TRUE',
+    };
+};
+
+const serializeNotification = (notification: Notification): Record<string, string> => {
+    return {
+        id: notification.id,
+        message: notification.message,
+        employeeId: notification.employeeId,
+        employeeName: notification.employeeName,
+        coordinatorId: notification.coordinatorId,
+        coordinatorName: notification.coordinatorName,
+        createdAt: notification.createdAt.toISOString(),
+        isRead: String(notification.isRead).toUpperCase(),
+    };
+};
 
 export async function getEmployees(): Promise<Employee[]> {
   try {
@@ -113,7 +140,7 @@ export async function getSettings(): Promise<Settings> {
       };
       // Ensure headers are set
       await sheet.setHeaderRow(['settingsData']);
-      const settingsRow = await sheet.addRow({ settingsData: JSON.stringify(defaultSettings) });
+      await sheet.addRow({ settingsData: JSON.stringify(defaultSettings) });
       return defaultSettings;
     }
 
@@ -127,6 +154,7 @@ export async function getSettings(): Promise<Settings> {
     return JSON.parse(settingsData);
   } catch (error) {
     console.error("Error fetching settings from Google Sheets:", error);
+    // Fallback to mock settings in case of error
     const mockSettings: Settings = {
         id: 'global-settings',
         addresses: [
@@ -145,7 +173,39 @@ export async function getSettings(): Promise<Settings> {
   }
 }
 
-export async function addEmployee(employeeData: Omit<Employee, 'id' | 'status'>): Promise<Employee> {
+
+const createNotification = async (
+    actor: Coordinator,
+    action: string,
+    employee: { id: string, fullName: string }
+) => {
+    try {
+        await doc.loadInfo();
+        const sheet = doc.sheetsByTitle[SHEET_NAME_NOTIFICATIONS];
+        if (!sheet) {
+            await doc.addSheet({ title: SHEET_NAME_NOTIFICATIONS, headerValues: ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead'] });
+        }
+        const notificationSheet = doc.sheetsByTitle[SHEET_NAME_NOTIFICATIONS];
+
+
+        const newNotification: Notification = {
+            id: `notif-${Date.now()}`,
+            message: `${actor.name} ${action} pracownika ${employee.fullName}.`,
+            employeeId: employee.id,
+            employeeName: employee.fullName,
+            coordinatorId: actor.uid,
+            coordinatorName: actor.name,
+            createdAt: new Date(),
+            isRead: false,
+        };
+
+        await notificationSheet.addRow(serializeNotification(newNotification));
+    } catch (e) {
+        console.error("Could not create notification:", e);
+    }
+};
+
+export async function addEmployee(employeeData: Omit<Employee, 'id' | 'status'>, actor: Coordinator): Promise<Employee> {
     try {
         await doc.loadInfo();
         const sheet = doc.sheetsByTitle[SHEET_NAME_EMPLOYEES];
@@ -165,14 +225,18 @@ export async function addEmployee(employeeData: Omit<Employee, 'id' | 'status'>)
 
         const serialized = serializeEmployee(newEmployee);
         const row = await sheet.addRow(serialized);
-        return deserializeEmployee(row);
+        const createdEmployee = deserializeEmployee(row);
+        
+        await createNotification(actor, 'dodał(a) nowego', createdEmployee);
+
+        return createdEmployee;
     } catch (error) {
         console.error("Error adding employee to Google Sheets:", error);
         throw new Error("Could not add employee.");
     }
 }
 
-export async function updateEmployee(employeeId: string, employeeData: Partial<Omit<Employee, 'id'>>): Promise<Employee> {
+export async function updateEmployee(employeeId: string, employeeData: Partial<Omit<Employee, 'id'>>, actor: Coordinator): Promise<Employee> {
     try {
         await doc.loadInfo();
         const sheet = doc.sheetsByTitle[SHEET_NAME_EMPLOYEES];
@@ -200,9 +264,13 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
         
         await rowToUpdate.save();
 
-        // Re-fetch the row to get the most up-to-date data after save
         const savedRows = await sheet.getRows();
-        return deserializeEmployee(savedRows[rowIndex]);
+        const finalEmployee = deserializeEmployee(savedRows[rowIndex]);
+        
+        const action = employeeData.status === 'dismissed' ? 'zwolnił(a)' : (employeeData.status === 'active' ? 'przywrócił(a)' : 'zaktualizował(a) dane');
+        await createNotification(actor, action, finalEmployee);
+
+        return finalEmployee;
 
     } catch (error) {
         console.error("Error updating employee in Google Sheets:", error);
@@ -219,7 +287,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Se
         }
         
         const rows = await sheet.getRows();
-        const currentSettings = await getSettings(); // Fetch the latest full settings object
+        const currentSettings = await getSettings();
         const updatedSettings = { ...currentSettings, ...newSettings, id: 'global-settings' };
 
         const settingsJSON = JSON.stringify(updatedSettings);
@@ -229,7 +297,6 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Se
             settingsRow.set('settingsData', settingsJSON);
             await settingsRow.save();
         } else {
-            // If no rows exist, ensure headers are set and then add the row.
             await sheet.setHeaderRow(['settingsData']);
             await sheet.addRow({ settingsData: settingsJSON });
         }
@@ -238,5 +305,39 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Se
     } catch (error) {
         console.error("Error updating settings in Google Sheets:", error);
         throw new Error("Could not update settings.");
+    }
+}
+
+
+export async function getNotifications(): Promise<Notification[]> {
+    try {
+        await doc.loadInfo();
+        const sheet = doc.sheetsByTitle[SHEET_NAME_NOTIFICATIONS];
+        if (!sheet) {
+            return [];
+        }
+        const rows = await sheet.getRows();
+        return rows.map(deserializeNotification).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    } catch (error) {
+        console.error("Error fetching notifications:", error);
+        return [];
+    }
+}
+
+export async function markNotificationAsRead(notificationId: string): Promise<void> {
+    try {
+        await doc.loadInfo();
+        const sheet = doc.sheetsByTitle[SHEET_NAME_NOTIFICATIONS];
+        if (!sheet) return;
+
+        const rows = await sheet.getRows();
+        const rowToUpdate = rows.find(row => row.get('id') === notificationId);
+
+        if (rowToUpdate) {
+            rowToUpdate.set('isRead', 'TRUE');
+            await rowToUpdate.save();
+        }
+    } catch (error) {
+        console.error("Error marking notification as read:", error);
     }
 }

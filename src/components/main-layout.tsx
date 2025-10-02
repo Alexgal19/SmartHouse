@@ -19,13 +19,13 @@ import EmployeesView from './employees-view';
 import SettingsView from './settings-view';
 import { AddEmployeeForm } from './add-employee-form';
 import { Skeleton } from './ui/skeleton';
-import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings } from '@/lib/actions';
-import type { Employee, Settings, User, View } from '@/types';
+import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead } from '@/lib/actions';
+import type { Employee, Settings, User, View, Notification, Coordinator } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Building, ClipboardList, Home, Settings as SettingsIcon, Users } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
-const mockUser: User = {
+const mockUser: User & Coordinator = {
     uid: 'admin-user-01',
     name: 'Admin User',
     email: 'admin@example.com',
@@ -44,6 +44,7 @@ function MainContent() {
     const [activeView, setActiveView] = useState<View>('dashboard');
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [settings, setSettings] = useState<Settings | null>(null);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
@@ -54,9 +55,14 @@ function MainContent() {
     const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
-            const [employeesData, settingsData] = await Promise.all([getEmployees(), getSettings()]);
+            const [employeesData, settingsData, notificationsData] = await Promise.all([
+                getEmployees(), 
+                getSettings(),
+                getNotifications()
+            ]);
             setEmployees(employeesData);
             setSettings(settingsData);
+            setNotifications(notificationsData);
         } catch (error) {
             toast({
                 variant: "destructive",
@@ -70,18 +76,20 @@ function MainContent() {
 
     useEffect(() => {
         fetchData();
+        const interval = setInterval(fetchData, 30000); // Poll for new data every 30 seconds
+        return () => clearInterval(interval);
     }, [fetchData]);
 
     const handleSaveEmployee = async (data: Omit<Employee, 'id' | 'status'> & { oldAddress?: string | null }) => {
         try {
             if (editingEmployee) {
-                await updateEmployee(editingEmployee.id, data);
+                await updateEmployee(editingEmployee.id, data, mockUser);
                 toast({ title: "Sukces", description: "Dane pracownika zostały zaktualizowane." });
             } else {
-                await addEmployee(data);
+                await addEmployee(data, mockUser);
                 toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
             }
-            fetchData(); // Refresh data
+            fetchData();
         } catch(e) {
              toast({ variant: "destructive", title: "Błąd", description: "Nie udało się zapisać pracownika." });
         }
@@ -107,10 +115,22 @@ function MainContent() {
         setEditingEmployee(employee);
         setIsFormOpen(true);
     };
+    
+    const handleNotificationClick = async (notification: Notification) => {
+        const employeeToEdit = employees.find(e => e.id === notification.employeeId);
+        if (employeeToEdit) {
+            handleEditEmployeeClick(employeeToEdit);
+        }
+        
+        if (!notification.isRead) {
+            await markNotificationAsRead(notification.id);
+            setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, isRead: true } : n));
+        }
+    };
 
     const handleDismissEmployee = async (employeeId: string) => {
         try {
-            await updateEmployee(employeeId, { status: 'dismissed', checkOutDate: new Date() });
+            await updateEmployee(employeeId, { status: 'dismissed', checkOutDate: new Date() }, mockUser);
             toast({ title: "Sukces", description: "Pracownik został zwolniony." });
             fetchData();
         } catch(e) {
@@ -120,7 +140,7 @@ function MainContent() {
 
     const handleRestoreEmployee = async (employeeId: string) => {
         try {
-            await updateEmployee(employeeId, { status: 'active', checkOutDate: null });
+            await updateEmployee(employeeId, { status: 'active', checkOutDate: null }, mockUser);
             toast({ title: "Sukces", description: "Pracownik został przywrócony." });
             fetchData();
         } catch(e) {
@@ -183,7 +203,7 @@ function MainContent() {
                 </SidebarFooter>
             </Sidebar>
             <div className="flex flex-1 flex-col">
-                <Header user={mockUser} activeView={activeView} />
+                <Header user={mockUser} activeView={activeView} notifications={notifications} onNotificationClick={handleNotificationClick} />
                 <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-20 md:pb-6">
                     {renderView()}
                 </main>
