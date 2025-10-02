@@ -159,7 +159,7 @@ function MainContent() {
                 <SidebarHeader>
                     <div className="flex items-center gap-2 p-4">
                         <Building className="h-8 w-8 text-primary" />
-                        <span className="font-semibold text-xl group-data-[collapsible=icon]:hidden">HR Housing Hub</span>
+                        <span className="font-semibold text-xl group-data-[collapsible=icon]:hidden">SmartHouse</span>
                     </div>
                 </SidebarHeader>
                 <SidebarContent>

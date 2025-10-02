@@ -33,7 +33,7 @@ export default function Header({ user, activeView }: HeaderProps) {
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-xl px-4 sm:px-6">
       {!open && <div className="flex items-center gap-2 md:hidden">
         <Building className="h-6 w-6 text-primary" />
-        <span className="font-semibold text-lg">HR Housing Hub</span>
+        <span className="font-semibold text-lg">SmartHouse</span>
       </div>
       }
       <div className="flex items-center gap-4">
