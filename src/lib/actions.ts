@@ -89,26 +89,59 @@ export async function getEmployees(): Promise<Employee[]> {
 }
 
 export async function getSettings(): Promise<Settings> {
-  // For now, settings are still mocked as they are more complex to manage in a flat sheet.
-  const mockSettings: Settings = {
-    id: 'global-settings',
-    addresses: [
-      { id: 'addr-1', name: 'ul. Słoneczna 1, Warszawa', capacity: 10 },
-      { id: 'addr-2', name: 'ul. Leśna 2, Kraków', capacity: 8 },
-      { id: 'addr-3', name: 'ul. Wrocławska 5, Poznań', capacity: 12 },
-      { id: 'addr-4', name: 'ul. Polna 10, Gdańsk', capacity: 6 },
-    ],
-    nationalities: ['Polska', 'Ukraina', 'Białoruś', 'Gruzja', 'Mołdawia'],
-    departments: ['Produkcja A', 'Produkcja B', 'Logistyka', 'Jakość', 'Administracja'],
-    coordinators: [
-      { uid: 'coord-1', name: 'Marek Mostowiak' },
-      { uid: 'coord-2', name: 'Ewa Malinowska' },
-      { uid: 'coord-3', name: 'Juan Martinez' },
-      { uid: 'coord-4', name: 'Emily White' },
-    ],
-    genders: ['Mężczyzna', 'Kobieta'],
-  };
-   return Promise.resolve(mockSettings);
+  try {
+    await doc.loadInfo();
+    const sheet = doc.sheetsByTitle[SHEET_NAME_SETTINGS];
+     if (!sheet) {
+      throw new Error(`Sheet "${SHEET_NAME_SETTINGS}" not found.`);
+    }
+
+    const rows = await sheet.getRows();
+    if (rows.length === 0) {
+      // If no settings, return default/initial settings
+      const defaultSettings: Settings = {
+        id: 'global-settings',
+        addresses: [],
+        nationalities: [],
+        departments: [],
+        coordinators: [],
+        genders: ['Mężczyzna', 'Kobieta'],
+      };
+      // And save them to the sheet for next time
+      await updateSettings(defaultSettings);
+      return defaultSettings;
+    }
+
+    const settingsRow = rows[0];
+    const settingsData = settingsRow.get('settingsData');
+
+    if (!settingsData) {
+      throw new Error("Settings data not found in the sheet.");
+    }
+    
+    // Parse the JSON string from the cell
+    const settings: Settings = JSON.parse(settingsData);
+    
+    return settings;
+  } catch (error) {
+    console.error("Error fetching settings from Google Sheets:", error);
+    // Fallback to mock settings in case of an error to prevent app crash
+    const mockSettings: Settings = {
+        id: 'global-settings',
+        addresses: [
+          { id: 'addr-1', name: 'ul. Słoneczna 1, Warszawa', capacity: 10 },
+          { id: 'addr-2', name: 'ul. Leśna 2, Kraków', capacity: 8 },
+        ],
+        nationalities: ['Polska', 'Ukraina', 'Białoruś'],
+        departments: ['Produkcja A', 'Logistyka'],
+        coordinators: [
+          { uid: 'coord-1', name: 'Marek Mostowiak' },
+          { uid: 'coord-2', name: 'Ewa Malinowska' },
+        ],
+        genders: ['Mężczyzna', 'Kobieta'],
+    };
+    return mockSettings;
+  }
 }
 
 export async function addEmployee(employeeData: Omit<Employee, 'id' | 'status'>): Promise<Employee> {
@@ -127,6 +160,8 @@ export async function addEmployee(employeeData: Omit<Employee, 'id' | 'status'>)
             departureReportDate: employeeData.departureReportDate || null,
             comments: employeeData.comments || '',
             oldAddress: employeeData.oldAddress || null,
+            gender: employeeData.gender || 'Mężczyzna',
+            nationality: employeeData.nationality || '',
         };
 
         const serialized = serializeEmployee(newEmployee);
@@ -153,10 +188,9 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
         
         const rowToUpdate = rows[rowIndex];
         
-        const updatedData = { ...rowToUpdate, ...employeeData };
+        const updatedData = { ...rowToUpdate.toObject(), ...employeeData };
 
         for (const [key, value] of Object.entries(updatedData)) {
-            // Skip id, and also internal properties of the row object
             if (key === 'id' || typeof value === 'function' || key.startsWith('_')) continue;
             
             if (rowToUpdate.get(key) !== undefined) {
@@ -173,21 +207,44 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
         
         await rowToUpdate.save();
 
-        return deserializeEmployee(rowToUpdate);
+        // After saving, we need to create a new object that `deserializeEmployee` can handle,
+        // as rowToUpdate is a GoogleSpreadsheetRow which is a complex object.
+        const updatedRowObject = rows[rowIndex];
+        return deserializeEmployee(updatedRowObject);
 
     } catch (error) {
         console.error("Error updating employee in Google Sheets:", error);
-        // The error object from the sheets library might not be serializable.
-        // It's safer to throw a generic error message.
         throw new Error(`Could not update employee: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }
 
 export async function updateSettings(newSettings: Partial<Settings>): Promise<Settings> {
-    // This function remains a mock for now, as managing complex/nested settings 
-    // in a simple sheet requires a more dedicated setup (e.g., separate sheets, JSON strings).
-    console.warn("updateSettings is a mock and does not save to Google Sheets.");
-    const currentSettings = await getSettings();
-    const updatedSettings = { ...currentSettings, ...newSettings };
-    return Promise.resolve(updatedSettings);
+    try {
+        await doc.loadInfo();
+        const sheet = doc.sheetsByTitle[SHEET_NAME_SETTINGS];
+        if (!sheet) {
+            throw new Error(`Sheet "${SHEET_NAME_SETTINGS}" not found or couldn't be created.`);
+        }
+        
+        const rows = await sheet.getRows();
+        const currentSettings = await getSettings();
+        const updatedSettings = { ...currentSettings, ...newSettings, id: 'global-settings' };
+
+        const settingsJSON = JSON.stringify(updatedSettings);
+
+        if (rows.length > 0) {
+            const settingsRow = rows[0];
+            settingsRow.set('settingsData', settingsJSON);
+            await settingsRow.save();
+        } else {
+            await sheet.addRow({ settingsData: settingsJSON });
+        }
+        
+        return updatedSettings;
+    } catch (error) {
+        console.error("Error updating settings in Google Sheets:", error);
+        throw new Error("Could not update settings.");
+    }
 }
+
+    
