@@ -26,9 +26,9 @@ export default function DashboardView({ employees, settings }: DashboardViewProp
   }, [activeEmployees]);
 
   const kpiData = [
-    { title: "Wszyscy pracownicy", value: activeEmployees.length, icon: Users, color: "text-blue-500" },
-    { title: "Używane mieszkania", value: apartmentsInUse, icon: Building, color: "text-orange-500" },
-    { title: "Nadchodzące wykwaterowania (30 dni)", value: upcomingCheckouts, icon: UserMinus, color: "text-red-500" },
+    { title: "Wszyscy pracownicy", value: activeEmployees.length, icon: Users, color: "text-blue-400" },
+    { title: "Używane mieszkania", value: apartmentsInUse, icon: Building, color: "text-orange-400" },
+    { title: "Nadchodzące wykwaterowania (30 dni)", value: upcomingCheckouts, icon: UserMinus, color: "text-red-400" },
   ];
 
   const housingOverview = useMemo(() => {
@@ -107,33 +107,35 @@ export default function DashboardView({ employees, settings }: DashboardViewProp
           <CardTitle>Przegląd zakwaterowania</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Adres</TableHead>
-                <TableHead className="text-center">Pojemność</TableHead>
-                <TableHead className="text-center">Zajęte</TableHead>
-                <TableHead className="text-center">Wolne</TableHead>
-                <TableHead>Obłożenie</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {housingOverview.map(house => (
-                <TableRow key={house.id}>
-                  <TableCell className="font-medium">{house.name}</TableCell>
-                  <TableCell className="text-center">{house.capacity}</TableCell>
-                  <TableCell className="text-center">{house.occupied}</TableCell>
-                  <TableCell className="text-center">{house.available}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Progress value={house.occupancy} className="w-full" />
-                      <span className="text-xs text-muted-foreground">{Math.round(house.occupancy)}%</span>
-                    </div>
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Adres</TableHead>
+                  <TableHead className="text-center">Pojemność</TableHead>
+                  <TableHead className="text-center">Zajęte</TableHead>
+                  <TableHead className="text-center">Wolne</TableHead>
+                  <TableHead>Obłożenie</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {housingOverview.map(house => (
+                  <TableRow key={house.id}>
+                    <TableCell className="font-medium whitespace-nowrap">{house.name}</TableCell>
+                    <TableCell className="text-center">{house.capacity}</TableCell>
+                    <TableCell className="text-center">{house.occupied}</TableCell>
+                    <TableCell className="text-center">{house.available}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2 min-w-[120px]">
+                        <Progress value={house.occupancy} className="w-full" />
+                        <span className="text-xs text-muted-foreground">{Math.round(house.occupancy)}%</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
       

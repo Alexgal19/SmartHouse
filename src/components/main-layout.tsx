@@ -155,8 +155,8 @@ function MainContent() {
     };
 
     return (
-        <div className="flex min-h-screen w-full flex-col">
-            <Sidebar variant='sidebar' collapsible='icon' side='left'>
+        <div className="flex min-h-screen w-full flex-col bg-muted/40">
+            <Sidebar variant='floating' collapsible='icon' side='left'>
                 <SidebarHeader>
                     <div className="flex items-center gap-2 p-2">
                         <Building className="h-6 w-6 text-primary" />
@@ -184,7 +184,7 @@ function MainContent() {
                 </SidebarFooter>
             </Sidebar>
 
-            <div className={`flex flex-col sm:gap-4 ${isMobile ? 'pb-20' : 'sm:py-4 sm:pl-14'}`}>
+            <div className={`flex flex-col sm:gap-4 ${isMobile ? 'pb-20' : 'sm:py-4 sm:pl-16'}`}>
                 <SidebarInset>
                     <Header user={mockUser} activeView={activeView} />
                     <main className="flex-1 p-4 sm:px-6 sm:py-0 space-y-4">
