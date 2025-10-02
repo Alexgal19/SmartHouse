@@ -79,6 +79,11 @@ const deserializeEmployee = (row: any): Employee => {
 };
 
 const deserializeNotification = (row: any): Notification => {
+    const createdAtString = row.get('createdAt');
+    const createdAt = new Date(createdAtString);
+    if (isNaN(createdAt.getTime())) {
+        console.error(`Invalid date string for notification: ${createdAtString}`);
+    }
     return {
         id: row.get('id'),
         message: row.get('message'),
@@ -86,7 +91,7 @@ const deserializeNotification = (row: any): Notification => {
         employeeName: row.get('employeeName'),
         coordinatorId: row.get('coordinatorId'),
         coordinatorName: row.get('coordinatorName'),
-        createdAt: new Date(row.get('createdAt')),
+        createdAt: createdAt,
         isRead: row.get('isRead') === 'TRUE',
     };
 };
