@@ -94,7 +94,7 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
       <CardHeader>
         <CardTitle>{title}</CardTitle>
       </CardHeader>
-      <CardContent className="pl-2">
+      <CardContent className="pl-0 sm:pl-2">
         <ChartContainer config={chartConfig} className="h-64 w-full">
           <ResponsiveContainer>
             <BarChart data={data} margin={{ top: 20, right: 20, left: -10, bottom: 5 }} barSize={50}>
@@ -261,4 +261,5 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
   );
 }
 
+    
     

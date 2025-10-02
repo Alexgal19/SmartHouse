@@ -247,7 +247,7 @@ function MainContent() {
             </Sidebar>
             <div className="flex flex-1 flex-col">
                 <Header user={mockUser} activeView={activeView} notifications={notifications} onNotificationClick={handleNotificationClick} />
-                <main className="flex-1 overflow-y-auto px-4 sm:px-6 pb-6 pt-4">
+                <main className="flex-1 overflow-y-auto px-2 sm:px-6 pb-6 pt-4">
                     {renderView()}
                 </main>
             </div>
@@ -274,3 +274,5 @@ export default function MainLayout() {
         </SidebarProvider>
     );
 }
+
+    
