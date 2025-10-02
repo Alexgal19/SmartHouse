@@ -4,7 +4,6 @@ import type { Settings, HousingAddress, Coordinator } from "@/types";
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -43,21 +42,17 @@ const ListManager = ({ title, items, onUpdate }: { title: string; items: string[
                 <Button size="sm" onClick={() => setIsDialogOpen(true)}><PlusCircle className="mr-2 h-4 w-4" />Dodaj</Button>
             </CardHeader>
             <CardContent>
-                <div className="border rounded-md">
-                    <Table>
-                        <TableBody>
-                            {items.map(item => (
-                                <TableRow key={item}>
-                                    <TableCell>{item}</TableCell>
-                                    <TableCell className="text-right w-10">
-                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(item)}>
-                                            <Trash2 className="h-4 w-4 text-destructive" />
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                <div className="space-y-2">
+                    {items.map(item => (
+                        <Card key={item} className="bg-muted/50">
+                            <div className="flex items-center justify-between p-3">
+                                <span className="text-sm font-medium">{item}</span>
+                                <Button variant="ghost" size="icon" onClick={() => handleDelete(item)}>
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                            </div>
+                        </Card>
+                    ))}
                 </div>
             </CardContent>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -84,7 +79,6 @@ const ListManager = ({ title, items, onUpdate }: { title: string; items: string[
 const AddressManager = ({ items, onUpdate }: { items: HousingAddress[]; onUpdate: (newItems: HousingAddress[]) => void }) => {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [currentAddress, setCurrentAddress] = useState<Partial<HousingAddress> | null>(null);
-    const isMobile = useIsMobile();
 
     const openDialog = (address: Partial<HousingAddress> | null = null) => {
         setCurrentAddress(address || { name: '', capacity: 0 });
@@ -237,7 +231,7 @@ export default function SettingsView({ settings, onUpdateSettings }: SettingsVie
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="addresses" className="w-full" orientation={isMobile ? "vertical" : "horizontal"}>
-          <TabsList className={cn(!isMobile && "grid w-full grid-cols-4")}>
+          <TabsList className={cn("flex-wrap h-auto sm:h-10",!isMobile && "grid w-full grid-cols-4")}>
             <TabsTrigger value="addresses">Adresy</TabsTrigger>
             <TabsTrigger value="nationalities">Narodowości</TabsTrigger>
             <TabsTrigger value="departments">Zakłady</TabsTrigger>
