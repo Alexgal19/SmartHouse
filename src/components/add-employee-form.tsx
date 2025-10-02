@@ -35,7 +35,6 @@ import { DatePicker } from "@/components/ui/date-picker";
 
 const employeeSchema = z.object({
   fullName: z.string().min(3, "Imię i nazwisko musi mieć co najmniej 3 znaki."),
-  phoneNumber: z.string().optional(),
   coordinatorId: z.string().min(1, "Koordynator jest wymagany."),
   nationality: z.string().min(1, "Narodowość jest wymagana."),
   address: z.string().min(1, "Adres jest wymagany."),
@@ -60,7 +59,6 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
     resolver: zodResolver(employeeSchema),
     defaultValues: {
       fullName: employee?.fullName || "",
-      phoneNumber: employee?.phoneNumber || "",
       coordinatorId: employee?.coordinatorId || "",
       nationality: employee?.nationality || "",
       address: employee?.address || "",
@@ -77,7 +75,6 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
     if (employee) {
         form.reset({
             fullName: employee.fullName,
-            phoneNumber: employee.phoneNumber,
             coordinatorId: employee.coordinatorId,
             nationality: employee.nationality,
             address: employee.address,
@@ -91,7 +88,6 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
     } else {
         form.reset({
             fullName: "",
-            phoneNumber: "",
             coordinatorId: "",
             nationality: "",
             address: "",
@@ -133,44 +129,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                 </FormItem>
               )}
             />
-             <FormField
-              control={form.control}
-              name="phoneNumber"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Numer telefonu</FormLabel>
-                  <FormControl>
-                    <Input placeholder="+48 123 456 789" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <FormField
-                    control={form.control}
-                    name="coordinatorId"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Koordynator</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Wybierz koordynatora" />
-                            </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                            {settings.coordinators.map((c) => (
-                                <SelectItem key={c.uid} value={c.uid}>
-                                {c.name}
-                                </SelectItem>
-                            ))}
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
                  <FormField
                     control={form.control}
                     name="nationality"
@@ -187,6 +146,30 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                             {settings.nationalities.map((n) => (
                                 <SelectItem key={n} value={n}>
                                 {n}
+                                </SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                <FormField
+                    control={form.control}
+                    name="coordinatorId"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Koordynator</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Wybierz koordynatora" />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                            {settings.coordinators.map((c) => (
+                                <SelectItem key={c.uid} value={c.uid}>
+                                {c.name}
                                 </SelectItem>
                             ))}
                             </SelectContent>
