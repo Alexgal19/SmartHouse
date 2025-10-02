@@ -8,9 +8,11 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Toolti
 import { ChartContainer } from "@/components/ui/chart";
 import { useMemo, useState } from "react";
 import { Building, UserMinus, Users } from "lucide-react";
-import { subDays, isWithinInterval, format } from "date-fns";
+import { isWithinInterval, format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "./ui/button";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { ScrollArea } from "./ui/scroll-area";
 
 interface DashboardViewProps {
   employees: Employee[];
@@ -21,6 +23,7 @@ interface DashboardViewProps {
 export default function DashboardView({ employees, settings, onEditEmployee }: DashboardViewProps) {
   const [isHousingDialogOpen, setIsHousingDialogOpen] = useState(false);
   const [isCheckoutsDialogOpen, setIsCheckoutsDialogOpen] = useState(false);
+  const isMobile = useIsMobile();
   
   const activeEmployees = useMemo(() => employees.filter(e => e.status === 'active'), [employees]);
   const apartmentsInUse = useMemo(() => [...new Set(activeEmployees.map(e => e.address))].length, [activeEmployees]);
@@ -54,7 +57,7 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
       const available = capacity - occupied;
       const occupancy = capacity > 0 ? (occupied / capacity) * 100 : 0;
       return { ...address, occupied, available, occupancy };
-    });
+    }).sort((a, b) => b.occupancy - a.occupancy);
   }, [settings.addresses, activeEmployees]);
 
   const aggregateData = (key: 'coordinatorId' | 'nationality' | 'zaklad') => {
@@ -97,7 +100,7 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
       <CardContent className="pl-0 sm:pl-2">
         <ChartContainer config={chartConfig} className="h-64 w-full">
           <ResponsiveContainer>
-            <BarChart data={data} margin={{ top: 20, right: 20, left: -10, bottom: 5 }} barSize={50}>
+            <BarChart data={data} margin={{ top: 20, right: 20, left: -10, bottom: 5 }} barSize={isMobile ? 30: 50}>
                <defs>
                 {chartColors.map((color, index) => (
                   <linearGradient id={color.id} x1="0" y1="0" x2="0" y2="1" key={index}>
@@ -159,38 +162,30 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
                     </CardContent>
                 </Card>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[800px] max-h-[90vh]">
                 <DialogHeader>
                     <DialogTitle>Pracownicy z nadchodzącym terminem wykwaterowania</DialogTitle>
                 </DialogHeader>
-                <div className="overflow-x-auto mt-4">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Pracownik</TableHead>
-                                <TableHead>Koordynator</TableHead>
-                                <TableHead>Adres</TableHead>
-                                <TableHead>Data wyjazdu</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {upcomingCheckoutsList.length > 0 ? (
-                                upcomingCheckoutsList.map(employee => (
-                                    <TableRow key={employee.id} onClick={() => handleEmployeeClick(employee)} className="cursor-pointer">
-                                        <TableCell className="font-medium">{employee.fullName}</TableCell>
-                                        <TableCell>{getCoordinatorName(employee.coordinatorId)}</TableCell>
-                                        <TableCell>{employee.address}</TableCell>
-                                        <TableCell>{employee.contractEndDate ? format(employee.contractEndDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
-                                    </TableRow>
-                                ))
-                            ) : (
-                                <TableRow>
-                                    <TableCell colSpan={4} className="text-center">Brak pracowników z nadchodzącym terminem wyjazdu.</TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
+                <ScrollArea className="h-full">
+                  <div className="pr-4">
+                    {upcomingCheckoutsList.length > 0 ? (
+                        upcomingCheckoutsList.map(employee => (
+                            <Card key={employee.id} onClick={() => handleEmployeeClick(employee)} className="mb-3 cursor-pointer">
+                                <CardHeader>
+                                    <CardTitle className="text-base">{employee.fullName}</CardTitle>
+                                    <CardDescription>{getCoordinatorName(employee.coordinatorId)}</CardDescription>
+                                </CardHeader>
+                                <CardContent className="text-sm space-y-1">
+                                    <p><span className="font-semibold">Adres:</span> {employee.address}</p>
+                                    <p><span className="font-semibold">Data wyjazdu:</span> {employee.contractEndDate ? format(employee.contractEndDate, 'dd-MM-yyyy') : 'N/A'}</p>
+                                </CardContent>
+                            </Card>
+                        ))
+                    ) : (
+                        <p className="text-center text-muted-foreground py-8">Brak pracowników z nadchodzącym terminem wyjazdu.</p>
+                    )}
+                  </div>
+                </ScrollArea>
             </DialogContent>
         </Dialog>
       </div>
@@ -214,39 +209,32 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
                 </CardContent>
             </Card>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[800px] max-h-[90vh]">
               <DialogHeader>
-              <DialogTitle>Obłożenie i dostępność mieszkań</DialogTitle>
+                <DialogTitle>Obłożenie i dostępność mieszkań</DialogTitle>
               </DialogHeader>
-              <div className="overflow-x-auto mt-4">
-              <Table>
-                  <TableHeader>
-                  <TableRow>
-                      <TableHead>Adres</TableHead>
-                      <TableHead className="text-center">Pojemność</TableHead>
-                      <TableHead className="text-center">Zajęte</TableHead>
-                      <TableHead className="text-center">Wolne</TableHead>
-                      <TableHead className="w-[150px]">Obłożenie</TableHead>
-                  </TableRow>
-                  </TableHeader>
-                  <TableBody>
+              <ScrollArea className="h-full">
+                <div className="space-y-4 pr-4">
                   {housingOverview.map(house => (
-                      <TableRow key={house.id}>
-                      <TableCell className="font-medium whitespace-nowrap">{house.name}</TableCell>
-                      <TableCell className="text-center">{house.capacity}</TableCell>
-                      <TableCell className="text-center">{house.occupied}</TableCell>
-                      <TableCell className="text-center">{house.available}</TableCell>
-                      <TableCell>
-                          <div className="flex items-center gap-3">
-                          <Progress value={house.occupancy} className="w-full h-2" />
-                          <span className="text-sm font-medium text-muted-foreground">{Math.round(house.occupancy)}%</span>
-                          </div>
-                      </TableCell>
-                      </TableRow>
+                      <Card key={house.id}>
+                        <CardHeader className="pb-2">
+                           <CardTitle className="text-base truncate">{house.name}</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                           <div className="flex items-center gap-3">
+                              <Progress value={house.occupancy} className="w-full h-2" />
+                              <span className="text-sm font-medium text-muted-foreground shrink-0">{Math.round(house.occupancy)}%</span>
+                           </div>
+                           <div className="flex justify-between text-xs mt-2 text-muted-foreground">
+                                <span>Zajęte: <span className="font-bold text-foreground">{house.occupied}</span></span>
+                                <span>Pojemność: <span className="font-bold text-foreground">{house.capacity}</span></span>
+                                <span>Wolne: <span className="font-bold text-foreground">{house.available}</span></span>
+                           </div>
+                        </CardContent>
+                      </Card>
                   ))}
-                  </TableBody>
-              </Table>
-              </div>
+                </div>
+              </ScrollArea>
           </DialogContent>
       </Dialog>
       
@@ -260,6 +248,3 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
     </div>
   );
 }
-
-    
-    

@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import type { Employee, Settings } from '@/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -18,6 +18,7 @@ import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { ScrollArea } from './ui/scroll-area';
 
 interface EmployeesViewProps {
   employees: Employee[];
@@ -27,6 +28,37 @@ interface EmployeesViewProps {
   onDismissEmployee: (employeeId: string) => void;
   onRestoreEmployee: (employeeId: string) => void;
 }
+
+const EmployeeActions = ({
+  employee,
+  onEdit,
+  onDismiss,
+  onRestore,
+  isDismissedTab,
+}: {
+  employee: Employee;
+  onEdit: (employee: Employee) => void;
+  onDismiss: (employeeId: string) => void;
+  onRestore: (employeeId: string) => void;
+  isDismissedTab: boolean;
+}) => (
+  <DropdownMenu>
+    <DropdownMenuTrigger asChild>
+      <Button variant="ghost" className="h-8 w-8 p-0">
+        <span className="sr-only">Otwórz menu</span>
+        <MoreHorizontal className="h-4 w-4" />
+      </Button>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent align="end">
+      <DropdownMenuItem onClick={() => onEdit(employee)}>Edytuj</DropdownMenuItem>
+      {isDismissedTab ? (
+        <DropdownMenuItem onClick={() => onRestore(employee.id)}>Przywróć</DropdownMenuItem>
+      ) : (
+        <DropdownMenuItem onClick={() => onDismiss(employee.id)}>Zwolnij</DropdownMenuItem>
+      )}
+    </DropdownMenuContent>
+  </DropdownMenu>
+);
 
 const EmployeeTable = ({
   employees,
@@ -44,70 +76,102 @@ const EmployeeTable = ({
   isDismissedTab: boolean;
 }) => {
   const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
-  const isMobile = useIsMobile();
   
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Imię i nazwisko</TableHead>
-          {!isMobile && <TableHead>Płeć</TableHead>}
-          <TableHead>Narodowość</TableHead>
-          {!isMobile && <TableHead>Koordynator</TableHead>}
-          <TableHead>Adres</TableHead>
-          {!isMobile && <TableHead>Stara adresa</TableHead>}
-          {!isMobile && <TableHead>Data zameldowania</TableHead>}
-          {!isMobile && <TableHead>Data wymeldowania</TableHead>}
-          {!isMobile && <TableHead>Data zgłoszenia wyjazdu</TableHead>}
-          {!isMobile && <TableHead>Umowa od</TableHead>}
-          <TableHead>Umowa do</TableHead>
-          <TableHead><span className="sr-only">Akcje</span></TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {employees.length > 0 ? (
-          employees.map((employee) => (
-            <TableRow key={employee.id} onClick={() => onEdit(employee)} className="cursor-pointer">
-              <TableCell className="font-medium">{employee.fullName}</TableCell>
-              {!isMobile && <TableCell>{employee.gender}</TableCell>}
-              <TableCell>{employee.nationality}</TableCell>
-              {!isMobile && <TableCell>{getCoordinatorName(employee.coordinatorId)}</TableCell>}
-              <TableCell>{employee.address}</TableCell>
-              {!isMobile && <TableCell>{employee.oldAddress || 'N/A'}</TableCell>}
-              {!isMobile && <TableCell>{format(employee.checkInDate, 'dd-MM-yyyy')}</TableCell>}
-              {!isMobile && <TableCell>{employee.checkOutDate ? format(employee.checkOutDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>}
-              {!isMobile && <TableCell>{employee.departureReportDate ? format(employee.departureReportDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>}
-              {!isMobile && <TableCell>{employee.contractStartDate ? format(employee.contractStartDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>}
-              <TableCell>{employee.contractEndDate ? format(employee.contractEndDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
-              <TableCell onClick={(e) => e.stopPropagation()}>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0">
-                      <span className="sr-only">Otwórz menu</span>
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => onEdit(employee)}>Edytuj</DropdownMenuItem>
-                    {isDismissedTab ? (
-                      <DropdownMenuItem onClick={() => onRestore(employee.id)}>Przywróć</DropdownMenuItem>
-                    ) : (
-                      <DropdownMenuItem onClick={() => onDismiss(employee.id)}>Zwolnij</DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
+    <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Imię i nazwisko</TableHead>
+              <TableHead>Płeć</TableHead>
+              <TableHead>Narodowość</TableHead>
+              <TableHead>Koordynator</TableHead>
+              <TableHead>Adres</TableHead>
+              <TableHead>Stara adresa</TableHead>
+              <TableHead>Data zameldowania</TableHead>
+              <TableHead>Data wymeldowania</TableHead>
+              <TableHead>Data zgłoszenia wyjazdu</TableHead>
+              <TableHead>Umowa od</TableHead>
+              <TableHead>Umowa do</TableHead>
+              <TableHead><span className="sr-only">Akcje</span></TableHead>
             </TableRow>
-          ))
-        ) : (
-          <TableRow>
-            <TableCell colSpan={isMobile ? 5 : 12} className="text-center">Brak pracowników do wyświetlenia.</TableCell>
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
+          </TableHeader>
+          <TableBody>
+            {employees.length > 0 ? (
+              employees.map((employee) => (
+                <TableRow key={employee.id} onClick={() => onEdit(employee)} className="cursor-pointer">
+                  <TableCell className="font-medium">{employee.fullName}</TableCell>
+                  <TableCell>{employee.gender}</TableCell>
+                  <TableCell>{employee.nationality}</TableCell>
+                  <TableCell>{getCoordinatorName(employee.coordinatorId)}</TableCell>
+                  <TableCell>{employee.address}</TableCell>
+                  <TableCell>{employee.oldAddress || 'N/A'}</TableCell>
+                  <TableCell>{format(employee.checkInDate, 'dd-MM-yyyy')}</TableCell>
+                  <TableCell>{employee.checkOutDate ? format(employee.checkOutDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
+                  <TableCell>{employee.departureReportDate ? format(employee.departureReportDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
+                  <TableCell>{employee.contractStartDate ? format(employee.contractStartDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
+                  <TableCell>{employee.contractEndDate ? format(employee.contractEndDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <EmployeeActions {...{ employee, onEdit, onDismiss, onRestore, isDismissedTab }} />
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={12} className="text-center">Brak pracowników do wyświetlenia.</TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+    </div>
   );
 };
+
+
+const EmployeeCardList = ({
+    employees,
+    settings,
+    onEdit,
+    onDismiss,
+    onRestore,
+    isDismissedTab,
+  }: {
+    employees: Employee[];
+    settings: Settings;
+    onEdit: (employee: Employee) => void;
+    onDismiss: (employeeId: string) => void;
+    onRestore: (employeeId: string) => void;
+    isDismissedTab: boolean;
+  }) => {
+    const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
+    
+    return (
+        <div className="space-y-3">
+             {employees.length > 0 ? (
+                employees.map((employee) => (
+                    <Card key={employee.id} onClick={() => onEdit(employee)} className="cursor-pointer">
+                        <CardHeader className="flex flex-row items-start justify-between pb-2">
+                           <div>
+                             <CardTitle className="text-base">{employee.fullName}</CardTitle>
+                             <CardDescription className="text-xs">{getCoordinatorName(employee.coordinatorId)}</CardDescription>
+                           </div>
+                           <div onClick={(e) => e.stopPropagation()}>
+                                <EmployeeActions {...{ employee, onEdit, onDismiss, onRestore, isDismissedTab }} />
+                           </div>
+                        </CardHeader>
+                        <CardContent className="text-sm space-y-1">
+                            <p><span className="font-semibold text-muted-foreground">Adres:</span> {employee.address}</p>
+                            <p><span className="font-semibold text-muted-foreground">Narodowość:</span> {employee.nationality}</p>
+                            <p><span className="font-semibold text-muted-foreground">Umowa do:</span> {employee.contractEndDate ? format(employee.contractEndDate, 'dd-MM-yyyy') : 'N/A'}</p>
+                        </CardContent>
+                    </Card>
+                ))
+             ) : (
+                <div className="text-center text-muted-foreground py-8">Brak pracowników do wyświetlenia.</div>
+             )}
+        </div>
+    )
+}
 
 
 export default function EmployeesView({
@@ -149,6 +213,8 @@ export default function EmployeesView({
   };
 
   const hasActiveFilters = searchTerm !== '' || coordinatorFilter !== 'all' || addressFilter !== 'all' || departmentFilter !== 'all' || nationalityFilter !== 'all';
+  
+  const EmployeeListComponent = isMobile ? EmployeeCardList : EmployeeTable;
 
   return (
     <Card>
@@ -233,28 +299,28 @@ export default function EmployeesView({
             <TabsTrigger value="dismissed">Zwolnieni ({dismissedEmployees.length})</TabsTrigger>
           </TabsList>
           <TabsContent value="active">
-            <div className="overflow-x-auto">
-                <EmployeeTable
-                employees={activeEmployees}
-                settings={settings}
-                onEdit={onEditEmployee}
-                onDismiss={onDismissEmployee}
-                onRestore={onRestoreEmployee}
-                isDismissedTab={false}
+             <ScrollArea className="h-[50vh]">
+                <EmployeeListComponent
+                  employees={activeEmployees}
+                  settings={settings}
+                  onEdit={onEditEmployee}
+                  onDismiss={onDismissEmployee}
+                  onRestore={onRestoreEmployee}
+                  isDismissedTab={false}
                 />
-            </div>
+             </ScrollArea>
           </TabsContent>
           <TabsContent value="dismissed">
-            <div className="overflow-x-auto">
-                <EmployeeTable
-                employees={dismissedEmployees}
-                settings={settings}
-                onEdit={onEditEmployee}
-                onDismiss={onDismissEmployee}
-                onRestore={onRestoreEmployee}
-                isDismissedTab={true}
+            <ScrollArea className="h-[50vh]">
+                <EmployeeListComponent
+                  employees={dismissedEmployees}
+                  settings={settings}
+                  onEdit={onEditEmployee}
+                  onDismiss={onDismissEmployee}
+                  onRestore={onRestoreEmployee}
+                  isDismissedTab={true}
                 />
-            </div>
+            </ScrollArea>
           </TabsContent>
         </Tabs>
       </CardContent>
