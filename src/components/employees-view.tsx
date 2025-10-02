@@ -50,7 +50,8 @@ const EmployeeTable = ({
           <TableHead>Koordynator</TableHead>
           <TableHead>Adres</TableHead>
           <TableHead>{isDismissedTab ? 'Data wymeldowania' : 'Data zameldowania'}</TableHead>
-          <TableHead>Koniec umowy</TableHead>
+          <TableHead>Umowa od</TableHead>
+          <TableHead>Umowa do</TableHead>
           <TableHead><span className="sr-only">Akcje</span></TableHead>
         </TableRow>
       </TableHeader>
@@ -62,6 +63,7 @@ const EmployeeTable = ({
               <TableCell>{getCoordinatorName(employee.coordinatorId)}</TableCell>
               <TableCell>{employee.address}</TableCell>
               <TableCell>{format(isDismissedTab ? employee.checkOutDate! : employee.checkInDate, 'dd-MM-yyyy')}</TableCell>
+              <TableCell>{employee.contractStartDate ? format(employee.contractStartDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
               <TableCell>{employee.contractEndDate ? format(employee.contractEndDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
               <TableCell>
                 <DropdownMenu>
@@ -85,7 +87,7 @@ const EmployeeTable = ({
           ))
         ) : (
           <TableRow>
-            <TableCell colSpan={6} className="text-center">Brak pracowników do wyświetlenia.</TableCell>
+            <TableCell colSpan={7} className="text-center">Brak pracowników do wyświetlenia.</TableCell>
           </TableRow>
         )}
       </TableBody>
