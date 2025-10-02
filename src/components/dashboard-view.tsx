@@ -6,9 +6,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Progress } from "@/components/ui/progress";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList, Cell, Defs, Gradient, LinearGradient } from "recharts";
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Building, UserCheck, UserMinus, Users } from "lucide-react";
 import { subDays, isWithinInterval } from "date-fns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "./ui/button";
 
 interface DashboardViewProps {
   employees: Employee[];
@@ -16,6 +18,7 @@ interface DashboardViewProps {
 }
 
 export default function DashboardView({ employees, settings }: DashboardViewProps) {
+  const [isHousingDialogOpen, setIsHousingDialogOpen] = useState(false);
   const activeEmployees = useMemo(() => employees.filter(e => e.status === 'active'), [employees]);
   const apartmentsInUse = useMemo(() => [...new Set(activeEmployees.map(e => e.address))].length, [activeEmployees]);
   
@@ -143,43 +146,59 @@ export default function DashboardView({ employees, settings }: DashboardViewProp
         ))}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Przegląd zakwaterowania</CardTitle>
-          <CardDescription>Obłożenie i dostępność mieszkań.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Adres</TableHead>
-                  <TableHead className="text-center">Pojemność</TableHead>
-                  <TableHead className="text-center">Zajęte</TableHead>
-                  <TableHead className="text-center">Wolne</TableHead>
-                  <TableHead className="w-[150px]">Obłożenie</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {housingOverview.map(house => (
-                  <TableRow key={house.id}>
-                    <TableCell className="font-medium whitespace-nowrap">{house.name}</TableCell>
-                    <TableCell className="text-center">{house.capacity}</TableCell>
-                    <TableCell className="text-center">{house.occupied}</TableCell>
-                    <TableCell className="text-center">{house.available}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Progress value={house.occupancy} className="w-full h-2" />
-                        <span className="text-sm font-medium text-muted-foreground">{Math.round(house.occupancy)}%</span>
-                      </div>
-                    </TableCell>
+       <Dialog open={isHousingDialogOpen} onOpenChange={setIsHousingDialogOpen}>
+          <Card 
+            className="cursor-pointer hover:border-primary transition-colors"
+            onClick={() => setIsHousingDialogOpen(true)}
+          >
+              <CardHeader>
+                  <CardTitle>Przegląd zakwaterowania</CardTitle>
+                  <CardDescription>Kliknij, aby zobaczyć obłożenie i dostępność mieszkań.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                 <div className="flex justify-between items-center">
+                    <div className="text-sm text-muted-foreground">
+                        {settings.addresses.length} dostępnych adresów
+                    </div>
+                     <Button variant="outline" size="sm">Zobacz szczegóły</Button>
+                 </div>
+              </CardContent>
+          </Card>
+          <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+              <DialogTitle>Obłożenie i dostępność mieszkań</DialogTitle>
+              </DialogHeader>
+              <div className="overflow-x-auto mt-4">
+              <Table>
+                  <TableHeader>
+                  <TableRow>
+                      <TableHead>Adres</TableHead>
+                      <TableHead className="text-center">Pojemność</TableHead>
+                      <TableHead className="text-center">Zajęte</TableHead>
+                      <TableHead className="text-center">Wolne</TableHead>
+                      <TableHead className="w-[150px]">Obłożenie</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                  </TableHeader>
+                  <TableBody>
+                  {housingOverview.map(house => (
+                      <TableRow key={house.id}>
+                      <TableCell className="font-medium whitespace-nowrap">{house.name}</TableCell>
+                      <TableCell className="text-center">{house.capacity}</TableCell>
+                      <TableCell className="text-center">{house.occupied}</TableCell>
+                      <TableCell className="text-center">{house.available}</TableCell>
+                      <TableCell>
+                          <div className="flex items-center gap-3">
+                          <Progress value={house.occupancy} className="w-full h-2" />
+                          <span className="text-sm font-medium text-muted-foreground">{Math.round(house.occupancy)}%</span>
+                          </div>
+                      </TableCell>
+                      </TableRow>
+                  ))}
+                  </TableBody>
+              </Table>
+              </div>
+          </DialogContent>
+      </Dialog>
       
       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
         <ChartComponent data={employeesByCoordinator} title="Pracownicy wg koordynatora" />
