@@ -75,7 +75,11 @@ function MainContent() {
     const handleSaveEmployee = async (data: Omit<Employee, 'id' | 'status'>) => {
         try {
             if (editingEmployee) {
-                await updateEmployee(editingEmployee.id, data);
+                const updatedData = { ...data };
+                if (data.address !== editingEmployee.address) {
+                    updatedData.oldAddress = editingEmployee.address;
+                }
+                await updateEmployee(editingEmployee.id, updatedData);
                 toast({ title: "Sukces", description: "Dane pracownika zostały zaktualizowane." });
             } else {
                 await addEmployee(data);
@@ -211,5 +215,3 @@ export default function MainLayout() {
         </SidebarProvider>
     );
 }
-
-    

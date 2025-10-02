@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import type { Employee, Settings } from "@/types";
@@ -46,6 +46,7 @@ const employeeSchema = z.object({
   checkOutDate: z.date().optional().nullable(),
   departureReportDate: z.date().optional().nullable(),
   comments: z.string().optional(),
+  oldAddress: z.string().optional().nullable(),
 });
 
 interface AddEmployeeFormProps {
@@ -72,20 +73,14 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
       checkOutDate: undefined,
       departureReportDate: undefined,
       comments: "",
+      oldAddress: undefined,
     },
   });
 
-  const [originalAddress, setOriginalAddress] = useState<string | undefined>(undefined);
-  
-  const currentAddress = useWatch({
-    control: form.control,
-    name: 'address'
-  });
-  
-  const showOldAddress = employee && originalAddress && currentAddress !== originalAddress;
+  const showOldAddress = !!form.watch('oldAddress');
 
   React.useEffect(() => {
-    if (employee) {
+    if (isOpen && employee) {
         form.reset({
             fullName: employee.fullName,
             coordinatorId: employee.coordinatorId,
@@ -99,9 +94,9 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
             checkOutDate: employee.checkOutDate ?? undefined,
             departureReportDate: employee.departureReportDate ?? undefined,
             comments: employee.comments,
+            oldAddress: employee.oldAddress ?? undefined,
         });
-        setOriginalAddress(employee.address);
-    } else {
+    } else if (isOpen && !employee) {
         form.reset({
             fullName: "",
             coordinatorId: "",
@@ -115,10 +110,10 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
             checkOutDate: undefined,
             departureReportDate: undefined,
             comments: "",
+            oldAddress: undefined,
         });
-        setOriginalAddress(undefined);
     }
-  }, [employee, form, isOpen]);
+  }, [employee, isOpen, form]);
 
 
   const handleSubmit = async (values: z.infer<typeof employeeSchema>) => {
@@ -227,7 +222,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                   <FormItem>
                     <FormLabel>Stara adresa</FormLabel>
                     <FormControl>
-                      <Input value={originalAddress} readOnly disabled className="bg-muted/50"/>
+                      <Input value={form.getValues('oldAddress') || ''} readOnly disabled className="bg-muted/50"/>
                     </FormControl>
                   </FormItem>
                 )}

@@ -21,6 +21,7 @@ export type Employee = {
   departureReportDate?: Date | null;
   comments?: string;
   status: 'active' | 'dismissed';
+  oldAddress?: string | null;
 };
 
 export type NonEmployee = {
