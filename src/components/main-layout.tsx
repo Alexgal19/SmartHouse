@@ -155,9 +155,9 @@ function MainContent() {
 
     return (
         <div className="flex h-screen w-full">
-            <Sidebar>
+             <Sidebar>
                 <SidebarHeader>
-                    <div className="flex items-center gap-2 p-2">
+                    <div className="flex items-center gap-2 p-4">
                         <Building className="h-8 w-8 text-primary" />
                         <span className="font-semibold text-xl group-data-[collapsible=icon]:hidden">HR Housing Hub</span>
                     </div>
@@ -182,9 +182,8 @@ function MainContent() {
                     {/* Could add a user profile button here for desktop */}
                 </SidebarFooter>
             </Sidebar>
-
-            <div className={`flex flex-1 flex-col ${isMobile ? 'pb-20' : ''}`}>
-                 <Header user={mockUser} activeView={activeView} />
+            <div className="flex flex-1 flex-col">
+                <Header user={mockUser} activeView={activeView} />
                 <main className="flex-1 overflow-y-auto bg-muted/40 p-4 sm:p-6">
                     {renderView()}
                 </main>

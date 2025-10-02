@@ -18,22 +18,22 @@ const navItems: { view: View; icon: React.ElementType; label: string }[] = [
 
 export function MobileNav({ activeView, setActiveView }: MobileNavProps) {
   return (
-    <div className="fixed bottom-0 left-0 z-40 w-full border-t bg-card p-2 lg:hidden">
+    <div className="fixed bottom-0 left-0 z-40 w-full border-t bg-card/80 backdrop-blur-xl p-2 lg:hidden">
       <div className="grid h-full max-w-lg grid-cols-4 mx-auto">
         {navItems.map((item) => (
           <Button
             key={item.view}
             variant="ghost"
             size="sm"
-            className={`flex flex-col h-auto p-1 ${
+            className={`flex flex-col h-auto p-1 rounded-full ${
               activeView === item.view
-                ? "text-primary"
+                ? "text-primary bg-primary/10"
                 : "text-muted-foreground"
             }`}
             onClick={() => setActiveView(item.view)}
           >
             <item.icon className="h-6 w-6 mb-1" />
-            <span className="text-xs">{item.label}</span>
+            <span className="text-xs font-medium">{item.label}</span>
           </Button>
         ))}
       </div>
