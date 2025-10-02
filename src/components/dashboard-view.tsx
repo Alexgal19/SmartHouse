@@ -4,7 +4,7 @@ import type { Employee, HousingAddress, Settings } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList, Cell, Defs, Gradient, LinearGradient } from "recharts";
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 import { useMemo } from "react";
 import { Building, UserCheck, UserMinus, Users } from "lucide-react";
@@ -61,24 +61,65 @@ export default function DashboardView({ employees, settings }: DashboardViewProp
   const employeesByNationality = useMemo(() => aggregateData('nationality'), [activeEmployees]);
   const employeesByDepartment = useMemo(() => aggregateData('zaklad'), [activeEmployees]);
 
-  const chartConfig = {
-    value: { label: "Pracownicy", color: "hsl(var(--primary))" },
+ const chartConfig = {
+    value: { label: "Pracownicy" },
+    // Define colors for each chart item if needed, matching with `chartColors`
+    "Marek Mostowiak": { color: "hsl(var(--chart-1))" },
+    "Ewa Malinowska": { color: "hsl(var(--chart-2))" },
+    "Juan Martinez": { color: "hsl(var(--chart-3))" },
+    "Polska": { color: "hsl(var(--chart-1))" },
+    "Ukraina": { color: "hsl(var(--chart-2))" },
+    "Hiszpania": { color: "hsl(var(--chart-3))" },
+    "Produkcja A": { color: "hsl(var(--chart-1))" },
+    "Logistyka": { color: "hsl(var(--chart-2))" },
+    "Produkcja B": { color: "hsl(var(--chart-3))" },
+    "Jakość": { color: "hsl(var(--chart-4))" },
   };
+  
+  const chartColors = [
+    { from: 'from-orange-500', to: 'to-orange-400', id: 'grad1' },
+    { from: 'from-amber-500', to: 'to-amber-400', id: 'grad2' },
+    { from: 'from-yellow-500', to: 'to-yellow-400', id: 'grad3' },
+    { from: 'from-lime-500', to: 'to-lime-400', id: 'grad4' },
+    { from: 'from-green-500', to: 'to-green-400', id: 'grad5' },
+  ];
 
   const ChartComponent = ({ data, title }: { data: {name: string, value: number}[], title: string }) => (
-    <Card>
+    <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
+        <CardTitle className="text-lg font-semibold text-gray-700">{title}</CardTitle>
       </CardHeader>
       <CardContent className="pl-2">
         <ChartContainer config={chartConfig} className="h-64 w-full">
           <ResponsiveContainer>
-            <BarChart data={data} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-              <CartesianGrid vertical={false} />
-              <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 12 }} />
-              <YAxis />
-              <Tooltip cursor={false} content={<ChartTooltipContent />} />
-              <Bar dataKey="value" fill="var(--color-value)" radius={4} />
+            <BarChart data={data} margin={{ top: 20, right: 20, left: -10, bottom: 5 }} barSize={50}>
+               <defs>
+                {chartColors.map((color, index) => (
+                  <linearGradient id={color.id} x1="0" y1="0" x2="0" y2="1" key={index}>
+                    <stop offset="5%" stopColor="var(--color-from)" stopOpacity={0.9}/>
+                    <stop offset="95%" stopColor="var(--color-to)" stopOpacity={0.9}/>
+                  </linearGradient>
+                ))}
+              </defs>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border) / 0.5)" />
+              <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={10} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
+              <YAxis tickLine={false} axisLine={false} tickMargin={10} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
+              <Tooltip 
+                cursor={{ fill: 'hsl(var(--accent) / 0.2)' }} 
+                content={({ active, payload, label }) => active && payload && payload.length && (
+                    <div className="bg-background/80 backdrop-blur-sm p-3 rounded-lg border border-border shadow-lg">
+                        <p className="font-bold text-foreground">{label}</p>
+                        <p className="text-sm text-primary">{`${payload[0].value} pracowników`}</p>
+                    </div>
+                )}
+              />
+              <Bar dataKey="value" radius={[8, 8, 0, 0]} >
+                <LabelList dataKey="value" position="top" offset={10} className="fill-foreground font-semibold" />
+                 {data.map((entry, index) => {
+                    const color = chartColors[index % chartColors.length];
+                    return <Cell key={`cell-${index}`} fill={`url(#${color.id})`} style={{'--color-from': `hsl(var(--chart-${index+1}))`, '--color-to': `hsl(var(--chart-${(index+2)%5+1}))`} as React.CSSProperties}/>
+                 })}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </ChartContainer>
