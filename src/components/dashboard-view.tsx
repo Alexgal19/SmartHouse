@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "./ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ScrollArea } from "./ui/scroll-area";
+import { Input } from "./ui/input";
 
 interface DashboardViewProps {
   employees: Employee[];
@@ -22,6 +23,7 @@ interface DashboardViewProps {
 export default function DashboardView({ employees, settings, onEditEmployee }: DashboardViewProps) {
   const [isHousingDialogOpen, setIsHousingDialogOpen] = useState(false);
   const [isCheckoutsDialogOpen, setIsCheckoutsDialogOpen] = useState(false);
+  const [housingSearchTerm, setHousingSearchTerm] = useState("");
   const { isMobile } = useIsMobile();
   
   const activeEmployees = useMemo(() => employees.filter(e => e.status === 'active'), [employees]);
@@ -50,14 +52,22 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
   ];
 
   const housingOverview = useMemo(() => {
-    return settings.addresses.map(address => {
+    const baseOverview = settings.addresses.map(address => {
       const occupied = activeEmployees.filter(e => e.address === address.name).length;
       const capacity = address.capacity;
       const available = capacity - occupied;
       const occupancy = capacity > 0 ? (occupied / capacity) * 100 : 0;
       return { ...address, occupied, available, occupancy };
     }).sort((a, b) => b.occupancy - a.occupancy);
-  }, [settings.addresses, activeEmployees]);
+
+    if (!housingSearchTerm) {
+      return baseOverview;
+    }
+
+    return baseOverview.filter(house =>
+      house.name.toLowerCase().includes(housingSearchTerm.toLowerCase())
+    );
+  }, [settings.addresses, activeEmployees, housingSearchTerm]);
 
   const aggregateData = (key: 'coordinatorId' | 'nationality' | 'zaklad') => {
     const counts = activeEmployees.reduce((acc, employee) => {
@@ -221,26 +231,38 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
               <DialogHeader>
                 <DialogTitle>Obłożenie i dostępność mieszkań</DialogTitle>
               </DialogHeader>
+              <div className="p-1 mb-4">
+                <Input
+                    placeholder="Szukaj po adresie..."
+                    value={housingSearchTerm}
+                    onChange={(e) => setHousingSearchTerm(e.target.value)}
+                    className="w-full"
+                />
+              </div>
               <ScrollArea className="h-full">
                 <div className="space-y-4 pr-4">
-                  {housingOverview.map(house => (
-                      <Card key={house.id}>
-                        <CardHeader className="pb-2">
-                           <CardTitle className="text-base truncate">{house.name}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                           <div className="flex items-center gap-3">
-                              <Progress value={house.occupancy} className="w-full h-2" />
-                              <span className="text-sm font-medium text-muted-foreground shrink-0">{Math.round(house.occupancy)}%</span>
-                           </div>
-                           <div className="flex justify-between text-xs mt-2 text-muted-foreground">
-                                <span>Zajęte: <span className="font-bold text-foreground">{house.occupied}</span></span>
-                                <span>Pojemność: <span className="font-bold text-foreground">{house.capacity}</span></span>
-                                <span>Wolne: <span className="font-bold text-foreground">{house.available}</span></span>
-                           </div>
-                        </CardContent>
-                      </Card>
-                  ))}
+                  {housingOverview.length > 0 ? (
+                    housingOverview.map(house => (
+                        <Card key={house.id}>
+                          <CardHeader className="pb-2">
+                             <CardTitle className="text-base truncate">{house.name}</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                             <div className="flex items-center gap-3">
+                                <Progress value={house.occupancy} className="w-full h-2" />
+                                <span className="text-sm font-medium text-muted-foreground shrink-0">{Math.round(house.occupancy)}%</span>
+                             </div>
+                             <div className="flex justify-between text-xs mt-2 text-muted-foreground">
+                                  <span>Zajęte: <span className="font-bold text-foreground">{house.occupied}</span></span>
+                                  <span>Pojemność: <span className="font-bold text-foreground">{house.capacity}</span></span>
+                                  <span>Wolne: <span className="font-bold text-foreground">{house.available}</span></span>
+                             </div>
+                          </CardContent>
+                        </Card>
+                    ))
+                  ) : (
+                    <p className="text-center text-muted-foreground py-8">Brak adresów pasujących do wyszukiwania.</p>
+                  )}
                 </div>
               </ScrollArea>
           </DialogContent>
