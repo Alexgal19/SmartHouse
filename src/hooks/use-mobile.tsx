@@ -5,7 +5,7 @@ import * as React from "react"
 const MOBILE_BREAKPOINT = 768
 
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined);
+  const [isMobile, setIsMobile] = React.useState(false);
   const [isMounted, setIsMounted] = React.useState(false);
 
   React.useEffect(() => {
@@ -22,7 +22,5 @@ export function useIsMobile() {
     }
   }, [])
 
-  // On the server, isMobile is undefined. On the client, it's true/false after mount.
-  // We return false if not mounted yet to default to desktop view, avoiding layout shifts.
-  return { isMobile: isMounted ? isMobile : false, isMounted };
+  return { isMobile, isMounted };
 }
