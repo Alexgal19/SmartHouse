@@ -8,7 +8,7 @@ import { ChartContainer } from "@/components/ui/chart";
 import { useMemo, useState } from "react";
 import { Building, UserMinus, Users, Home, BedDouble, ChevronRight } from "lucide-react";
 import { isWithinInterval, format } from "date-fns";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "./ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ScrollArea } from "./ui/scroll-area";
