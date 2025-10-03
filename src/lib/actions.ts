@@ -1,7 +1,7 @@
 
 "use server";
 
-import type { Employee, Settings, Notification, Coordinator, NotificationChange } from '@/types';
+import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress } from '@/types';
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
 import { format } from 'date-fns';
@@ -9,8 +9,11 @@ import { format } from 'date-fns';
 // --- Credentials - In a real production app, use environment variables ---
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
 const SHEET_NAME_EMPLOYEES = 'Employees';
-const SHEET_NAME_SETTINGS = 'Settings';
 const SHEET_NAME_NOTIFICATIONS = 'Powiadomienia';
+const SHEET_NAME_ADDRESSES = 'Addresses';
+const SHEET_NAME_NATIONALITIES = 'Nationalities';
+const SHEET_NAME_DEPARTMENTS = 'Departments';
+const SHEET_NAME_COORDINATORS = 'Coordinators';
 
 
 const serviceAccountAuth = new JWT({
@@ -114,14 +117,22 @@ const serializeNotification = (notification: Omit<Notification, 'changes'> & { c
     };
 };
 
+async function getSheet(title: string, headers: string[]) {
+    await doc.loadInfo();
+    let sheet = doc.sheetsByTitle[title];
+    if (!sheet) {
+        sheet = await doc.addSheet({ title, headerValues: headers });
+    }
+    return sheet;
+}
+
 export async function getEmployees(): Promise<Employee[]> {
   try {
-    await doc.loadInfo();
-    const sheet = doc.sheetsByTitle[SHEET_NAME_EMPLOYEES];
-    if (!sheet) {
-        console.error(`Sheet "${SHEET_NAME_EMPLOYEES}" not found.`);
-        return [];
-    }
+    const sheet = await getSheet(SHEET_NAME_EMPLOYEES, [
+        'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 
+        'zaklad', 'checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 
+        'departureReportDate', 'comments', 'status', 'oldAddress'
+    ]);
     const rows = await sheet.getRows();
     return rows.map(deserializeEmployee);
   } catch (error) {
@@ -132,54 +143,40 @@ export async function getEmployees(): Promise<Employee[]> {
 
 export async function getSettings(): Promise<Settings> {
   try {
-    await doc.loadInfo();
-    const sheet = doc.sheetsByTitle[SHEET_NAME_SETTINGS];
-     if (!sheet) {
-      throw new Error(`Sheet "${SHEET_NAME_SETTINGS}" not found.`);
-    }
+    const [addressesSheet, nationalitiesSheet, departmentsSheet, coordinatorsSheet] = await Promise.all([
+        getSheet(SHEET_NAME_ADDRESSES, ['id', 'name', 'capacity']),
+        getSheet(SHEET_NAME_NATIONALITIES, ['name']),
+        getSheet(SHEET_NAME_DEPARTMENTS, ['name']),
+        getSheet(SHEET_NAME_COORDINATORS, ['uid', 'name']),
+    ]);
 
-    const rows = await sheet.getRows();
-    if (rows.length === 0 || !rows[0].get('settingsData')) {
-      const defaultSettings: Settings = {
+    const [addressRows, nationalityRows, departmentRows, coordinatorRows] = await Promise.all([
+        addressesSheet.getRows(),
+        nationalitiesSheet.getRows(),
+        departmentsSheet.getRows(),
+        coordinatorsSheet.getRows(),
+    ]);
+
+    const settings: Settings = {
         id: 'global-settings',
-        addresses: [],
-        nationalities: [],
-        departments: [],
-        coordinators: [],
-        genders: ['Mężczyzna', 'Kobieta'],
-      };
-      // Ensure headers are set
-      await sheet.setHeaderRow(['settingsData']);
-      await sheet.addRow({ settingsData: JSON.stringify(defaultSettings) });
-      return defaultSettings;
-    }
-
-    const settingsRow = rows[0];
-    const settingsData = settingsRow.get('settingsData');
-
-    if (!settingsData) {
-      throw new Error("Settings data not found in the sheet.");
-    }
-    
-    return JSON.parse(settingsData);
-  } catch (error) {
-    console.error("Error fetching settings from Google Sheets:", error);
-    // Fallback to mock settings in case of error
-    const mockSettings: Settings = {
-        id: 'global-settings',
-        addresses: [
-          { id: 'addr-1', name: 'ul. Słoneczna 1, Warszawa', capacity: 10 },
-          { id: 'addr-2', name: 'ul. Leśna 2, Kraków', capacity: 8 },
-        ],
-        nationalities: ['Polska', 'Ukraina', 'Białoruś'],
-        departments: ['Produkcja A', 'Logistyka'],
-        coordinators: [
-          { uid: 'coord-1', name: 'Marek Mostowiak' },
-          { uid: 'coord-2', name: 'Ewa Malinowska' },
-        ],
+        addresses: addressRows.map(row => ({
+            id: row.get('id'),
+            name: row.get('name'),
+            capacity: parseInt(row.get('capacity'), 10) || 0,
+        })),
+        nationalities: nationalityRows.map(row => row.get('name')),
+        departments: departmentRows.map(row => row.get('name')),
+        coordinators: coordinatorRows.map(row => ({
+            uid: row.get('uid'),
+            name: row.get('name'),
+        })),
         genders: ['Mężczyzna', 'Kobieta'],
     };
-    return mockSettings;
+    
+    return settings;
+  } catch (error) {
+    console.error("Error fetching settings from Google Sheets:", error);
+    throw new Error("Could not fetch settings.");
   }
 }
 
@@ -191,11 +188,7 @@ const createNotification = async (
     changes: NotificationChange[] = []
 ) => {
     try {
-        await doc.loadInfo();
-        let sheet = doc.sheetsByTitle[SHEET_NAME_NOTIFICATIONS];
-        if (!sheet) {
-            sheet = await doc.addSheet({ title: SHEET_NAME_NOTIFICATIONS, headerValues: ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes'] });
-        }
+        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
 
         const message = `${actor.name} ${action} pracownika ${employee.fullName}.`;
         
@@ -219,10 +212,7 @@ const createNotification = async (
 
 export async function addEmployee(employeeData: Omit<Employee, 'id' | 'status'>, actor: Coordinator): Promise<Employee> {
     try {
-        await doc.loadInfo();
-        const sheet = doc.sheetsByTitle[SHEET_NAME_EMPLOYEES];
-        if (!sheet) throw new Error(`Sheet "${SHEET_NAME_EMPLOYEES}" not found.`);
-
+        const sheet = await getSheet(SHEET_NAME_EMPLOYEES, []); // headers will be added if needed by getEmployees call
         const newEmployee: Employee = {
             ...employeeData,
             id: `emp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
@@ -308,9 +298,7 @@ const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): 
 
 export async function updateEmployee(employeeId: string, employeeData: Partial<Omit<Employee, 'id'>>, actor: Coordinator): Promise<Employee> {
     try {
-        await doc.loadInfo();
-        const sheet = doc.sheetsByTitle[SHEET_NAME_EMPLOYEES];
-        if (!sheet) throw new Error(`Sheet "${SHEET_NAME_EMPLOYEES}" not found.`);
+        const sheet = await getSheet(SHEET_NAME_EMPLOYEES, []);
         
         const rows = await sheet.getRows();
         const rowIndex = rows.findIndex(row => row.get('id') === employeeId);
@@ -357,30 +345,61 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
     }
 }
 
+async function syncSheet<T extends {id: string} | {uid: string} | {name: string}>(
+    sheetName: string,
+    headers: string[],
+    newData: T[],
+    idKey: keyof T
+) {
+    const sheet = await getSheet(sheetName, headers);
+    const rows = await sheet.getRows();
+    const oldData = rows.map(row => row.get(idKey as string));
+    const newDataIds = newData.map(item => item[idKey]);
+
+    // Delete rows that are no longer in the new data
+    const rowsToDelete = rows.filter(row => !newDataIds.includes(row.get(idKey as string)));
+    for (const row of rowsToDelete) {
+        await row.delete();
+    }
+
+    // Update existing rows or add new ones
+    for (const item of newData) {
+        const existingRow = rows.find(row => row.get(idKey as string) === item[idKey]);
+        if (existingRow) {
+            // Update
+            headers.forEach(header => {
+                if (header in item) {
+                    existingRow.set(header, (item as any)[header]);
+                }
+            });
+            await existingRow.save();
+        } else {
+            // Add new
+            await sheet.addRow(item as any);
+        }
+    }
+}
+
+
 export async function updateSettings(newSettings: Partial<Settings>): Promise<Settings> {
     try {
-        await doc.loadInfo();
-        const sheet = doc.sheetsByTitle[SHEET_NAME_SETTINGS];
-        if (!sheet) {
-            throw new Error(`Sheet "${SHEET_NAME_SETTINGS}" not found or couldn't be created.`);
-        }
-        
-        const rows = await sheet.getRows();
         const currentSettings = await getSettings();
-        const updatedSettings = { ...currentSettings, ...newSettings, id: 'global-settings' };
+        const updatedSettings: Settings = { ...currentSettings, ...newSettings };
 
-        const settingsJSON = JSON.stringify(updatedSettings);
-
-        if (rows.length > 0) {
-            const settingsRow = rows[0];
-            settingsRow.set('settingsData', settingsJSON);
-            await settingsRow.save();
-        } else {
-            await sheet.setHeaderRow(['settingsData']);
-            await sheet.addRow({ settingsData: settingsJSON });
+        if (newSettings.addresses) {
+            await syncSheet(SHEET_NAME_ADDRESSES, ['id', 'name', 'capacity'], newSettings.addresses, 'id');
+        }
+        if (newSettings.nationalities) {
+            await syncSheet(SHEET_NAME_NATIONALITIES, ['name'], newSettings.nationalities.map(name => ({ name })), 'name');
+        }
+        if (newSettings.departments) {
+            await syncSheet(SHEET_NAME_DEPARTMENTS, ['name'], newSettings.departments.map(name => ({ name })), 'name');
+        }
+        if (newSettings.coordinators) {
+            await syncSheet(SHEET_NAME_COORDINATORS, ['uid', 'name'], newSettings.coordinators, 'uid');
         }
         
-        return updatedSettings;
+        return getSettings();
     } catch (error) {
         console.error("Error updating settings in Google Sheets:", error);
         throw new Error("Could not update settings.");
@@ -390,11 +409,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Se
 
 export async function getNotifications(): Promise<Notification[]> {
     try {
-        await doc.loadInfo();
-        const sheet = doc.sheetsByTitle[SHEET_NAME_NOTIFICATIONS];
-        if (!sheet) {
-            return [];
-        }
+        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, []);
         const rows = await sheet.getRows();
         return rows.map(deserializeNotification).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     } catch (error) {
@@ -405,10 +420,7 @@ export async function getNotifications(): Promise<Notification[]> {
 
 export async function markNotificationAsRead(notificationId: string): Promise<void> {
     try {
-        await doc.loadInfo();
-        const sheet = doc.sheetsByTitle[SHEET_NAME_NOTIFICATIONS];
-        if (!sheet) return;
-
+        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, []);
         const rows = await sheet.getRows();
         const rowToUpdate = rows.find(row => row.get('id') === notificationId);
 
