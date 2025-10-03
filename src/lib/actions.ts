@@ -255,8 +255,7 @@ const formatDate = (date: Date | null | undefined): string => {
 
 const getChanges = (oldData: Employee, newData: Partial<Employee>): NotificationChange[] => {
     const changes: NotificationChange[] = [];
-    const fieldLabels: Record<keyof Employee, string> = {
-        id: 'ID',
+    const fieldLabels: Record<string, string> = {
         fullName: 'Imię i nazwisko',
         coordinatorId: 'Koordynator',
         nationality: 'Narodowość',
@@ -275,19 +274,20 @@ const getChanges = (oldData: Employee, newData: Partial<Employee>): Notification
     };
 
     for (const key in newData) {
-        const typedKey = key as keyof Employee;
+        if (key === 'id') continue;
+        const typedKey = key as keyof Omit<Employee, 'id'>;
+        
         const oldValue = oldData[typedKey];
         const newValue = newData[typedKey];
 
-        // Format dates for comparison
-        const oldFormatted = oldValue instanceof Date ? formatDate(oldValue) : oldValue;
-        const newFormatted = newValue instanceof Date ? formatDate(newValue) : newValue;
+        const oldFormatted = oldValue instanceof Date ? formatDate(oldValue) : (oldValue ?? '');
+        const newFormatted = newValue instanceof Date ? formatDate(newValue) : (newValue ?? '');
 
-        if (String(oldFormatted ?? '') !== String(newFormatted ?? '')) {
+        if (String(oldFormatted) !== String(newFormatted)) {
             changes.push({
                 field: fieldLabels[typedKey] || typedKey,
-                oldValue: String(oldFormatted ?? 'N/A'),
-                newValue: String(newFormatted ?? 'N/A'),
+                oldValue: String(oldFormatted || 'N/A'),
+                newValue: String(newFormatted || 'N/A'),
             });
         }
     }
@@ -310,17 +310,16 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
         const rowToUpdate = rows[rowIndex];
         const currentData = deserializeEmployee(rowToUpdate);
         
-        let action = 'zaktualizował(a) dane';
-        
-        if (employeeData.status) {
-            if (employeeData.status === 'dismissed') action = 'zwolnił(a)';
-            if (employeeData.status === 'active') action = 'przywrócił(a)';
-        } 
-        
         const changes = getChanges(currentData, employeeData);
         if(changes.length === 0) {
               return currentData; // No changes, no update, no notification
         }
+        
+        let action = 'zaktualizował(a) dane';
+        if (employeeData.status) {
+            if (employeeData.status === 'dismissed') action = 'zwolnił(a)';
+            if (employeeData.status === 'active') action = 'przywrócił(a)';
+        } 
         
         const updatedData = { ...currentData, ...employeeData };
         const serializedData = serializeEmployee(updatedData);

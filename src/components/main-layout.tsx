@@ -125,7 +125,7 @@ function MainContent() {
                 }]);
                 toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
             }
-            pollNotifications();
+            await pollNotifications();
         } catch(e) {
              toast({ variant: "destructive", title: "Błąd", description: "Nie udało się zapisać pracownika." });
         }
@@ -172,7 +172,7 @@ function MainContent() {
                 checkOutDate: updatedEmployee.checkOutDate ? new Date(updatedEmployee.checkOutDate) : null
             } : e));
             toast({ title: "Sukces", description: "Pracownik został zwolniony." });
-            pollNotifications();
+            await pollNotifications();
         } catch(e) {
             toast({ variant: "destructive", title: "Błąd", description: "Nie udało się zwolnić pracownika." });
         }
@@ -186,7 +186,7 @@ function MainContent() {
                 checkOutDate: null
             } : e));
             toast({ title: "Sukces", description: "Pracownik został przywrócony." });
-            pollNotifications();
+            await pollNotifications();
         } catch(e) {
             toast({ variant: "destructive", title: "Błąd", description: "Nie udało się przywrócić pracownika." });
         }
