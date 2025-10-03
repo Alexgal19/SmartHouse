@@ -1,18 +1,19 @@
 "use client";
 
-import type { Employee, Settings } from "@/types";
+import type { Employee, Settings, HousingAddress } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList, Cell } from "recharts";
 import { ChartContainer } from "@/components/ui/chart";
 import { useMemo, useState } from "react";
-import { Building, UserMinus, Users } from "lucide-react";
+import { Building, UserMinus, Users, Home, BedDouble, ChevronRight } from "lucide-react";
 import { isWithinInterval, format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "./ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ScrollArea } from "./ui/scroll-area";
 import { Input } from "./ui/input";
+import { Badge } from "./ui/badge";
 
 interface DashboardViewProps {
   employees: Employee[];
@@ -20,10 +21,95 @@ interface DashboardViewProps {
   onEditEmployee: (employee: Employee) => void;
 }
 
+// New component for detailed housing view
+const HousingDetailView = ({
+  address,
+  employees,
+  onEmployeeClick,
+}: {
+  address: HousingAddress;
+  employees: Employee[];
+  onEmployeeClick: (employee: Employee) => void;
+}) => {
+  const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
+
+  const rooms = useMemo(() => {
+    const roomMap = new Map<string, Employee[]>();
+    employees.forEach(employee => {
+      if (employee.address === address.name) {
+        if (!roomMap.has(employee.roomNumber)) {
+          roomMap.set(employee.roomNumber, []);
+        }
+        roomMap.get(employee.roomNumber)!.push(employee);
+      }
+    });
+    return Array.from(roomMap.entries())
+      .map(([roomNumber, occupants]) => ({ roomNumber, occupants }))
+      .sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true }));
+  }, [employees, address]);
+
+  if (selectedRoom) {
+    const occupants = rooms.find(r => r.roomNumber === selectedRoom)?.occupants || [];
+    return (
+      <div>
+        <Button variant="ghost" onClick={() => setSelectedRoom(null)} className="mb-4">
+          &larr; Wróć do pokoi
+        </Button>
+        <DialogHeader>
+          <DialogTitle>Pracownicy w pokoju {selectedRoom}</DialogTitle>
+          <DialogDescription>{address.name}</DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="h-[60vh] mt-4">
+          {occupants.map(employee => (
+            <Card key={employee.id} onClick={() => onEmployeeClick(employee)} className="mb-3 cursor-pointer hover:bg-muted/50">
+              <CardHeader>
+                <CardTitle className="text-base">{employee.fullName}</CardTitle>
+                <CardDescription>{employee.nationality}</CardDescription>
+              </CardHeader>
+            </Card>
+          ))}
+        </ScrollArea>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+       <DialogHeader>
+          <DialogTitle>{address.name}</DialogTitle>
+          <DialogDescription>Wybierz pokój, aby zobaczyć mieszkańców</DialogDescription>
+        </DialogHeader>
+      <ScrollArea className="h-[60vh] mt-4">
+        <div className="space-y-3">
+          {rooms.map(({ roomNumber, occupants }) => (
+            <Card key={roomNumber} onClick={() => setSelectedRoom(roomNumber)} className="cursor-pointer hover:bg-muted/50">
+              <CardHeader className="flex-row items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <BedDouble className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-base">Pokój {roomNumber}</CardTitle>
+                </div>
+                <div className="flex items-center gap-3">
+                    <Badge variant="secondary">{occupants.length} os.</Badge>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                </div>
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+};
+
+
 export default function DashboardView({ employees, settings, onEditEmployee }: DashboardViewProps) {
   const [isHousingDialogOpen, setIsHousingDialogOpen] = useState(false);
   const [isCheckoutsDialogOpen, setIsCheckoutsDialogOpen] = useState(false);
   const [housingSearchTerm, setHousingSearchTerm] = useState("");
+  const [selectedAddress, setSelectedAddress] = useState<HousingAddress | null>(null);
+  const [isAllEmployeesDialogOpen, setIsAllEmployeesDialogOpen] = useState(false);
+
+
   const { isMobile } = useIsMobile();
   
   const activeEmployees = useMemo(() => employees.filter(e => e.status === 'active'), [employees]);
@@ -41,8 +127,21 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
 
   const handleEmployeeClick = (employee: Employee) => {
     setIsCheckoutsDialogOpen(false);
+    setIsHousingDialogOpen(false);
+    setIsAllEmployeesDialogOpen(false);
     onEditEmployee(employee);
   };
+
+  const handleAddressCardClick = (address: HousingAddress) => {
+    setSelectedAddress(address);
+    setIsHousingDialogOpen(true);
+  };
+  
+  const handleAllEmployeesForAddressClick = (e: React.MouseEvent, address: HousingAddress) => {
+    e.stopPropagation();
+    setSelectedAddress(address);
+    setIsAllEmployeesDialogOpen(true);
+  }
 
   const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
 
@@ -68,6 +167,11 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
       house.name.toLowerCase().includes(housingSearchTerm.toLowerCase())
     );
   }, [settings.addresses, activeEmployees, housingSearchTerm]);
+  
+  const employeesForSelectedAddress = useMemo(() => {
+    if (!selectedAddress) return [];
+    return activeEmployees.filter(e => e.address === selectedAddress.name);
+  }, [activeEmployees, selectedAddress]);
 
   const aggregateData = (key: 'coordinatorId' | 'nationality' | 'zaklad') => {
     const counts = activeEmployees.reduce((acc, employee) => {
@@ -208,44 +312,32 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
         </Dialog>
       </div>
 
-       <Dialog open={isHousingDialogOpen} onOpenChange={setIsHousingDialogOpen}>
-          <DialogTrigger asChild>
-             <Card 
-                className="cursor-pointer hover:border-primary transition-colors"
-             >
-                <CardHeader>
-                    <CardTitle>Przegląd zakwaterowania</CardTitle>
-                    <CardDescription>Kliknij, aby zobaczyć obłożenie i dostępność mieszkań.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                   <div className="flex justify-between items-center">
-                      <div className="text-sm text-muted-foreground">
-                          {settings.addresses.length} dostępnych adresów
-                      </div>
-                       <Button variant="outline" size="sm">Zobacz szczegóły</Button>
-                   </div>
-                </CardContent>
-            </Card>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[800px] max-h-[90vh]">
-              <DialogHeader>
-                <DialogTitle>Obłożenie i dostępność mieszkań</DialogTitle>
-              </DialogHeader>
-              <div className="p-1 mb-4">
+        <Card>
+          <CardHeader>
+              <CardTitle>Przegląd zakwaterowania</CardTitle>
+              <CardDescription>Poniżej znajduje się lista wszystkich mieszkań i ich obłożenie.</CardDescription>
+          </CardHeader>
+          <CardContent>
+             <div className="p-1 mb-4">
                 <Input
                     placeholder="Szukaj po adresie..."
                     value={housingSearchTerm}
                     onChange={(e) => setHousingSearchTerm(e.target.value)}
-                    className="w-full"
+                    className="w-full max-w-sm"
                 />
               </div>
-              <ScrollArea className="h-full">
+              <ScrollArea className="h-[40vh]">
                 <div className="space-y-4 pr-4">
                   {housingOverview.length > 0 ? (
                     housingOverview.map(house => (
-                        <Card key={house.id}>
-                          <CardHeader className="pb-2">
-                             <CardTitle className="text-base truncate">{house.name}</CardTitle>
+                        <Card key={house.id} onClick={() => handleAddressCardClick(house)} className="cursor-pointer hover:bg-muted/50 transition-colors">
+                          <CardHeader className="pb-4">
+                             <CardTitle 
+                                className="text-base truncate hover:underline"
+                                onClick={(e) => handleAllEmployeesForAddressClick(e, house)}
+                              >
+                                {house.name}
+                              </CardTitle>
                           </CardHeader>
                           <CardContent>
                              <div className="flex items-center gap-3">
@@ -265,8 +357,8 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
                   )}
                 </div>
               </ScrollArea>
-          </DialogContent>
-      </Dialog>
+          </CardContent>
+        </Card>
       
       {!isMobile && (
         <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
@@ -277,6 +369,46 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
           </div>
         </div>
       )}
+
+      {/* Dialog for Room/Employee drilldown */}
+      <Dialog open={isHousingDialogOpen} onOpenChange={(isOpen) => {
+          setIsHousingDialogOpen(isOpen);
+          if (!isOpen) setSelectedAddress(null);
+      }}>
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh]">
+              {selectedAddress && (
+                  <HousingDetailView 
+                      address={selectedAddress}
+                      employees={employees}
+                      onEmployeeClick={handleEmployeeClick}
+                  />
+              )}
+          </DialogContent>
+      </Dialog>
+      
+      {/* Dialog for showing all employees for an address */}
+      <Dialog open={isAllEmployeesDialogOpen} onOpenChange={setIsAllEmployeesDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh]">
+            {selectedAddress && (
+                <>
+                    <DialogHeader>
+                        <DialogTitle>Wszyscy pracownicy</DialogTitle>
+                        <DialogDescription>{selectedAddress.name}</DialogDescription>
+                    </DialogHeader>
+                    <ScrollArea className="h-[60vh] mt-4">
+                        {employeesForSelectedAddress.map(employee => (
+                           <Card key={employee.id} onClick={() => handleEmployeeClick(employee)} className="mb-3 cursor-pointer hover:bg-muted/50">
+                             <CardHeader>
+                               <CardTitle className="text-base">{employee.fullName}</CardTitle>
+                               <CardDescription>Pokój: {employee.roomNumber} / {employee.nationality}</CardDescription>
+                             </CardHeader>
+                           </Card>
+                        ))}
+                    </ScrollArea>
+                </>
+            )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
