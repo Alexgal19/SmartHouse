@@ -4,7 +4,7 @@
 import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room } from '@/types';
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
-import { format } from 'date-fns';
+import { format, isEqual, parseISO } from 'date-fns';
 
 // --- Credentials - In a real production app, use environment variables ---
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
@@ -281,24 +281,38 @@ const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): 
         const typedKey = key as keyof Omit<Employee, 'id'>;
         const oldValue = oldData[typedKey];
         const newValue = newData[typedKey];
-
-        let oldFormatted: string;
-        let newFormatted: string;
-
-        if (oldValue instanceof Date) {
-            oldFormatted = formatDate(oldValue);
-        } else {
-            oldFormatted = oldValue?.toString() ?? 'N/A';
-        }
-
-        if (newValue instanceof Date) {
-            newFormatted = formatDate(newValue);
-        } else {
-            newFormatted = newValue?.toString() ?? 'N/A';
-        }
         
-        if (oldFormatted !== newFormatted) {
-             changes.push({
+        let areEqual = false;
+        if (oldValue instanceof Date && newValue instanceof Date) {
+            areEqual = isEqual(oldValue, newValue);
+        } else if (oldValue instanceof Date && typeof newValue === 'string') {
+             areEqual = isEqual(oldValue, parseISO(newValue));
+        } else if (typeof oldValue === 'string' && newValue instanceof Date) {
+             areEqual = isEqual(parseISO(oldValue), newValue);
+        } else if (oldValue === null && newValue === undefined) {
+             areEqual = true;
+        }
+        else {
+            areEqual = oldValue === newValue;
+        }
+
+        if (!areEqual) {
+             let oldFormatted: string;
+             let newFormatted: string;
+ 
+             if (oldValue instanceof Date) {
+                 oldFormatted = formatDate(oldValue);
+             } else {
+                 oldFormatted = String(oldValue ?? 'N/A');
+             }
+ 
+             if (newValue instanceof Date) {
+                 newFormatted = formatDate(newValue);
+             } else {
+                 newFormatted = String(newValue ?? 'N/A');
+             }
+
+            changes.push({
                 field: fieldLabels[typedKey] || typedKey,
                 oldValue: oldFormatted,
                 newValue: newFormatted,
