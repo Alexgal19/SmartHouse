@@ -6,12 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { MoreHorizontal, PlusCircle, Trash2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { Input } from "./ui/input";
 
 interface SettingsViewProps {
   settings: Settings;
@@ -21,14 +22,16 @@ interface SettingsViewProps {
 // Generic List Manager for simple string arrays
 const ListManager = ({ title, items, onUpdate }: { title: string; items: string[]; onUpdate: (newItems: string[]) => void }) => {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [newItem, setNewItem] = useState('');
+    const [newItems, setNewItems] = useState('');
   
     const handleAdd = () => {
-      if (newItem.trim()) {
-        onUpdate([...items, newItem.trim()]);
-        setNewItem('');
-        setIsDialogOpen(false);
-      }
+        const itemsToAdd = newItems.split('\n').map(item => item.trim()).filter(Boolean);
+        if (itemsToAdd.length > 0) {
+            const uniqueNewItems = itemsToAdd.filter(item => !items.includes(item));
+            onUpdate([...items, ...uniqueNewItems]);
+            setNewItems('');
+            setIsDialogOpen(false);
+        }
     };
   
     const handleDelete = (itemToDelete: string) => {
@@ -58,11 +61,11 @@ const ListManager = ({ title, items, onUpdate }: { title: string; items: string[
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Dodaj nową pozycję do: {title}</DialogTitle>
+                        <DialogTitle>Dodaj nowe pozycje do: {title}</DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
-                        <Label htmlFor="newItem">Nazwa</Label>
-                        <Input id="newItem" value={newItem} onChange={(e) => setNewItem(e.target.value)} />
+                        <Label htmlFor="newItems">Nazwy (każda w nowej linii)</Label>
+                        <Textarea id="newItems" value={newItems} onChange={(e) => setNewItems(e.target.value)} placeholder="Pozycja 1\nPozycja 2\nPozycja 3" />
                     </div>
                     <DialogFooter>
                         <DialogClose asChild><Button variant="outline">Anuluj</Button></DialogClose>
@@ -77,24 +80,37 @@ const ListManager = ({ title, items, onUpdate }: { title: string; items: string[
 
 // Specific Manager for Addresses (HousingAddress[])
 const AddressManager = ({ items, onUpdate }: { items: HousingAddress[]; onUpdate: (newItems: HousingAddress[]) => void }) => {
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [newAddresses, setNewAddresses] = useState('');
     const [currentAddress, setCurrentAddress] = useState<Partial<HousingAddress> | null>(null);
 
-    const openDialog = (address: Partial<HousingAddress> | null = null) => {
-        setCurrentAddress(address || { name: '', capacity: 0 });
-        setIsDialogOpen(true);
+    const openEditDialog = (address: Partial<HousingAddress>) => {
+        setCurrentAddress(address);
+        setIsEditDialogOpen(true);
     };
 
-    const handleSave = () => {
-        if (!currentAddress || !currentAddress.name) return;
-        let newItems;
-        if (currentAddress.id) { // Editing
-            newItems = items.map(item => item.id === currentAddress.id ? { ...item, ...currentAddress } as HousingAddress : item);
-        } else { // Adding
-            newItems = [...items, { ...currentAddress, id: `addr-${Date.now()}` } as HousingAddress];
+    const handleAdd = () => {
+        const lines = newAddresses.split('\n').filter(Boolean);
+        const addressesToAdd: HousingAddress[] = lines.map(line => {
+            const parts = line.split(',').map(p => p.trim());
+            const name = parts[0];
+            const capacity = parts.length > 1 ? parseInt(parts[1], 10) : 0;
+            return { id: `addr-${Date.now()}-${Math.random()}`, name, capacity: isNaN(capacity) ? 0 : capacity };
+        }).filter(a => a.name);
+
+        if (addressesToAdd.length > 0) {
+            onUpdate([...items, ...addressesToAdd]);
+            setNewAddresses('');
+            setIsAddDialogOpen(false);
         }
+    };
+
+    const handleSaveEdit = () => {
+        if (!currentAddress || !currentAddress.name) return;
+        const newItems = items.map(item => item.id === currentAddress.id ? { ...item, ...currentAddress } as HousingAddress : item);
         onUpdate(newItems);
-        setIsDialogOpen(false);
+        setIsEditDialogOpen(false);
     };
 
     const handleDelete = (id: string) => {
@@ -105,7 +121,7 @@ const AddressManager = ({ items, onUpdate }: { items: HousingAddress[]; onUpdate
         <Card>
             <CardHeader className="flex-row items-center justify-between">
                 <CardTitle className="text-lg">Adresy</CardTitle>
-                <Button size="sm" onClick={() => openDialog()}><PlusCircle className="mr-2 h-4 w-4" />Dodaj Adres</Button>
+                <Button size="sm" onClick={() => setIsAddDialogOpen(true)}><PlusCircle className="mr-2 h-4 w-4" />Dodaj Adresy</Button>
             </CardHeader>
             <CardContent>
                 <div className="space-y-3">
@@ -119,7 +135,7 @@ const AddressManager = ({ items, onUpdate }: { items: HousingAddress[]; onUpdate
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                     <DropdownMenuContent>
-                                        <DropdownMenuItem onClick={() => openDialog(address)}>Edytuj</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => openEditDialog(address)}>Edytuj</DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => handleDelete(address.id)} className="text-destructive">Usuń</DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -128,9 +144,23 @@ const AddressManager = ({ items, onUpdate }: { items: HousingAddress[]; onUpdate
                     ))}
                 </div>
             </CardContent>
-             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                 <DialogContent>
-                    <DialogHeader><DialogTitle>{currentAddress?.id ? 'Edytuj adres' : 'Dodaj nowy adres'}</DialogTitle></DialogHeader>
+                    <DialogHeader><DialogTitle>Dodaj nowe adresy</DialogTitle></DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <Label htmlFor="newAddresses">Adresy (każdy w nowej linii)</Label>
+                        <Textarea id="newAddresses" value={newAddresses} onChange={(e) => setNewAddresses(e.target.value)} placeholder="ul. Słoneczna 1, Warszawa, 10\nul. Leśna 2, Kraków, 8" />
+                        <p className="text-xs text-muted-foreground">Format: Nazwa Adresu, Pojemność</p>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild><Button variant="outline">Anuluj</Button></DialogClose>
+                        <Button onClick={handleAdd}>Dodaj</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                <DialogContent>
+                    <DialogHeader><DialogTitle>Edytuj adres</DialogTitle></DialogHeader>
                     <div className="grid gap-4 py-4">
                         <Label htmlFor="name">Adres</Label>
                         <Input id="name" value={currentAddress?.name || ''} onChange={(e) => setCurrentAddress(p => ({...p, name: e.target.value}))} />
@@ -139,7 +169,7 @@ const AddressManager = ({ items, onUpdate }: { items: HousingAddress[]; onUpdate
                     </div>
                     <DialogFooter>
                         <DialogClose asChild><Button variant="outline">Anuluj</Button></DialogClose>
-                        <Button onClick={handleSave}>Zapisz</Button>
+                        <Button onClick={handleSaveEdit}>Zapisz</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -149,25 +179,34 @@ const AddressManager = ({ items, onUpdate }: { items: HousingAddress[]; onUpdate
 
 // Specific Manager for Coordinators
 const CoordinatorManager = ({ items, onUpdate }: { items: Coordinator[]; onUpdate: (newItems: Coordinator[]) => void }) => {
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [newCoordinators, setNewCoordinators] = useState('');
     const [currentCoordinator, setCurrentCoordinator] = useState<Partial<Coordinator> | null>(null);
 
-    const openDialog = (coordinator: Partial<Coordinator> | null = null) => {
-        setCurrentCoordinator(coordinator || { uid: '', name: '' });
-        setIsDialogOpen(true);
+    const openEditDialog = (coordinator: Partial<Coordinator>) => {
+        setCurrentCoordinator(coordinator);
+        setIsEditDialogOpen(true);
     };
 
-    const handleSave = () => {
-        if (!currentCoordinator || !currentCoordinator.name) return;
-        let newItems;
-        if (currentCoordinator.uid && currentCoordinator.uid.startsWith('coord-')) { // Editing existing
-            newItems = items.map(item => item.uid === currentCoordinator.uid ? { ...item, ...currentCoordinator } as Coordinator : item);
-        } else { // Adding new
-            const newUid = `coord-${Date.now()}`;
-            newItems = [...items, { ...currentCoordinator, uid: newUid } as Coordinator];
+    const handleAdd = () => {
+        const names = newCoordinators.split('\n').map(name => name.trim()).filter(Boolean);
+        if (names.length > 0) {
+            const coordinatorsToAdd: Coordinator[] = names.map(name => ({
+                uid: `coord-${Date.now()}-${Math.random()}`,
+                name,
+            }));
+            onUpdate([...items, ...coordinatorsToAdd]);
+            setNewCoordinators('');
+            setIsAddDialogOpen(false);
         }
+    };
+    
+    const handleSaveEdit = () => {
+        if (!currentCoordinator || !currentCoordinator.name) return;
+        const newItems = items.map(item => item.uid === currentCoordinator.uid ? { ...item, ...currentCoordinator } as Coordinator : item);
         onUpdate(newItems);
-        setIsDialogOpen(false);
+        setIsEditDialogOpen(false);
     };
 
     const handleDelete = (uid: string) => {
@@ -178,7 +217,7 @@ const CoordinatorManager = ({ items, onUpdate }: { items: Coordinator[]; onUpdat
         <Card>
             <CardHeader className="flex-row items-center justify-between">
                 <CardTitle className="text-lg">Koordynatorzy</CardTitle>
-                <Button size="sm" onClick={() => openDialog()}><PlusCircle className="mr-2 h-4 w-4" />Dodaj</Button>
+                <Button size="sm" onClick={() => setIsAddDialogOpen(true)}><PlusCircle className="mr-2 h-4 w-4" />Dodaj</Button>
             </CardHeader>
             <CardContent>
                 <div className="space-y-3">
@@ -192,7 +231,7 @@ const CoordinatorManager = ({ items, onUpdate }: { items: Coordinator[]; onUpdat
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                     <DropdownMenuContent>
-                                        <DropdownMenuItem onClick={() => openDialog(coordinator)}>Edytuj</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => openEditDialog(coordinator)}>Edytuj</DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => handleDelete(coordinator.uid)} className="text-destructive">Usuń</DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -201,10 +240,25 @@ const CoordinatorManager = ({ items, onUpdate }: { items: Coordinator[]; onUpdat
                     ))}
                 </div>
             </CardContent>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>{currentCoordinator?.uid ? 'Edytuj koordynatora' : 'Dodaj nowego koordynatora'}</DialogTitle>
+                        <DialogTitle>Dodaj nowych koordynatorów</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <Label htmlFor="newCoordinators">Imiona i Nazwiska (każde w nowej linii)</Label>
+                        <Textarea id="newCoordinators" value={newCoordinators} onChange={(e) => setNewCoordinators(e.target.value)} placeholder="Jan Kowalski\nAnna Nowak" />
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild><Button variant="outline">Anuluj</Button></DialogClose>
+                        <Button onClick={handleAdd}>Dodaj</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Edytuj koordynatora</DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <Label htmlFor="name">Imię i Nazwisko</Label>
@@ -212,7 +266,7 @@ const CoordinatorManager = ({ items, onUpdate }: { items: Coordinator[]; onUpdat
                     </div>
                     <DialogFooter>
                         <DialogClose asChild><Button variant="outline">Anuluj</Button></DialogClose>
-                        <Button onClick={handleSave}>Zapisz</Button>
+                        <Button onClick={handleSaveEdit}>Zapisz</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
