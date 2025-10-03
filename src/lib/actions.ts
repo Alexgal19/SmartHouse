@@ -311,16 +311,15 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
         const currentData = deserializeEmployee(rowToUpdate);
         
         let action = 'zaktualizował(a) dane';
-        let changes: NotificationChange[] = [];
         
         if (employeeData.status) {
             if (employeeData.status === 'dismissed') action = 'zwolnił(a)';
             if (employeeData.status === 'active') action = 'przywrócił(a)';
-        } else {
-            changes = getChanges(currentData, employeeData);
-            if(changes.length === 0) {
-                 return currentData; // No changes, no update, no notification
-            }
+        } 
+        
+        const changes = getChanges(currentData, employeeData);
+        if(changes.length === 0) {
+              return currentData; // No changes, no update, no notification
         }
         
         const updatedData = { ...currentData, ...employeeData };

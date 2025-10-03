@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -97,7 +98,7 @@ function MainContent() {
     useEffect(() => {
       const interval = setInterval(() => {
         pollNotifications();
-      }, 5000); // Increased interval
+      }, 30000); 
       return () => clearInterval(interval);
     }, [pollNotifications]);
 
