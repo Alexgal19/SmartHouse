@@ -97,7 +97,7 @@ function MainContent() {
     useEffect(() => {
       const interval = setInterval(() => {
         pollNotifications();
-      }, 5000);
+      }, 5000); // Increased interval
       return () => clearInterval(interval);
     }, [pollNotifications]);
 
