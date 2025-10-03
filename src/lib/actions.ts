@@ -118,6 +118,12 @@ const serializeNotification = (notification: Omit<Notification, 'changes'> & { c
     };
 };
 
+const EMPLOYEE_HEADERS = [
+    'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 
+    'zaklad', 'checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 
+    'departureReportDate', 'comments', 'status', 'oldAddress'
+];
+
 async function getSheet(title: string, headers: string[]) {
     await doc.loadInfo();
     let sheet = doc.sheetsByTitle[title];
@@ -131,11 +137,7 @@ async function getSheet(title: string, headers: string[]) {
 
 export async function getEmployees(): Promise<Employee[]> {
   try {
-    const sheet = await getSheet(SHEET_NAME_EMPLOYEES, [
-        'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 
-        'zaklad', 'checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 
-        'departureReportDate', 'comments', 'status', 'oldAddress'
-    ]);
+    const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
     const rows = await sheet.getRows();
     return rows.map(deserializeEmployee);
   } catch (error) {
@@ -224,7 +226,7 @@ const createNotification = async (
 
 export async function addEmployee(employeeData: Omit<Employee, 'id' | 'status'>, actor: Coordinator): Promise<Employee> {
     try {
-        const sheet = await getSheet(SHEET_NAME_EMPLOYEES, []); // headers will be added if needed by getEmployees call
+        const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS); 
         const newEmployee: Employee = {
             ...employeeData,
             id: `emp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
@@ -289,7 +291,7 @@ const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): 
              areEqual = isEqual(oldValue, parseISO(newValue));
         } else if (typeof oldValue === 'string' && newValue instanceof Date) {
              areEqual = isEqual(parseISO(oldValue), newValue);
-        } else if (oldValue === null && newValue === undefined) {
+        } else if ((oldValue === null || oldValue === undefined) && (newValue === null || newValue === undefined)) {
              areEqual = true;
         }
         else {
@@ -324,7 +326,7 @@ const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): 
 
 export async function updateEmployee(employeeId: string, employeeData: Partial<Omit<Employee, 'id'>>, actor: Coordinator): Promise<Employee> {
     try {
-        const sheet = await getSheet(SHEET_NAME_EMPLOYEES, []);
+        const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         
         const rows = await sheet.getRows();
         const rowIndex = rows.findIndex(row => row.get('id') === employeeId);
@@ -439,7 +441,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Se
 
 export async function getNotifications(): Promise<Notification[]> {
     try {
-        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, []);
+        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
         const rows = await sheet.getRows();
         return rows.map(deserializeNotification).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     } catch (error) {
@@ -450,7 +452,7 @@ export async function getNotifications(): Promise<Notification[]> {
 
 export async function markNotificationAsRead(notificationId: string): Promise<void> {
     try {
-        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, []);
+        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
         const rows = await sheet.getRows();
         const rowToUpdate = rows.find(row => row.get('id') === notificationId);
 
@@ -462,3 +464,5 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
         console.error("Error marking notification as read:", error);
     }
 }
+
+    
