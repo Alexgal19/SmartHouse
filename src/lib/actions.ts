@@ -253,7 +253,7 @@ const formatDate = (date: Date | null | undefined): string => {
     return format(date, 'dd-MM-yyyy');
 };
 
-const getChanges = (oldData: Employee, newData: Partial<Employee>): NotificationChange[] => {
+const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): NotificationChange[] => {
     const changes: NotificationChange[] = [];
     const fieldLabels: Record<string, string> = {
         fullName: 'Imię i nazwisko',
@@ -275,19 +275,31 @@ const getChanges = (oldData: Employee, newData: Partial<Employee>): Notification
 
     for (const key in newData) {
         if (key === 'id') continue;
-        const typedKey = key as keyof Omit<Employee, 'id'>;
         
+        const typedKey = key as keyof Omit<Employee, 'id'>;
         const oldValue = oldData[typedKey];
         const newValue = newData[typedKey];
 
-        const oldFormatted = oldValue instanceof Date ? formatDate(oldValue) : (oldValue ?? '');
-        const newFormatted = newValue instanceof Date ? formatDate(newValue) : (newValue ?? '');
+        let oldFormatted: string;
+        let newFormatted: string;
 
-        if (String(oldFormatted) !== String(newFormatted)) {
-            changes.push({
+        if (oldValue instanceof Date) {
+            oldFormatted = formatDate(oldValue);
+        } else {
+            oldFormatted = oldValue?.toString() ?? 'N/A';
+        }
+
+        if (newValue instanceof Date) {
+            newFormatted = formatDate(newValue);
+        } else {
+            newFormatted = newValue?.toString() ?? 'N/A';
+        }
+        
+        if (oldFormatted !== newFormatted) {
+             changes.push({
                 field: fieldLabels[typedKey] || typedKey,
-                oldValue: String(oldFormatted || 'N/A'),
-                newValue: String(newFormatted || 'N/A'),
+                oldValue: oldFormatted,
+                newValue: newFormatted,
             });
         }
     }
