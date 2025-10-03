@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList, Cell } from "recharts";
 import { ChartContainer } from "@/components/ui/chart";
 import { useMemo, useState } from "react";
-import { Building, UserMinus, Users, Home, BedDouble, ChevronRight } from "lucide-react";
+import { Building, UserMinus, Users, Home, BedDouble, ChevronRight, ChevronDown } from "lucide-react";
 import { isWithinInterval, format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "./ui/button";
@@ -14,6 +14,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ScrollArea } from "./ui/scroll-area";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
 
 interface DashboardViewProps {
   employees: Employee[];
@@ -108,6 +110,7 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
   const [housingSearchTerm, setHousingSearchTerm] = useState("");
   const [selectedAddress, setSelectedAddress] = useState<HousingAddress | null>(null);
   const [isAllEmployeesDialogOpen, setIsAllEmployeesDialogOpen] = useState(false);
+  const [isHousingOverviewOpen, setIsHousingOverviewOpen] = useState(true);
 
 
   const { isMobile } = useIsMobile();
@@ -312,53 +315,64 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
         </Dialog>
       </div>
 
-        <Card>
-          <CardHeader>
-              <CardTitle>Przegląd zakwaterowania</CardTitle>
-              <CardDescription>Poniżej znajduje się lista wszystkich mieszkań i ich obłożenie.</CardDescription>
-          </CardHeader>
-          <CardContent>
-             <div className="p-1 mb-4">
-                <Input
-                    placeholder="Szukaj po adresie..."
-                    value={housingSearchTerm}
-                    onChange={(e) => setHousingSearchTerm(e.target.value)}
-                    className="w-full max-w-sm"
-                />
-              </div>
-              <ScrollArea className="h-[40vh]">
-                <div className="space-y-4 pr-4">
-                  {housingOverview.length > 0 ? (
-                    housingOverview.map(house => (
-                        <Card key={house.id} onClick={() => handleAddressCardClick(house)} className="cursor-pointer hover:bg-muted/50 transition-colors">
-                          <CardHeader className="pb-4">
-                             <CardTitle 
-                                className="text-base truncate hover:underline"
-                                onClick={(e) => handleAllEmployeesForAddressClick(e, house)}
-                              >
-                                {house.name}
-                              </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                             <div className="flex items-center gap-3">
-                                <Progress value={house.occupancy} className="w-full h-2" />
-                                <span className="text-sm font-medium text-muted-foreground shrink-0">{Math.round(house.occupancy)}%</span>
-                             </div>
-                             <div className="flex justify-between text-xs mt-2 text-muted-foreground">
-                                  <span>Zajęte: <span className="font-bold text-foreground">{house.occupied}</span></span>
-                                  <span>Pojemność: <span className="font-bold text-foreground">{house.capacity}</span></span>
-                                  <span>Wolne: <span className="font-bold text-foreground">{house.available}</span></span>
-                             </div>
-                          </CardContent>
-                        </Card>
-                    ))
-                  ) : (
-                    <p className="text-center text-muted-foreground py-8">Brak adresów pasujących do wyszukiwania.</p>
-                  )}
-                </div>
-              </ScrollArea>
-          </CardContent>
-        </Card>
+        <Collapsible open={isHousingOverviewOpen} onOpenChange={setIsHousingOverviewOpen}>
+            <Card>
+                <CollapsibleTrigger asChild>
+                    <CardHeader className="cursor-pointer">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <CardTitle>Przegląd zakwaterowania</CardTitle>
+                                <CardDescription>Poniżej znajduje się lista wszystkich mieszkań i ich obłożenie.</CardDescription>
+                            </div>
+                            <ChevronDown className={cn("h-6 w-6 transition-transform", isHousingOverviewOpen && "rotate-180")} />
+                        </div>
+                    </CardHeader>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                    <CardContent>
+                        <div className="p-1 mb-4">
+                            <Input
+                                placeholder="Szukaj po adresie..."
+                                value={housingSearchTerm}
+                                onChange={(e) => setHousingSearchTerm(e.target.value)}
+                                className="w-full max-w-sm"
+                            />
+                        </div>
+                        <ScrollArea className="h-[40vh]">
+                            <div className="space-y-4 pr-4">
+                            {housingOverview.length > 0 ? (
+                                housingOverview.map(house => (
+                                    <Card key={house.id} onClick={() => handleAddressCardClick(house)} className="cursor-pointer hover:bg-muted/50 transition-colors">
+                                    <CardHeader className="pb-4">
+                                        <CardTitle 
+                                            className="text-base truncate hover:underline"
+                                            onClick={(e) => handleAllEmployeesForAddressClick(e, house)}
+                                        >
+                                            {house.name}
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="flex items-center gap-3">
+                                            <Progress value={house.occupancy} className="w-full h-2" />
+                                            <span className="text-sm font-medium text-muted-foreground shrink-0">{Math.round(house.occupancy)}%</span>
+                                        </div>
+                                        <div className="flex justify-between text-xs mt-2 text-muted-foreground">
+                                            <span>Zajęte: <span className="font-bold text-foreground">{house.occupied}</span></span>
+                                            <span>Pojemność: <span className="font-bold text-foreground">{house.capacity}</span></span>
+                                            <span>Wolne: <span className="font-bold text-foreground">{house.available}</span></span>
+                                        </div>
+                                    </CardContent>
+                                    </Card>
+                                ))
+                            ) : (
+                                <p className="text-center text-muted-foreground py-8">Brak adresów pasujących do wyszukiwania.</p>
+                            )}
+                            </div>
+                        </ScrollArea>
+                    </CardContent>
+                </CollapsibleContent>
+            </Card>
+        </Collapsible>
       
       {!isMobile && (
         <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
