@@ -84,8 +84,8 @@ const EmployeeTable = ({
           <TableHeader>
             <TableRow>
               <TableHead>Imię i nazwisko</TableHead>
-              <TableHead>Płeć</TableHead>
               <TableHead>Narodowość</TableHead>
+              <TableHead>Płeć</TableHead>
               <TableHead>Koordynator</TableHead>
               <TableHead>Adres</TableHead>
               <TableHead>Stara adresa</TableHead>
@@ -102,8 +102,8 @@ const EmployeeTable = ({
               employees.map((employee) => (
                 <TableRow key={employee.id} onClick={() => onEdit(employee)} className="cursor-pointer">
                   <TableCell className="font-medium">{employee.fullName}</TableCell>
-                  <TableCell>{employee.gender}</TableCell>
                   <TableCell>{employee.nationality}</TableCell>
+                  <TableCell>{employee.gender}</TableCell>
                   <TableCell>{getCoordinatorName(employee.coordinatorId)}</TableCell>
                   <TableCell>{employee.address}</TableCell>
                   <TableCell>{employee.oldAddress || 'N/A'}</TableCell>
