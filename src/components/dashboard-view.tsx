@@ -37,17 +37,32 @@ const HousingDetailView = ({
 
   const rooms = useMemo(() => {
     const roomMap = new Map<string, Employee[]>();
+    address.rooms.forEach(room => {
+        roomMap.set(room.name, []);
+    });
+
     employees.forEach(employee => {
       if (employee.address === address.name) {
         if (!roomMap.has(employee.roomNumber)) {
+          // This case handles employees in rooms not defined in settings
           roomMap.set(employee.roomNumber, []);
         }
         roomMap.get(employee.roomNumber)!.push(employee);
       }
     });
-    return Array.from(roomMap.entries())
+
+    const sortedRooms = Array.from(roomMap.entries())
       .map(([roomNumber, occupants]) => ({ roomNumber, occupants }))
       .sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true }));
+      
+    // Ensure rooms from settings with 0 occupants are also shown
+    address.rooms.forEach(room => {
+        if (!sortedRooms.some(r => r.roomNumber === room.name)) {
+            sortedRooms.push({ roomNumber: room.name, occupants: [] });
+        }
+    });
+
+    return sortedRooms;
   }, [employees, address]);
 
   if (selectedRoom) {
@@ -156,19 +171,19 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
   const housingOverview = useMemo(() => {
     const baseOverview = settings.addresses.map(address => {
       const occupied = activeEmployees.filter(e => e.address === address.name).length;
-      const capacity = address.capacity;
+      const capacity = address.rooms.reduce((sum, room) => sum + room.capacity, 0);
       const available = capacity - occupied;
       const occupancy = capacity > 0 ? (occupied / capacity) * 100 : 0;
-      return { ...address, occupied, available, occupancy };
-    }).sort((a, b) => b.occupancy - a.occupancy);
+      return { ...address, occupied, available, capacity, occupancy };
+    });
 
     if (!housingSearchTerm) {
-      return baseOverview;
+      return baseOverview.sort((a, b) => b.occupancy - a.occupancy);
     }
 
     return baseOverview.filter(house =>
       house.name.toLowerCase().includes(housingSearchTerm.toLowerCase())
-    );
+    ).sort((a, b) => b.occupancy - a.occupancy);
   }, [settings.addresses, activeEmployees, housingSearchTerm]);
   
   const employeesForSelectedAddress = useMemo(() => {

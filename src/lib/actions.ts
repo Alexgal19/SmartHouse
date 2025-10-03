@@ -1,7 +1,7 @@
 
 "use server";
 
-import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress } from '@/types';
+import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room } from '@/types';
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
 import { format } from 'date-fns';
@@ -11,6 +11,7 @@ const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
 const SHEET_NAME_EMPLOYEES = 'Employees';
 const SHEET_NAME_NOTIFICATIONS = 'Powiadomienia';
 const SHEET_NAME_ADDRESSES = 'Addresses';
+const SHEET_NAME_ROOMS = 'Rooms';
 const SHEET_NAME_NATIONALITIES = 'Nationalities';
 const SHEET_NAME_DEPARTMENTS = 'Departments';
 const SHEET_NAME_COORDINATORS = 'Coordinators';
@@ -123,6 +124,8 @@ async function getSheet(title: string, headers: string[]) {
     if (!sheet) {
         sheet = await doc.addSheet({ title, headerValues: headers });
     }
+    // Make sure headers are up to date
+    await sheet.setHeaderRow(headers);
     return sheet;
 }
 
@@ -143,26 +146,35 @@ export async function getEmployees(): Promise<Employee[]> {
 
 export async function getSettings(): Promise<Settings> {
   try {
-    const [addressesSheet, nationalitiesSheet, departmentsSheet, coordinatorsSheet] = await Promise.all([
-        getSheet(SHEET_NAME_ADDRESSES, ['id', 'name', 'capacity']),
+    const [addressesSheet, roomsSheet, nationalitiesSheet, departmentsSheet, coordinatorsSheet] = await Promise.all([
+        getSheet(SHEET_NAME_ADDRESSES, ['id', 'name']),
+        getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity']),
         getSheet(SHEET_NAME_NATIONALITIES, ['name']),
         getSheet(SHEET_NAME_DEPARTMENTS, ['name']),
         getSheet(SHEET_NAME_COORDINATORS, ['uid', 'name']),
     ]);
 
-    const [addressRows, nationalityRows, departmentRows, coordinatorRows] = await Promise.all([
+    const [addressRows, roomRows, nationalityRows, departmentRows, coordinatorRows] = await Promise.all([
         addressesSheet.getRows(),
+        roomsSheet.getRows(),
         nationalitiesSheet.getRows(),
         departmentsSheet.getRows(),
         coordinatorsSheet.getRows(),
     ]);
-
+    
+    const rooms = roomRows.map(row => ({
+        id: row.get('id'),
+        addressId: row.get('addressId'),
+        name: row.get('name'),
+        capacity: parseInt(row.get('capacity'), 10) || 0,
+    }));
+    
     const settings: Settings = {
         id: 'global-settings',
         addresses: addressRows.map(row => ({
             id: row.get('id'),
             name: row.get('name'),
-            capacity: parseInt(row.get('capacity'), 10) || 0,
+            rooms: rooms.filter(room => room.addressId === row.get('id'))
         })),
         nationalities: nationalityRows.map(row => row.get('name')),
         departments: departmentRows.map(row => row.get('name')),
@@ -345,7 +357,7 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
     }
 }
 
-async function syncSheet<T extends {id: string} | {uid: string} | {name: string}>(
+async function syncSheet<T extends Record<string, any>>(
     sheetName: string,
     headers: string[],
     newData: T[],
@@ -353,7 +365,7 @@ async function syncSheet<T extends {id: string} | {uid: string} | {name: string}
 ) {
     const sheet = await getSheet(sheetName, headers);
     const rows = await sheet.getRows();
-    const oldData = rows.map(row => row.get(idKey as string));
+    
     const newDataIds = newData.map(item => item[idKey]);
 
     // Delete rows that are no longer in the new data
@@ -365,17 +377,20 @@ async function syncSheet<T extends {id: string} | {uid: string} | {name: string}
     // Update existing rows or add new ones
     for (const item of newData) {
         const existingRow = rows.find(row => row.get(idKey as string) === item[idKey]);
+        const serializedItem = headers.reduce((acc, header) => {
+            acc[header] = item[header] ?? '';
+            return acc;
+        }, {} as Record<string, any>);
+
         if (existingRow) {
             // Update
             headers.forEach(header => {
-                if (header in item) {
-                    existingRow.set(header, (item as any)[header]);
-                }
+                existingRow.set(header, serializedItem[header]);
             });
             await existingRow.save();
         } else {
             // Add new
-            await sheet.addRow(item as any);
+            await sheet.addRow(serializedItem);
         }
     }
 }
@@ -383,11 +398,12 @@ async function syncSheet<T extends {id: string} | {uid: string} | {name: string}
 
 export async function updateSettings(newSettings: Partial<Settings>): Promise<Settings> {
     try {
-        const currentSettings = await getSettings();
-        const updatedSettings: Settings = { ...currentSettings, ...newSettings };
-
         if (newSettings.addresses) {
-            await syncSheet(SHEET_NAME_ADDRESSES, ['id', 'name', 'capacity'], newSettings.addresses, 'id');
+            const allRooms = newSettings.addresses.flatMap(address => 
+                address.rooms.map(room => ({...room, addressId: address.id}))
+            );
+            await syncSheet(SHEET_NAME_ADDRESSES, ['id', 'name'], newSettings.addresses, 'id');
+            await syncSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity'], allRooms, 'id');
         }
         if (newSettings.nationalities) {
             await syncSheet(SHEET_NAME_NATIONALITIES, ['name'], newSettings.nationalities.map(name => ({ name })), 'name');
@@ -432,5 +448,3 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
         console.error("Error marking notification as read:", error);
     }
 }
-
-    

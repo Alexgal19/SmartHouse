@@ -1,6 +1,6 @@
 "use client";
 
-import type { Settings, HousingAddress, Coordinator } from "@/types";
+import type { Settings, HousingAddress, Coordinator, Room } from "@/types";
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -82,39 +82,60 @@ const ListManager = ({ title, items, onUpdate }: { title: string; items: string[
 const AddressManager = ({ items, onUpdate }: { items: HousingAddress[]; onUpdate: (newItems: HousingAddress[]) => void }) => {
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-    const [newAddresses, setNewAddresses] = useState('');
-    const [currentAddress, setCurrentAddress] = useState<Partial<HousingAddress> | null>(null);
+    const [newAddressName, setNewAddressName] = useState('');
+    const [currentAddress, setCurrentAddress] = useState<HousingAddress | null>(null);
 
-    const openEditDialog = (address: Partial<HousingAddress>) => {
-        setCurrentAddress(address);
+    const openEditDialog = (address: HousingAddress) => {
+        setCurrentAddress(JSON.parse(JSON.stringify(address))); // Deep copy
         setIsEditDialogOpen(true);
     };
 
     const handleAdd = () => {
-        const lines = newAddresses.split('\n').filter(Boolean);
-        const addressesToAdd: HousingAddress[] = lines.map(line => {
-            const parts = line.split(',').map(p => p.trim());
-            const name = parts[0];
-            const capacity = parts.length > 1 ? parseInt(parts[1], 10) : 0;
-            return { id: `addr-${Date.now()}-${Math.random()}`, name, capacity: isNaN(capacity) ? 0 : capacity };
-        }).filter(a => a.name);
-
-        if (addressesToAdd.length > 0) {
+        const names = newAddressName.split('\n').map(name => name.trim()).filter(Boolean);
+        if (names.length > 0) {
+            const addressesToAdd: HousingAddress[] = names.map(name => ({
+                id: `addr-${Date.now()}-${Math.random()}`,
+                name,
+                rooms: [],
+            }));
             onUpdate([...items, ...addressesToAdd]);
-            setNewAddresses('');
+            setNewAddressName('');
             setIsAddDialogOpen(false);
         }
     };
-
+    
     const handleSaveEdit = () => {
-        if (!currentAddress || !currentAddress.name) return;
-        const newItems = items.map(item => item.id === currentAddress.id ? { ...item, ...currentAddress } as HousingAddress : item);
+        if (!currentAddress) return;
+        const newItems = items.map(item => item.id === currentAddress.id ? currentAddress : item);
         onUpdate(newItems);
         setIsEditDialogOpen(false);
     };
 
     const handleDelete = (id: string) => {
         onUpdate(items.filter(item => item.id !== id));
+    };
+
+    const handleRoomChange = (roomId: string, field: keyof Room, value: string | number) => {
+        if (!currentAddress) return;
+        const updatedRooms = currentAddress.rooms.map(room => 
+            room.id === roomId ? { ...room, [field]: value } : room
+        );
+        setCurrentAddress({ ...currentAddress, rooms: updatedRooms });
+    };
+
+    const addRoom = () => {
+        if (!currentAddress) return;
+        const newRoom: Room = {
+            id: `room-${Date.now()}-${Math.random()}`,
+            name: '',
+            capacity: 0,
+        };
+        setCurrentAddress({ ...currentAddress, rooms: [...currentAddress.rooms, newRoom] });
+    };
+
+    const deleteRoom = (roomId: string) => {
+        if (!currentAddress) return;
+        setCurrentAddress({ ...currentAddress, rooms: currentAddress.rooms.filter(r => r.id !== roomId) });
     };
     
     return (
@@ -125,23 +146,28 @@ const AddressManager = ({ items, onUpdate }: { items: HousingAddress[]; onUpdate
             </CardHeader>
             <CardContent>
                 <div className="space-y-3">
-                    {items.map(address => (
-                        <Card key={address.id} className="bg-muted/50">
-                            <CardHeader className="flex-row items-center justify-between p-4">
-                                <div>
-                                    <p className="font-semibold">{address.name}</p>
-                                    <p className="text-sm text-muted-foreground">Pojemność: {address.capacity}</p>
-                                </div>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                    <DropdownMenuContent>
-                                        <DropdownMenuItem onClick={() => openEditDialog(address)}>Edytuj</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleDelete(address.id)} className="text-destructive">Usuń</DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </CardHeader>
-                        </Card>
-                    ))}
+                    {items.map(address => {
+                        const totalCapacity = address.rooms.reduce((acc, room) => acc + room.capacity, 0);
+                        return (
+                            <Card key={address.id} className="bg-muted/50">
+                                <CardHeader className="flex-row items-center justify-between p-4">
+                                    <div>
+                                        <p className="font-semibold">{address.name}</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            Pojemność: {totalCapacity} | Pokoje: {address.rooms.length}
+                                        </p>
+                                    </div>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                            <DropdownMenuItem onClick={() => openEditDialog(address)}>Edytuj</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleDelete(address.id)} className="text-destructive">Usuń</DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </CardHeader>
+                            </Card>
+                        )
+                    })}
                 </div>
             </CardContent>
              <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -149,8 +175,7 @@ const AddressManager = ({ items, onUpdate }: { items: HousingAddress[]; onUpdate
                     <DialogHeader><DialogTitle>Dodaj nowe adresy</DialogTitle></DialogHeader>
                     <div className="grid gap-4 py-4">
                         <Label htmlFor="newAddresses">Adresy (każdy w nowej linii)</Label>
-                        <Textarea id="newAddresses" value={newAddresses} onChange={(e) => setNewAddresses(e.target.value)} placeholder="ul. Słoneczna 1, Warszawa, 10\nul. Leśna 2, Kraków, 8" />
-                        <p className="text-xs text-muted-foreground">Format: Nazwa Adresu, Pojemność</p>
+                        <Textarea id="newAddresses" value={newAddressName} onChange={(e) => setNewAddressName(e.target.value)} placeholder="ul. Słoneczna 1, Warszawa\nul. Leśna 2, Kraków" />
                     </div>
                     <DialogFooter>
                         <DialogClose asChild><Button variant="outline">Anuluj</Button></DialogClose>
@@ -159,13 +184,44 @@ const AddressManager = ({ items, onUpdate }: { items: HousingAddress[]; onUpdate
                 </DialogContent>
             </Dialog>
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                <DialogContent>
-                    <DialogHeader><DialogTitle>Edytuj adres</DialogTitle></DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <Label htmlFor="name">Adres</Label>
-                        <Input id="name" value={currentAddress?.name || ''} onChange={(e) => setCurrentAddress(p => ({...p, name: e.target.value}))} />
-                        <Label htmlFor="capacity">Pojemność</Label>
-                        <Input id="capacity" type="number" value={currentAddress?.capacity || ''} onChange={(e) => setCurrentAddress(p => ({...p, capacity: parseInt(e.target.value, 10) || 0}))} />
+                <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
+                    <DialogHeader>
+                        <DialogTitle>Edytuj adres</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4 flex-1 overflow-y-auto pr-2">
+                        <div className="space-y-2">
+                            <Label htmlFor="name">Adres</Label>
+                            <Input id="name" value={currentAddress?.name || ''} onChange={(e) => setCurrentAddress(p => p ? {...p, name: e.target.value} : null)} />
+                        </div>
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h4 className="font-medium">Pokoje</h4>
+                                <Button size="sm" variant="outline" onClick={addRoom}>
+                                    <PlusCircle className="mr-2 h-4 w-4"/>
+                                    Dodaj pokój
+                                </Button>
+                            </div>
+                            <div className="space-y-3">
+                                {currentAddress?.rooms.map(room => (
+                                    <div key={room.id} className="flex items-center gap-3 p-3 border rounded-lg bg-background">
+                                        <div className="flex-1 space-y-2">
+                                            <Label htmlFor={`room-name-${room.id}`}>Nazwa pokoju</Label>
+                                            <Input id={`room-name-${room.id}`} value={room.name} placeholder="Np. 1A" onChange={(e) => handleRoomChange(room.id, 'name', e.target.value)} />
+                                        </div>
+                                        <div className="w-24 space-y-2">
+                                            <Label htmlFor={`room-capacity-${room.id}`}>Miejsca</Label>
+                                            <Input id={`room-capacity-${room.id}`} type="number" value={room.capacity} onChange={(e) => handleRoomChange(room.id, 'capacity', parseInt(e.target.value, 10) || 0)} />
+                                        </div>
+                                        <Button variant="ghost" size="icon" className="self-end" onClick={() => deleteRoom(room.id)}>
+                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                        </Button>
+                                    </div>
+                                ))}
+                                 {currentAddress?.rooms.length === 0 && (
+                                    <p className="text-sm text-center text-muted-foreground py-4">Brak pokoi. Dodaj pierwszy pokój.</p>
+                                 )}
+                            </div>
+                        </div>
                     </div>
                     <DialogFooter>
                         <DialogClose asChild><Button variant="outline">Anuluj</Button></DialogClose>
@@ -262,7 +318,7 @@ const CoordinatorManager = ({ items, onUpdate }: { items: Coordinator[]; onUpdat
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <Label htmlFor="name">Imię i Nazwisko</Label>
-                        <Input id="name" value={currentCoordinator?.name || ''} onChange={(e) => setCurrentCoordinator(p => ({ ...p, name: e.target.value }))} />
+                        <Input id="name" value={currentCoordinator?.name || ''} onChange={(e) => setCurrentCoordinator(p => p ? { ...p, name: e.target.value } : null)} />
                     </div>
                     <DialogFooter>
                         <DialogClose asChild><Button variant="outline">Anuluj</Button></DialogClose>

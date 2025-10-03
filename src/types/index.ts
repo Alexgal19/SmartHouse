@@ -35,11 +35,18 @@ export type NonEmployee = {
   relationshipToEmployee: string; // e.g., 'Spouse', 'Child'
 };
 
-export type HousingAddress = {
+export type Room = {
   id: string;
   name: string;
   capacity: number;
 };
+
+export type HousingAddress = {
+  id: string;
+  name: string;
+  rooms: Room[];
+};
+
 
 export type Inspection = {
   id: string;
