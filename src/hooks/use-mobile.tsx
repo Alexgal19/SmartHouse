@@ -22,5 +22,7 @@ export function useIsMobile() {
     }
   }, [])
 
+  // On the server, isMobile is undefined. On the client, it's true/false after mount.
+  // We return false if not mounted yet to default to desktop view, avoiding layout shifts.
   return { isMobile: isMounted ? isMobile : false, isMounted };
 }
