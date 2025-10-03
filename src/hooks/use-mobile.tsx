@@ -1,9 +1,11 @@
+"use client"
+
 import * as React from "react"
 
 const MOBILE_BREAKPOINT = 768
 
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState(false);
+  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined);
   const [isMounted, setIsMounted] = React.useState(false);
 
   React.useEffect(() => {
@@ -17,9 +19,8 @@ export function useIsMobile() {
     
     return () => {
       mql.removeEventListener("change", onChange);
-      setIsMounted(false);
     }
   }, [])
 
-  return { isMobile, isMounted };
+  return { isMobile: isMounted ? isMobile : false, isMounted };
 }
