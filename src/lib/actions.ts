@@ -502,5 +502,3 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
         console.error("Error marking notification as read:", error);
     }
 }
-
-    
