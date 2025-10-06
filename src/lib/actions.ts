@@ -125,15 +125,13 @@ async function getSheet(title: string, headers: string[]): Promise<GoogleSpreads
     if (!sheet) {
         sheet = await doc.addSheet({ title, headerValues: headers });
     } else {
-        // Ensure headers are loaded and consistent.
-        await sheet.loadHeaderRow();
         const currentHeaders = sheet.headerValues;
         const missingHeaders = headers.filter(h => !currentHeaders.includes(h));
         if (missingHeaders.length > 0) {
             await sheet.setHeaderRow(Array.from(new Set([...currentHeaders, ...missingHeaders])));
         }
     }
-    await sheet.loadHeaderRow(); // Crucial step to prevent "Header values not loaded"
+    await sheet.loadHeaderRow();
     return sheet;
 }
 
@@ -566,7 +564,6 @@ export async function getInspections(): Promise<Inspection[]> {
 
 export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Promise<Inspection> {
     try {
-        console.log("Starting addInspection...");
         const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, INSPECTION_HEADERS);
         const photosSheet = await getSheet(SHEET_NAME_INSPECTION_PHOTOS, PHOTO_HEADERS);
         const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, INSPECTION_DETAILS_HEADERS);
@@ -581,40 +578,27 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
         
         await inspectionsSheet.addRow(serializeInspection(newInspectionBase));
         
-        const detailPromises = [];
         for (const category of categories) {
             for (const item of category.items) {
-                detailPromises.push(detailsSheet.addRow({
+                await detailsSheet.addRow({
                     id: `detail-${Date.now()}-${Math.random()}`,
                     inspectionId: newInspectionId,
                     category: category.name,
                     itemLabel: item.label,
                     itemValue: item.value,
-                    uwagi: '',
-                }, { raw: true }));
-            }
-            if (category.uwagi) {
-                detailPromises.push(detailsSheet.addRow({
-                    id: `uwagi-${Date.now()}-${Math.random()}`,
-                    inspectionId: newInspectionId,
-                    category: category.name,
-                    itemLabel: '',
-                    itemValue: '',
-                    uwagi: category.uwagi,
-                }, { raw: true }));
+                    uwagi: category.uwagi || '',
+                });
             }
         }
-        await Promise.all(detailPromises);
         
         if (photos && photos.length > 0) {
-            const photoPromises = photos.map(photoData => {
-                return photosSheet.addRow({
+            for (const photoData of photos) {
+                await photosSheet.addRow({
                     id: `photo-${Date.now()}-${Math.random()}`,
                     inspectionId: newInspectionId,
                     photoData: photoData,
                 }, { raw: true });
-            });
-            await Promise.all(photoPromises);
+            }
         }
 
         const finalInspection = { ...newInspectionBase, categories, photos: photos || [] };
@@ -627,5 +611,3 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
         throw new Error("Could not add inspection.");
     }
 }
-
-    
