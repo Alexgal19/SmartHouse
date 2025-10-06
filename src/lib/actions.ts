@@ -132,7 +132,9 @@ async function getSheet(title: string, headers: string[]) {
         const currentHeaders = sheet.headerValues;
         const missingHeaders = headers.filter(h => !currentHeaders.includes(h));
         if (missingHeaders.length > 0) {
-            await sheet.setHeaderRow([...currentHeaders, ...missingHeaders]);
+            // This is a more forceful way to ensure headers are set, which might be necessary
+            // if the library fails to add them gracefully.
+            await sheet.setHeaderRow(headers);
         }
     }
     return sheet;
