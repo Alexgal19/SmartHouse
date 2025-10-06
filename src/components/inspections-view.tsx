@@ -19,6 +19,7 @@ import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { PlusCircle, Star, FileImage } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
+import { Input } from './ui/input';
 
 interface InspectionsViewProps {
     inspections: Inspection[];
