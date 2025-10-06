@@ -84,7 +84,7 @@ function MainContent() {
     }, [toast]);
     // --- END MIGRATION LOGIC ---
 
-    const fetchData = useCallback(async (showToast: (options: any) => void) => {
+    const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
             const [employeesData, settingsData, notificationsData, inspectionsData] = await Promise.all([
@@ -106,7 +106,7 @@ function MainContent() {
             setInspections(inspectionsData.map(i => ({...i, date: new Date(i.date)})));
         } catch (error) {
             console.error(error);
-            showToast({
+            toast({
                 variant: "destructive",
                 title: "Błąd ładowania danych",
                 description: `Nie udało się pobrać danych z serwera. ${error instanceof Error ? error.message : ''}`,
@@ -114,11 +114,11 @@ function MainContent() {
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [toast]);
     
     useEffect(() => {
-        fetchData(toast);
-    }, [fetchData, toast]);
+        fetchData();
+    }, [fetchData]);
 
     const pollNotifications = useCallback(async () => {
         try {
@@ -145,7 +145,7 @@ function MainContent() {
                 await addEmployee(data, mockUser);
                 toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
             }
-            fetchData(toast); // Refetch all data to be sure
+            fetchData(); // Refetch all data to be sure
         } catch(e: any) {
              toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać pracownika." });
         }
@@ -156,7 +156,7 @@ function MainContent() {
         try {
             await updateSettings(newSettings);
             toast({ title: "Sukces", description: "Ustawienia zostały zaktualizowane." });
-            fetchData(toast); // Refetch all data
+            fetchData(); // Refetch all data
         } catch(e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać ustawień." });
         }
@@ -166,7 +166,7 @@ function MainContent() {
         try {
             await addInspection(inspectionData);
             toast({ title: "Sukces", description: "Nowa inspekcja została dodana." });
-            fetchData(toast);
+            fetchData();
         } catch(e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać inspekcji." });
         }
@@ -176,7 +176,7 @@ function MainContent() {
         try {
             await updateInspection(id, inspectionData);
             toast({ title: "Sukces", description: "Inspekcja została zaktualizowana." });
-            fetchData(toast);
+            fetchData();
         } catch(e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zaktualizować inspekcji." });
         }
@@ -186,7 +186,7 @@ function MainContent() {
         try {
             await deleteInspection(id);
             toast({ title: "Sukces", description: "Inspekcja została usunięta." });
-            fetchData(toast);
+            fetchData();
         } catch(e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć inspekcji." });
         }
@@ -218,7 +218,7 @@ function MainContent() {
         try {
             await updateEmployee(employeeId, { status: 'dismissed', checkOutDate: new Date() }, mockUser);
             toast({ title: "Sukces", description: "Pracownik został zwolniony." });
-            fetchData(toast);
+            fetchData();
         } catch(e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zwolnić pracownika." });
         }
@@ -228,7 +228,7 @@ function MainContent() {
         try {
             await updateEmployee(employeeId, { status: 'active', checkOutDate: null }, mockUser);
             toast({ title: "Sukces", description: "Pracownik został przywrócony." });
-            fetchData(toast);
+            fetchData();
         } catch(e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się przywrócić pracownika." });
         }
