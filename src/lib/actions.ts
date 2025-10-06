@@ -97,7 +97,7 @@ const createNotification = async (
             changes
         };
 
-        await sheet.addRow(serializeNotification(newNotification));
+        await sheet.addRow(serializeNotification(newNotification), { valueInputOption: 'USER_ENTERED' });
     } catch (e) {
         console.error("Could not create notification:", e);
     }
@@ -119,7 +119,7 @@ export async function addEmployee(employeeData: Omit<Employee, 'id' | 'status'>,
         };
 
         const serialized = serializeEmployee(newEmployee);
-        await sheet.addRow(serialized);
+        await sheet.addRow(serialized, { valueInputOption: 'USER_ENTERED' });
         
         await createNotification(actor, 'dodał(a) nowego', newEmployee);
 
@@ -224,8 +224,7 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
         const rowToUpdate = rows[rowIndex];
         
         // Deserialize once to get old data for change detection
-        const oldDataRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/employees`);
-        const allEmployees: Employee[] = await oldDataRes.json();
+        const allEmployees: Employee[] = await getEmployees();
         const currentData = allEmployees.find(e => e.id === employeeId);
         if (!currentData) throw new Error("Employee not found for change detection");
 
@@ -250,7 +249,7 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
             }
         }
         
-        await rowToUpdate.save();
+        await rowToUpdate.save({ valueInputOption: 'USER_ENTERED' });
 
         await createNotification(actor, action, updatedData, changes);
 
@@ -272,16 +271,14 @@ async function syncSheet<T extends Record<string, any>>(
     await sheet.clearRows();
     if (newData.length > 0) {
         const serializedData = newData.map(serializeFn);
-        await sheet.addRows(serializedData);
+        await sheet.addRows(serializedData, { valueInputOption: 'USER_ENTERED' });
     }
 }
 
 
 export async function updateSettings(newSettings: Partial<Settings>): Promise<Settings> {
     try {
-        const settingsRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/settings`);
-        if (!settingsRes.ok) throw new Error('Failed to fetch current settings');
-        const currentSettings = await settingsRes.json();
+        const currentSettings = await getSettings();
         const updatedSettings = { ...currentSettings, ...newSettings };
 
         if (newSettings.addresses) {
@@ -301,8 +298,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Se
             await syncSheet(SHEET_NAME_COORDINATORS, ['uid', 'name'], updatedSettings.coordinators);
         }
         
-        const finalSettingsRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/settings`, { cache: 'no-store' });
-        return finalSettingsRes.json();
+        return getSettings();
     } catch (error) {
         console.error("Error updating settings in Google Sheets:", error);
         throw new Error("Could not update settings.");
@@ -312,7 +308,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Se
 
 export async function getNotifications(): Promise<Notification[]> {
     try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/notifications`, { next: { revalidate: 30 }});
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/notifications`, { cache: 'no-store' });
         if (!res.ok) throw new Error('Failed to fetch notifications');
         return res.json();
     } catch (error) {
@@ -329,7 +325,7 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
 
         if (rowToUpdate) {
             rowToUpdate.set('isRead', 'TRUE');
-            await rowToUpdate.save();
+            await rowToUpdate.save({ valueInputOption: 'USER_ENTERED' });
         }
     } catch (error) {
         console.error("Error marking notification as read:", error);
@@ -398,9 +394,9 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
         Object.keys(mainInspectionData).forEach(key => {
             existingRow.set(key, mainInspectionData[key as keyof typeof mainInspectionData]);
         });
-        await existingRow.save();
+        await existingRow.save({ valueInputOption: 'USER_ENTERED' });
     } else {
-        await inspectionsSheet.addRow(mainInspectionData);
+        await inspectionsSheet.addRow(mainInspectionData, { valueInputOption: 'USER_ENTERED' });
     }
     
     const detailPayload = [];
@@ -433,7 +429,7 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
         }
     }
     if (detailPayload.length > 0) {
-        await detailsSheet.addRows(detailPayload);
+        await detailsSheet.addRows(detailPayload, { valueInputOption: 'USER_ENTERED' });
     }
     
     if (photos && photos.length > 0) {
@@ -443,7 +439,7 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
              photoData: photoData,
         }));
         if (photoPayload.length > 0) {
-            await photosSheet.addRows(photoPayload);
+            await photosSheet.addRows(photoPayload, { valueInputOption: 'USER_ENTERED' });
         }
     }
 }
