@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
@@ -730,3 +731,6 @@ export default function InspectionsView({ inspections, settings, currentUser, on
         </Card>
     );
 }
+
+
+    

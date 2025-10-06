@@ -695,7 +695,7 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
              photoData: photoData,
         }));
         if (photoPayload.length > 0) {
-            await photosSheet.addRows(photoPayload, { raw: false, insert: true });
+            await photosSheet.addRows(photoPayload);
         }
     }
 }
@@ -747,5 +747,8 @@ export async function deleteInspection(id: string): Promise<void> {
         throw new Error(`Could not delete inspection. ${error instanceof Error ? error.message : ''}`);
     }
 }
+
+    
+
 
     
