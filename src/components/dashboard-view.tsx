@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Employee, Settings, HousingAddress } from "@/types";
@@ -8,6 +9,7 @@ import { ChartContainer } from "@/components/ui/chart";
 import { useMemo, useState } from "react";
 import { Building, UserMinus, Users, Home, BedDouble, ChevronRight, ChevronDown } from "lucide-react";
 import { isWithinInterval, format } from "date-fns";
+import { pl } from "date-fns/locale";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "./ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -207,6 +209,23 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
     return Object.entries(counts).map(([name, value]) => ({ name, value }));
   };
 
+  const departuresByMonth = useMemo(() => {
+    const departures = employees.filter(e => e.checkOutDate);
+    const counts = departures.reduce((acc, employee) => {
+      const monthYear = format(employee.checkOutDate!, 'yyyy-MM');
+      acc[monthYear] = (acc[monthYear] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    return Object.entries(counts)
+      .map(([monthYear, value]) => ({
+        name: format(new Date(monthYear), 'MMM yyyy', { locale: pl }),
+        value,
+      }))
+      .sort((a, b) => new Date(a.name).getTime() - new Date(b.name).getTime());
+  }, [employees]);
+
+
   const employeesByCoordinator = useMemo(() => aggregateData('coordinatorId'), [activeEmployees, settings.coordinators]);
   const employeesByNationality = useMemo(() => aggregateData('nationality'), [activeEmployees]);
   const employeesByDepartment = useMemo(() => aggregateData('zaklad'), [activeEmployees]);
@@ -223,13 +242,13 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
     { from: 'hsl(var(--chart-5))', to: 'hsl(var(--chart-1))', id: 'grad5' },
   ];
 
-  const ChartComponent = ({ data, title }: { data: {name: string, value: number}[], title: string }) => (
+  const ChartComponent = ({ data, title, labelY }: { data: {name: string, value: number}[], title: string, labelY?: string }) => (
     <Card>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent className="pl-0 sm:pl-2">
-        <ChartContainer config={chartConfig} className="h-64 w-full">
+        <ChartContainer config={{value: {label: labelY || "Pracownicy"}}} className="h-64 w-full">
           <ResponsiveContainer>
             <BarChart data={data} margin={{ top: 20, right: 20, left: isMobile ? -20 : -10, bottom: isMobile ? 15 : 5 }} barSize={isMobile ? 25 : 50}>
                <defs>
@@ -257,7 +276,7 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
                 content={({ active, payload, label }) => active && payload && payload.length && (
                     <div className="bg-background/95 p-3 rounded-lg border shadow-lg">
                         <p className="font-bold text-foreground">{label}</p>
-                        <p className="text-sm text-primary">{`${payload[0].value} pracowników`}</p>
+                        <p className="text-sm text-primary">{`${payload[0].value} ${labelY || 'pracowników'}`}</p>
                     </div>
                 )}
               />
@@ -393,9 +412,8 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
         <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
           <ChartComponent data={employeesByCoordinator} title="Pracownicy wg koordynatora" />
           <ChartComponent data={employeesByNationality} title="Pracownicy wg narodowości" />
-          <div className="lg:col-span-2">
-              <ChartComponent data={employeesByDepartment} title="Pracownicy wg zakładu" />
-          </div>
+          <ChartComponent data={employeesByDepartment} title="Pracownicy wg zakładu" />
+          <ChartComponent data={departuresByMonth} title="Statystyka wyjazdów" labelY="Wyjazdy" />
         </div>
       )}
 
@@ -441,3 +459,6 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
     </div>
   );
 }
+
+
+    
