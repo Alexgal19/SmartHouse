@@ -16,7 +16,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ScrollArea } from "./ui/scroll-area";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 interface DashboardViewProps {
@@ -127,7 +127,6 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
   const [housingSearchTerm, setHousingSearchTerm] = useState("");
   const [selectedAddress, setSelectedAddress] = useState<HousingAddress | null>(null);
   const [isAllEmployeesDialogOpen, setIsAllEmployeesDialogOpen] = useState(false);
-  const [isHousingOverviewOpen, setIsHousingOverviewOpen] = useState(true);
 
 
   const { isMobile } = useIsMobile();
@@ -296,73 +295,81 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {kpiData.map(kpi => (
-          <Card key={kpi.title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
-              <kpi.icon className={`h-4 w-4 text-muted-foreground ${kpi.color}`} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{kpi.value}</div>
-            </CardContent>
-          </Card>
-        ))}
+        <Tabs defaultValue="summary" className="w-full">
+            <TabsList>
+                <TabsTrigger value="summary">Podsumowanie</TabsTrigger>
+                <TabsTrigger value="housing">Zakwaterowanie</TabsTrigger>
+            </TabsList>
+            <TabsContent value="summary" className="mt-6">
+                <div className="space-y-6">
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {kpiData.map(kpi => (
+                        <Card key={kpi.title}>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
+                            <kpi.icon className={`h-4 w-4 text-muted-foreground ${kpi.color}`} />
+                            </CardHeader>
+                            <CardContent>
+                            <div className="text-2xl font-bold">{kpi.value}</div>
+                            </CardContent>
+                        </Card>
+                        ))}
 
-        <Dialog open={isCheckoutsDialogOpen} onOpenChange={setIsCheckoutsDialogOpen}>
-            <DialogTrigger asChild>
-                <Card className="cursor-pointer hover:border-primary transition-colors">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Nadchodzące wykwaterowania (30 dni)</CardTitle>
-                        <UserMinus className="h-4 w-4 text-muted-foreground text-red-400" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{upcomingCheckoutsCount}</div>
-                    </CardContent>
-                </Card>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[800px] max-h-[90vh]">
-                <DialogHeader>
-                    <DialogTitle>Pracownicy z nadchodzącym terminem wykwaterowania</DialogTitle>
-                </DialogHeader>
-                <ScrollArea className="h-full">
-                  <div className="pr-4">
-                    {upcomingCheckoutsList.length > 0 ? (
-                        upcomingCheckoutsList.map(employee => (
-                            <Card key={employee.id} onClick={() => handleEmployeeClick(employee)} className="mb-3 cursor-pointer">
-                                <CardHeader>
-                                    <CardTitle className="text-base">{employee.fullName}</CardTitle>
-                                    <CardDescription>{getCoordinatorName(employee.coordinatorId)}</CardDescription>
-                                </CardHeader>
-                                <CardContent className="text-sm space-y-1">
-                                    <p><span className="font-semibold">Adres:</span> {employee.address}</p>
-                                    <p><span className="font-semibold">Data wyjazdu:</span> {employee.contractEndDate ? format(employee.contractEndDate, 'dd-MM-yyyy') : 'N/A'}</p>
-                                </CardContent>
-                            </Card>
-                        ))
-                    ) : (
-                        <p className="text-center text-muted-foreground py-8">Brak pracowników z nadchodzącym terminem wyjazdu.</p>
-                    )}
-                  </div>
-                </ScrollArea>
-            </DialogContent>
-        </Dialog>
-      </div>
-
-        <Collapsible open={isHousingOverviewOpen} onOpenChange={setIsHousingOverviewOpen}>
-            <Card>
-                <CollapsibleTrigger asChild>
-                    <CardHeader className="cursor-pointer">
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <CardTitle>Przegląd zakwaterowania</CardTitle>
-                                <CardDescription>Poniżej znajduje się lista wszystkich mieszkań i ich obłożenie.</CardDescription>
-                            </div>
-                            <ChevronDown className={cn("h-6 w-6 transition-transform", isHousingOverviewOpen && "rotate-180")} />
+                        <Dialog open={isCheckoutsDialogOpen} onOpenChange={setIsCheckoutsDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Card className="cursor-pointer hover:border-primary transition-colors">
+                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                        <CardTitle className="text-sm font-medium">Nadchodzące wykwaterowania (30 dni)</CardTitle>
+                                        <UserMinus className="h-4 w-4 text-muted-foreground text-red-400" />
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="text-2xl font-bold">{upcomingCheckoutsCount}</div>
+                                    </CardContent>
+                                </Card>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[800px] max-h-[90vh]">
+                                <DialogHeader>
+                                    <DialogTitle>Pracownicy z nadchodzącym terminem wykwaterowania</DialogTitle>
+                                </DialogHeader>
+                                <ScrollArea className="h-full">
+                                <div className="pr-4">
+                                    {upcomingCheckoutsList.length > 0 ? (
+                                        upcomingCheckoutsList.map(employee => (
+                                            <Card key={employee.id} onClick={() => handleEmployeeClick(employee)} className="mb-3 cursor-pointer">
+                                                <CardHeader>
+                                                    <CardTitle className="text-base">{employee.fullName}</CardTitle>
+                                                    <CardDescription>{getCoordinatorName(employee.coordinatorId)}</CardDescription>
+                                                </CardHeader>
+                                                <CardContent className="text-sm space-y-1">
+                                                    <p><span className="font-semibold">Adres:</span> {employee.address}</p>
+                                                    <p><span className="font-semibold">Data wyjazdu:</span> {employee.contractEndDate ? format(employee.contractEndDate, 'dd-MM-yyyy') : 'N/A'}</p>
+                                                </CardContent>
+                                            </Card>
+                                        ))
+                                    ) : (
+                                        <p className="text-center text-muted-foreground py-8">Brak pracowników z nadchodzącym terminem wyjazdu.</p>
+                                    )}
+                                </div>
+                                </ScrollArea>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
+                    {!isMobile && (
+                        <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
+                        <ChartComponent data={employeesByCoordinator} title="Pracownicy wg koordynatora" />
+                        <ChartComponent data={employeesByNationality} title="Pracownicy wg narodowości" />
+                        <ChartComponent data={employeesByDepartment} title="Pracownicy wg zakładu" />
+                        <ChartComponent data={departuresByMonth} title="Statystyka wyjazdów" labelY="Wyjazdy" />
                         </div>
+                    )}
+                </div>
+            </TabsContent>
+            <TabsContent value="housing" className="mt-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Przegląd zakwaterowania</CardTitle>
+                        <CardDescription>Poniżej znajduje się lista wszystkich mieszkań i ich obłożenie.</CardDescription>
                     </CardHeader>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
                     <CardContent>
                         <div className="p-1 mb-4">
                             <Input
@@ -372,7 +379,7 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
                                 className="w-full max-w-sm"
                             />
                         </div>
-                        <ScrollArea className="h-[40vh]">
+                        <ScrollArea className="h-[60vh]">
                             <div className="space-y-4 pr-4">
                             {housingOverview.length > 0 ? (
                                 housingOverview.map(house => (
@@ -404,19 +411,10 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
                             </div>
                         </ScrollArea>
                     </CardContent>
-                </CollapsibleContent>
-            </Card>
-        </Collapsible>
+                </Card>
+            </TabsContent>
+        </Tabs>
       
-      {!isMobile && (
-        <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
-          <ChartComponent data={employeesByCoordinator} title="Pracownicy wg koordynatora" />
-          <ChartComponent data={employeesByNationality} title="Pracownicy wg narodowości" />
-          <ChartComponent data={employeesByDepartment} title="Pracownicy wg zakładu" />
-          <ChartComponent data={departuresByMonth} title="Statystyka wyjazdów" labelY="Wyjazdy" />
-        </div>
-      )}
-
       {/* Dialog for Room/Employee drilldown */}
       <Dialog open={isHousingDialogOpen} onOpenChange={(isOpen) => {
           setIsHousingDialogOpen(isOpen);
@@ -460,5 +458,7 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
   );
 }
 
+
+    
 
     
