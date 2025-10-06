@@ -125,7 +125,6 @@ async function getSheet(title: string, headers: string[]): Promise<GoogleSpreads
     if (!sheet) {
         sheet = await doc.addSheet({ title, headerValues: headers });
     } else {
-        await sheet.loadHeaderRow(); // Load headers to check them
         const currentHeaders = sheet.headerValues;
         const missingHeaders = headers.filter(h => !currentHeaders.includes(h));
         if (missingHeaders.length > 0) {
@@ -215,6 +214,7 @@ const createNotification = async (
 ) => {
     try {
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
+        await sheet.loadHeaderRow();
 
         const message = `${actor.name} ${action} pracownika ${employee.fullName}.`;
         
@@ -238,7 +238,8 @@ const createNotification = async (
 
 export async function addEmployee(employeeData: Omit<Employee, 'id' | 'status'>, actor: Coordinator): Promise<Employee> {
     try {
-        const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS); 
+        const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
+        await sheet.loadHeaderRow();
         const newEmployee: Employee = {
             ...employeeData,
             id: `emp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
@@ -348,6 +349,7 @@ const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): 
 export async function updateEmployee(employeeId: string, employeeData: Partial<Omit<Employee, 'id'>>, actor: Coordinator): Promise<Employee> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
+        await sheet.loadHeaderRow();
         
         const rows = await sheet.getRows();
         const rowIndex = rows.findIndex(row => row.get('id') === employeeId);
@@ -402,6 +404,7 @@ async function syncSheet<T extends Record<string, any>>(
     serializeFn: (item: T) => Record<string, any> = (item) => item
 ) {
     const sheet = await getSheet(sheetName, headers);
+    await sheet.loadHeaderRow();
     await sheet.clearRows();
     if (newData.length > 0) {
         const serializedData = newData.map(serializeFn);
@@ -443,6 +446,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Se
 export async function getNotifications(): Promise<Notification[]> {
     try {
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
+        await sheet.loadHeaderRow();
         const rows = await sheet.getRows();
         return rows.map(deserializeNotification).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     } catch (error) {
@@ -454,6 +458,7 @@ export async function getNotifications(): Promise<Notification[]> {
 export async function markNotificationAsRead(notificationId: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
+        await sheet.loadHeaderRow();
         const rows = await sheet.getRows();
         const rowToUpdate = rows.find(row => row.get('id') === notificationId);
 
@@ -473,13 +478,10 @@ const PHOTO_HEADERS = ['id', 'inspectionId', 'photoData'];
 const INSPECTION_DETAILS_HEADERS = ['id', 'inspectionId', 'category', 'itemLabel', 'itemValue', 'uwagi'];
 
 const serializeRaw = (value: any): string | number | boolean => {
-    if (value === null || value === undefined || value === '') {
+    if (value === null || value === undefined) {
       return '';
     }
-    if (typeof value === 'boolean' || typeof value === 'number') {
-        return value;
-    }
-    return String(value);
+    return value;
 };
 
 const serializeInspection = (inspection: Omit<Inspection, 'photos' | 'categories'>): Record<string, string | number | boolean> => ({
@@ -503,19 +505,18 @@ const deserializeInspection = (row: any, allDetails: InspectionDetail[], allPhot
         if (detail.itemLabel) {
             const valueStr = detail.itemValue;
             let value: any = valueStr;
+            
             if (valueStr === 'true') value = true;
             else if (valueStr === 'false') value = false;
-            else if (!isNaN(Number(valueStr)) && valueStr !== '' && valueStr !== null) value = Number(valueStr);
-            else if (valueStr === '' || valueStr === null) value = null;
+            else if (valueStr && !isNaN(Number(valueStr))) value = Number(valueStr);
+            else if (valueStr === null || valueStr === '') value = null;
 
-            // Attempt to find if an item with this label already exists to avoid duplicates
             const existingItem = acc[detail.category].items.find(i => i.label === detail.itemLabel);
             if (!existingItem) {
                  acc[detail.category].items.push({
-                    type: 'info', 
+                    type: 'info', // Type is not stored, so we default to info. The client knows the real type.
                     label: detail.itemLabel, 
                     value: value,
-                    options: typeof value === 'string' && value.includes(',') ? value.split(',') : undefined
                 });
             }
         }
@@ -583,9 +584,12 @@ export async function getInspections(): Promise<Inspection[]> {
 
 export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Promise<Inspection> {
     try {
+        console.log("Starting addInspection...");
         const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, INSPECTION_HEADERS);
         const photosSheet = await getSheet(SHEET_NAME_INSPECTION_PHOTOS, PHOTO_HEADERS);
         const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, INSPECTION_DETAILS_HEADERS);
+        
+        await Promise.all([inspectionsSheet.loadHeaderRow(), photosSheet.loadHeaderRow(), detailsSheet.loadHeaderRow()]);
 
         const newInspectionId = `insp-${Date.now()}`;
         const { photos, categories, ...restOfData } = inspectionData;
@@ -595,56 +599,55 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
             id: newInspectionId,
         };
         
-        // 1. Save the main inspection record
-        await inspectionsSheet.addRow(serializeInspection(newInspectionBase));
+        console.log("Step 1: Saving main inspection record...");
+        await inspectionsSheet.addRow(serializeInspection(newInspectionBase), { raw: false });
+        console.log("Step 1: Success.");
         
-        // 2. Save details records
-        const detailPromises = [];
+        console.log("Step 2: Saving details...");
         for (const category of categories) {
             for (const item of category.items) {
-                 detailPromises.push(detailsSheet.addRow({
+                 await detailsSheet.addRow({
                     id: `detail-${Date.now()}-${Math.random()}`,
                     inspectionId: newInspectionId,
                     category: category.name,
                     itemLabel: item.label,
-                    itemValue: serializeRaw(item.value),
+                    itemValue: item.value, // Keep original type
                     uwagi: '',
-                }));
+                }, { raw: true });
             }
              if (category.uwagi) {
-                detailPromises.push(detailsSheet.addRow({
+                await detailsSheet.addRow({
                     id: `uwagi-${Date.now()}-${Math.random()}`,
                     inspectionId: newInspectionId,
                     category: category.name,
                     itemLabel: '',
                     itemValue: '',
                     uwagi: category.uwagi,
-                }));
+                }, { raw: true });
             }
         }
-        await Promise.all(detailPromises);
+        console.log("Step 2: Success.");
         
-        // 3. Save photo records
+        console.log("Step 3: Saving photos...");
         if (photos && photos.length > 0) {
-            const photoPromises = photos.map(photoData => photosSheet.addRow({
-                id: `photo-${Date.now()}-${Math.random()}`,
-                inspectionId: newInspectionId,
-                photoData: photoData,
-            }));
-            await Promise.all(photoPromises);
+            for (const photoData of photos) {
+                 await photosSheet.addRow({
+                    id: `photo-${Date.now()}-${Math.random()}`,
+                    inspectionId: newInspectionId,
+                    photoData: photoData,
+                }, { raw: true }); // Using raw: true might be risky, let's see
+            }
         }
+        console.log("Step 3: Success.");
 
-        return { ...newInspectionBase, categories, photos: photos || [] };
+        const finalInspection = { ...newInspectionBase, categories, photos: photos || [] };
+        console.log("addInspection finished successfully.");
+        return finalInspection;
     } catch (error) {
-        console.error("Error adding inspection:", error);
+        console.error("Error in addInspection:", error);
         if (error instanceof Error && (error.message.includes('exceeds the maximum size') || error.message.includes('request entity too large'))) {
              throw new Error("One of the photos is too large to be saved. Please use smaller image files.");
         }
         throw new Error("Could not add inspection.");
     }
 }
-    
-
-    
-
-    

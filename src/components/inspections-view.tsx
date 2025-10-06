@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useRef, useMemo, useEffect } from 'react';
@@ -57,7 +56,7 @@ type InspectionFormData = z.infer<typeof inspectionSchema>;
 const cleanlinessOptions = ["Bardzo czysto", "Czysto", "Brudno", "Bardzo brudno"];
 
 const getInitialChecklist = (): InspectionCategory[] => [
-    { 
+    {
         name: "Kuchnia", uwagi: "", items: [
             { label: "Czystość kuchnia", type: "select", value: null, options: cleanlinessOptions },
             { label: "Czystość lodówki", type: "select", value: null, options: cleanlinessOptions },
@@ -95,13 +94,13 @@ const getInitialChecklist = (): InspectionCategory[] => [
     },
 ];
 
-const RatingInput = ({ value, onChange, readOnly = false }: { value: number, onChange?: (value: number) => void, readOnly?: boolean }) => {
+const RatingInput = ({ value, onChange, readOnly = false }: { value: number | null, onChange?: (value: number) => void, readOnly?: boolean }) => {
     return (
         <div className="flex items-center gap-1">
             {[1, 2, 3, 4, 5].map(star => (
                 <Star
                     key={star}
-                    className={`h-6 w-6 ${readOnly ? '' : 'cursor-pointer'} ${value >= star ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                    className={`h-6 w-6 ${readOnly ? '' : 'cursor-pointer'} ${(value || 0) >= star ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
                     onClick={() => !readOnly && onChange?.(star)}
                 />
             ))}
@@ -112,6 +111,7 @@ const RatingInput = ({ value, onChange, readOnly = false }: { value: number, onC
 const YesNoInput = ({ value, onChange, readOnly = false }: { value: boolean | null, onChange?: (value: boolean) => void, readOnly?: boolean }) => {
     const randomId = React.useId();
     if(readOnly){
+        if (value === null) return <Badge variant="secondary">Brak</Badge>
         return <Badge variant={value ? "secondary" : "destructive"}>{value ? 'Tak' : 'Nie'}</Badge>
     }
     return (
@@ -130,7 +130,7 @@ const YesNoInput = ({ value, onChange, readOnly = false }: { value: boolean | nu
 
 const SelectInput = ({ value, onChange, options, readOnly = false }: { value: string | null, onChange?: (value: string) => void, options: string[], readOnly?: boolean }) => {
      if(readOnly){
-        return <Badge variant="secondary">{value}</Badge>
+        return <Badge variant="secondary">{value || 'Brak'}</Badge>
     }
     return (
         <Select onValueChange={onChange} value={value || ''}>
@@ -153,6 +153,13 @@ const CameraCapture = ({ isOpen, onOpenChange, onCapture }: { isOpen: boolean, o
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
 
+    const stopCamera = () => {
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+    };
+    
     useEffect(() => {
         const getCameraPermission = async () => {
           try {
@@ -172,25 +179,23 @@ const CameraCapture = ({ isOpen, onOpenChange, onCapture }: { isOpen: boolean, o
           }
         };
     
-        if (isOpen && hasCameraPermission === null) {
+        if (isOpen) {
           getCameraPermission();
+        } else {
+            stopCamera();
         }
     
         return () => {
-          if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
-            streamRef.current = null;
-            setHasCameraPermission(null);
-          }
+          stopCamera();
         };
-      }, [isOpen, hasCameraPermission, toast]);
+      }, [isOpen, toast]);
 
     const handleCapture = () => {
         if (videoRef.current && canvasRef.current) {
             const video = videoRef.current;
             const canvas = canvasRef.current;
             
-            const MAX_WIDTH = 1280;
+            const MAX_WIDTH = 1024; // Reduced size
             const scale = MAX_WIDTH / video.videoWidth;
             canvas.width = MAX_WIDTH;
             canvas.height = video.videoHeight * scale;
@@ -198,7 +203,7 @@ const CameraCapture = ({ isOpen, onOpenChange, onCapture }: { isOpen: boolean, o
             const context = canvas.getContext('2d');
             context?.drawImage(video, 0, 0, canvas.width, canvas.height);
             
-            const dataUri = canvas.toDataURL('image/jpeg', 0.8);
+            const dataUri = canvas.toDataURL('image/jpeg', 0.7); // Reduced quality
             onCapture(dataUri);
             onOpenChange(false);
         }
@@ -216,7 +221,7 @@ const CameraCapture = ({ isOpen, onOpenChange, onCapture }: { isOpen: boolean, o
                          <Alert variant="destructive">
                             <AlertTitle>Brak dostępu do kamery</AlertTitle>
                             <AlertDescription>
-                                Proszę zezwolić na dostęp do kamery w ustawieniach przeglądarki, aby korzystać z tej funkcji.
+                                Proszę zezwolić na dostęp do kamery в ustawieniach przeglądarki, aby korzystać з цієї функції.
                             </AlertDescription>
                         </Alert>
                     )}
@@ -334,8 +339,8 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
             form.setError("addressId", { message: "Nie znaleziono adresu." });
             return;
         }
-        
-        await onSave({
+
+        const inspectionData: Omit<Inspection, 'id'> = {
             addressId: data.addressId,
             addressName: address.name,
             date: data.date,
@@ -344,7 +349,10 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
             standard: data.standard,
             categories: data.categories,
             photos: data.photos || [],
-        });
+        };
+        
+        await onSave(inspectionData);
+
         form.reset({
             addressId: '',
             date: new Date(),
@@ -420,9 +428,9 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
                                                                 <FormLabel>{item.label}</FormLabel>
                                                                 <FormControl>
                                                                     <div>
-                                                                        {item.type === 'rating' && <RatingInput value={field.value as number} onChange={field.onChange} />}
+                                                                        {item.type === 'rating' && <RatingInput value={field.value as number | null} onChange={field.onChange} />}
                                                                         {item.type === 'yes_no' && <YesNoInput value={field.value as boolean | null} onChange={field.onChange} />}
-                                                                        {item.type === 'text' && <Textarea {...field} className="w-full sm:w-64" />}
+                                                                        {item.type === 'text' && <Textarea {...field} value={field.value || ''} className="w-full sm:w-64" />}
                                                                         {item.type === 'select' && item.options && <SelectInput value={field.value as string | null} onChange={field.onChange} options={item.options} />}
                                                                     </div>
                                                                 </FormControl>
@@ -437,7 +445,7 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
                                                 render={({ field }) => (
                                                     <FormItem>
                                                         <FormLabel>Uwagi</FormLabel>
-                                                        <FormControl><Textarea {...field} placeholder="Dodatkowe uwagi..." /></FormControl>
+                                                        <FormControl><Textarea {...field} value={field.value || ''} placeholder="Dodatkowe uwagi..." /></FormControl>
                                                     </FormItem>
                                                 )}
                                             />
@@ -517,14 +525,14 @@ const InspectionDetailDialog = ({ inspection, isOpen, onOpenChange }: { inspecti
                                 <CardHeader><CardTitle>{category.name}</CardTitle></CardHeader>
                                 <CardContent>
                                     <ul className="space-y-3">
-                                    {category.items.map(item => (
-                                        <li key={item.label} className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm">
+                                    {category.items.map((item, index) => (
+                                        <li key={`${item.label}-${index}`} className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm">
                                             <span className="font-medium">{item.label}</span>
                                             <div>
                                                 {item.type === 'yes_no' && <YesNoInput readOnly value={item.value as boolean | null} />}
                                                 {item.type === 'select' && item.options && <SelectInput readOnly options={item.options} value={item.value as string | null} />}
                                                 {item.type === 'text' && <p className="text-muted-foreground">{item.value as string || 'N/A'}</p>}
-                                                {item.type === 'rating' && <RatingInput value={item.value as number} readOnly />}
+                                                {item.type === 'rating' && <RatingInput value={item.value as number | null} readOnly />}
                                             </div>
                                         </li>
                                     ))}
@@ -618,5 +626,3 @@ export default function InspectionsView({ inspections, settings, currentUser, on
         </Card>
     );
 }
-
-    
