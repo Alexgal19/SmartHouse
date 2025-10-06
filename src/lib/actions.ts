@@ -124,9 +124,10 @@ async function getSheet(title: string, headers: string[]): Promise<GoogleSpreads
     let sheet = doc.sheetsByTitle[title];
     if (!sheet) {
         sheet = await doc.addSheet({ title, headerValues: headers });
+    } else {
+        // ALWAYS load headers for existing sheets to prevent errors.
+        await sheet.loadHeaderRow();
     }
-    // ALWAYS load headers for existing sheets to prevent errors.
-    await sheet.loadHeaderRow();
     return sheet;
 }
 
@@ -621,19 +622,21 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
 
     const inspectionId = id || `insp-${Date.now()}`;
     const { photos, categories, ...restOfData } = inspectionData;
-
+    
+    // --- Clear and write pattern for details and photos ---
     const allDetailRows = await detailsSheet.getRows();
     const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === inspectionId);
-    for(const row of detailsToDelete) {
+    for (const row of detailsToDelete) {
         await row.delete();
     }
     
     const allPhotoRows = await photosSheet.getRows();
     const photosToDelete = allPhotoRows.filter(r => r.get('inspectionId') === inspectionId);
-    for(const row of photosToDelete) {
+     for (const row of photosToDelete) {
         await row.delete();
     }
 
+    // --- Save main inspection data ---
     const mainInspectionData = serializeInspection({ ...restOfData, id: inspectionId });
     const allInspectionRows = await inspectionsSheet.getRows();
     const existingRow = allInspectionRows.find(row => row.get('id') === inspectionId);
@@ -647,14 +650,16 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
         await inspectionsSheet.addRow(mainInspectionData);
     }
     
+    // --- Save details and photos ---
     const detailPayload = [];
     for (const category of categories) {
+        // One row for uwagi, if it exists
         if (category.uwagi) {
-            detailPayload.push({
+             detailPayload.push({
                 id: `detail-${Date.now()}-${Math.random()}`,
                 inspectionId: inspectionId,
                 category: category.name,
-                itemLabel: '',
+                itemLabel: '', // No label for uwagi row
                 itemValue: '',
                 uwagi: category.uwagi,
             });
@@ -666,26 +671,22 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
                 category: category.name,
                 itemLabel: item.label,
                 itemValue: serializeRaw(item.value),
-                uwagi: category.uwagi || '',
+                uwagi: '', // uwagi is stored in its own row
             });
         }
     }
-     if(detailPayload.length > 0) await detailsSheet.addRows(detailPayload);
+    if (detailPayload.length > 0) {
+        await detailsSheet.addRows(detailPayload);
+    }
     
     if (photos && photos.length > 0) {
-        for (const photoData of photos) {
-            try {
-                 await photosSheet.addRow({
-                     id: `photo-${Date.now()}-${Math.random()}`,
-                     inspectionId: inspectionId,
-                     photoData: photoData,
-                }, { raw: false });
-            } catch (e: any) {
-                 if (e.message.includes('exceeds the maximum size')) {
-                    throw new Error("One of the photos is too large to be saved. Please use smaller image files.");
-                }
-                throw e;
-            }
+        const photoPayload = photos.map(photoData => ({
+             id: `photo-${Date.now()}-${Math.random()}`,
+             inspectionId: inspectionId,
+             photoData: photoData,
+        }));
+        if (photoPayload.length > 0) {
+            await photosSheet.addRows(photoPayload, { raw: false, insert: true });
         }
     }
 }
@@ -737,3 +738,5 @@ export async function deleteInspection(id: string): Promise<void> {
         throw new Error(`Could not delete inspection. ${error instanceof Error ? error.message : ''}`);
     }
 }
+
+    
