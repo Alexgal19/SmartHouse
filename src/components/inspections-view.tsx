@@ -304,23 +304,25 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const files = event.target.files;
-        if (files) {
-            const currentPhotos = form.getValues('photos') || [];
-            const newPhotos: string[] = [];
-            Array.from(files).forEach(file => {
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    newPhotos.push(reader.result as string);
-                    if (newPhotos.length === files.length) {
-                        form.setValue('photos', [...currentPhotos, ...newPhotos]);
-                    }
-                };
-                reader.readAsDataURL(file);
+        if (files && files.length > 0) {
+          const filePromises = Array.from(files).map((file) => {
+            return new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(file);
             });
+          });
+    
+          Promise.all(filePromises).then((newPhotos) => {
+            const currentPhotos = form.getValues('photos') || [];
+            form.setValue('photos', [...currentPhotos, ...newPhotos]);
+          });
         }
-         // Reset input value to allow selecting the same file again
-        if(event.target) {
-            event.target.value = '';
+    
+        // Reset input value to allow selecting the same file again
+        if (event.target) {
+          event.target.value = '';
         }
     };
 
@@ -623,5 +625,7 @@ export default function InspectionsView({ inspections, settings, currentUser, on
         </Card>
     );
 }
+
+    
 
     
