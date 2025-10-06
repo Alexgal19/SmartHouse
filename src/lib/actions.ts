@@ -352,7 +352,7 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
         const currentData = deserializeEmployee(rowToUpdate);
         
         const changes = getChanges(currentData, employeeData);
-        if(changes.length === 0 && !employeeData.status) { // Also allow status change without other changes
+        if(changes.length === 0 && !('status' in employeeData)) { 
               return currentData; // No changes, no update, no notification
         }
         
@@ -393,28 +393,24 @@ async function syncSheet<T extends Record<string, any>>(
     idKey: keyof T
 ) {
     const sheet = await getSheet(sheetName, headers);
-    await sheet.loadCells(); // Load all cells for faster updates
     const rows = await sheet.getRows();
     
-    const newDataIds = new Set(newData.map(item => item[idKey]));
-    const oldDataIds = new Set(rows.map(row => row.get(idKey as string)));
-
-    // Delete rows that are no longer in the new data
-    const rowsToDeleteIndices: number[] = [];
-    rows.forEach((row, index) => {
-        if (!newDataIds.has(row.get(idKey as string))) {
-            rowsToDeleteIndices.push(index);
-        }
-    });
-    // Delete in reverse order to avoid shifting indices
-    for (let i = rowsToDeleteIndices.length - 1; i >= 0; i--) {
-        await rows[rowsToDeleteIndices[i]].delete();
-    }
+    const newDataMap = new Map(newData.map(item => [item[idKey], item]));
+    const oldDataMap = new Map(rows.map(row => [row.get(idKey as string), row]));
     
-    const newRowsToAdd: Record<string, any>[] = [];
-    // Update existing rows or prepare new ones to be added
-    for (const item of newData) {
-        const existingRow = rows.find(row => row.get(idKey as string) === item[idKey]);
+    const rowsToDelete: any[] = [];
+    for (const [id, row] of oldDataMap.entries()) {
+        if (!newDataMap.has(id)) {
+            rowsToDelete.push(row.delete());
+        }
+    }
+    if (rowsToDelete.length > 0) {
+        await Promise.all(rowsToDelete);
+    }
+
+    const rowsToAddOrUpdate: any[] = [];
+    for (const [id, item] of newDataMap.entries()) {
+        const existingRow = oldDataMap.get(id);
         const serializedItem = headers.reduce((acc, header) => {
             const value = item[header];
              if (value !== null && value !== undefined) {
@@ -434,15 +430,15 @@ async function syncSheet<T extends Record<string, any>>(
                 }
             });
             if(needsSave) {
-                 await existingRow.save();
+                 rowsToAddOrUpdate.push(existingRow.save());
             }
         } else {
-            newRowsToAdd.push(serializedItem);
+            rowsToAddOrUpdate.push(sheet.addRow(serializedItem));
         }
     }
-
-    if(newRowsToAdd.length > 0) {
-        await sheet.addRows(newRowsToAdd);
+    
+    if (rowsToAddOrUpdate.length > 0) {
+        await Promise.all(rowsToAddOrUpdate);
     }
 }
 
