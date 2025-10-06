@@ -220,9 +220,11 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
                                                             <FormItem className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-md border p-3">
                                                                 <FormLabel>{item.label}</FormLabel>
                                                                 <FormControl>
-                                                                    {item.type === 'rating' && <RatingInput value={field.value as number} onChange={field.onChange} />}
-                                                                    {item.type === 'yes_no' && <YesNoInput value={field.value as boolean | null} onChange={field.onChange} />}
-                                                                    {item.type === 'text' && <Textarea {...field} className="w-full sm:w-64" />}
+                                                                    <>
+                                                                        {item.type === 'rating' && <RatingInput value={field.value as number} onChange={field.onChange} />}
+                                                                        {item.type === 'yes_no' && <YesNoInput value={field.value as boolean | null} onChange={field.onChange} />}
+                                                                        {item.type === 'text' && <Textarea {...field} className="w-full sm:w-64" />}
+                                                                    </>
                                                                 </FormControl>
                                                             </FormItem>
                                                         )}
