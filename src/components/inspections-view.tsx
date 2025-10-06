@@ -200,7 +200,6 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
     const watchedCategories = useWatch({ control: form.control, name: 'categories' });
     const watchedPhotos = useWatch({ control: form.control, name: 'photos' });
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const cameraInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const files = event.target.files;
@@ -351,12 +350,8 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
                                     <CardContent>
                                         <div className="flex flex-wrap gap-2 mb-4">
                                             <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-                                                <FileImage className="mr-2 h-4 w-4" />
-                                                Załaduj
-                                            </Button>
-                                             <Button type="button" variant="outline" onClick={() => cameraInputRef.current?.click()}>
                                                 <Camera className="mr-2 h-4 w-4" />
-                                                Zrób zdjęcie
+                                                Dodaj zdjęcie
                                             </Button>
                                             <input
                                                 type="file"
@@ -364,14 +359,6 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
                                                 className="hidden"
                                                 accept="image/*"
                                                 multiple
-                                                onChange={handleFileChange}
-                                            />
-                                             <input
-                                                type="file"
-                                                ref={cameraInputRef}
-                                                className="hidden"
-                                                accept="image/*"
-                                                capture="environment"
                                                 onChange={handleFileChange}
                                             />
                                         </div>
@@ -525,3 +512,5 @@ export default function InspectionsView({ inspections, settings, currentUser, on
         </Card>
     );
 }
+
+    
