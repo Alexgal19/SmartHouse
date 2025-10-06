@@ -82,6 +82,9 @@ export type Photo = {
 export type InspectionDetail = {
     id: string;
     inspectionId: string;
+    addressName: string;
+    date: string;
+    coordinatorName: string;
     category: string;
     itemLabel: string | null;
     itemValue: string | null;
@@ -130,3 +133,4 @@ export type Notification = {
 };
 
 export type View = 'dashboard' | 'employees' | 'settings' | 'inspections';
+

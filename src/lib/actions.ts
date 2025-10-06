@@ -458,7 +458,7 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
 
 const INSPECTION_HEADERS = ['id', 'addressId', 'addressName', 'date', 'coordinatorId', 'coordinatorName', 'standard'];
 const PHOTO_HEADERS = ['id', 'inspectionId', 'photoData'];
-const INSPECTION_DETAILS_HEADERS = ['id', 'inspectionId', 'category', 'itemLabel', 'itemValue', 'uwagi'];
+const INSPECTION_DETAILS_HEADERS = ['id', 'inspectionId', 'addressName', 'date', 'coordinatorName', 'category', 'itemLabel', 'itemValue', 'uwagi'];
 
 const serializeRaw = (value: any): string => {
     if (value === null || value === undefined) {
@@ -599,6 +599,9 @@ export async function getInspections(): Promise<Inspection[]> {
         const allDetails: InspectionDetail[] = detailRows.map(row => ({
             id: row.get('id'),
             inspectionId: row.get('inspectionId'),
+            addressName: row.get('addressName'),
+            date: row.get('date'),
+            coordinatorName: row.get('coordinatorName'),
             category: row.get('category'),
             itemLabel: row.get('itemLabel') || null,
             itemValue: row.get('itemValue') || null,
@@ -658,6 +661,9 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
              detailPayload.push({
                 id: `detail-${Date.now()}-${Math.random()}`,
                 inspectionId: inspectionId,
+                addressName: inspectionData.addressName,
+                date: inspectionData.date.toISOString(),
+                coordinatorName: inspectionData.coordinatorName,
                 category: category.name,
                 itemLabel: '', // No label for uwagi row
                 itemValue: '',
@@ -668,6 +674,9 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
              detailPayload.push({
                 id: `detail-${Date.now()}-${Math.random()}`,
                 inspectionId: inspectionId,
+                addressName: inspectionData.addressName,
+                date: inspectionData.date.toISOString(),
+                coordinatorName: inspectionData.coordinatorName,
                 category: category.name,
                 itemLabel: item.label,
                 itemValue: serializeRaw(item.value),
