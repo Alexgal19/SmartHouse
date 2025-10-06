@@ -124,10 +124,9 @@ async function getSheet(title: string, headers: string[]): Promise<GoogleSpreads
     let sheet = doc.sheetsByTitle[title];
     if (!sheet) {
         sheet = await doc.addSheet({ title, headerValues: headers });
-    } else {
-        await sheet.setHeaderRow(headers);
     }
-    await sheet.loadHeaderRow();
+    // This is the crucial fix: always load headers before using the sheet.
+    await sheet.loadHeaderRow(); 
     return sheet;
 }
 
@@ -573,7 +572,7 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
             id: newInspectionId,
         };
         
-        await inspectionsSheet.addRow(serializeInspection(newInspectionBase), { raw: true });
+        await inspectionsSheet.addRow(serializeInspection(newInspectionBase));
 
         for (const category of categories) {
              for (const item of category.items) {
@@ -582,9 +581,9 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
                      inspectionId: newInspectionId,
                      category: category.name,
                      itemLabel: item.label,
-                     itemValue: item.value, 
-                     uwagi: category.uwagi || '',
-                 }, { raw: true });
+                     itemValue: serializeRaw(item.value), 
+                     uwagi: category.uwagi || null,
+                 });
              }
              if (category.items.length === 0 && category.uwagi) {
                  await detailsSheet.addRow({
@@ -594,7 +593,7 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
                      itemLabel: null,
                      itemValue: null,
                      uwagi: category.uwagi,
-                 }, { raw: true });
+                 });
              }
         }
         
@@ -604,7 +603,7 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
                   id: `photo-${Date.now()}-${Math.random()}`,
                   inspectionId: newInspectionId,
                   photoData: photoData,
-              }, { raw: true });
+              }, { raw: false }); // Use raw: false for better handling of large data
             }
         }
 
@@ -618,5 +617,3 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
         throw new Error("Could not add inspection.");
     }
 }
-
-    
