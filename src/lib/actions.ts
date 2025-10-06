@@ -315,7 +315,10 @@ const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): 
  
              if (newValue instanceof Date) {
                  newFormatted = formatDate(newValue);
-             } else {
+             } else if (typeof newValue === 'string' && /^\d{4}-\d{2}-\d{2}/.test(newValue)) {
+                newFormatted = formatDate(parseDate(newValue));
+             }
+              else {
                  newFormatted = String(newValue ?? 'N/A');
              }
 
@@ -561,19 +564,21 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
         };
         await inspectionsSheet.addRow(serializeInspection(newInspectionBase));
 
-        const detailRows: Omit<InspectionDetail, 'id'>[] = [];
-        categories.forEach(category => {
-            category.items.forEach(item => {
-                detailRows.push({
+        // Save details one by one to be safe
+        for (const category of categories) {
+            for (const item of category.items) {
+                 await detailsSheet.addRow({
+                    id: `detail-${Date.now()}-${Math.random()}`,
                     inspectionId: newInspectionId,
                     category: category.name,
                     itemLabel: item.label,
                     itemValue: item.value !== null ? String(item.value) : '',
                     uwagi: null,
                 });
-            });
+            }
             if (category.uwagi) {
-                 detailRows.push({
+                 await detailsSheet.addRow({
+                    id: `detail-uwagi-${Date.now()}-${Math.random()}`,
                     inspectionId: newInspectionId,
                     category: category.name,
                     itemLabel: null,
@@ -581,25 +586,15 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
                     uwagi: category.uwagi,
                 });
             }
-        });
-        
-        // Save details in chunks to avoid API limits
-        for (let i = 0; i < detailRows.length; i += 5) {
-            const chunk = detailRows.slice(i, i + 5).map(d => ({ ...d, id: `detail-${Date.now()}-${Math.random()}` }));
-            if (chunk.length > 0) {
-                 await detailsSheet.addRows(chunk);
-            }
         }
-
+        
         if (photos && photos.length > 0) {
-            // Save each photo individually to avoid payload size issues
             for (const photoData of photos) {
-                const photoRow = {
+                await photosSheet.addRow({
                     id: `photo-${Date.now()}-${Math.random()}`,
                     inspectionId: newInspectionId,
                     photoData: photoData,
-                };
-                 await photosSheet.addRow(photoRow);
+                });
             }
         }
 
@@ -612,3 +607,5 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
         throw new Error("Could not add inspection.");
     }
 }
+
+    
