@@ -129,9 +129,14 @@ async function getSheet(title: string, headers: string[]) {
     let sheet = doc.sheetsByTitle[title];
     if (!sheet) {
         sheet = await doc.addSheet({ title, headerValues: headers });
+    } else {
+        // Ensure headers are up to date in case they were changed manually
+        const currentHeaders = sheet.headerValues;
+        const missingHeaders = headers.filter(h => !currentHeaders.includes(h));
+        if (missingHeaders.length > 0) {
+            await sheet.setHeaderRow([...currentHeaders, ...missingHeaders]);
+        }
     }
-    // Make sure headers are up to date
-    await sheet.setHeaderRow(headers);
     return sheet;
 }
 
@@ -148,6 +153,8 @@ export async function getEmployees(): Promise<Employee[]> {
 
 export async function getSettings(): Promise<Settings> {
   try {
+    await doc.loadInfo();
+    
     const [addressesSheet, roomsSheet, nationalitiesSheet, departmentsSheet, coordinatorsSheet] = await Promise.all([
         getSheet(SHEET_NAME_ADDRESSES, ['id', 'name']),
         getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity']),
@@ -285,17 +292,23 @@ const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): 
         const newValue = newData[typedKey];
         
         let areEqual = false;
-        if (oldValue instanceof Date && newValue instanceof Date) {
+        
+        const oldValueIsDate = oldValue instanceof Date;
+        const newValueIsDate = newValue instanceof Date;
+
+        if (oldValueIsDate && newValueIsDate) {
             areEqual = isEqual(oldValue, newValue);
-        } else if (oldValue instanceof Date && typeof newValue === 'string') {
+        } else if (oldValueIsDate && typeof newValue === 'string') {
              areEqual = isEqual(oldValue, parseISO(newValue));
-        } else if (typeof oldValue === 'string' && newValue instanceof Date) {
+        } else if (typeof oldValue === 'string' && newValueIsDate) {
              areEqual = isEqual(parseISO(oldValue), newValue);
         } else if ((oldValue === null || oldValue === undefined) && (newValue === null || newValue === undefined)) {
              areEqual = true;
+        } else if (oldValue === null || oldValue === undefined || newValue === null || newValue === undefined) {
+             areEqual = oldValue === newValue;
         }
         else {
-            areEqual = oldValue === newValue;
+            areEqual = String(oldValue) === String(newValue);
         }
 
         if (!areEqual) {
@@ -339,14 +352,14 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
         const currentData = deserializeEmployee(rowToUpdate);
         
         const changes = getChanges(currentData, employeeData);
-        if(changes.length === 0) {
+        if(changes.length === 0 && !employeeData.status) { // Also allow status change without other changes
               return currentData; // No changes, no update, no notification
         }
         
         let action = 'zaktualizował(a) dane';
         if (employeeData.status) {
-            if (employeeData.status === 'dismissed') action = 'zwolnił(a)';
-            if (employeeData.status === 'active') action = 'przywrócił(a)';
+            if (employeeData.status === 'dismissed' && currentData.status !== 'dismissed') action = 'zwolnił(a)';
+            if (employeeData.status === 'active' && currentData.status !== 'active') action = 'przywrócił(a)';
         } 
         
         const updatedData = { ...currentData, ...employeeData };
@@ -380,55 +393,80 @@ async function syncSheet<T extends Record<string, any>>(
     idKey: keyof T
 ) {
     const sheet = await getSheet(sheetName, headers);
+    await sheet.loadCells(); // Load all cells for faster updates
     const rows = await sheet.getRows();
     
-    const newDataIds = newData.map(item => item[idKey]);
+    const newDataIds = new Set(newData.map(item => item[idKey]));
+    const oldDataIds = new Set(rows.map(row => row.get(idKey as string)));
 
     // Delete rows that are no longer in the new data
-    const rowsToDelete = rows.filter(row => !newDataIds.includes(row.get(idKey as string)));
-    for (const row of rowsToDelete) {
-        await row.delete();
+    const rowsToDeleteIndices: number[] = [];
+    rows.forEach((row, index) => {
+        if (!newDataIds.has(row.get(idKey as string))) {
+            rowsToDeleteIndices.push(index);
+        }
+    });
+    // Delete in reverse order to avoid shifting indices
+    for (let i = rowsToDeleteIndices.length - 1; i >= 0; i--) {
+        await rows[rowsToDeleteIndices[i]].delete();
     }
-
-    // Update existing rows or add new ones
+    
+    const newRowsToAdd: Record<string, any>[] = [];
+    // Update existing rows or prepare new ones to be added
     for (const item of newData) {
         const existingRow = rows.find(row => row.get(idKey as string) === item[idKey]);
         const serializedItem = headers.reduce((acc, header) => {
-            acc[header] = item[header] ?? '';
+            const value = item[header];
+             if (value !== null && value !== undefined) {
+                acc[header] = value.toString();
+            } else {
+                acc[header] = '';
+            }
             return acc;
         }, {} as Record<string, any>);
 
         if (existingRow) {
-            // Update
+            let needsSave = false;
             headers.forEach(header => {
-                existingRow.set(header, serializedItem[header]);
+                if(existingRow.get(header) !== serializedItem[header]) {
+                    existingRow.set(header, serializedItem[header]);
+                    needsSave = true;
+                }
             });
-            await existingRow.save();
+            if(needsSave) {
+                 await existingRow.save();
+            }
         } else {
-            // Add new
-            await sheet.addRow(serializedItem);
+            newRowsToAdd.push(serializedItem);
         }
+    }
+
+    if(newRowsToAdd.length > 0) {
+        await sheet.addRows(newRowsToAdd);
     }
 }
 
 
 export async function updateSettings(newSettings: Partial<Settings>): Promise<Settings> {
     try {
+        const currentSettings = await getSettings();
+        const updatedSettings = { ...currentSettings, ...newSettings };
+
         if (newSettings.addresses) {
-            const allRooms = newSettings.addresses.flatMap(address => 
+            const allRooms = updatedSettings.addresses.flatMap(address => 
                 address.rooms.map(room => ({...room, addressId: address.id}))
             );
-            await syncSheet(SHEET_NAME_ADDRESSES, ['id', 'name'], newSettings.addresses, 'id');
+            await syncSheet(SHEET_NAME_ADDRESSES, ['id', 'name'], updatedSettings.addresses.map(({id, name}) => ({id, name})), 'id');
             await syncSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity'], allRooms, 'id');
         }
         if (newSettings.nationalities) {
-            await syncSheet(SHEET_NAME_NATIONALITIES, ['name'], newSettings.nationalities.map(name => ({ name })), 'name');
+            await syncSheet(SHEET_NAME_NATIONALITIES, ['name'], updatedSettings.nationalities.map(name => ({ name })), 'name');
         }
         if (newSettings.departments) {
-            await syncSheet(SHEET_NAME_DEPARTMENTS, ['name'], newSettings.departments.map(name => ({ name })), 'name');
+            await syncSheet(SHEET_NAME_DEPARTMENTS, ['name'], updatedSettings.departments.map(name => ({ name })), 'name');
         }
         if (newSettings.coordinators) {
-            await syncSheet(SHEET_NAME_COORDINATORS, ['uid', 'name'], newSettings.coordinators, 'uid');
+            await syncSheet(SHEET_NAME_COORDINATORS, ['uid', 'name'], updatedSettings.coordinators, 'uid');
         }
         
         return getSettings();
