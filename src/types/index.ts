@@ -47,13 +47,16 @@ export type HousingAddress = {
   rooms: Room[];
 };
 
+export type InspectionCategoryItem = {
+    label: string;
+    type: 'rating' | 'yes_no' | 'text' | 'info' | 'select';
+    value: number | boolean | string | null;
+    options?: string[];
+};
+
 export type InspectionCategory = {
     name: string;
-    items: {
-        label: string;
-        type: 'rating' | 'yes_no' | 'text' | 'info';
-        value: number | boolean | string | null;
-    }[];
+    items: InspectionCategoryItem[];
     uwagi: string;
 };
 

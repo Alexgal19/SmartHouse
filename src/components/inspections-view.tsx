@@ -37,8 +37,9 @@ const inspectionSchema = z.object({
         name: z.string(),
         items: z.array(z.object({
             label: z.string(),
-            type: z.enum(['rating', 'yes_no', 'text', 'info']),
+            type: z.enum(['rating', 'yes_no', 'text', 'info', 'select']),
             value: z.union([z.number(), z.boolean(), z.string()]).nullable(),
+            options: z.array(z.string()).optional()
         })),
         uwagi: z.string().optional(),
     }))
@@ -47,31 +48,26 @@ const inspectionSchema = z.object({
 type InspectionFormData = z.infer<typeof inspectionSchema>;
 
 
-const initialCategories: Omit<InspectionCategory, 'uwagi' | 'items'>[] = [
-    { name: "Kuchnia" },
-    { name: "Łazienka" },
-    { name: "Pokoje" },
-    { name: "Instalacja" }
-];
+const cleanlinessOptions = ["Bardzo czysto", "Czysto", "Brudno", "Bardzo brudno"];
 
 const getInitialChecklist = (): InspectionCategory[] => [
     { 
         name: "Kuchnia", uwagi: "", items: [
-            { label: "Czystość kuchnia", type: "rating", value: 0 },
-            { label: "Czystość lodówki", type: "rating", value: 0 },
-            { label: "Czystość płyty gazowej, elektrycznej i piekarnika", type: "rating", value: 0 }
+            { label: "Czystość kuchnia", type: "select", value: null, options: cleanlinessOptions },
+            { label: "Czystość lodówki", type: "select", value: null, options: cleanlinessOptions },
+            { label: "Czystość płyty gazowej, elektrycznej i piekarnika", type: "select", value: null, options: cleanlinessOptions }
         ]
     },
     {
         name: "Łazienka", uwagi: "", items: [
-            { label: "Czystość łazienki", type: "rating", value: 0 },
-            { label: "Czystość toalety", type: "rating", value: 0 },
-            { label: "Czystość brodzika", type: "rating", value: 0 },
+            { label: "Czystość łazienki", type: "select", value: null, options: cleanlinessOptions },
+            { label: "Czystość toalety", type: "select", value: null, options: cleanlinessOptions },
+            { label: "Czystość brodzika", type: "select", value: null, options: cleanlinessOptions },
         ]
     },
     {
         name: "Pokoje", uwagi: "", items: [
-            { label: "Czystość pokoju", type: "rating", value: 0 },
+            { label: "Czystość pokoju", type: "select", value: null, options: cleanlinessOptions },
             { label: "Czy niema pleśni w pomieszczeniach?", type: "yes_no", value: null },
             { label: "Łóżka niepołamane", type: "yes_no", value: null },
             { label: "Sciany czyste", type: "yes_no", value: null },
@@ -123,6 +119,22 @@ const YesNoInput = ({ value, onChange }: { value: boolean | null, onChange: (val
     );
 }
 
+const SelectInput = ({ value, onChange, options }: { value: string | null, onChange: (value: string) => void, options: string[] }) => {
+    return (
+        <Select onValueChange={onChange} value={value || ''}>
+            <SelectTrigger className="w-full sm:w-48">
+                <SelectValue placeholder="Wybierz ocenę" />
+            </SelectTrigger>
+            <SelectContent>
+                {options.map(option => (
+                    <SelectItem key={option} value={option}>{option}</SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
+    );
+};
+
+
 const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave }: { isOpen: boolean, onOpenChange: (open: boolean) => void, settings: Settings, currentUser: Coordinator, onSave: (data: Omit<Inspection, 'id'>) => Promise<void> }) => {
     const form = useForm<InspectionFormData>({
         resolver: zodResolver(inspectionSchema),
@@ -154,7 +166,13 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
             categories: data.categories,
             photos: [], // For now, empty
         });
-        form.reset();
+        form.reset({
+            addressId: '',
+            date: new Date(),
+            coordinatorId: currentUser.uid,
+            standard: null,
+            categories: getInitialChecklist(),
+        });
         onOpenChange(false);
     };
 
@@ -225,6 +243,7 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
                                                                         {item.type === 'rating' && <RatingInput value={field.value as number} onChange={field.onChange} />}
                                                                         {item.type === 'yes_no' && <YesNoInput value={field.value as boolean | null} onChange={field.onChange} />}
                                                                         {item.type === 'text' && <Textarea {...field} className="w-full sm:w-64" />}
+                                                                        {item.type === 'select' && <SelectInput value={field.value as string | null} onChange={field.onChange} options={item.options || []} />}
                                                                     </div>
                                                                 </FormControl>
                                                             </FormItem>

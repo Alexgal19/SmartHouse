@@ -1,7 +1,7 @@
 
 "use server";
 
-import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection } from '@/types';
+import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, InspectionCategoryItem } from '@/types';
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
 import { format, isEqual, parseISO } from 'date-fns';
@@ -135,7 +135,7 @@ export async function getEmployees(): Promise<Employee[]> {
     return rows.map(deserializeEmployee);
   } catch (error) {
     console.error("Error in getEmployees:", error);
-    throw new Error("Could not fetch employees.");
+    throw new Error(`Could not fetch employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
@@ -460,21 +460,37 @@ const serializeInspection = (inspection: Inspection): Record<string, string> => 
     coordinatorId: inspection.coordinatorId,
     coordinatorName: inspection.coordinatorName,
     standard: inspection.standard || '',
-    categories: JSON.stringify(inspection.categories),
+    categories: JSON.stringify(inspection.categories.map(category => ({
+        ...category,
+        items: category.items.map(item => ({
+            ...item,
+            value: item.value === null ? '' : item.value,
+        }))
+    }))),
     photos: JSON.stringify(inspection.photos),
 });
 
-const deserializeInspection = (row: any): Inspection => ({
-    id: row.get('id'),
-    addressId: row.get('addressId'),
-    addressName: row.get('addressName'),
-    date: new Date(row.get('date')),
-    coordinatorId: row.get('coordinatorId'),
-    coordinatorName: row.get('coordinatorName'),
-    standard: (row.get('standard') as 'Wysoki' | 'Normalny' | 'Niski') || null,
-    categories: JSON.parse(row.get('categories') || '[]'),
-    photos: JSON.parse(row.get('photos') || '[]'),
-});
+const deserializeInspection = (row: any): Inspection => {
+    const categories = JSON.parse(row.get('categories') || '[]').map((category: any) => ({
+        ...category,
+        items: category.items.map((item: InspectionCategoryItem) => ({
+            ...item,
+            value: item.value === '' ? null : item.value,
+        }))
+    }));
+
+    return {
+        id: row.get('id'),
+        addressId: row.get('addressId'),
+        addressName: row.get('addressName'),
+        date: new Date(row.get('date')),
+        coordinatorId: row.get('coordinatorId'),
+        coordinatorName: row.get('coordinatorName'),
+        standard: (row.get('standard') as 'Wysoki' | 'Normalny' | 'Niski') || null,
+        categories: categories,
+        photos: JSON.parse(row.get('photos') || '[]'),
+    }
+};
 
 export async function getInspections(): Promise<Inspection[]> {
     try {
