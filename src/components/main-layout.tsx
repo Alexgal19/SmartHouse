@@ -106,7 +106,8 @@ function MainContent() {
         try {
             if (editingEmployee) {
                 const updatedEmployee = await updateEmployee(editingEmployee.id, data, mockUser);
-                setEmployees(prev => prev.map(e => e.id === editingEmployee.id ? {...updatedEmployee, 
+                setEmployees(prev => prev.map(e => e.id === editingEmployee.id ? {
+                    ...updatedEmployee,
                     checkInDate: new Date(updatedEmployee.checkInDate),
                     checkOutDate: updatedEmployee.checkOutDate ? new Date(updatedEmployee.checkOutDate) : null,
                     contractStartDate: updatedEmployee.contractStartDate ? new Date(updatedEmployee.contractStartDate) : null,
@@ -126,8 +127,8 @@ function MainContent() {
                 toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
             }
             await pollNotifications();
-        } catch(e) {
-             toast({ variant: "destructive", title: "Błąd", description: "Nie udało się zapisać pracownika." });
+        } catch(e: any) {
+             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać pracownika." });
         }
     };
     
@@ -275,5 +276,3 @@ export default function MainLayout() {
         </SidebarProvider>
     );
 }
-
-    
