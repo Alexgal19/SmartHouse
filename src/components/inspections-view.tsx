@@ -176,7 +176,7 @@ const CameraCapture = ({ isOpen, onOpenChange, onCapture }: { isOpen: boolean, o
                 toast({
                     variant: 'destructive',
                     title: 'Brak dostępu do kamery',
-                    description: 'Proszę zezwolić na dostęp до камери в ustawieniach przeglądarki.',
+                    description: 'Proszę zezwolić na dostęp do kamery w ustawieniach przeglądarki.',
                 });
             }
         };
@@ -188,21 +188,29 @@ const CameraCapture = ({ isOpen, onOpenChange, onCapture }: { isOpen: boolean, o
                 stream.getTracks().forEach(track => track.stop());
              }
         }
-    }, [isOpen, toast]);
+    }, [isOpen, toast, stream]);
 
     const handleCapture = () => {
         if (videoRef.current && canvasRef.current) {
             const video = videoRef.current;
             const canvas = canvasRef.current;
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
+            
+            // Set canvas size and draw the image
+            const MAX_WIDTH = 1280;
+            const scale = MAX_WIDTH / video.videoWidth;
+            canvas.width = MAX_WIDTH;
+            canvas.height = video.videoHeight * scale;
+
             const context = canvas.getContext('2d');
-            context?.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-            const dataUri = canvas.toDataURL('image/jpeg');
+            context?.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Get compressed image data
+            const dataUri = canvas.toDataURL('image/jpeg', 0.8); // 80% quality
             onCapture(dataUri);
             onOpenChange(false);
         }
     };
+
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -215,7 +223,7 @@ const CameraCapture = ({ isOpen, onOpenChange, onCapture }: { isOpen: boolean, o
                          <Alert variant="destructive">
                             <AlertTitle>Brak dostępu do kamery</AlertTitle>
                             <AlertDescription>
-                                Proszę zezwolić na dostęp до камери в ustawieniach przeglądarki, aby korzystać z tej funkcji.
+                                Proszę zezwolić na dostęp do kamery w ustawieniach przeglądarki, aby korzystać z tej funkcji.
                             </AlertDescription>
                         </Alert>
                     )}
