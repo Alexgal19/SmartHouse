@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -21,7 +20,7 @@ import SettingsView from './settings-view';
 import InspectionsView from './inspections-view';
 import { AddEmployeeForm } from './add-employee-form';
 import { Skeleton } from './ui/skeleton';
-import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead, getInspections, addInspection } from '@/lib/actions';
+import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead, getInspections, addInspection, updateInspection, deleteInspection } from '@/lib/actions';
 import { runMigration } from '@/lib/migration';
 import type { Employee, Settings, User, View, Notification, Coordinator, Inspection } from '@/types';
 import { useToast } from '@/hooks/use-toast';
@@ -189,11 +188,31 @@ function MainContent() {
     
     const handleAddInspection = async (inspectionData: Omit<Inspection, 'id'>) => {
         try {
-            const newInspection = await addInspection(inspectionData);
-            setInspections(prev => [newInspection, ...prev].sort((a, b) => b.date.getTime() - a.date.getTime()));
-             toast({ title: "Sukces", description: "Nowa inspekcja została dodana." });
+            await addInspection(inspectionData);
+            toast({ title: "Sukces", description: "Nowa inspekcja została dodana." });
+            await fetchData();
         } catch(e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać inspekcji." });
+        }
+    };
+
+    const handleUpdateInspection = async (id: string, inspectionData: Omit<Inspection, 'id'>) => {
+        try {
+            await updateInspection(id, inspectionData);
+            toast({ title: "Sukces", description: "Inspekcja została zaktualizowana." });
+            await fetchData();
+        } catch(e: any) {
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zaktualizować inspekcji." });
+        }
+    };
+
+    const handleDeleteInspection = async (id: string) => {
+        try {
+            await deleteInspection(id);
+            toast({ title: "Sukces", description: "Inspekcja została usunięta." });
+            await fetchData();
+        } catch(e: any) {
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć inspekcji." });
         }
     };
 
@@ -277,6 +296,8 @@ function MainContent() {
                     settings={settings}
                     currentUser={mockUser}
                     onAddInspection={handleAddInspection}
+                    onUpdateInspection={handleUpdateInspection}
+                    onDeleteInspection={handleDeleteInspection}
                 />;
             default:
                 return <DashboardView employees={employees} settings={settings} onEditEmployee={handleEditEmployeeClick} />;

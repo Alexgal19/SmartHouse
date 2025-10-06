@@ -558,62 +558,121 @@ export async function getInspections(): Promise<Inspection[]> {
     }
 }
 
-export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Promise<Inspection> {
+async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: string) {
+    const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, INSPECTION_HEADERS);
+    const photosSheet = await getSheet(SHEET_NAME_INSPECTION_PHOTOS, PHOTO_HEADERS);
+    const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, INSPECTION_DETAILS_HEADERS);
+
+    const inspectionId = id || `insp-${Date.now()}`;
+    const { photos, categories, ...restOfData } = inspectionData;
+
+    if (id) {
+        const allRows = await inspectionsSheet.getRows();
+        const rowToUpdate = allRows.find(row => row.get('id') === id);
+        if (rowToUpdate) {
+            Object.assign(rowToUpdate, serializeInspection({ ...restOfData, id: inspectionId }));
+            await rowToUpdate.save();
+        } else {
+            throw new Error("Inspection to update not found");
+        }
+    } else {
+        await inspectionsSheet.addRow(serializeInspection({ ...restOfData, id: inspectionId }));
+    }
+
+    const allDetailRows = await detailsSheet.getRows();
+    const existingDetails = allDetailRows.filter(r => r.get('inspectionId') === inspectionId);
+    for (const row of existingDetails) {
+        await row.delete();
+    }
+
+    for (const category of categories) {
+        for (const item of category.items) {
+            await detailsSheet.addRow({
+                id: `detail-${Date.now()}-${Math.random()}`,
+                inspectionId: inspectionId,
+                category: category.name,
+                itemLabel: item.label,
+                itemValue: serializeRaw(item.value),
+                uwagi: category.uwagi || null,
+            }, {raw: true});
+        }
+        if (category.items.length === 0 && category.uwagi) {
+            await detailsSheet.addRow({
+                id: `detail-${Date.now()}-${Math.random()}`,
+                inspectionId: inspectionId,
+                category: category.name,
+                itemLabel: null,
+                itemValue: null,
+                uwagi: category.uwagi,
+            }, {raw: true});
+        }
+    }
+    
+    const allPhotoRows = await photosSheet.getRows();
+    const existingPhotos = allPhotoRows.filter(r => r.get('inspectionId') === inspectionId);
+    for (const row of existingPhotos) {
+        await row.delete();
+    }
+    
+    if (photos && photos.length > 0) {
+        for (const photoData of photos) {
+            await photosSheet.addRow({
+                id: `photo-${Date.now()}-${Math.random()}`,
+                inspectionId: inspectionId,
+                photoData: photoData,
+            }, { raw: false });
+        }
+    }
+}
+
+export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Promise<void> {
     try {
-        const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, INSPECTION_HEADERS);
-        const photosSheet = await getSheet(SHEET_NAME_INSPECTION_PHOTOS, PHOTO_HEADERS);
-        const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, INSPECTION_DETAILS_HEADERS);
-
-        const newInspectionId = `insp-${Date.now()}`;
-        const { photos, categories, ...restOfData } = inspectionData;
-        
-        const newInspectionBase: Omit<Inspection, 'photos' | 'categories'> = {
-            ...restOfData,
-            id: newInspectionId,
-        };
-        
-        await inspectionsSheet.addRow(serializeInspection(newInspectionBase));
-
-        for (const category of categories) {
-             for (const item of category.items) {
-                 await detailsSheet.addRow({
-                     id: `detail-${Date.now()}-${Math.random()}`,
-                     inspectionId: newInspectionId,
-                     category: category.name,
-                     itemLabel: item.label,
-                     itemValue: serializeRaw(item.value), 
-                     uwagi: category.uwagi || null,
-                 });
-             }
-             if (category.items.length === 0 && category.uwagi) {
-                 await detailsSheet.addRow({
-                     id: `detail-${Date.now()}-${Math.random()}`,
-                     inspectionId: newInspectionId,
-                     category: category.name,
-                     itemLabel: null,
-                     itemValue: null,
-                     uwagi: category.uwagi,
-                 });
-             }
-        }
-        
-        if (photos && photos.length > 0) {
-            for (const photoData of photos) {
-              await photosSheet.addRow({
-                  id: `photo-${Date.now()}-${Math.random()}`,
-                  inspectionId: newInspectionId,
-                  photoData: photoData,
-              }, { raw: false }); // Use raw: false for better handling of large data
-            }
-        }
-
-        const finalInspection = { ...newInspectionBase, categories, photos: photos || [] };
-        return finalInspection;
+        await saveInspectionData(inspectionData);
     } catch (error) {
         console.error("Error in addInspection:", error);
         if (error instanceof Error && (error.message.includes('exceeds the maximum size') || error.message.includes('request entity too large'))) {
              throw new Error("One of the photos is too large to be saved. Please use smaller image files.");
         }
         throw new Error("Could not add inspection.");
+    }
+}
+
+export async function updateInspection(id: string, inspectionData: Omit<Inspection, 'id'>): Promise<void> {
+    try {
+        await saveInspectionData(inspectionData, id);
+    } catch (error) {
+        console.error("Error in updateInspection:", error);
+        if (error instanceof Error && (error.message.includes('exceeds the maximum size') || error.message.includes('request entity too large'))) {
+             throw new Error("One of the photos is too large to be saved. Please use smaller image files.");
+        }
+        throw new Error("Could not update inspection.");
+    }
+}
+
+export async function deleteInspection(id: string): Promise<void> {
+    try {
+        const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, INSPECTION_HEADERS);
+        const photosSheet = await getSheet(SHEET_NAME_INSPECTION_PHOTOS, PHOTO_HEADERS);
+        const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, INSPECTION_DETAILS_HEADERS);
+
+        const allInspectionRows = await inspectionsSheet.getRows();
+        const inspectionRow = allInspectionRows.find(r => r.get('id') === id);
+        if (inspectionRow) await inspectionRow.delete();
+
+        const allDetailRows = await detailsSheet.getRows();
+        const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === id);
+        for (const row of detailsToDelete) {
+            await row.delete();
+        }
+
+        const allPhotoRows = await photosSheet.getRows();
+        const photosToDelete = allPhotoRows.filter(r => r.get('inspectionId') === id);
+        for (const row of photosToDelete) {
+            await row.delete();
+        }
+
+    } catch (error) {
+        console.error("Error in deleteInspection:", error);
+        throw new Error("Could not delete inspection.");
     }
 }

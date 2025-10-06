@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import type { Inspection, Settings, Coordinator, InspectionCategory, InspectionCategoryItem } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { PlusCircle, Star, FileImage, Trash2, Camera, Circle } from 'lucide-react';
+import { PlusCircle, Star, FileImage, Trash2, Camera, Circle, MoreVertical, Pencil } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { Input } from './ui/input';
 import Image from 'next/image';
@@ -24,12 +24,17 @@ import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertTitle, AlertDescription } from './ui/alert';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
+
 
 interface InspectionsViewProps {
     inspections: Inspection[];
     settings: Settings;
     currentUser: Coordinator;
     onAddInspection: (data: Omit<Inspection, 'id'>) => Promise<void>;
+    onUpdateInspection: (id: string, data: Omit<Inspection, 'id'>) => Promise<void>;
+    onDeleteInspection: (id: string) => Promise<void>;
 }
 
 const inspectionSchema = z.object({
@@ -195,7 +200,7 @@ const CameraCapture = ({ isOpen, onOpenChange, onCapture }: { isOpen: boolean, o
             const video = videoRef.current;
             const canvas = canvasRef.current;
             
-            const MAX_WIDTH = 1024; // Reduced size
+            const MAX_WIDTH = 1024;
             const scale = MAX_WIDTH / video.videoWidth;
             canvas.width = MAX_WIDTH;
             canvas.height = video.videoHeight * scale;
@@ -203,7 +208,7 @@ const CameraCapture = ({ isOpen, onOpenChange, onCapture }: { isOpen: boolean, o
             const context = canvas.getContext('2d');
             context?.drawImage(video, 0, 0, canvas.width, canvas.height);
             
-            const dataUri = canvas.toDataURL('image/jpeg', 0.7); // Reduced quality
+            const dataUri = canvas.toDataURL('image/jpeg', 0.7);
             onCapture(dataUri);
             onOpenChange(false);
         }
@@ -281,18 +286,49 @@ const FinalRating = ({ categories, isCalculated = false }: { categories: Inspect
     );
 };
 
-const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave }: { isOpen: boolean, onOpenChange: (open: boolean) => void, settings: Settings, currentUser: Coordinator, onSave: (data: Omit<Inspection, 'id'>) => Promise<void> }) => {
+const InspectionDialog = ({ 
+    isOpen, 
+    onOpenChange, 
+    settings, 
+    currentUser, 
+    onSave,
+    editingInspection 
+}: { 
+    isOpen: boolean; 
+    onOpenChange: (open: boolean) => void; 
+    settings: Settings; 
+    currentUser: Coordinator; 
+    onSave: (data: Omit<Inspection, 'id'>, id?: string) => Promise<void>;
+    editingInspection: Inspection | null;
+}) => {
     const form = useForm<InspectionFormData>({
         resolver: zodResolver(inspectionSchema),
-        defaultValues: {
-            addressId: '',
-            date: new Date(),
-            coordinatorId: currentUser.uid,
-            standard: null,
-            categories: getInitialChecklist(),
-            photos: [],
-        }
     });
+    
+    useEffect(() => {
+        if(isOpen) {
+            if (editingInspection) {
+                form.reset({
+                    addressId: editingInspection.addressId,
+                    date: editingInspection.date,
+                    coordinatorId: editingInspection.coordinatorId,
+                    standard: editingInspection.standard,
+                    categories: editingInspection.categories,
+                    photos: editingInspection.photos || [],
+                });
+            } else {
+                 form.reset({
+                    addressId: '',
+                    date: new Date(),
+                    coordinatorId: currentUser.uid,
+                    standard: null,
+                    categories: getInitialChecklist(),
+                    photos: [],
+                });
+            }
+        }
+    }, [isOpen, editingInspection, currentUser, form]);
+
     
     const { fields } = useFieldArray({ control: form.control, name: "categories" });
     const watchedCategories = useWatch({ control: form.control, name: 'categories' });
@@ -340,27 +376,25 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
             return;
         }
 
+        const coordinator = settings.coordinators.find(c => c.uid === data.coordinatorId);
+         if (!coordinator) {
+            form.setError("coordinatorId", { message: "Nie znaleziono koordynatora." });
+            return;
+        }
+
         const inspectionData: Omit<Inspection, 'id'> = {
             addressId: data.addressId,
             addressName: address.name,
             date: data.date,
-            coordinatorId: currentUser.uid,
-            coordinatorName: currentUser.name,
+            coordinatorId: data.coordinatorId,
+            coordinatorName: coordinator.name,
             standard: data.standard,
             categories: data.categories,
             photos: data.photos || [],
         };
         
-        await onSave(inspectionData);
-
-        form.reset({
-            addressId: '',
-            date: new Date(),
-            coordinatorId: currentUser.uid,
-            standard: null,
-            categories: getInitialChecklist(),
-            photos: [],
-        });
+        await onSave(inspectionData, editingInspection?.id);
+        
         onOpenChange(false);
     };
 
@@ -368,7 +402,7 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-4xl max-h-[90vh]">
                 <DialogHeader>
-                    <DialogTitle>Nowa Kontrola Mieszkania</DialogTitle>
+                    <DialogTitle>{editingInspection ? "Edytuj Inspekcję" : "Nowa Kontrola Mieszkania"}</DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -394,10 +428,26 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
                                             <FormMessage />
                                         </FormItem>
                                     )} />
-                                    <FormItem>
-                                        <FormLabel>Koordynator</FormLabel>
-                                        <FormControl><Input value={currentUser.name} readOnly disabled /></FormControl>
-                                    </FormItem>
+                                     <FormField control={form.control} name="coordinatorId" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Koordynator</FormLabel>
+                                             <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Wybierz koordynatora" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                {settings.coordinators.map(c => (
+                                                    <SelectItem key={c.uid} value={c.uid}>
+                                                        {c.name}
+                                                    </SelectItem>
+                                                ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
                                     <FormField control={form.control} name="standard" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Standard mieszkania</FormLabel>
@@ -494,7 +544,7 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
                         <DialogFooter className="mt-6">
                             <DialogClose asChild><Button type="button" variant="secondary">Anuluj</Button></DialogClose>
                             <Button type="submit" disabled={form.formState.isSubmitting}>
-                                {form.formState.isSubmitting ? "Zapisywanie..." : "Zapisz Inspekcję"}
+                                {form.formState.isSubmitting ? "Zapisywanie..." : (editingInspection ? "Zapisz zmiany" : "Zapisz Inspekcję")}
                             </Button>
                         </DialogFooter>
                     </form>
@@ -569,16 +619,34 @@ const InspectionDetailDialog = ({ inspection, isOpen, onOpenChange }: { inspecti
     )
 }
 
-export default function InspectionsView({ inspections, settings, currentUser, onAddInspection }: InspectionsViewProps) {
-    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+export default function InspectionsView({ inspections, settings, currentUser, onAddInspection, onUpdateInspection, onDeleteInspection }: InspectionsViewProps) {
+    const [isFormOpen, setIsFormOpen] = useState(false);
+    const [editingInspection, setEditingInspection] = useState<Inspection | null>(null);
     const [selectedInspection, setSelectedInspection] = useState<Inspection | null>(null);
+
+    const handleOpenForm = (inspection: Inspection | null) => {
+        setEditingInspection(inspection);
+        setIsFormOpen(true);
+    };
+
+    const handleSave = async (data: Omit<Inspection, 'id'>, id?: string) => {
+        if(id) {
+            await onUpdateInspection(id, data);
+        } else {
+            await onAddInspection(data);
+        }
+    };
+    
+    const handleDelete = async (inspectionId: string) => {
+        await onDeleteInspection(inspectionId);
+    };
 
     return (
         <Card>
             <CardHeader>
                 <div className="flex items-center justify-between">
                     <CardTitle>Inspekcje</CardTitle>
-                    <Button onClick={() => setIsAddDialogOpen(true)}><PlusCircle className="mr-2 h-4 w-4" /> Dodaj inspekcję</Button>
+                    <Button onClick={() => handleOpenForm(null)}><PlusCircle className="mr-2 h-4 w-4" /> Dodaj inspekcję</Button>
                 </div>
                 <CardDescription>Historia przeprowadzonych kontroli mieszkań.</CardDescription>
             </CardHeader>
@@ -586,14 +654,49 @@ export default function InspectionsView({ inspections, settings, currentUser, on
                 {inspections.length > 0 ? (
                     <div className="space-y-4">
                         {inspections.map(inspection => (
-                             <Card key={inspection.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedInspection(inspection)}>
-                                <CardHeader>
-                                    <CardTitle className="text-lg">{inspection.addressName}</CardTitle>
-                                    <CardDescription>
-                                        {format(inspection.date, 'd MMMM yyyy', { locale: pl })} przez {inspection.coordinatorName}
-                                    </CardDescription>
+                             <Card key={inspection.id}>
+                                <CardHeader className="flex-row items-center justify-between">
+                                    <div className="cursor-pointer flex-1" onClick={() => setSelectedInspection(inspection)}>
+                                        <CardTitle className="text-lg">{inspection.addressName}</CardTitle>
+                                        <CardDescription>
+                                            {format(inspection.date, 'd MMMM yyyy', { locale: pl })} przez {inspection.coordinatorName}
+                                        </CardDescription>
+                                    </div>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="flex-shrink-0">
+                                                <MoreVertical className="h-4 w-4"/>
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                            <DropdownMenuItem onClick={() => handleOpenForm(inspection)}>
+                                                <Pencil className="mr-2 h-4 w-4" /> Edytuj
+                                            </DropdownMenuItem>
+                                             <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
+                                                        <Trash2 className="mr-2 h-4 w-4" /> Usuń
+                                                    </DropdownMenuItem>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Czy na pewno chcesz usunąć?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            Tej operacji nie można cofnąć. Spowoduje to trwałe usunięcie inspekcji.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => handleDelete(inspection.id)} className="bg-destructive hover:bg-destructive/90">
+                                                            Usuń
+                                                        </AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                 </CardHeader>
-                                <CardContent>
+                                <CardContent className="cursor-pointer" onClick={() => setSelectedInspection(inspection)}>
                                     <div className="flex items-center gap-2">
                                         <span className="text-sm">Ocena:</span>
                                         <RatingInput value={calculateRating(inspection.categories)} readOnly/>
@@ -611,11 +714,12 @@ export default function InspectionsView({ inspections, settings, currentUser, on
             </CardContent>
             
             <InspectionDialog 
-                isOpen={isAddDialogOpen}
-                onOpenChange={setIsAddDialogOpen}
+                isOpen={isFormOpen}
+                onOpenChange={setIsFormOpen}
                 settings={settings}
                 currentUser={currentUser}
-                onSave={onAddInspection}
+                onSave={handleSave}
+                editingInspection={editingInspection}
             />
             
             <InspectionDetailDialog 
