@@ -490,7 +490,8 @@ const deserializeInspection = (row: any, allDetails: InspectionDetail[], allPhot
                  // This is a bit of a hack to make the types work, as we don't store the type in the sheet
                 type: 'info', 
                 label: detail.itemLabel, 
-                value: value
+                value: value,
+                options: detail.itemValue?.includes(',') ? detail.itemValue.split(',') : undefined
             });
         }
         if (detail.uwagi) {
@@ -562,32 +563,35 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
             ...restOfData,
             id: newInspectionId,
         };
+        
+        // Save base inspection info first.
         await inspectionsSheet.addRow(serializeInspection(newInspectionBase));
 
-        // Save details one by one to be safe
+        // Sequentially save details and comments.
         for (const category of categories) {
             for (const item of category.items) {
-                 await detailsSheet.addRow({
+                await detailsSheet.addRow({
                     id: `detail-${Date.now()}-${Math.random()}`,
                     inspectionId: newInspectionId,
                     category: category.name,
                     itemLabel: item.label,
-                    itemValue: item.value !== null ? String(item.value) : '',
-                    uwagi: null,
+                    itemValue: item.value !== null && item.value !== undefined ? String(item.value) : '',
+                    uwagi: '', // Keep uwagi empty for item rows
                 });
             }
             if (category.uwagi) {
-                 await detailsSheet.addRow({
-                    id: `detail-uwagi-${Date.now()}-${Math.random()}`,
+                await detailsSheet.addRow({
+                    id: `uwagi-${Date.now()}-${Math.random()}`,
                     inspectionId: newInspectionId,
                     category: category.name,
-                    itemLabel: null,
-                    itemValue: null,
+                    itemLabel: '', // Keep item label empty for uwagi rows
+                    itemValue: '',
                     uwagi: category.uwagi,
                 });
             }
         }
         
+        // Sequentially save photos.
         if (photos && photos.length > 0) {
             for (const photoData of photos) {
                 await photosSheet.addRow({
@@ -607,5 +611,3 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
         throw new Error("Could not add inspection.");
     }
 }
-
-    

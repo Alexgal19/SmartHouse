@@ -130,5 +130,3 @@ export type Notification = {
 };
 
 export type View = 'dashboard' | 'employees' | 'settings' | 'inspections';
-
-    

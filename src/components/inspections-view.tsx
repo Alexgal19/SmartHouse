@@ -151,38 +151,39 @@ const CameraCapture = ({ isOpen, onOpenChange, onCapture }: { isOpen: boolean, o
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const streamRef = useRef<MediaStream | null>(null);
 
     useEffect(() => {
-        let stream: MediaStream | null = null;
-        const getCameraPermission = async () => {
-            if (isOpen) {
-                try {
-                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                    setHasCameraPermission(true);
-                    if (videoRef.current) {
-                        videoRef.current.srcObject = stream;
-                    }
-                } catch (error) {
-                    console.error('Error accessing camera:', error);
-                    setHasCameraPermission(false);
-                    toast({
-                        variant: 'destructive',
-                        title: 'Brak dostępu do kamery',
-                        description: 'Proszę zezwolić na dostęp do kamery w ustawieniach przeglądarki.',
-                    });
-                }
+      const getCameraPermission = async () => {
+        if (isOpen) {
+          try {
+            streamRef.current = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            setHasCameraPermission(true);
+            if (videoRef.current) {
+              videoRef.current.srcObject = streamRef.current;
             }
-        };
-
-        if(isOpen) {
-          getCameraPermission();
+          } catch (error) {
+            console.error('Error accessing camera:', error);
+            setHasCameraPermission(false);
+            toast({
+              variant: 'destructive',
+              title: 'Brak dostępu do kamery',
+              description: 'Proszę zezwolić na dostęp do kamery w ustawieniach przeglądarki.',
+            });
+          }
         }
-        
-        return () => {
-             if(stream) {
-                stream.getTracks().forEach(track => track.stop());
-             }
+      };
+  
+      if (isOpen) {
+        getCameraPermission();
+      }
+  
+      return () => {
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
         }
+      };
     }, [isOpen, toast]);
 
     const handleCapture = () => {
@@ -524,6 +525,7 @@ const InspectionDetailDialog = ({ inspection, isOpen, onOpenChange }: { inspecti
                                                 {item.type === 'yes_no' && <YesNoInput readOnly value={item.value as boolean | null} />}
                                                 {item.type === 'select' && item.options && <SelectInput readOnly options={item.options} value={item.value as string | null} />}
                                                 {item.type === 'text' && <p className="text-muted-foreground">{item.value as string || 'N/A'}</p>}
+                                                {item.type === 'rating' && <RatingInput value={item.value as number} readOnly />}
                                             </div>
                                         </li>
                                     ))}
