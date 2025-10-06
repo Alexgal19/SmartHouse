@@ -1,3 +1,4 @@
+
 export type User = {
   uid: string;
   name: string;
@@ -71,6 +72,12 @@ export type Inspection = {
   categories: InspectionCategory[];
   photos: string[];
 };
+
+export type Photo = {
+  id: string;
+  inspectionId: string;
+  photoData: string;
+}
 
 export type EquipmentItem = {
   id: string;

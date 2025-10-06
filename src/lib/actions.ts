@@ -1,7 +1,7 @@
 
 "use server";
 
-import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, InspectionCategoryItem } from '@/types';
+import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, InspectionCategoryItem, Photo } from '@/types';
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
 import { format, isEqual, parseISO } from 'date-fns';
@@ -16,6 +16,7 @@ const SHEET_NAME_NATIONALITIES = 'Nationalities';
 const SHEET_NAME_DEPARTMENTS = 'Departments';
 const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_INSPECTIONS = 'Inspections';
+const SHEET_NAME_INSPECTION_PHOTOS = 'InspectionPhotos';
 
 
 const serviceAccountAuth = new JWT({
@@ -450,9 +451,10 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
 
 // --- Inspections Actions ---
 
-const INSPECTION_HEADERS = ['id', 'addressId', 'addressName', 'date', 'coordinatorId', 'coordinatorName', 'standard', 'categories', 'photos'];
+const INSPECTION_HEADERS = ['id', 'addressId', 'addressName', 'date', 'coordinatorId', 'coordinatorName', 'standard', 'categories'];
+const PHOTO_HEADERS = ['id', 'inspectionId', 'photoData'];
 
-const serializeInspection = (inspection: Inspection): Record<string, string> => ({
+const serializeInspection = (inspection: Omit<Inspection, 'photos'>): Record<string, string> => ({
     id: inspection.id,
     addressId: inspection.addressId,
     addressName: inspection.addressName,
@@ -467,10 +469,11 @@ const serializeInspection = (inspection: Inspection): Record<string, string> => 
             value: item.value === null ? '' : item.value,
         }))
     }))),
-    photos: JSON.stringify(inspection.photos),
 });
 
-const deserializeInspection = (row: any): Inspection => {
+
+const deserializeInspection = (row: any, allPhotos: Photo[]): Inspection => {
+    const inspectionId = row.get('id');
     const categories = JSON.parse(row.get('categories') || '[]').map((category: any) => ({
         ...category,
         items: category.items.map((item: InspectionCategoryItem) => ({
@@ -480,7 +483,7 @@ const deserializeInspection = (row: any): Inspection => {
     }));
 
     return {
-        id: row.get('id'),
+        id: inspectionId,
         addressId: row.get('addressId'),
         addressName: row.get('addressName'),
         date: new Date(row.get('date')),
@@ -488,15 +491,29 @@ const deserializeInspection = (row: any): Inspection => {
         coordinatorName: row.get('coordinatorName'),
         standard: (row.get('standard') as 'Wysoki' | 'Normalny' | 'Niski') || null,
         categories: categories,
-        photos: JSON.parse(row.get('photos') || '[]'),
+        photos: allPhotos.filter(p => p.inspectionId === inspectionId).map(p => p.photoData),
     }
 };
 
 export async function getInspections(): Promise<Inspection[]> {
     try {
-        const sheet = await getSheet(SHEET_NAME_INSPECTIONS, INSPECTION_HEADERS);
-        const rows = await sheet.getRows();
-        return rows.map(deserializeInspection).sort((a, b) => b.date.getTime() - a.date.getTime());
+        const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, INSPECTION_HEADERS);
+        const photosSheet = await getSheet(SHEET_NAME_INSPECTION_PHOTOS, PHOTO_HEADERS);
+        
+        const [inspectionRows, photoRows] = await Promise.all([
+            inspectionsSheet.getRows(),
+            photosSheet.getRows()
+        ]);
+
+        const allPhotos: Photo[] = photoRows.map(row => ({
+            id: row.get('id'),
+            inspectionId: row.get('inspectionId'),
+            photoData: row.get('photoData'),
+        }));
+
+        return inspectionRows
+            .map(row => deserializeInspection(row, allPhotos))
+            .sort((a, b) => b.date.getTime() - a.date.getTime());
     } catch (error) {
         console.error("Error fetching inspections:", error);
         return [];
@@ -505,15 +522,33 @@ export async function getInspections(): Promise<Inspection[]> {
 
 export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Promise<Inspection> {
     try {
-        const sheet = await getSheet(SHEET_NAME_INSPECTIONS, INSPECTION_HEADERS);
-        const newInspection: Inspection = {
-            ...inspectionData,
-            id: `insp-${Date.now()}`,
+        const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, INSPECTION_HEADERS);
+        const photosSheet = await getSheet(SHEET_NAME_INSPECTION_PHOTOS, PHOTO_HEADERS);
+
+        const newInspectionId = `insp-${Date.now()}`;
+        const { photos, ...restOfData } = inspectionData;
+        
+        const newInspection: Omit<Inspection, 'photos'> = {
+            ...restOfData,
+            id: newInspectionId,
         };
-        await sheet.addRow(serializeInspection(newInspection));
-        return newInspection;
+        await inspectionsSheet.addRow(serializeInspection(newInspection));
+
+        if (photos && photos.length > 0) {
+            const photoRows = photos.map(photoData => ({
+                id: `photo-${Date.now()}-${Math.random()}`,
+                inspectionId: newInspectionId,
+                photoData: photoData,
+            }));
+            await photosSheet.addRows(photoRows);
+        }
+
+        return { ...newInspection, photos: photos || [] };
     } catch (error) {
         console.error("Error adding inspection:", error);
+        if (error instanceof Error && error.message.includes('exceeds the maximum size')) {
+             throw new Error("One of the photos is too large to be saved. Please use smaller image files.");
+        }
         throw new Error("Could not add inspection.");
     }
 }
