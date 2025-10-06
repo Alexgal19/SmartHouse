@@ -393,47 +393,10 @@ async function syncSheet<T extends Record<string, any>>(
     serializeFn: (item: T) => Record<string, any> = (item) => item
 ) {
     const sheet = await getSheet(sheetName, headers);
-    const rows = await sheet.getRows();
-    
-    const newDataMap = new Map(newData.map(item => [item[idKey], item]));
-    const oldDataMap = new Map(rows.map(row => [row.get(idKey as string), row]));
-    
-    // Delete rows that are no longer in newData
-    const rowsToDelete: Promise<void>[] = [];
-    for (const [id, row] of oldDataMap.entries()) {
-        if (!newDataMap.has(id)) {
-            rowsToDelete.push(row.delete());
-        }
-    }
-    if (rowsToDelete.length > 0) {
-        await Promise.all(rowsToDelete);
-    }
-
-    // Add or update rows
-    const rowsToAddOrUpdate: Promise<any>[] = [];
-    for (const [id, item] of newDataMap.entries()) {
-        const existingRow = oldDataMap.get(id);
-        const serializedItem = serializeFn(item);
-
-        if (existingRow) {
-            let needsSave = false;
-            headers.forEach(header => {
-                const newValue = serializedItem[header] ?? '';
-                if(existingRow.get(header) !== newValue) {
-                    existingRow.set(header, newValue);
-                    needsSave = true;
-                }
-            });
-            if(needsSave) {
-                 rowsToAddOrUpdate.push(existingRow.save());
-            }
-        } else {
-            rowsToAddOrUpdate.push(sheet.addRow(serializedItem));
-        }
-    }
-    
-    if (rowsToAddOrUpdate.length > 0) {
-        await Promise.all(rowsToAddOrUpdate);
+    await sheet.clearRows(); // Clear all rows before syncing
+    if (newData.length > 0) {
+        const serializedData = newData.map(serializeFn);
+        await sheet.addRows(serializedData);
     }
 }
 
@@ -493,3 +456,5 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
         console.error("Error marking notification as read:", error);
     }
 }
+
+    
