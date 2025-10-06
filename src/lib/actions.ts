@@ -2,7 +2,7 @@
 "use server";
 
 import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room } from '@/types';
-import { GoogleSpreadsheet } from 'google-spreadsheet';
+import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
 import { format, isEqual, parseISO } from 'date-fns';
 
@@ -11,6 +11,7 @@ const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
 const SHEET_NAME_EMPLOYEES = 'Employees';
 const SHEET_NAME_NOTIFICATIONS = 'Powiadomienia';
 const SHEET_NAME_ADDRESSES = 'Addresses';
+const SHEET_NAME_ROOMS = 'Rooms';
 const SHEET_NAME_NATIONALITIES = 'Nationalities';
 const SHEET_NAME_DEPARTMENTS = 'Departments';
 const SHEET_NAME_COORDINATORS = 'Coordinators';
@@ -26,13 +27,8 @@ const doc = new GoogleSpreadsheet(SPREADSHEET_ID, serviceAccountAuth);
 
 const parseDate = (dateStr: string | undefined | null): Date | null => {
   if (!dateStr) return null;
-  // Handle both ISO string and YYYY-MM-DD formats
   const date = new Date(dateStr);
    if (!isNaN(date.getTime())) {
-    // The date is valid. If it's a UTC string, the time will be midnight.
-    // If it's just 'YYYY-MM-DD', JS treats it as UTC midnight.
-    // To avoid timezone shifts when displaying, we can adjust it.
-    // By adding the timezone offset, we bring it to local midnight.
     date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
     return date;
   }
@@ -40,12 +36,10 @@ const parseDate = (dateStr: string | undefined | null): Date | null => {
 };
 
 
-// Helper to serialize employee data for the sheet
 const serializeEmployee = (employee: Partial<Employee>): Record<string, string | number | boolean> => {
     const serialized: Record<string, string | number | boolean> = {};
     for (const [key, value] of Object.entries(employee)) {
         if (value instanceof Date) {
-            // Format date as YYYY-MM-DD
             serialized[key] = value.toISOString().split('T')[0];
         } else if (value !== null && value !== undefined) {
             serialized[key] = value.toString();
@@ -56,7 +50,6 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
     return serialized;
 };
 
-// Helper to deserialize sheet row to Employee object
 const deserializeEmployee = (row: any): Employee => {
     const checkInDate = parseDate(row.get('checkInDate'));
     if (!checkInDate) {
@@ -123,7 +116,7 @@ const EMPLOYEE_HEADERS = [
     'departureReportDate', 'comments', 'status', 'oldAddress'
 ];
 
-async function getSheet(title: string, headers: string[]) {
+async function getSheet(title: string, headers: string[]): Promise<GoogleSpreadsheetWorksheet> {
     await doc.loadInfo();
     let sheet = doc.sheetsByTitle[title];
     if (!sheet) {
@@ -132,8 +125,7 @@ async function getSheet(title: string, headers: string[]) {
         const currentHeaders = sheet.headerValues;
         const missingHeaders = headers.filter(h => !currentHeaders.includes(h));
         if (missingHeaders.length > 0) {
-            // This is a more forceful way to ensure headers are set, which might be necessary
-            // if the library fails to add them gracefully.
+            // Forcefully set headers if they don't match
             await sheet.setHeaderRow(headers);
         }
     }
@@ -155,23 +147,43 @@ export async function getSettings(): Promise<Settings> {
   try {
     await doc.loadInfo();
 
-    const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ['id', 'name', 'rooms']);
+    // Fetch all simple lists
     const nationalitiesSheet = await getSheet(SHEET_NAME_NATIONALITIES, ['name']);
     const departmentsSheet = await getSheet(SHEET_NAME_DEPARTMENTS, ['name']);
     const coordinatorsSheet = await getSheet(SHEET_NAME_COORDINATORS, ['uid', 'name']);
 
-    const addressRows = await addressesSheet.getRows();
-    const nationalityRows = await nationalitiesSheet.getRows();
-    const departmentRows = await departmentsSheet.getRows();
-    const coordinatorRows = await coordinatorsSheet.getRows();
+    const [nationalityRows, departmentRows, coordinatorRows] = await Promise.all([
+        nationalitiesSheet.getRows(),
+        departmentsSheet.getRows(),
+        coordinatorsSheet.getRows()
+    ]);
+    
+    // Fetch addresses and rooms sequentially to ensure data integrity
+    const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ['id', 'name']);
+    const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity']);
 
+    const addressRows = await addressesSheet.getRows();
+    const roomRows = await roomsSheet.getRows();
+
+    const allRooms: (Room & { addressId: string })[] = roomRows.map(row => ({
+        id: row.get('id'),
+        addressId: row.get('addressId'),
+        name: row.get('name'),
+        capacity: parseInt(row.get('capacity'), 10) || 0,
+    }));
+    
+    const addresses: HousingAddress[] = addressRows.map(row => {
+        const addressId = row.get('id');
+        return {
+            id: addressId,
+            name: row.get('name'),
+            rooms: allRooms.filter(room => room.addressId === addressId).map(({ addressId, ...rest }) => rest), // Attach rooms
+        };
+    });
+    
     const settings: Settings = {
       id: 'global-settings',
-      addresses: addressRows.map(row => ({
-        id: row.get('id'),
-        name: row.get('name'),
-        rooms: JSON.parse(row.get('rooms') || '[]') as Room[],
-      })),
+      addresses: addresses,
       nationalities: nationalityRows.map(row => row.get('name')),
       departments: departmentRows.map(row => row.get('name')),
       coordinators: coordinatorRows.map(row => ({
@@ -184,7 +196,7 @@ export async function getSettings(): Promise<Settings> {
     return settings;
   } catch (error) {
     console.error("Error fetching settings from Google Sheets:", error);
-    throw new Error("Could not fetch settings.");
+    throw new Error(`Could not fetch settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
@@ -340,7 +352,7 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
         
         const changes = getChanges(currentData, employeeData);
         if(changes.length === 0 && !('status' in employeeData)) { 
-              return currentData; // No changes, no update, no notification
+              return currentData;
         }
         
         let action = 'zaktualizował(a) dane';
@@ -377,7 +389,8 @@ async function syncSheet<T extends Record<string, any>>(
     sheetName: string,
     headers: string[],
     newData: T[],
-    idKey: keyof T
+    idKey: keyof T,
+    serializeFn: (item: T) => Record<string, any> = (item) => item
 ) {
     const sheet = await getSheet(sheetName, headers);
     const rows = await sheet.getRows();
@@ -385,6 +398,7 @@ async function syncSheet<T extends Record<string, any>>(
     const newDataMap = new Map(newData.map(item => [item[idKey], item]));
     const oldDataMap = new Map(rows.map(row => [row.get(idKey as string), row]));
     
+    // Delete rows that are no longer in newData
     const rowsToDelete: Promise<void>[] = [];
     for (const [id, row] of oldDataMap.entries()) {
         if (!newDataMap.has(id)) {
@@ -395,26 +409,18 @@ async function syncSheet<T extends Record<string, any>>(
         await Promise.all(rowsToDelete);
     }
 
+    // Add or update rows
     const rowsToAddOrUpdate: Promise<any>[] = [];
     for (const [id, item] of newDataMap.entries()) {
         const existingRow = oldDataMap.get(id);
-        const serializedItem = headers.reduce((acc, header) => {
-            const value = item[header];
-            if (header === 'rooms' && Array.isArray(value)) {
-                acc[header] = JSON.stringify(value);
-            } else if (value !== null && value !== undefined) {
-                acc[header] = value.toString();
-            } else {
-                acc[header] = '';
-            }
-            return acc;
-        }, {} as Record<string, any>);
+        const serializedItem = serializeFn(item);
 
         if (existingRow) {
             let needsSave = false;
             headers.forEach(header => {
-                if(existingRow.get(header) !== serializedItem[header]) {
-                    existingRow.set(header, serializedItem[header]);
+                const newValue = serializedItem[header] ?? '';
+                if(existingRow.get(header) !== newValue) {
+                    existingRow.set(header, newValue);
                     needsSave = true;
                 }
             });
@@ -438,7 +444,11 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Se
         const updatedSettings = { ...currentSettings, ...newSettings };
 
         if (newSettings.addresses) {
-             await syncSheet(SHEET_NAME_ADDRESSES, ['id', 'name', 'rooms'], updatedSettings.addresses, 'id');
+            const allRooms = newSettings.addresses.flatMap(address => 
+                address.rooms.map(room => ({ ...room, addressId: address.id }))
+            );
+            await syncSheet(SHEET_NAME_ADDRESSES, ['id', 'name'], updatedSettings.addresses, 'id', item => ({ id: item.id, name: item.name }));
+            await syncSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity'], allRooms, 'id');
         }
         if (newSettings.nationalities) {
             await syncSheet(SHEET_NAME_NATIONALITIES, ['name'], updatedSettings.nationalities.map(name => ({ name })), 'name');
@@ -483,5 +493,3 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
         console.error("Error marking notification as read:", error);
     }
 }
-
-    
