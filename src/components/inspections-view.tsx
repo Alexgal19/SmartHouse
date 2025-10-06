@@ -1,8 +1,8 @@
 
 "use client";
 
-import React, { useState } from 'react';
-import type { Inspection, Settings, Coordinator, InspectionCategory } from '@/types';
+import React, { useState, useEffect } from 'react';
+import type { Inspection, Settings, Coordinator, InspectionCategory, InspectionCategoryItem } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
@@ -12,7 +12,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
@@ -89,14 +89,14 @@ const getInitialChecklist = (): InspectionCategory[] => [
     },
 ];
 
-const RatingInput = ({ value, onChange }: { value: number, onChange: (value: number) => void }) => {
+const RatingInput = ({ value, onChange, readOnly = false }: { value: number, onChange?: (value: number) => void, readOnly?: boolean }) => {
     return (
         <div className="flex items-center gap-1">
             {[1, 2, 3, 4, 5].map(star => (
                 <Star
                     key={star}
-                    className={`h-6 w-6 cursor-pointer ${value >= star ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
-                    onClick={() => onChange(star)}
+                    className={`h-6 w-6 ${readOnly ? '' : 'cursor-pointer'} ${value >= star ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                    onClick={() => !readOnly && onChange?.(star)}
                 />
             ))}
         </div>
@@ -135,6 +135,49 @@ const SelectInput = ({ value, onChange, options }: { value: string | null, onCha
 };
 
 
+const FinalRating = ({ categories }: { categories: InspectionCategory[] }) => {
+    const scoreMap: Record<string, number> = {
+        "Bardzo czysto": 4,
+        "Czysto": 3,
+        "Brudno": 1,
+        "Bardzo brudno": 0
+    };
+
+    const calculation = useMemo(() => {
+        let totalScore = 0;
+        let maxScore = 0;
+
+        categories.forEach(category => {
+            category.items.forEach(item => {
+                if (item.type === 'select' && item.options === cleanlinessOptions) {
+                    maxScore += 4;
+                    if (typeof item.value === 'string' && item.value in scoreMap) {
+                        totalScore += scoreMap[item.value];
+                    }
+                } else if (item.type === 'yes_no') {
+                    maxScore += 1;
+                    if (item.value === true) {
+                        totalScore += 1;
+                    }
+                }
+            });
+        });
+
+        if (maxScore === 0) return 0;
+        const percentage = (totalScore / maxScore) * 100;
+        return Math.round((percentage / 100) * 5);
+
+    }, [categories, scoreMap]);
+
+    return (
+        <div className="mt-6 p-4 border rounded-lg bg-muted/50 flex flex-col items-center gap-2">
+            <h3 className="text-lg font-semibold">Ogólny Ranking Mieszkania</h3>
+            <RatingInput value={calculation} readOnly />
+            <p className="text-sm text-muted-foreground">Automatycznie obliczony na podstawie inspekcji</p>
+        </div>
+    );
+};
+
 const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave }: { isOpen: boolean, onOpenChange: (open: boolean) => void, settings: Settings, currentUser: Coordinator, onSave: (data: Omit<Inspection, 'id'>) => Promise<void> }) => {
     const form = useForm<InspectionFormData>({
         resolver: zodResolver(inspectionSchema),
@@ -148,6 +191,7 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
     });
     
     const { fields } = useFieldArray({ control: form.control, name: "categories" });
+    const watchedCategories = useWatch({ control: form.control, name: 'categories' });
 
     const onSubmit = async (data: InspectionFormData) => {
         const address = settings.addresses.find(a => a.id === data.addressId);
@@ -265,6 +309,7 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
                                     </Card>
                                 ))}
                                 </div>
+                                <FinalRating categories={watchedCategories} />
                             </div>
                         </ScrollArea>
                         <DialogFooter className="mt-6">
@@ -325,3 +370,4 @@ export default function InspectionsView({ inspections, settings, currentUser, on
         </Card>
     );
 }
+
