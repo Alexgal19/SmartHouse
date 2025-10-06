@@ -149,7 +149,7 @@ const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): 
         checkOutDate: 'Data wymeldowania',
         contractStartDate: 'Umowa od',
         contractEndDate: 'Umowa do',
-        departureReportDate: 'Data zgłoszenia wyjazdu',
+        departureReportDate: 'Data zgłoszenia виїзду',
         comments: 'Komentarze',
         status: 'Status',
         oldAddress: 'Stary adres',
@@ -361,7 +361,7 @@ const serializeInspection = (inspection: Omit<Inspection, 'photos' | 'categories
 
 export async function getInspections(): Promise<Inspection[]> {
     try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/inspections`, { next: { revalidate: 300 }});
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/inspections`, { cache: 'no-store' });
         if (!res.ok) throw new Error('Failed to fetch inspections');
         return res.json();
     } catch (error) {
@@ -495,3 +495,13 @@ export async function deleteInspection(id: string): Promise<void> {
         throw new Error(`Could not delete inspection. ${error instanceof Error ? error.message : ''}`);
     }
 }
+
+const parseDate = (dateStr: string | undefined | null): Date | null => {
+  if (!dateStr) return null;
+  const date = new Date(dateStr);
+   if (!isNaN(date.getTime())) {
+    date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+    return date;
+  }
+  return null;
+};
