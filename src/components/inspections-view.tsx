@@ -1,11 +1,11 @@
 
 "use client";
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import type { Inspection, Settings, Coordinator, InspectionCategory, InspectionCategoryItem } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -21,6 +21,8 @@ import { PlusCircle, Star, FileImage, Trash2, Camera } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { Input } from './ui/input';
 import Image from 'next/image';
+import { Badge } from './ui/badge';
+import { Separator } from './ui/separator';
 
 interface InspectionsViewProps {
     inspections: Inspection[];
@@ -105,10 +107,13 @@ const RatingInput = ({ value, onChange, readOnly = false }: { value: number, onC
     );
 };
 
-const YesNoInput = ({ value, onChange }: { value: boolean | null, onChange: (value: boolean) => void }) => {
+const YesNoInput = ({ value, onChange, readOnly = false }: { value: boolean | null, onChange?: (value: boolean) => void, readOnly?: boolean }) => {
     const randomId = React.useId();
+    if(readOnly){
+        return <Badge variant={value ? "secondary" : "destructive"}>{value ? 'Tak' : 'Nie'}</Badge>
+    }
     return (
-        <RadioGroup onValueChange={(val) => onChange(val === 'true')} value={String(value)} className="flex gap-4">
+        <RadioGroup onValueChange={(val) => onChange?.(val === 'true')} value={String(value)} className="flex gap-4">
             <div className="flex items-center space-x-2">
                 <RadioGroupItem value="true" id={`yes-${randomId}`} />
                 <Label htmlFor={`yes-${randomId}`}>Tak</Label>
@@ -121,7 +126,10 @@ const YesNoInput = ({ value, onChange }: { value: boolean | null, onChange: (val
     );
 }
 
-const SelectInput = ({ value, onChange, options }: { value: string | null, onChange: (value: string) => void, options: string[] }) => {
+const SelectInput = ({ value, onChange, options, readOnly = false }: { value: string | null, onChange?: (value: string) => void, options: string[], readOnly?: boolean }) => {
+     if(readOnly){
+        return <Badge variant="secondary">{value}</Badge>
+    }
     return (
         <Select onValueChange={onChange} value={value || ''}>
             <SelectTrigger className="w-full sm:w-48">
@@ -137,45 +145,40 @@ const SelectInput = ({ value, onChange, options }: { value: string | null, onCha
 };
 
 
-const FinalRating = ({ categories }: { categories: InspectionCategory[] }) => {
+const calculateRating = (categories: InspectionCategory[]): number => {
     const scoreMap: Record<string, number> = {
-        "Bardzo czysto": 4,
-        "Czysto": 3,
-        "Brudno": 1,
-        "Bardzo brudno": 0
+        "Bardzo czysto": 4, "Czysto": 3, "Brudno": 1, "Bardzo brudno": 0
     };
+    let totalScore = 0;
+    let maxScore = 0;
 
-    const calculation = useMemo(() => {
-        let totalScore = 0;
-        let maxScore = 0;
-
-        categories.forEach(category => {
-            category.items.forEach(item => {
-                if (item.type === 'select' && item.options && item.options.every(o => cleanlinessOptions.includes(o))) {
-                    maxScore += 4;
-                    if (typeof item.value === 'string' && item.value in scoreMap) {
-                        totalScore += scoreMap[item.value];
-                    }
-                } else if (item.type === 'yes_no') {
-                    maxScore += 1;
-                    if (item.value === true) {
-                        totalScore += 1;
-                    }
+    categories.forEach(category => {
+        category.items.forEach(item => {
+            if (item.type === 'select' && item.options && item.options.every(o => cleanlinessOptions.includes(o))) {
+                maxScore += 4;
+                if (typeof item.value === 'string' && item.value in scoreMap) {
+                    totalScore += scoreMap[item.value];
                 }
-            });
+            } else if (item.type === 'yes_no') {
+                maxScore += 1;
+                if (item.value === true) totalScore += 1;
+            }
         });
+    });
 
-        if (maxScore === 0) return 0;
-        const percentage = (totalScore / maxScore) * 100;
-        return Math.round((percentage / 100) * 5);
+    if (maxScore === 0) return 0;
+    const percentage = (totalScore / maxScore) * 100;
+    return Math.round((percentage / 100) * 5);
+};
 
-    }, [categories, scoreMap]);
+const FinalRating = ({ categories, isCalculated = false }: { categories: InspectionCategory[], isCalculated?: boolean }) => {
+    const rating = useMemo(() => calculateRating(categories), [categories]);
 
     return (
         <div className="mt-6 p-4 border rounded-lg bg-muted/50 flex flex-col items-center gap-2">
             <h3 className="text-lg font-semibold">Ogólny Ranking Mieszkania</h3>
-            <RatingInput value={calculation} readOnly />
-            <p className="text-sm text-muted-foreground">Automatycznie obliczony na podstawie inspekcji</p>
+            <RatingInput value={rating} readOnly />
+            {isCalculated && <p className="text-sm text-muted-foreground">Automatycznie obliczony na podstawie inspekcji</p>}
         </div>
     );
 };
@@ -354,18 +357,12 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
                                                 multiple
                                                 onChange={handleFileChange}
                                             />
-                                            <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled>
-                                                <Camera className="mr-2 h-4 w-4" />
-                                                Zrób zdjęcie
-                                            </Button>
                                              <input
                                                 type="file"
                                                 className="hidden"
                                                 accept="image/*"
                                                 capture="environment"
                                                 onChange={handleFileChange}
-                                                // We can use the same ref for simplicity or a new one
-                                                // onClick={(e) => (e.currentTarget.value = null)} // Allows re-taking photo
                                             />
                                         </div>
                                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
@@ -382,7 +379,7 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
                                         </div>
                                     </CardContent>
                                 </Card>
-                                <FinalRating categories={watchedCategories} />
+                                <FinalRating categories={watchedCategories} isCalculated />
                             </div>
                         </ScrollArea>
                         <DialogFooter className="mt-6">
@@ -398,16 +395,79 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
     );
 };
 
+const InspectionDetailDialog = ({ inspection, isOpen, onOpenChange }: { inspection: Inspection | null; isOpen: boolean; onOpenChange: (open: boolean) => void }) => {
+    if (!inspection) return null;
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-4xl max-h-[90vh]">
+                <DialogHeader>
+                    <DialogTitle>{inspection.addressName}</DialogTitle>
+                    <DialogDescription>
+                        Inspekcja z dnia {format(inspection.date, 'd MMMM yyyy, HH:mm', { locale: pl })} przez {inspection.coordinatorName}
+                    </DialogDescription>
+                    {inspection.standard && <Badge className="w-fit">{inspection.standard}</Badge>}
+                </DialogHeader>
+                <ScrollArea className="h-[70vh] p-1 pr-4">
+                    <div className="space-y-6">
+                        {inspection.categories.map(category => (
+                            <Card key={category.name}>
+                                <CardHeader><CardTitle>{category.name}</CardTitle></CardHeader>
+                                <CardContent>
+                                    <ul className="space-y-3">
+                                    {category.items.map(item => (
+                                        <li key={item.label} className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm">
+                                            <span className="font-medium">{item.label}</span>
+                                            <div>
+                                                {item.type === 'yes_no' && <YesNoInput readOnly value={item.value as boolean | null} />}
+                                                {item.type === 'select' && item.options && <SelectInput readOnly options={item.options} value={item.value as string | null} />}
+                                                {item.type === 'text' && <p className="text-muted-foreground">{item.value as string || 'N/A'}</p>}
+                                            </div>
+                                        </li>
+                                    ))}
+                                    </ul>
+                                    {category.uwagi && (
+                                        <div className="mt-4 pt-3 border-t">
+                                            <h4 className="font-semibold text-sm">Uwagi:</h4>
+                                            <p className="text-sm text-muted-foreground italic">"{category.uwagi}"</p>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        ))}
+                         {inspection.photos && inspection.photos.length > 0 && (
+                            <Card>
+                                <CardHeader><CardTitle>Zdjęcia</CardTitle></CardHeader>
+                                <CardContent className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                     {inspection.photos.map((photo, index) => (
+                                        <div key={index} className="relative aspect-square">
+                                            <Image src={photo} alt={`Inspection photo ${index + 1}`} layout="fill" objectFit="cover" className="rounded-md border" />
+                                        </div>
+                                    ))}
+                                </CardContent>
+                            </Card>
+                        )}
+                        <FinalRating categories={inspection.categories} />
+                    </div>
+                </ScrollArea>
+                 <DialogFooter>
+                    <Button type="button" onClick={() => onOpenChange(false)}>Zamknij</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
 
 export default function InspectionsView({ inspections, settings, currentUser, onAddInspection }: InspectionsViewProps) {
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+    const [selectedInspection, setSelectedInspection] = useState<Inspection | null>(null);
 
     return (
         <Card>
             <CardHeader>
                 <div className="flex items-center justify-between">
                     <CardTitle>Inspekcje</CardTitle>
-                    <Button onClick={() => setIsDialogOpen(true)}><PlusCircle className="mr-2 h-4 w-4" /> Dodaj inspekcję</Button>
+                    <Button onClick={() => setIsAddDialogOpen(true)}><PlusCircle className="mr-2 h-4 w-4" /> Dodaj inspekcję</Button>
                 </div>
                 <CardDescription>Historia przeprowadzonych kontroli mieszkań.</CardDescription>
             </CardHeader>
@@ -415,13 +475,19 @@ export default function InspectionsView({ inspections, settings, currentUser, on
                 {inspections.length > 0 ? (
                     <div className="space-y-4">
                         {inspections.map(inspection => (
-                             <Card key={inspection.id}>
+                             <Card key={inspection.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedInspection(inspection)}>
                                 <CardHeader>
                                     <CardTitle className="text-lg">{inspection.addressName}</CardTitle>
                                     <CardDescription>
                                         {format(inspection.date, 'd MMMM yyyy', { locale: pl })} przez {inspection.coordinatorName}
                                     </CardDescription>
                                 </CardHeader>
+                                <CardContent>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm">Ocena:</span>
+                                        <RatingInput value={calculateRating(inspection.categories)} readOnly/>
+                                    </div>
+                                </CardContent>
                              </Card>
                         ))}
                     </div>
@@ -434,15 +500,18 @@ export default function InspectionsView({ inspections, settings, currentUser, on
             </CardContent>
             
             <InspectionDialog 
-                isOpen={isDialogOpen}
-                onOpenChange={setIsDialogOpen}
+                isOpen={isAddDialogOpen}
+                onOpenChange={setIsAddDialogOpen}
                 settings={settings}
                 currentUser={currentUser}
                 onSave={onAddInspection}
             />
+            
+            <InspectionDetailDialog 
+                isOpen={!!selectedInspection}
+                onOpenChange={(isOpen) => { if(!isOpen) setSelectedInspection(null) }}
+                inspection={selectedInspection}
+            />
         </Card>
     );
 }
-
-
-    
