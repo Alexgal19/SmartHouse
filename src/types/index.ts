@@ -27,7 +27,7 @@ export type Employee = {
 
 export type NonEmployee = {
   id: string;
-  fullName: string;
+  fullName:string;
   address: string;
   roomNumber: string;
   checkInDate: Date;
@@ -47,16 +47,26 @@ export type HousingAddress = {
   rooms: Room[];
 };
 
+export type InspectionCategory = {
+    name: string;
+    items: {
+        label: string;
+        type: 'rating' | 'yes_no' | 'text' | 'info';
+        value: number | boolean | string | null;
+    }[];
+    uwagi: string;
+};
 
 export type Inspection = {
   id: string;
-  address: string;
+  addressId: string;
+  addressName: string;
   date: Date;
-  inspector: string;
-  cleanlinessScore: number; // 1-5
-  maintenanceScore: number; // 1-5
-  comments: string;
-  photoUrls: string[];
+  coordinatorId: string;
+  coordinatorName: string;
+  standard: 'A' | 'B' | 'C' | 'D' | null;
+  categories: InspectionCategory[];
+  photos: string[]; // For now, this will be empty
 };
 
 export type EquipmentItem = {

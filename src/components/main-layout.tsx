@@ -18,11 +18,12 @@ import { MobileNav } from './mobile-nav';
 import DashboardView from './dashboard-view';
 import EmployeesView from './employees-view';
 import SettingsView from './settings-view';
+import InspectionsView from './inspections-view';
 import { AddEmployeeForm } from './add-employee-form';
 import { Skeleton } from './ui/skeleton';
-import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead } from '@/lib/actions';
+import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead, getInspections, addInspection } from '@/lib/actions';
 import { runMigration } from '@/lib/migration';
-import type { Employee, Settings, User, View, Notification, Coordinator } from '@/types';
+import type { Employee, Settings, User, View, Notification, Coordinator, Inspection } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Building, ClipboardList, Home, Settings as SettingsIcon, Users } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -48,6 +49,7 @@ function MainContent() {
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [settings, setSettings] = useState<Settings | null>(null);
     const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [inspections, setInspections] = useState<Inspection[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
@@ -93,10 +95,11 @@ function MainContent() {
     const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
-            const [employeesData, settingsData, notificationsData] = await Promise.all([
+            const [employeesData, settingsData, notificationsData, inspectionsData] = await Promise.all([
                 getEmployees(), 
                 getSettings(),
-                getNotifications()
+                getNotifications(),
+                getInspections(),
             ]);
             setEmployees(employeesData.map(e => ({
                 ...e,
@@ -108,6 +111,7 @@ function MainContent() {
             })));
             setSettings(settingsData);
             setNotifications(notificationsData.map(n => ({...n, createdAt: new Date(n.createdAt)})));
+            setInspections(inspectionsData.map(i => ({...i, date: new Date(i.date)})));
         } catch (error) {
             console.error(error);
             toast({
@@ -180,6 +184,16 @@ function MainContent() {
             await fetchData(); // Refetch all data
         } catch(e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać ustawień." });
+        }
+    };
+    
+    const handleAddInspection = async (inspectionData: Omit<Inspection, 'id'>) => {
+        try {
+            const newInspection = await addInspection(inspectionData);
+            setInspections(prev => [newInspection, ...prev]);
+             toast({ title: "Sukces", description: "Nowa inspekcja została dodana." });
+        } catch(e: any) {
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać inspekcji." });
         }
     };
 
@@ -258,7 +272,12 @@ function MainContent() {
             case 'settings':
                 return <SettingsView settings={settings} onUpdateSettings={handleUpdateSettings} />;
             case 'inspections':
-                return <div className="text-center p-8 text-muted-foreground">Widok inspekcji jest w budowie.</div>;
+                 return <InspectionsView 
+                    inspections={inspections} 
+                    settings={settings}
+                    currentUser={mockUser}
+                    onAddInspection={handleAddInspection}
+                />;
             default:
                 return <DashboardView employees={employees} settings={settings} onEditEmployee={handleEditEmployeeClick} />;
         }

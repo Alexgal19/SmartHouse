@@ -1,7 +1,7 @@
 
 "use server";
 
-import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room } from '@/types';
+import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection } from '@/types';
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
 import { format, isEqual, parseISO } from 'date-fns';
@@ -15,6 +15,7 @@ const SHEET_NAME_ROOMS = 'Rooms';
 const SHEET_NAME_NATIONALITIES = 'Nationalities';
 const SHEET_NAME_DEPARTMENTS = 'Departments';
 const SHEET_NAME_COORDINATORS = 'Coordinators';
+const SHEET_NAME_INSPECTIONS = 'Inspections';
 
 
 const serviceAccountAuth = new JWT({
@@ -442,5 +443,59 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
         }
     } catch (error) {
         console.error("Error marking notification as read:", error);
+    }
+}
+
+// --- Inspections Actions ---
+
+const INSPECTION_HEADERS = ['id', 'addressId', 'addressName', 'date', 'coordinatorId', 'coordinatorName', 'standard', 'categories', 'photos'];
+
+const serializeInspection = (inspection: Inspection): Record<string, string> => ({
+    id: inspection.id,
+    addressId: inspection.addressId,
+    addressName: inspection.addressName,
+    date: inspection.date.toISOString(),
+    coordinatorId: inspection.coordinatorId,
+    coordinatorName: inspection.coordinatorName,
+    standard: inspection.standard || '',
+    categories: JSON.stringify(inspection.categories),
+    photos: JSON.stringify(inspection.photos),
+});
+
+const deserializeInspection = (row: any): Inspection => ({
+    id: row.get('id'),
+    addressId: row.get('addressId'),
+    addressName: row.get('addressName'),
+    date: new Date(row.get('date')),
+    coordinatorId: row.get('coordinatorId'),
+    coordinatorName: row.get('coordinatorName'),
+    standard: row.get('standard') || null,
+    categories: JSON.parse(row.get('categories') || '[]'),
+    photos: JSON.parse(row.get('photos') || '[]'),
+});
+
+export async function getInspections(): Promise<Inspection[]> {
+    try {
+        const sheet = await getSheet(SHEET_NAME_INSPECTIONS, INSPECTION_HEADERS);
+        const rows = await sheet.getRows();
+        return rows.map(deserializeInspection).sort((a, b) => b.date.getTime() - a.date.getTime());
+    } catch (error) {
+        console.error("Error fetching inspections:", error);
+        return [];
+    }
+}
+
+export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Promise<Inspection> {
+    try {
+        const sheet = await getSheet(SHEET_NAME_INSPECTIONS, INSPECTION_HEADERS);
+        const newInspection: Inspection = {
+            ...inspectionData,
+            id: `insp-${Date.now()}`,
+        };
+        await sheet.addRow(serializeInspection(newInspection));
+        return newInspection;
+    } catch (error) {
+        console.error("Error adding inspection:", error);
+        throw new Error("Could not add inspection.");
     }
 }
