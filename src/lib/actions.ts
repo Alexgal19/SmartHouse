@@ -121,7 +121,9 @@ async function getSheet(title: string, headers: string[]): Promise<GoogleSpreads
     await doc.loadInfo();
     let sheet = doc.sheetsByTitle[title];
     if (!sheet) {
+        console.log(`Sheet "${title}" not found, creating it...`);
         sheet = await doc.addSheet({ title, headerValues: headers });
+        console.log(`Sheet "${title}" created.`);
     }
     return sheet;
 }
@@ -469,7 +471,7 @@ const deserializeInspection = (row: any): Inspection => ({
     date: new Date(row.get('date')),
     coordinatorId: row.get('coordinatorId'),
     coordinatorName: row.get('coordinatorName'),
-    standard: row.get('standard') || null,
+    standard: (row.get('standard') as 'Wysoki' | 'Normalny' | 'Niski') || null,
     categories: JSON.parse(row.get('categories') || '[]'),
     photos: JSON.parse(row.get('photos') || '[]'),
 });

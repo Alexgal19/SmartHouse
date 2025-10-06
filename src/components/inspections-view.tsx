@@ -32,7 +32,7 @@ const inspectionSchema = z.object({
     addressId: z.string().min(1, "Adres jest wymagany."),
     date: z.date({ required_error: "Data jest wymagana." }),
     coordinatorId: z.string(),
-    standard: z.enum(['A', 'B', 'C', 'D']).nullable(),
+    standard: z.enum(['Wysoki', 'Normalny', 'Niski']).nullable(),
     categories: z.array(z.object({
         name: z.string(),
         items: z.array(z.object({
@@ -108,15 +108,16 @@ const RatingInput = ({ value, onChange }: { value: number, onChange: (value: num
 };
 
 const YesNoInput = ({ value, onChange }: { value: boolean | null, onChange: (value: boolean) => void }) => {
+    const randomId = React.useId();
     return (
         <RadioGroup onValueChange={(val) => onChange(val === 'true')} value={String(value)} className="flex gap-4">
             <div className="flex items-center space-x-2">
-                <RadioGroupItem value="true" id={`yes-${Math.random()}`} />
-                <Label htmlFor={`yes-${Math.random()}`}>Tak</Label>
+                <RadioGroupItem value="true" id={`yes-${randomId}`} />
+                <Label htmlFor={`yes-${randomId}`}>Tak</Label>
             </div>
             <div className="flex items-center space-x-2">
-                <RadioGroupItem value="false" id={`no-${Math.random()}`} />
-                <Label htmlFor={`no-${Math.random()}`}>Nie</Label>
+                <RadioGroupItem value="false" id={`no-${randomId}`} />
+                <Label htmlFor={`no-${randomId}`}>Nie</Label>
             </div>
         </RadioGroup>
     );
@@ -197,7 +198,7 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
                                             <Select onValueChange={field.onChange} value={field.value || ''}>
                                                 <FormControl><SelectTrigger><SelectValue placeholder="Wybierz standard" /></SelectTrigger></FormControl>
                                                 <SelectContent>
-                                                    {['A', 'B', 'C', 'D'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                                                    {['Wysoki', 'Normalny', 'Niski'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                                                 </SelectContent>
                                             </Select>
                                             <FormMessage />

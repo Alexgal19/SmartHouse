@@ -64,7 +64,7 @@ export type Inspection = {
   date: Date;
   coordinatorId: string;
   coordinatorName: string;
-  standard: 'A' | 'B' | 'C' | 'D' | null;
+  standard: 'Wysoki' | 'Normalny' | 'Niski' | null;
   categories: InspectionCategory[];
   photos: string[]; // For now, this will be empty
 };
