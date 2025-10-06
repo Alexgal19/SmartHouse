@@ -121,13 +121,6 @@ async function getSheet(title: string, headers: string[]): Promise<GoogleSpreads
     let sheet = doc.sheetsByTitle[title];
     if (!sheet) {
         sheet = await doc.addSheet({ title, headerValues: headers });
-    } else {
-        const currentHeaders = sheet.headerValues;
-        const missingHeaders = headers.filter(h => !currentHeaders.includes(h));
-        if (missingHeaders.length > 0) {
-            // Forcefully set headers if they don't match
-            await sheet.setHeaderRow(headers);
-        }
     }
     return sheet;
 }
@@ -138,7 +131,7 @@ export async function getEmployees(): Promise<Employee[]> {
     const rows = await sheet.getRows();
     return rows.map(deserializeEmployee);
   } catch (error) {
-    console.error("Error fetching employees from Google Sheets:", error);
+    console.error("Error in getEmployees:", error);
     throw new Error("Could not fetch employees.");
   }
 }
@@ -146,25 +139,20 @@ export async function getEmployees(): Promise<Employee[]> {
 export async function getSettings(): Promise<Settings> {
   try {
     await doc.loadInfo();
-
-    // Fetch all simple lists
     const nationalitiesSheet = await getSheet(SHEET_NAME_NATIONALITIES, ['name']);
     const departmentsSheet = await getSheet(SHEET_NAME_DEPARTMENTS, ['name']);
     const coordinatorsSheet = await getSheet(SHEET_NAME_COORDINATORS, ['uid', 'name']);
-
-    const [nationalityRows, departmentRows, coordinatorRows] = await Promise.all([
-        nationalitiesSheet.getRows(),
-        departmentsSheet.getRows(),
-        coordinatorsSheet.getRows()
-    ]);
-    
-    // Fetch addresses and rooms sequentially to ensure data integrity
     const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ['id', 'name']);
     const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity']);
 
-    const addressRows = await addressesSheet.getRows();
-    const roomRows = await roomsSheet.getRows();
-
+    const [nationalityRows, departmentRows, coordinatorRows, addressRows, roomRows] = await Promise.all([
+        nationalitiesSheet.getRows(),
+        departmentsSheet.getRows(),
+        coordinatorsSheet.getRows(),
+        addressesSheet.getRows(),
+        roomsSheet.getRows()
+    ]);
+    
     const allRooms: (Room & { addressId: string })[] = roomRows.map(row => ({
         id: row.get('id'),
         addressId: row.get('addressId'),
@@ -177,7 +165,7 @@ export async function getSettings(): Promise<Settings> {
         return {
             id: addressId,
             name: row.get('name'),
-            rooms: allRooms.filter(room => room.addressId === addressId).map(({ addressId, ...rest }) => rest), // Attach rooms
+            rooms: allRooms.filter(room => room.addressId === addressId).map(({ addressId, ...rest }) => rest),
         };
     });
     
@@ -195,7 +183,7 @@ export async function getSettings(): Promise<Settings> {
 
     return settings;
   } catch (error) {
-    console.error("Error fetching settings from Google Sheets:", error);
+    console.error("Error in getSettings:", error);
     throw new Error(`Could not fetch settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
@@ -393,7 +381,7 @@ async function syncSheet<T extends Record<string, any>>(
     serializeFn: (item: T) => Record<string, any> = (item) => item
 ) {
     const sheet = await getSheet(sheetName, headers);
-    await sheet.clearRows(); // Clear all rows before syncing
+    await sheet.clearRows();
     if (newData.length > 0) {
         const serializedData = newData.map(serializeFn);
         await sheet.addRows(serializedData);
@@ -456,5 +444,3 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
         console.error("Error marking notification as read:", error);
     }
 }
-
-    
