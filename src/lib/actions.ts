@@ -124,9 +124,14 @@ async function getSheet(title: string, headers: string[]): Promise<GoogleSpreads
     let sheet = doc.sheetsByTitle[title];
     if (!sheet) {
         sheet = await doc.addSheet({ title, headerValues: headers });
+    } else {
+        const currentHeaders = sheet.headerValues;
+        const missingHeaders = headers.filter(h => !currentHeaders.includes(h));
+        if(missingHeaders.length > 0) {
+            await sheet.setHeaderRow([...currentHeaders, ...missingHeaders]);
+        }
     }
-    // This is the crucial fix: always load headers before using the sheet.
-    await sheet.loadHeaderRow(); 
+    await sheet.loadHeaderRow();
     return sheet;
 }
 
@@ -463,6 +468,9 @@ const serializeRaw = (value: any): string | number | boolean => {
     if (value === null || value === undefined) {
       return '';
     }
+    if (typeof value === 'boolean') {
+        return value;
+    }
     return value;
 };
 
@@ -490,15 +498,17 @@ const deserializeInspection = (row: any, allDetails: InspectionDetail[], allPhot
             
             if (valueStr === 'true') value = true;
             else if (valueStr === 'false') value = false;
-            else if (valueStr && !isNaN(Number(valueStr))) value = Number(valueStr);
+            else if (valueStr && !isNaN(Number(valueStr)) && valueStr.trim() !== '') value = Number(valueStr);
             else if (valueStr === null || valueStr === '') value = null;
 
             const existingItem = acc[detail.category].items.find(i => i.label === detail.itemLabel);
             if (!existingItem) {
+                 const itemFromChecklist = getInitialChecklist().flatMap(c => c.items).find(i => i.label === detail.itemLabel);
                  acc[detail.category].items.push({
-                    type: 'info', // Type is not stored, so we default to info. The client knows the real type.
+                    type: itemFromChecklist?.type || 'info',
                     label: detail.itemLabel, 
                     value: value,
+                    options: itemFromChecklist?.options
                 });
             }
         }
@@ -508,6 +518,19 @@ const deserializeInspection = (row: any, allDetails: InspectionDetail[], allPhot
         return acc;
     }, {} as Record<string, {name: string, items: InspectionCategoryItem[], uwagi: string}>);
 
+    const checklistCategories = getInitialChecklist();
+    const finalCategories = checklistCategories.map(checklistCategory => {
+        const foundCategory = categoriesMap[checklistCategory.name];
+        if (foundCategory) {
+            const finalItems = checklistCategory.items.map(checklistItem => {
+                const foundItem = foundCategory.items.find(i => i.label === checklistItem.label);
+                return foundItem || checklistItem;
+            });
+            return { ...checklistCategory, items: finalItems, uwagi: foundCategory.uwagi || '' };
+        }
+        return checklistCategory;
+    });
+
     return {
         id: inspectionId,
         addressId: row.get('addressId'),
@@ -516,10 +539,51 @@ const deserializeInspection = (row: any, allDetails: InspectionDetail[], allPhot
         coordinatorId: row.get('coordinatorId'),
         coordinatorName: row.get('coordinatorName'),
         standard: (row.get('standard') as 'Wysoki' | 'Normalny' | 'Niski') || null,
-        categories: Object.values(categoriesMap),
+        categories: finalCategories,
         photos: allPhotos.filter(p => p.inspectionId === inspectionId).map(p => p.photoData),
     }
 };
+
+const cleanlinessOptions = ["Bardzo czysto", "Czysto", "Brudno", "Bardzo brudno"];
+
+const getInitialChecklist = (): InspectionCategory[] => [
+    {
+        name: "Kuchnia", uwagi: "", items: [
+            { label: "Czystość kuchnia", type: "select", value: null, options: cleanlinessOptions },
+            { label: "Czystość lodówki", type: "select", value: null, options: cleanlinessOptions },
+            { label: "Czystość płyty gazowej, elektrycznej i piekarnika", type: "select", value: null, options: cleanlinessOptions }
+        ]
+    },
+    {
+        name: "Łazienka", uwagi: "", items: [
+            { label: "Czystość łazienki", type: "select", value: null, options: cleanlinessOptions },
+            { label: "Czystość toalety", type: "select", value: null, options: cleanlinessOptions },
+            { label: "Czystość brodzika", type: "select", value: null, options: cleanlinessOptions },
+        ]
+    },
+    {
+        name: "Pokoje", uwagi: "", items: [
+            { label: "Czystość pokoju", type: "select", value: null, options: cleanlinessOptions },
+            { label: "Czy niema pleśni w pomieszczeniach?", type: "yes_no", value: null },
+            { label: "Łóżka niepołamane", type: "yes_no", value: null },
+            { label: "Sciany czyste", type: "yes_no", value: null },
+            { label: "Szafy i szafki czyste", type: "yes_no", value: null },
+            { label: "Stare rzeczy wyrzucane", type: "yes_no", value: null },
+            { label: "Pościel czysta", type: "yes_no", value: null },
+            { label: "Wyposażenia niezniszczone", type: "yes_no", value: null },
+        ]
+    },
+    {
+        name: "Instalacja", uwagi: "", items: [
+            { label: "Instalacja gazowa działa", type: "yes_no", value: null },
+            { label: "Instalacja internetowa działa", type: "yes_no", value: null },
+            { label: "Instalacja elektryczna działa", type: "yes_no", value: null },
+            { label: "Instalacja wodno-kanalizacyjna działa", type: "yes_no", value: null },
+            { label: "Ogrzewania", type: "text", value: "" },
+            { label: "Temperatura w pomieszczeniu", type: "text", value: "" }
+        ]
+    },
+];
 
 export async function getInspections(): Promise<Inspection[]> {
     try {
@@ -566,62 +630,64 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
     const inspectionId = id || `insp-${Date.now()}`;
     const { photos, categories, ...restOfData } = inspectionData;
 
+    const mainInspectionData = serializeInspection({ ...restOfData, id: inspectionId });
+
     if (id) {
         const allRows = await inspectionsSheet.getRows();
         const rowToUpdate = allRows.find(row => row.get('id') === id);
         if (rowToUpdate) {
-            Object.assign(rowToUpdate, serializeInspection({ ...restOfData, id: inspectionId }));
+             Object.keys(mainInspectionData).forEach(key => {
+                rowToUpdate.set(key, mainInspectionData[key as keyof typeof mainInspectionData]);
+            });
             await rowToUpdate.save();
         } else {
             throw new Error("Inspection to update not found");
         }
     } else {
-        await inspectionsSheet.addRow(serializeInspection({ ...restOfData, id: inspectionId }));
+        await inspectionsSheet.addRow(mainInspectionData, { raw: true });
     }
 
     const allDetailRows = await detailsSheet.getRows();
-    const existingDetails = allDetailRows.filter(r => r.get('inspectionId') === inspectionId);
-    for (const row of existingDetails) {
-        await row.delete();
-    }
-
+    const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === inspectionId);
+    await Promise.all(detailsToDelete.map(row => row.delete()));
+    
+    const detailPayload = [];
     for (const category of categories) {
-        for (const item of category.items) {
-            await detailsSheet.addRow({
-                id: `detail-${Date.now()}-${Math.random()}`,
-                inspectionId: inspectionId,
-                category: category.name,
-                itemLabel: item.label,
-                itemValue: serializeRaw(item.value),
-                uwagi: category.uwagi || null,
-            }, {raw: true});
-        }
         if (category.items.length === 0 && category.uwagi) {
-            await detailsSheet.addRow({
+             detailPayload.push({
                 id: `detail-${Date.now()}-${Math.random()}`,
                 inspectionId: inspectionId,
                 category: category.name,
                 itemLabel: null,
                 itemValue: null,
                 uwagi: category.uwagi,
-            }, {raw: true});
+            });
+        } else {
+            for (const item of category.items) {
+                 detailPayload.push({
+                    id: `detail-${Date.now()}-${Math.random()}`,
+                    inspectionId: inspectionId,
+                    category: category.name,
+                    itemLabel: item.label,
+                    itemValue: serializeRaw(item.value),
+                    uwagi: category.uwagi || null,
+                });
+            }
         }
     }
+     if(detailPayload.length > 0) await detailsSheet.addRows(detailPayload, { raw: true });
     
     const allPhotoRows = await photosSheet.getRows();
-    const existingPhotos = allPhotoRows.filter(r => r.get('inspectionId') === inspectionId);
-    for (const row of existingPhotos) {
-        await row.delete();
-    }
+    const photosToDelete = allPhotoRows.filter(r => r.get('inspectionId') === inspectionId);
+    await Promise.all(photosToDelete.map(row => row.delete()));
     
     if (photos && photos.length > 0) {
-        for (const photoData of photos) {
-            await photosSheet.addRow({
-                id: `photo-${Date.now()}-${Math.random()}`,
-                inspectionId: inspectionId,
-                photoData: photoData,
-            }, { raw: false });
-        }
+        const photoPayload = photos.map(photoData => ({
+             id: `photo-${Date.now()}-${Math.random()}`,
+             inspectionId: inspectionId,
+             photoData: photoData,
+        }));
+        await photosSheet.addRows(photoPayload, {raw: false});
     }
 }
 
@@ -657,22 +723,27 @@ export async function deleteInspection(id: string): Promise<void> {
 
         const allInspectionRows = await inspectionsSheet.getRows();
         const inspectionRow = allInspectionRows.find(r => r.get('id') === id);
-        if (inspectionRow) await inspectionRow.delete();
-
-        const allDetailRows = await detailsSheet.getRows();
-        const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === id);
-        for (const row of detailsToDelete) {
-            await row.delete();
+        if (inspectionRow) {
+            await inspectionRow.delete();
         }
 
+        const allDetailRows = await detailsSheet.getRows();
+        const detailsToKeep = allDetailRows.filter(r => r.get('inspectionId') !== id);
+        await detailsSheet.clearRows();
+        if(detailsToKeep.length > 0) {
+            await detailsSheet.addRows(detailsToKeep.map(r => r.toObject()));
+        }
+
+
         const allPhotoRows = await photosSheet.getRows();
-        const photosToDelete = allPhotoRows.filter(r => r.get('inspectionId') === id);
-        for (const row of photosToDelete) {
-            await row.delete();
+        const photosToKeep = allPhotoRows.filter(r => r.get('inspectionId') !== id);
+        await photosSheet.clearRows();
+        if(photosToKeep.length > 0) {
+            await photosSheet.addRows(photosToKeep.map(r => r.toObject()));
         }
 
     } catch (error) {
         console.error("Error in deleteInspection:", error);
-        throw new Error("Could not delete inspection.");
+        throw new Error(`Could not delete inspection. ${error instanceof Error ? error.message : ''}`);
     }
 }
