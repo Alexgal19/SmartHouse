@@ -583,24 +583,30 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
             }
         });
         
-        if(detailRows.length > 0) {
-            const rowsToAdd = detailRows.map(d => ({ ...d, id: `detail-${Date.now()}-${Math.random()}` }));
-            await detailsSheet.addRows(rowsToAdd);
+        // Save details in chunks to avoid API limits
+        for (let i = 0; i < detailRows.length; i += 5) {
+            const chunk = detailRows.slice(i, i + 5).map(d => ({ ...d, id: `detail-${Date.now()}-${Math.random()}` }));
+            if (chunk.length > 0) {
+                 await detailsSheet.addRows(chunk);
+            }
         }
 
         if (photos && photos.length > 0) {
-            const photoRows = photos.map(photoData => ({
-                id: `photo-${Date.now()}-${Math.random()}`,
-                inspectionId: newInspectionId,
-                photoData: photoData,
-            }));
-            await photosSheet.addRows(photoRows);
+            // Save each photo individually to avoid payload size issues
+            for (const photoData of photos) {
+                const photoRow = {
+                    id: `photo-${Date.now()}-${Math.random()}`,
+                    inspectionId: newInspectionId,
+                    photoData: photoData,
+                };
+                 await photosSheet.addRow(photoRow);
+            }
         }
 
         return { ...newInspectionBase, categories, photos: photos || [] };
     } catch (error) {
         console.error("Error adding inspection:", error);
-        if (error instanceof Error && error.message.includes('exceeds the maximum size')) {
+        if (error instanceof Error && (error.message.includes('exceeds the maximum size') || error.message.includes('request entity too large'))) {
              throw new Error("One of the photos is too large to be saved. Please use smaller image files.");
         }
         throw new Error("Could not add inspection.");
