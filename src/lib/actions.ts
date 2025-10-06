@@ -138,6 +138,7 @@ async function getSheet(title: string, headers: string[]): Promise<GoogleSpreads
 export async function getEmployees(): Promise<Employee[]> {
   try {
     const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
+    await sheet.loadHeaderRow();
     const rows = await sheet.getRows();
     return rows.map(deserializeEmployee);
   } catch (error) {
@@ -153,6 +154,14 @@ export async function getSettings(): Promise<Settings> {
     const coordinatorsSheet = await getSheet(SHEET_NAME_COORDINATORS, ['uid', 'name']);
     const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ['id', 'name']);
     const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity']);
+    
+    await Promise.all([
+        nationalitiesSheet.loadHeaderRow(),
+        departmentsSheet.loadHeaderRow(),
+        coordinatorsSheet.loadHeaderRow(),
+        addressesSheet.loadHeaderRow(),
+        roomsSheet.loadHeaderRow(),
+    ]);
 
     const [nationalityRows, departmentRows, coordinatorRows, addressRows, roomRows] = await Promise.all([
         nationalitiesSheet.getRows(),
@@ -464,14 +473,14 @@ const PHOTO_HEADERS = ['id', 'inspectionId', 'photoData'];
 const INSPECTION_DETAILS_HEADERS = ['id', 'inspectionId', 'category', 'itemLabel', 'itemValue', 'uwagi'];
 
 const serializeRaw = (value: any): string | number | boolean => {
-    if (value === null || value === undefined) {
+    if (value === null || value === undefined || value === '') {
       return '';
     }
-     if (typeof value === 'boolean' || typeof value === 'number') {
+    if (typeof value === 'boolean' || typeof value === 'number') {
         return value;
     }
     return String(value);
-  };
+};
 
 const serializeInspection = (inspection: Omit<Inspection, 'photos' | 'categories'>): Record<string, string | number | boolean> => ({
     id: inspection.id,
@@ -535,6 +544,12 @@ export async function getInspections(): Promise<Inspection[]> {
         const photosSheet = await getSheet(SHEET_NAME_INSPECTION_PHOTOS, PHOTO_HEADERS);
         const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, INSPECTION_DETAILS_HEADERS);
         
+        await Promise.all([
+            inspectionsSheet.loadHeaderRow(),
+            photosSheet.loadHeaderRow(),
+            detailsSheet.loadHeaderRow(),
+        ]);
+
         const [inspectionRows, photoRows, detailRows] = await Promise.all([
             inspectionsSheet.getRows(),
             photosSheet.getRows(),
@@ -580,41 +595,43 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
             id: newInspectionId,
         };
         
+        // 1. Save the main inspection record
         await inspectionsSheet.addRow(serializeInspection(newInspectionBase));
         
-        // Save details one by one
+        // 2. Save details records
+        const detailPromises = [];
         for (const category of categories) {
             for (const item of category.items) {
-                 await detailsSheet.addRow({
+                 detailPromises.push(detailsSheet.addRow({
                     id: `detail-${Date.now()}-${Math.random()}`,
                     inspectionId: newInspectionId,
                     category: category.name,
                     itemLabel: item.label,
                     itemValue: serializeRaw(item.value),
                     uwagi: '',
-                });
+                }));
             }
              if (category.uwagi) {
-                await detailsSheet.addRow({
+                detailPromises.push(detailsSheet.addRow({
                     id: `uwagi-${Date.now()}-${Math.random()}`,
                     inspectionId: newInspectionId,
                     category: category.name,
                     itemLabel: '',
                     itemValue: '',
                     uwagi: category.uwagi,
-                });
+                }));
             }
         }
+        await Promise.all(detailPromises);
         
-        // Save photos one by one
+        // 3. Save photo records
         if (photos && photos.length > 0) {
-             for (const photoData of photos) {
-                 await photosSheet.addRow({
-                    id: `photo-${Date.now()}-${Math.random()}`,
-                    inspectionId: newInspectionId,
-                    photoData: photoData,
-                }, { raw: true });
-             }
+            const photoPromises = photos.map(photoData => photosSheet.addRow({
+                id: `photo-${Date.now()}-${Math.random()}`,
+                inspectionId: newInspectionId,
+                photoData: photoData,
+            }));
+            await Promise.all(photoPromises);
         }
 
         return { ...newInspectionBase, categories, photos: photos || [] };
@@ -626,6 +643,8 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
         throw new Error("Could not add inspection.");
     }
 }
+    
+
     
 
     

@@ -172,7 +172,7 @@ const CameraCapture = ({ isOpen, onOpenChange, onCapture }: { isOpen: boolean, o
           }
         };
     
-        if (isOpen) {
+        if (isOpen && hasCameraPermission === null) {
           getCameraPermission();
         }
     
@@ -180,9 +180,10 @@ const CameraCapture = ({ isOpen, onOpenChange, onCapture }: { isOpen: boolean, o
           if (streamRef.current) {
             streamRef.current.getTracks().forEach(track => track.stop());
             streamRef.current = null;
+            setHasCameraPermission(null);
           }
         };
-      }, [isOpen, toast]);
+      }, [isOpen, hasCameraPermission, toast]);
 
     const handleCapture = () => {
         if (videoRef.current && canvasRef.current) {
@@ -208,7 +209,7 @@ const CameraCapture = ({ isOpen, onOpenChange, onCapture }: { isOpen: boolean, o
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Zrób zdjęcie</DialogTitle>
+                    <DialogTitle>Зробіть фото</DialogTitle>
                 </DialogHeader>
                 <div className="flex flex-col items-center justify-center p-4">
                     {hasCameraPermission === false && (
@@ -229,7 +230,7 @@ const CameraCapture = ({ isOpen, onOpenChange, onCapture }: { isOpen: boolean, o
                 </div>
                 <DialogFooter>
                     <Button variant="secondary" onClick={() => onOpenChange(false)}>Anuluj</Button>
-                    <Button onClick={handleCapture} disabled={!hasCameraPermission}>Zrób zdjęcie</Button>
+                    <Button onClick={handleCapture} disabled={!hasCameraPermission}>Зробіть фото</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -454,7 +455,7 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
                                             </Button>
                                              <Button type="button" variant="outline" onClick={() => setIsCameraOpen(true)}>
                                                 <Camera className="mr-2 h-4 w-4" />
-                                                Zrób zdjęcie
+                                                Зробіть фото
                                             </Button>
                                             <input
                                                 type="file"
@@ -617,3 +618,5 @@ export default function InspectionsView({ inspections, settings, currentUser, on
         </Card>
     );
 }
+
+    
