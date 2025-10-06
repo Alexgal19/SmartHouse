@@ -11,7 +11,6 @@ const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
 const SHEET_NAME_EMPLOYEES = 'Employees';
 const SHEET_NAME_NOTIFICATIONS = 'Powiadomienia';
 const SHEET_NAME_ADDRESSES = 'Addresses';
-const SHEET_NAME_ROOMS = 'Rooms';
 const SHEET_NAME_NATIONALITIES = 'Nationalities';
 const SHEET_NAME_DEPARTMENTS = 'Departments';
 const SHEET_NAME_COORDINATORS = 'Coordinators';
@@ -130,7 +129,6 @@ async function getSheet(title: string, headers: string[]) {
     if (!sheet) {
         sheet = await doc.addSheet({ title, headerValues: headers });
     } else {
-        // Ensure headers are up to date in case they were changed manually
         const currentHeaders = sheet.headerValues;
         const missingHeaders = headers.filter(h => !currentHeaders.includes(h));
         if (missingHeaders.length > 0) {
@@ -154,46 +152,33 @@ export async function getEmployees(): Promise<Employee[]> {
 export async function getSettings(): Promise<Settings> {
   try {
     await doc.loadInfo();
-    
-    const [addressesSheet, roomsSheet, nationalitiesSheet, departmentsSheet, coordinatorsSheet] = await Promise.all([
-        getSheet(SHEET_NAME_ADDRESSES, ['id', 'name']),
-        getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity']),
-        getSheet(SHEET_NAME_NATIONALITIES, ['name']),
-        getSheet(SHEET_NAME_DEPARTMENTS, ['name']),
-        getSheet(SHEET_NAME_COORDINATORS, ['uid', 'name']),
-    ]);
 
-    const [addressRows, roomRows, nationalityRows, departmentRows, coordinatorRows] = await Promise.all([
-        addressesSheet.getRows(),
-        roomsSheet.getRows(),
-        nationalitiesSheet.getRows(),
-        departmentsSheet.getRows(),
-        coordinatorsSheet.getRows(),
-    ]);
-    
-    const rooms = roomRows.map(row => ({
-        id: row.get('id'),
-        addressId: row.get('addressId'),
-        name: row.get('name'),
-        capacity: parseInt(row.get('capacity'), 10) || 0,
-    }));
-    
+    const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ['id', 'name', 'rooms']);
+    const nationalitiesSheet = await getSheet(SHEET_NAME_NATIONALITIES, ['name']);
+    const departmentsSheet = await getSheet(SHEET_NAME_DEPARTMENTS, ['name']);
+    const coordinatorsSheet = await getSheet(SHEET_NAME_COORDINATORS, ['uid', 'name']);
+
+    const addressRows = await addressesSheet.getRows();
+    const nationalityRows = await nationalitiesSheet.getRows();
+    const departmentRows = await departmentsSheet.getRows();
+    const coordinatorRows = await coordinatorsSheet.getRows();
+
     const settings: Settings = {
-        id: 'global-settings',
-        addresses: addressRows.map(row => ({
-            id: row.get('id'),
-            name: row.get('name'),
-            rooms: rooms.filter(room => room.addressId === row.get('id'))
-        })),
-        nationalities: nationalityRows.map(row => row.get('name')),
-        departments: departmentRows.map(row => row.get('name')),
-        coordinators: coordinatorRows.map(row => ({
-            uid: row.get('uid'),
-            name: row.get('name'),
-        })),
-        genders: ['Mężczyzna', 'Kobieta'],
+      id: 'global-settings',
+      addresses: addressRows.map(row => ({
+        id: row.get('id'),
+        name: row.get('name'),
+        rooms: JSON.parse(row.get('rooms') || '[]') as Room[],
+      })),
+      nationalities: nationalityRows.map(row => row.get('name')),
+      departments: departmentRows.map(row => row.get('name')),
+      coordinators: coordinatorRows.map(row => ({
+        uid: row.get('uid'),
+        name: row.get('name'),
+      })),
+      genders: ['Mężczyzna', 'Kobieta'],
     };
-    
+
     return settings;
   } catch (error) {
     console.error("Error fetching settings from Google Sheets:", error);
@@ -398,7 +383,7 @@ async function syncSheet<T extends Record<string, any>>(
     const newDataMap = new Map(newData.map(item => [item[idKey], item]));
     const oldDataMap = new Map(rows.map(row => [row.get(idKey as string), row]));
     
-    const rowsToDelete: any[] = [];
+    const rowsToDelete: Promise<void>[] = [];
     for (const [id, row] of oldDataMap.entries()) {
         if (!newDataMap.has(id)) {
             rowsToDelete.push(row.delete());
@@ -408,12 +393,14 @@ async function syncSheet<T extends Record<string, any>>(
         await Promise.all(rowsToDelete);
     }
 
-    const rowsToAddOrUpdate: any[] = [];
+    const rowsToAddOrUpdate: Promise<any>[] = [];
     for (const [id, item] of newDataMap.entries()) {
         const existingRow = oldDataMap.get(id);
         const serializedItem = headers.reduce((acc, header) => {
             const value = item[header];
-             if (value !== null && value !== undefined) {
+            if (header === 'rooms' && Array.isArray(value)) {
+                acc[header] = JSON.stringify(value);
+            } else if (value !== null && value !== undefined) {
                 acc[header] = value.toString();
             } else {
                 acc[header] = '';
@@ -449,11 +436,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Se
         const updatedSettings = { ...currentSettings, ...newSettings };
 
         if (newSettings.addresses) {
-            const allRooms = updatedSettings.addresses.flatMap(address => 
-                address.rooms.map(room => ({...room, addressId: address.id}))
-            );
-            await syncSheet(SHEET_NAME_ADDRESSES, ['id', 'name'], updatedSettings.addresses.map(({id, name}) => ({id, name})), 'id');
-            await syncSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity'], allRooms, 'id');
+             await syncSheet(SHEET_NAME_ADDRESSES, ['id', 'name', 'rooms'], updatedSettings.addresses, 'id');
         }
         if (newSettings.nationalities) {
             await syncSheet(SHEET_NAME_NATIONALITIES, ['name'], updatedSettings.nationalities.map(name => ({ name })), 'name');
@@ -498,3 +481,5 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
         console.error("Error marking notification as read:", error);
     }
 }
+
+    
