@@ -1,0 +1,333 @@
+// src/lib/sheets.ts
+import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
+import { JWT } from 'google-auth-library';
+import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, InspectionCategory, InspectionCategoryItem, Photo, InspectionDetail } from '@/types';
+import { format, isEqual, parseISO } from 'date-fns';
+
+const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
+const SHEET_NAME_EMPLOYEES = 'Employees';
+const SHEET_NAME_NOTIFICATIONS = 'Powiadomienia';
+const SHEET_NAME_ADDRESSES = 'Addresses';
+const SHEET_NAME_ROOMS = 'Rooms';
+const SHEET_NAME_NATIONALITIES = 'Nationalities';
+const SHEET_NAME_DEPARTMENTS = 'Departments';
+const SHEET_NAME_COORDINATORS = 'Coordinators';
+const SHEET_NAME_INSPECTIONS = 'Inspections';
+const SHEET_NAME_INSPECTION_PHOTOS = 'InspectionPhotos';
+const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
+
+
+const serviceAccountAuth = new JWT({
+  email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+  key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+  scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+});
+
+const doc = new GoogleSpreadsheet(SPREADSHEET_ID, serviceAccountAuth);
+
+const parseDate = (dateStr: string | undefined | null): Date | null => {
+  if (!dateStr) return null;
+  const date = new Date(dateStr);
+   if (!isNaN(date.getTime())) {
+    date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+    return date;
+  }
+  return null;
+};
+
+const serializeEmployee = (employee: Partial<Employee>): Record<string, string | number | boolean> => {
+    const serialized: Record<string, string | number | boolean> = {};
+    for (const [key, value] of Object.entries(employee)) {
+        if (value instanceof Date) {
+            serialized[key] = value.toISOString().split('T')[0];
+        } else if (value !== null && value !== undefined) {
+            serialized[key] = value.toString();
+        } else {
+            serialized[key] = '';
+        }
+    }
+    return serialized;
+};
+
+const deserializeEmployee = (row: any): Employee => {
+    const checkInDate = parseDate(row.get('checkInDate'));
+    if (!checkInDate) {
+        throw new Error(`Invalid or missing checkInDate for employee row: ${row.get('id')}`);
+    }
+
+    return {
+        id: row.get('id'),
+        fullName: row.get('fullName'),
+        coordinatorId: row.get('coordinatorId'),
+        nationality: row.get('nationality'),
+        gender: row.get('gender') as 'Mężczyzna' | 'Kobieta',
+        address: row.get('address'),
+        roomNumber: row.get('roomNumber'),
+        zaklad: row.get('zaklad'),
+        checkInDate: checkInDate,
+        checkOutDate: parseDate(row.get('checkOutDate')),
+        contractStartDate: parseDate(row.get('contractStartDate')),
+        contractEndDate: parseDate(row.get('contractEndDate')),
+        departureReportDate: parseDate(row.get('departureReportDate')),
+        comments: row.get('comments'),
+        status: row.get('status') as 'active' | 'dismissed',
+        oldAddress: row.get('oldAddress') || null,
+    };
+};
+
+const deserializeNotification = (row: any): Notification => {
+    const createdAtString = row.get('createdAt');
+    const createdAt = new Date(createdAtString);
+    if (isNaN(createdAt.getTime())) {
+        console.error(`Invalid date string for notification: ${createdAtString}`);
+    }
+    const changesString = row.get('changes');
+    return {
+        id: row.get('id'),
+        message: row.get('message'),
+        employeeId: row.get('employeeId'),
+        employeeName: row.get('employeeName'),
+        coordinatorId: row.get('coordinatorId'),
+        coordinatorName: row.get('coordinatorName'),
+        createdAt: createdAt,
+        isRead: row.get('isRead') === 'TRUE',
+        changes: changesString ? JSON.parse(changesString) : [],
+    };
+};
+
+const EMPLOYEE_HEADERS = [
+    'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 
+    'zaklad', 'checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 
+    'departureReportDate', 'comments', 'status', 'oldAddress'
+];
+
+export async function getSheet(title: string, headers: string[]): Promise<GoogleSpreadsheetWorksheet> {
+    await doc.loadInfo();
+    let sheet = doc.sheetsByTitle[title];
+    if (!sheet) {
+        sheet = await doc.addSheet({ title, headerValues: headers });
+    } else {
+        await sheet.loadHeaderRow();
+    }
+    return sheet;
+}
+
+
+export async function getEmployees(): Promise<Employee[]> {
+  try {
+    const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
+    const rows = await sheet.getRows();
+    return rows.map(deserializeEmployee);
+  } catch (error) {
+    console.error("Error in getEmployees:", error);
+    throw new Error(`Could not fetch employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+export async function getSettings(): Promise<Settings> {
+  try {
+    const nationalitiesSheet = await getSheet(SHEET_NAME_NATIONALITIES, ['name']);
+    const departmentsSheet = await getSheet(SHEET_NAME_DEPARTMENTS, ['name']);
+    const coordinatorsSheet = await getSheet(SHEET_NAME_COORDINATORS, ['uid', 'name']);
+    const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ['id', 'name']);
+    const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity']);
+
+    const [nationalityRows, departmentRows, coordinatorRows, addressRows, roomRows] = await Promise.all([
+        nationalitiesSheet.getRows(),
+        departmentsSheet.getRows(),
+        coordinatorsSheet.getRows(),
+        addressesSheet.getRows(),
+        roomsSheet.getRows()
+    ]);
+    
+    const allRooms: (Room & { addressId: string })[] = roomRows.map(row => ({
+        id: row.get('id'),
+        addressId: row.get('addressId'),
+        name: row.get('name'),
+        capacity: parseInt(row.get('capacity'), 10) || 0,
+    }));
+    
+    const addresses: HousingAddress[] = addressRows.map(row => {
+        const addressId = row.get('id');
+        return {
+            id: addressId,
+            name: row.get('name'),
+            rooms: allRooms.filter(room => room.addressId === addressId).map(({ addressId, ...rest }) => rest),
+        };
+    });
+    
+    const settings: Settings = {
+      id: 'global-settings',
+      addresses: addresses,
+      nationalities: nationalityRows.map(row => row.get('name')),
+      departments: departmentRows.map(row => row.get('name')),
+      coordinators: coordinatorRows.map(row => ({
+        uid: row.get('uid'),
+        name: row.get('name'),
+      })),
+      genders: ['Mężczyzna', 'Kobieta'],
+    };
+
+    return settings;
+  } catch (error) {
+    console.error("Error in getSettings:", error);
+    throw new Error(`Could not fetch settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+export async function getNotifications(): Promise<Notification[]> {
+    try {
+        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
+        const rows = await sheet.getRows();
+        return rows.map(deserializeNotification).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    } catch (error) {
+        console.error("Error fetching notifications:", error);
+        return [];
+    }
+}
+
+const INSPECTION_HEADERS = ['id', 'addressId', 'addressName', 'date', 'coordinatorId', 'coordinatorName', 'standard'];
+const PHOTO_HEADERS = ['id', 'inspectionId', 'photoData'];
+const INSPECTION_DETAILS_HEADERS = ['id', 'inspectionId', 'addressName', 'date', 'coordinatorName', 'category', 'itemLabel', 'itemValue', 'uwagi'];
+
+
+const deserializeInspection = (row: any, allDetails: InspectionDetail[], allPhotos: Photo[]): Inspection => {
+    const inspectionId = row.get('id');
+    const detailsForInspection = allDetails.filter(d => d.inspectionId === inspectionId);
+    
+    const categoriesMap = detailsForInspection.reduce((acc, detail) => {
+        if (!acc[detail.category]) {
+            acc[detail.category] = { name: detail.category, items: [], uwagi: '' };
+        }
+        if (detail.itemLabel) {
+            const valueStr = detail.itemValue;
+            let value: any = valueStr;
+            
+            if (valueStr === 'true') value = true;
+            else if (valueStr === 'false') value = false;
+            else if (valueStr && !isNaN(Number(valueStr)) && valueStr.trim() !== '') value = Number(valueStr);
+            else if (valueStr === null || valueStr === '') value = null;
+
+            const existingItem = acc[detail.category].items.find(i => i.label === detail.itemLabel);
+            if (!existingItem) {
+                 const itemFromChecklist = getInitialChecklist().flatMap(c => c.items).find(i => i.label === detail.itemLabel);
+                 acc[detail.category].items.push({
+                    type: itemFromChecklist?.type || 'info',
+                    label: detail.itemLabel, 
+                    value: value,
+                    options: itemFromChecklist?.options
+                });
+            }
+        }
+        if (detail.uwagi && !acc[detail.category].uwagi) {
+            acc[detail.category].uwagi = detail.uwagi;
+        }
+        return acc;
+    }, {} as Record<string, {name: string, items: InspectionCategoryItem[], uwagi: string}>);
+
+    const checklistCategories = getInitialChecklist();
+    const finalCategories = checklistCategories.map(checklistCategory => {
+        const foundCategory = categoriesMap[checklistCategory.name];
+        if (foundCategory) {
+            const finalItems = checklistCategory.items.map(checklistItem => {
+                const foundItem = foundCategory.items.find(i => i.label === checklistItem.label);
+                return foundItem || checklistItem;
+            });
+            return { ...checklistCategory, items: finalItems, uwagi: foundCategory.uwagi || '' };
+        }
+        return checklistCategory;
+    });
+
+    return {
+        id: inspectionId,
+        addressId: row.get('addressId'),
+        addressName: row.get('addressName'),
+        date: new Date(row.get('date')),
+        coordinatorId: row.get('coordinatorId'),
+        coordinatorName: row.get('coordinatorName'),
+        standard: (row.get('standard') as 'Wysoki' | 'Normalny' | 'Niski') || null,
+        categories: finalCategories,
+        photos: allPhotos.filter(p => p.inspectionId === inspectionId).map(p => p.photoData),
+    }
+};
+
+const cleanlinessOptions = ["Bardzo czysto", "Czysto", "Brudno", "Bardzo brudno"];
+
+const getInitialChecklist = (): InspectionCategory[] => [
+    {
+        name: "Kuchnia", uwagi: "", items: [
+            { label: "Czystość kuchnia", type: "select", value: null, options: cleanlinessOptions },
+            { label: "Czystość lodówki", type: "select", value: null, options: cleanlinessOptions },
+            { label: "Czystość płyty gazowej, elektrycznej i piekarnika", type: "select", value: null, options: cleanlinessOptions }
+        ]
+    },
+    {
+        name: "Łazienka", uwagi: "", items: [
+            { label: "Czystość łazienki", type: "select", value: null, options: cleanlinessOptions },
+            { label: "Czystość toalety", type: "select", value: null, options: cleanlinessOptions },
+            { label: "Czystość brodzika", type: "select", value: null, options: cleanlinessOptions },
+        ]
+    },
+    {
+        name: "Pokoje", uwagi: "", items: [
+            { label: "Czystość pokoju", type: "select", value: null, options: cleanlinessOptions },
+            { label: "Czy niema pleśni w pomieszczeniach?", type: "yes_no", value: null },
+            { label: "Łóżka niepołamane", type: "yes_no", value: null },
+            { label: "Sciany czyste", type: "yes_no", value: null },
+            { label: "Szafy i szafki czyste", type: "yes_no", value: null },
+            { label: "Stare rzeczy wyrzucane", type: "yes_no", value: null },
+            { label: "Pościel czysta", type: "yes_no", value: null },
+            { label: "Wyposażenia niezniszczone", type: "yes_no", value: null },
+        ]
+    },
+    {
+        name: "Instalacja", uwagi: "", items: [
+            { label: "Instalacja gazowa działa", type: "yes_no", value: null },
+            { label: "Instalacja internetowa działa", type: "yes_no", value: null },
+            { label: "Instalacja elektryczna działa", type: "yes_no", value: null },
+            { label: "Instalacja wodno-kanalizacyjna działa", type: "yes_no", value: null },
+            { label: "Ogrzewania", type: "text", value: "" },
+            { label: "Temperatura w pomieszczeniu", type: "text", value: "" }
+        ]
+    },
+];
+
+export async function getInspections(): Promise<Inspection[]> {
+    try {
+        const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, INSPECTION_HEADERS);
+        const photosSheet = await getSheet(SHEET_NAME_INSPECTION_PHOTOS, PHOTO_HEADERS);
+        const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, INSPECTION_DETAILS_HEADERS);
+        
+        const [inspectionRows, photoRows, detailRows] = await Promise.all([
+            inspectionsSheet.getRows(),
+            photosSheet.getRows(),
+            detailsSheet.getRows(),
+        ]);
+
+        const allPhotos: Photo[] = photoRows.map(row => ({
+            id: row.get('id'),
+            inspectionId: row.get('inspectionId'),
+            photoData: row.get('photoData'),
+        }));
+        
+        const allDetails: InspectionDetail[] = detailRows.map(row => ({
+            id: row.get('id'),
+            inspectionId: row.get('inspectionId'),
+            addressName: row.get('addressName'),
+            date: row.get('date'),
+            coordinatorName: row.get('coordinatorName'),
+            category: row.get('category'),
+            itemLabel: row.get('itemLabel') || null,
+            itemValue: row.get('itemValue') || null,
+            uwagi: row.get('uwagi') || null,
+        }));
+
+
+        return inspectionRows
+            .map(row => deserializeInspection(row, allDetails, allPhotos))
+            .sort((a, b) => b.date.getTime() - a.date.getTime());
+    } catch (error) {
+        console.error("Error fetching inspections:", error);
+        return [];
+    }
+}

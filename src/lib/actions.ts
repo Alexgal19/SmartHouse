@@ -1,13 +1,10 @@
 
 "use server";
 
-import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, InspectionCategory, InspectionCategoryItem, Photo, InspectionDetail } from '@/types';
-import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
-import { JWT } from 'google-auth-library';
+import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection } from '@/types';
+import { getSheet } from '@/lib/sheets';
 import { format, isEqual, parseISO } from 'date-fns';
 
-// --- Credentials - In a real production app, use environment variables ---
-const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
 const SHEET_NAME_EMPLOYEES = 'Employees';
 const SHEET_NAME_NOTIFICATIONS = 'Powiadomienia';
 const SHEET_NAME_ADDRESSES = 'Addresses';
@@ -18,25 +15,6 @@ const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_INSPECTIONS = 'Inspections';
 const SHEET_NAME_INSPECTION_PHOTOS = 'InspectionPhotos';
 const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
-
-
-const serviceAccountAuth = new JWT({
-  email: "sheets-database-manager@hr-housing-hub-a2udq.iam.gserviceaccount.com",
-  key: "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC/Pogjqll3W46c\n3e/ktFVweN2TVq7bPcloNPlbGdIeN72MrjXsdpP8FdMDFywI+hWCQG0ouNnIiFJm\n67Rody5ul43LT0smTsliGkepNeUi6i4JLQL14sZGKvRyOa/Bs8JpIJ0Mb86VZTGY\n7gmgZjYDvkr7yv1UtURZBvzY6USMOCCZR6zvt9THswXgh3PVEhHFjiMHWxuLx/IV\nSaAxR53/kmv3Du17GtiYta2BaQMtYyUf2B8QRcY4aklxLMA8K7RKxTbgR/76b642\n7sFP4SmmTnjXo6YlIUvnAcY+WjLeF0OzKlAjNUX2hVptQP56oS1rd1vRBTLv0X16\nmX748CSVAgMBAAECggEABWlhE9VJs9Fw7ypuk+OweT7KUlWFHCoa7Wp2VegcpINC\nR11UpEzUsjDx6Cf7NIPTIPzuudTFQOHupv/rentI4pNCTWsAfuSC2VZSCc0/HyZO\nSC8wYsHYh3rGsQbF3O7XxP7JwuTVDTAwX5n4xsOtqpxzZb2gPonklbpXZFHxgSA2\n3w9clizXzHNdTNKCA/ooXFwn1snP4cRf2qWnwipbFqUFaUU9HSiSb6Ro9vbXKfNS\nJZsJmGI4txg+3w0EqHtAgryYv1RW7RdjNG2KjWwOBFeIDGPiR25ITQxuceqIzhzQ\nmPbV7SSEkLQRJiRjNlCNT+tom/KtZYn06jbBGm8O3wKBgQD2yMGgL15gwcqEcjdh\nAIyZR8UQm/wtgoZwU46G8wGOOBCv9dew+qUIMbAa8y1BKvmksjCMMf0vp9hn3SLw\nyT/XALTQ7jNMoPAj8ORaxvuU0J4ClRMEKu8nVkQkSLUSWECVWT+Uv1it+my6pkF0\nodEeQ/DlyAfMXk7pP2hRCa6FjwKBgQDGYtEOQ8aUWoF9vzt1ZQcvHoilyaIQZdja\nlY5RGzHw/upul3RWDcpIeExfop8hfqcOI6NnmlKmz2J33aFaLoic5N0vxivaQOIh\ndKpBrrSnWMEKzf9RzNckCVufkJnG6bIjyXbt6qsB+I7PGNo30lt292MMlyJZN6oi\ndefncBjJmwKBgCFwMkwyHuedWoN3tmk+Wc6rGtiVSiYgeXbe24ENjDhpAFnXRdKF\nI7dohCQirw8Vc54NRua4H0ZFx9zK6eEWY8AOKHHm1KydYex8x3RFYfFYExDmgh0e\ndCkwVytTbrV9n8KcxTCyfKGWPQVNYbEb++nN6uY3pFbcsHSKUugoF62hAoGAM8vj\nF11cwKksu/8s8AazrHrFZLvTY4Kj7tYzdTure2ejH8LNbhZlpSw7jJCyCZW+2jM1\n27vwLnthEzi7gwc5RfV/RpTwKCjeoauLNGD/692BcWe9bMcVuOP0lyGy9LtZdnyI\nX6/wfDBAYRP1DbQPi20l4EipgC/HbP3p0YR0BFcCgYEAil55HwxqHwKZO5tGgSFB\numU1tM3b6rpOvfIer9dUPqZN7+Pef9GaWQs2NvPIlSn0bEZnjevLk0QOnACLOwfk\nBDv783BdHhTbwPMH+TjKu4n2GwrHRF6T5bNgeGqVe8jvD+mzXe/KQO402s6r5Ue1\n9JhV9GM9wVmbgjsXlOfVxCg=\n-----END PRIVATE KEY-----\n".replace(/\\n/g, '\n'),
-  scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-});
-
-const doc = new GoogleSpreadsheet(SPREADSHEET_ID, serviceAccountAuth);
-
-const parseDate = (dateStr: string | undefined | null): Date | null => {
-  if (!dateStr) return null;
-  const date = new Date(dateStr);
-   if (!isNaN(date.getTime())) {
-    date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
-    return date;
-  }
-  return null;
-};
 
 
 const serializeEmployee = (employee: Partial<Employee>): Record<string, string | number | boolean> => {
@@ -51,52 +29,6 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
         }
     }
     return serialized;
-};
-
-const deserializeEmployee = (row: any): Employee => {
-    const checkInDate = parseDate(row.get('checkInDate'));
-    if (!checkInDate) {
-        throw new Error(`Invalid or missing checkInDate for employee row: ${row.get('id')}`);
-    }
-
-    return {
-        id: row.get('id'),
-        fullName: row.get('fullName'),
-        coordinatorId: row.get('coordinatorId'),
-        nationality: row.get('nationality'),
-        gender: row.get('gender') as 'Mężczyzna' | 'Kobieta',
-        address: row.get('address'),
-        roomNumber: row.get('roomNumber'),
-        zaklad: row.get('zaklad'),
-        checkInDate: checkInDate,
-        checkOutDate: parseDate(row.get('checkOutDate')),
-        contractStartDate: parseDate(row.get('contractStartDate')),
-        contractEndDate: parseDate(row.get('contractEndDate')),
-        departureReportDate: parseDate(row.get('departureReportDate')),
-        comments: row.get('comments'),
-        status: row.get('status') as 'active' | 'dismissed',
-        oldAddress: row.get('oldAddress') || null,
-    };
-};
-
-const deserializeNotification = (row: any): Notification => {
-    const createdAtString = row.get('createdAt');
-    const createdAt = new Date(createdAtString);
-    if (isNaN(createdAt.getTime())) {
-        console.error(`Invalid date string for notification: ${createdAtString}`);
-    }
-    const changesString = row.get('changes');
-    return {
-        id: row.get('id'),
-        message: row.get('message'),
-        employeeId: row.get('employeeId'),
-        employeeName: row.get('employeeName'),
-        coordinatorId: row.get('coordinatorId'),
-        coordinatorName: row.get('coordinatorName'),
-        createdAt: createdAt,
-        isRead: row.get('isRead') === 'TRUE',
-        changes: changesString ? JSON.parse(changesString) : [],
-    };
 };
 
 const serializeNotification = (notification: Omit<Notification, 'changes'> & { changes?: NotificationChange[] }): Record<string, string> => {
@@ -119,24 +51,11 @@ const EMPLOYEE_HEADERS = [
     'departureReportDate', 'comments', 'status', 'oldAddress'
 ];
 
-async function getSheet(title: string, headers: string[]): Promise<GoogleSpreadsheetWorksheet> {
-    await doc.loadInfo();
-    let sheet = doc.sheetsByTitle[title];
-    if (!sheet) {
-        sheet = await doc.addSheet({ title, headerValues: headers });
-    } else {
-        // ALWAYS load headers for existing sheets to prevent errors.
-        await sheet.loadHeaderRow();
-    }
-    return sheet;
-}
-
-
 export async function getEmployees(): Promise<Employee[]> {
   try {
-    const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-    const rows = await sheet.getRows();
-    return rows.map(deserializeEmployee);
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/employees`, { next: { revalidate: 300 }});
+    if (!res.ok) throw new Error('Failed to fetch employees');
+    return res.json();
   } catch (error) {
     console.error("Error in getEmployees:", error);
     throw new Error(`Could not fetch employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -145,49 +64,9 @@ export async function getEmployees(): Promise<Employee[]> {
 
 export async function getSettings(): Promise<Settings> {
   try {
-    const nationalitiesSheet = await getSheet(SHEET_NAME_NATIONALITIES, ['name']);
-    const departmentsSheet = await getSheet(SHEET_NAME_DEPARTMENTS, ['name']);
-    const coordinatorsSheet = await getSheet(SHEET_NAME_COORDINATORS, ['uid', 'name']);
-    const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ['id', 'name']);
-    const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity']);
-
-    const [nationalityRows, departmentRows, coordinatorRows, addressRows, roomRows] = await Promise.all([
-        nationalitiesSheet.getRows(),
-        departmentsSheet.getRows(),
-        coordinatorsSheet.getRows(),
-        addressesSheet.getRows(),
-        roomsSheet.getRows()
-    ]);
-    
-    const allRooms: (Room & { addressId: string })[] = roomRows.map(row => ({
-        id: row.get('id'),
-        addressId: row.get('addressId'),
-        name: row.get('name'),
-        capacity: parseInt(row.get('capacity'), 10) || 0,
-    }));
-    
-    const addresses: HousingAddress[] = addressRows.map(row => {
-        const addressId = row.get('id');
-        return {
-            id: addressId,
-            name: row.get('name'),
-            rooms: allRooms.filter(room => room.addressId === addressId).map(({ addressId, ...rest }) => rest),
-        };
-    });
-    
-    const settings: Settings = {
-      id: 'global-settings',
-      addresses: addresses,
-      nationalities: nationalityRows.map(row => row.get('name')),
-      departments: departmentRows.map(row => row.get('name')),
-      coordinators: coordinatorRows.map(row => ({
-        uid: row.get('uid'),
-        name: row.get('name'),
-      })),
-      genders: ['Mężczyzna', 'Kobieta'],
-    };
-
-    return settings;
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/settings`, { next: { revalidate: 300 }});
+    if (!res.ok) throw new Error('Failed to fetch settings');
+    return res.json();
   } catch (error) {
     console.error("Error in getSettings:", error);
     throw new Error(`Could not fetch settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -240,12 +119,11 @@ export async function addEmployee(employeeData: Omit<Employee, 'id' | 'status'>,
         };
 
         const serialized = serializeEmployee(newEmployee);
-        const row = await sheet.addRow(serialized);
-        const createdEmployee = deserializeEmployee(row);
+        await sheet.addRow(serialized);
         
-        await createNotification(actor, 'dodał(a) nowego', createdEmployee);
+        await createNotification(actor, 'dodał(a) nowego', newEmployee);
 
-        return createdEmployee;
+        return newEmployee;
     } catch (error) {
         console.error("Error adding employee to Google Sheets:", error);
         throw new Error("Could not add employee.");
@@ -336,7 +214,6 @@ const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): 
 export async function updateEmployee(employeeId: string, employeeData: Partial<Omit<Employee, 'id'>>, actor: Coordinator): Promise<Employee> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        
         const rows = await sheet.getRows();
         const rowIndex = rows.findIndex(row => row.get('id') === employeeId);
 
@@ -345,8 +222,14 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
         }
         
         const rowToUpdate = rows[rowIndex];
-        const currentData = deserializeEmployee(rowToUpdate);
         
+        // Deserialize once to get old data for change detection
+        const oldDataRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/employees`);
+        const allEmployees: Employee[] = await oldDataRes.json();
+        const currentData = allEmployees.find(e => e.id === employeeId);
+        if (!currentData) throw new Error("Employee not found for change detection");
+
+
         const changes = getChanges(currentData, employeeData);
         if(changes.length === 0 && !('status' in employeeData)) { 
               return currentData;
@@ -369,12 +252,9 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
         
         await rowToUpdate.save();
 
-        const savedRows = await sheet.getRows();
-        const finalEmployee = deserializeEmployee(savedRows[rowIndex]);
-        
-        await createNotification(actor, action, finalEmployee, changes);
+        await createNotification(actor, action, updatedData, changes);
 
-        return finalEmployee;
+        return updatedData;
 
     } catch (error) {
         console.error("Error updating employee in Google Sheets:", error);
@@ -386,7 +266,6 @@ async function syncSheet<T extends Record<string, any>>(
     sheetName: string,
     headers: string[],
     newData: T[],
-    idKey: keyof T,
     serializeFn: (item: T) => Record<string, any> = (item) => item
 ) {
     const sheet = await getSheet(sheetName, headers);
@@ -400,27 +279,30 @@ async function syncSheet<T extends Record<string, any>>(
 
 export async function updateSettings(newSettings: Partial<Settings>): Promise<Settings> {
     try {
-        const currentSettings = await getSettings();
+        const settingsRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/settings`);
+        if (!settingsRes.ok) throw new Error('Failed to fetch current settings');
+        const currentSettings = await settingsRes.json();
         const updatedSettings = { ...currentSettings, ...newSettings };
 
         if (newSettings.addresses) {
             const allRooms = newSettings.addresses.flatMap(address => 
                 address.rooms.map(room => ({ ...room, addressId: address.id }))
             );
-            await syncSheet(SHEET_NAME_ADDRESSES, ['id', 'name'], updatedSettings.addresses, 'id', item => ({ id: item.id, name: item.name }));
-            await syncSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity'], allRooms, 'id');
+            await syncSheet(SHEET_NAME_ADDRESSES, ['id', 'name'], updatedSettings.addresses, item => ({ id: item.id, name: item.name }));
+            await syncSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity'], allRooms);
         }
         if (newSettings.nationalities) {
-            await syncSheet(SHEET_NAME_NATIONALITIES, ['name'], updatedSettings.nationalities.map(name => ({ name })), 'name');
+            await syncSheet(SHEET_NAME_NATIONALITIES, ['name'], updatedSettings.nationalities.map((name: string) => ({ name })));
         }
         if (newSettings.departments) {
-            await syncSheet(SHEET_NAME_DEPARTMENTS, ['name'], updatedSettings.departments.map(name => ({ name })), 'name');
+            await syncSheet(SHEET_NAME_DEPARTMENTS, ['name'], updatedSettings.departments.map((name: string) => ({ name })));
         }
         if (newSettings.coordinators) {
-            await syncSheet(SHEET_NAME_COORDINATORS, ['uid', 'name'], updatedSettings.coordinators, 'uid');
+            await syncSheet(SHEET_NAME_COORDINATORS, ['uid', 'name'], updatedSettings.coordinators);
         }
         
-        return getSettings();
+        const finalSettingsRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/settings`, { cache: 'no-store' });
+        return finalSettingsRes.json();
     } catch (error) {
         console.error("Error updating settings in Google Sheets:", error);
         throw new Error("Could not update settings.");
@@ -430,9 +312,9 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Se
 
 export async function getNotifications(): Promise<Notification[]> {
     try {
-        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
-        const rows = await sheet.getRows();
-        return rows.map(deserializeNotification).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/notifications`, { next: { revalidate: 30 }});
+        if (!res.ok) throw new Error('Failed to fetch notifications');
+        return res.json();
     } catch (error) {
         console.error("Error fetching notifications:", error);
         return [];
@@ -477,141 +359,11 @@ const serializeInspection = (inspection: Omit<Inspection, 'photos' | 'categories
     standard: serializeRaw(inspection.standard),
 });
 
-const deserializeInspection = (row: any, allDetails: InspectionDetail[], allPhotos: Photo[]): Inspection => {
-    const inspectionId = row.get('id');
-    const detailsForInspection = allDetails.filter(d => d.inspectionId === inspectionId);
-    
-    const categoriesMap = detailsForInspection.reduce((acc, detail) => {
-        if (!acc[detail.category]) {
-            acc[detail.category] = { name: detail.category, items: [], uwagi: '' };
-        }
-        if (detail.itemLabel) {
-            const valueStr = detail.itemValue;
-            let value: any = valueStr;
-            
-            if (valueStr === 'true') value = true;
-            else if (valueStr === 'false') value = false;
-            else if (valueStr && !isNaN(Number(valueStr)) && valueStr.trim() !== '') value = Number(valueStr);
-            else if (valueStr === null || valueStr === '') value = null;
-
-            const existingItem = acc[detail.category].items.find(i => i.label === detail.itemLabel);
-            if (!existingItem) {
-                 const itemFromChecklist = getInitialChecklist().flatMap(c => c.items).find(i => i.label === detail.itemLabel);
-                 acc[detail.category].items.push({
-                    type: itemFromChecklist?.type || 'info',
-                    label: detail.itemLabel, 
-                    value: value,
-                    options: itemFromChecklist?.options
-                });
-            }
-        }
-        if (detail.uwagi && !acc[detail.category].uwagi) {
-            acc[detail.category].uwagi = detail.uwagi;
-        }
-        return acc;
-    }, {} as Record<string, {name: string, items: InspectionCategoryItem[], uwagi: string}>);
-
-    const checklistCategories = getInitialChecklist();
-    const finalCategories = checklistCategories.map(checklistCategory => {
-        const foundCategory = categoriesMap[checklistCategory.name];
-        if (foundCategory) {
-            const finalItems = checklistCategory.items.map(checklistItem => {
-                const foundItem = foundCategory.items.find(i => i.label === checklistItem.label);
-                return foundItem || checklistItem;
-            });
-            return { ...checklistCategory, items: finalItems, uwagi: foundCategory.uwagi || '' };
-        }
-        return checklistCategory;
-    });
-
-    return {
-        id: inspectionId,
-        addressId: row.get('addressId'),
-        addressName: row.get('addressName'),
-        date: new Date(row.get('date')),
-        coordinatorId: row.get('coordinatorId'),
-        coordinatorName: row.get('coordinatorName'),
-        standard: (row.get('standard') as 'Wysoki' | 'Normalny' | 'Niski') || null,
-        categories: finalCategories,
-        photos: allPhotos.filter(p => p.inspectionId === inspectionId).map(p => p.photoData),
-    }
-};
-
-const cleanlinessOptions = ["Bardzo czysto", "Czysto", "Brudno", "Bardzo brudno"];
-
-const getInitialChecklist = (): InspectionCategory[] => [
-    {
-        name: "Kuchnia", uwagi: "", items: [
-            { label: "Czystość kuchnia", type: "select", value: null, options: cleanlinessOptions },
-            { label: "Czystość lodówki", type: "select", value: null, options: cleanlinessOptions },
-            { label: "Czystość płyty gazowej, elektrycznej i piekarnika", type: "select", value: null, options: cleanlinessOptions }
-        ]
-    },
-    {
-        name: "Łazienka", uwagi: "", items: [
-            { label: "Czystość łazienki", type: "select", value: null, options: cleanlinessOptions },
-            { label: "Czystość toalety", type: "select", value: null, options: cleanlinessOptions },
-            { label: "Czystość brodzika", type: "select", value: null, options: cleanlinessOptions },
-        ]
-    },
-    {
-        name: "Pokoje", uwagi: "", items: [
-            { label: "Czystość pokoju", type: "select", value: null, options: cleanlinessOptions },
-            { label: "Czy niema pleśni w pomieszczeniach?", type: "yes_no", value: null },
-            { label: "Łóżka niepołamane", type: "yes_no", value: null },
-            { label: "Sciany czyste", type: "yes_no", value: null },
-            { label: "Szafy i szafki czyste", type: "yes_no", value: null },
-            { label: "Stare rzeczy wyrzucane", type: "yes_no", value: null },
-            { label: "Pościel czysta", type: "yes_no", value: null },
-            { label: "Wyposażenia niezniszczone", type: "yes_no", value: null },
-        ]
-    },
-    {
-        name: "Instalacja", uwagi: "", items: [
-            { label: "Instalacja gazowa działa", type: "yes_no", value: null },
-            { label: "Instalacja internetowa działa", type: "yes_no", value: null },
-            { label: "Instalacja elektryczna działa", type: "yes_no", value: null },
-            { label: "Instalacja wodno-kanalizacyjna działa", type: "yes_no", value: null },
-            { label: "Ogrzewania", type: "text", value: "" },
-            { label: "Temperatura w pomieszczeniu", type: "text", value: "" }
-        ]
-    },
-];
-
 export async function getInspections(): Promise<Inspection[]> {
     try {
-        const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, INSPECTION_HEADERS);
-        const photosSheet = await getSheet(SHEET_NAME_INSPECTION_PHOTOS, PHOTO_HEADERS);
-        const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, INSPECTION_DETAILS_HEADERS);
-        
-        const [inspectionRows, photoRows, detailRows] = await Promise.all([
-            inspectionsSheet.getRows(),
-            photosSheet.getRows(),
-            detailsSheet.getRows(),
-        ]);
-
-        const allPhotos: Photo[] = photoRows.map(row => ({
-            id: row.get('id'),
-            inspectionId: row.get('inspectionId'),
-            photoData: row.get('photoData'),
-        }));
-        
-        const allDetails: InspectionDetail[] = detailRows.map(row => ({
-            id: row.get('id'),
-            inspectionId: row.get('inspectionId'),
-            addressName: row.get('addressName'),
-            date: row.get('date'),
-            coordinatorName: row.get('coordinatorName'),
-            category: row.get('category'),
-            itemLabel: row.get('itemLabel') || null,
-            itemValue: row.get('itemValue') || null,
-            uwagi: row.get('uwagi') || null,
-        }));
-
-
-        return inspectionRows
-            .map(row => deserializeInspection(row, allDetails, allPhotos))
-            .sort((a, b) => b.date.getTime() - a.date.getTime());
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/inspections`, { next: { revalidate: 300 }});
+        if (!res.ok) throw new Error('Failed to fetch inspections');
+        return res.json();
     } catch (error) {
         console.error("Error fetching inspections:", error);
         return [];
@@ -626,7 +378,6 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
     const inspectionId = id || `insp-${Date.now()}`;
     const { photos, categories, ...restOfData } = inspectionData;
     
-    // --- Clear and write pattern for details and photos ---
     const allDetailRows = await detailsSheet.getRows();
     const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === inspectionId);
     for (const row of detailsToDelete) {
@@ -639,7 +390,6 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
         await row.delete();
     }
 
-    // --- Save main inspection data ---
     const mainInspectionData = serializeInspection({ ...restOfData, id: inspectionId });
     const allInspectionRows = await inspectionsSheet.getRows();
     const existingRow = allInspectionRows.find(row => row.get('id') === inspectionId);
@@ -653,10 +403,8 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
         await inspectionsSheet.addRow(mainInspectionData);
     }
     
-    // --- Save details and photos ---
     const detailPayload = [];
     for (const category of categories) {
-        // One row for uwagi, if it exists
         if (category.uwagi) {
              detailPayload.push({
                 id: `detail-${Date.now()}-${Math.random()}`,
@@ -665,7 +413,7 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
                 date: inspectionData.date.toISOString(),
                 coordinatorName: inspectionData.coordinatorName,
                 category: category.name,
-                itemLabel: '', // No label for uwagi row
+                itemLabel: '',
                 itemValue: '',
                 uwagi: category.uwagi,
             });
@@ -680,7 +428,7 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
                 category: category.name,
                 itemLabel: item.label,
                 itemValue: serializeRaw(item.value),
-                uwagi: '', // uwagi is stored in its own row
+                uwagi: '',
             });
         }
     }
@@ -747,8 +495,3 @@ export async function deleteInspection(id: string): Promise<void> {
         throw new Error(`Could not delete inspection. ${error instanceof Error ? error.message : ''}`);
     }
 }
-
-    
-
-
-    

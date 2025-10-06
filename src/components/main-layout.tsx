@@ -22,7 +22,6 @@ import InspectionsView from './inspections-view';
 import { AddEmployeeForm } from './add-employee-form';
 import { Skeleton } from './ui/skeleton';
 import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead, getInspections, addInspection, updateInspection, deleteInspection } from '@/lib/actions';
-import { runMigration } from '@/lib/migration';
 import type { Employee, Settings, User, View, Notification, Coordinator, Inspection } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Building, ClipboardList, Home, Settings as SettingsIcon, Users } from 'lucide-react';
@@ -53,39 +52,12 @@ function MainContent() {
     const [isLoading, setIsLoading] = useState(true);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-    const [migrationStatus, setMigrationStatus] = useState<string | null>(null);
-
+    
     const { toast } = useToast();
     const { isMobile } = useSidebar();
     
-    // --- MIGRATION LOGIC ---
-    useEffect(() => {
-        const MIGRATION_KEY = 'v1_migration_done';
-        const performMigration = async () => {
-            if (localStorage.getItem(MIGRATION_KEY)) {
-                setMigrationStatus('already_done');
-                return;
-            }
-            setMigrationStatus('running');
-            toast({ title: "Міграція даних...", description: "Оновлюємо структуру даних. Це може зайняти хвилину." });
-            const result = await runMigration();
-            if (result.success) {
-                toast({ title: "Міграція успішна!", description: result.message });
-                localStorage.setItem(MIGRATION_KEY, 'true');
-                setMigrationStatus('success');
-                window.location.reload();
-            } else {
-                toast({ variant: "destructive", title: "Помилка міграції", description: result.message });
-                setMigrationStatus('failed');
-            }
-        };
-        // Uncomment the line below to run migration
-        // performMigration();
-    }, [toast]);
-    // --- END MIGRATION LOGIC ---
-
-    const fetchData = useCallback(async () => {
-        setIsLoading(true);
+    const fetchData = useCallback(async (isInitialLoad = false) => {
+        if (isInitialLoad) setIsLoading(true);
         try {
             const [employeesData, settingsData, notificationsData, inspectionsData] = await Promise.all([
                 getEmployees(), 
@@ -93,7 +65,7 @@ function MainContent() {
                 getNotifications(),
                 getInspections(),
             ]);
-            setEmployees(employeesData.map(e => ({
+            setEmployees(employeesData.map((e: any) => ({
                 ...e,
                 checkInDate: new Date(e.checkInDate),
                 checkOutDate: e.checkOutDate ? new Date(e.checkOutDate) : null,
@@ -102,39 +74,25 @@ function MainContent() {
                 departureReportDate: e.departureReportDate ? new Date(e.departureReportDate) : null,
             })));
             setSettings(settingsData);
-            setNotifications(notificationsData.map(n => ({...n, createdAt: new Date(n.createdAt)})));
-            setInspections(inspectionsData.map(i => ({...i, date: new Date(i.date)})));
+            setNotifications(notificationsData.map((n:any) => ({...n, createdAt: new Date(n.createdAt)})));
+            setInspections(inspectionsData.map((i: any) => ({...i, date: new Date(i.date)})));
         } catch (error) {
             console.error(error);
-            toast({
-                variant: "destructive",
-                title: "Błąd ładowania danych",
-                description: `Nie udało się pobrać danych z serwera. ${error instanceof Error ? error.message : ''}`,
-            });
+            if (isInitialLoad) {
+                toast({
+                    variant: "destructive",
+                    title: "Błąd ładowania danych",
+                    description: `Nie udało się pobrać danych z serwera. ${error instanceof Error ? error.message : ''}`,
+                });
+            }
         } finally {
-            setIsLoading(false);
+            if (isInitialLoad) setIsLoading(false);
         }
     }, [toast]);
     
     useEffect(() => {
-        fetchData();
-    }, [fetchData]);
-
-    const pollNotifications = useCallback(async () => {
-        try {
-            const notificationsData = await getNotifications();
-            setNotifications(notificationsData.map(n => ({...n, createdAt: new Date(n.createdAt)})));
-        } catch (error) {
-            console.error("Failed to poll notifications", error);
-        }
+        fetchData(true);
     }, []);
-
-    useEffect(() => {
-      const interval = setInterval(() => {
-        pollNotifications();
-      }, 30000); 
-      return () => clearInterval(interval);
-    }, [pollNotifications]);
 
     const handleSaveEmployee = async (data: Omit<Employee, 'id' | 'status'> & { oldAddress?: string | null }) => {
         try {
@@ -145,7 +103,7 @@ function MainContent() {
                 await addEmployee(data, mockUser);
                 toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
             }
-            fetchData(); // Refetch all data to be sure
+            fetchData();
         } catch(e: any) {
              toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać pracownika." });
         }
@@ -156,7 +114,7 @@ function MainContent() {
         try {
             await updateSettings(newSettings);
             toast({ title: "Sukces", description: "Ustawienia zostały zaktualizowane." });
-            fetchData(); // Refetch all data
+            fetchData();
         } catch(e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać ustawień." });
         }
@@ -210,7 +168,7 @@ function MainContent() {
         
         if (!notification.isRead) {
             await markNotificationAsRead(notification.id);
-            setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, isRead: true } : n));
+            fetchData();
         }
     };
 
@@ -265,28 +223,6 @@ function MainContent() {
                 return <DashboardView employees={employees} settings={settings} onEditEmployee={handleEditEmployeeClick} />;
         }
     };
-
-    if (migrationStatus === 'running') {
-        return (
-            <div className="flex items-center justify-center h-screen">
-                <div className="text-center">
-                    <p className="text-lg font-semibold">Триває міграція даних...</p>
-                    <p className="text-muted-foreground">Будь ласка, не закривайте цю вкладку.</p>
-                </div>
-            </div>
-        );
-    }
-     if (migrationStatus === 'failed') {
-        return (
-            <div className="flex items-center justify-center h-screen">
-                <div className="text-center max-w-md p-4 border rounded-lg bg-destructive/10 text-destructive-foreground">
-                    <p className="text-lg font-semibold">Помилка міграції</p>
-                    <p>Не вдалося перенести дані. Спробуйте оновити сторінку або зв'яжіться з підтримкою.</p>
-                    <Button onClick={() => window.location.reload()} className="mt-4">Оновити</Button>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="flex h-screen w-full bg-muted/50">
