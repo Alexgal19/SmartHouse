@@ -79,6 +79,15 @@ export type Photo = {
   photoData: string;
 }
 
+export type InspectionDetail = {
+    id: string;
+    inspectionId: string;
+    category: string;
+    itemLabel: string | null;
+    itemValue: string | null;
+    uwagi: string | null;
+}
+
 export type EquipmentItem = {
   id: string;
   name: string;

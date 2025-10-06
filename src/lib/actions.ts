@@ -1,7 +1,7 @@
 
 "use server";
 
-import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, InspectionCategoryItem, Photo } from '@/types';
+import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, InspectionCategoryItem, Photo, InspectionDetail } from '@/types';
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
 import { format, isEqual, parseISO } from 'date-fns';
@@ -17,6 +17,7 @@ const SHEET_NAME_DEPARTMENTS = 'Departments';
 const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_INSPECTIONS = 'Inspections';
 const SHEET_NAME_INSPECTION_PHOTOS = 'InspectionPhotos';
+const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 
 
 const serviceAccountAuth = new JWT({
@@ -451,10 +452,12 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
 
 // --- Inspections Actions ---
 
-const INSPECTION_HEADERS = ['id', 'addressId', 'addressName', 'date', 'coordinatorId', 'coordinatorName', 'standard', 'categories'];
+const INSPECTION_HEADERS = ['id', 'addressId', 'addressName', 'date', 'coordinatorId', 'coordinatorName', 'standard'];
 const PHOTO_HEADERS = ['id', 'inspectionId', 'photoData'];
+const INSPECTION_DETAILS_HEADERS = ['id', 'inspectionId', 'category', 'itemLabel', 'itemValue', 'uwagi'];
 
-const serializeInspection = (inspection: Omit<Inspection, 'photos'>): Record<string, string> => ({
+
+const serializeInspection = (inspection: Omit<Inspection, 'photos' | 'categories'>): Record<string, string> => ({
     id: inspection.id,
     addressId: inspection.addressId,
     addressName: inspection.addressName,
@@ -462,25 +465,31 @@ const serializeInspection = (inspection: Omit<Inspection, 'photos'>): Record<str
     coordinatorId: inspection.coordinatorId,
     coordinatorName: inspection.coordinatorName,
     standard: inspection.standard || '',
-    categories: JSON.stringify(inspection.categories.map(category => ({
-        ...category,
-        items: category.items.map(item => ({
-            ...item,
-            value: item.value === null ? '' : item.value,
-        }))
-    }))),
 });
 
-
-const deserializeInspection = (row: any, allPhotos: Photo[]): Inspection => {
+const deserializeInspection = (row: any, allDetails: InspectionDetail[], allPhotos: Photo[]): Inspection => {
     const inspectionId = row.get('id');
-    const categories = JSON.parse(row.get('categories') || '[]').map((category: any) => ({
-        ...category,
-        items: category.items.map((item: InspectionCategoryItem) => ({
-            ...item,
-            value: item.value === '' ? null : item.value,
-        }))
-    }));
+    const detailsForInspection = allDetails.filter(d => d.inspectionId === inspectionId);
+    
+    const categoriesMap = detailsForInspection.reduce((acc, detail) => {
+        if (!acc[detail.category]) {
+            acc[detail.category] = { name: detail.category, items: [], uwagi: '' };
+        }
+        if (detail.itemLabel) {
+            const valueStr = detail.itemValue;
+            let value: any = valueStr;
+            if (valueStr === 'true') value = true;
+            else if (valueStr === 'false') value = false;
+            else if (!isNaN(Number(valueStr)) && valueStr !== '') value = Number(valueStr);
+            else if (valueStr === '') value = null;
+
+            acc[detail.category].items.push({ label: detail.itemLabel, value: value } as InspectionCategoryItem);
+        }
+        if (detail.uwagi) {
+            acc[detail.category].uwagi = detail.uwagi;
+        }
+        return acc;
+    }, {} as Record<string, {name: string, items: InspectionCategoryItem[], uwagi: string}>);
 
     return {
         id: inspectionId,
@@ -490,7 +499,7 @@ const deserializeInspection = (row: any, allPhotos: Photo[]): Inspection => {
         coordinatorId: row.get('coordinatorId'),
         coordinatorName: row.get('coordinatorName'),
         standard: (row.get('standard') as 'Wysoki' | 'Normalny' | 'Niski') || null,
-        categories: categories,
+        categories: Object.values(categoriesMap),
         photos: allPhotos.filter(p => p.inspectionId === inspectionId).map(p => p.photoData),
     }
 };
@@ -499,10 +508,12 @@ export async function getInspections(): Promise<Inspection[]> {
     try {
         const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, INSPECTION_HEADERS);
         const photosSheet = await getSheet(SHEET_NAME_INSPECTION_PHOTOS, PHOTO_HEADERS);
+        const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, INSPECTION_DETAILS_HEADERS);
         
-        const [inspectionRows, photoRows] = await Promise.all([
+        const [inspectionRows, photoRows, detailRows] = await Promise.all([
             inspectionsSheet.getRows(),
-            photosSheet.getRows()
+            photosSheet.getRows(),
+            detailsSheet.getRows(),
         ]);
 
         const allPhotos: Photo[] = photoRows.map(row => ({
@@ -510,9 +521,19 @@ export async function getInspections(): Promise<Inspection[]> {
             inspectionId: row.get('inspectionId'),
             photoData: row.get('photoData'),
         }));
+        
+        const allDetails: InspectionDetail[] = detailRows.map(row => ({
+            id: row.get('id'),
+            inspectionId: row.get('inspectionId'),
+            category: row.get('category'),
+            itemLabel: row.get('itemLabel') || null,
+            itemValue: row.get('itemValue') || null,
+            uwagi: row.get('uwagi') || null,
+        }));
+
 
         return inspectionRows
-            .map(row => deserializeInspection(row, allPhotos))
+            .map(row => deserializeInspection(row, allDetails, allPhotos))
             .sort((a, b) => b.date.getTime() - a.date.getTime());
     } catch (error) {
         console.error("Error fetching inspections:", error);
@@ -524,15 +545,42 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
     try {
         const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, INSPECTION_HEADERS);
         const photosSheet = await getSheet(SHEET_NAME_INSPECTION_PHOTOS, PHOTO_HEADERS);
+        const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, INSPECTION_DETAILS_HEADERS);
 
         const newInspectionId = `insp-${Date.now()}`;
-        const { photos, ...restOfData } = inspectionData;
+        const { photos, categories, ...restOfData } = inspectionData;
         
-        const newInspection: Omit<Inspection, 'photos'> = {
+        const newInspectionBase: Omit<Inspection, 'photos' | 'categories'> = {
             ...restOfData,
             id: newInspectionId,
         };
-        await inspectionsSheet.addRow(serializeInspection(newInspection));
+        await inspectionsSheet.addRow(serializeInspection(newInspectionBase));
+
+        const detailRows: Omit<InspectionDetail, 'id'>[] = [];
+        categories.forEach(category => {
+            category.items.forEach(item => {
+                detailRows.push({
+                    inspectionId: newInspectionId,
+                    category: category.name,
+                    itemLabel: item.label,
+                    itemValue: item.value !== null ? String(item.value) : '',
+                    uwagi: null,
+                });
+            });
+            if (category.uwagi) {
+                 detailRows.push({
+                    inspectionId: newInspectionId,
+                    category: category.name,
+                    itemLabel: null,
+                    itemValue: null,
+                    uwagi: category.uwagi,
+                });
+            }
+        });
+        
+        if(detailRows.length > 0) {
+            await detailsSheet.addRows(detailRows.map(d => ({ ...d, id: `detail-${Date.now()}-${Math.random()}` })));
+        }
 
         if (photos && photos.length > 0) {
             const photoRows = photos.map(photoData => ({
@@ -543,7 +591,7 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
             await photosSheet.addRows(photoRows);
         }
 
-        return { ...newInspection, photos: photos || [] };
+        return { ...newInspectionBase, categories, photos: photos || [] };
     } catch (error) {
         console.error("Error adding inspection:", error);
         if (error instanceof Error && error.message.includes('exceeds the maximum size')) {
