@@ -464,14 +464,11 @@ const INSPECTION_HEADERS = ['id', 'addressId', 'addressName', 'date', 'coordinat
 const PHOTO_HEADERS = ['id', 'inspectionId', 'photoData'];
 const INSPECTION_DETAILS_HEADERS = ['id', 'inspectionId', 'category', 'itemLabel', 'itemValue', 'uwagi'];
 
-const serializeRaw = (value: any): string | number | boolean => {
+const serializeRaw = (value: any): string => {
     if (value === null || value === undefined) {
       return '';
     }
-    if (typeof value === 'boolean') {
-        return value;
-    }
-    return value;
+    return String(value);
 };
 
 const serializeInspection = (inspection: Omit<Inspection, 'photos' | 'categories'>): Record<string, string | number | boolean> => ({
@@ -630,31 +627,35 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
     const inspectionId = id || `insp-${Date.now()}`;
     const { photos, categories, ...restOfData } = inspectionData;
 
+    // --- Main Inspection Info ---
     const mainInspectionData = serializeInspection({ ...restOfData, id: inspectionId });
+    const allInspectionRows = await inspectionsSheet.getRows();
+    const existingRow = allInspectionRows.find(row => row.get('id') === inspectionId);
 
-    if (id) {
-        const allRows = await inspectionsSheet.getRows();
-        const rowToUpdate = allRows.find(row => row.get('id') === id);
-        if (rowToUpdate) {
-             Object.keys(mainInspectionData).forEach(key => {
-                rowToUpdate.set(key, mainInspectionData[key as keyof typeof mainInspectionData]);
-            });
-            await rowToUpdate.save();
-        } else {
-            throw new Error("Inspection to update not found");
-        }
+    if (existingRow) {
+        Object.keys(mainInspectionData).forEach(key => {
+            existingRow.set(key, mainInspectionData[key as keyof typeof mainInspectionData]);
+        });
+        await existingRow.save();
     } else {
-        await inspectionsSheet.addRow(mainInspectionData, { raw: true });
+        await inspectionsSheet.addRow(mainInspectionData);
     }
-
+    
+    // --- Clear and Write Details and Photos ---
     const allDetailRows = await detailsSheet.getRows();
     const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === inspectionId);
     await Promise.all(detailsToDelete.map(row => row.delete()));
     
+    const allPhotoRows = await photosSheet.getRows();
+    const photosToDelete = allPhotoRows.filter(r => r.get('inspectionId') === inspectionId);
+    await Promise.all(photosToDelete.map(row => row.delete()));
+
+    // --- Write new Details ---
     const detailPayload = [];
     for (const category of categories) {
-        if (category.items.length === 0 && category.uwagi) {
-             detailPayload.push({
+        // Save uwagi for the category, even if there are no items
+        if(category.uwagi) {
+            detailPayload.push({
                 id: `detail-${Date.now()}-${Math.random()}`,
                 inspectionId: inspectionId,
                 category: category.name,
@@ -662,32 +663,36 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
                 itemValue: null,
                 uwagi: category.uwagi,
             });
-        } else {
-            for (const item of category.items) {
-                 detailPayload.push({
-                    id: `detail-${Date.now()}-${Math.random()}`,
-                    inspectionId: inspectionId,
-                    category: category.name,
-                    itemLabel: item.label,
-                    itemValue: serializeRaw(item.value),
-                    uwagi: category.uwagi || null,
-                });
-            }
+        }
+        for (const item of category.items) {
+             detailPayload.push({
+                id: `detail-${Date.now()}-${Math.random()}`,
+                inspectionId: inspectionId,
+                category: category.name,
+                itemLabel: item.label,
+                itemValue: serializeRaw(item.value),
+                uwagi: category.uwagi || null,
+            });
         }
     }
-     if(detailPayload.length > 0) await detailsSheet.addRows(detailPayload, { raw: true });
+     if(detailPayload.length > 0) await detailsSheet.addRows(detailPayload);
     
-    const allPhotoRows = await photosSheet.getRows();
-    const photosToDelete = allPhotoRows.filter(r => r.get('inspectionId') === inspectionId);
-    await Promise.all(photosToDelete.map(row => row.delete()));
-    
+    // --- Write new Photos ---
     if (photos && photos.length > 0) {
-        const photoPayload = photos.map(photoData => ({
-             id: `photo-${Date.now()}-${Math.random()}`,
-             inspectionId: inspectionId,
-             photoData: photoData,
-        }));
-        await photosSheet.addRows(photoPayload, {raw: false});
+        for (const photoData of photos) {
+            try {
+                 await photosSheet.addRow({
+                     id: `photo-${Date.now()}-${Math.random()}`,
+                     inspectionId: inspectionId,
+                     photoData: photoData,
+                }, { raw: false }); // Use raw: false to handle large strings
+            } catch (e: any) {
+                 if (e.message.includes('exceeds the maximum size')) {
+                    throw new Error("One of the photos is too large to be saved. Please use smaller image files.");
+                }
+                throw e;
+            }
+        }
     }
 }
 
@@ -696,10 +701,7 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
         await saveInspectionData(inspectionData);
     } catch (error) {
         console.error("Error in addInspection:", error);
-        if (error instanceof Error && (error.message.includes('exceeds the maximum size') || error.message.includes('request entity too large'))) {
-             throw new Error("One of the photos is too large to be saved. Please use smaller image files.");
-        }
-        throw new Error("Could not add inspection.");
+        throw error;
     }
 }
 
@@ -708,10 +710,7 @@ export async function updateInspection(id: string, inspectionData: Omit<Inspecti
         await saveInspectionData(inspectionData, id);
     } catch (error) {
         console.error("Error in updateInspection:", error);
-        if (error instanceof Error && (error.message.includes('exceeds the maximum size') || error.message.includes('request entity too large'))) {
-             throw new Error("One of the photos is too large to be saved. Please use smaller image files.");
-        }
-        throw new Error("Could not update inspection.");
+        throw error;
     }
 }
 
@@ -728,19 +727,13 @@ export async function deleteInspection(id: string): Promise<void> {
         }
 
         const allDetailRows = await detailsSheet.getRows();
-        const detailsToKeep = allDetailRows.filter(r => r.get('inspectionId') !== id);
-        await detailsSheet.clearRows();
-        if(detailsToKeep.length > 0) {
-            await detailsSheet.addRows(detailsToKeep.map(r => r.toObject()));
-        }
+        const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === id);
+        await Promise.all(detailsToDelete.map(row => row.delete()));
 
 
         const allPhotoRows = await photosSheet.getRows();
-        const photosToKeep = allPhotoRows.filter(r => r.get('inspectionId') !== id);
-        await photosSheet.clearRows();
-        if(photosToKeep.length > 0) {
-            await photosSheet.addRows(photosToKeep.map(r => r.toObject()));
-        }
+        const photosToDelete = allPhotoRows.filter(r => r.get('inspectionId') === id);
+        await Promise.all(photosToDelete.map(row => row.delete()));
 
     } catch (error) {
         console.error("Error in deleteInspection:", error);

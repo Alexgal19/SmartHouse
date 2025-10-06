@@ -158,20 +158,21 @@ const CameraCapture = ({ isOpen, onOpenChange, onCapture }: { isOpen: boolean, o
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
 
-    const stopCamera = () => {
+    const stopCamera = useCallback(() => {
         if (streamRef.current) {
             streamRef.current.getTracks().forEach(track => track.stop());
             streamRef.current = null;
         }
-    };
+    },[]);
     
     useEffect(() => {
         const getCameraPermission = async () => {
           try {
-            streamRef.current = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
             setHasCameraPermission(true);
+            streamRef.current = stream;
             if (videoRef.current) {
-              videoRef.current.srcObject = streamRef.current;
+              videoRef.current.srcObject = stream;
             }
           } catch (error) {
             console.error('Error accessing camera:', error);
@@ -193,7 +194,7 @@ const CameraCapture = ({ isOpen, onOpenChange, onCapture }: { isOpen: boolean, o
         return () => {
           stopCamera();
         };
-      }, [isOpen, toast]);
+      }, [isOpen, toast, stopCamera]);
 
     const handleCapture = () => {
         if (videoRef.current && canvasRef.current) {
@@ -222,19 +223,18 @@ const CameraCapture = ({ isOpen, onOpenChange, onCapture }: { isOpen: boolean, o
                     <DialogTitle>Зробіть фото</DialogTitle>
                 </DialogHeader>
                 <div className="flex flex-col items-center justify-center p-4">
-                    {hasCameraPermission === false && (
-                         <Alert variant="destructive">
-                            <AlertTitle>Brak dostępu do kamery</AlertTitle>
-                            <AlertDescription>
-                                Proszę zezwolić na dostęp do kamery в ustawieniach przeglądarki, aby korzystać з цієї функції.
-                            </AlertDescription>
-                        </Alert>
-                    )}
                      <div className="w-full relative">
                         <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay muted playsInline />
-                         {hasCameraPermission && <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <Circle className="w-24 h-24 text-white/20" />
-                        </div>}
+                         {hasCameraPermission === false && (
+                             <div className="absolute inset-0 flex items-center justify-center">
+                                <Alert variant="destructive">
+                                    <AlertTitle>Brak dostępu do kamery</AlertTitle>
+                                    <AlertDescription>
+                                        Proszę zezwolić na dostęp do kamery.
+                                    </AlertDescription>
+                                </Alert>
+                             </div>
+                        )}
                     </div>
                      <canvas ref={canvasRef} className="hidden" />
                 </div>
