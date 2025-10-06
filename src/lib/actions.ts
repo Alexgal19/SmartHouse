@@ -53,7 +53,7 @@ const EMPLOYEE_HEADERS = [
 
 export async function getEmployees(): Promise<Employee[]> {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/employees`, { next: { revalidate: 300 }});
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/employees`, { cache: 'no-store' });
     if (!res.ok) throw new Error('Failed to fetch employees');
     return res.json();
   } catch (error) {
