@@ -123,9 +123,15 @@ async function getSheet(title: string, headers: string[]): Promise<GoogleSpreads
     await doc.loadInfo();
     let sheet = doc.sheetsByTitle[title];
     if (!sheet) {
-        console.log(`Sheet "${title}" not found, creating it...`);
         sheet = await doc.addSheet({ title, headerValues: headers });
-        console.log(`Sheet "${title}" created.`);
+    } else {
+        // Ensure headers are what we expect, especially for existing sheets
+        const currentHeaders = sheet.headerValues;
+        const missingHeaders = headers.filter(h => !currentHeaders.includes(h));
+        if (missingHeaders.length > 0) {
+            // This is a simplified approach. In a real scenario, you might need more complex migration logic.
+            await sheet.setHeaderRow(headers);
+        }
     }
     return sheet;
 }
@@ -143,7 +149,6 @@ export async function getEmployees(): Promise<Employee[]> {
 
 export async function getSettings(): Promise<Settings> {
   try {
-    await doc.loadInfo();
     const nationalitiesSheet = await getSheet(SHEET_NAME_NATIONALITIES, ['name']);
     const departmentsSheet = await getSheet(SHEET_NAME_DEPARTMENTS, ['name']);
     const coordinatorsSheet = await getSheet(SHEET_NAME_COORDINATORS, ['uid', 'name']);
@@ -495,7 +500,10 @@ const deserializeInspection = (row: any, allDetails: InspectionDetail[], allPhot
             });
         }
         if (detail.uwagi) {
-            acc[detail.category].uwagi = detail.uwagi;
+            // Make sure we only assign the uwagi once per category
+             if (!acc[detail.category].uwagi) {
+                acc[detail.category].uwagi = detail.uwagi;
+            }
         }
         return acc;
     }, {} as Record<string, {name: string, items: InspectionCategoryItem[], uwagi: string}>);
@@ -564,42 +572,43 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
             id: newInspectionId,
         };
         
-        // Save base inspection info first.
         await inspectionsSheet.addRow(serializeInspection(newInspectionBase));
 
-        // Sequentially save details and comments.
+        const detailPromises: Promise<any>[] = [];
+
         for (const category of categories) {
             for (const item of category.items) {
-                await detailsSheet.addRow({
+                 detailPromises.push(detailsSheet.addRow({
                     id: `detail-${Date.now()}-${Math.random()}`,
                     inspectionId: newInspectionId,
                     category: category.name,
                     itemLabel: item.label,
                     itemValue: item.value !== null && item.value !== undefined ? String(item.value) : '',
-                    uwagi: '', // Keep uwagi empty for item rows
-                });
+                    uwagi: '',
+                }));
             }
-            if (category.uwagi) {
-                await detailsSheet.addRow({
+             if (category.uwagi) {
+                detailPromises.push(detailsSheet.addRow({
                     id: `uwagi-${Date.now()}-${Math.random()}`,
                     inspectionId: newInspectionId,
                     category: category.name,
-                    itemLabel: '', // Keep item label empty for uwagi rows
+                    itemLabel: '',
                     itemValue: '',
                     uwagi: category.uwagi,
-                });
+                }));
             }
         }
+        await Promise.all(detailPromises);
         
-        // Sequentially save photos.
         if (photos && photos.length > 0) {
-            for (const photoData of photos) {
-                await photosSheet.addRow({
+             const photoPromises = photos.map(photoData => {
+                return photosSheet.addRow({
                     id: `photo-${Date.now()}-${Math.random()}`,
                     inspectionId: newInspectionId,
                     photoData: photoData,
                 });
-            }
+            });
+            await Promise.all(photoPromises);
         }
 
         return { ...newInspectionBase, categories, photos: photos || [] };

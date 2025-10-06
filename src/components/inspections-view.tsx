@@ -154,8 +154,7 @@ const CameraCapture = ({ isOpen, onOpenChange, onCapture }: { isOpen: boolean, o
     const streamRef = useRef<MediaStream | null>(null);
 
     useEffect(() => {
-      const getCameraPermission = async () => {
-        if (isOpen) {
+        const getCameraPermission = async () => {
           try {
             streamRef.current = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
             setHasCameraPermission(true);
@@ -171,20 +170,19 @@ const CameraCapture = ({ isOpen, onOpenChange, onCapture }: { isOpen: boolean, o
               description: 'Proszę zezwolić na dostęp do kamery w ustawieniach przeglądarki.',
             });
           }
+        };
+    
+        if (isOpen) {
+          getCameraPermission();
         }
-      };
-  
-      if (isOpen) {
-        getCameraPermission();
-      }
-  
-      return () => {
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach(track => track.stop());
-          streamRef.current = null;
-        }
-      };
-    }, [isOpen, toast]);
+    
+        return () => {
+          if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+          }
+        };
+      }, [isOpen, toast]);
 
     const handleCapture = () => {
         if (videoRef.current && canvasRef.current) {
