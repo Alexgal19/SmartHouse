@@ -480,10 +480,15 @@ const deserializeInspection = (row: any, allDetails: InspectionDetail[], allPhot
             let value: any = valueStr;
             if (valueStr === 'true') value = true;
             else if (valueStr === 'false') value = false;
-            else if (!isNaN(Number(valueStr)) && valueStr !== '') value = Number(valueStr);
-            else if (valueStr === '') value = null;
+            else if (!isNaN(Number(valueStr)) && valueStr !== '' && valueStr !== null) value = Number(valueStr);
+            else if (valueStr === '' || valueStr === null) value = null;
 
-            acc[detail.category].items.push({ label: detail.itemLabel, value: value } as InspectionCategoryItem);
+            acc[detail.category].items.push({
+                 // This is a bit of a hack to make the types work, as we don't store the type in the sheet
+                type: 'info', 
+                label: detail.itemLabel, 
+                value: value
+            });
         }
         if (detail.uwagi) {
             acc[detail.category].uwagi = detail.uwagi;
@@ -579,7 +584,8 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
         });
         
         if(detailRows.length > 0) {
-            await detailsSheet.addRows(detailRows.map(d => ({ ...d, id: `detail-${Date.now()}-${Math.random()}` })));
+            const rowsToAdd = detailRows.map(d => ({ ...d, id: `detail-${Date.now()}-${Math.random()}` }));
+            await detailsSheet.addRows(rowsToAdd);
         }
 
         if (photos && photos.length > 0) {

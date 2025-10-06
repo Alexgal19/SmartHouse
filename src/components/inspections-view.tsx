@@ -149,53 +149,47 @@ const SelectInput = ({ value, onChange, options, readOnly = false }: { value: st
 const CameraCapture = ({ isOpen, onOpenChange, onCapture }: { isOpen: boolean, onOpenChange: (open: boolean) => void, onCapture: (dataUri: string) => void }) => {
     const { toast } = useToast();
     const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-    const [stream, setStream] = useState<MediaStream | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     useEffect(() => {
+        let stream: MediaStream | null = null;
         const getCameraPermission = async () => {
-            if (!isOpen) {
-                if(stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                    setStream(null);
+            if (isOpen) {
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                    setHasCameraPermission(true);
+                    if (videoRef.current) {
+                        videoRef.current.srcObject = stream;
+                    }
+                } catch (error) {
+                    console.error('Error accessing camera:', error);
+                    setHasCameraPermission(false);
+                    toast({
+                        variant: 'destructive',
+                        title: 'Brak dostępu do kamery',
+                        description: 'Proszę zezwolić na dostęp do kamery w ustawieniach przeglądarki.',
+                    });
                 }
-                return;
-            };
-
-            try {
-                const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                setStream(mediaStream);
-                setHasCameraPermission(true);
-                if (videoRef.current) {
-                    videoRef.current.srcObject = mediaStream;
-                }
-            } catch (error) {
-                console.error('Error accessing camera:', error);
-                setHasCameraPermission(false);
-                toast({
-                    variant: 'destructive',
-                    title: 'Brak dostępu do kamery',
-                    description: 'Proszę zezwolić na dostęp do kamery w ustawieniach przeglądarki.',
-                });
             }
         };
 
-        getCameraPermission();
+        if(isOpen) {
+          getCameraPermission();
+        }
         
         return () => {
              if(stream) {
                 stream.getTracks().forEach(track => track.stop());
              }
         }
-    }, [isOpen, toast, stream]);
+    }, [isOpen, toast]);
 
     const handleCapture = () => {
         if (videoRef.current && canvasRef.current) {
             const video = videoRef.current;
             const canvas = canvasRef.current;
             
-            // Set canvas size and draw the image
             const MAX_WIDTH = 1280;
             const scale = MAX_WIDTH / video.videoWidth;
             canvas.width = MAX_WIDTH;
@@ -204,8 +198,7 @@ const CameraCapture = ({ isOpen, onOpenChange, onCapture }: { isOpen: boolean, o
             const context = canvas.getContext('2d');
             context?.drawImage(video, 0, 0, canvas.width, canvas.height);
             
-            // Get compressed image data
-            const dataUri = canvas.toDataURL('image/jpeg', 0.8); // 80% quality
+            const dataUri = canvas.toDataURL('image/jpeg', 0.8);
             onCapture(dataUri);
             onOpenChange(false);
         }
@@ -304,7 +297,7 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const files = event.target.files;
-        if (files && files.length > 0) {
+        if (files) {
           const filePromises = Array.from(files).map((file) => {
             return new Promise<string>((resolve, reject) => {
               const reader = new FileReader();
@@ -320,7 +313,6 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
           });
         }
     
-        // Reset input value to allow selecting the same file again
         if (event.target) {
           event.target.value = '';
         }
@@ -625,7 +617,3 @@ export default function InspectionsView({ inspections, settings, currentUser, on
         </Card>
     );
 }
-
-    
-
-    
