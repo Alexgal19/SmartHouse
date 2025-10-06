@@ -125,19 +125,21 @@ async function getSheet(title: string, headers: string[]): Promise<GoogleSpreads
     if (!sheet) {
         sheet = await doc.addSheet({ title, headerValues: headers });
     } else {
+        // Ensure headers are loaded and consistent.
+        await sheet.loadHeaderRow();
         const currentHeaders = sheet.headerValues;
         const missingHeaders = headers.filter(h => !currentHeaders.includes(h));
         if (missingHeaders.length > 0) {
             await sheet.setHeaderRow(Array.from(new Set([...currentHeaders, ...missingHeaders])));
         }
     }
+    await sheet.loadHeaderRow(); // Crucial step to prevent "Header values not loaded"
     return sheet;
 }
 
 export async function getEmployees(): Promise<Employee[]> {
   try {
     const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-    await sheet.loadHeaderRow();
     const rows = await sheet.getRows();
     return rows.map(deserializeEmployee);
   } catch (error) {
@@ -153,14 +155,6 @@ export async function getSettings(): Promise<Settings> {
     const coordinatorsSheet = await getSheet(SHEET_NAME_COORDINATORS, ['uid', 'name']);
     const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ['id', 'name']);
     const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity']);
-    
-    await Promise.all([
-        nationalitiesSheet.loadHeaderRow(),
-        departmentsSheet.loadHeaderRow(),
-        coordinatorsSheet.loadHeaderRow(),
-        addressesSheet.loadHeaderRow(),
-        roomsSheet.loadHeaderRow(),
-    ]);
 
     const [nationalityRows, departmentRows, coordinatorRows, addressRows, roomRows] = await Promise.all([
         nationalitiesSheet.getRows(),
@@ -214,8 +208,7 @@ const createNotification = async (
 ) => {
     try {
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
-        await sheet.loadHeaderRow();
-
+        
         const message = `${actor.name} ${action} pracownika ${employee.fullName}.`;
         
         const newNotification: Notification = {
@@ -239,7 +232,6 @@ const createNotification = async (
 export async function addEmployee(employeeData: Omit<Employee, 'id' | 'status'>, actor: Coordinator): Promise<Employee> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        await sheet.loadHeaderRow();
         const newEmployee: Employee = {
             ...employeeData,
             id: `emp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
@@ -349,7 +341,6 @@ const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): 
 export async function updateEmployee(employeeId: string, employeeData: Partial<Omit<Employee, 'id'>>, actor: Coordinator): Promise<Employee> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        await sheet.loadHeaderRow();
         
         const rows = await sheet.getRows();
         const rowIndex = rows.findIndex(row => row.get('id') === employeeId);
@@ -404,7 +395,6 @@ async function syncSheet<T extends Record<string, any>>(
     serializeFn: (item: T) => Record<string, any> = (item) => item
 ) {
     const sheet = await getSheet(sheetName, headers);
-    await sheet.loadHeaderRow();
     await sheet.clearRows();
     if (newData.length > 0) {
         const serializedData = newData.map(serializeFn);
@@ -446,7 +436,6 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Se
 export async function getNotifications(): Promise<Notification[]> {
     try {
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
-        await sheet.loadHeaderRow();
         const rows = await sheet.getRows();
         return rows.map(deserializeNotification).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     } catch (error) {
@@ -458,7 +447,6 @@ export async function getNotifications(): Promise<Notification[]> {
 export async function markNotificationAsRead(notificationId: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
-        await sheet.loadHeaderRow();
         const rows = await sheet.getRows();
         const rowToUpdate = rows.find(row => row.get('id') === notificationId);
 
@@ -545,12 +533,6 @@ export async function getInspections(): Promise<Inspection[]> {
         const photosSheet = await getSheet(SHEET_NAME_INSPECTION_PHOTOS, PHOTO_HEADERS);
         const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, INSPECTION_DETAILS_HEADERS);
         
-        await Promise.all([
-            inspectionsSheet.loadHeaderRow(),
-            photosSheet.loadHeaderRow(),
-            detailsSheet.loadHeaderRow(),
-        ]);
-
         const [inspectionRows, photoRows, detailRows] = await Promise.all([
             inspectionsSheet.getRows(),
             photosSheet.getRows(),
@@ -588,8 +570,6 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
         const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, INSPECTION_HEADERS);
         const photosSheet = await getSheet(SHEET_NAME_INSPECTION_PHOTOS, PHOTO_HEADERS);
         const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, INSPECTION_DETAILS_HEADERS);
-        
-        await Promise.all([inspectionsSheet.loadHeaderRow(), photosSheet.loadHeaderRow(), detailsSheet.loadHeaderRow()]);
 
         const newInspectionId = `insp-${Date.now()}`;
         const { photos, categories, ...restOfData } = inspectionData;
@@ -599,49 +579,45 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
             id: newInspectionId,
         };
         
-        console.log("Step 1: Saving main inspection record...");
-        await inspectionsSheet.addRow(serializeInspection(newInspectionBase), { raw: false });
-        console.log("Step 1: Success.");
+        await inspectionsSheet.addRow(serializeInspection(newInspectionBase));
         
-        console.log("Step 2: Saving details...");
+        const detailPromises = [];
         for (const category of categories) {
             for (const item of category.items) {
-                 await detailsSheet.addRow({
+                detailPromises.push(detailsSheet.addRow({
                     id: `detail-${Date.now()}-${Math.random()}`,
                     inspectionId: newInspectionId,
                     category: category.name,
                     itemLabel: item.label,
-                    itemValue: item.value, // Keep original type
+                    itemValue: item.value,
                     uwagi: '',
-                }, { raw: true });
+                }, { raw: true }));
             }
-             if (category.uwagi) {
-                await detailsSheet.addRow({
+            if (category.uwagi) {
+                detailPromises.push(detailsSheet.addRow({
                     id: `uwagi-${Date.now()}-${Math.random()}`,
                     inspectionId: newInspectionId,
                     category: category.name,
                     itemLabel: '',
                     itemValue: '',
                     uwagi: category.uwagi,
-                }, { raw: true });
+                }, { raw: true }));
             }
         }
-        console.log("Step 2: Success.");
+        await Promise.all(detailPromises);
         
-        console.log("Step 3: Saving photos...");
         if (photos && photos.length > 0) {
-            for (const photoData of photos) {
-                 await photosSheet.addRow({
+            const photoPromises = photos.map(photoData => {
+                return photosSheet.addRow({
                     id: `photo-${Date.now()}-${Math.random()}`,
                     inspectionId: newInspectionId,
                     photoData: photoData,
-                }, { raw: true }); // Using raw: true might be risky, let's see
-            }
+                }, { raw: true });
+            });
+            await Promise.all(photoPromises);
         }
-        console.log("Step 3: Success.");
 
         const finalInspection = { ...newInspectionBase, categories, photos: photos || [] };
-        console.log("addInspection finished successfully.");
         return finalInspection;
     } catch (error) {
         console.error("Error in addInspection:", error);
@@ -651,3 +627,5 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
         throw new Error("Could not add inspection.");
     }
 }
+
+    
