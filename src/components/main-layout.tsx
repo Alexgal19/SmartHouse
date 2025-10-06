@@ -190,7 +190,7 @@ function MainContent() {
     const handleAddInspection = async (inspectionData: Omit<Inspection, 'id'>) => {
         try {
             const newInspection = await addInspection(inspectionData);
-            setInspections(prev => [newInspection, ...prev]);
+            setInspections(prev => [newInspection, ...prev].sort((a, b) => b.date.getTime() - a.date.getTime()));
              toast({ title: "Sukces", description: "Nowa inspekcja została dodana." });
         } catch(e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać inspekcji." });
