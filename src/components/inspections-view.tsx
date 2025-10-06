@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import type { Inspection, Settings, Coordinator, InspectionCategory, InspectionCategoryItem } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,12 +17,14 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { PlusCircle, Star, FileImage, Trash2, Camera } from 'lucide-react';
+import { PlusCircle, Star, FileImage, Trash2, Camera, Circle } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { Input } from './ui/input';
 import Image from 'next/image';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
+import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertTitle, AlertDescription } from './ui/alert';
 
 interface InspectionsViewProps {
     inspections: Inspection[];
@@ -144,6 +146,96 @@ const SelectInput = ({ value, onChange, options, readOnly = false }: { value: st
     );
 };
 
+const CameraCapture = ({ isOpen, onOpenChange, onCapture }: { isOpen: boolean, onOpenChange: (open: boolean) => void, onCapture: (dataUri: string) => void }) => {
+    const { toast } = useToast();
+    const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+    const [stream, setStream] = useState<MediaStream | null>(null);
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    useEffect(() => {
+        const getCameraPermission = async () => {
+            if (!isOpen) {
+                if(stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                    setStream(null);
+                }
+                return;
+            };
+
+            try {
+                const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                setStream(mediaStream);
+                setHasCameraPermission(true);
+                if (videoRef.current) {
+                    videoRef.current.srcObject = mediaStream;
+                }
+            } catch (error) {
+                console.error('Error accessing camera:', error);
+                setHasCameraPermission(false);
+                toast({
+                    variant: 'destructive',
+                    title: 'Brak dostępu do kamery',
+                    description: 'Proszę zezwolić na dostęp до камери в ustawieniach przeglądarki.',
+                });
+            }
+        };
+
+        getCameraPermission();
+        
+        return () => {
+             if(stream) {
+                stream.getTracks().forEach(track => track.stop());
+             }
+        }
+    }, [isOpen, toast]);
+
+    const handleCapture = () => {
+        if (videoRef.current && canvasRef.current) {
+            const video = videoRef.current;
+            const canvas = canvasRef.current;
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            context?.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+            const dataUri = canvas.toDataURL('image/jpeg');
+            onCapture(dataUri);
+            onOpenChange(false);
+        }
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Zrób zdjęcie</DialogTitle>
+                </DialogHeader>
+                <div className="flex flex-col items-center justify-center p-4">
+                    {hasCameraPermission === false && (
+                         <Alert variant="destructive">
+                            <AlertTitle>Brak dostępu do kamery</AlertTitle>
+                            <AlertDescription>
+                                Proszę zezwolić na dostęp до камери в ustawieniach przeglądarki, aby korzystać z tej funkcji.
+                            </AlertDescription>
+                        </Alert>
+                    )}
+                     <div className="w-full relative">
+                        <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay muted playsInline />
+                         {hasCameraPermission && <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <Circle className="w-24 h-24 text-white/20" />
+                        </div>}
+                    </div>
+                     <canvas ref={canvasRef} className="hidden" />
+                </div>
+                <DialogFooter>
+                    <Button variant="secondary" onClick={() => onOpenChange(false)}>Anuluj</Button>
+                    <Button onClick={handleCapture} disabled={!hasCameraPermission}>Zrób zdjęcie</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+};
+
 
 const calculateRating = (categories: InspectionCategory[]): number => {
     const scoreMap: Record<string, number> = {
@@ -200,6 +292,7 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
     const watchedCategories = useWatch({ control: form.control, name: 'categories' });
     const watchedPhotos = useWatch({ control: form.control, name: 'photos' });
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isCameraOpen, setIsCameraOpen] = useState(false);
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const files = event.target.files;
@@ -221,6 +314,11 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
         if(event.target) {
             event.target.value = '';
         }
+    };
+
+    const handlePhotoCapture = (dataUri: string) => {
+        const currentPhotos = form.getValues('photos') || [];
+        form.setValue('photos', [...currentPhotos, dataUri]);
     };
 
     const removePhoto = (index: number) => {
@@ -350,8 +448,12 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
                                     <CardContent>
                                         <div className="flex flex-wrap gap-2 mb-4">
                                             <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-                                                <Camera className="mr-2 h-4 w-4" />
+                                                <FileImage className="mr-2 h-4 w-4" />
                                                 Dodaj zdjęcie
+                                            </Button>
+                                             <Button type="button" variant="outline" onClick={() => setIsCameraOpen(true)}>
+                                                <Camera className="mr-2 h-4 w-4" />
+                                                Zrób zdjęcie
                                             </Button>
                                             <input
                                                 type="file"
@@ -387,6 +489,7 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
                         </DialogFooter>
                     </form>
                 </Form>
+                 <CameraCapture isOpen={isCameraOpen} onOpenChange={setIsCameraOpen} onCapture={handlePhotoCapture} />
             </DialogContent>
         </Dialog>
     );
