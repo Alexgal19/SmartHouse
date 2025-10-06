@@ -69,7 +69,7 @@ export type Inspection = {
   coordinatorName: string;
   standard: 'Wysoki' | 'Normalny' | 'Niski' | null;
   categories: InspectionCategory[];
-  photos: string[]; // For now, this will be empty
+  photos: string[];
 };
 
 export type EquipmentItem = {
@@ -114,3 +114,5 @@ export type Notification = {
 };
 
 export type View = 'dashboard' | 'employees' | 'settings' | 'inspections';
+
+    

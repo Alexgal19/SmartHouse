@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import type { Inspection, Settings, Coordinator, InspectionCategory, InspectionCategoryItem } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,9 +17,10 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { PlusCircle, Star, FileImage } from 'lucide-react';
+import { PlusCircle, Star, FileImage, Trash2, Camera } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { Input } from './ui/input';
+import Image from 'next/image';
 
 interface InspectionsViewProps {
     inspections: Inspection[];
@@ -42,7 +43,8 @@ const inspectionSchema = z.object({
             options: z.array(z.string()).optional()
         })),
         uwagi: z.string().optional(),
-    }))
+    })),
+    photos: z.array(z.string()).optional(),
 });
 
 type InspectionFormData = z.infer<typeof inspectionSchema>;
@@ -149,7 +151,7 @@ const FinalRating = ({ categories }: { categories: InspectionCategory[] }) => {
 
         categories.forEach(category => {
             category.items.forEach(item => {
-                if (item.type === 'select' && item.options === cleanlinessOptions) {
+                if (item.type === 'select' && item.options && item.options.every(o => cleanlinessOptions.includes(o))) {
                     maxScore += 4;
                     if (typeof item.value === 'string' && item.value in scoreMap) {
                         totalScore += scoreMap[item.value];
@@ -187,11 +189,37 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
             coordinatorId: currentUser.uid,
             standard: null,
             categories: getInitialChecklist(),
+            photos: [],
         }
     });
     
     const { fields } = useFieldArray({ control: form.control, name: "categories" });
     const watchedCategories = useWatch({ control: form.control, name: 'categories' });
+    const watchedPhotos = useWatch({ control: form.control, name: 'photos' });
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const files = event.target.files;
+        if (files) {
+            const currentPhotos = form.getValues('photos') || [];
+            const newPhotos: string[] = [];
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    newPhotos.push(reader.result as string);
+                    if (newPhotos.length === files.length) {
+                        form.setValue('photos', [...currentPhotos, ...newPhotos]);
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+    };
+
+    const removePhoto = (index: number) => {
+        const currentPhotos = form.getValues('photos') || [];
+        form.setValue('photos', currentPhotos.filter((_, i) => i !== index));
+    };
 
     const onSubmit = async (data: InspectionFormData) => {
         const address = settings.addresses.find(a => a.id === data.addressId);
@@ -208,7 +236,7 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
             coordinatorName: currentUser.name,
             standard: data.standard,
             categories: data.categories,
-            photos: [], // For now, empty
+            photos: data.photos || [],
         });
         form.reset({
             addressId: '',
@@ -216,6 +244,7 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
             coordinatorId: currentUser.uid,
             standard: null,
             categories: getInitialChecklist(),
+            photos: [],
         });
         onOpenChange(false);
     };
@@ -287,7 +316,7 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
                                                                         {item.type === 'rating' && <RatingInput value={field.value as number} onChange={field.onChange} />}
                                                                         {item.type === 'yes_no' && <YesNoInput value={field.value as boolean | null} onChange={field.onChange} />}
                                                                         {item.type === 'text' && <Textarea {...field} className="w-full sm:w-64" />}
-                                                                        {item.type === 'select' && <SelectInput value={field.value as string | null} onChange={field.onChange} options={item.options || []} />}
+                                                                        {item.type === 'select' && item.options && <SelectInput value={field.value as string | null} onChange={field.onChange} options={item.options} />}
                                                                     </div>
                                                                 </FormControl>
                                                             </FormItem>
@@ -309,6 +338,50 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
                                     </Card>
                                 ))}
                                 </div>
+                                <Card>
+                                    <CardHeader><CardTitle>Zdjęcia</CardTitle></CardHeader>
+                                    <CardContent>
+                                        <div className="flex gap-2 mb-4">
+                                            <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                                                <FileImage className="mr-2 h-4 w-4" />
+                                                Załaduj z urządzenia
+                                            </Button>
+                                            <input
+                                                type="file"
+                                                ref={fileInputRef}
+                                                className="hidden"
+                                                accept="image/*"
+                                                multiple
+                                                onChange={handleFileChange}
+                                            />
+                                            <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled>
+                                                <Camera className="mr-2 h-4 w-4" />
+                                                Zrób zdjęcie
+                                            </Button>
+                                             <input
+                                                type="file"
+                                                className="hidden"
+                                                accept="image/*"
+                                                capture="environment"
+                                                onChange={handleFileChange}
+                                                // We can use the same ref for simplicity or a new one
+                                                // onClick={(e) => (e.currentTarget.value = null)} // Allows re-taking photo
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                            {(watchedPhotos || []).map((photoSrc, index) => (
+                                                <div key={index} className="relative group aspect-square">
+                                                    <Image src={photoSrc} alt={`Inspection photo ${index + 1}`} layout="fill" objectFit="cover" className="rounded-md" />
+                                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <Button variant="destructive" size="icon" type="button" onClick={() => removePhoto(index)}>
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </CardContent>
+                                </Card>
                                 <FinalRating categories={watchedCategories} />
                             </div>
                         </ScrollArea>
@@ -371,3 +444,5 @@ export default function InspectionsView({ inspections, settings, currentUser, on
     );
 }
 
+
+    
