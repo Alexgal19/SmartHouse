@@ -200,6 +200,7 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
     const watchedCategories = useWatch({ control: form.control, name: 'categories' });
     const watchedPhotos = useWatch({ control: form.control, name: 'photos' });
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const cameraInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const files = event.target.files;
@@ -216,6 +217,10 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
                 };
                 reader.readAsDataURL(file);
             });
+        }
+         // Reset input value to allow selecting the same file again
+        if(event.target) {
+            event.target.value = '';
         }
     };
 
@@ -344,10 +349,14 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
                                 <Card>
                                     <CardHeader><CardTitle>Zdjęcia</CardTitle></CardHeader>
                                     <CardContent>
-                                        <div className="flex gap-2 mb-4">
+                                        <div className="flex flex-wrap gap-2 mb-4">
                                             <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
                                                 <FileImage className="mr-2 h-4 w-4" />
-                                                Załaduj z urządzenia
+                                                Załaduj
+                                            </Button>
+                                             <Button type="button" variant="outline" onClick={() => cameraInputRef.current?.click()}>
+                                                <Camera className="mr-2 h-4 w-4" />
+                                                Zrób zdjęcie
                                             </Button>
                                             <input
                                                 type="file"
@@ -359,6 +368,7 @@ const InspectionDialog = ({ isOpen, onOpenChange, settings, currentUser, onSave 
                                             />
                                              <input
                                                 type="file"
+                                                ref={cameraInputRef}
                                                 className="hidden"
                                                 accept="image/*"
                                                 capture="environment"
