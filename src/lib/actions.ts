@@ -138,7 +138,6 @@ async function getSheet(title: string, headers: string[]): Promise<GoogleSpreads
 export async function getEmployees(): Promise<Employee[]> {
   try {
     const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-    await sheet.loadHeaderRow();
     const rows = await sheet.getRows();
     return rows.map(deserializeEmployee);
   } catch (error) {
@@ -468,7 +467,10 @@ const serializeRaw = (value: any): string | number | boolean => {
     if (value === null || value === undefined) {
       return '';
     }
-    return value;
+     if (typeof value === 'boolean' || typeof value === 'number') {
+        return value;
+    }
+    return String(value);
   };
 
 const serializeInspection = (inspection: Omit<Inspection, 'photos' | 'categories'>): Record<string, string | number | boolean> => ({
@@ -497,12 +499,16 @@ const deserializeInspection = (row: any, allDetails: InspectionDetail[], allPhot
             else if (!isNaN(Number(valueStr)) && valueStr !== '' && valueStr !== null) value = Number(valueStr);
             else if (valueStr === '' || valueStr === null) value = null;
 
-            acc[detail.category].items.push({
-                type: 'info', 
-                label: detail.itemLabel, 
-                value: value,
-                options: detail.itemValue?.includes(',') ? detail.itemValue.split(',') : undefined
-            });
+            // Attempt to find if an item with this label already exists to avoid duplicates
+            const existingItem = acc[detail.category].items.find(i => i.label === detail.itemLabel);
+            if (!existingItem) {
+                 acc[detail.category].items.push({
+                    type: 'info', 
+                    label: detail.itemLabel, 
+                    value: value,
+                    options: typeof value === 'string' && value.includes(',') ? value.split(',') : undefined
+                });
+            }
         }
         if (detail.uwagi && !acc[detail.category].uwagi) {
             acc[detail.category].uwagi = detail.uwagi;
@@ -529,10 +535,6 @@ export async function getInspections(): Promise<Inspection[]> {
         const photosSheet = await getSheet(SHEET_NAME_INSPECTION_PHOTOS, PHOTO_HEADERS);
         const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, INSPECTION_DETAILS_HEADERS);
         
-        await inspectionsSheet.loadHeaderRow();
-        await photosSheet.loadHeaderRow();
-        await detailsSheet.loadHeaderRow();
-
         const [inspectionRows, photoRows, detailRows] = await Promise.all([
             inspectionsSheet.getRows(),
             photosSheet.getRows(),
@@ -580,10 +582,10 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
         
         await inspectionsSheet.addRow(serializeInspection(newInspectionBase));
         
-        const detailRowsToAdd = [];
+        // Save details one by one
         for (const category of categories) {
             for (const item of category.items) {
-                 detailRowsToAdd.push({
+                 await detailsSheet.addRow({
                     id: `detail-${Date.now()}-${Math.random()}`,
                     inspectionId: newInspectionId,
                     category: category.name,
@@ -593,7 +595,7 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
                 });
             }
              if (category.uwagi) {
-                detailRowsToAdd.push({
+                await detailsSheet.addRow({
                     id: `uwagi-${Date.now()}-${Math.random()}`,
                     inspectionId: newInspectionId,
                     category: category.name,
@@ -603,17 +605,16 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
                 });
             }
         }
-        if(detailRowsToAdd.length > 0) {
-            await detailsSheet.addRows(detailRowsToAdd);
-        }
         
+        // Save photos one by one
         if (photos && photos.length > 0) {
-             const photoRowsToAdd = photos.map(photoData => ({
-                id: `photo-${Date.now()}-${Math.random()}`,
-                inspectionId: newInspectionId,
-                photoData: photoData,
-            }));
-            await photosSheet.addRows(photoRowsToAdd, { raw: true });
+             for (const photoData of photos) {
+                 await photosSheet.addRow({
+                    id: `photo-${Date.now()}-${Math.random()}`,
+                    inspectionId: newInspectionId,
+                    photoData: photoData,
+                }, { raw: true });
+             }
         }
 
         return { ...newInspectionBase, categories, photos: photos || [] };
@@ -625,4 +626,6 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
         throw new Error("Could not add inspection.");
     }
 }
+    
+
     
