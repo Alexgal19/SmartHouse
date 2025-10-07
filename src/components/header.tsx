@@ -1,6 +1,6 @@
 "use client";
 
-import type { User, View, Notification, Employee, Coordinator } from "@/types";
+import type { User, View, Notification, Coordinator } from "@/types";
 import {
   Popover,
   PopoverContent,
@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/popover";
 
 import { Button } from "@/components/ui/button";
-import { Settings, UserCircle, Building, Bell, ArrowRight } from "lucide-react";
+import { Settings, UserCircle, Building, Bell, ArrowRight, LogOut } from "lucide-react";
 import { SidebarTrigger } from "./ui/sidebar";
 import { useSidebar } from "./ui/sidebar";
 import { formatDistanceToNow } from 'date-fns';
@@ -21,6 +21,7 @@ interface HeaderProps {
   activeView: View;
   notifications: Notification[];
   onNotificationClick: (notification: Notification) => void;
+  onLogout: () => void;
 }
 
 const viewTitles: Record<View, string> = {
@@ -30,7 +31,7 @@ const viewTitles: Record<View, string> = {
   inspections: 'Inspekcje'
 }
 
-export default function Header({ user, activeView, notifications, onNotificationClick }: HeaderProps) {
+export default function Header({ user, activeView, notifications, onNotificationClick, onLogout }: HeaderProps) {
     const { isMobile, open } = useSidebar();
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
@@ -45,7 +46,7 @@ export default function Header({ user, activeView, notifications, onNotification
         {isMobile && <SidebarTrigger />}
         <h1 className="text-xl font-semibold hidden md:block">{viewTitles[activeView]}</h1>
       </div>
-      <div className="flex flex-1 items-center justify-end gap-4">
+      <div className="flex flex-1 items-center justify-end gap-2">
          <Popover>
             <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative">
@@ -98,6 +99,10 @@ export default function Header({ user, activeView, notifications, onNotification
                 </ScrollArea>
             </PopoverContent>
         </Popover>
+         <Button variant="ghost" size="icon" onClick={onLogout}>
+            <LogOut className="h-5 w-5" />
+            <span className="sr-only">Wyloguj się</span>
+        </Button>
       </div>
     </header>
   );

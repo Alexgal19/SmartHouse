@@ -90,6 +90,10 @@ function MainContent() {
         setCurrentUser(coordinator);
     };
 
+    const handleLogout = () => {
+        setCurrentUser(null);
+    };
+
     const handleSaveEmployee = async (data: Omit<Employee, 'id' | 'status'> & { oldAddress?: string | null }) => {
         if (!currentUser) return;
         try {
@@ -270,7 +274,7 @@ function MainContent() {
                 </SidebarFooter>
             </Sidebar>
             <div className="flex flex-1 flex-col">
-                <Header user={currentUser} activeView={activeView} notifications={notifications} onNotificationClick={handleNotificationClick} />
+                <Header user={currentUser} activeView={activeView} notifications={notifications} onNotificationClick={handleNotificationClick} onLogout={handleLogout} />
                 <main className="flex-1 overflow-y-auto px-2 sm:px-6 pb-6 pt-4">
                     {renderView()}
                 </main>
