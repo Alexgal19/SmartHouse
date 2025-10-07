@@ -335,9 +335,9 @@ function MainContent() {
 
     if (isLoading) {
         return (
-            <div className="animated-gradient-background flex h-screen w-full items-center justify-center p-4">
+            <div className="flex h-screen w-full items-center justify-center p-4 bg-background">
                 <div className="glass-card flex animate-fade-in flex-col items-center gap-6 p-24">
-                     <h1 className="relative text-9xl font-bold">
+                    <h1 className="relative text-9xl font-bold">
                         <span className="absolute inset-0 text-stroke-primary">SmartHouse</span>
                         <span className="text-muted-foreground">SmartHouse</span>
                     </h1>
