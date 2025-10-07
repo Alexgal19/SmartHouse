@@ -101,7 +101,7 @@ const EMPLOYEE_HEADERS = [
     'departureReportDate', 'comments', 'status', 'oldAddress'
 ];
 
-const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin'];
+const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
 
 export async function getSheet(title: string, headers: string[]): Promise<GoogleSpreadsheetWorksheet> {
     await doc.loadInfo();
@@ -172,6 +172,7 @@ export async function getSettings(): Promise<Settings> {
         uid: row.get('uid'),
         name: row.get('name'),
         isAdmin: row.get('isAdmin') === 'TRUE',
+        password: row.get('password') || '',
       })),
       genders: ['Mężczyzna', 'Kobieta'],
     };

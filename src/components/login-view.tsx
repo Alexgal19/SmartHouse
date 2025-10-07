@@ -11,7 +11,7 @@ import type { Coordinator } from '@/types';
 
 interface LoginViewProps {
   coordinators: Coordinator[];
-  onLogin: (user: Coordinator, password?: string) => void;
+  onLogin: (user: { name: string }, password?: string) => void;
 }
 
 export function LoginView({ coordinators, onLogin }: LoginViewProps) {
@@ -21,7 +21,7 @@ export function LoginView({ coordinators, onLogin }: LoginViewProps) {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    onLogin({ name: name.trim(), uid: '', isAdmin: false }, password);
+    onLogin({ name: name.trim() }, password);
   };
   
   const handleSetError = (message: string) => {
@@ -63,7 +63,7 @@ export function LoginView({ coordinators, onLogin }: LoginViewProps) {
                     />
                 </div>
                  <div className="space-y-2">
-                    <Label htmlFor="password">Hasło (tylko dla admina)</Label>
+                    <Label htmlFor="password">Hasło</Label>
                     <Input
                     id="password"
                     type="password"
@@ -73,6 +73,7 @@ export function LoginView({ coordinators, onLogin }: LoginViewProps) {
                         setError('');
                     }}
                     placeholder="Wprowadź hasło"
+                    required
                     />
                 </div>
                  {error && <p className="text-sm font-medium text-destructive">{error}</p>}

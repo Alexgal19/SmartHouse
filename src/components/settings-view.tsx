@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, PlusCircle, Trash2, ShieldCheck, ArrowRight } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Trash2, ShieldCheck, KeyRound } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -272,6 +272,7 @@ const CoordinatorManager = ({ items, onUpdate, allEmployees, currentUser, onData
                 uid: `coord-${Date.now()}-${Math.random()}`,
                 name,
                 isAdmin: false,
+                password: '',
             }));
             onUpdate([...items, ...coordinatorsToAdd]);
             setNewCoordinators('');
@@ -284,6 +285,12 @@ const CoordinatorManager = ({ items, onUpdate, allEmployees, currentUser, onData
         const newItems = items.map(item => item.uid === currentCoordinator.uid ? currentCoordinator as Coordinator : item);
         onUpdate(newItems);
         setIsEditDialogOpen(false);
+    };
+    
+    const handleResetPassword = (uid: string) => {
+        const newItems = items.map(item => item.uid === uid ? { ...item, password: '' } : item);
+        onUpdate(newItems);
+        toast({ title: "Sukces", description: "Hasło zostało zresetowane. Koordynator będzie mógł ustawić nowe hasło przy następnym logowaniu." });
     };
 
     const handleDelete = (uid: string) => {
@@ -332,12 +339,17 @@ const CoordinatorManager = ({ items, onUpdate, allEmployees, currentUser, onData
                                     <div>
                                         <p className="font-semibold">{coordinator.name}</p>
                                         <p className="text-sm text-muted-foreground font-mono text-xs">{coordinator.uid}</p>
+                                        <div className="flex items-center text-xs text-muted-foreground gap-1 mt-1">
+                                            <KeyRound className="h-3 w-3" />
+                                            <span>{coordinator.password ? 'Hasło ustawione' : 'Brak hasła'}</span>
+                                        </div>
                                     </div>
                                 </div>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                     <DropdownMenuContent>
                                         <DropdownMenuItem onClick={() => openEditDialog(coordinator)}>Edytuj</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleResetPassword(coordinator.uid)}>Resetuj hasło</DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => openTransferDialog(coordinator)}>Przenieś pracowników</DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => handleDelete(coordinator.uid)} className="text-destructive">Usuń</DropdownMenuItem>
                                     </DropdownMenuContent>

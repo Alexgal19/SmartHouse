@@ -98,11 +98,11 @@ function MainContent() {
         return allInspections.filter(i => i.coordinatorId === currentUser.uid);
     }, [currentUser, allInspections]);
 
-    const handleLogin = (user: {name: string}, password?: string) => {
+    const handleLogin = async (user: {name: string}, password?: string) => {
         if (!settings) return;
+        
         const adminLogin = process.env.ADMIN_LOGIN || 'admin';
         const adminPassword = process.env.ADMIN_PASSWORD || 'password';
-        
         const lowerCaseName = user.name.toLowerCase();
 
         if (lowerCaseName === adminLogin.toLowerCase()) {
@@ -110,7 +110,8 @@ function MainContent() {
                 setCurrentUser({
                     uid: 'admin-super-user',
                     name: 'Admin',
-                    isAdmin: true
+                    isAdmin: true,
+                    password: ''
                 });
             } else {
                  (window as any).setLoginError('Nieprawidłowe hasło administratora.');
@@ -119,10 +120,36 @@ function MainContent() {
         }
 
         const coordinator = settings.coordinators.find(c => c.name.toLowerCase() === lowerCaseName);
-        if (coordinator) {
-            setCurrentUser(coordinator);
-        } else {
-             (window as any).setLoginError('Brak dostępu. Sprawdź, czy Twoje imię i nazwisko są poprawne.');
+
+        if (!coordinator) {
+            (window as any).setLoginError('Brak dostępu. Sprawdź, czy Twoje imię i nazwisko są poprawne.');
+            return;
+        }
+
+        if (!password) {
+            (window as any).setLoginError('Hasło jest wymagane.');
+            return;
+        }
+        
+        if (!coordinator.password) { // First login, set password
+            try {
+                await updateSettings({ 
+                    coordinators: settings.coordinators.map(c => 
+                        c.uid === coordinator.uid ? { ...c, password } : c
+                    ) 
+                });
+                setCurrentUser({ ...coordinator, password });
+                toast({ title: "Sukces", description: "Twoje hasło zostało ustawione." });
+                await fetchData();
+            } catch (error) {
+                (window as any).setLoginError('Nie udało się ustawić hasła. Spróbuj ponownie.');
+            }
+        } else { // Subsequent logins
+            if (coordinator.password === password) {
+                setCurrentUser(coordinator);
+            } else {
+                (window as any).setLoginError('Nieprawidłowe hasło.');
+            }
         }
     };
 

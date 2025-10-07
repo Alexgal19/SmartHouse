@@ -50,7 +50,7 @@ const EMPLOYEE_HEADERS = [
     'departureReportDate', 'comments', 'status', 'oldAddress'
 ];
 
-const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin'];
+const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
 
 
 export async function getEmployees(): Promise<Employee[]> {
@@ -299,7 +299,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Se
                 SHEET_NAME_COORDINATORS, 
                 COORDINATOR_HEADERS, 
                 updatedSettings.coordinators,
-                (item) => ({ ...item, isAdmin: String(item.isAdmin).toUpperCase() })
+                (item) => ({ ...item, isAdmin: String(item.isAdmin).toUpperCase(), password: item.password || '' })
             );
         }
         
