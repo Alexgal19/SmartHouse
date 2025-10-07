@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -40,7 +41,7 @@ export function DatePicker({ value, onChange, className }: DatePickerProps) {
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {value ? format(value, "PPP", { locale: pl }) : <span>Wybierz datę</span>}
+          {value ? format(value, "dd-MM-yyyy") : <span>Wybierz datę</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0">

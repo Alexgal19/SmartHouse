@@ -552,10 +552,3 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
     </div>
   );
 }
-
-
-    
-
-    
-
-    

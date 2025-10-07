@@ -604,7 +604,7 @@ const InspectionDetailDialog = ({ inspection, isOpen, onOpenChange }: { inspecti
                 <DialogHeader>
                     <DialogTitle>{inspection.addressName}</DialogTitle>
                     <DialogDescription>
-                        Inspekcja z dnia {format(inspection.date, 'd MMMM yyyy, HH:mm', { locale: pl })} przez {inspection.coordinatorName}
+                        Inspekcja z dnia {format(inspection.date, 'dd-MM-yyyy, HH:mm')} przez {inspection.coordinatorName}
                     </DialogDescription>
                     {inspection.standard && <Badge className="w-fit">{inspection.standard}</Badge>}
                 </DialogHeader>
@@ -725,7 +725,7 @@ export default function InspectionsView({ inspections, settings, currentUser, on
                                     <div className="cursor-pointer flex-1" onClick={() => setSelectedInspection(inspection)}>
                                         <CardTitle className="text-lg">{inspection.addressName}</CardTitle>
                                         <CardDescription>
-                                            {format(inspection.date, 'd MMMM yyyy', { locale: pl })} przez {inspection.coordinatorName}
+                                            {format(inspection.date, 'dd-MM-yyyy')} przez {inspection.coordinatorName}
                                         </CardDescription>
                                     </div>
                                     <DropdownMenu>
