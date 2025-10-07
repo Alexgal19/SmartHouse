@@ -68,6 +68,12 @@ function MainContent() {
             setSettings(settingsData);
             setNotifications(notificationsData.map((n:any) => ({...n, createdAt: new Date(n.createdAt)})));
             setAllInspections(inspectionsData.map((i: any) => ({...i, date: new Date(i.date)})));
+
+            if (isInitialLoad) {
+              // Run status check in the background without blocking UI
+              checkAndUpdateEmployeeStatuses().catch(e => console.error("Background status check failed:", e));
+            }
+
         } catch (error) {
             console.error(error);
             if (isInitialLoad) {
@@ -308,16 +314,6 @@ function MainContent() {
         }
     }
 
-    const handleManualStatusRefresh = async () => {
-        toast({title: "Proszę czekać", description: "Trwa odświeżanie statusów pracowników..."});
-        try {
-            await checkAndUpdateEmployeeStatuses();
-            await fetchData();
-            toast({title: "Sukces", description: "Statusy pracowników zostały pomyślnie zaktualizowane."});
-        } catch(e: any) {
-            toast({variant: "destructive", title: "Błąd", description: e.message || "Nie udało się odświeżyć statusów."});
-        }
-    };
     
     const handleBulkImport = async (fileData: ArrayBuffer) => {
       try {
@@ -343,7 +339,7 @@ function MainContent() {
                 if (!currentUser.isAdmin) {
                     return <div className="p-4 text-center text-red-500">Brak uprawnień do przeglądania tej strony.</div>;
                 }
-                return <SettingsView settings={settings} onUpdateSettings={handleUpdateSettings} allEmployees={allEmployees} currentUser={currentUser} onDataRefresh={fetchData} onManualStatusRefresh={handleManualStatusRefresh} onBulkImport={handleBulkImport}/>;
+                return <SettingsView settings={settings} onUpdateSettings={handleUpdateSettings} allEmployees={allEmployees} currentUser={currentUser} onDataRefresh={fetchData} onBulkImport={handleBulkImport}/>;
             case 'inspections':
                  return <InspectionsView 
                     inspections={filteredInspections} 
@@ -447,5 +443,3 @@ export default function MainLayout() {
         </SidebarProvider>
     );
 }
-
-    

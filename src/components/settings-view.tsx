@@ -9,13 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, PlusCircle, Trash2, ShieldCheck, KeyRound, Upload, FileWarning, RefreshCw } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Trash2, ShieldCheck, KeyRound, Upload, FileWarning } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Input } from "./ui/input";
 import { Switch } from "./ui/switch";
-import { transferEmployees, bulkImportEmployees } from "@/lib/actions";
+import { transferEmployees } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
@@ -28,7 +28,7 @@ interface SettingsViewProps {
   allEmployees: Employee[];
   currentUser: Coordinator;
   onDataRefresh: () => void;
-  onManualStatusRefresh: () => void;
+  onBulkImport: (fileData: ArrayBuffer) => Promise<{success: boolean, message: string}>;
 }
 
 const EmployeeImportDialog = ({ isOpen, onOpenChange, onImport }: { isOpen: boolean, onOpenChange: (isOpen: boolean) => void, onImport: (fileData: ArrayBuffer) => Promise<{success: boolean, message: string}> }) => {
@@ -544,20 +544,9 @@ const CoordinatorManager = ({ items, onUpdate, allEmployees, currentUser, onData
 };
 
 
-export default function SettingsView({ settings, onUpdateSettings, allEmployees, currentUser, onDataRefresh, onManualStatusRefresh }: SettingsViewProps) {
+export default function SettingsView({ settings, onUpdateSettings, allEmployees, currentUser, onDataRefresh, onBulkImport }: SettingsViewProps) {
   const { isMobile } = useIsMobile();
   const [isImportOpen, setIsImportOpen] = useState(false);
-  const { toast } = useToast();
-  
-  const handleImport = async (fileData: ArrayBuffer) => {
-      try {
-          const result = await bulkImportEmployees(fileData, settings.coordinators, currentUser);
-          onDataRefresh();
-          return result;
-      } catch (e: any) {
-          return { success: false, message: e.message || "Wystąpił nieznany błąd." };
-      }
-  };
   
   return (
     <Card>
@@ -565,10 +554,6 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <CardTitle>Ustawienia Aplikacji</CardTitle>
             <div className="flex gap-2">
-                <Button onClick={onManualStatusRefresh} variant="outline">
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Odśwież statusy
-                </Button>
                 <Button onClick={() => setIsImportOpen(true)} variant="outline">
                     <Upload className="mr-2 h-4 w-4" />
                     Importuj
@@ -607,7 +592,7 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
       <EmployeeImportDialog 
         isOpen={isImportOpen} 
         onOpenChange={setIsImportOpen} 
-        onImport={handleImport}
+        onImport={onBulkImport}
       />
     </Card>
   );
