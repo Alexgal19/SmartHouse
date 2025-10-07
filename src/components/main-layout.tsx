@@ -21,8 +21,7 @@ import SettingsView from './settings-view';
 import InspectionsView from './inspections-view';
 import { AddEmployeeForm } from './add-employee-form';
 import { LoginView } from './login-view';
-import { Skeleton } from './ui/skeleton';
-import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead, getInspections, addInspection, updateInspection, deleteInspection, checkAndUpdateEmployeeStatuses } from '@/lib/actions';
+import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead, getInspections, addInspection, updateInspection, deleteInspection, checkAndUpdateEmployeeStatuses, transferEmployees } from '@/lib/actions';
 import type { Employee, Settings, User, View, Notification, Coordinator, Inspection } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Building, ClipboardList, Home, Settings as SettingsIcon, Users } from 'lucide-react';
@@ -97,6 +96,13 @@ function MainContent() {
     useEffect(() => {
         if (currentUser) {
             sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+            if(currentUser.isAdmin) {
+                // When admin logs in, reset the coordinator filter
+                setSelectedCoordinatorId('all');
+            } else {
+                // When a coordinator logs in, set the filter to their ID
+                setSelectedCoordinatorId(currentUser.uid);
+            }
             fetchData();
         } else {
             sessionStorage.removeItem('currentUser');
@@ -291,7 +297,7 @@ function MainContent() {
     
     const renderView = () => {
         if (!currentUser || !settings) {
-            return <div className="p-4"><Skeleton className="h-64 w-full" /></div>;
+            return null; // Should be covered by the top-level isLoading/LoginView checks
         }
 
         switch (activeView) {
@@ -327,10 +333,14 @@ function MainContent() {
 
     if (isLoading) {
         return (
-            <div className="flex h-screen w-full items-center justify-center">
-                <div className="space-y-4 p-4 w-full max-w-lg">
-                    <Skeleton className="h-24 w-full" />
-                    <Skeleton className="h-64 w-full" />
+            <div className="flex h-screen w-full items-center justify-center bg-muted/50">
+                <div className="flex flex-col items-center gap-6 animate-fade-in">
+                    <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-primary/20 bg-primary/10 p-4 shadow-lg shadow-orange-400/10">
+                        <Building className="h-10 w-10 text-primary animate-pulse-text" />
+                    </div>
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground/80 animate-fade-in-up">
+                        Witaj w SmartHouse
+                    </h1>
                 </div>
             </div>
         );
@@ -343,7 +353,7 @@ function MainContent() {
     if (!currentUser || !settings) {
          return (
             <div className="flex h-screen w-full items-center justify-center">
-                <p>Ładowanie ustawień...</p>
+                <p>Błąd ładowania ustawień. Spróbuj odświeżyć stronę.</p>
             </div>
         );
     }
