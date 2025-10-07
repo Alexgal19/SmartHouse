@@ -574,7 +574,7 @@ export async function checkAndUpdateEmployeeStatuses(): Promise<void> {
         }
     } catch (error) {
         console.error("Error checking and updating employee statuses:", error);
-        // We don't throw here to avoid blocking the app load
+        throw new Error(`Could not check and update employee statuses. ${error instanceof Error ? error.message : ''}`);
     }
 }
 
@@ -587,6 +587,7 @@ export async function bulkImportEmployees(
     let importedCount = 0;
     let errorCount = 0;
     const errors: string[] = [];
+    const newEmployees: Omit<Employee, 'id' | 'status'>[] = [];
     
     try {
         const workbook = XLSX.read(fileData, { type: 'array', cellDates: true });
@@ -619,7 +620,8 @@ export async function bulkImportEmployees(
                 // --- VALIDATION ---
                 const { fullName, coordinatorName, nationality, gender, address, roomNumber, zaklad, checkInDate } = row;
 
-                if (!fullName) throw new Error(`Brak 'fullName' w wierszu ${rowNum}.`);
+                if (!fullName) continue; // Ignore empty rows
+
                 if (!coordinatorName) throw new Error(`Brak 'coordinatorName' w wierszu ${rowNum}.`);
                 if (!nationality) throw new Error(`Brak 'nationality' w wierszu ${rowNum}.`);
                 if (!gender) throw new Error(`Brak 'gender' w wierszu ${rowNum}.`);
@@ -633,7 +635,7 @@ export async function bulkImportEmployees(
                     throw new Error(`Koordynator "${coordinatorName}" nie został znaleziony w wierszu ${rowNum}.`);
                 }
 
-                // --- DATA MAPPING & CREATION ---
+                // --- DATA MAPPING & ADD TO BATCH ---
                 const employeeData = {
                     fullName: String(fullName),
                     coordinatorId: coordinator.uid,
@@ -653,14 +655,43 @@ export async function bulkImportEmployees(
                     throw new Error(`Nieprawidłowa data 'checkInDate' w wierszu ${rowNum}.`);
                 }
                 
-                await addEmployee(employeeData, actor);
-                importedCount++;
+                newEmployees.push(employeeData);
 
             } catch (e: any) {
                 errorCount++;
                 errors.push(e.message);
             }
         }
+        
+        if (newEmployees.length > 0) {
+            const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
+            const employeesToSave = newEmployees.map(emp => serializeEmployee({
+                ...emp,
+                id: `emp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                status: 'active',
+            }));
+            await sheet.addRows(employeesToSave, { raw: false, valueInputOption: 'USER_ENTERED' });
+            importedCount = employeesToSave.length;
+        }
+
+        if (importedCount > 0) {
+            const notificationSheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
+            const message = `${actor.name} zaimportował masowo ${importedCount} nowych pracowników.`;
+            const newNotification = {
+                id: `notif-${Date.now()}`,
+                message,
+                employeeId: '',
+                employeeName: '',
+                coordinatorId: actor.uid,
+                coordinatorName: actor.name,
+                createdAt: new Date().toISOString(),
+                isRead: 'FALSE',
+                changes: '[]',
+            };
+            await notificationSheet.addRow(newNotification as any, { raw: false, valueInputOption: 'USER_ENTERED' });
+        }
+
+
     } catch(e: any) {
         return { success: false, message: e.message };
     }
@@ -680,7 +711,7 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', actor:
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows();
         
-        const rowsToKeep = rows.filter(row => row.get('status') !== status);
+        const rowsToKeep = rows.filter(row => row.get('status') !== status || !row.get('id'));
         const numDeleted = rows.length - rowsToKeep.length;
 
         if (numDeleted === 0) {
