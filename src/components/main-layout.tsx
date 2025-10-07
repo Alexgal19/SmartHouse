@@ -337,8 +337,9 @@ function MainContent() {
         return (
             <div className="animated-gradient-background flex h-screen w-full items-center justify-center p-4">
                 <div className="glass-card flex animate-fade-in flex-col items-center gap-6 p-24">
-                    <h1 className="animate-pulse text-9xl font-bold text-primary-foreground">
-                        SmartHouse
+                    <h1 className="relative text-9xl font-bold">
+                        <span className="text-stroke-primary absolute inset-0">{/* SmartHouse */}</span>
+                        <span className="text-muted-foreground">SmartHouse</span>
                     </h1>
                 </div>
             </div>
