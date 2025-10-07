@@ -51,15 +51,23 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
 };
 
 const deserializeEmployee = (row: any): Employee | null => {
+    const id = row.get('id');
+    const fullName = row.get('fullName');
+    
+    // Ignore empty rows
+    if (!id && !fullName) {
+        return null;
+    }
+
     const checkInDate = parseDate(row.get('checkInDate'));
     if (!checkInDate) {
-        console.warn(`Invalid or missing checkInDate for employee row, skipping: ${row.get('id')}`);
+        console.warn(`Invalid or missing checkInDate for employee row, skipping: ${id || fullName}`);
         return null;
     }
 
     return {
-        id: row.get('id'),
-        fullName: row.get('fullName'),
+        id: id,
+        fullName: fullName,
         coordinatorId: row.get('coordinatorId'),
         nationality: row.get('nationality'),
         gender: row.get('gender') as 'Mężczyzna' | 'Kobieta',
@@ -205,8 +213,14 @@ const INSPECTION_HEADERS = ['id', 'addressId', 'addressName', 'date', 'coordinat
 const INSPECTION_DETAILS_HEADERS = ['id', 'inspectionId', 'addressName', 'date', 'coordinatorName', 'category', 'itemLabel', 'itemValue', 'uwagi', 'photoData'];
 
 
-const deserializeInspection = (row: any, allDetails: InspectionDetail[]): Inspection => {
+const deserializeInspection = (row: any, allDetails: InspectionDetail[]): Inspection | null => {
     const inspectionId = row.get('id');
+    const addressName = row.get('addressName');
+
+    if (!inspectionId && !addressName) {
+        return null;
+    }
+    
     const detailsForInspection = allDetails.filter(d => d.inspectionId === inspectionId);
     
     const categoriesMap = detailsForInspection.reduce((acc, detail) => {
@@ -259,7 +273,7 @@ const deserializeInspection = (row: any, allDetails: InspectionDetail[]): Inspec
     return {
         id: inspectionId,
         addressId: row.get('addressId'),
-        addressName: row.get('addressName'),
+        addressName: addressName,
         date: new Date(row.get('date')),
         coordinatorId: row.get('coordinatorId'),
         coordinatorName: row.get('coordinatorName'),
@@ -338,6 +352,7 @@ export async function getInspections(): Promise<Inspection[]> {
 
         return inspectionRows
             .map(row => deserializeInspection(row, allDetails))
+            .filter((i): i is Inspection => i !== null)
             .sort((a, b) => b.date.getTime() - a.date.getTime());
     } catch (error) {
         console.error("Error fetching inspections:", error);
