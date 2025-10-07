@@ -518,9 +518,9 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
                                             <span className="text-sm font-medium text-muted-foreground shrink-0">{Math.round(house.occupancy)}%</span>
                                         </div>
                                         <div className="flex justify-between text-xs mt-2 text-muted-foreground">
-                                            <span>Zajęte: <span className="font-bold text-foreground">{house.occupied}</span></span>
-                                            <span>Pojemność: <span className="font-bold text-foreground">{house.capacity}</span></span>
-                                            <span>Wolne: <span className="font-bold text-foreground">{house.available}</span></span>
+                                            <span className="text-blue-500">Pojemność: <span className="font-bold text-foreground">{house.capacity}</span></span>
+                                            <span className="text-red-500">Zajęte: <span className="font-bold text-foreground">{house.occupied}</span></span>
+                                            <span className="text-green-500">Wolne: <span className="font-bold text-foreground">{house.available}</span></span>
                                         </div>
                                     </CardContent>
                                     </Card>
@@ -577,5 +577,7 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
     </div>
   );
 }
+
+    
 
     
