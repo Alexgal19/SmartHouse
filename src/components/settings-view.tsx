@@ -306,7 +306,7 @@ const AddressManager = ({ items, onUpdate }: { items: HousingAddress[]; onUpdate
                                         </div>
                                         <div className="w-24 space-y-2">
                                             <Label htmlFor={`room-capacity-${room.id}`}>Miejsca</Label>
-                                            <Input id={`room-capacity-${room.id}`} type="number" value={room.capacity} onChange={(e) => handleRoomChange(room.id, 'capacity', parseInt(e.target.value, 10) || 0)} />
+                                            <Input id={`room-capacity-${room.id}`} type="text" value={room.capacity} onChange={(e) => handleRoomChange(room.id, 'capacity', parseInt(e.target.value, 10) || 0)} />
                                         </div>
                                         <Button variant="ghost" size="icon" className="self-end" onClick={() => deleteRoom(room.id)}>
                                             <Trash2 className="h-4 w-4 text-destructive" />
@@ -599,3 +599,5 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
     </Card>
   );
 }
+
+    
