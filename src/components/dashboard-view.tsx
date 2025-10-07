@@ -420,78 +420,79 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
                             </DialogContent>
                         </Dialog>
                     </div>
-                    <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
-                        <ChartComponent data={employeesByCoordinator} title="Pracownicy wg koordynatora" />
-                        <ChartComponent data={employeesByNationality} title="Pracownicy wg narodowości" />
-                        <ChartComponent data={employeesByDepartment} title="Pracownicy wg zakładu" />
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Statystyka wyjazdów</CardTitle>
-                                <div className="flex gap-2 pt-2">
-                                     <Select value={departureYear} onValueChange={setDepartureYear}>
-                                        <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            {departureYears.map(year => <SelectItem key={year} value={year}>{year}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                    <Select value={departureMonth} onValueChange={setDepartureMonth}>
-                                        <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">Wszystkie miesiące</SelectItem>
-                                            {Array.from({length: 12}).map((_, i) => (
-                                                <SelectItem key={i} value={String(i)}>{format(new Date(2000, i), 'LLLL', {locale: pl})}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="pl-0 sm:pl-2">
-                                <ChartContainer config={{value: {label: "Wyjazdy"}}} className="h-64 w-full">
-                                <ResponsiveContainer>
-                                    <BarChart data={departuresByMonth} margin={{ top: 20, right: 20, left: isMobile ? -20 : -10, bottom: isMobile ? 15 : 5 }} barSize={isMobile ? 25 : 50}>
-                                    <defs>
-                                        {chartColors.map((color, index) => (
-                                        <linearGradient id={color.id} x1="0" y1="0" x2="0" y2="1" key={index}>
-                                            <stop offset="5%" stopColor={color.from} stopOpacity={0.8}/>
-                                            <stop offset="95%" stopColor={color.to} stopOpacity={0.8}/>
-                                        </linearGradient>
-                                        ))}
-                                    </defs>
-                                    <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border) / 0.5)" />
-                                    <XAxis 
-                                        dataKey="name" 
-                                        tickLine={false} 
-                                        axisLine={false} 
-                                        tickMargin={10} 
-                                        tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} 
-                                        interval={0}
-                                        angle={isMobile ? -35 : 0}
-                                        dy={isMobile ? 10 : 0}
-                                    />
-                                    <YAxis tickLine={false} axisLine={false} tickMargin={10} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
-                                    <Tooltip 
-                                        cursor={{ fill: 'hsl(var(--accent) / 0.1)' }} 
-                                        content={({ active, payload, label }) => active && payload && payload.length && (
-                                            <div className="bg-background/95 p-3 rounded-lg border shadow-lg">
-                                                <p className="font-bold text-foreground">{label}</p>
-                                                <p className="text-sm text-primary">{`${payload[0].value} wyjazdów`}</p>
-                                            </div>
-                                        )}
-                                    />
-                                    <Bar dataKey="value" radius={[8, 8, 0, 0]} >
-                                        <LabelList dataKey="value" position="top" offset={10} className="fill-foreground font-semibold" />
-                                        {departuresByMonth.map((entry, index) => {
-                                            const color = chartColors[index % chartColors.length];
-                                            return <Cell key={`cell-${index}`} fill={`url(#${color.id})`} />
-                                        })}
-                                    </Bar>
-                                    </BarChart>
-                                </ResponsiveContainer>
-                                </ChartContainer>
-                            </CardContent>
-                        </Card>
-                        </div>
-                    
+                    {!isMobile && (
+                      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
+                          <ChartComponent data={employeesByCoordinator} title="Pracownicy wg koordynatora" />
+                          <ChartComponent data={employeesByNationality} title="Pracownicy wg narodowości" />
+                          <ChartComponent data={employeesByDepartment} title="Pracownicy wg zakładu" />
+                          <Card>
+                              <CardHeader>
+                                  <CardTitle>Statystyka wyjazdów</CardTitle>
+                                  <div className="flex gap-2 pt-2">
+                                      <Select value={departureYear} onValueChange={setDepartureYear}>
+                                          <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+                                          <SelectContent>
+                                              {departureYears.map(year => <SelectItem key={year} value={year}>{year}</SelectItem>)}
+                                          </SelectContent>
+                                      </Select>
+                                      <Select value={departureMonth} onValueChange={setDepartureMonth}>
+                                          <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
+                                          <SelectContent>
+                                              <SelectItem value="all">Wszystkie miesiące</SelectItem>
+                                              {Array.from({length: 12}).map((_, i) => (
+                                                  <SelectItem key={i} value={String(i)}>{format(new Date(2000, i), 'LLLL', {locale: pl})}</SelectItem>
+                                              ))}
+                                          </SelectContent>
+                                      </Select>
+                                  </div>
+                              </CardHeader>
+                              <CardContent className="pl-0 sm:pl-2">
+                                  <ChartContainer config={{value: {label: "Wyjazdy"}}} className="h-64 w-full">
+                                  <ResponsiveContainer>
+                                      <BarChart data={departuresByMonth} margin={{ top: 20, right: 20, left: isMobile ? -20 : -10, bottom: isMobile ? 15 : 5 }} barSize={isMobile ? 25 : 50}>
+                                      <defs>
+                                          {chartColors.map((color, index) => (
+                                          <linearGradient id={color.id} x1="0" y1="0" x2="0" y2="1" key={index}>
+                                              <stop offset="5%" stopColor={color.from} stopOpacity={0.8}/>
+                                              <stop offset="95%" stopColor={color.to} stopOpacity={0.8}/>
+                                          </linearGradient>
+                                          ))}
+                                      </defs>
+                                      <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border) / 0.5)" />
+                                      <XAxis 
+                                          dataKey="name" 
+                                          tickLine={false} 
+                                          axisLine={false} 
+                                          tickMargin={10} 
+                                          tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} 
+                                          interval={0}
+                                          angle={isMobile ? -35 : 0}
+                                          dy={isMobile ? 10 : 0}
+                                      />
+                                      <YAxis tickLine={false} axisLine={false} tickMargin={10} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
+                                      <Tooltip 
+                                          cursor={{ fill: 'hsl(var(--accent) / 0.1)' }} 
+                                          content={({ active, payload, label }) => active && payload && payload.length && (
+                                              <div className="bg-background/95 p-3 rounded-lg border shadow-lg">
+                                                  <p className="font-bold text-foreground">{label}</p>
+                                                  <p className="text-sm text-primary">{`${payload[0].value} wyjazdów`}</p>
+                                              </div>
+                                          )}
+                                      />
+                                      <Bar dataKey="value" radius={[8, 8, 0, 0]} >
+                                          <LabelList dataKey="value" position="top" offset={10} className="fill-foreground font-semibold" />
+                                          {departuresByMonth.map((entry, index) => {
+                                              const color = chartColors[index % chartColors.length];
+                                              return <Cell key={`cell-${index}`} fill={`url(#${color.id})`} />
+                                          })}
+                                      </Bar>
+                                      </BarChart>
+                                  </ResponsiveContainer>
+                                  </ChartContainer>
+                              </CardContent>
+                          </Card>
+                          </div>
+                      )}
                 </div>
             </TabsContent>
             <TabsContent value="housing" className="mt-6">
