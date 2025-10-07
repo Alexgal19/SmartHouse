@@ -96,7 +96,8 @@ body {
 
 .text-stroke-primary {
     color: transparent;
-    -webkit-text-stroke: 1px hsl(var(--primary));
+    -webkit-text-stroke: 2px hsl(var(--primary));
 }
+
 
 
