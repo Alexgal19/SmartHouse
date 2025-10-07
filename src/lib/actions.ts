@@ -4,6 +4,7 @@
 import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection } from '@/types';
 import { getSheet } from '@/lib/sheets';
 import { format, isEqual, parseISO, isPast } from 'date-fns';
+import * as XLSX from 'xlsx';
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
 const SHEET_NAME_NOTIFICATIONS = 'Powiadomienia';
@@ -571,16 +572,33 @@ export async function checkAndUpdateEmployeeStatuses(): Promise<void> {
 
 
 export async function bulkImportEmployees(
-    data: any[],
+    fileData: ArrayBuffer,
     coordinators: Coordinator[],
     actor: Coordinator
 ): Promise<{ success: boolean, message: string }> {
     let importedCount = 0;
     let errorCount = 0;
     const errors: string[] = [];
+    
+    const workbook = XLSX.read(fileData, { type: 'array', cellDates: true });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const data = XLSX.utils.sheet_to_json<any>(worksheet, { header: 1 });
+    
+    if (data.length < 2) {
+      return { success: false, message: "Plik Excel jest pusty lub zawiera tylko nagłówek."};
+    }
+    
+    const headers = data[0] as string[];
+    const rows = data.slice(1);
 
-    for (const [index, row] of data.entries()) {
+    for (const [index, rowArray] of rows.entries()) {
         const rowNum = index + 2;
+        const row: Record<string, any> = {};
+        headers.forEach((header, i) => {
+            row[header] = (rowArray as any[])[i];
+        });
+
         try {
             // --- VALIDATION ---
             const { fullName, coordinatorName, nationality, gender, address, roomNumber, zaklad, checkInDate } = row;
@@ -614,7 +632,6 @@ export async function bulkImportEmployees(
                 comments: row.comments || '',
             };
             
-            // Using existing addEmployee function to ensure full integration
             await addEmployee(employeeData, actor);
             importedCount++;
 

@@ -21,7 +21,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { ScrollArea } from "./ui/scroll-area";
-import * as XLSX from 'xlsx';
 
 
 interface SettingsViewProps {
@@ -32,9 +31,8 @@ interface SettingsViewProps {
   onDataRefresh: () => void;
 }
 
-const EmployeeImportDialog = ({ isOpen, onOpenChange, onImport, settings }: { isOpen: boolean, onOpenChange: (isOpen: boolean) => void, onImport: (data: any[]) => Promise<{success: boolean, message: string}>, settings: Settings }) => {
+const EmployeeImportDialog = ({ isOpen, onOpenChange, onImport, settings }: { isOpen: boolean, onOpenChange: (isOpen: boolean) => void, onImport: (fileData: ArrayBuffer) => Promise<{success: boolean, message: string}>, settings: Settings }) => {
     const [file, setFile] = useState<File | null>(null);
-    const [previewData, setPreviewData] = useState<any[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const { toast } = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -43,60 +41,40 @@ const EmployeeImportDialog = ({ isOpen, onOpenChange, onImport, settings }: { is
         const selectedFile = e.target.files?.[0];
         if (selectedFile) {
             setFile(selectedFile);
-            parseExcel(selectedFile);
         }
-    };
-
-    const parseExcel = (fileToParse: File) => {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const data = event.target?.result;
-            const workbook = XLSX.read(data, { type: 'binary', cellDates: true });
-            const sheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[sheetName];
-            const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-            
-            if (json.length > 1) {
-                const headers = json[0] as string[];
-                const rows = json.slice(1).map(row => {
-                    const rowData: Record<string, any> = {};
-                    headers.forEach((header, index) => {
-                        rowData[header] = (row as any[])[index];
-                    });
-                    return rowData;
-                });
-                setPreviewData(rows);
-            }
-        };
-        reader.readAsBinaryString(fileToParse);
     };
 
     const handleImportClick = async () => {
-        if (previewData.length === 0) {
-            toast({ variant: 'destructive', title: "Brak danych", description: "Nie znaleziono danych do importu w pliku." });
+        if (!file) {
+            toast({ variant: 'destructive', title: "Brak pliku", description: "Proszę wybrać plik do importu." });
             return;
         }
         setIsProcessing(true);
-        const result = await onImport(previewData);
-        setIsProcessing(false);
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            if (event.target?.result) {
+                const result = await onImport(event.target.result as ArrayBuffer);
+                setIsProcessing(false);
 
-        if (result.success) {
-            toast({ title: "Sukces", description: result.message });
-            onOpenChange(false);
-        } else {
-            toast({ variant: 'destructive', title: "Błąd importu", description: result.message });
-        }
+                if (result.success) {
+                    toast({ title: "Sukces", description: result.message });
+                    onOpenChange(false);
+                } else {
+                    toast({ variant: 'destructive', title: "Błąd importu", description: result.message });
+                }
+            }
+        };
+        reader.readAsArrayBuffer(file);
     };
 
     return (
          <Dialog open={isOpen} onOpenChange={(open) => {
             if (!open) {
                 setFile(null);
-                setPreviewData([]);
             }
             onOpenChange(open);
         }}>
-            <DialogContent className="max-w-4xl max-h-[90vh]">
+            <DialogContent className="max-w-xl max-h-[90vh]">
                 <DialogHeader>
                     <DialogTitle>Importuj pracowników z Excel</DialogTitle>
                     <DialogDescription>
@@ -111,36 +89,11 @@ const EmployeeImportDialog = ({ isOpen, onOpenChange, onImport, settings }: { is
                         </Button>
                         {file && <p className="text-sm text-muted-foreground mt-2">{file.name}</p>}
                     </div>
-
-                    {previewData.length > 0 && (
-                        <div>
-                            <h3 className="font-semibold mb-2">Podgląd danych ({previewData.length} wierszy)</h3>
-                            <ScrollArea className="h-64 border rounded-md">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            {Object.keys(previewData[0]).map(key => <TableHead key={key}>{key}</TableHead>)}
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {previewData.slice(0, 10).map((row, i) => (
-                                            <TableRow key={i}>
-                                                {Object.values(row).map((val: any, j) => (
-                                                    <TableCell key={j}>{val instanceof Date ? val.toLocaleDateString() : String(val ?? '')}</TableCell>
-                                                ))}
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                                {previewData.length > 10 && <p className="text-xs text-center text-muted-foreground p-2">...i {previewData.length - 10} więcej wierszy.</p>}
-                            </ScrollArea>
-                        </div>
-                    )}
                 </div>
                 <DialogFooter>
                     <DialogClose asChild><Button variant="secondary" type="button">Anuluj</Button></DialogClose>
-                    <Button onClick={handleImportClick} disabled={previewData.length === 0 || isProcessing}>
-                        {isProcessing ? 'Importowanie...' : `Importuj ${previewData.length} pracowników`}
+                    <Button onClick={handleImportClick} disabled={!file || isProcessing}>
+                        {isProcessing ? 'Importowanie...' : `Importuj`}
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -579,9 +532,9 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
   const { isMobile } = useIsMobile();
   const [isImportOpen, setIsImportOpen] = useState(false);
   
-  const handleImport = async (data: any[]) => {
+  const handleImport = async (fileData: ArrayBuffer) => {
       try {
-          const result = await bulkImportEmployees(data, settings.coordinators, currentUser);
+          const result = await bulkImportEmployees(fileData, settings.coordinators, currentUser);
           onDataRefresh();
           return result;
       } catch (e: any) {
