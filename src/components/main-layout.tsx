@@ -337,21 +337,7 @@ function MainContent() {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-muted/50">
                 <div className="flex flex-col items-center gap-6 animate-fade-in">
-                    <div className="glass-card flex h-24 w-24 items-center justify-center rounded-full p-4">
-                        <Building className="h-12 w-12 text-primary animate-pulse" />
-                    </div>
-                     <svg viewBox="0 0 400 60" className="w-full max-w-sm">
-                        <text
-                        x="50%"
-                        y="50%"
-                        dy=".35em"
-                        textAnchor="middle"
-                        className="animate-stroke-draw text-5xl font-bold text-stroke-primary"
-                        style={{ strokeDasharray: 500, strokeDashoffset: 500 }}
-                        >
-                        Witaj w SmartHouse
-                        </text>
-                    </svg>
+                    <h1 className="text-5xl font-bold text-primary animate-pulse">Witaj w SmartHouse</h1>
                 </div>
             </div>
         );
