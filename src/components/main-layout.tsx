@@ -336,11 +336,10 @@ function MainContent() {
     if (isLoading) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
-                <div className="glass-card flex animate-fade-in flex-col items-center gap-6 p-24">
-                    <div className="relative text-9xl font-bold">
-                        <span className="absolute inset-0 text-stroke-primary">SmartHouse</span>
-                        <span className="text-white">SmartHouse</span>
-                    </div>
+                <div className="flex animate-fade-in flex-col items-center gap-6">
+                     <h1 className="text-8xl font-semibold tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm">
+                        SmartHouse
+                    </h1>
                 </div>
             </div>
         );

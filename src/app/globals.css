@@ -93,11 +93,3 @@ body {
 .glass-card {
     @apply bg-card/10 backdrop-blur-xl border border-white/10 rounded-3xl shadow-lg shadow-orange-400/5;
 }
-
-.text-stroke-primary {
-    color: transparent;
-    -webkit-text-stroke: 2px hsl(var(--primary));
-}
-
-
-
