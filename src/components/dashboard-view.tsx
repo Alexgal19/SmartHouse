@@ -177,7 +177,18 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
   ];
 
   const housingOverview = useMemo(() => {
-    const baseOverview = settings.addresses.map(address => {
+    let addressesToShow = settings.addresses;
+
+    if (currentUser.isAdmin && selectedCoordinatorId !== 'all') {
+        const coordinatorAddresses = new Set(
+            activeEmployees
+                .filter(e => e.coordinatorId === selectedCoordinatorId)
+                .map(e => e.address)
+        );
+        addressesToShow = settings.addresses.filter(addr => coordinatorAddresses.has(addr.name));
+    }
+
+    const baseOverview = addressesToShow.map(address => {
       const occupied = activeEmployees.filter(e => e.address === address.name).length;
       const capacity = address.rooms.reduce((sum, room) => sum + room.capacity, 0);
       const available = capacity - occupied;
@@ -192,7 +203,7 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
     return baseOverview.filter(house =>
       house.name.toLowerCase().includes(housingSearchTerm.toLowerCase())
     ).sort((a, b) => b.occupancy - a.occupancy);
-  }, [settings.addresses, activeEmployees, housingSearchTerm]);
+  }, [settings.addresses, activeEmployees, housingSearchTerm, currentUser.isAdmin, selectedCoordinatorId]);
   
   const employeesForSelectedAddress = useMemo(() => {
     if (!selectedAddress) return [];
@@ -581,3 +592,5 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
     
 
     
+
+      
