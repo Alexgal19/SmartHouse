@@ -336,9 +336,9 @@ function MainContent() {
             <div className="flex h-screen w-full items-center justify-center bg-muted/50">
                 <div className="flex flex-col items-center gap-6 animate-fade-in">
                     <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-primary/20 bg-primary/10 p-4 shadow-lg shadow-orange-400/10">
-                        <Building className="h-10 w-10 text-primary animate-pulse-text" />
+                        <Building className="h-10 w-10 text-primary animate-pulse" />
                     </div>
-                    <h1 className="text-2xl font-bold tracking-tight text-foreground/80 animate-fade-in-up">
+                    <h1 className="text-2xl font-bold tracking-tight text-primary animate-fade-in-up">
                         Witaj w SmartHouse
                     </h1>
                 </div>
