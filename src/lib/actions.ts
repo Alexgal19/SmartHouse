@@ -3,7 +3,7 @@
 
 import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection } from '@/types';
 import { getSheet } from '@/lib/sheets';
-import { format, isEqual, parseISO } from 'date-fns';
+import { format, isEqual, parseISO, isPast } from 'date-fns';
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
 const SHEET_NAME_NOTIFICATIONS = 'Powiadomienia';
@@ -213,7 +213,7 @@ const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): 
     return changes;
 };
 
-export async function updateEmployee(employeeId: string, employeeData: Partial<Omit<Employee, 'id'>>, actor: Coordinator): Promise<Employee> {
+export async function updateEmployee(employeeId: string, employeeData: Partial<Omit<Employee, 'id'>>, actor: Coordinator, createNotif: boolean = true): Promise<Employee> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows();
@@ -249,7 +249,7 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
         
         await rowToUpdate.save({ raw: false, valueInputOption: 'USER_ENTERED' });
 
-        if(changes.length > 0) { 
+        if(changes.length > 0 && createNotif) { 
             await createNotification(actor, action, updatedData, changes);
         }
 
@@ -353,7 +353,7 @@ const serializeInspection = (inspection: Omit<Inspection, 'categories'>): Record
     id: inspection.id,
     addressId: inspection.addressId,
     addressName: inspection.addressName,
-    date: inspection.date.toISOString().split('T')[0],
+    date: inspection.date.toISOString(),
     coordinatorId: inspection.coordinatorId,
     coordinatorName: inspection.coordinatorName,
     standard: serializeRaw(inspection.standard),
@@ -380,9 +380,9 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
     const allDetailRows = await detailsSheet.getRows();
     const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === inspectionId);
     
-    for (let i = detailsToDelete.length - 1; i >= 0; i--) {
-        await detailsToDelete[i].delete();
-    }
+    const deletePromises = detailsToDelete.map(row => row.delete());
+    await Promise.all(deletePromises);
+
 
     const mainInspectionData = serializeInspection({ ...restOfData, id: inspectionId });
     const allInspectionRows = await inspectionsSheet.getRows();
@@ -404,7 +404,7 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
                 id: `detail-${Date.now()}-${Math.random()}`,
                 inspectionId: inspectionId,
                 addressName: inspectionData.addressName,
-                date: inspectionData.date.toISOString().split('T')[0],
+                date: inspectionData.date.toISOString(),
                 coordinatorName: inspectionData.coordinatorName,
                 category: category.name,
                 itemLabel: '', itemValue: '', photoData: '',
@@ -416,7 +416,7 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
                 id: `detail-${Date.now()}-${Math.random()}`,
                 inspectionId: inspectionId,
                 addressName: inspectionData.addressName,
-                date: inspectionData.date.toISOString().split('T')[0],
+                date: inspectionData.date.toISOString(),
                 coordinatorName: inspectionData.coordinatorName,
                 category: category.name,
                 itemLabel: item.label,
@@ -430,7 +430,7 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
                     id: `detail-${Date.now()}-${Math.random()}`,
                     inspectionId: inspectionId,
                     addressName: inspectionData.addressName,
-                    date: inspectionData.date.toISOString().split('T')[0],
+                    date: inspectionData.date.toISOString(),
                     coordinatorName: inspectionData.coordinatorName,
                     category: category.name,
                     itemLabel: 'Photo',
@@ -478,9 +478,8 @@ export async function deleteInspection(id: string): Promise<void> {
         }
 
         const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === id);
-        for (let i = detailsToDelete.length - 1; i >= 0; i--) {
-            await detailsToDelete[i].delete();
-        }
+        const deletePromises = detailsToDelete.map(row => row.delete());
+        await Promise.all(deletePromises);
 
     } catch (error) {
         console.error("Error in deleteInspection:", error);
@@ -540,3 +539,32 @@ const parseDate = (dateStr: string | undefined | null): Date | null => {
   }
   return null;
 };
+
+export async function checkAndUpdateEmployeeStatuses(): Promise<void> {
+    try {
+        const allEmployees = await getEmployees();
+        const activeEmployees = allEmployees.filter(e => e.status === 'active');
+        const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
+        const rows = await sheet.getRows();
+
+        const updates = [];
+
+        for (const employee of activeEmployees) {
+            if (employee.checkOutDate && isPast(employee.checkOutDate)) {
+                const rowIndex = rows.findIndex(row => row.get('id') === employee.id);
+                if (rowIndex !== -1) {
+                    const rowToUpdate = rows[rowIndex];
+                    rowToUpdate.set('status', 'dismissed');
+                    updates.push(rowToUpdate.save({ raw: false, valueInputOption: 'USER_ENTERED' }));
+                }
+            }
+        }
+        await Promise.all(updates);
+        if (updates.length > 0) {
+            console.log(`Automatically dismissed ${updates.length} employees.`);
+        }
+    } catch (error) {
+        console.error("Error checking and updating employee statuses:", error);
+        // We don't throw here to avoid blocking the app load
+    }
+}

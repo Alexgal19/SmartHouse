@@ -13,7 +13,6 @@ const SHEET_NAME_NATIONALITIES = 'Nationalities';
 const SHEET_NAME_DEPARTMENTS = 'Departments';
 const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_INSPECTIONS = 'Inspections';
-const SHEET_NAME_INSPECTION_PHOTOS = 'InspectionPhotos';
 const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 
 
@@ -51,6 +50,9 @@ const EMPLOYEE_HEADERS = [
     'departureReportDate', 'comments', 'status', 'oldAddress'
 ];
 
+const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
+
+
 export async function getEmployees(): Promise<Employee[]> {
   try {
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/employees`, { cache: 'no-store' });
@@ -64,7 +66,7 @@ export async function getEmployees(): Promise<Employee[]> {
 
 export async function getSettings(): Promise<Settings> {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/settings`, { next: { revalidate: 300 }});
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/settings`, { cache: 'no-store' });
     if (!res.ok) throw new Error('Failed to fetch settings');
     return res.json();
   } catch (error) {
@@ -97,7 +99,7 @@ const createNotification = async (
             changes
         };
 
-        await sheet.addRow(serializeNotification(newNotification), { valueInputOption: 'USER_ENTERED' });
+        await sheet.addRow(serializeNotification(newNotification), { raw: false, valueInputOption: 'USER_ENTERED' });
     } catch (e) {
         console.error("Could not create notification:", e);
     }
@@ -119,7 +121,7 @@ export async function addEmployee(employeeData: Omit<Employee, 'id' | 'status'>,
         };
 
         const serialized = serializeEmployee(newEmployee);
-        await sheet.addRow(serialized, { valueInputOption: 'USER_ENTERED' });
+        await sheet.addRow(serialized, { raw: false, valueInputOption: 'USER_ENTERED' });
         
         await createNotification(actor, 'dodał(a) nowego', newEmployee);
 
@@ -223,16 +225,12 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
         
         const rowToUpdate = rows[rowIndex];
         
-        // Deserialize once to get old data for change detection
         const allEmployees: Employee[] = await getEmployees();
         const currentData = allEmployees.find(e => e.id === employeeId);
         if (!currentData) throw new Error("Employee not found for change detection");
 
 
         const changes = getChanges(currentData, employeeData);
-        if(changes.length === 0 && !('status' in employeeData)) { 
-              return currentData;
-        }
         
         let action = 'zaktualizował(a) dane';
         if (employeeData.status) {
@@ -249,9 +247,11 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
             }
         }
         
-        await rowToUpdate.save({ valueInputOption: 'USER_ENTERED' });
+        await rowToUpdate.save({ raw: false, valueInputOption: 'USER_ENTERED' });
 
-        await createNotification(actor, action, updatedData, changes);
+        if(changes.length > 0) { 
+            await createNotification(actor, action, updatedData, changes);
+        }
 
         return updatedData;
 
@@ -271,7 +271,7 @@ async function syncSheet<T extends Record<string, any>>(
     await sheet.clearRows();
     if (newData.length > 0) {
         const serializedData = newData.map(serializeFn);
-        await sheet.addRows(serializedData, { valueInputOption: 'USER_ENTERED' });
+        await sheet.addRows(serializedData, { raw: false, valueInputOption: 'USER_ENTERED' });
     }
 }
 
@@ -295,7 +295,12 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Se
             await syncSheet(SHEET_NAME_DEPARTMENTS, ['name'], updatedSettings.departments.map((name: string) => ({ name })));
         }
         if (newSettings.coordinators) {
-            await syncSheet(SHEET_NAME_COORDINATORS, ['uid', 'name'], updatedSettings.coordinators);
+             await syncSheet(
+                SHEET_NAME_COORDINATORS, 
+                COORDINATOR_HEADERS, 
+                updatedSettings.coordinators,
+                (item) => ({ ...item, isAdmin: String(item.isAdmin).toUpperCase(), password: item.password || '' })
+            );
         }
         
         return getSettings();
@@ -325,7 +330,7 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
 
         if (rowToUpdate) {
             rowToUpdate.set('isRead', 'TRUE');
-            await rowToUpdate.save({ valueInputOption: 'USER_ENTERED' });
+            await rowToUpdate.save({ raw: false, valueInputOption: 'USER_ENTERED' });
         }
     } catch (error) {
         console.error("Error marking notification as read:", error);
@@ -335,8 +340,7 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
 // --- Inspections Actions ---
 
 const INSPECTION_HEADERS = ['id', 'addressId', 'addressName', 'date', 'coordinatorId', 'coordinatorName', 'standard'];
-const PHOTO_HEADERS = ['id', 'inspectionId', 'photoData'];
-const INSPECTION_DETAILS_HEADERS = ['id', 'inspectionId', 'addressName', 'date', 'coordinatorName', 'category', 'itemLabel', 'itemValue', 'uwagi'];
+const INSPECTION_DETAILS_HEADERS = ['id', 'inspectionId', 'addressName', 'date', 'coordinatorName', 'category', 'itemLabel', 'itemValue', 'uwagi', 'photoData'];
 
 const serializeRaw = (value: any): string => {
     if (value === null || value === undefined) {
@@ -345,7 +349,7 @@ const serializeRaw = (value: any): string => {
     return String(value);
 };
 
-const serializeInspection = (inspection: Omit<Inspection, 'photos' | 'categories'>): Record<string, string | number | boolean> => ({
+const serializeInspection = (inspection: Omit<Inspection, 'categories'>): Record<string, string | number | boolean> => ({
     id: inspection.id,
     addressId: inspection.addressId,
     addressName: inspection.addressName,
@@ -368,31 +372,17 @@ export async function getInspections(): Promise<Inspection[]> {
 
 async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: string) {
     const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, INSPECTION_HEADERS);
-    const photosSheet = await getSheet(SHEET_NAME_INSPECTION_PHOTOS, PHOTO_HEADERS);
     const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, INSPECTION_DETAILS_HEADERS);
 
     const inspectionId = id || `insp-${Date.now()}`;
-    const { photos, categories, ...restOfData } = inspectionData;
+    const { categories, ...restOfData } = inspectionData;
     
     const allDetailRows = await detailsSheet.getRows();
     const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === inspectionId);
-    if (detailsToDelete.length > 0) {
-        const indexes = detailsToDelete.map(r => r.rowNumber);
-        // Delete in reverse order to avoid shifting indexes
-        for (let i = indexes.length - 1; i >= 0; i--) {
-            await detailsSheet.deleteRow(indexes[i] - 1);
-        }
-    }
     
-    const allPhotoRows = await photosSheet.getRows();
-    const photosToDelete = allPhotoRows.filter(r => r.get('inspectionId') === inspectionId);
-    if (photosToDelete.length > 0) {
-        const indexes = photosToDelete.map(r => r.rowNumber);
-        for (let i = indexes.length - 1; i >= 0; i--) {
-            await photosSheet.deleteRow(indexes[i] - 1);
-        }
+    for (let i = detailsToDelete.length - 1; i >= 0; i--) {
+        await detailsToDelete[i].delete();
     }
-
 
     const mainInspectionData = serializeInspection({ ...restOfData, id: inspectionId });
     const allInspectionRows = await inspectionsSheet.getRows();
@@ -402,9 +392,9 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
         Object.keys(mainInspectionData).forEach(key => {
             existingRow.set(key, mainInspectionData[key as keyof typeof mainInspectionData]);
         });
-        await existingRow.save({ valueInputOption: 'USER_ENTERED' });
+        await existingRow.save({ raw: false, valueInputOption: 'USER_ENTERED' });
     } else {
-        await inspectionsSheet.addRow(mainInspectionData, { valueInputOption: 'USER_ENTERED' });
+        await inspectionsSheet.addRow(mainInspectionData, { raw: false, valueInputOption: 'USER_ENTERED' });
     }
     
     const detailPayload = [];
@@ -417,8 +407,7 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
                 date: inspectionData.date.toISOString().split('T')[0],
                 coordinatorName: inspectionData.coordinatorName,
                 category: category.name,
-                itemLabel: '',
-                itemValue: '',
+                itemLabel: '', itemValue: '', photoData: '',
                 uwagi: category.uwagi,
             });
         }
@@ -432,23 +421,28 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
                 category: category.name,
                 itemLabel: item.label,
                 itemValue: serializeRaw(item.value),
-                uwagi: '',
+                uwagi: '', photoData: '',
             });
+        }
+        if (category.photos) {
+            for (const photo of category.photos) {
+                 detailPayload.push({
+                    id: `detail-${Date.now()}-${Math.random()}`,
+                    inspectionId: inspectionId,
+                    addressName: inspectionData.addressName,
+                    date: inspectionData.date.toISOString().split('T')[0],
+                    coordinatorName: inspectionData.coordinatorName,
+                    category: category.name,
+                    itemLabel: 'Photo',
+                    itemValue: '',
+                    uwagi: '',
+                    photoData: photo
+                });
+            }
         }
     }
     if (detailPayload.length > 0) {
-        await detailsSheet.addRows(detailPayload, { valueInputOption: 'USER_ENTERED' });
-    }
-    
-    if (photos && photos.length > 0) {
-        const photoPayload = photos.map(photoData => ({
-             id: `photo-${Date.now()}-${Math.random()}`,
-             inspectionId: inspectionId,
-             photoData: photoData,
-        }));
-        if (photoPayload.length > 0) {
-            await photosSheet.addRows(photoPayload, { valueInputOption: 'USER_ENTERED' });
-        }
+        await detailsSheet.addRows(detailPayload, { raw: false, valueInputOption: 'USER_ENTERED' });
     }
 }
 
@@ -473,34 +467,19 @@ export async function updateInspection(id: string, inspectionData: Omit<Inspecti
 export async function deleteInspection(id: string): Promise<void> {
     try {
         const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, INSPECTION_HEADERS);
-        const photosSheet = await getSheet(SHEET_NAME_INSPECTION_PHOTOS, PHOTO_HEADERS);
         const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, INSPECTION_DETAILS_HEADERS);
 
-        // Fetch all rows first
         const allInspectionRows = await inspectionsSheet.getRows();
         const allDetailRows = await detailsSheet.getRows();
-        const allPhotoRows = await photosSheet.getRows();
-
-        // Find the inspection row to delete
-        const inspectionRow = allInspectionRows.find(r => r.get('id') === id);
-        if (inspectionRow) {
-             await inspectionRow.delete();
-        }
-
-        // Filter and clear/re-add details
-        const detailsToKeep = allDetailRows.filter(r => r.get('inspectionId') !== id);
-        await detailsSheet.clearRows();
-        if (detailsToKeep.length > 0) {
-            const rawData = detailsToKeep.map(row => row.toObject());
-            await detailsSheet.addRows(rawData, { valueInputOption: 'USER_ENTERED' });
-        }
         
-        // Filter and clear/re-add photos
-        const photosToKeep = allPhotoRows.filter(r => r.get('inspectionId') !== id);
-        await photosSheet.clearRows();
-         if (photosToKeep.length > 0) {
-            const rawData = photosToKeep.map(row => row.toObject());
-            await photosSheet.addRows(rawData, { valueInputOption: 'USER_ENTERED' });
+        const inspectionRowToDelete = allInspectionRows.find(r => r.get('id') === id);
+        if (inspectionRowToDelete) {
+             await inspectionRowToDelete.delete();
+        }
+
+        const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === id);
+        for (let i = detailsToDelete.length - 1; i >= 0; i--) {
+            await detailsToDelete[i].delete();
         }
 
     } catch (error) {
@@ -508,6 +487,49 @@ export async function deleteInspection(id: string): Promise<void> {
         throw new Error(`Could not delete inspection. ${error instanceof Error ? error.message : ''}`);
     }
 }
+
+export async function transferEmployees(fromCoordinatorId: string, toCoordinatorId: string, actor: Coordinator): Promise<void> {
+    try {
+        const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
+        const rows = await sheet.getRows();
+        
+        const employeesToTransfer = rows.filter(row => row.get('coordinatorId') === fromCoordinatorId);
+
+        if (employeesToTransfer.length === 0) {
+            throw new Error("No employees to transfer.");
+        }
+
+        for (const row of employeesToTransfer) {
+            row.set('coordinatorId', toCoordinatorId);
+            await row.save({ raw: false, valueInputOption: 'USER_ENTERED' });
+        }
+
+        const settings = await getSettings();
+        const fromCoordinator = settings.coordinators.find(c => c.uid === fromCoordinatorId);
+        const toCoordinator = settings.coordinators.find(c => c.uid === toCoordinatorId);
+        
+        const message = `${actor.name} przeniósł ${employeesToTransfer.length} pracowników od ${fromCoordinator?.name || fromCoordinatorId} do ${toCoordinator?.name || toCoordinatorId}.`;
+        
+        const notificationSheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
+        const newNotification = {
+            id: `notif-${Date.now()}`,
+            message,
+            employeeId: '',
+            employeeName: '',
+            coordinatorId: actor.uid,
+            coordinatorName: actor.name,
+            createdAt: new Date().toISOString(),
+            isRead: 'FALSE',
+            changes: '[]',
+        };
+        await notificationSheet.addRow(newNotification as any, { raw: false, valueInputOption: 'USER_ENTERED' });
+
+    } catch (error) {
+        console.error("Error transferring employees:", error);
+        throw new Error(`Could not transfer employees. ${error instanceof Error ? error.message : ''}`);
+    }
+}
+
 
 const parseDate = (dateStr: string | undefined | null): Date | null => {
   if (!dateStr) return null;
@@ -518,5 +540,3 @@ const parseDate = (dateStr: string | undefined | null): Date | null => {
   }
   return null;
 };
-
-    

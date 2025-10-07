@@ -22,7 +22,7 @@ import InspectionsView from './inspections-view';
 import { AddEmployeeForm } from './add-employee-form';
 import { LoginView } from './login-view';
 import { Skeleton } from './ui/skeleton';
-import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead, getInspections, addInspection, updateInspection, deleteInspection } from '@/lib/actions';
+import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead, getInspections, addInspection, updateInspection, deleteInspection, checkAndUpdateEmployeeStatuses } from '@/lib/actions';
 import type { Employee, Settings, User, View, Notification, Coordinator, Inspection } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Building, ClipboardList, Home, Settings as SettingsIcon, Users } from 'lucide-react';
@@ -51,6 +51,9 @@ function MainContent() {
     const fetchData = useCallback(async (isInitialLoad = false) => {
         if (isInitialLoad) setIsLoading(true);
         try {
+            if(isInitialLoad){
+                await checkAndUpdateEmployeeStatuses();
+            }
             const [employeesData, settingsData, notificationsData, inspectionsData] = await Promise.all([
                 getEmployees(), 
                 getSettings(),
@@ -83,8 +86,21 @@ function MainContent() {
     }, [toast]);
     
     useEffect(() => {
+        const loggedInUser = sessionStorage.getItem('currentUser');
+        if (loggedInUser) {
+            setCurrentUser(JSON.parse(loggedInUser));
+        }
         fetchData(true);
     }, [fetchData]);
+
+    useEffect(() => {
+        if (currentUser) {
+            sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+            fetchData();
+        } else {
+            sessionStorage.removeItem('currentUser');
+        }
+    }, [currentUser, fetchData]);
 
     const filteredEmployees = useMemo(() => {
         if (!currentUser) return [];

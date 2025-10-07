@@ -17,12 +17,11 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { PlusCircle, Star, FileImage, Trash2, Camera, Circle, MoreVertical, Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
+import { PlusCircle, Star, FileImage, Trash2, Camera, MoreVertical, Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { Input } from './ui/input';
 import Image from 'next/image';
 import { Badge } from './ui/badge';
-import { Separator } from './ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertTitle, AlertDescription } from './ui/alert';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
@@ -52,8 +51,8 @@ const inspectionSchema = z.object({
             options: z.array(z.string()).optional()
         })),
         uwagi: z.string().optional(),
+        photos: z.array(z.string()).optional(),
     })),
-    photos: z.array(z.string()).optional(),
 });
 
 type InspectionFormData = z.infer<typeof inspectionSchema>;
@@ -67,14 +66,14 @@ const getInitialChecklist = (): InspectionCategory[] => [
             { label: "Czystość kuchnia", type: "select", value: null, options: cleanlinessOptions },
             { label: "Czystość lodówki", type: "select", value: null, options: cleanlinessOptions },
             { label: "Czystość płyty gazowej, elektrycznej i piekarnika", type: "select", value: null, options: cleanlinessOptions }
-        ]
+        ], photos: []
     },
     {
         name: "Łazienka", uwagi: "", items: [
             { label: "Czystość łazienki", type: "select", value: null, options: cleanlinessOptions },
             { label: "Czystość toalety", type: "select", value: null, options: cleanlinessOptions },
             { label: "Czystość brodzika", type: "select", value: null, options: cleanlinessOptions },
-        ]
+        ], photos: []
     },
     {
         name: "Pokoje", uwagi: "", items: [
@@ -86,7 +85,7 @@ const getInitialChecklist = (): InspectionCategory[] => [
             { label: "Stare rzeczy wyrzucane", type: "yes_no", value: null },
             { label: "Pościel czysta", type: "yes_no", value: null },
             { label: "Wyposażenia niezniszczone", type: "yes_no", value: null },
-        ]
+        ], photos: []
     },
     {
         name: "Instalacja", uwagi: "", items: [
@@ -96,7 +95,10 @@ const getInitialChecklist = (): InspectionCategory[] => [
             { label: "Instalacja wodno-kanalizacyjna działa", type: "yes_no", value: null },
             { label: "Ogrzewania", type: "text", value: "" },
             { label: "Temperatura w pomieszczeniu", type: "text", value: "" }
-        ]
+        ], photos: []
+    },
+     {
+        name: "Liczniki", uwagi: "", items: [], photos: []
     },
 ];
 
@@ -309,13 +311,20 @@ const InspectionDialog = ({
     useEffect(() => {
         if(isOpen) {
             if (editingInspection) {
+                 const currentCategories = editingInspection.categories || [];
+                const fullChecklist = getInitialChecklist();
+                
+                const mergedCategories = fullChecklist.map(checklistCategory => {
+                    const existingCategory = currentCategories.find(c => c.name === checklistCategory.name);
+                    return existingCategory ? { ...checklistCategory, ...existingCategory } : checklistCategory;
+                });
+
                 form.reset({
                     addressId: editingInspection.addressId,
                     date: editingInspection.date,
                     coordinatorId: editingInspection.coordinatorId,
                     standard: editingInspection.standard,
-                    categories: editingInspection.categories,
-                    photos: editingInspection.photos || [],
+                    categories: mergedCategories,
                 });
             } else {
                  form.reset({
@@ -324,20 +333,19 @@ const InspectionDialog = ({
                     coordinatorId: currentUser.uid,
                     standard: null,
                     categories: getInitialChecklist(),
-                    photos: [],
                 });
             }
         }
     }, [isOpen, editingInspection, currentUser, form]);
 
     
-    const { fields } = useFieldArray({ control: form.control, name: "categories" });
+    const { fields, update } = useFieldArray({ control: form.control, name: "categories" });
     const watchedCategories = useWatch({ control: form.control, name: 'categories' });
-    const watchedPhotos = useWatch({ control: form.control, name: 'photos' });
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
     const [isCameraOpen, setIsCameraOpen] = useState(false);
+    const [activeCategoryForCamera, setActiveCategoryForCamera] = useState<number | null>(null);
 
-    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, categoryIndex: number) => {
         const files = event.target.files;
         if (files) {
           const filePromises = Array.from(files).map((file) => {
@@ -350,8 +358,9 @@ const InspectionDialog = ({
           });
     
           Promise.all(filePromises).then((newPhotos) => {
-            const currentPhotos = form.getValues('photos') || [];
-            form.setValue('photos', [...currentPhotos, ...newPhotos]);
+            const category = form.getValues(`categories.${categoryIndex}`);
+            const currentPhotos = category.photos || [];
+            update(categoryIndex, { ...category, photos: [...currentPhotos, ...newPhotos] });
           });
         }
     
@@ -360,14 +369,24 @@ const InspectionDialog = ({
         }
     };
 
-    const handlePhotoCapture = (dataUri: string) => {
-        const currentPhotos = form.getValues('photos') || [];
-        form.setValue('photos', [...currentPhotos, dataUri]);
+    const openCameraForCategory = (categoryIndex: number) => {
+        setActiveCategoryForCamera(categoryIndex);
+        setIsCameraOpen(true);
     };
 
-    const removePhoto = (index: number) => {
-        const currentPhotos = form.getValues('photos') || [];
-        form.setValue('photos', currentPhotos.filter((_, i) => i !== index));
+    const handlePhotoCapture = (dataUri: string) => {
+        if (activeCategoryForCamera !== null) {
+            const category = form.getValues(`categories.${activeCategoryForCamera}`);
+            const currentPhotos = category.photos || [];
+            update(activeCategoryForCamera, { ...category, photos: [...currentPhotos, dataUri] });
+            setActiveCategoryForCamera(null);
+        }
+    };
+
+    const removePhoto = (categoryIndex: number, photoIndex: number) => {
+        const category = form.getValues(`categories.${categoryIndex}`);
+        const currentPhotos = category.photos || [];
+        update(categoryIndex, { ...category, photos: currentPhotos.filter((_, i) => i !== photoIndex) });
     };
 
     const onSubmit = async (data: InspectionFormData) => {
@@ -391,7 +410,6 @@ const InspectionDialog = ({
             coordinatorName: coordinator.name,
             standard: data.standard,
             categories: data.categories,
-            photos: data.photos || [],
         };
         
         await onSave(inspectionData, editingInspection?.id);
@@ -465,7 +483,27 @@ const InspectionDialog = ({
                                 <div className="space-y-6">
                                 {fields.map((categoryField, categoryIndex) => (
                                     <Card key={categoryField.id}>
-                                        <CardHeader><CardTitle>{categoryField.name}</CardTitle></CardHeader>
+                                        <CardHeader>
+                                            <div className="flex items-center justify-between">
+                                                <CardTitle>{categoryField.name}</CardTitle>
+                                                <div className="flex items-center gap-2">
+                                                    <Button type="button" variant="outline" size="icon" onClick={() => fileInputRefs.current[categoryIndex]?.click()}>
+                                                        <FileImage className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button type="button" variant="outline" size="icon" onClick={() => openCameraForCategory(categoryIndex)}>
+                                                        <Camera className="h-4 w-4" />
+                                                    </Button>
+                                                    <input
+                                                        type="file"
+                                                        ref={(el) => (fileInputRefs.current[categoryIndex] = el)}
+                                                        className="hidden"
+                                                        accept="image/*"
+                                                        multiple
+                                                        onChange={(e) => handleFileChange(e, categoryIndex)}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </CardHeader>
                                         <CardContent className="space-y-4">
                                             {categoryField.items.map((item, itemIndex) => {
                                                 const fieldName = `categories.${categoryIndex}.items.${itemIndex}.value`;
@@ -500,45 +538,23 @@ const InspectionDialog = ({
                                                     </FormItem>
                                                 )}
                                             />
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                                {(watchedCategories?.[categoryIndex]?.photos || []).map((photoSrc, photoIndex) => (
+                                                    <div key={photoIndex} className="relative group aspect-square">
+                                                        <Image src={photoSrc} alt={`Photo ${photoIndex + 1}`} layout="fill" objectFit="cover" className="rounded-md" />
+                                                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <Button variant="destructive" size="icon" type="button" onClick={() => removePhoto(categoryIndex, photoIndex)}>
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </CardContent>
                                     </Card>
                                 ))}
                                 </div>
-                                <Card>
-                                    <CardHeader><CardTitle>Zdjęcia</CardTitle></CardHeader>
-                                    <CardContent>
-                                        <div className="flex flex-wrap gap-2 mb-4">
-                                            <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-                                                <FileImage className="mr-2 h-4 w-4" />
-                                                Dodaj zdjęcie
-                                            </Button>
-                                             <Button type="button" variant="outline" onClick={() => setIsCameraOpen(true)}>
-                                                <Camera className="mr-2 h-4 w-4" />
-                                                Зробіть фото
-                                            </Button>
-                                            <input
-                                                type="file"
-                                                ref={fileInputRef}
-                                                className="hidden"
-                                                accept="image/*"
-                                                multiple
-                                                onChange={handleFileChange}
-                                            />
-                                        </div>
-                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                                            {(watchedPhotos || []).map((photoSrc, index) => (
-                                                <div key={index} className="relative group aspect-square">
-                                                    <Image src={photoSrc} alt={`Inspection photo ${index + 1}`} layout="fill" objectFit="cover" className="rounded-md" />
-                                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <Button variant="destructive" size="icon" type="button" onClick={() => removePhoto(index)}>
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </CardContent>
-                                </Card>
+                                
                                 <FinalRating categories={watchedCategories} isCalculated />
                             </div>
                         </ScrollArea>
@@ -558,22 +574,26 @@ const InspectionDialog = ({
 
 const InspectionDetailDialog = ({ inspection, isOpen, onOpenChange }: { inspection: Inspection | null; isOpen: boolean; onOpenChange: (open: boolean) => void }) => {
     const [isPhotoViewerOpen, setIsPhotoViewerOpen] = useState(false);
-    const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
+    const [selectedPhoto, setSelectedPhoto] = useState<{src: string, index: number}>({src: '', index: 0});
+    
+    const allPhotos = useMemo(() => {
+        if (!inspection) return [];
+        return inspection.categories.flatMap(cat => cat.photos || []).map(src => src);
+    }, [inspection]);
 
-    const openPhotoViewer = (index: number) => {
-        setSelectedPhotoIndex(index);
+    const openPhotoViewer = (photoSrc: string) => {
+        const index = allPhotos.findIndex(p => p === photoSrc);
+        setSelectedPhoto({src: photoSrc, index: index});
         setIsPhotoViewerOpen(true);
     };
 
     const nextPhoto = () => {
-        if (inspection?.photos) {
-            setSelectedPhotoIndex((prevIndex) => (prevIndex + 1) % inspection.photos.length);
-        }
+        const nextIndex = (selectedPhoto.index + 1) % allPhotos.length;
+        setSelectedPhoto({src: allPhotos[nextIndex], index: nextIndex});
     };
     const prevPhoto = () => {
-        if (inspection?.photos) {
-            setSelectedPhotoIndex((prevIndex) => (prevIndex - 1 + inspection.photos.length) % inspection.photos.length);
-        }
+        const prevIndex = (selectedPhoto.index - 1 + allPhotos.length) % allPhotos.length;
+        setSelectedPhoto({src: allPhotos[prevIndex], index: prevIndex});
     };
 
     if (!inspection) return null;
@@ -594,7 +614,7 @@ const InspectionDetailDialog = ({ inspection, isOpen, onOpenChange }: { inspecti
                             <Card key={category.name}>
                                 <CardHeader><CardTitle>{category.name}</CardTitle></CardHeader>
                                 <CardContent>
-                                    <ul className="space-y-3">
+                                    {category.items.length > 0 && <ul className="space-y-3">
                                     {category.items.map((item, index) => (
                                         <li key={`${item.label}-${index}`} className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm">
                                             <span className="font-medium">{item.label}</span>
@@ -606,28 +626,28 @@ const InspectionDetailDialog = ({ inspection, isOpen, onOpenChange }: { inspecti
                                             </div>
                                         </li>
                                     ))}
-                                    </ul>
+                                    </ul>}
                                     {category.uwagi && (
                                         <div className="mt-4 pt-3 border-t">
                                             <h4 className="font-semibold text-sm">Uwagi:</h4>
                                             <p className="text-sm text-muted-foreground italic">"{category.uwagi}"</p>
                                         </div>
                                     )}
+                                     {category.photos && category.photos.length > 0 && (
+                                        <div className="mt-4 pt-4 border-t">
+                                             <h4 className="font-semibold text-sm mb-2">Zdjęcia:</h4>
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                                {category.photos.map((photo, index) => (
+                                                    <div key={index} className="relative aspect-square cursor-pointer" onClick={() => openPhotoViewer(photo)}>
+                                                        <Image src={photo} alt={`Photo ${index + 1}`} layout="fill" objectFit="cover" className="rounded-md border" />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </CardContent>
                             </Card>
                         ))}
-                         {inspection.photos && inspection.photos.length > 0 && (
-                            <Card>
-                                <CardHeader><CardTitle>Zdjęcia</CardTitle></CardHeader>
-                                <CardContent className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                                     {inspection.photos.map((photo, index) => (
-                                        <div key={index} className="relative aspect-square cursor-pointer" onClick={() => openPhotoViewer(index)}>
-                                            <Image src={photo} alt={`Inspection photo ${index + 1}`} layout="fill" objectFit="cover" className="rounded-md border" />
-                                        </div>
-                                    ))}
-                                </CardContent>
-                            </Card>
-                        )}
                         <FinalRating categories={inspection.categories} />
                     </div>
                 </ScrollArea>
@@ -638,22 +658,22 @@ const InspectionDetailDialog = ({ inspection, isOpen, onOpenChange }: { inspecti
                 <Dialog open={isPhotoViewerOpen} onOpenChange={setIsPhotoViewerOpen}>
                     <DialogContent className="max-w-5xl w-full h-[90vh] flex flex-col p-2">
                        <DialogHeader>
-                          <DialogTitle>Zdjęcie {selectedPhotoIndex + 1} z {inspection.photos.length}</DialogTitle>
+                          <DialogTitle>Zdjęcie {selectedPhoto.index + 1} z {allPhotos.length}</DialogTitle>
                        </DialogHeader>
                         <div className="relative flex-1 flex items-center justify-center">
                             <Image 
-                                src={inspection.photos[selectedPhotoIndex]} 
-                                alt={`Inspection photo ${selectedPhotoIndex + 1}`} 
+                                src={selectedPhoto.src} 
+                                alt={`Inspection photo ${selectedPhoto.index + 1}`} 
                                 layout="fill" 
                                 objectFit="contain" 
                             />
                         </div>
                         <DialogFooter className="flex-row justify-between items-center w-full">
-                            <Button variant="outline" size="icon" onClick={prevPhoto}>
+                            <Button variant="outline" size="icon" onClick={prevPhoto} disabled={allPhotos.length <= 1}>
                                 <ChevronLeft className="h-6 w-6"/>
                             </Button>
                              <Button variant="outline" onClick={() => setIsPhotoViewerOpen(false)}>Zamknij</Button>
-                             <Button variant="outline" size="icon" onClick={nextPhoto}>
+                             <Button variant="outline" size="icon" onClick={nextPhoto} disabled={allPhotos.length <= 1}>
                                 <ChevronRight className="h-6 w-6"/>
                             </Button>
                         </DialogFooter>

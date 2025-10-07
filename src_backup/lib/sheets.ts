@@ -1,3 +1,4 @@
+
 // src/lib/sheets.ts
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
@@ -13,7 +14,6 @@ const SHEET_NAME_NATIONALITIES = 'Nationalities';
 const SHEET_NAME_DEPARTMENTS = 'Departments';
 const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_INSPECTIONS = 'Inspections';
-const SHEET_NAME_INSPECTION_PHOTOS = 'InspectionPhotos';
 const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 
 
@@ -101,6 +101,8 @@ const EMPLOYEE_HEADERS = [
     'departureReportDate', 'comments', 'status', 'oldAddress'
 ];
 
+const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
+
 export async function getSheet(title: string, headers: string[]): Promise<GoogleSpreadsheetWorksheet> {
     await doc.loadInfo();
     let sheet = doc.sheetsByTitle[title];
@@ -108,6 +110,11 @@ export async function getSheet(title: string, headers: string[]): Promise<Google
         sheet = await doc.addSheet({ title, headerValues: headers });
     } else {
         await sheet.loadHeaderRow();
+        const currentHeaders = sheet.headerValues;
+        const missingHeaders = headers.filter(h => !currentHeaders.includes(h));
+        if(missingHeaders.length > 0) {
+            await sheet.setHeaderRow([...currentHeaders, ...missingHeaders]);
+        }
     }
     return sheet;
 }
@@ -128,7 +135,7 @@ export async function getSettings(): Promise<Settings> {
   try {
     const nationalitiesSheet = await getSheet(SHEET_NAME_NATIONALITIES, ['name']);
     const departmentsSheet = await getSheet(SHEET_NAME_DEPARTMENTS, ['name']);
-    const coordinatorsSheet = await getSheet(SHEET_NAME_COORDINATORS, ['uid', 'name']);
+    const coordinatorsSheet = await getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS);
     const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ['id', 'name']);
     const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity']);
 
@@ -164,6 +171,8 @@ export async function getSettings(): Promise<Settings> {
       coordinators: coordinatorRows.map(row => ({
         uid: row.get('uid'),
         name: row.get('name'),
+        isAdmin: row.get('isAdmin') === 'TRUE',
+        password: row.get('password') || '',
       })),
       genders: ['Mężczyzna', 'Kobieta'],
     };
@@ -187,19 +196,22 @@ export async function getNotifications(): Promise<Notification[]> {
 }
 
 const INSPECTION_HEADERS = ['id', 'addressId', 'addressName', 'date', 'coordinatorId', 'coordinatorName', 'standard'];
-const PHOTO_HEADERS = ['id', 'inspectionId', 'photoData'];
-const INSPECTION_DETAILS_HEADERS = ['id', 'inspectionId', 'addressName', 'date', 'coordinatorName', 'category', 'itemLabel', 'itemValue', 'uwagi'];
+const INSPECTION_DETAILS_HEADERS = ['id', 'inspectionId', 'addressName', 'date', 'coordinatorName', 'category', 'itemLabel', 'itemValue', 'uwagi', 'photoData'];
 
 
-const deserializeInspection = (row: any, allDetails: InspectionDetail[], allPhotos: Photo[]): Inspection => {
+const deserializeInspection = (row: any, allDetails: InspectionDetail[]): Inspection => {
     const inspectionId = row.get('id');
     const detailsForInspection = allDetails.filter(d => d.inspectionId === inspectionId);
     
     const categoriesMap = detailsForInspection.reduce((acc, detail) => {
         if (!acc[detail.category]) {
-            acc[detail.category] = { name: detail.category, items: [], uwagi: '' };
+            acc[detail.category] = { name: detail.category, items: [], uwagi: '', photos: [] };
         }
-        if (detail.itemLabel) {
+
+        if(detail.itemLabel === 'Photo' && detail.photoData) {
+            acc[detail.category].photos!.push(detail.photoData);
+        }
+        else if (detail.itemLabel) {
             const valueStr = detail.itemValue;
             let value: any = valueStr;
             
@@ -223,7 +235,7 @@ const deserializeInspection = (row: any, allDetails: InspectionDetail[], allPhot
             acc[detail.category].uwagi = detail.uwagi;
         }
         return acc;
-    }, {} as Record<string, {name: string, items: InspectionCategoryItem[], uwagi: string}>);
+    }, {} as Record<string, {name: string, items: InspectionCategoryItem[], uwagi: string, photos?: string[]}>);
 
     const checklistCategories = getInitialChecklist();
     const finalCategories = checklistCategories.map(checklistCategory => {
@@ -233,7 +245,7 @@ const deserializeInspection = (row: any, allDetails: InspectionDetail[], allPhot
                 const foundItem = foundCategory.items.find(i => i.label === checklistItem.label);
                 return foundItem || checklistItem;
             });
-            return { ...checklistCategory, items: finalItems, uwagi: foundCategory.uwagi || '' };
+            return { ...checklistCategory, items: finalItems, uwagi: foundCategory.uwagi || '', photos: foundCategory.photos || [] };
         }
         return checklistCategory;
     });
@@ -247,7 +259,6 @@ const deserializeInspection = (row: any, allDetails: InspectionDetail[], allPhot
         coordinatorName: row.get('coordinatorName'),
         standard: (row.get('standard') as 'Wysoki' | 'Normalny' | 'Niski') || null,
         categories: finalCategories,
-        photos: allPhotos.filter(p => p.inspectionId === inspectionId).map(p => p.photoData),
     }
 };
 
@@ -259,14 +270,14 @@ const getInitialChecklist = (): InspectionCategory[] => [
             { label: "Czystość kuchnia", type: "select", value: null, options: cleanlinessOptions },
             { label: "Czystość lodówki", type: "select", value: null, options: cleanlinessOptions },
             { label: "Czystość płyty gazowej, elektrycznej i piekarnika", type: "select", value: null, options: cleanlinessOptions }
-        ]
+        ], photos: []
     },
     {
         name: "Łazienka", uwagi: "", items: [
             { label: "Czystość łazienki", type: "select", value: null, options: cleanlinessOptions },
             { label: "Czystość toalety", type: "select", value: null, options: cleanlinessOptions },
             { label: "Czystość brodzika", type: "select", value: null, options: cleanlinessOptions },
-        ]
+        ], photos: []
     },
     {
         name: "Pokoje", uwagi: "", items: [
@@ -278,7 +289,7 @@ const getInitialChecklist = (): InspectionCategory[] => [
             { label: "Stare rzeczy wyrzucane", type: "yes_no", value: null },
             { label: "Pościel czysta", type: "yes_no", value: null },
             { label: "Wyposażenia niezniszczone", type: "yes_no", value: null },
-        ]
+        ], photos: []
     },
     {
         name: "Instalacja", uwagi: "", items: [
@@ -288,27 +299,22 @@ const getInitialChecklist = (): InspectionCategory[] => [
             { label: "Instalacja wodno-kanalizacyjna działa", type: "yes_no", value: null },
             { label: "Ogrzewania", type: "text", value: "" },
             { label: "Temperatura w pomieszczeniu", type: "text", value: "" }
-        ]
+        ], photos: []
+    },
+     {
+        name: "Liczniki", uwagi: "", items: [], photos: []
     },
 ];
 
 export async function getInspections(): Promise<Inspection[]> {
     try {
         const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, INSPECTION_HEADERS);
-        const photosSheet = await getSheet(SHEET_NAME_INSPECTION_PHOTOS, PHOTO_HEADERS);
         const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, INSPECTION_DETAILS_HEADERS);
         
-        const [inspectionRows, photoRows, detailRows] = await Promise.all([
+        const [inspectionRows, detailRows] = await Promise.all([
             inspectionsSheet.getRows(),
-            photosSheet.getRows(),
             detailsSheet.getRows(),
         ]);
-
-        const allPhotos: Photo[] = photoRows.map(row => ({
-            id: row.get('id'),
-            inspectionId: row.get('inspectionId'),
-            photoData: row.get('photoData'),
-        }));
         
         const allDetails: InspectionDetail[] = detailRows.map(row => ({
             id: row.get('id'),
@@ -320,11 +326,12 @@ export async function getInspections(): Promise<Inspection[]> {
             itemLabel: row.get('itemLabel') || null,
             itemValue: row.get('itemValue') || null,
             uwagi: row.get('uwagi') || null,
+            photoData: row.get('photoData') || null,
         }));
 
 
         return inspectionRows
-            .map(row => deserializeInspection(row, allDetails, allPhotos))
+            .map(row => deserializeInspection(row, allDetails))
             .sort((a, b) => b.date.getTime() - a.date.getTime());
     } catch (error) {
         console.error("Error fetching inspections:", error);
