@@ -36,6 +36,8 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_BASE_URL: process.env.NODE_ENV === 'production' 
       ? 'https://hr-housing-hub-a2udq-g5jsusvnoa-uc.a.run.app' // Replace with your production URL
       : 'http://localhost:9002',
+    ADMIN_LOGIN: 'admin',
+    ADMIN_PASSWORD: 'password'
   }
 };
 

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from 'react';
@@ -10,22 +11,31 @@ import type { Coordinator } from '@/types';
 
 interface LoginViewProps {
   coordinators: Coordinator[];
-  onLogin: (coordinator: Coordinator) => void;
+  onLogin: (user: Coordinator, password?: string) => void;
 }
 
 export function LoginView({ coordinators, onLogin }: LoginViewProps) {
   const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    const coordinator = coordinators.find(c => c.name.toLowerCase() === name.toLowerCase().trim());
-    if (coordinator) {
-      onLogin(coordinator);
-    } else {
-      setError('Brak dostępu. Sprawdź, czy Twoje imię i nazwisko są poprawne.');
-    }
+    onLogin({ name: name.trim(), uid: '', isAdmin: false }, password);
   };
+  
+  const handleSetError = (message: string) => {
+    setError(message);
+  }
+  
+  // This is a bit of a hack to expose setError to the parent.
+  // A better solution would be to lift the state up.
+  React.useEffect(() => {
+    (window as any).setLoginError = handleSetError;
+    return () => {
+      delete (window as any).setLoginError;
+    }
+  }, []);
 
   return (
     <div className="flex h-screen w-full items-center justify-center bg-muted/50 p-4">
@@ -40,7 +50,7 @@ export function LoginView({ coordinators, onLogin }: LoginViewProps) {
         <form onSubmit={handleLogin}>
             <CardContent className="space-y-4">
                 <div className="space-y-2">
-                    <Label htmlFor="name">Imię i nazwisko</Label>
+                    <Label htmlFor="name">Imię i nazwisko / Login</Label>
                     <Input
                     id="name"
                     value={name}
@@ -48,8 +58,21 @@ export function LoginView({ coordinators, onLogin }: LoginViewProps) {
                         setName(e.target.value);
                         setError('');
                     }}
-                    placeholder="Jan Kowalski"
+                    placeholder="Jan Kowalski lub admin"
                     required
+                    />
+                </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="password">Hasło (tylko dla admina)</Label>
+                    <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => {
+                        setPassword(e.target.value);
+                        setError('');
+                    }}
+                    placeholder="Wprowadź hasło"
                     />
                 </div>
                  {error && <p className="text-sm font-medium text-destructive">{error}</p>}

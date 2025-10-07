@@ -98,8 +98,32 @@ function MainContent() {
         return allInspections.filter(i => i.coordinatorId === currentUser.uid);
     }, [currentUser, allInspections]);
 
-    const handleLogin = (coordinator: Coordinator) => {
-        setCurrentUser(coordinator);
+    const handleLogin = (user: {name: string}, password?: string) => {
+        if (!settings) return;
+        const adminLogin = process.env.ADMIN_LOGIN || 'admin';
+        const adminPassword = process.env.ADMIN_PASSWORD || 'password';
+        
+        const lowerCaseName = user.name.toLowerCase();
+
+        if (lowerCaseName === adminLogin.toLowerCase()) {
+            if (password === adminPassword) {
+                setCurrentUser({
+                    uid: 'admin-super-user',
+                    name: 'Admin',
+                    isAdmin: true
+                });
+            } else {
+                 (window as any).setLoginError('Nieprawidłowe hasło administratora.');
+            }
+            return;
+        }
+
+        const coordinator = settings.coordinators.find(c => c.name.toLowerCase() === lowerCaseName);
+        if (coordinator) {
+            setCurrentUser(coordinator);
+        } else {
+             (window as any).setLoginError('Brak dostępu. Sprawdź, czy Twoje imię i nazwisko są poprawne.');
+        }
     };
 
     const handleLogout = () => {
@@ -123,7 +147,10 @@ function MainContent() {
     };
     
     const handleUpdateSettings = async (newSettings: Partial<Settings>) => {
-        if (!settings) return;
+        if (!settings || !currentUser?.isAdmin) {
+             toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administrator może zmieniać ustawienia." });
+            return;
+        }
         try {
             await updateSettings(newSettings);
             toast({ title: "Sukces", description: "Ustawienia zostały zaktualizowane." });
@@ -218,6 +245,9 @@ function MainContent() {
             case 'employees':
                 return <EmployeesView employees={filteredEmployees} settings={settings} onAddEmployee={handleAddEmployeeClick} onEditEmployee={handleEditEmployeeClick} onDismissEmployee={handleDismissEmployee} onRestoreEmployee={handleRestoreEmployee} />;
             case 'settings':
+                if (!currentUser.isAdmin) {
+                    return <div className="p-4 text-center text-red-500">Brak uprawnień do przeglądania tej strony.</div>;
+                }
                 return <SettingsView settings={settings} onUpdateSettings={handleUpdateSettings} allEmployees={allEmployees} currentUser={currentUser} onDataRefresh={fetchData} />;
             case 'inspections':
                  return <InspectionsView 
