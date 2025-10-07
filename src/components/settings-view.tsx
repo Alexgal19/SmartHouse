@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Settings, HousingAddress, Coordinator, Room } from "@/types";
@@ -8,11 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, PlusCircle, Trash2 } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Trash2, ShieldCheck } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Input } from "./ui/input";
+import { Switch } from "./ui/switch";
 
 interface SettingsViewProps {
   settings: Settings;
@@ -240,8 +242,8 @@ const CoordinatorManager = ({ items, onUpdate }: { items: Coordinator[]; onUpdat
     const [newCoordinators, setNewCoordinators] = useState('');
     const [currentCoordinator, setCurrentCoordinator] = useState<Partial<Coordinator> | null>(null);
 
-    const openEditDialog = (coordinator: Partial<Coordinator>) => {
-        setCurrentCoordinator(coordinator);
+    const openEditDialog = (coordinator: Coordinator) => {
+        setCurrentCoordinator({...coordinator});
         setIsEditDialogOpen(true);
     };
 
@@ -251,6 +253,7 @@ const CoordinatorManager = ({ items, onUpdate }: { items: Coordinator[]; onUpdat
             const coordinatorsToAdd: Coordinator[] = names.map(name => ({
                 uid: `coord-${Date.now()}-${Math.random()}`,
                 name,
+                isAdmin: false,
             }));
             onUpdate([...items, ...coordinatorsToAdd]);
             setNewCoordinators('');
@@ -259,8 +262,8 @@ const CoordinatorManager = ({ items, onUpdate }: { items: Coordinator[]; onUpdat
     };
     
     const handleSaveEdit = () => {
-        if (!currentCoordinator || !currentCoordinator.name) return;
-        const newItems = items.map(item => item.uid === currentCoordinator.uid ? { ...item, ...currentCoordinator } as Coordinator : item);
+        if (!currentCoordinator || !currentCoordinator.name || !currentCoordinator.uid) return;
+        const newItems = items.map(item => item.uid === currentCoordinator.uid ? currentCoordinator as Coordinator : item);
         onUpdate(newItems);
         setIsEditDialogOpen(false);
     };
@@ -280,9 +283,12 @@ const CoordinatorManager = ({ items, onUpdate }: { items: Coordinator[]; onUpdat
                     {items.map(coordinator => (
                         <Card key={coordinator.uid} className="bg-muted/50">
                              <CardHeader className="flex-row items-center justify-between p-4">
-                                <div>
-                                    <p className="font-semibold">{coordinator.name}</p>
-                                    <p className="text-sm text-muted-foreground font-mono text-xs">{coordinator.uid}</p>
+                                <div className="flex items-center gap-3">
+                                    {coordinator.isAdmin && <ShieldCheck className="h-5 w-5 text-primary" />}
+                                    <div>
+                                        <p className="font-semibold">{coordinator.name}</p>
+                                        <p className="text-sm text-muted-foreground font-mono text-xs">{coordinator.uid}</p>
+                                    </div>
                                 </div>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
@@ -317,8 +323,18 @@ const CoordinatorManager = ({ items, onUpdate }: { items: Coordinator[]; onUpdat
                         <DialogTitle>Edytuj koordynatora</DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
-                        <Label htmlFor="name">Imię i Nazwisko</Label>
-                        <Input id="name" value={currentCoordinator?.name || ''} onChange={(e) => setCurrentCoordinator(p => p ? { ...p, name: e.target.value } : null)} />
+                        <div className="space-y-2">
+                           <Label htmlFor="name">Imię i Nazwisko</Label>
+                           <Input id="name" value={currentCoordinator?.name || ''} onChange={(e) => setCurrentCoordinator(p => p ? { ...p, name: e.target.value } : null)} />
+                        </div>
+                         <div className="flex items-center space-x-2">
+                            <Switch 
+                                id="isAdmin" 
+                                checked={currentCoordinator?.isAdmin || false} 
+                                onCheckedChange={(checked) => setCurrentCoordinator(p => p ? { ...p, isAdmin: checked } : null)}
+                            />
+                            <Label htmlFor="isAdmin">Administrator</Label>
+                        </div>
                     </div>
                     <DialogFooter>
                         <DialogClose asChild><Button variant="outline">Anuluj</Button></DialogClose>
@@ -366,5 +382,3 @@ export default function SettingsView({ settings, onUpdateSettings }: SettingsVie
     </Card>
   );
 }
-
-    

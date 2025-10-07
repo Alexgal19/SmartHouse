@@ -114,6 +114,7 @@ export type Settings = {
 export type Coordinator = {
   uid: string;
   name: string;
+  isAdmin: boolean;
 };
 
 export type NotificationChange = {

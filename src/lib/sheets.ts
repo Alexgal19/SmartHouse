@@ -101,6 +101,8 @@ const EMPLOYEE_HEADERS = [
     'departureReportDate', 'comments', 'status', 'oldAddress'
 ];
 
+const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin'];
+
 export async function getSheet(title: string, headers: string[]): Promise<GoogleSpreadsheetWorksheet> {
     await doc.loadInfo();
     let sheet = doc.sheetsByTitle[title];
@@ -133,7 +135,7 @@ export async function getSettings(): Promise<Settings> {
   try {
     const nationalitiesSheet = await getSheet(SHEET_NAME_NATIONALITIES, ['name']);
     const departmentsSheet = await getSheet(SHEET_NAME_DEPARTMENTS, ['name']);
-    const coordinatorsSheet = await getSheet(SHEET_NAME_COORDINATORS, ['uid', 'name']);
+    const coordinatorsSheet = await getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS);
     const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ['id', 'name']);
     const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity']);
 
@@ -169,6 +171,7 @@ export async function getSettings(): Promise<Settings> {
       coordinators: coordinatorRows.map(row => ({
         uid: row.get('uid'),
         name: row.get('name'),
+        isAdmin: row.get('isAdmin') === 'TRUE',
       })),
       genders: ['Mężczyzna', 'Kobieta'],
     };

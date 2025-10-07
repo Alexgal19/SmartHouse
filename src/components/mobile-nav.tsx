@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Home, Users, Settings, ClipboardList } from "lucide-react";
@@ -7,16 +8,11 @@ import type { View } from "@/types";
 interface MobileNavProps {
   activeView: View;
   setActiveView: (view: View) => void;
+  navItems: { view: View; icon: React.ElementType; label: string }[];
 }
 
-const navItems: { view: View; icon: React.ElementType; label: string }[] = [
-  { view: 'dashboard', icon: Home, label: 'Pulpit' },
-  { view: 'employees', icon: Users, label: 'Pracownicy' },
-  { view: 'inspections', icon: ClipboardList, label: 'Inspekcje' },
-  { view: 'settings', icon: Settings, label: 'Ustawienia' },
-];
 
-export function MobileNav({ activeView, setActiveView }: MobileNavProps) {
+export function MobileNav({ activeView, setActiveView, navItems }: MobileNavProps) {
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] border bg-card/60 backdrop-blur-xl p-2 rounded-2xl shadow-lg shadow-black/10 lg:hidden">
       <div className="grid h-full max-w-lg grid-cols-4 mx-auto">

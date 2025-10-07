@@ -50,6 +50,9 @@ const EMPLOYEE_HEADERS = [
     'departureReportDate', 'comments', 'status', 'oldAddress'
 ];
 
+const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin'];
+
+
 export async function getEmployees(): Promise<Employee[]> {
   try {
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/employees`, { cache: 'no-store' });
@@ -293,7 +296,12 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Se
             await syncSheet(SHEET_NAME_DEPARTMENTS, ['name'], updatedSettings.departments.map((name: string) => ({ name })));
         }
         if (newSettings.coordinators) {
-            await syncSheet(SHEET_NAME_COORDINATORS, ['uid', 'name'], updatedSettings.coordinators);
+             await syncSheet(
+                SHEET_NAME_COORDINATORS, 
+                COORDINATOR_HEADERS, 
+                updatedSettings.coordinators,
+                (item) => ({ ...item, isAdmin: String(item.isAdmin).toUpperCase() })
+            );
         }
         
         return getSettings();

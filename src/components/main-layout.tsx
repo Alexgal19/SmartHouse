@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   SidebarProvider,
   Sidebar,
@@ -36,10 +36,10 @@ const navItems: { view: View; icon: React.ElementType; label: string }[] = [
 
 function MainContent() {
     const [activeView, setActiveView] = useState<View>('dashboard');
-    const [employees, setEmployees] = useState<Employee[]>([]);
+    const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
+    const [allInspections, setAllInspections] = useState<Inspection[]>([]);
     const [settings, setSettings] = useState<Settings | null>(null);
     const [notifications, setNotifications] = useState<Notification[]>([]);
-    const [inspections, setInspections] = useState<Inspection[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
@@ -57,7 +57,7 @@ function MainContent() {
                 getNotifications(),
                 getInspections(),
             ]);
-            setEmployees(employeesData.map((e: any) => ({
+            setAllEmployees(employeesData.map((e: any) => ({
                 ...e,
                 checkInDate: new Date(e.checkInDate),
                 checkOutDate: e.checkOutDate ? new Date(e.checkOutDate) : null,
@@ -67,7 +67,7 @@ function MainContent() {
             })));
             setSettings(settingsData);
             setNotifications(notificationsData.map((n:any) => ({...n, createdAt: new Date(n.createdAt)})));
-            setInspections(inspectionsData.map((i: any) => ({...i, date: new Date(i.date)})));
+            setAllInspections(inspectionsData.map((i: any) => ({...i, date: new Date(i.date)})));
         } catch (error) {
             console.error(error);
             if (isInitialLoad) {
@@ -85,6 +85,18 @@ function MainContent() {
     useEffect(() => {
         fetchData(true);
     }, [fetchData]);
+
+    const filteredEmployees = useMemo(() => {
+        if (!currentUser) return [];
+        if (currentUser.isAdmin) return allEmployees;
+        return allEmployees.filter(e => e.coordinatorId === currentUser.uid);
+    }, [currentUser, allEmployees]);
+
+    const filteredInspections = useMemo(() => {
+        if (!currentUser) return [];
+        if (currentUser.isAdmin) return allInspections;
+        return allInspections.filter(i => i.coordinatorId === currentUser.uid);
+    }, [currentUser, allInspections]);
 
     const handleLogin = (coordinator: Coordinator) => {
         setCurrentUser(coordinator);
@@ -162,7 +174,7 @@ function MainContent() {
     };
     
     const handleNotificationClick = async (notification: Notification) => {
-        const employeeToEdit = employees.find(e => e.id === notification.employeeId);
+        const employeeToEdit = allEmployees.find(e => e.id === notification.employeeId);
         if (employeeToEdit) {
             handleEditEmployeeClick(employeeToEdit);
         }
@@ -202,14 +214,14 @@ function MainContent() {
 
         switch (activeView) {
             case 'dashboard':
-                return <DashboardView employees={employees} settings={settings} onEditEmployee={handleEditEmployeeClick} />;
+                return <DashboardView employees={filteredEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} />;
             case 'employees':
-                return <EmployeesView employees={employees} settings={settings} onAddEmployee={handleAddEmployeeClick} onEditEmployee={handleEditEmployeeClick} onDismissEmployee={handleDismissEmployee} onRestoreEmployee={handleRestoreEmployee} />;
+                return <EmployeesView employees={filteredEmployees} settings={settings} onAddEmployee={handleAddEmployeeClick} onEditEmployee={handleEditEmployeeClick} onDismissEmployee={handleDismissEmployee} onRestoreEmployee={handleRestoreEmployee} />;
             case 'settings':
                 return <SettingsView settings={settings} onUpdateSettings={handleUpdateSettings} />;
             case 'inspections':
                  return <InspectionsView 
-                    inspections={inspections} 
+                    inspections={filteredInspections} 
                     settings={settings}
                     currentUser={currentUser}
                     onAddInspection={handleAddInspection}
@@ -217,9 +229,14 @@ function MainContent() {
                     onDeleteInspection={handleDeleteInspection}
                 />;
             default:
-                return <DashboardView employees={employees} settings={settings} onEditEmployee={handleEditEmployeeClick} />;
+                return <DashboardView employees={filteredEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} />;
         }
     };
+    
+    const visibleNavItems = useMemo(() => {
+        if (currentUser?.isAdmin) return navItems;
+        return navItems.filter(item => item.view !== 'settings');
+    }, [currentUser]);
 
     if (isLoading) {
         return (
@@ -236,7 +253,7 @@ function MainContent() {
         return <LoginView coordinators={settings.coordinators} onLogin={handleLogin} />;
     }
     
-    if (!currentUser) {
+    if (!currentUser || !settings) {
          return (
             <div className="flex h-screen w-full items-center justify-center">
                 <p>Ładowanie ustawień...</p>
@@ -255,7 +272,7 @@ function MainContent() {
                 </SidebarHeader>
                 <SidebarContent>
                     <SidebarMenu>
-                        {navItems.map(item => (
+                        {visibleNavItems.map(item => (
                              <SidebarMenuItem key={item.view}>
                                 <SidebarMenuButton 
                                     onClick={() => setActiveView(item.view)} 
@@ -280,7 +297,7 @@ function MainContent() {
                 </main>
             </div>
             
-            {isMobile && <MobileNav activeView={activeView} setActiveView={setActiveView} />}
+            {isMobile && <MobileNav activeView={activeView} setActiveView={setActiveView} navItems={visibleNavItems} />}
             
             {settings && (
                  <AddEmployeeForm
