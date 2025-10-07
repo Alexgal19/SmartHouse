@@ -108,11 +108,14 @@ function MainContent() {
                 // When a non-admin coordinator logs in, set the filter to their ID
                 setSelectedCoordinatorId(currentUser.uid);
             }
-            fetchData();
+            // No automatic refetch on currentUser change to prevent loops
         } else {
             sessionStorage.removeItem('currentUser');
+            // Reset state when logging out
+            setActiveView('dashboard');
+            setSelectedCoordinatorId('all');
         }
-    }, [currentUser, fetchData]);
+    }, [currentUser]);
 
     const filteredEmployees = useMemo(() => {
         if (!currentUser) return [];
@@ -154,6 +157,7 @@ function MainContent() {
                 };
                 setCurrentUser(adminUser);
                 setSelectedCoordinatorId('all');
+                await fetchData(); // Fetch data after successful login
             } else {
                  (window as any).setLoginError('Nieprawidłowe hasło administratora.');
             }
@@ -177,20 +181,28 @@ function MainContent() {
                 const updatedCoordinators = settings.coordinators.map(c => 
                     c.uid === coordinator.uid ? { ...c, password } : c
                 );
-                await updateSettings({ coordinators: updatedCoordinators });
                 
-                // Update local settings state immediately to prevent re-triggering this block
+                // Immediately set the user to prevent re-login logic
+                const userWithPassword = { ...coordinator, password };
+                setCurrentUser(userWithPassword);
+                sessionStorage.setItem('currentUser', JSON.stringify(userWithPassword));
+
+                // Update settings in the background
+                await updateSettings({ coordinators: updatedCoordinators });
+                toast({ title: "Sukces", description: "Twoje hasło zostało ustawione." });
+                
+                // Manually update local settings state
                 setSettings(prevSettings => prevSettings ? {...prevSettings, coordinators: updatedCoordinators} : null);
 
-                // Set current user, which will trigger a re-fetch, but with the new password already in local state
-                setCurrentUser({ ...coordinator, password }); 
-                toast({ title: "Sukces", description: "Twoje hasło zostało ustawione." });
             } catch (error) {
                 (window as any).setLoginError('Nie udało się ustawić hasła. Spróbuj ponownie.');
+                 setCurrentUser(null); // Rollback on error
+                 sessionStorage.removeItem('currentUser');
             }
         } else { // Subsequent logins
             if (coordinator.password === password) {
                 setCurrentUser(coordinator);
+                await fetchData(); // Fetch data after successful login
             } else {
                 (window as any).setLoginError('Nieprawidłowe hasło.');
             }
@@ -363,7 +375,8 @@ function MainContent() {
         if (currentUser?.isAdmin) {
             return navItems;
         }
-        return navItems.filter(item => item.view !== 'settings');
+        // For non-admins, we still return all items, but the component will disable the settings tab.
+        return navItems;
     }, [currentUser]);
 
     if (isLoading) {
@@ -404,9 +417,13 @@ function MainContent() {
                         {visibleNavItems.map(item => (
                              <SidebarMenuItem key={item.view}>
                                 <SidebarMenuButton 
-                                    onClick={() => setActiveView(item.view)} 
+                                    onClick={() => {
+                                        if (item.view === 'settings' && !currentUser?.isAdmin) return;
+                                        setActiveView(item.view)
+                                    }} 
                                     isActive={activeView === item.view}
                                     tooltip={item.label}
+                                    disabled={item.view === 'settings' && !currentUser?.isAdmin}
                                 >
                                     <item.icon />
                                     <span>{item.label}</span>
@@ -426,7 +443,7 @@ function MainContent() {
                 </main>
             </div>
             
-            {isMobile && <MobileNav activeView={activeView} setActiveView={setActiveView} navItems={visibleNavItems} />}
+            {isMobile && <MobileNav activeView={activeView} setActiveView={setActiveView} navItems={visibleNavItems} currentUser={currentUser}/>}
             
             {settings && (
                  <AddEmployeeForm
