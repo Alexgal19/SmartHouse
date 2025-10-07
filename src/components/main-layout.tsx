@@ -218,7 +218,7 @@ function MainContent() {
             case 'employees':
                 return <EmployeesView employees={filteredEmployees} settings={settings} onAddEmployee={handleAddEmployeeClick} onEditEmployee={handleEditEmployeeClick} onDismissEmployee={handleDismissEmployee} onRestoreEmployee={handleRestoreEmployee} />;
             case 'settings':
-                return <SettingsView settings={settings} onUpdateSettings={handleUpdateSettings} />;
+                return <SettingsView settings={settings} onUpdateSettings={handleUpdateSettings} allEmployees={allEmployees} currentUser={currentUser} onDataRefresh={fetchData} />;
             case 'inspections':
                  return <InspectionsView 
                     inspections={filteredInspections} 

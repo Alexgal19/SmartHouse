@@ -66,7 +66,7 @@ export async function getEmployees(): Promise<Employee[]> {
 
 export async function getSettings(): Promise<Settings> {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/settings`, { next: { revalidate: 300 }});
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/settings`, { cache: 'no-store' });
     if (!res.ok) throw new Error('Failed to fetch settings');
     return res.json();
   } catch (error) {
@@ -99,7 +99,7 @@ const createNotification = async (
             changes
         };
 
-        await sheet.addRow(serializeNotification(newNotification), { valueInputOption: 'USER_ENTERED' });
+        await sheet.addRow(serializeNotification(newNotification), { raw: false, valueInputOption: 'USER_ENTERED' });
     } catch (e) {
         console.error("Could not create notification:", e);
     }
@@ -121,7 +121,7 @@ export async function addEmployee(employeeData: Omit<Employee, 'id' | 'status'>,
         };
 
         const serialized = serializeEmployee(newEmployee);
-        await sheet.addRow(serialized, { valueInputOption: 'USER_ENTERED' });
+        await sheet.addRow(serialized, { raw: false, valueInputOption: 'USER_ENTERED' });
         
         await createNotification(actor, 'dodał(a) nowego', newEmployee);
 
@@ -231,9 +231,6 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
 
 
         const changes = getChanges(currentData, employeeData);
-        if(changes.length === 0 && !('status' in employeeData)) { 
-              return currentData;
-        }
         
         let action = 'zaktualizował(a) dane';
         if (employeeData.status) {
@@ -250,9 +247,11 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
             }
         }
         
-        await rowToUpdate.save({ valueInputOption: 'USER_ENTERED' });
+        await rowToUpdate.save({ raw: false, valueInputOption: 'USER_ENTERED' });
 
-        await createNotification(actor, action, updatedData, changes);
+        if(changes.length > 0) { 
+            await createNotification(actor, action, updatedData, changes);
+        }
 
         return updatedData;
 
@@ -272,7 +271,7 @@ async function syncSheet<T extends Record<string, any>>(
     await sheet.clearRows();
     if (newData.length > 0) {
         const serializedData = newData.map(serializeFn);
-        await sheet.addRows(serializedData, { valueInputOption: 'USER_ENTERED' });
+        await sheet.addRows(serializedData, { raw: false, valueInputOption: 'USER_ENTERED' });
     }
 }
 
@@ -331,7 +330,7 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
 
         if (rowToUpdate) {
             rowToUpdate.set('isRead', 'TRUE');
-            await rowToUpdate.save({ valueInputOption: 'USER_ENTERED' });
+            await rowToUpdate.save({ raw: false, valueInputOption: 'USER_ENTERED' });
         }
     } catch (error) {
         console.error("Error marking notification as read:", error);
@@ -381,7 +380,6 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
     const allDetailRows = await detailsSheet.getRows();
     const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === inspectionId);
     
-    // Delete rows in reverse to avoid index shifting issues
     for (let i = detailsToDelete.length - 1; i >= 0; i--) {
         await detailsToDelete[i].delete();
     }
@@ -394,9 +392,9 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
         Object.keys(mainInspectionData).forEach(key => {
             existingRow.set(key, mainInspectionData[key as keyof typeof mainInspectionData]);
         });
-        await existingRow.save({ valueInputOption: 'USER_ENTERED' });
+        await existingRow.save({ raw: false, valueInputOption: 'USER_ENTERED' });
     } else {
-        await inspectionsSheet.addRow(mainInspectionData, { valueInputOption: 'USER_ENTERED' });
+        await inspectionsSheet.addRow(mainInspectionData, { raw: false, valueInputOption: 'USER_ENTERED' });
     }
     
     const detailPayload = [];
@@ -444,7 +442,7 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
         }
     }
     if (detailPayload.length > 0) {
-        await detailsSheet.addRows(detailPayload, { valueInputOption: 'USER_ENTERED' });
+        await detailsSheet.addRows(detailPayload, { raw: false, valueInputOption: 'USER_ENTERED' });
     }
 }
 
@@ -480,7 +478,6 @@ export async function deleteInspection(id: string): Promise<void> {
         }
 
         const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === id);
-        // Delete rows in reverse to avoid index shifting issues
         for (let i = detailsToDelete.length - 1; i >= 0; i--) {
             await detailsToDelete[i].delete();
         }
@@ -488,6 +485,48 @@ export async function deleteInspection(id: string): Promise<void> {
     } catch (error) {
         console.error("Error in deleteInspection:", error);
         throw new Error(`Could not delete inspection. ${error instanceof Error ? error.message : ''}`);
+    }
+}
+
+export async function transferEmployees(fromCoordinatorId: string, toCoordinatorId: string, actor: Coordinator): Promise<void> {
+    try {
+        const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
+        const rows = await sheet.getRows();
+        
+        const employeesToTransfer = rows.filter(row => row.get('coordinatorId') === fromCoordinatorId);
+
+        if (employeesToTransfer.length === 0) {
+            throw new Error("No employees to transfer.");
+        }
+
+        for (const row of employeesToTransfer) {
+            row.set('coordinatorId', toCoordinatorId);
+            await row.save({ raw: false, valueInputOption: 'USER_ENTERED' });
+        }
+
+        const settings = await getSettings();
+        const fromCoordinator = settings.coordinators.find(c => c.uid === fromCoordinatorId);
+        const toCoordinator = settings.coordinators.find(c => c.uid === toCoordinatorId);
+        
+        const message = `${actor.name} przeniósł ${employeesToTransfer.length} pracowników od ${fromCoordinator?.name || fromCoordinatorId} do ${toCoordinator?.name || toCoordinatorId}.`;
+        
+        const notificationSheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
+        const newNotification = {
+            id: `notif-${Date.now()}`,
+            message,
+            employeeId: '',
+            employeeName: '',
+            coordinatorId: actor.uid,
+            coordinatorName: actor.name,
+            createdAt: new Date().toISOString(),
+            isRead: 'FALSE',
+            changes: '[]',
+        };
+        await notificationSheet.addRow(newNotification as any, { raw: false, valueInputOption: 'USER_ENTERED' });
+
+    } catch (error) {
+        console.error("Error transferring employees:", error);
+        throw new Error(`Could not transfer employees. ${error instanceof Error ? error.message : ''}`);
     }
 }
 

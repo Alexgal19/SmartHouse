@@ -1,24 +1,32 @@
 
 "use client";
 
-import type { Settings, HousingAddress, Coordinator, Room } from "@/types";
+import type { Settings, HousingAddress, Coordinator, Room, Employee } from "@/types";
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, PlusCircle, Trash2, ShieldCheck } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Trash2, ShieldCheck, ArrowRight } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Input } from "./ui/input";
 import { Switch } from "./ui/switch";
+import { transferEmployees, getEmployees } from "@/lib/actions";
+import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
+
 
 interface SettingsViewProps {
   settings: Settings;
   onUpdateSettings: (newSettings: Partial<Settings>) => Promise<void>;
+  allEmployees: Employee[];
+  currentUser: Coordinator;
+  onDataRefresh: () => void;
 }
 
 // Generic List Manager for simple string arrays
@@ -236,15 +244,25 @@ const AddressManager = ({ items, onUpdate }: { items: HousingAddress[]; onUpdate
 };
 
 // Specific Manager for Coordinators
-const CoordinatorManager = ({ items, onUpdate }: { items: Coordinator[]; onUpdate: (newItems: Coordinator[]) => void }) => {
+const CoordinatorManager = ({ items, onUpdate, allEmployees, currentUser, onDataRefresh }: { items: Coordinator[]; onUpdate: (newItems: Coordinator[]) => void; allEmployees: Employee[]; currentUser: Coordinator; onDataRefresh: () => void; }) => {
+    const { toast } = useToast();
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
+    
     const [newCoordinators, setNewCoordinators] = useState('');
     const [currentCoordinator, setCurrentCoordinator] = useState<Partial<Coordinator> | null>(null);
+    const [transferToCoordinatorId, setTransferToCoordinatorId] = useState('');
 
     const openEditDialog = (coordinator: Coordinator) => {
         setCurrentCoordinator({...coordinator});
         setIsEditDialogOpen(true);
+    };
+
+     const openTransferDialog = (coordinator: Coordinator) => {
+        setCurrentCoordinator(coordinator);
+        setTransferToCoordinatorId('');
+        setIsTransferDialogOpen(true);
     };
 
     const handleAdd = () => {
@@ -269,7 +287,33 @@ const CoordinatorManager = ({ items, onUpdate }: { items: Coordinator[]; onUpdat
     };
 
     const handleDelete = (uid: string) => {
+         const employeesCount = allEmployees.filter(e => e.coordinatorId === uid).length;
+        if (employeesCount > 0) {
+            toast({
+                variant: 'destructive',
+                title: 'Nie można usunąć koordynatora',
+                description: `Ten koordynator ma przypisanych ${employeesCount} pracowników. Najpierw przenieś pracowników do innego koordynatora.`
+            });
+            return;
+        }
         onUpdate(items.filter(item => item.uid !== uid));
+    };
+
+     const handleTransfer = async () => {
+        if (!currentCoordinator?.uid || !transferToCoordinatorId) {
+            toast({ variant: "destructive", title: "Błąd", description: "Proszę wybrać obu koordynatorów." });
+            return;
+        }
+
+        try {
+            await transferEmployees(currentCoordinator.uid, transferToCoordinatorId, currentUser);
+            toast({ title: "Sukces", description: "Pracownicy zostali przeniesieni." });
+            onDataRefresh();
+            setIsTransferDialogOpen(false);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Nie udało się przenieść pracowników.";
+            toast({ variant: "destructive", title: "Błąd", description: message });
+        }
     };
 
     return (
@@ -294,6 +338,7 @@ const CoordinatorManager = ({ items, onUpdate }: { items: Coordinator[]; onUpdat
                                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                     <DropdownMenuContent>
                                         <DropdownMenuItem onClick={() => openEditDialog(coordinator)}>Edytuj</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => openTransferDialog(coordinator)}>Przenieś pracowników</DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => handleDelete(coordinator.uid)} className="text-destructive">Usuń</DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -342,12 +387,64 @@ const CoordinatorManager = ({ items, onUpdate }: { items: Coordinator[]; onUpdat
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+             <Dialog open={isTransferDialogOpen} onOpenChange={setIsTransferDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Przenieś pracowników</DialogTitle>
+                        <DialogDescription>
+                            Przeniesienie wszystkich pracowników od {currentCoordinator?.name} do innego koordynatora.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-3 items-center gap-4">
+                            <Label>Od</Label>
+                            <Input value={currentCoordinator?.name || ''} readOnly disabled className="col-span-2" />
+                        </div>
+                         <div className="grid grid-cols-3 items-center gap-4">
+                            <Label htmlFor="transferTo">Do</Label>
+                            <Select value={transferToCoordinatorId} onValueChange={setTransferToCoordinatorId}>
+                                <SelectTrigger className="col-span-2">
+                                    <SelectValue placeholder="Wybierz koordynatora docelowego" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {items.filter(c => c.uid !== currentCoordinator?.uid).map(c => (
+                                        <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                         <p className="text-sm text-muted-foreground">
+                            Liczba pracowników do przeniesienia: {allEmployees.filter(e => e.coordinatorId === currentCoordinator?.uid).length}
+                        </p>
+                    </div>
+                     <DialogFooter>
+                        <DialogClose asChild><Button variant="outline">Anuluj</Button></DialogClose>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button disabled={!transferToCoordinatorId}>Przenieś</Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Czy na pewno chcesz przenieść?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Ta operacja przypisze wszystkich pracowników od {currentCoordinator?.name} do wybranego koordynatora. Tej akcji nie można cofnąć.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleTransfer}>Potwierdź i przenieś</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </Card>
     );
 };
 
 
-export default function SettingsView({ settings, onUpdateSettings }: SettingsViewProps) {
+export default function SettingsView({ settings, onUpdateSettings, allEmployees, currentUser, onDataRefresh }: SettingsViewProps) {
   const { isMobile } = useIsMobile();
   
   return (
@@ -374,7 +471,7 @@ export default function SettingsView({ settings, onUpdateSettings }: SettingsVie
                <ListManager title="Zakłady" items={settings.departments} onUpdate={(newDepartments) => onUpdateSettings({ departments: newDepartments })} />
             </TabsContent>
             <TabsContent value="coordinators" className="mt-0">
-               <CoordinatorManager items={settings.coordinators} onUpdate={(newCoordinators) => onUpdateSettings({ coordinators: newCoordinators })} />
+               <CoordinatorManager items={settings.coordinators} onUpdate={(newCoordinators) => onUpdateSettings({ coordinators: newCoordinators })} allEmployees={allEmployees} currentUser={currentUser} onDataRefresh={onDataRefresh} />
             </TabsContent>
           </div>
         </Tabs>
