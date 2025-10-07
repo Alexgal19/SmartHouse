@@ -20,7 +20,7 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
     const serialized: Record<string, string | number | boolean> = {};
     for (const [key, value] of Object.entries(employee)) {
         if (value instanceof Date) {
-            serialized[key] = value.toISOString().split('T')[0];
+            serialized[key] = format(value, 'yyyy-MM-dd');
         } else if (value !== null && value !== undefined) {
             serialized[key] = value.toString();
         } else {
