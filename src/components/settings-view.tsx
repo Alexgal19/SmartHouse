@@ -9,13 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, PlusCircle, Trash2, ShieldCheck, KeyRound, Upload, FileWarning } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Trash2, ShieldCheck, KeyRound, Upload, FileWarning, RefreshCw } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Input } from "./ui/input";
 import { Switch } from "./ui/switch";
-import { transferEmployees, bulkImportEmployees } from "@/lib/actions";
+import { transferEmployees, bulkImportEmployees, checkAndUpdateEmployeeStatuses } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
@@ -546,6 +546,7 @@ const CoordinatorManager = ({ items, onUpdate, allEmployees, currentUser, onData
 export default function SettingsView({ settings, onUpdateSettings, allEmployees, currentUser, onDataRefresh }: SettingsViewProps) {
   const { isMobile } = useIsMobile();
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const { toast } = useToast();
   
   const handleImport = async (fileData: ArrayBuffer) => {
       try {
@@ -556,16 +557,33 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
           return { success: false, message: e.message || "Wystąpił nieznany błąd." };
       }
   };
+
+  const handleManualRefresh = async () => {
+    toast({title: "Proszę czekać", description: "Trwa odświeżanie statusów pracowników..."});
+    try {
+        await checkAndUpdateEmployeeStatuses();
+        await onDataRefresh();
+        toast({title: "Sukces", description: "Statusy pracowników zostały pomyślnie zaktualizowane."});
+    } catch(e: any) {
+        toast({variant: "destructive", title: "Błąd", description: e.message || "Nie udało się odświeżyć statusów."});
+    }
+  }
   
   return (
     <Card>
       <CardHeader>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <CardTitle>Ustawienia Aplikacji</CardTitle>
-            <Button onClick={() => setIsImportOpen(true)} variant="outline">
-                <Upload className="mr-2 h-4 w-4" />
-                Importuj pracowników
-            </Button>
+            <div className="flex gap-2">
+                <Button onClick={handleManualRefresh} variant="outline">
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Odśwież statusy
+                </Button>
+                <Button onClick={() => setIsImportOpen(true)} variant="outline">
+                    <Upload className="mr-2 h-4 w-4" />
+                    Importuj
+                </Button>
+            </div>
         </div>
       </CardHeader>
       <CardContent>

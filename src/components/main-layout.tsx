@@ -51,9 +51,6 @@ function MainContent() {
     const fetchData = useCallback(async (isInitialLoad = false) => {
         if (isInitialLoad) setIsLoading(true);
         try {
-            if(isInitialLoad){
-                await checkAndUpdateEmployeeStatuses();
-            }
             const [employeesData, settingsData, notificationsData, inspectionsData] = await Promise.all([
                 getEmployees(), 
                 getSettings(),
