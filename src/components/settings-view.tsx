@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, PlusCircle, Trash2, ShieldCheck, KeyRound, Upload } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Trash2, ShieldCheck, KeyRound, Upload, FileWarning } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { ScrollArea } from "./ui/scroll-area";
+import { Alert, AlertTitle, AlertDescription } from "./ui/alert";
 
 
 interface SettingsViewProps {
@@ -31,7 +32,7 @@ interface SettingsViewProps {
   onDataRefresh: () => void;
 }
 
-const EmployeeImportDialog = ({ isOpen, onOpenChange, onImport, settings }: { isOpen: boolean, onOpenChange: (isOpen: boolean) => void, onImport: (fileData: ArrayBuffer) => Promise<{success: boolean, message: string}>, settings: Settings }) => {
+const EmployeeImportDialog = ({ isOpen, onOpenChange, onImport }: { isOpen: boolean, onOpenChange: (isOpen: boolean) => void, onImport: (fileData: ArrayBuffer) => Promise<{success: boolean, message: string}> }) => {
     const [file, setFile] = useState<File | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const { toast } = useToast();
@@ -60,7 +61,12 @@ const EmployeeImportDialog = ({ isOpen, onOpenChange, onImport, settings }: { is
                     toast({ title: "Sukces", description: result.message });
                     onOpenChange(false);
                 } else {
-                    toast({ variant: 'destructive', title: "Błąd importu", description: result.message });
+                    toast({ 
+                        variant: 'destructive', 
+                        title: "Błąd importu", 
+                        description: <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4"><code className="text-white">{result.message}</code></pre>,
+                        duration: 15000
+                    });
                 }
             }
         };
@@ -78,10 +84,18 @@ const EmployeeImportDialog = ({ isOpen, onOpenChange, onImport, settings }: { is
                 <DialogHeader>
                     <DialogTitle>Importuj pracowników z Excel</DialogTitle>
                     <DialogDescription>
-                        Wybierz plik .xlsx lub .xls. Upewnij się, że plik ma kolumny: fullName, coordinatorName, nationality, gender, address, roomNumber, zaklad, checkInDate, contractStartDate, contractEndDate, departureReportDate, comments.
+                        Wybierz plik .xlsx lub .xls. Upewnij się, że plik ma poprawną strukturę.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
+                     <Alert>
+                        <FileWarning className="h-4 w-4" />
+                        <AlertTitle>Wymagane Kolumny</AlertTitle>
+                        <AlertDescription>
+                            <code className="text-xs bg-muted p-1 rounded-md">fullName, coordinatorName, nationality, gender, address, roomNumber, zaklad, checkInDate</code>
+                            <p className="text-xs mt-1">Opcjonalne: <code className="text-xs bg-muted p-1 rounded-md">contractStartDate, contractEndDate, departureReportDate, comments</code></p>
+                        </AlertDescription>
+                    </Alert>
                     <div className="p-4 border-2 border-dashed rounded-lg text-center">
                         <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".xlsx, .xls" className="hidden" />
                         <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
@@ -581,7 +595,6 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
         isOpen={isImportOpen} 
         onOpenChange={setIsImportOpen} 
         onImport={handleImport}
-        settings={settings}
       />
     </Card>
   );

@@ -580,71 +580,87 @@ export async function bulkImportEmployees(
     let errorCount = 0;
     const errors: string[] = [];
     
-    const workbook = XLSX.read(fileData, { type: 'array', cellDates: true });
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    const data = XLSX.utils.sheet_to_json<any>(worksheet, { header: 1 });
-    
-    if (data.length < 2) {
-      return { success: false, message: "Plik Excel jest pusty lub zawiera tylko nagłówek."};
-    }
-    
-    const headers = data[0] as string[];
-    const rows = data.slice(1);
-
-    for (const [index, rowArray] of rows.entries()) {
-        const rowNum = index + 2;
-        const row: Record<string, any> = {};
-        headers.forEach((header, i) => {
-            row[header] = (rowArray as any[])[i];
-        });
-
-        try {
-            // --- VALIDATION ---
-            const { fullName, coordinatorName, nationality, gender, address, roomNumber, zaklad, checkInDate } = row;
-
-            if (!fullName) throw new Error(`Row ${rowNum}: fullName is required.`);
-            if (!coordinatorName) throw new Error(`Row ${rowNum}: coordinatorName is required.`);
-            if (!nationality) throw new Error(`Row ${rowNum}: nationality is required.`);
-            if (!address) throw new Error(`Row ${rowNum}: address is required.`);
-            if (!roomNumber) throw new Error(`Row ${rowNum}: roomNumber is required.`);
-            if (!zaklad) throw new Error(`Row ${rowNum}: zaklad is required.`);
-            if (!checkInDate) throw new Error(`Row ${rowNum}: checkInDate is required.`);
-
-            const coordinator = coordinators.find(c => c.name.toLowerCase() === coordinatorName.toLowerCase());
-            if (!coordinator) {
-                throw new Error(`Row ${rowNum}: Coordinator "${coordinatorName}" not found.`);
-            }
-
-            // --- DATA MAPPING & CREATION ---
-            const employeeData = {
-                fullName: String(fullName),
-                coordinatorId: coordinator.uid,
-                nationality: String(nationality),
-                gender: ['Mężczyzna', 'Kobieta'].includes(gender) ? gender : 'Mężczyzna',
-                address: String(address),
-                roomNumber: String(roomNumber),
-                zaklad: String(zaklad),
-                checkInDate: checkInDate instanceof Date ? checkInDate : new Date(checkInDate),
-                contractStartDate: row.contractStartDate ? new Date(row.contractStartDate) : null,
-                contractEndDate: row.contractEndDate ? new Date(row.contractEndDate) : null,
-                departureReportDate: row.departureReportDate ? new Date(row.departureReportDate) : null,
-                comments: row.comments || '',
-            };
-            
-            await addEmployee(employeeData, actor);
-            importedCount++;
-
-        } catch (e: any) {
-            errorCount++;
-            errors.push(e.message);
+    try {
+        const workbook = XLSX.read(fileData, { type: 'array', cellDates: true });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const data = XLSX.utils.sheet_to_json<any>(worksheet, { header: 1 });
+        
+        if (data.length < 2) {
+          return { success: false, message: "Plik Excel jest pusty lub zawiera tylko nagłówek."};
         }
+        
+        const headers = data[0] as string[];
+        const rows = data.slice(1);
+
+        const requiredHeaders = ['fullName', 'coordinatorName', 'nationality', 'gender', 'address', 'roomNumber', 'zaklad', 'checkInDate'];
+        for(const header of requiredHeaders) {
+            if (!headers.includes(header)) {
+                throw new Error(`Brak wymaganej kolumny w pliku Excel: ${header}`);
+            }
+        }
+
+        for (const [index, rowArray] of rows.entries()) {
+            const rowNum = index + 2;
+            const row: Record<string, any> = {};
+            headers.forEach((header, i) => {
+                row[header] = (rowArray as any[])[i];
+            });
+
+            try {
+                // --- VALIDATION ---
+                const { fullName, coordinatorName, nationality, gender, address, roomNumber, zaklad, checkInDate } = row;
+
+                if (!fullName) throw new Error(`Brak 'fullName' w wierszu ${rowNum}.`);
+                if (!coordinatorName) throw new Error(`Brak 'coordinatorName' w wierszu ${rowNum}.`);
+                if (!nationality) throw new Error(`Brak 'nationality' w wierszu ${rowNum}.`);
+                if (!gender) throw new Error(`Brak 'gender' w wierszu ${rowNum}.`);
+                if (!address) throw new Error(`Brak 'address' w wierszu ${rowNum}.`);
+                if (!roomNumber) throw new Error(`Brak 'roomNumber' w wierszu ${rowNum}.`);
+                if (!zaklad) throw new Error(`Brak 'zaklad' w wierszu ${rowNum}.`);
+                if (!checkInDate) throw new Error(`Brak 'checkInDate' w wierszu ${rowNum}.`);
+
+                const coordinator = coordinators.find(c => c.name.toLowerCase() === String(coordinatorName).toLowerCase());
+                if (!coordinator) {
+                    throw new Error(`Koordynator "${coordinatorName}" nie został znaleziony w wierszu ${rowNum}.`);
+                }
+
+                // --- DATA MAPPING & CREATION ---
+                const employeeData = {
+                    fullName: String(fullName),
+                    coordinatorId: coordinator.uid,
+                    nationality: String(nationality),
+                    gender: ['Mężczyzna', 'Kobieta'].includes(gender) ? gender : 'Mężczyzna',
+                    address: String(address),
+                    roomNumber: String(roomNumber),
+                    zaklad: String(zaklad),
+                    checkInDate: checkInDate instanceof Date ? checkInDate : new Date(checkInDate),
+                    contractStartDate: row.contractStartDate ? (row.contractStartDate instanceof Date ? row.contractStartDate : new Date(row.contractStartDate)) : null,
+                    contractEndDate: row.contractEndDate ? (row.contractEndDate instanceof Date ? row.contractEndDate : new Date(row.contractEndDate)) : null,
+                    departureReportDate: row.departureReportDate ? (row.departureReportDate instanceof Date ? row.departureReportDate : new Date(row.departureReportDate)) : null,
+                    comments: row.comments || '',
+                };
+                
+                if (isNaN(employeeData.checkInDate.getTime())) {
+                    throw new Error(`Nieprawidłowa data 'checkInDate' w wierszu ${rowNum}.`);
+                }
+                
+                await addEmployee(employeeData, actor);
+                importedCount++;
+
+            } catch (e: any) {
+                errorCount++;
+                errors.push(e.message);
+            }
+        }
+    } catch(e: any) {
+        return { success: false, message: e.message };
     }
     
     if (errorCount > 0) {
         return { 
-            success: false, 
-            message: `Import zakończony z błędami. Zaimportowano: ${importedCount}, Błędy: ${errorCount}. Błędy: ${errors.join('; ')}`
+            success: importedCount > 0, 
+            message: `Import zakończony. Zaimportowano: ${importedCount}, Błędy: ${errorCount}.\n\nBłędy:\n- ${errors.join('\n- ')}`
         };
     }
     
