@@ -19,8 +19,6 @@ import { transferEmployees, bulkImportEmployees } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
-import { ScrollArea } from "./ui/scroll-area";
 import { Alert, AlertTitle, AlertDescription } from "./ui/alert";
 
 
@@ -572,9 +570,10 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="addresses" className="w-full" orientation={isMobile ? "vertical" : "horizontal"}>
-          <TabsList className={cn("flex-wrap h-auto sm:h-10",isMobile ? "flex-col items-stretch" : "grid w-full grid-cols-4")}>
+          <TabsList className={cn("flex-wrap h-auto sm:h-10",isMobile ? "flex-col items-stretch" : "grid w-full grid-cols-5")}>
             <TabsTrigger value="addresses">Adresy</TabsTrigger>
             <TabsTrigger value="nationalities">Narodowości</TabsTrigger>
+            <TabsTrigger value="genders">Płeć</TabsTrigger>
             <TabsTrigger value="departments">Zakłady</TabsTrigger>
             <TabsTrigger value="coordinators">Koordynatorzy</TabsTrigger>
           </TabsList>
@@ -584,6 +583,9 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
             </TabsContent>
             <TabsContent value="nationalities" className="mt-0">
                <ListManager title="Narodowości" items={settings.nationalities} onUpdate={(newNationalities) => onUpdateSettings({ nationalities: newNationalities })} />
+            </TabsContent>
+            <TabsContent value="genders" className="mt-0">
+               <ListManager title="Płeć" items={settings.genders} onUpdate={(newGenders) => onUpdateSettings({ genders: newGenders })} />
             </TabsContent>
             <TabsContent value="departments" className="mt-0">
                <ListManager title="Zakłady" items={settings.departments} onUpdate={(newDepartments) => onUpdateSettings({ departments: newDepartments })} />
@@ -602,5 +604,3 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
     </Card>
   );
 }
-
-    

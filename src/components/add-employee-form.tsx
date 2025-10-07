@@ -38,7 +38,7 @@ const employeeSchema = z.object({
   fullName: z.string().min(3, "Imię i nazwisko musi mieć co najmniej 3 znaki."),
   coordinatorId: z.string().min(1, "Koordynator jest wymagany."),
   nationality: z.string().min(1, "Narodowość jest wymagana."),
-  gender: z.enum(["Mężczyzna", "Kobieta"], { required_error: "Płeć jest wymagana." }),
+  gender: z.string().min(1, "Płeć jest wymagana."),
   address: z.string().min(1, "Adres jest wymagany."),
   roomNumber: z.string().min(1, "Numer pokoju jest wymagany."),
   zaklad: z.string().min(1, "Zakład jest wymagany."),
@@ -109,7 +109,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
             fullName: "",
             coordinatorId: "",
             nationality: "",
-            gender: "Mężczyzna",
+            gender: settings.genders[0] || "",
             address: "",
             roomNumber: "",
             zaklad: "",
@@ -124,7 +124,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
         setInitialAddress(undefined);
       }
     }
-  }, [employee, isOpen, form]);
+  }, [employee, isOpen, form, settings.genders]);
 
   const showOldAddress = !!employee?.oldAddress || (employee && watchedAddress !== initialAddress && !!initialAddress);
 
@@ -398,5 +398,3 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
     </Dialog>
   );
 }
-
-    

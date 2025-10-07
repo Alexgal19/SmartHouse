@@ -13,6 +13,7 @@ const SHEET_NAME_ROOMS = 'Rooms';
 const SHEET_NAME_NATIONALITIES = 'Nationalities';
 const SHEET_NAME_DEPARTMENTS = 'Departments';
 const SHEET_NAME_COORDINATORS = 'Coordinators';
+const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_INSPECTIONS = 'Inspections';
 const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 
@@ -138,13 +139,15 @@ export async function getSettings(): Promise<Settings> {
     const coordinatorsSheet = await getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS);
     const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ['id', 'name']);
     const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity']);
+    const gendersSheet = await getSheet(SHEET_NAME_GENDERS, ['name']);
 
-    const [nationalityRows, departmentRows, coordinatorRows, addressRows, roomRows] = await Promise.all([
+    const [nationalityRows, departmentRows, coordinatorRows, addressRows, roomRows, genderRows] = await Promise.all([
         nationalitiesSheet.getRows(),
         departmentsSheet.getRows(),
         coordinatorsSheet.getRows(),
         addressesSheet.getRows(),
-        roomsSheet.getRows()
+        roomsSheet.getRows(),
+        gendersSheet.getRows()
     ]);
     
     const allRooms: (Room & { addressId: string })[] = roomRows.map(row => ({
@@ -163,6 +166,8 @@ export async function getSettings(): Promise<Settings> {
         };
     });
     
+    const genders = genderRows.map(row => row.get('name'));
+
     const settings: Settings = {
       id: 'global-settings',
       addresses: addresses,
@@ -174,7 +179,7 @@ export async function getSettings(): Promise<Settings> {
         isAdmin: row.get('isAdmin') === 'TRUE',
         password: row.get('password') || '',
       })),
-      genders: ['Mężczyzna', 'Kobieta'],
+      genders: genders.length > 0 ? genders : ['Mężczyzna', 'Kobieta'],
     };
 
     return settings;

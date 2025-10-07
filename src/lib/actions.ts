@@ -13,6 +13,7 @@ const SHEET_NAME_ROOMS = 'Rooms';
 const SHEET_NAME_NATIONALITIES = 'Nationalities';
 const SHEET_NAME_DEPARTMENTS = 'Departments';
 const SHEET_NAME_COORDINATORS = 'Coordinators';
+const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_INSPECTIONS = 'Inspections';
 const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 
@@ -294,6 +295,9 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Se
         }
         if (newSettings.departments) {
             await syncSheet(SHEET_NAME_DEPARTMENTS, ['name'], updatedSettings.departments.map((name: string) => ({ name })));
+        }
+        if (newSettings.genders) {
+            await syncSheet(SHEET_NAME_GENDERS, ['name'], updatedSettings.genders.map((name: string) => ({ name })));
         }
         if (newSettings.coordinators) {
              await syncSheet(
@@ -630,7 +634,7 @@ export async function bulkImportEmployees(
                     fullName: String(fullName),
                     coordinatorId: coordinator.uid,
                     nationality: String(nationality),
-                    gender: ['Mężczyzna', 'Kobieta'].includes(gender) ? gender : 'Mężczyzna',
+                    gender: String(gender) as 'Mężczyzna' | 'Kobieta',
                     address: String(address),
                     roomNumber: String(roomNumber),
                     zaklad: String(zaklad),
