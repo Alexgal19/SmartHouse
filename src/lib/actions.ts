@@ -381,11 +381,13 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
     const inspectionId = id || `insp-${Date.now()}`;
     const { categories, ...restOfData } = inspectionData;
     
-    await detailsSheet.getRows().then(rows => {
-        const toDelete = rows.filter(r => r.get('inspectionId') === inspectionId)
-        return Promise.all(toDelete.map(row => row.delete()))
-    });
-
+    // Efficiently delete old details
+    const allDetailRows = await detailsSheet.getRows();
+    const detailsToKeep = allDetailRows.filter(r => r.get('inspectionId') !== inspectionId);
+    await detailsSheet.clearRows();
+    if(detailsToKeep.length > 0) {
+        await detailsSheet.addRows(detailsToKeep.map(r => r.toObject()), { raw: false, valueInputOption: 'USER_ENTERED' });
+    }
 
     const mainInspectionData = serializeInspection({ ...restOfData, id: inspectionId });
     const allInspectionRows = await inspectionsSheet.getRows();
@@ -475,13 +477,18 @@ export async function deleteInspection(id: string): Promise<void> {
         const allInspectionRows = await inspectionsSheet.getRows();
         const allDetailRows = await detailsSheet.getRows();
         
-        const inspectionRowToDelete = allInspectionRows.find(r => r.get('id') === id);
-        if (inspectionRowToDelete) {
-             await inspectionRowToDelete.delete();
+        const inspectionsToKeep = allInspectionRows.filter(r => r.get('id') !== id);
+        const detailsToKeep = allDetailRows.filter(r => r.get('inspectionId') !== id);
+
+        await inspectionsSheet.clearRows();
+        if(inspectionsToKeep.length > 0) {
+             await inspectionsSheet.addRows(inspectionsToKeep.map(r => r.toObject()), { raw: false, valueInputOption: 'USER_ENTERED' });
         }
 
-        const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === id);
-        await Promise.all(detailsToDelete.map(row => row.delete()));
+        await detailsSheet.clearRows();
+        if(detailsToKeep.length > 0) {
+            await detailsSheet.addRows(detailsToKeep.map(r => r.toObject()), { raw: false, valueInputOption: 'USER_ENTERED' });
+        }
 
     } catch (error) {
         console.error("Error in deleteInspection:", error);
@@ -673,15 +680,20 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', actor:
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows();
         
-        const rowsToDelete = rows.filter(row => row.get('status') === status);
+        const rowsToKeep = rows.filter(row => row.get('status') !== status);
+        const numDeleted = rows.length - rowsToKeep.length;
 
-        if (rowsToDelete.length === 0) {
+        if (numDeleted === 0) {
             throw new Error(`Brak ${status === 'active' ? 'aktywnych' : 'zwolnionych'} pracowników do usunięcia.`);
         }
         
-        await Promise.all(rowsToDelete.map(row => row.delete()));
+        await sheet.clearRows();
+        if (rowsToKeep.length > 0) {
+            await sheet.addRows(rowsToKeep.map(r => r.toObject()), { raw: false, valueInputOption: 'USER_ENTERED' });
+        }
 
-        const message = `${actor.name} usunął masowo ${rowsToDelete.length} ${status === 'active' ? 'aktywnych' : 'zwolnionych'} pracowników.`;
+
+        const message = `${actor.name} usunął masowo ${numDeleted} ${status === 'active' ? 'aktywnych' : 'zwolnionych'} pracowników.`;
         
         const notificationSheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
         const newNotification = {
@@ -702,3 +714,5 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', actor:
         throw new Error(`Nie udało się usunąć pracowników. ${error instanceof Error ? error.message : ''}`);
     }
 }
+
+    
