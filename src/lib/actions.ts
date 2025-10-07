@@ -2,7 +2,7 @@
 "use server";
 
 import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection } from '@/types';
-import { getSheet, getEmployees as getEmployeesFromSheet } from '@/lib/sheets';
+import { getSheet, getEmployees as getEmployeesFromSheet, getSettings as getSettingsFromSheet, getNotifications as getNotificationsFromSheet, getInspections as getInspectionsFromSheet } from '@/lib/sheets';
 import { format, isEqual, parseISO, isPast, isValid } from 'date-fns';
 import * as XLSX from 'xlsx';
 
@@ -65,9 +65,7 @@ export async function getEmployees(): Promise<Employee[]> {
 
 export async function getSettings(): Promise<Settings> {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/settings`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('Failed to fetch settings');
-    return res.json();
+    return await getSettingsFromSheet();
   } catch (error) {
     console.error("Error in getSettings:", error);
     throw new Error(`Could not fetch settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -315,9 +313,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Se
 
 export async function getNotifications(): Promise<Notification[]> {
     try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/notifications`, { cache: 'no-store' });
-        if (!res.ok) throw new Error('Failed to fetch notifications');
-        return res.json();
+        return await getNotificationsFromSheet();
     } catch (error) {
         console.error("Error fetching notifications:", error);
         return [];
@@ -363,9 +359,7 @@ const serializeInspection = (inspection: Omit<Inspection, 'categories'>): Record
 
 export async function getInspections(): Promise<Inspection[]> {
     try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/inspections`, { cache: 'no-store' });
-        if (!res.ok) throw new Error('Failed to fetch inspections');
-        return res.json();
+        return await getInspectionsFromSheet();
     } catch (error) {
         console.error("Error fetching inspections:", error);
         return [];
@@ -572,7 +566,7 @@ export async function checkAndUpdateEmployeeStatuses(): Promise<void> {
         }
     } catch (error) {
         console.error("Error checking and updating employee statuses:", error);
-        throw new Error(`Could not check and update employee statuses. ${error instanceof Error ? error.message : ''}`);
+        // Do not re-throw error to prevent app crash
     }
 }
 
@@ -758,3 +752,5 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', actor:
         throw new Error(`Nie udało się usunąć pracowników. ${error instanceof Error ? error.message : ''}`);
     }
 }
+
+    

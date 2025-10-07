@@ -365,7 +365,7 @@ function MainContent() {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
                 <div className="flex animate-fade-in flex-col items-center gap-6">
-                     <h1 className="text-6xl sm:text-8xl font-semibold tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm">
+                     <h1 className="text-5xl sm:text-7xl font-semibold tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm">
                         SmartHouse
                     </h1>
                 </div>
@@ -443,3 +443,5 @@ export default function MainLayout() {
         </SidebarProvider>
     );
 }
+
+    
