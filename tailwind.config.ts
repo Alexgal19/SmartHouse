@@ -137,6 +137,11 @@ export default {
           '0%': { strokeDashoffset: '500' },
           '100%': { strokeDashoffset: '0' },
         },
+        'background-pan': {
+          '0%': { backgroundPosition: '0% 50%' },
+          '50%': { backgroundPosition: '100% 50%' },
+          '100%': { backgroundPosition: '0% 50%' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
@@ -149,6 +154,7 @@ export default {
         "slide-in-from-bottom": "slide-in-from-bottom 0.3s ease-out",
         "slide-out-to-bottom": "slide-out-to-bottom 0.3s ease-out",
         'stroke-draw': 'stroke-draw 1.5s ease-out forwards',
+        'background-pan': 'background-pan 15s ease-in-out infinite',
       },
     },
   },

@@ -335,7 +335,7 @@ function MainContent() {
 
     if (isLoading) {
         return (
-            <div className="flex h-screen w-full items-center justify-center bg-muted/50 p-4">
+            <div className="animated-gradient-background flex h-screen w-full items-center justify-center p-4">
                 <div className="glass-card flex animate-fade-in flex-col items-center gap-6 p-12">
                     <h1 className="animate-pulse text-5xl font-bold text-primary">
                         Witaj w SmartHouse

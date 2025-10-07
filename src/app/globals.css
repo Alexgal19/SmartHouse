@@ -98,4 +98,14 @@ body {
     -webkit-text-stroke: 2px hsl(var(--primary));
 }
 
-
+.animated-gradient-background {
+    background: linear-gradient(
+      -45deg,
+      hsl(var(--background)),
+      hsl(var(--primary) / 0.1),
+      hsl(var(--background)),
+      hsl(var(--primary) / 0.2)
+    );
+    background-size: 400% 400%;
+    animation: background-pan 15s ease-in-out infinite;
+}
