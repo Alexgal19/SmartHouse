@@ -59,6 +59,7 @@ export type InspectionCategory = {
     name: string;
     items: InspectionCategoryItem[];
     uwagi: string;
+    photos?: string[];
 };
 
 export type Inspection = {
@@ -70,12 +71,12 @@ export type Inspection = {
   coordinatorName: string;
   standard: 'Wysoki' | 'Normalny' | 'Niski' | null;
   categories: InspectionCategory[];
-  photos: string[];
 };
 
 export type Photo = {
   id: string;
   inspectionId: string;
+  categoryId: string; // Category name for simplicity
   photoData: string;
 }
 
@@ -89,6 +90,7 @@ export type InspectionDetail = {
     itemLabel: string | null;
     itemValue: string | null;
     uwagi: string | null;
+    photoData?: string | null;
 }
 
 export type EquipmentItem = {
@@ -133,4 +135,3 @@ export type Notification = {
 };
 
 export type View = 'dashboard' | 'employees' | 'settings' | 'inspections';
-

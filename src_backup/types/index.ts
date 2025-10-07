@@ -1,3 +1,4 @@
+
 export type User = {
   uid: string;
   name: string;
@@ -27,7 +28,7 @@ export type Employee = {
 
 export type NonEmployee = {
   id: string;
-  fullName: string;
+  fullName:string;
   address: string;
   roomNumber: string;
   checkInDate: Date;
@@ -35,22 +36,60 @@ export type NonEmployee = {
   relationshipToEmployee: string; // e.g., 'Spouse', 'Child'
 };
 
-export type HousingAddress = {
+export type Room = {
   id: string;
   name: string;
   capacity: number;
 };
 
+export type HousingAddress = {
+  id: string;
+  name: string;
+  rooms: Room[];
+};
+
+export type InspectionCategoryItem = {
+    label: string;
+    type: 'rating' | 'yes_no' | 'text' | 'info' | 'select';
+    value: number | boolean | string | null;
+    options?: string[];
+};
+
+export type InspectionCategory = {
+    name: string;
+    items: InspectionCategoryItem[];
+    uwagi: string;
+};
+
 export type Inspection = {
   id: string;
-  address: string;
+  addressId: string;
+  addressName: string;
   date: Date;
-  inspector: string;
-  cleanlinessScore: number; // 1-5
-  maintenanceScore: number; // 1-5
-  comments: string;
-  photoUrls: string[];
+  coordinatorId: string;
+  coordinatorName: string;
+  standard: 'Wysoki' | 'Normalny' | 'Niski' | null;
+  categories: InspectionCategory[];
+  photos: string[];
 };
+
+export type Photo = {
+  id: string;
+  inspectionId: string;
+  photoData: string;
+}
+
+export type InspectionDetail = {
+    id: string;
+    inspectionId: string;
+    addressName: string;
+    date: string;
+    coordinatorName: string;
+    category: string;
+    itemLabel: string | null;
+    itemValue: string | null;
+    uwagi: string | null;
+}
 
 export type EquipmentItem = {
   id: string;
@@ -94,3 +133,4 @@ export type Notification = {
 };
 
 export type View = 'dashboard' | 'employees' | 'settings' | 'inspections';
+

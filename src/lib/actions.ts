@@ -13,7 +13,6 @@ const SHEET_NAME_NATIONALITIES = 'Nationalities';
 const SHEET_NAME_DEPARTMENTS = 'Departments';
 const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_INSPECTIONS = 'Inspections';
-const SHEET_NAME_INSPECTION_PHOTOS = 'InspectionPhotos';
 const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 
 
@@ -223,7 +222,6 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
         
         const rowToUpdate = rows[rowIndex];
         
-        // Deserialize once to get old data for change detection
         const allEmployees: Employee[] = await getEmployees();
         const currentData = allEmployees.find(e => e.id === employeeId);
         if (!currentData) throw new Error("Employee not found for change detection");
@@ -335,8 +333,7 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
 // --- Inspections Actions ---
 
 const INSPECTION_HEADERS = ['id', 'addressId', 'addressName', 'date', 'coordinatorId', 'coordinatorName', 'standard'];
-const PHOTO_HEADERS = ['id', 'inspectionId', 'photoData'];
-const INSPECTION_DETAILS_HEADERS = ['id', 'inspectionId', 'addressName', 'date', 'coordinatorName', 'category', 'itemLabel', 'itemValue', 'uwagi'];
+const INSPECTION_DETAILS_HEADERS = ['id', 'inspectionId', 'addressName', 'date', 'coordinatorName', 'category', 'itemLabel', 'itemValue', 'uwagi', 'photoData'];
 
 const serializeRaw = (value: any): string => {
     if (value === null || value === undefined) {
@@ -345,7 +342,7 @@ const serializeRaw = (value: any): string => {
     return String(value);
 };
 
-const serializeInspection = (inspection: Omit<Inspection, 'photos' | 'categories'>): Record<string, string | number | boolean> => ({
+const serializeInspection = (inspection: Omit<Inspection, 'categories'>): Record<string, string | number | boolean> => ({
     id: inspection.id,
     addressId: inspection.addressId,
     addressName: inspection.addressName,
@@ -368,31 +365,19 @@ export async function getInspections(): Promise<Inspection[]> {
 
 async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: string) {
     const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, INSPECTION_HEADERS);
-    const photosSheet = await getSheet(SHEET_NAME_INSPECTION_PHOTOS, PHOTO_HEADERS);
     const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, INSPECTION_DETAILS_HEADERS);
 
     const inspectionId = id || `insp-${Date.now()}`;
-    const { photos, categories, ...restOfData } = inspectionData;
+    const { categories, ...restOfData } = inspectionData;
     
     const allDetailRows = await detailsSheet.getRows();
     const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === inspectionId);
     if (detailsToDelete.length > 0) {
-        const indexes = detailsToDelete.map(r => r.rowNumber);
-        // Delete in reverse order to avoid shifting indexes
-        for (let i = indexes.length - 1; i >= 0; i--) {
-            await detailsSheet.deleteRow(indexes[i] - 1);
+        const indexes = detailsToDelete.map(r => r.rowNumber).sort((a, b) => b - a);
+        for (const index of indexes) {
+            await detailsSheet.deleteRow(index - 1);
         }
     }
-    
-    const allPhotoRows = await photosSheet.getRows();
-    const photosToDelete = allPhotoRows.filter(r => r.get('inspectionId') === inspectionId);
-    if (photosToDelete.length > 0) {
-        const indexes = photosToDelete.map(r => r.rowNumber);
-        for (let i = indexes.length - 1; i >= 0; i--) {
-            await photosSheet.deleteRow(indexes[i] - 1);
-        }
-    }
-
 
     const mainInspectionData = serializeInspection({ ...restOfData, id: inspectionId });
     const allInspectionRows = await inspectionsSheet.getRows();
@@ -417,8 +402,7 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
                 date: inspectionData.date.toISOString().split('T')[0],
                 coordinatorName: inspectionData.coordinatorName,
                 category: category.name,
-                itemLabel: '',
-                itemValue: '',
+                itemLabel: '', itemValue: '', photoData: '',
                 uwagi: category.uwagi,
             });
         }
@@ -432,23 +416,28 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
                 category: category.name,
                 itemLabel: item.label,
                 itemValue: serializeRaw(item.value),
-                uwagi: '',
+                uwagi: '', photoData: '',
             });
+        }
+        if (category.photos) {
+            for (const photo of category.photos) {
+                 detailPayload.push({
+                    id: `detail-${Date.now()}-${Math.random()}`,
+                    inspectionId: inspectionId,
+                    addressName: inspectionData.addressName,
+                    date: inspectionData.date.toISOString().split('T')[0],
+                    coordinatorName: inspectionData.coordinatorName,
+                    category: category.name,
+                    itemLabel: 'Photo',
+                    itemValue: '',
+                    uwagi: '',
+                    photoData: photo
+                });
+            }
         }
     }
     if (detailPayload.length > 0) {
         await detailsSheet.addRows(detailPayload, { valueInputOption: 'USER_ENTERED' });
-    }
-    
-    if (photos && photos.length > 0) {
-        const photoPayload = photos.map(photoData => ({
-             id: `photo-${Date.now()}-${Math.random()}`,
-             inspectionId: inspectionId,
-             photoData: photoData,
-        }));
-        if (photoPayload.length > 0) {
-            await photosSheet.addRows(photoPayload, { valueInputOption: 'USER_ENTERED' });
-        }
     }
 }
 
@@ -473,34 +462,22 @@ export async function updateInspection(id: string, inspectionData: Omit<Inspecti
 export async function deleteInspection(id: string): Promise<void> {
     try {
         const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, INSPECTION_HEADERS);
-        const photosSheet = await getSheet(SHEET_NAME_INSPECTION_PHOTOS, PHOTO_HEADERS);
         const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, INSPECTION_DETAILS_HEADERS);
 
-        // Fetch all rows first
         const allInspectionRows = await inspectionsSheet.getRows();
         const allDetailRows = await detailsSheet.getRows();
-        const allPhotoRows = await photosSheet.getRows();
-
-        // Find the inspection row to delete
-        const inspectionRow = allInspectionRows.find(r => r.get('id') === id);
-        if (inspectionRow) {
-             await inspectionRow.delete();
-        }
-
-        // Filter and clear/re-add details
-        const detailsToKeep = allDetailRows.filter(r => r.get('inspectionId') !== id);
-        await detailsSheet.clearRows();
-        if (detailsToKeep.length > 0) {
-            const rawData = detailsToKeep.map(row => row.toObject());
-            await detailsSheet.addRows(rawData, { valueInputOption: 'USER_ENTERED' });
-        }
         
-        // Filter and clear/re-add photos
-        const photosToKeep = allPhotoRows.filter(r => r.get('inspectionId') !== id);
-        await photosSheet.clearRows();
-         if (photosToKeep.length > 0) {
-            const rawData = photosToKeep.map(row => row.toObject());
-            await photosSheet.addRows(rawData, { valueInputOption: 'USER_ENTERED' });
+        const inspectionRowToDelete = allInspectionRows.find(r => r.get('id') === id);
+        if (inspectionRowToDelete) {
+             await inspectionRowToDelete.delete();
+        }
+
+        const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === id);
+        if (detailsToDelete.length > 0) {
+            const indexes = detailsToDelete.map(r => r.rowNumber).sort((a,b) => b - a);
+            for (const index of indexes) {
+                await detailsSheet.deleteRow(index - 1);
+            }
         }
 
     } catch (error) {
@@ -518,5 +495,3 @@ const parseDate = (dateStr: string | undefined | null): Date | null => {
   }
   return null;
 };
-
-    

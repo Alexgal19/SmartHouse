@@ -1,8 +1,9 @@
+
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { Employee, Settings } from '@/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -17,6 +18,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { ScrollArea } from './ui/scroll-area';
+import { Skeleton } from './ui/skeleton';
 
 interface EmployeesViewProps {
   employees: Employee[];
@@ -26,6 +30,37 @@ interface EmployeesViewProps {
   onDismissEmployee: (employeeId: string) => void;
   onRestoreEmployee: (employeeId: string) => void;
 }
+
+const EmployeeActions = ({
+  employee,
+  onEdit,
+  onDismiss,
+  onRestore,
+  isDismissedTab,
+}: {
+  employee: Employee;
+  onEdit: (employee: Employee) => void;
+  onDismiss: (employeeId: string) => void;
+  onRestore: (employeeId: string) => void;
+  isDismissedTab: boolean;
+}) => (
+  <DropdownMenu>
+    <DropdownMenuTrigger asChild>
+      <Button variant="ghost" className="h-8 w-8 p-0">
+        <span className="sr-only">Otwórz menu</span>
+        <MoreHorizontal className="h-4 w-4" />
+      </Button>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent align="end">
+      <DropdownMenuItem onClick={() => onEdit(employee)}>Edytuj</DropdownMenuItem>
+      {isDismissedTab ? (
+        <DropdownMenuItem onClick={() => onRestore(employee.id)}>Przywróć</DropdownMenuItem>
+      ) : (
+        <DropdownMenuItem onClick={() => onDismiss(employee.id)}>Zwolnij</DropdownMenuItem>
+      )}
+    </DropdownMenuContent>
+  </DropdownMenu>
+);
 
 const EmployeeTable = ({
   employees,
@@ -45,67 +80,100 @@ const EmployeeTable = ({
   const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
   
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Imię i nazwisko</TableHead>
-          <TableHead>Płeć</TableHead>
-          <TableHead>Narodowość</TableHead>
-          <TableHead>Koordynator</TableHead>
-          <TableHead>Adres</TableHead>
-          <TableHead>Stara adresa</TableHead>
-          <TableHead>Data zameldowania</TableHead>
-          <TableHead>Data wymeldowania</TableHead>
-          <TableHead>Data zgłoszenia wyjazdu</TableHead>
-          <TableHead>Umowa od</TableHead>
-          <TableHead>Umowa do</TableHead>
-          <TableHead><span className="sr-only">Akcje</span></TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {employees.length > 0 ? (
-          employees.map((employee) => (
-            <TableRow key={employee.id} onClick={() => onEdit(employee)} className="cursor-pointer">
-              <TableCell className="font-medium">{employee.fullName}</TableCell>
-              <TableCell>{employee.gender}</TableCell>
-              <TableCell>{employee.nationality}</TableCell>
-              <TableCell>{getCoordinatorName(employee.coordinatorId)}</TableCell>
-              <TableCell>{employee.address}</TableCell>
-              <TableCell>{employee.oldAddress || 'N/A'}</TableCell>
-              <TableCell>{format(employee.checkInDate, 'dd-MM-yyyy')}</TableCell>
-              <TableCell>{employee.checkOutDate ? format(employee.checkOutDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
-              <TableCell>{employee.departureReportDate ? format(employee.departureReportDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
-              <TableCell>{employee.contractStartDate ? format(employee.contractStartDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
-              <TableCell>{employee.contractEndDate ? format(employee.contractEndDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
-              <TableCell onClick={(e) => e.stopPropagation()}>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0">
-                      <span className="sr-only">Otwórz menu</span>
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => onEdit(employee)}>Edytuj</DropdownMenuItem>
-                    {isDismissedTab ? (
-                      <DropdownMenuItem onClick={() => onRestore(employee.id)}>Przywróć</DropdownMenuItem>
-                    ) : (
-                      <DropdownMenuItem onClick={() => onDismiss(employee.id)}>Zwolnij</DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
+    <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Imię i nazwisko</TableHead>
+              <TableHead>Narodowość</TableHead>
+              <TableHead>Płeć</TableHead>
+              <TableHead>Koordynator</TableHead>
+              <TableHead>Adres</TableHead>
+              <TableHead>Stara adresa</TableHead>
+              <TableHead>Data zameldowania</TableHead>
+              <TableHead>Data wymeldowania</TableHead>
+              <TableHead>Data zgłoszenia wyjazdu</TableHead>
+              <TableHead>Umowa od</TableHead>
+              <TableHead>Umowa do</TableHead>
+              <TableHead><span className="sr-only">Akcje</span></TableHead>
             </TableRow>
-          ))
-        ) : (
-          <TableRow>
-            <TableCell colSpan={12} className="text-center">Brak pracowników do wyświetlenia.</TableCell>
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
+          </TableHeader>
+          <TableBody>
+            {employees.length > 0 ? (
+              employees.map((employee) => (
+                <TableRow key={employee.id} onClick={() => onEdit(employee)} className="cursor-pointer">
+                  <TableCell className="font-medium">{employee.fullName}</TableCell>
+                  <TableCell>{employee.nationality}</TableCell>
+                  <TableCell>{employee.gender}</TableCell>
+                  <TableCell>{getCoordinatorName(employee.coordinatorId)}</TableCell>
+                  <TableCell>{employee.address}</TableCell>
+                  <TableCell>{employee.oldAddress || 'N/A'}</TableCell>
+                  <TableCell>{format(employee.checkInDate, 'dd-MM-yyyy')}</TableCell>
+                  <TableCell>{employee.checkOutDate ? format(employee.checkOutDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
+                  <TableCell>{employee.departureReportDate ? format(employee.departureReportDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
+                  <TableCell>{employee.contractStartDate ? format(employee.contractStartDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
+                  <TableCell>{employee.contractEndDate ? format(employee.contractEndDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <EmployeeActions {...{ employee, onEdit, onDismiss, onRestore, isDismissedTab }} />
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={12} className="text-center">Brak pracowników do wyświetlenia.</TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+    </div>
   );
 };
+
+
+const EmployeeCardList = ({
+    employees,
+    settings,
+    onEdit,
+    onDismiss,
+    onRestore,
+    isDismissedTab,
+  }: {
+    employees: Employee[];
+    settings: Settings;
+    onEdit: (employee: Employee) => void;
+    onDismiss: (employeeId: string) => void;
+    onRestore: (employeeId: string) => void;
+    isDismissedTab: boolean;
+  }) => {
+    const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
+    
+    return (
+        <div className="space-y-3">
+             {employees.length > 0 ? (
+                employees.map((employee) => (
+                    <Card key={employee.id} onClick={() => onEdit(employee)} className="cursor-pointer">
+                        <CardHeader className="flex flex-row items-start justify-between pb-2">
+                           <div>
+                             <CardTitle className="text-base">{employee.fullName}</CardTitle>
+                             <CardDescription className="text-xs">{getCoordinatorName(employee.coordinatorId)}</CardDescription>
+                           </div>
+                           <div onClick={(e) => e.stopPropagation()}>
+                                <EmployeeActions {...{ employee, onEdit, onDismiss, onRestore, isDismissedTab }} />
+                           </div>
+                        </CardHeader>
+                        <CardContent className="text-sm space-y-1">
+                            <p><span className="font-semibold text-muted-foreground">Adres:</span> {employee.address}</p>
+                            <p><span className="font-semibold text-muted-foreground">Narodowość:</span> {employee.nationality}</p>
+                            <p><span className="font-semibold text-muted-foreground">Umowa do:</span> {employee.contractEndDate ? format(employee.contractEndDate, 'dd-MM-yyyy') : 'N/A'}</p>
+                        </CardContent>
+                    </Card>
+                ))
+             ) : (
+                <div className="text-center text-muted-foreground py-8">Brak pracowników do wyświetlenia.</div>
+             )}
+        </div>
+    )
+}
 
 
 export default function EmployeesView({
@@ -121,6 +189,7 @@ export default function EmployeesView({
   const [addressFilter, setAddressFilter] = useState('all');
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [nationalityFilter, setNationalityFilter] = useState('all');
+  const {isMobile, isMounted} = useIsMobile();
 
   const filteredEmployees = useMemo(() => {
     return employees.filter(employee => {
@@ -146,6 +215,25 @@ export default function EmployeesView({
   };
 
   const hasActiveFilters = searchTerm !== '' || coordinatorFilter !== 'all' || addressFilter !== 'all' || departmentFilter !== 'all' || nationalityFilter !== 'all';
+  
+  const EmployeeListComponent = isMobile ? EmployeeCardList : EmployeeTable;
+
+  const renderContent = (list: Employee[], isDismissed: boolean) => {
+    if (!isMounted) {
+      return <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>;
+    }
+    return (
+      <EmployeeListComponent
+        employees={list}
+        settings={settings}
+        onEdit={onEditEmployee}
+        onDismiss={onDismissEmployee}
+        onRestore={onRestoreEmployee}
+        isDismissedTab={isDismissed}
+      />
+    );
+  };
+
 
   return (
     <Card>
@@ -153,29 +241,32 @@ export default function EmployeesView({
         <div className="flex items-center justify-between gap-4">
             <CardTitle>Zarządzanie pracownikami</CardTitle>
             <div className="flex items-center gap-2">
-                <Button onClick={onAddEmployee}><PlusCircle className="mr-2 h-4 w-4" /> Dodaj</Button>
+                <Button onClick={onAddEmployee} size={isMobile ? "icon" : "default"}>
+                  <PlusCircle className={isMobile ? "h-4 w-4" : "mr-2 h-4 w-4"} />
+                  <span className="hidden sm:inline">Dodaj</span>
+                </Button>
             </div>
         </div>
         <div className="mt-4">
             <Collapsible>
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 sm:gap-4">
                          <Input
-                            placeholder="Szukaj po imieniu i nazwisku..."
+                            placeholder="Szukaj..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full md:w-64"
+                            className="w-full max-w-xs"
                         />
                         <CollapsibleTrigger asChild>
-                             <Button variant="outline" className="gap-2">
+                             <Button variant="outline" size="sm" className="gap-2">
                                 <SlidersHorizontal className="h-4 w-4"/>
-                                Filtry
+                                <span className="hidden sm:inline">Filtry</span>
                             </Button>
                         </CollapsibleTrigger>
                         {hasActiveFilters && (
-                             <Button variant="ghost" onClick={resetFilters} className="text-muted-foreground gap-2">
+                             <Button variant="ghost" size="sm" onClick={resetFilters} className="text-muted-foreground gap-2">
                                 <X className="h-4 w-4" />
-                                Wyczyść filtry
+                                <span className="hidden sm:inline">Wyczyść</span>
                             </Button>
                         )}
                     </div>
@@ -227,31 +318,19 @@ export default function EmployeesView({
             <TabsTrigger value="dismissed">Zwolnieni ({dismissedEmployees.length})</TabsTrigger>
           </TabsList>
           <TabsContent value="active">
-            <div className="overflow-x-auto">
-                <EmployeeTable
-                employees={activeEmployees}
-                settings={settings}
-                onEdit={onEditEmployee}
-                onDismiss={onDismissEmployee}
-                onRestore={onRestoreEmployee}
-                isDismissedTab={false}
-                />
-            </div>
+             <ScrollArea className="h-[50vh]">
+                {renderContent(activeEmployees, false)}
+             </ScrollArea>
           </TabsContent>
           <TabsContent value="dismissed">
-            <div className="overflow-x-auto">
-                <EmployeeTable
-                employees={dismissedEmployees}
-                settings={settings}
-                onEdit={onEditEmployee}
-                onDismiss={onDismissEmployee}
-                onRestore={onRestoreEmployee}
-                isDismissedTab={true}
-                />
-            </div>
+            <ScrollArea className="h-[50vh]">
+                {renderContent(dismissedEmployees, true)}
+            </ScrollArea>
           </TabsContent>
         </Tabs>
       </CardContent>
     </Card>
   );
 }
+
+    

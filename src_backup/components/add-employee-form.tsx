@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -162,7 +163,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                  <FormField
                     control={form.control}
                     name="nationality"
@@ -271,7 +272,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                 )}
             </div>
 
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                     control={form.control}
                     name="roomNumber"
@@ -310,7 +311,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                     )}
                 />
             </div>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                   control={form.control}
                   name="contractStartDate"
@@ -334,7 +335,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                     )}
                 />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                     control={form.control}
                     name="checkInDate"
@@ -397,3 +398,5 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
     </Dialog>
   );
 }
+
+    
