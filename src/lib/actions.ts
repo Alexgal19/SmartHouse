@@ -381,11 +381,10 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
     const inspectionId = id || `insp-${Date.now()}`;
     const { categories, ...restOfData } = inspectionData;
     
-    const allDetailRows = await detailsSheet.getRows();
-    const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === inspectionId);
-    
-    const deletePromises = detailsToDelete.map(row => row.delete());
-    await Promise.all(deletePromises);
+    await detailsSheet.getRows().then(rows => {
+        const toDelete = rows.filter(r => r.get('inspectionId') === inspectionId)
+        return Promise.all(toDelete.map(row => row.delete()))
+    });
 
 
     const mainInspectionData = serializeInspection({ ...restOfData, id: inspectionId });
@@ -482,8 +481,7 @@ export async function deleteInspection(id: string): Promise<void> {
         }
 
         const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === id);
-        const deletePromises = detailsToDelete.map(row => row.delete());
-        await Promise.all(deletePromises);
+        await Promise.all(detailsToDelete.map(row => row.delete()));
 
     } catch (error) {
         console.error("Error in deleteInspection:", error);
@@ -633,7 +631,7 @@ export async function bulkImportEmployees(
                     fullName: String(fullName),
                     coordinatorId: coordinator.uid,
                     nationality: String(nationality),
-                    gender: String(gender) as 'Mężczyzna' | 'Kobieta',
+                    gender: String(gender),
                     address: String(address),
                     roomNumber: String(roomNumber),
                     zaklad: String(zaklad),
@@ -680,12 +678,9 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', actor:
         if (rowsToDelete.length === 0) {
             throw new Error(`Brak ${status === 'active' ? 'aktywnych' : 'zwolnionych'} pracowników do usunięcia.`);
         }
-
-        // Iterate backwards to avoid index shifting issues when deleting
-        for (let i = rowsToDelete.length - 1; i >= 0; i--) {
-            await rowsToDelete[i].delete();
-        }
         
+        await Promise.all(rowsToDelete.map(row => row.delete()));
+
         const message = `${actor.name} usunął masowo ${rowsToDelete.length} ${status === 'active' ? 'aktywnych' : 'zwolnionych'} pracowników.`;
         
         const notificationSheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
