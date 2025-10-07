@@ -2,7 +2,7 @@
 "use server";
 
 import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection } from '@/types';
-import { getSheet } from '@/lib/sheets';
+import { getSheet, getEmployees as getEmployeesFromSheet } from '@/lib/sheets';
 import { format, isEqual, parseISO, isPast } from 'date-fns';
 import * as XLSX from 'xlsx';
 
@@ -57,9 +57,8 @@ const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
 
 export async function getEmployees(): Promise<Employee[]> {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/employees`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('Failed to fetch employees');
-    return res.json();
+    const employees = await getEmployeesFromSheet();
+    return employees;
   } catch (error) {
     console.error("Error in getEmployees:", error);
     throw new Error(`Could not fetch employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -670,3 +669,4 @@ export async function bulkImportEmployees(
     
     return { success: true, message: `Pomyślnie zaimportowano ${importedCount} pracowników.` };
 }
+
