@@ -36,3 +36,5 @@ export function MobileNav({ activeView, setActiveView, navItems }: MobileNavProp
     </div>
   );
 }
+
+    

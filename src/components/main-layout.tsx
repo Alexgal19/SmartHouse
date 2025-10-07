@@ -21,7 +21,7 @@ import SettingsView from './settings-view';
 import InspectionsView from './inspections-view';
 import { AddEmployeeForm } from './add-employee-form';
 import { LoginView } from './login-view';
-import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead, getInspections, addInspection, updateInspection, deleteInspection, checkAndUpdateEmployeeStatuses, transferEmployees, bulkDeleteEmployees } from '@/lib/actions';
+import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead, getInspections, addInspection, updateInspection, deleteInspection, checkAndUpdateEmployeeStatuses, transferEmployees, bulkDeleteEmployees, bulkImportEmployees } from '@/lib/actions';
 import type { Employee, Settings, User, View, Notification, Coordinator, Inspection } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Building, ClipboardList, Home, Settings as SettingsIcon, Users } from 'lucide-react';
@@ -318,6 +318,16 @@ function MainContent() {
             toast({variant: "destructive", title: "Błąd", description: e.message || "Nie udało się odświeżyć statusów."});
         }
     };
+    
+    const handleBulkImport = async (fileData: ArrayBuffer) => {
+      try {
+          const result = await bulkImportEmployees(fileData, settings?.coordinators || [], currentUser as Coordinator);
+          fetchData();
+          return result;
+      } catch (e: any) {
+          return { success: false, message: e.message || "Wystąpił nieznany błąd." };
+      }
+  };
 
     const renderView = () => {
         if (!currentUser || !settings) {
@@ -333,7 +343,7 @@ function MainContent() {
                 if (!currentUser.isAdmin) {
                     return <div className="p-4 text-center text-red-500">Brak uprawnień do przeglądania tej strony.</div>;
                 }
-                return <SettingsView settings={settings} onUpdateSettings={handleUpdateSettings} allEmployees={allEmployees} currentUser={currentUser} onDataRefresh={fetchData} onManualStatusRefresh={handleManualStatusRefresh} />;
+                return <SettingsView settings={settings} onUpdateSettings={handleUpdateSettings} allEmployees={allEmployees} currentUser={currentUser} onDataRefresh={fetchData} onManualStatusRefresh={handleManualStatusRefresh} onBulkImport={handleBulkImport}/>;
             case 'inspections':
                  return <InspectionsView 
                     inspections={filteredInspections} 
@@ -437,3 +447,5 @@ export default function MainLayout() {
         </SidebarProvider>
     );
 }
+
+    

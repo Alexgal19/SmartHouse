@@ -590,7 +590,3 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
 }
 
     
-
-    
-
-      

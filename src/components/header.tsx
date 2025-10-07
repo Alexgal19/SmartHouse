@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { User, View, Notification, Coordinator } from "@/types";
@@ -107,3 +108,5 @@ export default function Header({ user, activeView, notifications, onNotification
     </header>
   );
 }
+
+    

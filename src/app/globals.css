@@ -91,5 +91,7 @@ body {
 }
 
 .glass-card {
-    @apply bg-card/10 backdrop-blur-xl border border-white/10 rounded-3xl shadow-lg shadow-orange-400/5;
+    @apply bg-card/60 backdrop-blur-xl border rounded-3xl shadow-lg shadow-orange-400/10;
 }
+
+    
