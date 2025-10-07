@@ -3,7 +3,7 @@
 
 import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection } from '@/types';
 import { getSheet, getEmployees as getEmployeesFromSheet } from '@/lib/sheets';
-import { format, isEqual, parseISO, isPast } from 'date-fns';
+import { format, isEqual, parseISO, isPast, isValid } from 'date-fns';
 import * as XLSX from 'xlsx';
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
@@ -578,6 +578,23 @@ export async function checkAndUpdateEmployeeStatuses(): Promise<void> {
     }
 }
 
+const parseExcelDate = (excelDate: any): Date | null => {
+    if (excelDate instanceof Date && isValid(excelDate)) {
+        return excelDate;
+    }
+    if (typeof excelDate === 'number') {
+        // Excel stores dates as number of days since 1900-01-01.
+        // The '25569' is the number of days between 1970-01-01 and 1900-01-01 (with a bug fix for leap year).
+        const date = new Date((excelDate - 25569) * 86400 * 1000);
+        if(isValid(date)) return date;
+    }
+    if (typeof excelDate === 'string') {
+        const date = new Date(excelDate);
+        if (isValid(date)) return date;
+    }
+    return null;
+}
+
 
 export async function bulkImportEmployees(
     fileData: ArrayBuffer,
@@ -593,7 +610,7 @@ export async function bulkImportEmployees(
         const workbook = XLSX.read(fileData, { type: 'array', cellDates: true });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const data = XLSX.utils.sheet_to_json<any>(worksheet, { header: 1 });
+        const data = XLSX.utils.sheet_to_json<any>(worksheet, { header: 1, defval: null });
         
         if (data.length < 2) {
           return { success: false, message: "Plik Excel jest pusty lub zawiera tylko nagłówek."};
@@ -617,8 +634,7 @@ export async function bulkImportEmployees(
             });
 
             try {
-                // --- VALIDATION ---
-                const { fullName, coordinatorName, nationality, gender, address, roomNumber, zaklad, checkInDate } = row;
+                const { fullName, coordinatorName, nationality, gender, address, roomNumber, zaklad } = row;
 
                 if (!fullName) continue; // Ignore empty rows
 
@@ -628,14 +644,17 @@ export async function bulkImportEmployees(
                 if (!address) throw new Error(`Brak 'address' w wierszu ${rowNum}.`);
                 if (!roomNumber) throw new Error(`Brak 'roomNumber' w wierszu ${rowNum}.`);
                 if (!zaklad) throw new Error(`Brak 'zaklad' w wierszu ${rowNum}.`);
-                if (!checkInDate) throw new Error(`Brak 'checkInDate' w wierszu ${rowNum}.`);
+                
+                const checkInDate = parseExcelDate(row.checkInDate);
+                if (!checkInDate) {
+                    throw new Error(`Nieprawidłowa lub pusta 'checkInDate' w wierszu ${rowNum}.`);
+                }
 
                 const coordinator = coordinators.find(c => c.name.toLowerCase() === String(coordinatorName).toLowerCase());
                 if (!coordinator) {
                     throw new Error(`Koordynator "${coordinatorName}" nie został znaleziony w wierszu ${rowNum}.`);
                 }
 
-                // --- DATA MAPPING & ADD TO BATCH ---
                 const employeeData = {
                     fullName: String(fullName),
                     coordinatorId: coordinator.uid,
@@ -644,16 +663,12 @@ export async function bulkImportEmployees(
                     address: String(address),
                     roomNumber: String(roomNumber),
                     zaklad: String(zaklad),
-                    checkInDate: checkInDate instanceof Date ? checkInDate : new Date(checkInDate),
-                    contractStartDate: row.contractStartDate ? (row.contractStartDate instanceof Date ? row.contractStartDate : new Date(row.contractStartDate)) : null,
-                    contractEndDate: row.contractEndDate ? (row.contractEndDate instanceof Date ? row.contractEndDate : new Date(row.contractEndDate)) : null,
-                    departureReportDate: row.departureReportDate ? (row.departureReportDate instanceof Date ? row.departureReportDate : new Date(row.departureReportDate)) : null,
+                    checkInDate: checkInDate,
+                    contractStartDate: parseExcelDate(row.contractStartDate),
+                    contractEndDate: parseExcelDate(row.contractEndDate),
+                    departureReportDate: parseExcelDate(row.departureReportDate),
                     comments: row.comments || '',
                 };
-                
-                if (isNaN(employeeData.checkInDate.getTime())) {
-                    throw new Error(`Nieprawidłowa data 'checkInDate' w wierszu ${rowNum}.`);
-                }
                 
                 newEmployees.push(employeeData);
 
@@ -745,5 +760,3 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', actor:
         throw new Error(`Nie udało się usunąć pracowników. ${error instanceof Error ? error.message : ''}`);
     }
 }
-
-    

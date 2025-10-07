@@ -61,8 +61,8 @@ const deserializeEmployee = (row: any): Employee | null => {
 
     const checkInDate = parseDate(row.get('checkInDate'));
     if (!checkInDate) {
-        console.warn(`Invalid or missing checkInDate for employee row, skipping: ${id || fullName}`);
-        return null;
+        console.warn(`Invalid or missing checkInDate for employee row, but loading anyway: ${id || fullName}`);
+        // Return a dummy date or null, but still process the employee
     }
 
     return {
@@ -74,7 +74,7 @@ const deserializeEmployee = (row: any): Employee | null => {
         address: row.get('address'),
         roomNumber: row.get('roomNumber'),
         zaklad: row.get('zaklad'),
-        checkInDate: checkInDate,
+        checkInDate: checkInDate || new Date(0), // Use a placeholder date if invalid
         checkOutDate: parseDate(row.get('checkOutDate')),
         contractStartDate: parseDate(row.get('contractStartDate')),
         contractEndDate: parseDate(row.get('contractEndDate')),
