@@ -320,13 +320,10 @@ function MainContent() {
     
     const visibleNavItems = useMemo(() => {
         if (currentUser?.isAdmin) {
-            if (selectedCoordinatorId !== 'all') {
-                 return navItems.filter(item => item.view !== 'settings');
-            }
             return navItems;
         }
         return navItems.filter(item => item.view !== 'settings');
-    }, [currentUser, selectedCoordinatorId]);
+    }, [currentUser]);
 
     if (isLoading) {
         return (
@@ -409,5 +406,3 @@ export default function MainLayout() {
         </SidebarProvider>
     );
 }
-
-    
