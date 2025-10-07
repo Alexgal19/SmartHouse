@@ -50,10 +50,11 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
     return serialized;
 };
 
-const deserializeEmployee = (row: any): Employee => {
+const deserializeEmployee = (row: any): Employee | null => {
     const checkInDate = parseDate(row.get('checkInDate'));
     if (!checkInDate) {
-        throw new Error(`Invalid or missing checkInDate for employee row: ${row.get('id')}`);
+        console.warn(`Invalid or missing checkInDate for employee row, skipping: ${row.get('id')}`);
+        return null;
     }
 
     return {
@@ -125,7 +126,7 @@ export async function getEmployees(): Promise<Employee[]> {
   try {
     const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
     const rows = await sheet.getRows();
-    return rows.map(deserializeEmployee);
+    return rows.map(deserializeEmployee).filter((e): e is Employee => e !== null);
   } catch (error) {
     console.error("Error in getEmployees:", error);
     throw new Error(`Could not fetch employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
