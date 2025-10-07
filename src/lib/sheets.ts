@@ -1,4 +1,5 @@
 
+"use server";
 // src/lib/sheets.ts
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
@@ -70,7 +71,7 @@ const deserializeEmployee = (row: any): Employee | null => {
         fullName: fullName,
         coordinatorId: row.get('coordinatorId'),
         nationality: row.get('nationality'),
-        gender: row.get('gender') as 'Mężczyzna' | 'Kobieta',
+        gender: row.get('gender') as string,
         address: row.get('address'),
         roomNumber: row.get('roomNumber'),
         zaklad: row.get('zaklad'),
@@ -136,7 +137,7 @@ export async function getEmployees(): Promise<Employee[]> {
     const rows = await sheet.getRows();
     return rows.map(deserializeEmployee).filter((e): e is Employee => e !== null);
   } catch (error) {
-    console.error("Error in getEmployees:", error);
+    console.error("Error in getEmployees from sheets.ts:", error);
     throw new Error(`Could not fetch employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }

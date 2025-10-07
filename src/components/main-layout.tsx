@@ -308,6 +308,17 @@ function MainContent() {
         }
     }
 
+    const handleManualStatusRefresh = async () => {
+        toast({title: "Proszę czekać", description: "Trwa odświeżanie statusów pracowników..."});
+        try {
+            await checkAndUpdateEmployeeStatuses();
+            await fetchData();
+            toast({title: "Sukces", description: "Statusy pracowników zostały pomyślnie zaktualizowane."});
+        } catch(e: any) {
+            toast({variant: "destructive", title: "Błąd", description: e.message || "Nie udało się odświeżyć statusów."});
+        }
+    };
+
     const renderView = () => {
         if (!currentUser || !settings) {
             return null; // Should be covered by the top-level isLoading/LoginView checks
@@ -322,7 +333,7 @@ function MainContent() {
                 if (!currentUser.isAdmin) {
                     return <div className="p-4 text-center text-red-500">Brak uprawnień do przeglądania tej strony.</div>;
                 }
-                return <SettingsView settings={settings} onUpdateSettings={handleUpdateSettings} allEmployees={allEmployees} currentUser={currentUser} onDataRefresh={fetchData} />;
+                return <SettingsView settings={settings} onUpdateSettings={handleUpdateSettings} allEmployees={allEmployees} currentUser={currentUser} onDataRefresh={fetchData} onManualStatusRefresh={handleManualStatusRefresh} />;
             case 'inspections':
                  return <InspectionsView 
                     inspections={filteredInspections} 

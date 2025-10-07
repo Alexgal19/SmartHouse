@@ -54,13 +54,11 @@ const EMPLOYEE_HEADERS = [
 
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
 
-
 export async function getEmployees(): Promise<Employee[]> {
   try {
-    const employees = await getEmployeesFromSheet();
-    return employees;
+    return await getEmployeesFromSheet();
   } catch (error) {
-    console.error("Error in getEmployees:", error);
+    console.error("Error in getEmployees (actions):", error);
     throw new Error(`Could not fetch employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
@@ -226,7 +224,7 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
         
         const rowToUpdate = rows[rowIndex];
         
-        const allEmployees: Employee[] = await getEmployees();
+        const allEmployees: Employee[] = await getEmployeesFromSheet();
         const currentData = allEmployees.find(e => e.id === employeeId);
         if (!currentData) throw new Error("Employee not found for change detection");
 
@@ -551,7 +549,7 @@ const parseDate = (dateStr: string | undefined | null): Date | null => {
 
 export async function checkAndUpdateEmployeeStatuses(): Promise<void> {
     try {
-        const allEmployees = await getEmployees();
+        const allEmployees = await getEmployeesFromSheet();
         const activeEmployees = allEmployees.filter(e => e.status === 'active');
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows();

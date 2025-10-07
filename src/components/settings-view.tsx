@@ -15,7 +15,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Input } from "./ui/input";
 import { Switch } from "./ui/switch";
-import { transferEmployees, bulkImportEmployees, checkAndUpdateEmployeeStatuses } from "@/lib/actions";
+import { transferEmployees, bulkImportEmployees } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
@@ -28,6 +28,7 @@ interface SettingsViewProps {
   allEmployees: Employee[];
   currentUser: Coordinator;
   onDataRefresh: () => void;
+  onManualStatusRefresh: () => void;
 }
 
 const EmployeeImportDialog = ({ isOpen, onOpenChange, onImport }: { isOpen: boolean, onOpenChange: (isOpen: boolean) => void, onImport: (fileData: ArrayBuffer) => Promise<{success: boolean, message: string}> }) => {
@@ -543,7 +544,7 @@ const CoordinatorManager = ({ items, onUpdate, allEmployees, currentUser, onData
 };
 
 
-export default function SettingsView({ settings, onUpdateSettings, allEmployees, currentUser, onDataRefresh }: SettingsViewProps) {
+export default function SettingsView({ settings, onUpdateSettings, allEmployees, currentUser, onDataRefresh, onManualStatusRefresh }: SettingsViewProps) {
   const { isMobile } = useIsMobile();
   const [isImportOpen, setIsImportOpen] = useState(false);
   const { toast } = useToast();
@@ -557,17 +558,6 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
           return { success: false, message: e.message || "Wystąpił nieznany błąd." };
       }
   };
-
-  const handleManualRefresh = async () => {
-    toast({title: "Proszę czekać", description: "Trwa odświeżanie statusów pracowników..."});
-    try {
-        await checkAndUpdateEmployeeStatuses();
-        await onDataRefresh();
-        toast({title: "Sukces", description: "Statusy pracowników zostały pomyślnie zaktualizowane."});
-    } catch(e: any) {
-        toast({variant: "destructive", title: "Błąd", description: e.message || "Nie udało się odświeżyć statusów."});
-    }
-  }
   
   return (
     <Card>
@@ -575,7 +565,7 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <CardTitle>Ustawienia Aplikacji</CardTitle>
             <div className="flex gap-2">
-                <Button onClick={handleManualRefresh} variant="outline">
+                <Button onClick={onManualStatusRefresh} variant="outline">
                     <RefreshCw className="mr-2 h-4 w-4" />
                     Odśwież statusy
                 </Button>
