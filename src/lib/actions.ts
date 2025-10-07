@@ -372,11 +372,10 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
     
     const allDetailRows = await detailsSheet.getRows();
     const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === inspectionId);
-    if (detailsToDelete.length > 0) {
-        const indexes = detailsToDelete.map(r => r.rowNumber).sort((a, b) => b - a);
-        for (const index of indexes) {
-            await detailsSheet.deleteRow(index - 1);
-        }
+    
+    // Delete rows in reverse to avoid index shifting issues
+    for (let i = detailsToDelete.length - 1; i >= 0; i--) {
+        await detailsToDelete[i].delete();
     }
 
     const mainInspectionData = serializeInspection({ ...restOfData, id: inspectionId });
@@ -473,11 +472,9 @@ export async function deleteInspection(id: string): Promise<void> {
         }
 
         const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === id);
-        if (detailsToDelete.length > 0) {
-            const indexes = detailsToDelete.map(r => r.rowNumber).sort((a,b) => b - a);
-            for (const index of indexes) {
-                await detailsSheet.deleteRow(index - 1);
-            }
+        // Delete rows in reverse to avoid index shifting issues
+        for (let i = detailsToDelete.length - 1; i >= 0; i--) {
+            await detailsToDelete[i].delete();
         }
 
     } catch (error) {
