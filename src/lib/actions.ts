@@ -376,15 +376,23 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
     
     const allDetailRows = await detailsSheet.getRows();
     const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === inspectionId);
-    for (const row of detailsToDelete) {
-        await row.delete();
+    if (detailsToDelete.length > 0) {
+        const indexes = detailsToDelete.map(r => r.rowNumber);
+        // Delete in reverse order to avoid shifting indexes
+        for (let i = indexes.length - 1; i >= 0; i--) {
+            await detailsSheet.deleteRow(indexes[i] - 1);
+        }
     }
     
     const allPhotoRows = await photosSheet.getRows();
     const photosToDelete = allPhotoRows.filter(r => r.get('inspectionId') === inspectionId);
-     for (const row of photosToDelete) {
-        await row.delete();
+    if (photosToDelete.length > 0) {
+        const indexes = photosToDelete.map(r => r.rowNumber);
+        for (let i = indexes.length - 1; i >= 0; i--) {
+            await photosSheet.deleteRow(indexes[i] - 1);
+        }
     }
+
 
     const mainInspectionData = serializeInspection({ ...restOfData, id: inspectionId });
     const allInspectionRows = await inspectionsSheet.getRows();
@@ -468,22 +476,31 @@ export async function deleteInspection(id: string): Promise<void> {
         const photosSheet = await getSheet(SHEET_NAME_INSPECTION_PHOTOS, PHOTO_HEADERS);
         const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, INSPECTION_DETAILS_HEADERS);
 
+        // Fetch all rows first
         const allInspectionRows = await inspectionsSheet.getRows();
+        const allDetailRows = await detailsSheet.getRows();
+        const allPhotoRows = await photosSheet.getRows();
+
+        // Find the inspection row to delete
         const inspectionRow = allInspectionRows.find(r => r.get('id') === id);
         if (inspectionRow) {
-            await inspectionRow.delete();
+             await inspectionRow.delete();
         }
 
-        const allDetailRows = await detailsSheet.getRows();
-        const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === id);
-        for(const row of detailsToDelete) {
-            await row.delete();
+        // Filter and clear/re-add details
+        const detailsToKeep = allDetailRows.filter(r => r.get('inspectionId') !== id);
+        await detailsSheet.clearRows();
+        if (detailsToKeep.length > 0) {
+            const rawData = detailsToKeep.map(row => row.toObject());
+            await detailsSheet.addRows(rawData, { valueInputOption: 'USER_ENTERED' });
         }
-
-        const allPhotoRows = await photosSheet.getRows();
-        const photosToDelete = allPhotoRows.filter(r => r.get('inspectionId') === id);
-        for(const row of photosToDelete) {
-            await row.delete();
+        
+        // Filter and clear/re-add photos
+        const photosToKeep = allPhotoRows.filter(r => r.get('inspectionId') !== id);
+        await photosSheet.clearRows();
+         if (photosToKeep.length > 0) {
+            const rawData = photosToKeep.map(row => row.toObject());
+            await photosSheet.addRows(rawData, { valueInputOption: 'USER_ENTERED' });
         }
 
     } catch (error) {
@@ -501,3 +518,5 @@ const parseDate = (dateStr: string | undefined | null): Date | null => {
   }
   return null;
 };
+
+    
