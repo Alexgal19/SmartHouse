@@ -483,6 +483,7 @@ export async function deleteInspection(id: string): Promise<void> {
     }
 }
 
+
 const parseDate = (dateStr: string | undefined | null): Date | null => {
   if (!dateStr) return null;
   const date = new Date(dateStr);
