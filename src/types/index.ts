@@ -2,9 +2,9 @@
 export type User = {
   uid: string;
   name: string;
-  email: string;
-  avatarUrl: string;
-  isAdmin: boolean;
+  email?: string;
+  avatarUrl?: string;
+  isAdmin?: boolean;
 };
 
 export type Employee = {

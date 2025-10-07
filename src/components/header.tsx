@@ -1,6 +1,6 @@
 "use client";
 
-import type { User, View, Notification, Employee } from "@/types";
+import type { User, View, Notification, Employee, Coordinator } from "@/types";
 import {
   Popover,
   PopoverContent,
@@ -17,7 +17,7 @@ import { ScrollArea } from "./ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 interface HeaderProps {
-  user: User;
+  user: User | Coordinator;
   activeView: View;
   notifications: Notification[];
   onNotificationClick: (notification: Notification) => void;

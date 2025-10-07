@@ -20,21 +20,12 @@ import EmployeesView from './employees-view';
 import SettingsView from './settings-view';
 import InspectionsView from './inspections-view';
 import { AddEmployeeForm } from './add-employee-form';
+import { LoginView } from './login-view';
 import { Skeleton } from './ui/skeleton';
 import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead, getInspections, addInspection, updateInspection, deleteInspection } from '@/lib/actions';
 import type { Employee, Settings, User, View, Notification, Coordinator, Inspection } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Building, ClipboardList, Home, Settings as SettingsIcon, Users } from 'lucide-react';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { Button } from './ui/button';
-
-const mockUser: User & Coordinator = {
-    uid: 'admin-user-01',
-    name: 'Admin User',
-    email: 'admin@example.com',
-    avatarUrl: PlaceHolderImages.find(img => img.id === 'user1')?.imageUrl || '',
-    isAdmin: true,
-};
 
 const navItems: { view: View; icon: React.ElementType; label: string }[] = [
     { view: 'dashboard', icon: Home, label: 'Pulpit' },
@@ -52,6 +43,7 @@ function MainContent() {
     const [isLoading, setIsLoading] = useState(true);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+    const [currentUser, setCurrentUser] = useState<Coordinator | null>(null);
     
     const { toast } = useToast();
     const { isMobile } = useSidebar();
@@ -92,15 +84,20 @@ function MainContent() {
     
     useEffect(() => {
         fetchData(true);
-    }, []);
+    }, [fetchData]);
+
+    const handleLogin = (coordinator: Coordinator) => {
+        setCurrentUser(coordinator);
+    };
 
     const handleSaveEmployee = async (data: Omit<Employee, 'id' | 'status'> & { oldAddress?: string | null }) => {
+        if (!currentUser) return;
         try {
             if (editingEmployee) {
-                await updateEmployee(editingEmployee.id, data, mockUser);
+                await updateEmployee(editingEmployee.id, data, currentUser);
                 toast({ title: "Sukces", description: "Dane pracownika zostały zaktualizowane." });
             } else {
-                await addEmployee(data, mockUser);
+                await addEmployee(data, currentUser);
                 toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
             }
             fetchData();
@@ -173,8 +170,9 @@ function MainContent() {
     };
 
     const handleDismissEmployee = async (employeeId: string) => {
+        if (!currentUser) return;
         try {
-            await updateEmployee(employeeId, { status: 'dismissed', checkOutDate: new Date() }, mockUser);
+            await updateEmployee(employeeId, { status: 'dismissed', checkOutDate: new Date() }, currentUser);
             toast({ title: "Sukces", description: "Pracownik został zwolniony." });
             fetchData();
         } catch(e: any) {
@@ -183,8 +181,9 @@ function MainContent() {
     };
 
     const handleRestoreEmployee = async (employeeId: string) => {
+        if (!currentUser) return;
         try {
-            await updateEmployee(employeeId, { status: 'active', checkOutDate: null }, mockUser);
+            await updateEmployee(employeeId, { status: 'active', checkOutDate: null }, currentUser);
             toast({ title: "Sukces", description: "Pracownik został przywrócony." });
             fetchData();
         } catch(e: any) {
@@ -193,16 +192,10 @@ function MainContent() {
     };
     
     const renderView = () => {
-        if (isLoading || !settings) {
-            return (
-                <div className="space-y-4 p-4">
-                    <Skeleton className="h-24 w-full" />
-                    <Skeleton className="h-64 w-full" />
-                    <Skeleton className="h-64 w-full" />
-                </div>
-            )
+        if (!currentUser || !settings) {
+            return <div className="p-4"><Skeleton className="h-64 w-full" /></div>;
         }
-        
+
         switch (activeView) {
             case 'dashboard':
                 return <DashboardView employees={employees} settings={settings} onEditEmployee={handleEditEmployeeClick} />;
@@ -214,7 +207,7 @@ function MainContent() {
                  return <InspectionsView 
                     inspections={inspections} 
                     settings={settings}
-                    currentUser={mockUser}
+                    currentUser={currentUser}
                     onAddInspection={handleAddInspection}
                     onUpdateInspection={handleUpdateInspection}
                     onDeleteInspection={handleDeleteInspection}
@@ -223,6 +216,29 @@ function MainContent() {
                 return <DashboardView employees={employees} settings={settings} onEditEmployee={handleEditEmployeeClick} />;
         }
     };
+
+    if (isLoading) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center">
+                <div className="space-y-4 p-4 w-full max-w-lg">
+                    <Skeleton className="h-24 w-full" />
+                    <Skeleton className="h-64 w-full" />
+                </div>
+            </div>
+        );
+    }
+
+    if (!currentUser && settings) {
+        return <LoginView coordinators={settings.coordinators} onLogin={handleLogin} />;
+    }
+    
+    if (!currentUser) {
+         return (
+            <div className="flex h-screen w-full items-center justify-center">
+                <p>Ładowanie ustawień...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="flex h-screen w-full bg-muted/50">
@@ -254,7 +270,7 @@ function MainContent() {
                 </SidebarFooter>
             </Sidebar>
             <div className="flex flex-1 flex-col">
-                <Header user={mockUser} activeView={activeView} notifications={notifications} onNotificationClick={handleNotificationClick} />
+                <Header user={currentUser} activeView={activeView} notifications={notifications} onNotificationClick={handleNotificationClick} />
                 <main className="flex-1 overflow-y-auto px-2 sm:px-6 pb-6 pt-4">
                     {renderView()}
                 </main>
