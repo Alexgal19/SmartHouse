@@ -1,13 +1,13 @@
 
 "use client";
 
-import type { Employee, Settings, HousingAddress } from "@/types";
+import type { Employee, Settings, HousingAddress, Coordinator } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList, Cell } from "recharts";
 import { ChartContainer } from "@/components/ui/chart";
 import { useMemo, useState } from "react";
-import { Building, UserMinus, Users, Home, BedDouble, ChevronRight, ChevronDown } from "lucide-react";
+import { Building, UserMinus, Users, Home, BedDouble, ChevronRight, ChevronDown, UserCheck } from "lucide-react";
 import { isWithinInterval, format, getYear, getMonth } from "date-fns";
 import { pl } from "date-fns/locale";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
@@ -24,6 +24,9 @@ interface DashboardViewProps {
   employees: Employee[];
   settings: Settings;
   onEditEmployee: (employee: Employee) => void;
+  currentUser: Coordinator;
+  selectedCoordinatorId: string;
+  onSelectCoordinator: (id: string) => void;
 }
 
 // New component for detailed housing view
@@ -122,7 +125,7 @@ const HousingDetailView = ({
 };
 
 
-export default function DashboardView({ employees, settings, onEditEmployee }: DashboardViewProps) {
+export default function DashboardView({ employees, settings, onEditEmployee, currentUser, selectedCoordinatorId, onSelectCoordinator }: DashboardViewProps) {
   const [isHousingDialogOpen, setIsHousingDialogOpen] = useState(false);
   const [isCheckoutsDialogOpen, setIsCheckoutsDialogOpen] = useState(false);
   const [housingSearchTerm, setHousingSearchTerm] = useState("");
@@ -325,6 +328,28 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
 
   return (
     <div className="space-y-6">
+        {currentUser.isAdmin && (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Filtr Koordynatora</CardTitle>
+                    <CardDescription>Wybierz koordynatora, aby wyświetlić jego dane.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                     <Select value={selectedCoordinatorId} onValueChange={onSelectCoordinator}>
+                        <SelectTrigger className="w-full sm:w-72">
+                            <div className="flex items-center gap-2">
+                                <UserCheck className="h-4 w-4 text-muted-foreground" />
+                                <SelectValue placeholder="Wybierz koordynatora" />
+                            </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Wszyscy Koordynatorzy</SelectItem>
+                            {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </CardContent>
+            </Card>
+        )}
         <Tabs defaultValue="summary" className="w-full">
             <TabsList>
                 <TabsTrigger value="summary">Podsumowanie</TabsTrigger>
@@ -552,3 +577,5 @@ export default function DashboardView({ employees, settings, onEditEmployee }: D
     </div>
   );
 }
+
+    

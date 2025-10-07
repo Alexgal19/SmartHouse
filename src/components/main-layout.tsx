@@ -44,6 +44,7 @@ function MainContent() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
     const [currentUser, setCurrentUser] = useState<Coordinator | null>(null);
+    const [selectedCoordinatorId, setSelectedCoordinatorId] = useState('all');
     
     const { toast } = useToast();
     const { isMobile } = useSidebar();
@@ -104,15 +105,26 @@ function MainContent() {
 
     const filteredEmployees = useMemo(() => {
         if (!currentUser) return [];
-        if (currentUser.isAdmin) return allEmployees;
+        if (currentUser.isAdmin) {
+            if (selectedCoordinatorId === 'all') {
+                return allEmployees;
+            }
+            return allEmployees.filter(e => e.coordinatorId === selectedCoordinatorId);
+        }
         return allEmployees.filter(e => e.coordinatorId === currentUser.uid);
-    }, [currentUser, allEmployees]);
+    }, [currentUser, allEmployees, selectedCoordinatorId]);
 
     const filteredInspections = useMemo(() => {
         if (!currentUser) return [];
-        if (currentUser.isAdmin) return allInspections;
+        if (currentUser.isAdmin) {
+            if (selectedCoordinatorId === 'all') {
+                return allInspections;
+            }
+            return allInspections.filter(i => i.coordinatorId === selectedCoordinatorId);
+        }
         return allInspections.filter(i => i.coordinatorId === currentUser.uid);
-    }, [currentUser, allInspections]);
+    }, [currentUser, allInspections, selectedCoordinatorId]);
+
 
     const handleLogin = async (user: {name: string}, password?: string) => {
         if (!settings) return;
@@ -284,7 +296,7 @@ function MainContent() {
 
         switch (activeView) {
             case 'dashboard':
-                return <DashboardView employees={filteredEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} />;
+                return <DashboardView employees={filteredEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} />;
             case 'employees':
                 return <EmployeesView employees={filteredEmployees} settings={settings} onAddEmployee={handleAddEmployeeClick} onEditEmployee={handleEditEmployeeClick} onDismissEmployee={handleDismissEmployee} onRestoreEmployee={handleRestoreEmployee} />;
             case 'settings':
@@ -302,14 +314,19 @@ function MainContent() {
                     onDeleteInspection={handleDeleteInspection}
                 />;
             default:
-                return <DashboardView employees={filteredEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} />;
+                return <DashboardView employees={filteredEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} />;
         }
     };
     
     const visibleNavItems = useMemo(() => {
-        if (currentUser?.isAdmin) return navItems;
+        if (currentUser?.isAdmin) {
+            if (selectedCoordinatorId !== 'all') {
+                 return navItems.filter(item => item.view !== 'settings');
+            }
+            return navItems;
+        }
         return navItems.filter(item => item.view !== 'settings');
-    }, [currentUser]);
+    }, [currentUser, selectedCoordinatorId]);
 
     if (isLoading) {
         return (
@@ -392,3 +409,5 @@ export default function MainLayout() {
         </SidebarProvider>
     );
 }
+
+    
