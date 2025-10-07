@@ -21,7 +21,7 @@ import SettingsView from './settings-view';
 import InspectionsView from './inspections-view';
 import { AddEmployeeForm } from './add-employee-form';
 import { LoginView } from './login-view';
-import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead, getInspections, addInspection, updateInspection, deleteInspection, checkAndUpdateEmployeeStatuses, transferEmployees, bulkDeleteEmployees, bulkImportEmployees } from '@/lib/actions';
+import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead, getInspections, addInspection, updateInspection, deleteInspection, checkAndUpdateEmployeeStatuses, transferEmployees, bulkDeleteEmployees, bulkImportEmployees, clearAllNotifications } from '@/lib/actions';
 import type { Employee, Settings, User, View, Notification, Coordinator, Inspection } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Building, ClipboardList, Home, Settings as SettingsIcon, Users } from 'lucide-react';
@@ -38,7 +38,7 @@ function MainContent() {
     const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
     const [allInspections, setAllInspections] = useState<Inspection[]>([]);
     const [settings, setSettings] = useState<Settings | null>(null);
-    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [allNotifications, setAllNotifications] = useState<Notification[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
@@ -66,7 +66,7 @@ function MainContent() {
                 departureReportDate: e.departureReportDate ? new Date(e.departureReportDate) : null,
             })));
             setSettings(settingsData);
-            setNotifications(notificationsData.map((n:any) => ({...n, createdAt: new Date(n.createdAt)})));
+            setAllNotifications(notificationsData.map((n:any) => ({...n, createdAt: new Date(n.createdAt)})));
             setAllInspections(inspectionsData.map((i: any) => ({...i, date: new Date(i.date)})));
 
              if (isInitialLoad) {
@@ -139,6 +139,13 @@ function MainContent() {
         return allInspections.filter(i => i.coordinatorId === currentUser.uid);
     }, [currentUser, allInspections, selectedCoordinatorId]);
 
+    const filteredNotifications = useMemo(() => {
+        if (!currentUser) return [];
+        if (currentUser.isAdmin) {
+            return allNotifications;
+        }
+        return allNotifications.filter(n => n.coordinatorId === currentUser.uid);
+    }, [currentUser, allNotifications]);
 
     const handleLogin = async (user: {name: string}, password?: string) => {
         if (!settings) return;
@@ -294,6 +301,20 @@ function MainContent() {
             fetchData();
         }
     };
+    
+    const handleClearNotifications = async () => {
+        if (!currentUser?.isAdmin) {
+             toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administrator może usuwać powiadomienia." });
+             return;
+        }
+        try {
+            await clearAllNotifications();
+            toast({ title: "Sukces", description: "Wszystkie powiadomienia zostały usunięte." });
+            fetchData();
+        } catch (e: any) {
+             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć powiadomień." });
+        }
+    }
 
     const handleDismissEmployee = async (employeeId: string) => {
         if (!currentUser) return;
@@ -383,7 +404,7 @@ function MainContent() {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
                 <div className="flex animate-fade-in flex-col items-center gap-6">
-                     <h1 className="text-5xl sm:text-7xl font-semibold tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm">
+                     <h1 className="text-4xl sm:text-5xl md:text-7xl font-semibold tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm">
                         SmartHouse
                     </h1>
                 </div>
@@ -437,7 +458,7 @@ function MainContent() {
                 </SidebarFooter>
             </Sidebar>
             <div className="flex flex-1 flex-col">
-                <Header user={currentUser} activeView={activeView} notifications={notifications} onNotificationClick={handleNotificationClick} onLogout={handleLogout} />
+                <Header user={currentUser} activeView={activeView} notifications={filteredNotifications} onNotificationClick={handleNotificationClick} onLogout={handleLogout} onClearNotifications={handleClearNotifications} />
                 <main className="flex-1 overflow-y-auto px-2 sm:px-6 pb-6 pt-4">
                     {renderView()}
                 </main>

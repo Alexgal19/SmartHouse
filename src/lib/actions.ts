@@ -134,6 +134,16 @@ const formatDate = (date: Date | null | undefined): string => {
     return format(date, 'dd-MM-yyyy');
 };
 
+const parseDate = (dateStr: string | undefined | null): Date | null => {
+  if (!dateStr) return null;
+  const date = new Date(dateStr);
+   if (!isNaN(date.getTime())) {
+    date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+    return date;
+  }
+  return null;
+};
+
 const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): NotificationChange[] => {
     const changes: NotificationChange[] = [];
     const fieldLabels: Record<string, string> = {
@@ -335,6 +345,17 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
     }
 }
 
+export async function clearAllNotifications(): Promise<void> {
+    try {
+        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
+        await sheet.clearRows();
+    } catch (error) {
+        console.error("Error clearing notifications:", error);
+        throw new Error("Nie udało się usunąć powiadomień.");
+    }
+}
+
+
 // --- Inspections Actions ---
 
 const INSPECTION_HEADERS = ['id', 'addressId', 'addressName', 'date', 'coordinatorId', 'coordinatorName', 'standard'];
@@ -531,15 +552,22 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
 }
 
 
-const parseDate = (dateStr: string | undefined | null): Date | null => {
-  if (!dateStr) return null;
-  const date = new Date(dateStr);
-   if (!isNaN(date.getTime())) {
-    date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
-    return date;
-  }
-  return null;
-};
+const parseExcelDate = (excelDate: any): Date | null => {
+    if (excelDate instanceof Date && isValid(excelDate)) {
+        return excelDate;
+    }
+    if (typeof excelDate === 'number') {
+        // Excel stores dates as number of days since 1900-01-01.
+        // The '25569' is the number of days between 1970-01-01 and 1900-01-01 (with a bug fix for leap year).
+        const date = new Date((excelDate - 25569) * 86400 * 1000);
+        if(isValid(date)) return date;
+    }
+    if (typeof excelDate === 'string') {
+        const date = new Date(excelDate);
+        if (isValid(date)) return date;
+    }
+    return null;
+}
 
 export async function checkAndUpdateEmployeeStatuses(): Promise<void> {
     try {
@@ -569,24 +597,6 @@ export async function checkAndUpdateEmployeeStatuses(): Promise<void> {
         // Do not re-throw error to prevent app crash
     }
 }
-
-const parseExcelDate = (excelDate: any): Date | null => {
-    if (excelDate instanceof Date && isValid(excelDate)) {
-        return excelDate;
-    }
-    if (typeof excelDate === 'number') {
-        // Excel stores dates as number of days since 1900-01-01.
-        // The '25569' is the number of days between 1970-01-01 and 1900-01-01 (with a bug fix for leap year).
-        const date = new Date((excelDate - 25569) * 86400 * 1000);
-        if(isValid(date)) return date;
-    }
-    if (typeof excelDate === 'string') {
-        const date = new Date(excelDate);
-        if (isValid(date)) return date;
-    }
-    return null;
-}
-
 
 export async function bulkImportEmployees(
     fileData: ArrayBuffer,
@@ -752,5 +762,3 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', actor:
         throw new Error(`Nie udało się usunąć pracowników. ${error instanceof Error ? error.message : ''}`);
     }
 }
-
-    

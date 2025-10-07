@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { User, View, Notification, Coordinator } from "@/types";
@@ -7,9 +6,20 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 import { Button } from "@/components/ui/button";
-import { Settings, UserCircle, Building, Bell, ArrowRight, LogOut } from "lucide-react";
+import { Settings, UserCircle, Building, Bell, ArrowRight, LogOut, Trash2 } from "lucide-react";
 import { SidebarTrigger } from "./ui/sidebar";
 import { useSidebar } from "./ui/sidebar";
 import { formatDistanceToNow } from 'date-fns';
@@ -23,6 +33,7 @@ interface HeaderProps {
   notifications: Notification[];
   onNotificationClick: (notification: Notification) => void;
   onLogout: () => void;
+  onClearNotifications: () => void;
 }
 
 const viewTitles: Record<View, string> = {
@@ -32,7 +43,7 @@ const viewTitles: Record<View, string> = {
   inspections: 'Inspekcje'
 }
 
-export default function Header({ user, activeView, notifications, onNotificationClick, onLogout }: HeaderProps) {
+export default function Header({ user, activeView, notifications, onNotificationClick, onLogout, onClearNotifications }: HeaderProps) {
     const { isMobile, open } = useSidebar();
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
@@ -61,8 +72,30 @@ export default function Header({ user, activeView, notifications, onNotification
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-96 p-0">
-                <div className="p-4">
+                <div className="p-4 flex items-center justify-between">
                   <h4 className="font-medium text-sm">Powiadomienia</h4>
+                  {user.isAdmin && notifications.length > 0 && (
+                     <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Очистити все
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Ви впевнені?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Ця дія призведе до остаточного видалення всіх сповіщень. Ви не зможете скасувати цю дію.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Скасувати</AlertDialogCancel>
+                          <AlertDialogAction onClick={onClearNotifications}>Видалити</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                 </div>
                 <ScrollArea className="h-96">
                   {notifications.length > 0 ? (
@@ -108,5 +141,3 @@ export default function Header({ user, activeView, notifications, onNotification
     </header>
   );
 }
-
-    
