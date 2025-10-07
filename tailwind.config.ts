@@ -134,9 +134,8 @@ export default {
           "100%": { transform: "translateY(100%)" },
         },
         'stroke-draw': {
-          to: {
-            strokeDashoffset: '0',
-          },
+          '0%': { strokeDashoffset: '500' },
+          '100%': { strokeDashoffset: '0' },
         },
       },
       animation: {
@@ -149,7 +148,7 @@ export default {
         'pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         "slide-in-from-bottom": "slide-in-from-bottom 0.3s ease-out",
         "slide-out-to-bottom": "slide-out-to-bottom 0.3s ease-out",
-        'stroke-draw': 'stroke-draw 1s ease-out forwards',
+        'stroke-draw': 'stroke-draw 1.5s ease-out forwards',
       },
     },
   },

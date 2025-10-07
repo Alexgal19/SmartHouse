@@ -98,7 +98,7 @@ function MainContent() {
             sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
             if(currentUser.isAdmin) {
                 // When admin logs in, reset the coordinator filter
-                setSelectedCoordinatorId('all');
+                // setSelectedCoordinatorId('all'); // This might be causing the flicker, let's let it persist
             } else {
                 // When a coordinator logs in, set the filter to their ID
                 setSelectedCoordinatorId(currentUser.uid);
@@ -141,12 +141,14 @@ function MainContent() {
 
         if (lowerCaseName === adminLogin.toLowerCase()) {
             if (password === adminPassword) {
-                setCurrentUser({
+                 const adminUser = {
                     uid: 'admin-super-user',
                     name: 'Admin',
                     isAdmin: true,
                     password: ''
-                });
+                };
+                setCurrentUser(adminUser);
+                setSelectedCoordinatorId('all'); // Reset filter for admin login
             } else {
                  (window as any).setLoginError('Nieprawidłowe hasło administratora.');
             }
@@ -335,12 +337,21 @@ function MainContent() {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-muted/50">
                 <div className="flex flex-col items-center gap-6 animate-fade-in">
-                    <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-primary/20 bg-primary/10 p-4 shadow-lg shadow-orange-400/10">
-                        <Building className="h-10 w-10 text-primary animate-pulse" />
+                    <div className="glass-card flex h-24 w-24 items-center justify-center rounded-full p-4">
+                        <Building className="h-12 w-12 text-primary animate-pulse" />
                     </div>
-                    <h1 className="text-2xl font-bold tracking-tight text-primary animate-fade-in-up">
+                     <svg viewBox="0 0 400 60" className="w-full max-w-sm">
+                        <text
+                        x="50%"
+                        y="50%"
+                        dy=".35em"
+                        textAnchor="middle"
+                        className="animate-stroke-draw text-5xl font-bold text-stroke-primary"
+                        style={{ strokeDasharray: 500, strokeDashoffset: 500 }}
+                        >
                         Witaj w SmartHouse
-                    </h1>
+                        </text>
+                    </svg>
                 </div>
             </div>
         );
