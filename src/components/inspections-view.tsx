@@ -17,7 +17,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { PlusCircle, Star, FileImage, Trash2, Camera, Circle, MoreVertical, Pencil } from 'lucide-react';
+import { PlusCircle, Star, FileImage, Trash2, Camera, Circle, MoreVertical, Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { Input } from './ui/input';
 import Image from 'next/image';
@@ -557,6 +557,25 @@ const InspectionDialog = ({
 };
 
 const InspectionDetailDialog = ({ inspection, isOpen, onOpenChange }: { inspection: Inspection | null; isOpen: boolean; onOpenChange: (open: boolean) => void }) => {
+    const [isPhotoViewerOpen, setIsPhotoViewerOpen] = useState(false);
+    const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
+
+    const openPhotoViewer = (index: number) => {
+        setSelectedPhotoIndex(index);
+        setIsPhotoViewerOpen(true);
+    };
+
+    const nextPhoto = () => {
+        if (inspection?.photos) {
+            setSelectedPhotoIndex((prevIndex) => (prevIndex + 1) % inspection.photos.length);
+        }
+    };
+    const prevPhoto = () => {
+        if (inspection?.photos) {
+            setSelectedPhotoIndex((prevIndex) => (prevIndex - 1 + inspection.photos.length) % inspection.photos.length);
+        }
+    };
+
     if (!inspection) return null;
 
     return (
@@ -602,7 +621,7 @@ const InspectionDetailDialog = ({ inspection, isOpen, onOpenChange }: { inspecti
                                 <CardHeader><CardTitle>Zdjęcia</CardTitle></CardHeader>
                                 <CardContent className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                                      {inspection.photos.map((photo, index) => (
-                                        <div key={index} className="relative aspect-square">
+                                        <div key={index} className="relative aspect-square cursor-pointer" onClick={() => openPhotoViewer(index)}>
                                             <Image src={photo} alt={`Inspection photo ${index + 1}`} layout="fill" objectFit="cover" className="rounded-md border" />
                                         </div>
                                     ))}
@@ -615,6 +634,32 @@ const InspectionDetailDialog = ({ inspection, isOpen, onOpenChange }: { inspecti
                  <DialogFooter>
                     <Button type="button" onClick={() => onOpenChange(false)}>Zamknij</Button>
                 </DialogFooter>
+                
+                <Dialog open={isPhotoViewerOpen} onOpenChange={setIsPhotoViewerOpen}>
+                    <DialogContent className="max-w-5xl w-full h-[90vh] flex flex-col p-2">
+                       <DialogHeader>
+                          <DialogTitle>Zdjęcie {selectedPhotoIndex + 1} z {inspection.photos.length}</DialogTitle>
+                       </DialogHeader>
+                        <div className="relative flex-1 flex items-center justify-center">
+                            <Image 
+                                src={inspection.photos[selectedPhotoIndex]} 
+                                alt={`Inspection photo ${selectedPhotoIndex + 1}`} 
+                                layout="fill" 
+                                objectFit="contain" 
+                            />
+                        </div>
+                        <DialogFooter className="flex-row justify-between items-center w-full">
+                            <Button variant="outline" size="icon" onClick={prevPhoto}>
+                                <ChevronLeft className="h-6 w-6"/>
+                            </Button>
+                             <Button variant="outline" onClick={() => setIsPhotoViewerOpen(false)}>Zamknij</Button>
+                             <Button variant="outline" size="icon" onClick={nextPhoto}>
+                                <ChevronRight className="h-6 w-6"/>
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
             </DialogContent>
         </Dialog>
     )
@@ -731,6 +776,3 @@ export default function InspectionsView({ inspections, settings, currentUser, on
         </Card>
     );
 }
-
-
-    
