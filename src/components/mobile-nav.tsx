@@ -14,14 +14,14 @@ interface MobileNavProps {
 
 export function MobileNav({ activeView, setActiveView, navItems }: MobileNavProps) {
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] border bg-card/60 backdrop-blur-xl p-2 rounded-2xl shadow-lg shadow-black/10 lg:hidden">
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] border bg-card/80 backdrop-blur-xl p-2 rounded-2xl shadow-lg shadow-black/10 md:hidden">
       <div className="grid h-full max-w-lg grid-cols-4 mx-auto">
         {navItems.map((item) => (
           <Button
             key={item.view}
             variant="ghost"
             size="sm"
-            className={`flex flex-col h-auto p-1 rounded-full ${
+            className={`flex flex-col h-auto p-2 rounded-xl text-xs ${
               activeView === item.view
                 ? "text-primary bg-primary/10"
                 : "text-muted-foreground"
@@ -29,7 +29,7 @@ export function MobileNav({ activeView, setActiveView, navItems }: MobileNavProp
             onClick={() => setActiveView(item.view)}
           >
             <item.icon className="h-6 w-6 mb-1" />
-            <span className="text-xs font-medium">{item.label}</span>
+            <span className="font-medium">{item.label}</span>
           </Button>
         ))}
       </div>

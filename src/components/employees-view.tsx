@@ -22,6 +22,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { ScrollArea } from './ui/scroll-area';
 import { Skeleton } from './ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
+import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter, DialogClose } from './ui/dialog';
+import { Label } from './ui/label';
 
 interface EmployeesViewProps {
   employees: Employee[];
@@ -151,21 +153,22 @@ const EmployeeCardList = ({
     const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
     
     return (
-        <div className="space-y-3">
+        <div className="space-y-4">
              {employees.length > 0 ? (
                 employees.map((employee) => (
                     <Card key={employee.id} onClick={() => onEdit(employee)} className="cursor-pointer">
-                        <CardHeader className="flex flex-row items-start justify-between pb-2">
+                        <CardHeader className="flex flex-row items-start justify-between pb-4">
                            <div>
-                             <CardTitle className="text-base">{employee.fullName}</CardTitle>
-                             <CardDescription className="text-xs">{getCoordinatorName(employee.coordinatorId)}</CardDescription>
+                             <CardTitle className="text-lg">{employee.fullName}</CardTitle>
+                             <CardDescription>{getCoordinatorName(employee.coordinatorId)}</CardDescription>
                            </div>
                            <div onClick={(e) => e.stopPropagation()}>
                                 <EmployeeActions {...{ employee, onEdit, onDismiss, onRestore, isDismissedTab }} />
                            </div>
                         </CardHeader>
-                        <CardContent className="text-sm space-y-1">
+                        <CardContent className="text-base space-y-2">
                             <p><span className="font-semibold text-muted-foreground">Adres:</span> {employee.address}</p>
+                            <p><span className="font-semibold text-muted-foreground">Pokój:</span> {employee.roomNumber}</p>
                             <p><span className="font-semibold text-muted-foreground">Narodowość:</span> {employee.nationality}</p>
                             <p><span className="font-semibold text-muted-foreground">Umowa do:</span> {employee.contractEndDate ? format(employee.contractEndDate, 'dd-MM-yyyy') : 'N/A'}</p>
                         </CardContent>
@@ -175,6 +178,83 @@ const EmployeeCardList = ({
                 <div className="text-center text-muted-foreground py-8">Brak pracowników do wyświetlenia.</div>
              )}
         </div>
+    )
+}
+
+const FilterDialog = ({
+    isOpen,
+    onOpenChange,
+    settings,
+    filters,
+    onFilterChange,
+    onReset
+} : {
+    isOpen: boolean;
+    onOpenChange: (open: boolean) => void;
+    settings: Settings;
+    filters: Record<string, string>;
+    onFilterChange: (key: string, value: string) => void;
+    onReset: () => void;
+}) => {
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Filtruj pracowników</DialogTitle>
+                    <DialogDescription>
+                        Zawęź listę, aby znaleźć to, czego szukasz.
+                    </DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="max-h-[60vh]">
+                  <div className="grid gap-4 p-4">
+                      <div className="space-y-2">
+                        <Label>Koordynator</Label>
+                        <Select value={filters.coordinatorFilter} onValueChange={(v) => onFilterChange('coordinatorFilter', v)}>
+                        <SelectTrigger><SelectValue placeholder="Filtruj wg koordynatora" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
+                            {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                        </SelectContent>
+                        </Select>
+                      </div>
+                       <div className="space-y-2">
+                        <Label>Adres</Label>
+                        <Select value={filters.addressFilter} onValueChange={(v) => onFilterChange('addressFilter', v)}>
+                        <SelectTrigger><SelectValue placeholder="Filtruj wg adresu" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Wszystkie adresy</SelectItem>
+                            {settings.addresses.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
+                        </SelectContent>
+                        </Select>
+                      </div>
+                       <div className="space-y-2">
+                        <Label>Zakład</Label>
+                        <Select value={filters.departmentFilter} onValueChange={(v) => onFilterChange('departmentFilter', v)}>
+                        <SelectTrigger><SelectValue placeholder="Filtruj wg zakładu" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Wszystkie zakłady</SelectItem>
+                            {settings.departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                        </SelectContent>
+                        </Select>
+                      </div>
+                       <div className="space-y-2">
+                        <Label>Narodowość</Label>
+                        <Select value={filters.nationalityFilter} onValueChange={(v) => onFilterChange('nationalityFilter', v)}>
+                        <SelectTrigger><SelectValue placeholder="Filtruj wg narodowości" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Wszystkie narodowości</SelectItem>
+                            {settings.nationalities.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                        </SelectContent>
+                        </Select>
+                      </div>
+                  </div>
+                </ScrollArea>
+                <DialogFooter className="flex-row !justify-between">
+                     <Button variant="ghost" onClick={onReset}>Wyczyść wszystko</Button>
+                    <Button onClick={() => onOpenChange(false)}>Zastosuj</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     )
 }
 
@@ -190,36 +270,45 @@ export default function EmployeesView({
   currentUser,
 }: EmployeesViewProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [coordinatorFilter, setCoordinatorFilter] = useState('all');
-  const [addressFilter, setAddressFilter] = useState('all');
-  const [departmentFilter, setDepartmentFilter] = useState('all');
-  const [nationalityFilter, setNationalityFilter] = useState('all');
+  const [filters, setFilters] = useState({
+      coordinatorFilter: 'all',
+      addressFilter: 'all',
+      departmentFilter: 'all',
+      nationalityFilter: 'all'
+  });
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const {isMobile, isMounted} = useIsMobile();
+  
+  const handleFilterChange = (key: string, value: string) => {
+    setFilters(prev => ({...prev, [key]: value}));
+  }
 
   const filteredEmployees = useMemo(() => {
     return employees.filter(employee => {
       const searchMatch = searchTerm === '' || employee.fullName.toLowerCase().includes(searchTerm.toLowerCase());
-      const coordinatorMatch = coordinatorFilter === 'all' || employee.coordinatorId === coordinatorFilter;
-      const addressMatch = addressFilter === 'all' || employee.address === addressFilter;
-      const departmentMatch = departmentFilter === 'all' || employee.zaklad === departmentFilter;
-      const nationalityMatch = nationalityFilter === 'all' || employee.nationality === nationalityFilter;
+      const coordinatorMatch = filters.coordinatorFilter === 'all' || employee.coordinatorId === filters.coordinatorFilter;
+      const addressMatch = filters.addressFilter === 'all' || employee.address === filters.addressFilter;
+      const departmentMatch = filters.departmentFilter === 'all' || employee.zaklad === filters.departmentFilter;
+      const nationalityMatch = filters.nationalityFilter === 'all' || employee.nationality === filters.nationalityFilter;
 
       return searchMatch && coordinatorMatch && addressMatch && departmentMatch && nationalityMatch;
     });
-  }, [employees, searchTerm, coordinatorFilter, addressFilter, departmentFilter, nationalityFilter]);
+  }, [employees, searchTerm, filters]);
 
   const activeEmployees = useMemo(() => filteredEmployees.filter(e => e.status === 'active'), [filteredEmployees]);
   const dismissedEmployees = useMemo(() => filteredEmployees.filter(e => e.status === 'dismissed'), [filteredEmployees]);
   
   const resetFilters = () => {
     setSearchTerm('');
-    setCoordinatorFilter('all');
-    setAddressFilter('all');
-    setDepartmentFilter('all');
-    setNationalityFilter('all');
+    setFilters({
+      coordinatorFilter: 'all',
+      addressFilter: 'all',
+      departmentFilter: 'all',
+      nationalityFilter: 'all'
+    });
   };
 
-  const hasActiveFilters = searchTerm !== '' || coordinatorFilter !== 'all' || addressFilter !== 'all' || departmentFilter !== 'all' || nationalityFilter !== 'all';
+  const hasActiveFilters = searchTerm !== '' || Object.values(filters).some(v => v !== 'all');
   
   const EmployeeListComponent = isMobile ? EmployeeCardList : EmployeeTable;
 
@@ -273,95 +362,56 @@ export default function EmployeesView({
       <CardHeader>
         <div className="flex items-center justify-between gap-4">
             <CardTitle>Zarządzanie pracownikami</CardTitle>
-            <div className="flex items-center gap-2">
-                <Button onClick={onAddEmployee} size={isMobile ? "icon" : "default"}>
-                  <PlusCircle className={isMobile ? "h-4 w-4" : "mr-2 h-4 w-4"} />
-                  <span className="hidden sm:inline">Dodaj</span>
-                </Button>
-            </div>
+            <Button onClick={onAddEmployee} size={isMobile ? "icon" : "default"}>
+              <PlusCircle className={isMobile ? "h-5 w-5" : "mr-2 h-4 w-4"} />
+              <span className="hidden sm:inline">Dodaj</span>
+            </Button>
         </div>
         <div className="mt-4">
-            <Collapsible>
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 sm:gap-4">
-                         <Input
-                            placeholder="Szukaj..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full max-w-xs"
-                        />
-                        <CollapsibleTrigger asChild>
-                             <Button variant="outline" size="sm" className="gap-2">
-                                <SlidersHorizontal className="h-4 w-4"/>
-                                <span className="hidden sm:inline">Filtry</span>
-                            </Button>
-                        </CollapsibleTrigger>
-                        {hasActiveFilters && (
-                             <Button variant="ghost" size="sm" onClick={resetFilters} className="text-muted-foreground gap-2">
-                                <X className="h-4 w-4" />
-                                <span className="hidden sm:inline">Wyczyść</span>
-                            </Button>
-                        )}
-                    </div>
-                </div>
-                <CollapsibleContent className="mt-4 animate-in fade-in-0">
-                   <div className="p-4 border rounded-lg bg-muted/50">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <Select value={coordinatorFilter} onValueChange={setCoordinatorFilter}>
-                            <SelectTrigger><SelectValue placeholder="Filtruj wg koordynatora" /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
-                                {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
-                            </SelectContent>
-                            </Select>
-                            
-                            <Select value={addressFilter} onValueChange={setAddressFilter}>
-                            <SelectTrigger><SelectValue placeholder="Filtruj wg adresu" /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Wszystkie adresy</SelectItem>
-                                {settings.addresses.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
-                            </SelectContent>
-                            </Select>
-                            
-                            <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-                            <SelectTrigger><SelectValue placeholder="Filtruj wg zakładu" /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Wszystkie zakłady</SelectItem>
-                                {settings.departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                            </SelectContent>
-                            </Select>
-
-                            <Select value={nationalityFilter} onValueChange={setNationalityFilter}>
-                            <SelectTrigger><SelectValue placeholder="Filtruj wg narodowości" /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Wszystkie narodowości</SelectItem>
-                                {settings.nationalities.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
-                            </SelectContent>
-                            </Select>
-                        </div>
-                   </div>
-                </CollapsibleContent>
-            </Collapsible>
+            <div className="flex items-center gap-2">
+                 <Input
+                    placeholder="Szukaj po nazwisku..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full"
+                />
+                 <Button variant="outline" size="icon" onClick={() => setIsFilterOpen(true)}>
+                    <SlidersHorizontal className="h-4 w-4"/>
+                </Button>
+                {hasActiveFilters && (
+                     <Button variant="ghost" size="icon" onClick={resetFilters} className="text-muted-foreground">
+                        <X className="h-4 w-4" />
+                    </Button>
+                )}
+            </div>
         </div>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="active">
-          <TabsList>
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="active">Aktywni ({activeEmployees.length})</TabsTrigger>
             <TabsTrigger value="dismissed">Zwolnieni ({dismissedEmployees.length})</TabsTrigger>
           </TabsList>
-          <TabsContent value="active">
-             <ScrollArea className="h-[50vh]">
+          <TabsContent value="active" className="mt-4">
+             <ScrollArea className="h-[55vh]">
                 {renderContent(activeEmployees, false)}
              </ScrollArea>
           </TabsContent>
-          <TabsContent value="dismissed">
-            <ScrollArea className="h-[50vh]">
+          <TabsContent value="dismissed" className="mt-4">
+            <ScrollArea className="h-[55vh]">
                 {renderContent(dismissedEmployees, true)}
             </ScrollArea>
           </TabsContent>
         </Tabs>
       </CardContent>
+       <FilterDialog 
+          isOpen={isFilterOpen}
+          onOpenChange={setIsFilterOpen}
+          settings={settings}
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          onReset={resetFilters}
+      />
     </Card>
   );
 }

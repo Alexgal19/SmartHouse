@@ -362,7 +362,7 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
             </Card>
         )}
         <Tabs defaultValue="summary" className="w-full">
-            <TabsList>
+            <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="summary">Podsumowanie</TabsTrigger>
                 <TabsTrigger value="housing">Zakwaterowanie</TabsTrigger>
             </TabsList>
@@ -420,8 +420,7 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
                             </DialogContent>
                         </Dialog>
                     </div>
-                    {!isMobile && (
-                        <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
+                    <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
                         <ChartComponent data={employeesByCoordinator} title="Pracownicy wg koordynatora" />
                         <ChartComponent data={employeesByNationality} title="Pracownicy wg narodowości" />
                         <ChartComponent data={employeesByDepartment} title="Pracownicy wg zakładu" />
@@ -492,7 +491,7 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
                             </CardContent>
                         </Card>
                         </div>
-                    )}
+                    
                 </div>
             </TabsContent>
             <TabsContent value="housing" className="mt-6">
@@ -524,11 +523,11 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent>
-                                        <div className="flex items-center gap-3">
-                                            <Progress value={house.occupancy} className="w-full h-2" />
-                                            <span className="text-sm font-medium text-muted-foreground shrink-0">{Math.round(house.occupancy)}%</span>
+                                        <div className="flex items-center gap-4">
+                                            <Progress value={house.occupancy} className="w-full h-3" />
+                                            <span className="text-base font-medium text-muted-foreground shrink-0">{Math.round(house.occupancy)}%</span>
                                         </div>
-                                        <div className="flex justify-between text-xs mt-2 text-muted-foreground">
+                                        <div className="flex justify-between text-sm mt-3 text-muted-foreground">
                                             <span className="text-blue-500">Pojemność: <span className="font-bold text-foreground">{house.capacity}</span></span>
                                             <span className="text-red-500">Zajęte: <span className="font-bold text-foreground">{house.occupied}</span></span>
                                             <span className="text-green-500">Wolne: <span className="font-bold text-foreground">{house.available}</span></span>
