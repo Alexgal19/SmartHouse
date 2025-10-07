@@ -568,3 +568,68 @@ export async function checkAndUpdateEmployeeStatuses(): Promise<void> {
         // We don't throw here to avoid blocking the app load
     }
 }
+
+
+export async function bulkImportEmployees(
+    data: any[],
+    coordinators: Coordinator[],
+    actor: Coordinator
+): Promise<{ success: boolean, message: string }> {
+    let importedCount = 0;
+    let errorCount = 0;
+    const errors: string[] = [];
+
+    for (const [index, row] of data.entries()) {
+        const rowNum = index + 2;
+        try {
+            // --- VALIDATION ---
+            const { fullName, coordinatorName, nationality, gender, address, roomNumber, zaklad, checkInDate } = row;
+
+            if (!fullName) throw new Error(`Row ${rowNum}: fullName is required.`);
+            if (!coordinatorName) throw new Error(`Row ${rowNum}: coordinatorName is required.`);
+            if (!nationality) throw new Error(`Row ${rowNum}: nationality is required.`);
+            if (!address) throw new Error(`Row ${rowNum}: address is required.`);
+            if (!roomNumber) throw new Error(`Row ${rowNum}: roomNumber is required.`);
+            if (!zaklad) throw new Error(`Row ${rowNum}: zaklad is required.`);
+            if (!checkInDate) throw new Error(`Row ${rowNum}: checkInDate is required.`);
+
+            const coordinator = coordinators.find(c => c.name.toLowerCase() === coordinatorName.toLowerCase());
+            if (!coordinator) {
+                throw new Error(`Row ${rowNum}: Coordinator "${coordinatorName}" not found.`);
+            }
+
+            // --- DATA MAPPING & CREATION ---
+            const employeeData = {
+                fullName: String(fullName),
+                coordinatorId: coordinator.uid,
+                nationality: String(nationality),
+                gender: ['Mężczyzna', 'Kobieta'].includes(gender) ? gender : 'Mężczyzna',
+                address: String(address),
+                roomNumber: String(roomNumber),
+                zaklad: String(zaklad),
+                checkInDate: checkInDate instanceof Date ? checkInDate : new Date(checkInDate),
+                contractStartDate: row.contractStartDate ? new Date(row.contractStartDate) : null,
+                contractEndDate: row.contractEndDate ? new Date(row.contractEndDate) : null,
+                departureReportDate: row.departureReportDate ? new Date(row.departureReportDate) : null,
+                comments: row.comments || '',
+            };
+            
+            // Using existing addEmployee function to ensure full integration
+            await addEmployee(employeeData, actor);
+            importedCount++;
+
+        } catch (e: any) {
+            errorCount++;
+            errors.push(e.message);
+        }
+    }
+    
+    if (errorCount > 0) {
+        return { 
+            success: false, 
+            message: `Import zakończony z błędami. Zaimportowano: ${importedCount}, Błędy: ${errorCount}. Błędy: ${errors.join('; ')}`
+        };
+    }
+    
+    return { success: true, message: `Pomyślnie zaimportowano ${importedCount} pracowników.` };
+}

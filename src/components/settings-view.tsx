@@ -2,23 +2,26 @@
 "use client";
 
 import type { Settings, HousingAddress, Coordinator, Room, Employee } from "@/types";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, PlusCircle, Trash2, ShieldCheck, KeyRound } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Trash2, ShieldCheck, KeyRound, Upload } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Input } from "./ui/input";
 import { Switch } from "./ui/switch";
-import { transferEmployees, getEmployees } from "@/lib/actions";
+import { transferEmployees, bulkImportEmployees } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
+import { ScrollArea } from "./ui/scroll-area";
+import * as XLSX from 'xlsx';
 
 
 interface SettingsViewProps {
@@ -28,6 +31,122 @@ interface SettingsViewProps {
   currentUser: Coordinator;
   onDataRefresh: () => void;
 }
+
+const EmployeeImportDialog = ({ isOpen, onOpenChange, onImport, settings }: { isOpen: boolean, onOpenChange: (isOpen: boolean) => void, onImport: (data: any[]) => Promise<{success: boolean, message: string}>, settings: Settings }) => {
+    const [file, setFile] = useState<File | null>(null);
+    const [previewData, setPreviewData] = useState<any[]>([]);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const { toast } = useToast();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const selectedFile = e.target.files?.[0];
+        if (selectedFile) {
+            setFile(selectedFile);
+            parseExcel(selectedFile);
+        }
+    };
+
+    const parseExcel = (fileToParse: File) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const data = event.target?.result;
+            const workbook = XLSX.read(data, { type: 'binary', cellDates: true });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            
+            if (json.length > 1) {
+                const headers = json[0] as string[];
+                const rows = json.slice(1).map(row => {
+                    const rowData: Record<string, any> = {};
+                    headers.forEach((header, index) => {
+                        rowData[header] = (row as any[])[index];
+                    });
+                    return rowData;
+                });
+                setPreviewData(rows);
+            }
+        };
+        reader.readAsBinaryString(fileToParse);
+    };
+
+    const handleImportClick = async () => {
+        if (previewData.length === 0) {
+            toast({ variant: 'destructive', title: "Brak danych", description: "Nie znaleziono danych do importu w pliku." });
+            return;
+        }
+        setIsProcessing(true);
+        const result = await onImport(previewData);
+        setIsProcessing(false);
+
+        if (result.success) {
+            toast({ title: "Sukces", description: result.message });
+            onOpenChange(false);
+        } else {
+            toast({ variant: 'destructive', title: "Błąd importu", description: result.message });
+        }
+    };
+
+    return (
+         <Dialog open={isOpen} onOpenChange={(open) => {
+            if (!open) {
+                setFile(null);
+                setPreviewData([]);
+            }
+            onOpenChange(open);
+        }}>
+            <DialogContent className="max-w-4xl max-h-[90vh]">
+                <DialogHeader>
+                    <DialogTitle>Importuj pracowników z Excel</DialogTitle>
+                    <DialogDescription>
+                        Wybierz plik .xlsx lub .xls. Upewnij się, że plik ma kolumny: fullName, coordinatorName, nationality, gender, address, roomNumber, zaklad, checkInDate, contractStartDate, contractEndDate, departureReportDate, comments.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                    <div className="p-4 border-2 border-dashed rounded-lg text-center">
+                        <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".xlsx, .xls" className="hidden" />
+                        <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                           <Upload className="mr-2 h-4 w-4" /> Wybierz plik
+                        </Button>
+                        {file && <p className="text-sm text-muted-foreground mt-2">{file.name}</p>}
+                    </div>
+
+                    {previewData.length > 0 && (
+                        <div>
+                            <h3 className="font-semibold mb-2">Podgląd danych ({previewData.length} wierszy)</h3>
+                            <ScrollArea className="h-64 border rounded-md">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            {Object.keys(previewData[0]).map(key => <TableHead key={key}>{key}</TableHead>)}
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {previewData.slice(0, 10).map((row, i) => (
+                                            <TableRow key={i}>
+                                                {Object.values(row).map((val: any, j) => (
+                                                    <TableCell key={j}>{val instanceof Date ? val.toLocaleDateString() : String(val ?? '')}</TableCell>
+                                                ))}
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                                {previewData.length > 10 && <p className="text-xs text-center text-muted-foreground p-2">...i {previewData.length - 10} więcej wierszy.</p>}
+                            </ScrollArea>
+                        </div>
+                    )}
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild><Button variant="secondary" type="button">Anuluj</Button></DialogClose>
+                    <Button onClick={handleImportClick} disabled={previewData.length === 0 || isProcessing}>
+                        {isProcessing ? 'Importowanie...' : `Importuj ${previewData.length} pracowników`}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
 
 // Generic List Manager for simple string arrays
 const ListManager = ({ title, items, onUpdate }: { title: string; items: string[]; onUpdate: (newItems: string[]) => void }) => {
@@ -458,11 +577,28 @@ const CoordinatorManager = ({ items, onUpdate, allEmployees, currentUser, onData
 
 export default function SettingsView({ settings, onUpdateSettings, allEmployees, currentUser, onDataRefresh }: SettingsViewProps) {
   const { isMobile } = useIsMobile();
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  
+  const handleImport = async (data: any[]) => {
+      try {
+          const result = await bulkImportEmployees(data, settings.coordinators, currentUser);
+          onDataRefresh();
+          return result;
+      } catch (e: any) {
+          return { success: false, message: e.message || "Wystąpił nieznany błąd." };
+      }
+  };
   
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Ustawienia Aplikacji</CardTitle>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <CardTitle>Ustawienia Aplikacji</CardTitle>
+            <Button onClick={() => setIsImportOpen(true)} variant="outline">
+                <Upload className="mr-2 h-4 w-4" />
+                Importuj pracowników
+            </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="addresses" className="w-full" orientation={isMobile ? "vertical" : "horizontal"}>
@@ -488,6 +624,12 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
           </div>
         </Tabs>
       </CardContent>
+      <EmployeeImportDialog 
+        isOpen={isImportOpen} 
+        onOpenChange={setIsImportOpen} 
+        onImport={handleImport}
+        settings={settings}
+      />
     </Card>
   );
 }
