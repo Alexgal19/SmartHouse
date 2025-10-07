@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Employee, Settings, HousingAddress, Coordinator } from "@/types";
+import type { Employee, Settings, HousingAddress, Coordinator, Room } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList, Cell } from "recharts";
@@ -29,50 +29,58 @@ interface DashboardViewProps {
   onSelectCoordinator: (id: string) => void;
 }
 
+
 // New component for detailed housing view
 const HousingDetailView = ({
   address,
   employees,
   onEmployeeClick,
+  highlightAvailable,
 }: {
   address: HousingAddress;
   employees: Employee[];
   onEmployeeClick: (employee: Employee) => void;
+  highlightAvailable: boolean;
 }) => {
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
 
   const rooms = useMemo(() => {
-    const roomMap = new Map<string, Employee[]>();
+    const roomMap = new Map<string, { occupants: Employee[], capacity: number }>();
+    
+    // Initialize with all rooms from settings
     address.rooms.forEach(room => {
-        roomMap.set(room.name, []);
+        roomMap.set(room.name, { occupants: [], capacity: room.capacity });
     });
 
+    // Populate with employees
     employees.forEach(employee => {
       if (employee.address === address.name) {
         if (!roomMap.has(employee.roomNumber)) {
-          // This case handles employees in rooms not defined in settings
-          roomMap.set(employee.roomNumber, []);
+          // Add room if not in settings, assume capacity is number of occupants
+          roomMap.set(employee.roomNumber, { occupants: [], capacity: 0 });
         }
-        roomMap.get(employee.roomNumber)!.push(employee);
+        const roomData = roomMap.get(employee.roomNumber)!;
+        roomData.occupants.push(employee);
+        if (roomData.capacity === 0) { // Dynamically set capacity for rooms not in settings
+            roomData.capacity = roomData.occupants.length;
+        }
       }
     });
 
-    const sortedRooms = Array.from(roomMap.entries())
-      .map(([roomNumber, occupants]) => ({ roomNumber, occupants }))
+    return Array.from(roomMap.entries())
+      .map(([roomNumber, data]) => ({
+        roomNumber,
+        occupants: data.occupants,
+        capacity: data.capacity,
+        available: data.capacity - data.occupants.length
+      }))
       .sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true }));
-      
-    // Ensure rooms from settings with 0 occupants are also shown
-    address.rooms.forEach(room => {
-        if (!sortedRooms.some(r => r.roomNumber === room.name)) {
-            sortedRooms.push({ roomNumber: room.name, occupants: [] });
-        }
-    });
 
-    return sortedRooms;
   }, [employees, address]);
 
   if (selectedRoom) {
-    const occupants = rooms.find(r => r.roomNumber === selectedRoom)?.occupants || [];
+    const roomData = rooms.find(r => r.roomNumber === selectedRoom);
+    const occupants = roomData?.occupants || [];
     return (
       <div>
         <Button variant="ghost" onClick={() => setSelectedRoom(null)} className="mb-4">
@@ -83,14 +91,18 @@ const HousingDetailView = ({
           <DialogDescription>{address.name}</DialogDescription>
         </DialogHeader>
         <ScrollArea className="h-[60vh] mt-4">
-          {occupants.map(employee => (
+          {occupants.length > 0 ? (
+            occupants.map(employee => (
             <Card key={employee.id} onClick={() => onEmployeeClick(employee)} className="mb-3 cursor-pointer hover:bg-muted/50">
               <CardHeader>
                 <CardTitle className="text-base">{employee.fullName}</CardTitle>
                 <CardDescription>{employee.nationality}</CardDescription>
               </CardHeader>
             </Card>
-          ))}
+          ))
+          ) : (
+             <p className="text-center text-muted-foreground pt-8">Brak pracowników w tym pokoju.</p>
+          )}
         </ScrollArea>
       </div>
     );
@@ -104,20 +116,23 @@ const HousingDetailView = ({
         </DialogHeader>
       <ScrollArea className="h-[60vh] mt-4">
         <div className="space-y-3">
-          {rooms.map(({ roomNumber, occupants }) => (
-            <Card key={roomNumber} onClick={() => setSelectedRoom(roomNumber)} className="cursor-pointer hover:bg-muted/50">
-              <CardHeader className="flex-row items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <BedDouble className="h-5 w-5 text-primary" />
-                    <CardTitle className="text-base">Pokój {roomNumber}</CardTitle>
-                </div>
-                <div className="flex items-center gap-3">
-                    <Badge variant="secondary">{occupants.length} os.</Badge>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                </div>
-              </CardHeader>
-            </Card>
-          ))}
+          {rooms.map(({ roomNumber, occupants, available }) => {
+            const hasAvailability = available > 0;
+            return (
+                <Card key={roomNumber} onClick={() => setSelectedRoom(roomNumber)} className={cn("cursor-pointer hover:bg-muted/50 transition-colors", highlightAvailable && hasAvailability && "bg-green-100 dark:bg-green-900/30 border-green-500")}>
+                <CardHeader className="flex-row items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <BedDouble className="h-5 w-5 text-primary" />
+                        <CardTitle className="text-base">Pokój {roomNumber}</CardTitle>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <Badge variant={highlightAvailable && hasAvailability ? 'default' : 'secondary'} className={cn(highlightAvailable && hasAvailability && 'bg-green-600')}>{occupants.length} / {occupants.length + available}</Badge>
+                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                </CardHeader>
+                </Card>
+            )
+          })}
         </div>
       </ScrollArea>
     </div>
@@ -131,6 +146,7 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
   const [housingSearchTerm, setHousingSearchTerm] = useState("");
   const [selectedAddress, setSelectedAddress] = useState<HousingAddress | null>(null);
   const [isAllEmployeesDialogOpen, setIsAllEmployeesDialogOpen] = useState(false);
+  const [highlightAvailableForAddressId, setHighlightAvailableForAddressId] = useState<string | null>(null);
   
   const [departureYear, setDepartureYear] = useState<string>(String(new Date().getFullYear()));
   const [departureMonth, setDepartureMonth] = useState<string>('all');
@@ -168,6 +184,12 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
     setSelectedAddress(address);
     setIsAllEmployeesDialogOpen(true);
   }
+
+  const handleAvailableClick = (e: React.MouseEvent, address: HousingAddress) => {
+    e.stopPropagation();
+    setHighlightAvailableForAddressId(address.id);
+    handleAddressCardClick(address);
+  };
 
   const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
 
@@ -531,7 +553,7 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
                                         <div className="flex justify-between text-sm mt-3 text-muted-foreground">
                                             <span className="text-blue-500">Pojemność: <span className="font-bold text-foreground">{house.capacity}</span></span>
                                             <span className="text-red-500">Zajęte: <span className="font-bold text-foreground">{house.occupied}</span></span>
-                                            <span className="text-green-500">Wolne: <span className="font-bold text-foreground">{house.available}</span></span>
+                                            <span onClick={(e) => handleAvailableClick(e, house)} className="text-green-500 cursor-pointer hover:underline">Wolne: <span className="font-bold text-foreground">{house.available}</span></span>
                                         </div>
                                     </CardContent>
                                     </Card>
@@ -549,7 +571,10 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
       {/* Dialog for Room/Employee drilldown */}
       <Dialog open={isHousingDialogOpen} onOpenChange={(isOpen) => {
           setIsHousingDialogOpen(isOpen);
-          if (!isOpen) setSelectedAddress(null);
+          if (!isOpen) {
+            setSelectedAddress(null);
+            setHighlightAvailableForAddressId(null);
+          }
       }}>
           <DialogContent className="sm:max-w-[600px] max-h-[90vh]">
               {selectedAddress && (
@@ -557,6 +582,7 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
                       address={selectedAddress}
                       employees={employees}
                       onEmployeeClick={handleEmployeeClick}
+                      highlightAvailable={highlightAvailableForAddressId === selectedAddress.id}
                   />
               )}
           </DialogContent>
@@ -588,5 +614,7 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
     </div>
   );
 }
+
+    
 
     
