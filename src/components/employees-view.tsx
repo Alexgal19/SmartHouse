@@ -2,12 +2,12 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
-import type { Employee, Settings } from '@/types';
+import type { Employee, Settings, Coordinator } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, PlusCircle, X, SlidersHorizontal } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, X, SlidersHorizontal, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +21,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ScrollArea } from './ui/scroll-area';
 import { Skeleton } from './ui/skeleton';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 
 interface EmployeesViewProps {
   employees: Employee[];
@@ -29,6 +30,8 @@ interface EmployeesViewProps {
   onEditEmployee: (employee: Employee) => void;
   onDismissEmployee: (employeeId: string) => void;
   onRestoreEmployee: (employeeId: string) => void;
+  onBulkDelete: (status: 'active' | 'dismissed') => void;
+  currentUser: Coordinator;
 }
 
 const EmployeeActions = ({
@@ -182,7 +185,9 @@ export default function EmployeesView({
   onAddEmployee,
   onEditEmployee,
   onDismissEmployee,
-  onRestoreEmployee
+  onRestoreEmployee,
+  onBulkDelete,
+  currentUser,
 }: EmployeesViewProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [coordinatorFilter, setCoordinatorFilter] = useState('all');
@@ -223,14 +228,42 @@ export default function EmployeesView({
       return <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>;
     }
     return (
-      <EmployeeListComponent
-        employees={list}
-        settings={settings}
-        onEdit={onEditEmployee}
-        onDismiss={onDismissEmployee}
-        onRestore={onRestoreEmployee}
-        isDismissedTab={isDismissed}
-      />
+        <>
+            {currentUser.isAdmin && list.length > 0 && (
+                <div className="flex justify-end mb-4">
+                     <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm" >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Usuń wszystkich ({list.length})
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Czy na pewno chcesz usunąć wszystkich {isDismissed ? 'zwolnionych' : 'aktywnych'} pracowników?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Tej operacji nie można cofnąć. Spowoduje to trwałe usunięcie {list.length} rekordów pracowników z arkusza Google.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => onBulkDelete(isDismissed ? 'dismissed' : 'active')} className="bg-destructive hover:bg-destructive/90">
+                                    Tak, usuń wszystkich
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                </div>
+            )}
+            <EmployeeListComponent
+                employees={list}
+                settings={settings}
+                onEdit={onEditEmployee}
+                onDismiss={onDismissEmployee}
+                onRestore={onRestoreEmployee}
+                isDismissedTab={isDismissed}
+            />
+        </>
     );
   };
 
@@ -332,5 +365,3 @@ export default function EmployeesView({
     </Card>
   );
 }
-
-    

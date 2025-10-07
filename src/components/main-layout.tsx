@@ -21,7 +21,7 @@ import SettingsView from './settings-view';
 import InspectionsView from './inspections-view';
 import { AddEmployeeForm } from './add-employee-form';
 import { LoginView } from './login-view';
-import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead, getInspections, addInspection, updateInspection, deleteInspection, checkAndUpdateEmployeeStatuses, transferEmployees } from '@/lib/actions';
+import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead, getInspections, addInspection, updateInspection, deleteInspection, checkAndUpdateEmployeeStatuses, transferEmployees, bulkDeleteEmployees } from '@/lib/actions';
 import type { Employee, Settings, User, View, Notification, Coordinator, Inspection } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Building, ClipboardList, Home, Settings as SettingsIcon, Users } from 'lucide-react';
@@ -297,6 +297,20 @@ function MainContent() {
         }
     };
     
+    const handleBulkDeleteEmployees = async (status: 'active' | 'dismissed') => {
+        if (!currentUser || !currentUser.isAdmin) {
+             toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administrator może usuwać pracowników." });
+            return;
+        }
+         try {
+            await bulkDeleteEmployees(status, currentUser);
+            toast({ title: "Sukces", description: `Wszyscy ${status === 'active' ? 'aktywni' : 'zwolnieni'} pracownicy zostali usunięci.` });
+            fetchData();
+        } catch(e: any) {
+            toast({ variant: "destructive", title: "Błąd", description: e.message || `Nie udało się usunąć pracowników.` });
+        }
+    }
+
     const renderView = () => {
         if (!currentUser || !settings) {
             return null; // Should be covered by the top-level isLoading/LoginView checks
@@ -306,7 +320,7 @@ function MainContent() {
             case 'dashboard':
                 return <DashboardView employees={filteredEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} />;
             case 'employees':
-                return <EmployeesView employees={filteredEmployees} settings={settings} onAddEmployee={handleAddEmployeeClick} onEditEmployee={handleEditEmployeeClick} onDismissEmployee={handleDismissEmployee} onRestoreEmployee={handleRestoreEmployee} />;
+                return <EmployeesView employees={filteredEmployees} settings={settings} onAddEmployee={handleAddEmployeeClick} onEditEmployee={handleEditEmployeeClick} onDismissEmployee={handleDismissEmployee} onRestoreEmployee={handleRestoreEmployee} onBulkDelete={handleBulkDeleteEmployees} currentUser={currentUser} />;
             case 'settings':
                 if (!currentUser.isAdmin) {
                     return <div className="p-4 text-center text-red-500">Brak uprawnień do przeglądania tej strony.</div>;

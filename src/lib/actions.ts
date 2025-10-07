@@ -670,3 +670,40 @@ export async function bulkImportEmployees(
     return { success: true, message: `Pomyślnie zaimportowano ${importedCount} pracowników.` };
 }
 
+export async function bulkDeleteEmployees(status: 'active' | 'dismissed', actor: Coordinator): Promise<void> {
+    try {
+        const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
+        const rows = await sheet.getRows();
+        
+        const rowsToDelete = rows.filter(row => row.get('status') === status);
+
+        if (rowsToDelete.length === 0) {
+            throw new Error(`Brak ${status === 'active' ? 'aktywnych' : 'zwolnionych'} pracowników do usunięcia.`);
+        }
+
+        // Iterate backwards to avoid index shifting issues when deleting
+        for (let i = rowsToDelete.length - 1; i >= 0; i--) {
+            await rowsToDelete[i].delete();
+        }
+        
+        const message = `${actor.name} usunął masowo ${rowsToDelete.length} ${status === 'active' ? 'aktywnych' : 'zwolnionych'} pracowników.`;
+        
+        const notificationSheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
+        const newNotification = {
+            id: `notif-${Date.now()}`,
+            message,
+            employeeId: '',
+            employeeName: '',
+            coordinatorId: actor.uid,
+            coordinatorName: actor.name,
+            createdAt: new Date().toISOString(),
+            isRead: 'FALSE',
+            changes: '[]',
+        };
+        await notificationSheet.addRow(newNotification as any, { raw: false, valueInputOption: 'USER_ENTERED' });
+
+    } catch (error) {
+        console.error(`Error bulk deleting ${status} employees:`, error);
+        throw new Error(`Nie udało się usunąć pracowników. ${error instanceof Error ? error.message : ''}`);
+    }
+}
