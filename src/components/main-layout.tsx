@@ -69,9 +69,12 @@ function MainContent() {
             setNotifications(notificationsData.map((n:any) => ({...n, createdAt: new Date(n.createdAt)})));
             setAllInspections(inspectionsData.map((i: any) => ({...i, date: new Date(i.date)})));
 
-            if (isInitialLoad) {
-              // Run status check in the background without blocking UI
-              checkAndUpdateEmployeeStatuses().catch(e => console.error("Background status check failed:", e));
+             if (isInitialLoad) {
+              try {
+                await checkAndUpdateEmployeeStatuses();
+              } catch (e) {
+                console.error("Background status check failed:", e)
+              }
             }
 
         } catch (error) {
@@ -100,10 +103,9 @@ function MainContent() {
         if (currentUser) {
             sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
             if(currentUser.isAdmin) {
-                // When admin logs in, reset the coordinator filter
-                // setSelectedCoordinatorId('all'); // This might be causing the flicker, let's let it persist
+                // Admin can see all by default, no filter change needed unless they select one
             } else {
-                // When a coordinator logs in, set the filter to their ID
+                // When a non-admin coordinator logs in, set the filter to their ID
                 setSelectedCoordinatorId(currentUser.uid);
             }
             fetchData();
@@ -151,7 +153,7 @@ function MainContent() {
                     password: ''
                 };
                 setCurrentUser(adminUser);
-                setSelectedCoordinatorId('all'); // Reset filter for admin login
+                setSelectedCoordinatorId('all');
             } else {
                  (window as any).setLoginError('Nieprawidłowe hasło administratora.');
             }
@@ -172,14 +174,17 @@ function MainContent() {
         
         if (!coordinator.password) { // First login, set password
             try {
-                await updateSettings({ 
-                    coordinators: settings.coordinators.map(c => 
-                        c.uid === coordinator.uid ? { ...c, password } : c
-                    ) 
-                });
-                setCurrentUser({ ...coordinator, password });
+                const updatedCoordinators = settings.coordinators.map(c => 
+                    c.uid === coordinator.uid ? { ...c, password } : c
+                );
+                await updateSettings({ coordinators: updatedCoordinators });
+                
+                // Update local settings state immediately to prevent re-triggering this block
+                setSettings(prevSettings => prevSettings ? {...prevSettings, coordinators: updatedCoordinators} : null);
+
+                // Set current user, which will trigger a re-fetch, but with the new password already in local state
+                setCurrentUser({ ...coordinator, password }); 
                 toast({ title: "Sukces", description: "Twoje hasło zostało ustawione." });
-                await fetchData();
             } catch (error) {
                 (window as any).setLoginError('Nie udało się ustawić hasła. Spróbuj ponownie.');
             }
@@ -443,5 +448,3 @@ export default function MainLayout() {
         </SidebarProvider>
     );
 }
-
-    
