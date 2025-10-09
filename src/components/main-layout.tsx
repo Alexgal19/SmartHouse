@@ -21,7 +21,7 @@ import SettingsView from './settings-view';
 import InspectionsView from './inspections-view';
 import { AddEmployeeForm } from './add-employee-form';
 import { LoginView } from './login-view';
-import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead, getInspections, addInspection, updateInspection, deleteInspection, checkAndUpdateEmployeeStatuses, transferEmployees, bulkDeleteEmployees, bulkImportEmployees, clearAllNotifications } from '@/lib/actions';
+import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead, getInspections, addInspection, updateInspection, deleteInspection, transferEmployees, bulkDeleteEmployees, bulkImportEmployees, clearAllNotifications } from '@/lib/actions';
 import type { Employee, Settings, User, View, Notification, Coordinator, Inspection } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Building, ClipboardList, Home, Settings as SettingsIcon, Users } from 'lucide-react';
@@ -68,15 +68,6 @@ function MainContent() {
             setSettings(settingsData);
             setAllNotifications(notificationsData.map((n:any) => ({...n, createdAt: new Date(n.createdAt)})));
             setAllInspections(inspectionsData.map((i: any) => ({...i, date: new Date(i.date)})));
-
-             if (isInitialLoad) {
-              try {
-                await checkAndUpdateEmployeeStatuses();
-              } catch (e) {
-                console.error("Background status check failed:", e)
-              }
-            }
-
         } catch (error) {
             console.error(error);
             if (isInitialLoad) {

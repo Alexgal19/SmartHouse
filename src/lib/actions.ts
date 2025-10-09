@@ -569,35 +569,6 @@ const parseExcelDate = (excelDate: any): Date | null => {
     return null;
 }
 
-export async function checkAndUpdateEmployeeStatuses(): Promise<void> {
-    try {
-        const allEmployees = await getEmployeesFromSheet();
-        const activeEmployees = allEmployees.filter(e => e.status === 'active');
-        const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows();
-
-        const updates = [];
-
-        for (const employee of activeEmployees) {
-            if (employee.checkOutDate && isPast(employee.checkOutDate)) {
-                const rowIndex = rows.findIndex(row => row.get('id') === employee.id);
-                if (rowIndex !== -1) {
-                    const rowToUpdate = rows[rowIndex];
-                    rowToUpdate.set('status', 'dismissed');
-                    updates.push(rowToUpdate.save({ raw: false, valueInputOption: 'USER_ENTERED' }));
-                }
-            }
-        }
-        await Promise.all(updates);
-        if (updates.length > 0) {
-            console.log(`Automatically dismissed ${updates.length} employees.`);
-        }
-    } catch (error) {
-        console.error("Error checking and updating employee statuses:", error);
-        // Do not re-throw error to prevent app crash
-    }
-}
-
 export async function bulkImportEmployees(
     fileData: ArrayBuffer,
     coordinators: Coordinator[],
