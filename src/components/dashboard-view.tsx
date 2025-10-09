@@ -139,6 +139,183 @@ const HousingDetailView = ({
   );
 };
 
+const chartColors = [
+    { from: 'hsl(var(--chart-1))', to: 'hsl(var(--chart-2))', id: 'grad1' },
+    { from: 'hsl(var(--chart-2))', to: 'hsl(var(--chart-3))', id: 'grad2' },
+    { from: 'hsl(var(--chart-3))', to: 'hsl(var(--chart-4))', id: 'grad4' },
+    { from: 'hsl(var(--chart-4))', to: 'hsl(var(--chart-5))', id: 'grad5' },
+    { from: 'hsl(var(--chart-5))', to: 'hsl(var(--chart-1))', id: 'grad5' },
+];
+
+const ChartComponent = ({ data, title, labelY }: { data: {name: string, value: number}[], title: string, labelY?: string }) => (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="pl-0 sm:pl-2">
+        <ChartContainer config={{value: {label: labelY || "Pracownicy"}}} className="h-64 w-full">
+          <ResponsiveContainer>
+            <BarChart data={data} margin={{ top: 20, right: 20, left: -10, bottom: 20 }} barSize={50}>
+               <defs>
+                {chartColors.map((color, index) => (
+                  <linearGradient id={color.id} x1="0" y1="0" x2="0" y2="1" key={index}>
+                    <stop offset="5%" stopColor={color.from} stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor={color.to} stopOpacity={0.8}/>
+                  </linearGradient>
+                ))}
+              </defs>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border) / 0.5)" />
+              <XAxis 
+                dataKey="name" 
+                tickLine={false} 
+                axisLine={false} 
+                tickMargin={10} 
+                tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} 
+                interval={0}
+                angle={-45}
+                textAnchor="end"
+                height={60}
+              />
+              <YAxis tickLine={false} axisLine={false} tickMargin={10} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
+              <Tooltip 
+                cursor={{ fill: 'hsl(var(--accent) / 0.1)' }} 
+                content={({ active, payload, label }) => active && payload && payload.length && (
+                    <div className="bg-background/95 p-3 rounded-lg border shadow-lg">
+                        <p className="font-bold text-foreground">{label}</p>
+                        <p className="text-sm text-primary">{`${payload[0].value} ${labelY || 'pracowników'}`}</p>
+                    </div>
+                )}
+              />
+              <Bar dataKey="value" radius={[8, 8, 0, 0]} >
+                <LabelList dataKey="value" position="top" offset={10} className="fill-foreground font-semibold" />
+                 {data.map((entry, index) => {
+                    const color = chartColors[index % chartColors.length];
+                    return <Cell key={`cell-${index}`} fill={`url(#${color.id})`} />
+                 })}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartContainer>
+      </CardContent>
+    </Card>
+  );
+
+const DeparturesChart = ({ allEmployees }: { allEmployees: Employee[] }) => {
+    const [departureYear, setDepartureYear] = useState<string>(String(new Date().getFullYear()));
+    const [departureMonth, setDepartureMonth] = useState<string>('all');
+    
+    const departureYears = useMemo(() => {
+        const years = new Set(allEmployees.filter(e => e.checkOutDate).map(e => String(getYear(e.checkOutDate!))));
+        return Array.from(years).sort((a,b) => Number(b) - Number(a));
+    }, [allEmployees]);
+
+    const departuresByMonth = useMemo(() => {
+        const departures = allEmployees.filter(e => 
+        e.checkOutDate && 
+        getYear(e.checkOutDate) === Number(departureYear) &&
+        (departureMonth === 'all' || getMonth(e.checkOutDate) === Number(departureMonth))
+        );
+        
+        const counts = departures.reduce((acc, employee) => {
+        let key;
+        if (departureMonth === 'all') {
+            key = format(employee.checkOutDate!, 'yyyy-MM');
+        } else {
+            key = format(employee.checkOutDate!, 'dd');
+        }
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+        }, {} as Record<string, number>);
+        
+        return Object.entries(counts)
+        .map(([key, value]) => {
+            let name;
+            if (departureMonth === 'all') {
+                name = format(new Date(key), 'MMM', { locale: pl });
+            } else {
+                const date = new Date(Number(departureYear), Number(departureMonth), Number(key));
+                name = format(date, 'dd MMM', { locale: pl });
+            }
+            return { name, value };
+        })
+        .sort((a, b) => {
+            if (departureMonth === 'all') {
+                return new Date(a.name + ' 1, 2000').getTime() - new Date(b.name + ' 1, 2000').getTime();
+            }
+            return new Date(a.name).getTime() - new Date(b.name).getTime();
+        });
+    }, [allEmployees, departureYear, departureMonth]);
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Statystyka wyjazdów</CardTitle>
+                <div className="flex gap-2 pt-2">
+                    <Select value={departureYear} onValueChange={setDepartureYear}>
+                        <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            {departureYears.map(year => <SelectItem key={year} value={year}>{year}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <Select value={departureMonth} onValueChange={setDepartureMonth}>
+                        <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Wszystkie miesiące</SelectItem>
+                            {Array.from({length: 12}).map((_, i) => (
+                                <SelectItem key={i} value={String(i)}>{format(new Date(2000, i), 'LLLL', {locale: pl})}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            </CardHeader>
+            <CardContent className="pl-0 sm:pl-2">
+                <ChartContainer config={{value: {label: "Wyjazdy"}}} className="h-64 w-full">
+                <ResponsiveContainer>
+                    <BarChart data={departuresByMonth} margin={{ top: 20, right: 20, left: -10, bottom: 20 }} barSize={50}>
+                    <defs>
+                        {chartColors.map((color, index) => (
+                        <linearGradient id={color.id} x1="0" y1="0" x2="0" y2="1" key={index}>
+                            <stop offset="5%" stopColor={color.from} stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor={color.to} stopOpacity={0.8}/>
+                        </linearGradient>
+                        ))}
+                    </defs>
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border) / 0.5)" />
+                    <XAxis 
+                        dataKey="name" 
+                        tickLine={false} 
+                        axisLine={false} 
+                        tickMargin={10} 
+                        tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} 
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                    />
+                    <YAxis tickLine={false} axisLine={false} tickMargin={10} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
+                    <Tooltip 
+                        cursor={{ fill: 'hsl(var(--accent) / 0.1)' }} 
+                        content={({ active, payload, label }) => active && payload && payload.length && (
+                            <div className="bg-background/95 p-3 rounded-lg border shadow-lg">
+                                <p className="font-bold text-foreground">{label}</p>
+                                <p className="text-sm text-primary">{`${payload[0].value} wyjazdów`}</p>
+                            </div>
+                        )}
+                    />
+                    <Bar dataKey="value" radius={[8, 8, 0, 0]} >
+                        <LabelList dataKey="value" position="top" offset={10} className="fill-foreground font-semibold" />
+                        {departuresByMonth.map((entry, index) => {
+                            const color = chartColors[index % chartColors.length];
+                            return <Cell key={`cell-${index}`} fill={`url(#${color.id})`} />
+                        })}
+                    </Bar>
+                    </BarChart>
+                </ResponsiveContainer>
+                </ChartContainer>
+            </CardContent>
+        </Card>
+    );
+}
 
 export default function DashboardView({ employees, nonEmployees, settings, onEditEmployee, currentUser, selectedCoordinatorId, onSelectCoordinator, onDataRefresh }: DashboardViewProps) {
   const [isHousingDialogOpen, setIsHousingDialogOpen] = useState(false);
@@ -148,8 +325,6 @@ export default function DashboardView({ employees, nonEmployees, settings, onEdi
   const [isAllEmployeesDialogOpen, setIsAllEmployeesDialogOpen] = useState(false);
   const [highlightAvailableForAddressId, setHighlightAvailableForAddressId] = useState<string | null>(null);
   
-  const [departureYear, setDepartureYear] = useState<string>(String(new Date().getFullYear()));
-  const [departureMonth, setDepartureMonth] = useState<string>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { toast } = useToast();
 
@@ -262,123 +437,15 @@ export default function DashboardView({ employees, nonEmployees, settings, onEdi
     return Object.entries(counts).map(([name, value]) => ({ name, value }));
   }, [nonEmployees]);
 
-  const departureYears = useMemo(() => {
-    const years = new Set(employees.filter(e => e.checkOutDate).map(e => String(getYear(e.checkOutDate!))));
-    return Array.from(years).sort((a,b) => Number(b) - Number(a));
-  }, [employees]);
-
-  const departuresByMonth = useMemo(() => {
-    const departures = employees.filter(e => 
-      e.checkOutDate && 
-      getYear(e.checkOutDate) === Number(departureYear) &&
-      (departureMonth === 'all' || getMonth(e.checkOutDate) === Number(departureMonth))
-    );
-    
-    const counts = departures.reduce((acc, employee) => {
-      let key;
-      if (departureMonth === 'all') {
-         key = format(employee.checkOutDate!, 'yyyy-MM');
-      } else {
-         key = format(employee.checkOutDate!, 'dd');
-      }
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    
-    return Object.entries(counts)
-      .map(([key, value]) => {
-          let name;
-          if (departureMonth === 'all') {
-            name = format(new Date(key), 'MMM', { locale: pl });
-          } else {
-            const date = new Date(Number(departureYear), Number(departureMonth), Number(key));
-            name = format(date, 'dd MMM', { locale: pl });
-          }
-          return { name, value };
-      })
-      .sort((a, b) => {
-          if (departureMonth === 'all') {
-            return new Date(a.name + ' 1, 2000').getTime() - new Date(b.name + ' 1, 2000').getTime();
-          }
-          return new Date(a.name).getTime() - new Date(b.name).getTime();
-      });
-  }, [employees, departureYear, departureMonth]);
-
 
   const employeesByCoordinator = useMemo(() => aggregateData('coordinatorId'), [activeEmployees, settings.coordinators]);
   const employeesByNationality = useMemo(() => aggregateData('nationality'), [activeEmployees]);
   const employeesByDepartment = useMemo(() => aggregateData('zaklad'), [activeEmployees]);
 
- const chartConfig = {
-    value: { label: "Pracownicy" },
-  };
-  
-  const chartColors = [
-    { from: 'hsl(var(--chart-1))', to: 'hsl(var(--chart-2))', id: 'grad1' },
-    { from: 'hsl(var(--chart-2))', to: 'hsl(var(--chart-3))', id: 'grad2' },
-    { from: 'hsl(var(--chart-3))', to: 'hsl(var(--chart-4))', id: 'grad4' },
-    { from: 'hsl(var(--chart-4))', to: 'hsl(var(--chart-5))', id: 'grad5' },
-    { from: 'hsl(var(--chart-5))', to: 'hsl(var(--chart-1))', id: 'grad5' },
-  ];
-
   const handleRefreshStatuses = async () => {
     // This is now handled in main-layout, but we can keep the button for manual refresh if desired.
     // This function can be reimplemented if a manual refresh button is added back.
   };
-
-
-  const ChartComponent = ({ data, title, labelY }: { data: {name: string, value: number}[], title: string, labelY?: string }) => (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="pl-0 sm:pl-2">
-        <ChartContainer config={{value: {label: labelY || "Pracownicy"}}} className="h-64 w-full">
-          <ResponsiveContainer>
-            <BarChart data={data} margin={{ top: 20, right: 20, left: -10, bottom: 20 }} barSize={50}>
-               <defs>
-                {chartColors.map((color, index) => (
-                  <linearGradient id={color.id} x1="0" y1="0" x2="0" y2="1" key={index}>
-                    <stop offset="5%" stopColor={color.from} stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor={color.to} stopOpacity={0.8}/>
-                  </linearGradient>
-                ))}
-              </defs>
-              <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border) / 0.5)" />
-              <XAxis 
-                dataKey="name" 
-                tickLine={false} 
-                axisLine={false} 
-                tickMargin={10} 
-                tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} 
-                interval={0}
-                angle={-45}
-                textAnchor="end"
-                height={60}
-              />
-              <YAxis tickLine={false} axisLine={false} tickMargin={10} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-              <Tooltip 
-                cursor={{ fill: 'hsl(var(--accent) / 0.1)' }} 
-                content={({ active, payload, label }) => active && payload && payload.length && (
-                    <div className="bg-background/95 p-3 rounded-lg border shadow-lg">
-                        <p className="font-bold text-foreground">{label}</p>
-                        <p className="text-sm text-primary">{`${payload[0].value} ${labelY || 'pracowników'}`}</p>
-                    </div>
-                )}
-              />
-              <Bar dataKey="value" radius={[8, 8, 0, 0]} >
-                <LabelList dataKey="value" position="top" offset={10} className="fill-foreground font-semibold" />
-                 {data.map((entry, index) => {
-                    const color = chartColors[index % chartColors.length];
-                    return <Cell key={`cell-${index}`} fill={`url(#${color.id})`} />
-                 })}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartContainer>
-      </CardContent>
-    </Card>
-  );
 
   return (
     <div className="space-y-6">
@@ -477,73 +544,7 @@ export default function DashboardView({ employees, nonEmployees, settings, onEdi
                           <ChartComponent data={employeesByNationality} title="Pracownicy wg narodowości" />
                           <ChartComponent data={employeesByDepartment} title="Pracownicy wg zakładu" />
                           <ChartComponent data={nonEmployeesByAddress} title="Mieszkańcy (NZ) wg adresu" labelY="Mieszkańcy"/>
-                          <Card>
-                              <CardHeader>
-                                  <CardTitle>Statystyka wyjazdów</CardTitle>
-                                  <div className="flex gap-2 pt-2">
-                                      <Select value={departureYear} onValueChange={setDepartureYear}>
-                                          <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-                                          <SelectContent>
-                                              {departureYears.map(year => <SelectItem key={year} value={year}>{year}</SelectItem>)}
-                                          </SelectContent>
-                                      </Select>
-                                      <Select value={departureMonth} onValueChange={setDepartureMonth}>
-                                          <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
-                                          <SelectContent>
-                                              <SelectItem value="all">Wszystkie miesiące</SelectItem>
-                                              {Array.from({length: 12}).map((_, i) => (
-                                                  <SelectItem key={i} value={String(i)}>{format(new Date(2000, i), 'LLLL', {locale: pl})}</SelectItem>
-                                              ))}
-                                          </SelectContent>
-                                      </Select>
-                                  </div>
-                              </CardHeader>
-                              <CardContent className="pl-0 sm:pl-2">
-                                  <ChartContainer config={{value: {label: "Wyjazdy"}}} className="h-64 w-full">
-                                  <ResponsiveContainer>
-                                      <BarChart data={departuresByMonth} margin={{ top: 20, right: 20, left: -10, bottom: 20 }} barSize={50}>
-                                      <defs>
-                                          {chartColors.map((color, index) => (
-                                          <linearGradient id={color.id} x1="0" y1="0" x2="0" y2="1" key={index}>
-                                              <stop offset="5%" stopColor={color.from} stopOpacity={0.8}/>
-                                              <stop offset="95%" stopColor={color.to} stopOpacity={0.8}/>
-                                          </linearGradient>
-                                          ))}
-                                      </defs>
-                                      <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border) / 0.5)" />
-                                      <XAxis 
-                                          dataKey="name" 
-                                          tickLine={false} 
-                                          axisLine={false} 
-                                          tickMargin={10} 
-                                          tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} 
-                                          interval={0}
-                                          angle={-45}
-                                          textAnchor="end"
-                                          height={60}
-                                      />
-                                      <YAxis tickLine={false} axisLine={false} tickMargin={10} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
-                                      <Tooltip 
-                                          cursor={{ fill: 'hsl(var(--accent) / 0.1)' }} 
-                                          content={({ active, payload, label }) => active && payload && payload.length && (
-                                              <div className="bg-background/95 p-3 rounded-lg border shadow-lg">
-                                                  <p className="font-bold text-foreground">{label}</p>
-                                                  <p className="text-sm text-primary">{`${payload[0].value} wyjazdów`}</p>
-                                              </div>
-                                          )}
-                                      />
-                                      <Bar dataKey="value" radius={[8, 8, 0, 0]} >
-                                          <LabelList dataKey="value" position="top" offset={10} className="fill-foreground font-semibold" />
-                                          {departuresByMonth.map((entry, index) => {
-                                              const color = chartColors[index % chartColors.length];
-                                              return <Cell key={`cell-${index}`} fill={`url(#${color.id})`} />
-                                          })}
-                                      </Bar>
-                                      </BarChart>
-                                  </ResponsiveContainer>
-                                  </ChartContainer>
-                              </CardContent>
-                          </Card>
+                          <DeparturesChart allEmployees={employees} />
                           </div>
                       )}
                 </div>
@@ -650,4 +651,3 @@ export default function DashboardView({ employees, nonEmployees, settings, onEdi
     </div>
   );
 }
-
