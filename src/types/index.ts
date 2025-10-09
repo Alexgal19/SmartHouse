@@ -50,8 +50,8 @@ export type HousingAddress = {
 
 export type InspectionCategoryItem = {
     label: string;
-    type: 'rating' | 'yes_no' | 'text' | 'info' | 'select';
-    value: number | boolean | string | null;
+    type: 'rating' | 'yes_no' | 'text' | 'info' | 'select' | 'checkbox_group' | 'number';
+    value: any; // Can be number, boolean, string, string[] or null
     options?: string[];
 };
 

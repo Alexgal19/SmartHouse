@@ -253,6 +253,65 @@ export async function getNotifications(): Promise<Notification[]> {
 const INSPECTION_HEADERS = ['id', 'addressId', 'addressName', 'date', 'coordinatorId', 'coordinatorName', 'standard'];
 const INSPECTION_DETAILS_HEADERS = ['id', 'inspectionId', 'addressName', 'date', 'coordinatorName', 'category', 'itemLabel', 'itemValue', 'uwagi', 'photoData'];
 
+const cleanlinessOptions = ["Bardzo czysto", "Czysto", "Brudno", "Bardzo brudno"];
+const deductionReasons = [
+    "Rezygnacja", "Alkohol", "Brudne śmieci", "Zniszczone", 
+    "Nie sprzątane", "Brudne kołdry", "Uszkodzone", "Palenie papierosów"
+];
+
+
+const getInitialChecklist = (): InspectionCategory[] => [
+    {
+        name: "Kuchnia", uwagi: "", items: [
+            { label: "Czystość kuchnia", type: "select", value: null, options: cleanlinessOptions },
+            { label: "Czystość lodówki", type: "select", value: null, options: cleanlinessOptions },
+            { label: "Czystość płyty gazowej, elektrycznej i piekarnika", type: "select", value: null, options: cleanlinessOptions }
+        ], photos: []
+    },
+    {
+        name: "Łazienka", uwagi: "", items: [
+            { label: "Czystość łazienki", type: "select", value: null, options: cleanlinessOptions },
+            { label: "Czystość toalety", type: "select", value: null, options: cleanlinessOptions },
+            { label: "Czystość brodzika", type: "select", value: null, options: cleanlinessOptions },
+        ], photos: []
+    },
+    {
+        name: "Pokoje", uwagi: "", items: [
+            { label: "Czystość pokoju", type: "select", value: null, options: cleanlinessOptions },
+            { label: "Czy niema pleśni w pomieszczeniach?", type: "yes_no", value: null },
+            { label: "Łóżka niepołamane", type: "yes_no", value: null },
+            { label: "Sciany czyste", type: "yes_no", value: null },
+            { label: "Szafy i szafki czyste", type: "yes_no", value: null },
+            { label: "Stare rzeczy wyrzucane", type: "yes_no", value: null },
+            { label: "Pościel czysta", type: "yes_no", value: null },
+            { label: "Wyposażenia niezniszczone", type: "yes_no", value: null },
+        ], photos: []
+    },
+    {
+        name: "Instalacja", uwagi: "", items: [
+            { label: "Instalacja gazowa działa", type: "yes_no", value: null },
+            { label: "Instalacja internetowa działa", type: "yes_no", value: null },
+            { label: "Instalacja elektryczna działa", type: "yes_no", value: null },
+            { label: "Instalacja wodno-kanalizacyjna działa", type: "yes_no", value: null },
+            { label: "Ogrzewania", type: "text", value: "" },
+            { label: "Temperatura w pomieszczeniu", type: "text", value: "" }
+        ], photos: []
+    },
+     {
+        name: "Liczniki", uwagi: "", items: [], photos: []
+    },
+    {
+        name: "Potrącenia i Kaucja", uwagi: "", items: [
+            { label: "Zwrot kaucji", type: "yes_no", value: null },
+            { label: "Kwota zwrotu kaucji (zł)", type: "number", value: null },
+            { label: "Potrącenie - zgodnie z regulaminem (zł)", type: "number", value: null },
+            { label: "Potrącenie - Nie przepracowanie 4 miesięcy (zł)", type: "number", value: null },
+            { label: "Potrącenie - Nie poinformowanie w ciągu 30 dni (zł)", type: "number", value: null },
+            { label: "Inne potrącenia (checkboxy)", type: "checkbox_group", value: [], options: deductionReasons },
+            { label: "Potrącenie za co", type: "text", value: "" },
+        ], photos: []
+    }
+];
 
 const deserializeInspection = (row: any, allDetails: InspectionDetail[]): Inspection | null => {
     const inspectionId = row.get('id');
@@ -278,6 +337,9 @@ const deserializeInspection = (row: any, allDetails: InspectionDetail[]): Inspec
             
             if (valueStr === 'true') value = true;
             else if (valueStr === 'false') value = false;
+            else if (valueStr && valueStr.startsWith('[') && valueStr.endsWith(']')) {
+                try { value = JSON.parse(valueStr); } catch (e) { value = []; }
+            }
             else if (valueStr && !isNaN(Number(valueStr)) && valueStr.trim() !== '') value = Number(valueStr);
             else if (valueStr === null || valueStr === '') value = null;
 
@@ -322,50 +384,6 @@ const deserializeInspection = (row: any, allDetails: InspectionDetail[]): Inspec
         categories: finalCategories,
     }
 };
-
-const cleanlinessOptions = ["Bardzo czysto", "Czysto", "Brudno", "Bardzo brudno"];
-
-const getInitialChecklist = (): InspectionCategory[] => [
-    {
-        name: "Kuchnia", uwagi: "", items: [
-            { label: "Czystość kuchnia", type: "select", value: null, options: cleanlinessOptions },
-            { label: "Czystość lodówki", type: "select", value: null, options: cleanlinessOptions },
-            { label: "Czystość płyty gazowej, elektrycznej i piekarnika", type: "select", value: null, options: cleanlinessOptions }
-        ], photos: []
-    },
-    {
-        name: "Łazienka", uwagi: "", items: [
-            { label: "Czystość łazienki", type: "select", value: null, options: cleanlinessOptions },
-            { label: "Czystość toalety", type: "select", value: null, options: cleanlinessOptions },
-            { label: "Czystość brodzika", type: "select", value: null, options: cleanlinessOptions },
-        ], photos: []
-    },
-    {
-        name: "Pokoje", uwagi: "", items: [
-            { label: "Czystość pokoju", type: "select", value: null, options: cleanlinessOptions },
-            { label: "Czy niema pleśni w pomieszczeniach?", type: "yes_no", value: null },
-            { label: "Łóżka niepołamane", type: "yes_no", value: null },
-            { label: "Sciany czyste", type: "yes_no", value: null },
-            { label: "Szafy i szafki czyste", type: "yes_no", value: null },
-            { label: "Stare rzeczy wyrzucane", type: "yes_no", value: null },
-            { label: "Pościel czysta", type: "yes_no", value: null },
-            { label: "Wyposażenia niezniszczone", type: "yes_no", value: null },
-        ], photos: []
-    },
-    {
-        name: "Instalacja", uwagi: "", items: [
-            { label: "Instalacja gazowa działa", type: "yes_no", value: null },
-            { label: "Instalacja internetowa działa", type: "yes_no", value: null },
-            { label: "Instalacja elektryczna działa", type: "yes_no", value: null },
-            { label: "Instalacja wodno-kanalizacyjna działa", type: "yes_no", value: null },
-            { label: "Ogrzewania", type: "text", value: "" },
-            { label: "Temperatura w pomieszczeniu", type: "text", value: "" }
-        ], photos: []
-    },
-     {
-        name: "Liczniki", uwagi: "", items: [], photos: []
-    },
-];
 
 export async function getInspections(): Promise<Inspection[]> {
     try {
