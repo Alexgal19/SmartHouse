@@ -495,8 +495,9 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
     const allDetailRows = await detailsSheet.getRows();
     const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === inspectionId);
     
-    for (let i = detailsToDelete.length - 1; i >= 0; i--) {
-        await detailsToDelete[i].delete();
+    // Using for...of loop to ensure sequential deletion
+    for (const row of detailsToDelete) {
+        await row.delete();
     }
 
     const mainInspectionData = serializeInspection({ ...restOfData, id: inspectionId });
@@ -593,8 +594,8 @@ export async function deleteInspection(id: string): Promise<void> {
         }
 
         const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === id);
-        for (let i = detailsToDelete.length - 1; i >= 0; i--) {
-            await detailsToDelete[i].delete();
+        for (const row of detailsToDelete) {
+            await row.delete();
         }
 
     } catch (error) {
@@ -873,3 +874,5 @@ export async function checkAndUpdateEmployeeStatuses(actor: Coordinator): Promis
     throw new Error("Could not update statuses.");
   }
 }
+
+    

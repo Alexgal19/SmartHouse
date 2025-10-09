@@ -796,3 +796,5 @@ export default function InspectionsView({ inspections, settings, currentUser, on
         </Card>
     );
 }
+
+    
