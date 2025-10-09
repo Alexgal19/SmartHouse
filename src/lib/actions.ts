@@ -493,10 +493,10 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
     
     // Efficiently delete old details
     const allDetailRows = await detailsSheet.getRows();
-    const detailsToKeep = allDetailRows.filter(r => r.get('inspectionId') !== inspectionId);
-    await detailsSheet.clearRows();
-    if(detailsToKeep.length > 0) {
-        await detailsSheet.addRows(detailsToKeep.map(r => r.toObject()), { raw: false, valueInputOption: 'USER_ENTERED' });
+    const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === inspectionId);
+    
+    for (let i = detailsToDelete.length - 1; i >= 0; i--) {
+        await detailsToDelete[i].delete();
     }
 
     const mainInspectionData = serializeInspection({ ...restOfData, id: inspectionId });
@@ -587,17 +587,14 @@ export async function deleteInspection(id: string): Promise<void> {
         const allInspectionRows = await inspectionsSheet.getRows();
         const allDetailRows = await detailsSheet.getRows();
         
-        const inspectionsToKeep = allInspectionRows.filter(r => r.get('id') !== id);
-        const detailsToKeep = allDetailRows.filter(r => r.get('inspectionId') !== id);
-
-        await inspectionsSheet.clearRows();
-        if(inspectionsToKeep.length > 0) {
-             await inspectionsSheet.addRows(inspectionsToKeep.map(r => r.toObject()), { raw: false, valueInputOption: 'USER_ENTERED' });
+        const inspectionRowToDelete = allInspectionRows.find(r => r.get('id') === id);
+        if (inspectionRowToDelete) {
+             await inspectionRowToDelete.delete();
         }
 
-        await detailsSheet.clearRows();
-        if(detailsToKeep.length > 0) {
-            await detailsSheet.addRows(detailsToKeep.map(r => r.toObject()), { raw: false, valueInputOption: 'USER_ENTERED' });
+        const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === id);
+        for (let i = detailsToDelete.length - 1; i >= 0; i--) {
+            await detailsToDelete[i].delete();
         }
 
     } catch (error) {
