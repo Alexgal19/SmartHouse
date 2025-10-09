@@ -3,7 +3,7 @@
 // src/lib/sheets.ts
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
-import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, InspectionCategory, InspectionCategoryItem, Photo, InspectionDetail, NonEmployee } from '@/types';
+import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, InspectionCategory, InspectionCategoryItem, Photo, InspectionDetail, NonEmployee, DeductionReason } from '@/types';
 import { format, isEqual, parseISO } from 'date-fns';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
@@ -70,7 +70,7 @@ const deserializeEmployee = (row: any): Employee | null => {
     }
 
     const deductionReasonRaw = row.get('deductionReason');
-    let deductionReason: string[] | undefined = undefined;
+    let deductionReason: DeductionReason[] | undefined = undefined;
     if (deductionReasonRaw) {
         try {
             const parsed = JSON.parse(deductionReasonRaw);
@@ -78,8 +78,16 @@ const deserializeEmployee = (row: any): Employee | null => {
                 deductionReason = parsed;
             }
         } catch(e) {
-            // It's probably a string from before the change, so we can wrap it in an array.
-            deductionReason = [deductionReasonRaw];
+            // It's probably an old string array, try to adapt it
+            try {
+                const oldArray = JSON.parse(`[${deductionReasonRaw}]`);
+                 if(Array.isArray(oldArray)){
+                    deductionReason = oldArray.map((name: string) => ({ name, checked: true, amount: null }));
+                 }
+            } catch (e2) {
+                 // Or just a single string
+                 deductionReason = [{ name: deductionReasonRaw, checked: true, amount: null }];
+            }
         }
     }
 

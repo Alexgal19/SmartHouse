@@ -7,6 +7,12 @@ export type User = {
   isAdmin?: boolean;
 };
 
+export type DeductionReason = {
+  name: string;
+  checked: boolean;
+  amount?: number | null;
+};
+
 export type Employee = {
   id: string;
   fullName: string;
@@ -30,7 +36,7 @@ export type Employee = {
   deductionRegulation?: number | null;
   deductionNo4Months?: number | null;
   deductionNo30Days?: number | null;
-  deductionReason?: string[];
+  deductionReason?: DeductionReason[];
 };
 
 export type NonEmployee = {

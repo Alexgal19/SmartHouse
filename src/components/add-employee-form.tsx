@@ -1,10 +1,11 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import type { Employee, Settings } from "@/types";
+import type { Employee, Settings, DeductionReason } from "@/types";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -36,17 +37,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "./ui/label";
 import { Checkbox } from "./ui/checkbox";
 
-const deductionReasons = [
-    "Rezygnacja",
-    "Alkohol",
-    "Brudne ściany",
-    "Zniszczone wyposażenie",
-    "Nie sprzątanie mieszkania",
-    "Brudne kołdra i poduszka",
-    "Uszkodzone drzwi",
-    "Palenia papierosów"
-];
-
+const deductionReasonSchema = z.object({
+    name: z.string(),
+    checked: z.boolean(),
+    amount: z.number().nullable().optional(),
+});
 
 const employeeSchema = z.object({
   fullName: z.string().min(3, "Imię i nazwisko musi mieć co najmniej 3 znaki."),
@@ -69,8 +64,16 @@ const employeeSchema = z.object({
   deductionRegulation: z.number().optional().nullable(),
   deductionNo4Months: z.number().optional().nullable(),
   deductionNo30Days: z.number().optional().nullable(),
-  deductionReason: z.array(z.string()).optional(),
+  deductionReason: z.array(deductionReasonSchema).optional(),
 });
+
+const deductionReasonsList = [
+    "Rezygnacja", "Alkohol", "Brudne ściany", "Zniszczone wyposażenie",
+    "Nie sprzątanie mieszkania", "Brudne kołdra i poduszka", "Uszkodzone drzwi", "Palenia papierosów"
+];
+
+const getDefaultDeductionReasons = (): DeductionReason[] =>
+  deductionReasonsList.map(name => ({ name, checked: false, amount: null }));
 
 interface AddEmployeeFormProps {
   isOpen: boolean;
@@ -84,24 +87,34 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
   const form = useForm<z.infer<typeof employeeSchema>>({
     resolver: zodResolver(employeeSchema),
     defaultValues: {
-      fullName: "",
-      coordinatorId: "",
-      nationality: "",
-      gender: "Mężczyzna",
-      address: "",
-      roomNumber: "",
-      zaklad: "",
-      checkInDate: new Date(),
-      comments: "",
-      deductionReason: [],
+      deductionReason: getDefaultDeductionReasons(),
     },
   });
+
+  const { fields } = useFieldArray({
+    control: form.control,
+    name: "deductionReason",
+  });
+
+  const watchedDeductionReasons = useWatch({
+    control: form.control,
+    name: "deductionReason"
+  })
 
   const watchedAddress = form.watch('address');
   const [initialAddress, setInitialAddress] = useState<string | undefined>(undefined);
 
   React.useEffect(() => {
     if (isOpen) {
+      let deductionReasonInitial: DeductionReason[] = getDefaultDeductionReasons();
+      if (employee?.deductionReason) {
+        // Merge saved reasons with default list to handle new reasons added to the app
+        deductionReasonInitial = getDefaultDeductionReasons().map(defaultReason => {
+            const savedReason = employee.deductionReason?.find(r => r.name === defaultReason.name);
+            return savedReason ? { ...defaultReason, ...savedReason } : defaultReason;
+        });
+      }
+
       const defaultVals = {
         fullName: "",
         coordinatorId: "",
@@ -122,7 +135,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
         deductionRegulation: undefined,
         deductionNo4Months: undefined,
         deductionNo30Days: undefined,
-        deductionReason: [],
+        deductionReason: deductionReasonInitial,
       };
 
       if (employee) {
@@ -147,7 +160,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
             deductionRegulation: employee.deductionRegulation ?? undefined,
             deductionNo4Months: employee.deductionNo4Months ?? undefined,
             deductionNo30Days: employee.deductionNo30Days ?? undefined,
-            deductionReason: employee.deductionReason ?? [],
+            deductionReason: deductionReasonInitial,
         });
         setInitialAddress(employee.address);
       } else {
@@ -499,53 +512,56 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                         )}
                     />
                  </div>
-                 <FormField
-                    control={form.control}
-                    name="deductionReason"
-                    render={() => (
-                        <FormItem>
-                            <div className="mb-4">
-                                <FormLabel>Potrącenie za co</FormLabel>
-                            </div>
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                            {deductionReasons.map((item) => (
+                <FormItem>
+                    <div className="mb-4">
+                        <FormLabel>Potrącenie za co</FormLabel>
+                    </div>
+                    <div className="space-y-4">
+                        {fields.map((item, index) => (
+                            <div key={item.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border p-3 rounded-md">
                                 <FormField
-                                key={item}
-                                control={form.control}
-                                name="deductionReason"
-                                render={({ field }) => {
-                                    return (
-                                    <FormItem
-                                        key={item}
-                                        className="flex flex-row items-center space-x-3 space-y-0"
-                                    >
-                                        <FormControl>
-                                        <Checkbox
-                                            checked={field.value?.includes(item)}
-                                            onCheckedChange={(checked) => {
-                                            return checked
-                                                ? field.onChange([...(field.value || []), item])
-                                                : field.onChange(
-                                                    field.value?.filter(
-                                                        (value) => value !== item
-                                                    )
-                                                    )
-                                            }}
-                                        />
-                                        </FormControl>
-                                        <FormLabel className="font-normal">
-                                        {item}
-                                        </FormLabel>
-                                    </FormItem>
-                                    )
-                                }}
+                                    control={form.control}
+                                    name={`deductionReason.${index}.checked`}
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                                            <FormControl>
+                                                <Checkbox
+                                                    checked={field.value}
+                                                    onCheckedChange={field.onChange}
+                                                />
+                                            </FormControl>
+                                            <FormLabel className="font-normal w-40 sm:w-auto">
+                                                {item.name}
+                                            </FormLabel>
+                                        </FormItem>
+                                    )}
                                 />
-                            ))}
+                                <FormField
+                                    control={form.control}
+                                    name={`deductionReason.${index}.amount`}
+                                    render={({ field }) => (
+                                        <FormItem className="w-full sm:w-auto flex-grow sm:flex-grow-0">
+                                            <FormControl>
+                                                <div className="relative">
+                                                     <Input 
+                                                        type="number" 
+                                                        placeholder="Suma" 
+                                                        {...field}
+                                                        disabled={!watchedDeductionReasons?.[index]?.checked}
+                                                        className="w-full sm:w-32" 
+                                                        onChange={e => field.onChange(e.target.value === '' ? null : Number(e.target.value))} 
+                                                        value={field.value ?? ''}
+                                                    />
+                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">zł</span>
+                                                </div>
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
                             </div>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                    />
+                        ))}
+                    </div>
+                </FormItem>
               </TabsContent>
               </div>
             </Tabs>
