@@ -36,35 +36,32 @@ interface DashboardViewProps {
 // New component for detailed housing view
 const HousingDetailView = ({
   address,
-  employees,
+  allOccupants,
   onEmployeeClick,
   highlightAvailable,
 }: {
   address: HousingAddress;
-  employees: Employee[];
+  allOccupants: (Employee | NonEmployee)[];
   onEmployeeClick: (employee: Employee) => void;
   highlightAvailable: boolean;
 }) => {
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
 
   const rooms = useMemo(() => {
-    const roomMap = new Map<string, { occupants: Employee[], capacity: number }>();
+    const roomMap = new Map<string, { occupants: (Employee | NonEmployee)[], capacity: number }>();
     
-    // Initialize with all rooms from settings
     address.rooms.forEach(room => {
         roomMap.set(room.name, { occupants: [], capacity: room.capacity });
     });
 
-    // Populate with employees
-    employees.forEach(employee => {
-      if (employee.address === address.name) {
-        if (!roomMap.has(employee.roomNumber)) {
-          // Add room if not in settings, assume capacity is number of occupants
-          roomMap.set(employee.roomNumber, { occupants: [], capacity: 0 });
+    allOccupants.forEach(occupant => {
+      if (occupant.address === address.name) {
+        if (!roomMap.has(occupant.roomNumber)) {
+          roomMap.set(occupant.roomNumber, { occupants: [], capacity: 0 });
         }
-        const roomData = roomMap.get(employee.roomNumber)!;
-        roomData.occupants.push(employee);
-        if (roomData.capacity === 0) { // Dynamically set capacity for rooms not in settings
+        const roomData = roomMap.get(occupant.roomNumber)!;
+        roomData.occupants.push(occupant);
+        if (roomData.capacity === 0) {
             roomData.capacity = roomData.occupants.length;
         }
       }
@@ -79,7 +76,7 @@ const HousingDetailView = ({
       }))
       .sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true }));
 
-  }, [employees, address]);
+  }, [allOccupants, address]);
 
   if (selectedRoom) {
     const roomData = rooms.find(r => r.roomNumber === selectedRoom);
@@ -90,21 +87,21 @@ const HousingDetailView = ({
           &larr; Wróć do pokoi
         </Button>
         <DialogHeader>
-          <DialogTitle>Pracownicy w pokoju {selectedRoom}</DialogTitle>
+          <DialogTitle>Mieszkańcy w pokoju {selectedRoom}</DialogTitle>
           <DialogDescription>{address.name}</DialogDescription>
         </DialogHeader>
         <ScrollArea className="h-[60vh] mt-4">
           {occupants.length > 0 ? (
-            occupants.map(employee => (
-            <Card key={employee.id} onClick={() => onEmployeeClick(employee)} className="mb-3 cursor-pointer hover:bg-muted/50">
+            occupants.map(occupant => (
+            <Card key={occupant.id} onClick={() => 'status' in occupant && onEmployeeClick(occupant)} className={cn("mb-3", 'status' in occupant && "cursor-pointer hover:bg-muted/50")}>
               <CardHeader>
-                <CardTitle className="text-base">{employee.fullName}</CardTitle>
-                <CardDescription>{employee.nationality}</CardDescription>
+                <CardTitle className="text-base">{occupant.fullName}</CardTitle>
+                {'nationality' in occupant && <CardDescription>{occupant.nationality}</CardDescription>}
               </CardHeader>
             </Card>
           ))
           ) : (
-             <p className="text-center text-muted-foreground pt-8">Brak pracowników w tym pokoju.</p>
+             <p className="text-center text-muted-foreground pt-8">Brak mieszkańców w tym pokoju.</p>
           )}
         </ScrollArea>
       </div>
@@ -119,7 +116,7 @@ const HousingDetailView = ({
         </DialogHeader>
       <ScrollArea className="h-[60vh] mt-4">
         <div className="space-y-3">
-          {rooms.map(({ roomNumber, occupants, available }) => {
+          {rooms.map(({ roomNumber, occupants, capacity, available }) => {
             const hasAvailability = available > 0;
             return (
                 <Card key={roomNumber} onClick={() => setSelectedRoom(roomNumber)} className={cn("cursor-pointer hover:bg-muted/50 transition-colors", highlightAvailable && hasAvailability && "bg-green-100 dark:bg-green-900/30 border-green-500")}>
@@ -129,7 +126,7 @@ const HousingDetailView = ({
                         <CardTitle className="text-base">Pokój {roomNumber}</CardTitle>
                     </div>
                     <div className="flex items-center gap-3">
-                        <Badge variant={highlightAvailable && hasAvailability ? 'default' : 'secondary'} className={cn(highlightAvailable && hasAvailability && 'bg-green-600')}>{occupants.length} / {occupants.length + available}</Badge>
+                        <Badge variant={highlightAvailable && hasAvailability ? 'default' : 'secondary'} className={cn(highlightAvailable && hasAvailability && 'bg-green-600')}>{occupants.length} / {capacity}</Badge>
                         <ChevronRight className="h-5 w-5 text-muted-foreground" />
                     </div>
                 </CardHeader>
@@ -160,7 +157,9 @@ export default function DashboardView({ employees, nonEmployees, settings, onEdi
   const { isMobile } = useIsMobile();
   
   const activeEmployees = useMemo(() => employees.filter(e => e.status === 'active'), [employees]);
-  const apartmentsInUse = useMemo(() => [...new Set(activeEmployees.map(e => e.address))].length, [activeEmployees]);
+  const activeOccupants = useMemo(() => [...activeEmployees, ...nonEmployees], [activeEmployees, nonEmployees]);
+
+  const apartmentsInUse = useMemo(() => [...new Set(activeOccupants.map(o => o.address))].length, [activeOccupants]);
   
   const upcomingCheckoutsList = useMemo(() => {
     const today = new Date();
@@ -217,7 +216,7 @@ export default function DashboardView({ employees, nonEmployees, settings, onEdi
     }
 
     const baseOverview = addressesToShow.map(address => {
-      const occupied = activeEmployees.filter(e => e.address === address.name).length;
+      const occupied = activeOccupants.filter(e => e.address === address.name).length;
       const capacity = address.rooms.reduce((sum, room) => sum + room.capacity, 0);
       const available = capacity - occupied;
       const occupancy = capacity > 0 ? (occupied / capacity) * 100 : 0;
@@ -231,12 +230,12 @@ export default function DashboardView({ employees, nonEmployees, settings, onEdi
     return baseOverview.filter(house =>
       house.name.toLowerCase().includes(housingSearchTerm.toLowerCase())
     ).sort((a, b) => b.occupancy - a.occupancy);
-  }, [settings.addresses, activeEmployees, housingSearchTerm, currentUser.isAdmin, selectedCoordinatorId]);
+  }, [settings.addresses, activeOccupants, activeEmployees, housingSearchTerm, currentUser.isAdmin, selectedCoordinatorId]);
   
-  const employeesForSelectedAddress = useMemo(() => {
+  const occupantsForSelectedAddress = useMemo(() => {
     if (!selectedAddress) return [];
-    return activeEmployees.filter(e => e.address === selectedAddress.name);
-  }, [activeEmployees, selectedAddress]);
+    return activeOccupants.filter(e => e.address === selectedAddress.name);
+  }, [activeOccupants, selectedAddress]);
 
   const aggregateData = (key: 'coordinatorId' | 'nationality' | 'zaklad') => {
     const counts = activeEmployees.reduce((acc, employee) => {
@@ -388,9 +387,13 @@ export default function DashboardView({ employees, nonEmployees, settings, onEdi
                 <CardHeader>
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div>
-                            <CardTitle>Filtr Koordynatora</CardTitle>
-                            <CardDescription>Wybierz koordynatora, aby wyświetlić jego dane.</CardDescription>
+                            <CardTitle>Filtry Główne</CardTitle>
+                            <CardDescription>Wybierz koordynatora i odśwież statusy umów.</CardDescription>
                         </div>
+                        <Button onClick={onDataRefresh} disabled={isRefreshing}>
+                            <RefreshCw className={cn("mr-2 h-4 w-4", isRefreshing && "animate-spin")} />
+                           {isRefreshing ? 'Odświeżanie...' : 'Odśwież statusy'}
+                        </Button>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -608,7 +611,7 @@ export default function DashboardView({ employees, nonEmployees, settings, onEdi
               {selectedAddress && (
                   <HousingDetailView 
                       address={selectedAddress}
-                      employees={employees}
+                      allOccupants={activeOccupants}
                       onEmployeeClick={handleEmployeeClick}
                       highlightAvailable={highlightAvailableForAddressId === selectedAddress.id}
                   />
@@ -622,15 +625,20 @@ export default function DashboardView({ employees, nonEmployees, settings, onEdi
             {selectedAddress && (
                 <>
                     <DialogHeader>
-                        <DialogTitle>Wszyscy pracownicy</DialogTitle>
+                        <DialogTitle>Wszyscy mieszkańcy</DialogTitle>
                         <DialogDescription>{selectedAddress.name}</DialogDescription>
                     </DialogHeader>
                     <ScrollArea className="h-[60vh] mt-4">
-                        {employeesForSelectedAddress.map(employee => (
-                           <Card key={employee.id} onClick={() => handleEmployeeClick(employee)} className="mb-3 cursor-pointer hover:bg-muted/50">
+                        {occupantsForSelectedAddress.map(occupant => (
+                           <Card key={occupant.id} onClick={() => 'status' in occupant && handleEmployeeClick(occupant)} className={cn("mb-3", 'status' in occupant && "cursor-pointer hover:bg-muted/50")}>
                              <CardHeader>
-                               <CardTitle className="text-base">{employee.fullName}</CardTitle>
-                               <CardDescription>Pokój: {employee.roomNumber} / {employee.nationality}</CardDescription>
+                               <CardTitle className="text-base">{occupant.fullName}</CardTitle>
+                               <CardDescription>
+                                {'status' in occupant 
+                                    ? `Pracownik / Pokój: ${occupant.roomNumber} / ${occupant.nationality}`
+                                    : `NZ / Pokój: ${occupant.roomNumber}`
+                                }
+                               </CardDescription>
                              </CardHeader>
                            </Card>
                         ))}
@@ -642,3 +650,4 @@ export default function DashboardView({ employees, nonEmployees, settings, onEdi
     </div>
   );
 }
+
