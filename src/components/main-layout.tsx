@@ -92,16 +92,18 @@ function MainContent() {
         }
     }, [toast]);
     
-    useEffect(() => {
+     useEffect(() => {
         const loggedInUser = sessionStorage.getItem('currentUser');
         if (loggedInUser) {
             const user = JSON.parse(loggedInUser);
             setCurrentUser(user);
-            // Don't call fetchData here, it will be called in the next useEffect
+            // Data will be fetched by the useEffect that watches currentUser
         } else {
-            // If no user, we might still need settings for the login page
-            getSettings().then(setSettings).catch(console.error);
-            setIsLoading(false); // Stop loading if no user is logged in
+             // If no user, we only need settings for the login page
+            getSettings()
+                .then(setSettings)
+                .catch(console.error)
+                .finally(() => setIsLoading(false)); // Stop loading once we know there's no user and we tried getting settings
         }
     }, []);
 
@@ -111,7 +113,7 @@ function MainContent() {
             if(!currentUser.isAdmin) {
                 setSelectedCoordinatorId(currentUser.uid);
             }
-            fetchData(true); // Fetch data only after user is confirmed
+            fetchData(true); // Fetch all data only after user is confirmed
         }
     }, [currentUser, fetchData]);
 
@@ -464,17 +466,29 @@ function MainContent() {
         );
     }
 
-    if (!currentUser && settings) {
-        return <LoginView coordinators={settings.coordinators} onLogin={handleLogin} />;
-    }
-    
-    if (!currentUser || !settings) {
-         return (
-            <div className="flex h-screen w-full items-center justify-center">
-                <p>Błąd ładowania ustawień. Spróbuj odświeżyć stronę.</p>
+    if (!currentUser) {
+        if (settings) {
+            return <LoginView coordinators={settings.coordinators} onLogin={handleLogin} />;
+        }
+        // If settings are also not loaded, show loading screen (or a more specific error)
+        return (
+             <div className="flex h-screen w-full items-center justify-center bg-background">
+                <div className="flex animate-fade-in flex-col items-center gap-6">
+                     <h1 className="text-4xl sm:text-5xl md:text-7xl font-semibold tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm">
+                        SmartHouse
+                    </h1>
+                </div>
             </div>
         );
     }
+    
+    if (!settings) { // Should not happen if logic is correct, but as a fallback
+        return (
+           <div className="flex h-screen w-full items-center justify-center">
+               <p>Błąd ładowania ustawień. Spróbuj odświeżyć stronę.</p>
+           </div>
+       );
+   }
 
     return (
         <div className="flex h-screen w-full bg-muted/50">
