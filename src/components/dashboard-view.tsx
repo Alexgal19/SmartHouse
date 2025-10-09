@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList, Cell } from "recharts";
 import { ChartContainer } from "@/components/ui/chart";
 import { useMemo, useState } from "react";
-import { Building, UserMinus, Users, Home, BedDouble, ChevronRight, ChevronDown, UserCheck } from "lucide-react";
+import { Building, UserMinus, Users, Home, BedDouble, ChevronRight, ChevronDown, UserCheck, RefreshCw } from "lucide-react";
 import { isWithinInterval, format, getYear, getMonth } from "date-fns";
 import { pl } from "date-fns/locale";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
@@ -19,6 +19,8 @@ import { Badge } from "./ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { checkAndUpdateEmployeeStatuses } from "@/lib/actions";
 
 interface DashboardViewProps {
   employees: Employee[];
@@ -27,6 +29,7 @@ interface DashboardViewProps {
   currentUser: Coordinator;
   selectedCoordinatorId: string;
   onSelectCoordinator: (id: string) => void;
+  onDataRefresh: () => void;
 }
 
 
@@ -140,7 +143,7 @@ const HousingDetailView = ({
 };
 
 
-export default function DashboardView({ employees, settings, onEditEmployee, currentUser, selectedCoordinatorId, onSelectCoordinator }: DashboardViewProps) {
+export default function DashboardView({ employees, settings, onEditEmployee, currentUser, selectedCoordinatorId, onSelectCoordinator, onDataRefresh }: DashboardViewProps) {
   const [isHousingDialogOpen, setIsHousingDialogOpen] = useState(false);
   const [isCheckoutsDialogOpen, setIsCheckoutsDialogOpen] = useState(false);
   const [housingSearchTerm, setHousingSearchTerm] = useState("");
@@ -150,6 +153,8 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
   
   const [departureYear, setDepartureYear] = useState<string>(String(new Date().getFullYear()));
   const [departureMonth, setDepartureMonth] = useState<string>('all');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { toast } = useToast();
 
 
   const { isMobile } = useIsMobile();
@@ -307,6 +312,27 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
     { from: 'hsl(var(--chart-5))', to: 'hsl(var(--chart-1))', id: 'grad5' },
   ];
 
+  const handleRefreshStatuses = async () => {
+    setIsRefreshing(true);
+    try {
+      const result = await checkAndUpdateEmployeeStatuses(currentUser);
+      toast({
+        title: "Sukces",
+        description: `Zaktualizowano statusy dla ${result.updated} pracowników.`,
+      });
+      onDataRefresh();
+    } catch (error) {
+       toast({
+        variant: "destructive",
+        title: "Błąd",
+        description: "Nie udało się odświeżyć statusów.",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+
   const ChartComponent = ({ data, title, labelY }: { data: {name: string, value: number}[], title: string, labelY?: string }) => (
     <Card>
       <CardHeader>
@@ -365,8 +391,16 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
         {currentUser.isAdmin && (
             <Card>
                 <CardHeader>
-                    <CardTitle>Filtr Koordynatora</CardTitle>
-                    <CardDescription>Wybierz koordynatora, aby wyświetlić jego dane.</CardDescription>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <CardTitle>Filtr Koordynatora</CardTitle>
+                            <CardDescription>Wybierz koordynatora, aby wyświetlić jego dane.</CardDescription>
+                        </div>
+                        <Button onClick={handleRefreshStatuses} variant="outline" disabled={isRefreshing}>
+                            <RefreshCw className={cn("mr-2 h-4 w-4", isRefreshing && "animate-spin")} />
+                            {isRefreshing ? 'Odświeżanie...' : 'Odśwież statusy'}
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent>
                      <Select value={selectedCoordinatorId} onValueChange={onSelectCoordinator}>

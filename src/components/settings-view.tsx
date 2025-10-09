@@ -9,13 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, PlusCircle, Trash2, ShieldCheck, KeyRound, Upload, FileWarning, RefreshCw } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Trash2, ShieldCheck, KeyRound, Upload, FileWarning } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Input } from "./ui/input";
 import { Switch } from "./ui/switch";
-import { transferEmployees, checkAndUpdateEmployeeStatuses } from "@/lib/actions";
+import { transferEmployees } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
@@ -547,28 +547,6 @@ const CoordinatorManager = ({ items, onUpdate, allEmployees, currentUser, onData
 export default function SettingsView({ settings, onUpdateSettings, allEmployees, currentUser, onDataRefresh, onBulkImport }: SettingsViewProps) {
   const { isMobile } = useIsMobile();
   const [isImportOpen, setIsImportOpen] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const { toast } = useToast();
-
-   const handleRefreshStatuses = async () => {
-    setIsRefreshing(true);
-    try {
-      const result = await checkAndUpdateEmployeeStatuses(currentUser);
-      toast({
-        title: "Sukces",
-        description: `Zaktualizowano statusy dla ${result.updated} pracowników.`,
-      });
-      onDataRefresh();
-    } catch (error) {
-       toast({
-        variant: "destructive",
-        title: "Błąd",
-        description: "Nie udało się odświeżyć statusów.",
-      });
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
   
   return (
     <Card>
@@ -579,10 +557,6 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
                 <Button onClick={() => setIsImportOpen(true)} variant="outline">
                     <Upload className="mr-2 h-4 w-4" />
                     Importuj
-                </Button>
-                <Button onClick={handleRefreshStatuses} variant="outline" disabled={isRefreshing}>
-                    <RefreshCw className={cn("mr-2 h-4 w-4", isRefreshing && "animate-spin")} />
-                    {isRefreshing ? 'Odświeżanie...' : 'Odśwież statusy'}
                 </Button>
             </div>
         </div>
