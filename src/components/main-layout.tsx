@@ -180,17 +180,16 @@ function MainContent() {
                     c.uid === coordinator.uid ? { ...c, password } : c
                 );
                 
-                // Immediately set the user to prevent re-login logic
                 const userWithPassword = { ...coordinator, password };
-                setCurrentUser(userWithPassword);
-                sessionStorage.setItem('currentUser', JSON.stringify(userWithPassword));
 
                 // Update settings in the background
                 await updateSettings({ coordinators: updatedCoordinators });
                 toast({ title: "Sukces", description: "Twoje hasło zostało ustawione." });
                 
-                // Manually update local settings state
+                // Manually update local settings state and current user
                 setSettings(prevSettings => prevSettings ? {...prevSettings, coordinators: updatedCoordinators} : null);
+                setCurrentUser(userWithPassword);
+
 
             } catch (error) {
                 (window as any).setLoginError('Nie udało się ustawić hasła. Spróbuj ponownie.');

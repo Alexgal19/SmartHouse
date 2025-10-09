@@ -733,3 +733,52 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', actor:
         throw new Error(`Nie udało się usunąć pracowników. ${error instanceof Error ? error.message : ''}`);
     }
 }
+
+export async function checkAndUpdateEmployeeStatuses(actor: Coordinator): Promise<{ updated: number }> {
+  let updatedCount = 0;
+  try {
+    const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
+    const rows = await sheet.getRows();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); 
+
+    const updates = [];
+
+    for (const row of rows) {
+      const status = row.get('status');
+      const contractEndDateStr = row.get('contractEndDate');
+      
+      if (status === 'active' && contractEndDateStr) {
+        const contractEndDate = parseDate(contractEndDateStr);
+        if (contractEndDate && isPast(contractEndDate)) {
+          row.set('status', 'dismissed');
+          row.set('checkOutDate', format(today, 'yyyy-MM-dd'));
+          updates.push(row.save({ raw: false, valueInputOption: 'USER_ENTERED' }));
+          updatedCount++;
+        }
+      }
+    }
+
+    if (updatedCount > 0) {
+      await Promise.all(updates);
+      const notificationSheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
+        const message = `System automatycznie zaktualizował statusy dla ${updatedCount} pracowników.`;
+        const newNotification = {
+            id: `notif-${Date.now()}`,
+            message,
+            employeeId: 'SYSTEM',
+            employeeName: 'System',
+            coordinatorId: actor.uid,
+            coordinatorName: actor.name,
+            createdAt: new Date().toISOString(),
+            isRead: 'FALSE',
+            changes: '[]',
+        };
+      await notificationSheet.addRow(newNotification as any, { raw: false, valueInputOption: 'USER_ENTERED' });
+    }
+     return { updated: updatedCount };
+  } catch (error) {
+    console.error("Error updating employee statuses:", error);
+    throw new Error("Could not update statuses.");
+  }
+}
