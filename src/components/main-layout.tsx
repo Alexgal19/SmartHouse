@@ -126,6 +126,25 @@ function MainContent() {
         return allEmployees.filter(e => e.coordinatorId === currentUser.uid);
     }, [currentUser, allEmployees, selectedCoordinatorId]);
 
+    const filteredNonEmployees = useMemo(() => {
+        if (!currentUser) return [];
+        if (selectedCoordinatorId === 'all') {
+            return allNonEmployees;
+        }
+
+        const coordinatorAddresses = new Set(
+            allEmployees
+                .filter(e => e.coordinatorId === selectedCoordinatorId)
+                .map(e => e.address)
+        );
+
+        if (currentUser.isAdmin) {
+             return allNonEmployees.filter(ne => coordinatorAddresses.has(ne.address));
+        }
+
+        return allNonEmployees.filter(ne => ne.address && coordinatorAddresses.has(ne.address));
+   }, [currentUser, allNonEmployees, allEmployees, selectedCoordinatorId]);
+
     const filteredInspections = useMemo(() => {
         if (!currentUser) return [];
         if (currentUser.isAdmin) {
@@ -403,9 +422,9 @@ function MainContent() {
 
         switch (activeView) {
             case 'dashboard':
-                return <DashboardView employees={filteredEmployees} nonEmployees={allNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={fetchData} />;
+                return <DashboardView employees={filteredEmployees} nonEmployees={filteredNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={fetchData} />;
             case 'employees':
-                return <EmployeesView employees={filteredEmployees} nonEmployees={allNonEmployees} settings={settings} onAddEmployee={handleAddEmployeeClick} onEditEmployee={handleEditEmployeeClick} onDismissEmployee={handleDismissEmployee} onRestoreEmployee={handleRestoreEmployee} onBulkDelete={handleBulkDeleteEmployees} currentUser={currentUser} onAddNonEmployee={handleAddNonEmployeeClick} onEditNonEmployee={handleEditNonEmployeeClick} onDeleteNonEmployee={handleDeleteNonEmployee} />;
+                return <EmployeesView employees={filteredEmployees} nonEmployees={filteredNonEmployees} settings={settings} onAddEmployee={handleAddEmployeeClick} onEditEmployee={handleEditEmployeeClick} onDismissEmployee={handleDismissEmployee} onRestoreEmployee={handleRestoreEmployee} onBulkDelete={handleBulkDeleteEmployees} currentUser={currentUser} onAddNonEmployee={handleAddNonEmployeeClick} onEditNonEmployee={handleEditNonEmployeeClick} onDeleteNonEmployee={handleDeleteNonEmployee} />;
             case 'settings':
                 if (!currentUser.isAdmin) {
                     return <div className="p-4 text-center text-red-500">Brak uprawnień do przeglądania tej strony.</div>;
@@ -421,7 +440,7 @@ function MainContent() {
                     onDeleteInspection={handleDeleteInspection}
                 />;
             default:
-                return <DashboardView employees={filteredEmployees} nonEmployees={allNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={fetchData} />;
+                return <DashboardView employees={filteredEmployees} nonEmployees={filteredNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={fetchData} />;
         }
     };
     
