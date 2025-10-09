@@ -84,6 +84,12 @@ const deserializeEmployee = (row: any): Employee | null => {
         comments: row.get('comments'),
         status: row.get('status') as 'active' | 'dismissed',
         oldAddress: row.get('oldAddress') || null,
+        depositReturned: row.get('depositReturned') as Employee['depositReturned'] || null,
+        depositReturnAmount: row.get('depositReturnAmount') ? parseFloat(row.get('depositReturnAmount')) : null,
+        deductionRegulation: row.get('deductionRegulation') ? parseFloat(row.get('deductionRegulation')) : null,
+        deductionNo4Months: row.get('deductionNo4Months') ? parseFloat(row.get('deductionNo4Months')) : null,
+        deductionNo30Days: row.get('deductionNo30Days') ? parseFloat(row.get('deductionNo30Days')) : null,
+        deductionReason: row.get('deductionReason') || '',
     };
 };
 
@@ -134,7 +140,8 @@ const deserializeNotification = (row: any): Notification => {
 const EMPLOYEE_HEADERS = [
     'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 
     'zaklad', 'checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 
-    'departureReportDate', 'comments', 'status', 'oldAddress'
+    'departureReportDate', 'comments', 'status', 'oldAddress',
+    'depositReturned', 'depositReturnAmount', 'deductionRegulation', 'deductionNo4Months', 'deductionNo30Days', 'deductionReason'
 ];
 
 const NON_EMPLOYEE_HEADERS = [
@@ -418,3 +425,5 @@ export async function getInspections(): Promise<Inspection[]> {
         return [];
     }
 }
+
+    

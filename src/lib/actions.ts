@@ -64,7 +64,8 @@ const serializeNotification = (notification: Omit<Notification, 'changes'> & { c
 const EMPLOYEE_HEADERS = [
     'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 
     'zaklad', 'checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 
-    'departureReportDate', 'comments', 'status', 'oldAddress'
+    'departureReportDate', 'comments', 'status', 'oldAddress',
+    'depositReturned', 'depositReturnAmount', 'deductionRegulation', 'deductionNo4Months', 'deductionNo30Days', 'deductionReason'
 ];
 
 const NON_EMPLOYEE_HEADERS = [
@@ -211,6 +212,12 @@ const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): 
         comments: 'Komentarze',
         status: 'Status',
         oldAddress: 'Stary adres',
+        depositReturned: 'Zwrot kaucji',
+        depositReturnAmount: 'Kwota zwrotu kaucji',
+        deductionRegulation: 'Potrącenie (regulamin)',
+        deductionNo4Months: 'Potrącenie (4 miesiące)',
+        deductionNo30Days: 'Potrącenie (30 dni)',
+        deductionReason: 'Powód potrącenia',
     };
 
     for (const key in newData) {

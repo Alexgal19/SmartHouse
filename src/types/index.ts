@@ -24,6 +24,13 @@ export type Employee = {
   comments?: string;
   status: 'active' | 'dismissed';
   oldAddress?: string | null;
+  // Financial fields
+  depositReturned?: 'Tak' | 'Nie' | 'Nie dotyczy' | null;
+  depositReturnAmount?: number | null;
+  deductionRegulation?: number | null;
+  deductionNo4Months?: number | null;
+  deductionNo30Days?: number | null;
+  deductionReason?: string;
 };
 
 export type NonEmployee = {
@@ -137,3 +144,5 @@ export type Notification = {
 };
 
 export type View = 'dashboard' | 'employees' | 'settings' | 'inspections';
+
+    
