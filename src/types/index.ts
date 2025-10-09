@@ -30,7 +30,7 @@ export type Employee = {
   deductionRegulation?: number | null;
   deductionNo4Months?: number | null;
   deductionNo30Days?: number | null;
-  deductionReason?: string;
+  deductionReason?: string[];
 };
 
 export type NonEmployee = {

@@ -43,6 +43,8 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
     for (const [key, value] of Object.entries(employee)) {
         if (value instanceof Date) {
             serialized[key] = value.toISOString().split('T')[0];
+        } else if (Array.isArray(value)) {
+            serialized[key] = JSON.stringify(value);
         } else if (value !== null && value !== undefined) {
             serialized[key] = value.toString();
         } else {
@@ -67,6 +69,20 @@ const deserializeEmployee = (row: any): Employee | null => {
         // Return a dummy date or null, but still process the employee
     }
 
+    const deductionReasonRaw = row.get('deductionReason');
+    let deductionReason: string[] | undefined = undefined;
+    if (deductionReasonRaw) {
+        try {
+            const parsed = JSON.parse(deductionReasonRaw);
+            if(Array.isArray(parsed)) {
+                deductionReason = parsed;
+            }
+        } catch(e) {
+            // It's probably a string from before the change, so we can wrap it in an array.
+            deductionReason = [deductionReasonRaw];
+        }
+    }
+
     return {
         id: id,
         fullName: fullName,
@@ -89,7 +105,7 @@ const deserializeEmployee = (row: any): Employee | null => {
         deductionRegulation: row.get('deductionRegulation') ? parseFloat(row.get('deductionRegulation')) : null,
         deductionNo4Months: row.get('deductionNo4Months') ? parseFloat(row.get('deductionNo4Months')) : null,
         deductionNo30Days: row.get('deductionNo30Days') ? parseFloat(row.get('deductionNo30Days')) : null,
-        deductionReason: row.get('deductionReason') || '',
+        deductionReason: deductionReason,
     };
 };
 
@@ -261,11 +277,6 @@ const INSPECTION_HEADERS = ['id', 'addressId', 'addressName', 'date', 'coordinat
 const INSPECTION_DETAILS_HEADERS = ['id', 'inspectionId', 'addressName', 'date', 'coordinatorName', 'category', 'itemLabel', 'itemValue', 'uwagi', 'photoData'];
 
 const cleanlinessOptions = ["Bardzo czysto", "Czysto", "Brudno", "Bardzo brudno"];
-const deductionReasons = [
-    "Rezygnacja", "Alkohol", "Brudne śmieci", "Zniszczone", 
-    "Nie sprzątane", "Brudne kołdry", "Uszkodzone", "Palenie papierosów"
-];
-
 
 const getInitialChecklist = (): InspectionCategory[] => [
     {
@@ -307,17 +318,6 @@ const getInitialChecklist = (): InspectionCategory[] => [
      {
         name: "Liczniki", uwagi: "", items: [], photos: []
     },
-    {
-        name: "Potrącenia i Kaucja", uwagi: "", items: [
-            { label: "Zwrot kaucji", type: "yes_no", value: null },
-            { label: "Kwota zwrotu kaucji (zł)", type: "number", value: null },
-            { label: "Potrącenie - zgodnie z regulaminem (zł)", type: "number", value: null },
-            { label: "Potrącenie - Nie przepracowanie 4 miesięcy (zł)", type: "number", value: null },
-            { label: "Potrącenie - Nie poinformowanie w ciągu 30 dni (zł)", type: "number", value: null },
-            { label: "Inne potrącenia (checkboxy)", type: "checkbox_group", value: [], options: deductionReasons },
-            { label: "Potrącenie za co", type: "text", value: "" },
-        ], photos: []
-    }
 ];
 
 const deserializeInspection = (row: any, allDetails: InspectionDetail[]): Inspection | null => {

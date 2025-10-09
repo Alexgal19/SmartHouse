@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -35,6 +34,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "./ui/label";
+import { Checkbox } from "./ui/checkbox";
+
+const deductionReasons = [
+    "Rezygnacja",
+    "Alkohol",
+    "Brudne ściany",
+    "Zniszczone wyposażenie",
+    "Nie sprzątanie mieszkania",
+    "Brudne kołdra i poduszka",
+    "Uszkodzone drzwi",
+    "Palenia papierosów"
+];
+
 
 const employeeSchema = z.object({
   fullName: z.string().min(3, "Imię i nazwisko musi mieć co najmniej 3 znaki."),
@@ -57,7 +69,7 @@ const employeeSchema = z.object({
   deductionRegulation: z.number().optional().nullable(),
   deductionNo4Months: z.number().optional().nullable(),
   deductionNo30Days: z.number().optional().nullable(),
-  deductionReason: z.string().optional(),
+  deductionReason: z.array(z.string()).optional(),
 });
 
 interface AddEmployeeFormProps {
@@ -81,6 +93,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
       zaklad: "",
       checkInDate: new Date(),
       comments: "",
+      deductionReason: [],
     },
   });
 
@@ -109,7 +122,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
         deductionRegulation: undefined,
         deductionNo4Months: undefined,
         deductionNo30Days: undefined,
-        deductionReason: "",
+        deductionReason: [],
       };
 
       if (employee) {
@@ -134,7 +147,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
             deductionRegulation: employee.deductionRegulation ?? undefined,
             deductionNo4Months: employee.deductionNo4Months ?? undefined,
             deductionNo30Days: employee.deductionNo30Days ?? undefined,
-            deductionReason: employee.deductionReason ?? "",
+            deductionReason: employee.deductionReason ?? [],
         });
         setInitialAddress(employee.address);
       } else {
@@ -489,13 +502,47 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                  <FormField
                     control={form.control}
                     name="deductionReason"
-                    render={({ field }) => (
+                    render={() => (
                         <FormItem>
-                        <FormLabel>Potrącenie za co</FormLabel>
-                        <FormControl>
-                            <Textarea placeholder="Opisz powód potrącenia..." {...field} />
-                        </FormControl>
-                        <FormMessage />
+                            <div className="mb-4">
+                                <FormLabel>Potrącenie za co</FormLabel>
+                            </div>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                            {deductionReasons.map((item) => (
+                                <FormField
+                                key={item}
+                                control={form.control}
+                                name="deductionReason"
+                                render={({ field }) => {
+                                    return (
+                                    <FormItem
+                                        key={item}
+                                        className="flex flex-row items-center space-x-3 space-y-0"
+                                    >
+                                        <FormControl>
+                                        <Checkbox
+                                            checked={field.value?.includes(item)}
+                                            onCheckedChange={(checked) => {
+                                            return checked
+                                                ? field.onChange([...(field.value || []), item])
+                                                : field.onChange(
+                                                    field.value?.filter(
+                                                        (value) => value !== item
+                                                    )
+                                                    )
+                                            }}
+                                        />
+                                        </FormControl>
+                                        <FormLabel className="font-normal">
+                                        {item}
+                                        </FormLabel>
+                                    </FormItem>
+                                    )
+                                }}
+                                />
+                            ))}
+                            </div>
+                            <FormMessage />
                         </FormItem>
                     )}
                     />
@@ -516,5 +563,3 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
     </Dialog>
   );
 }
-
-    

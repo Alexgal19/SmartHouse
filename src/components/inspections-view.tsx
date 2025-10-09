@@ -60,11 +60,6 @@ type InspectionFormData = z.infer<typeof inspectionSchema>;
 
 
 const cleanlinessOptions = ["Bardzo czysto", "Czysto", "Brudno", "Bardzo brudno"];
-const deductionReasons = [
-    "Rezygnacja", "Alkohol", "Brudne śmieci", "Zniszczone", 
-    "Nie sprzątane", "Brudne kołdry", "Uszkodzone", "Palenie papierosów"
-];
-
 
 const getInitialChecklist = (): InspectionCategory[] => [
     {
@@ -106,17 +101,6 @@ const getInitialChecklist = (): InspectionCategory[] => [
     {
         name: "Liczniki", uwagi: "", items: [], photos: []
     },
-    {
-        name: "Potrącenia i Kaucja", uwagi: "", items: [
-            { label: "Zwrot kaucji", type: "yes_no", value: null },
-            { label: "Kwota zwrotu kaucji (zł)", type: "number", value: null },
-            { label: "Potrącenie - zgodnie z regulaminem (zł)", type: "number", value: null },
-            { label: "Potrącenie - Nie przepracowanie 4 miesięcy (zł)", type: "number", value: null },
-            { label: "Potrącenie - Nie poinformowanie w ciągu 30 dni (zł)", type: "number", value: null },
-            { label: "Inne potrącenia (checkboxy)", type: "checkbox_group", value: [], options: deductionReasons },
-            { label: "Potrącenie za co", type: "text", value: "" },
-        ], photos: []
-    }
 ];
 
 const RatingInput = ({ value, onChange, readOnly = false }: { value: number | null, onChange?: (value: number) => void, readOnly?: boolean }) => {

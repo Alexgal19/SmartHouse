@@ -24,6 +24,8 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
     for (const [key, value] of Object.entries(employee)) {
         if (value instanceof Date) {
             serialized[key] = format(value, 'yyyy-MM-dd');
+        } else if (Array.isArray(value)) {
+            serialized[key] = JSON.stringify(value);
         } else if (value !== null && value !== undefined) {
             serialized[key] = value.toString();
         } else {
@@ -232,7 +234,9 @@ const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): 
         const oldValueIsDate = oldValue instanceof Date;
         const newValueIsDate = newValue instanceof Date;
 
-        if (oldValueIsDate && newValueIsDate) {
+        if (Array.isArray(oldValue) && Array.isArray(newValue)) {
+            areEqual = JSON.stringify(oldValue.sort()) === JSON.stringify(newValue.sort());
+        } else if (oldValueIsDate && newValueIsDate) {
             areEqual = isEqual(oldValue, newValue);
         } else if (oldValueIsDate && typeof newValue === 'string') {
              areEqual = isEqual(oldValue, parseISO(newValue));
@@ -253,7 +257,10 @@ const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): 
  
              if (oldValue instanceof Date) {
                  oldFormatted = formatDate(oldValue);
-             } else {
+             } else if(Array.isArray(oldValue)) {
+                oldFormatted = oldValue.join(', ');
+             }
+             else {
                  oldFormatted = String(oldValue ?? 'N/A');
              }
  
@@ -261,6 +268,8 @@ const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): 
                  newFormatted = formatDate(newValue);
              } else if (typeof newValue === 'string' && /^\d{4}-\d{2}-\d{2}/.test(newValue)) {
                 newFormatted = formatDate(parseDate(newValue));
+             } else if (Array.isArray(newValue)) {
+                newFormatted = newValue.join(', ');
              }
               else {
                  newFormatted = String(newValue ?? 'N/A');
