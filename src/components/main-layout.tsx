@@ -20,9 +20,10 @@ import EmployeesView from './employees-view';
 import SettingsView from './settings-view';
 import InspectionsView from './inspections-view';
 import { AddEmployeeForm } from './add-employee-form';
+import { AddNonEmployeeForm } from './add-non-employee-form';
 import { LoginView } from './login-view';
-import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead, getInspections, addInspection, updateInspection, deleteInspection, transferEmployees, bulkDeleteEmployees, bulkImportEmployees, clearAllNotifications } from '@/lib/actions';
-import type { Employee, Settings, User, View, Notification, Coordinator, Inspection } from '@/types';
+import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead, getInspections, addInspection, updateInspection, deleteInspection, transferEmployees, bulkDeleteEmployees, bulkImportEmployees, clearAllNotifications, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee } from '@/lib/actions';
+import type { Employee, Settings, User, View, Notification, Coordinator, Inspection, NonEmployee } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Building, ClipboardList, Home, Settings as SettingsIcon, Users } from 'lucide-react';
 
@@ -36,12 +37,15 @@ const navItems: { view: View; icon: React.ElementType; label: string }[] = [
 function MainContent() {
     const [activeView, setActiveView] = useState<View>('dashboard');
     const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
+    const [allNonEmployees, setAllNonEmployees] = useState<NonEmployee[]>([]);
     const [allInspections, setAllInspections] = useState<Inspection[]>([]);
     const [settings, setSettings] = useState<Settings | null>(null);
     const [allNotifications, setAllNotifications] = useState<Notification[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isFormOpen, setIsFormOpen] = useState(false);
+    const [isNonEmployeeFormOpen, setIsNonEmployeeFormOpen] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+    const [editingNonEmployee, setEditingNonEmployee] = useState<NonEmployee | null>(null);
     const [currentUser, setCurrentUser] = useState<Coordinator | null>(null);
     const [selectedCoordinatorId, setSelectedCoordinatorId] = useState('all');
     
@@ -51,11 +55,12 @@ function MainContent() {
     const fetchData = useCallback(async (isInitialLoad = false) => {
         if (isInitialLoad) setIsLoading(true);
         try {
-            const [employeesData, settingsData, notificationsData, inspectionsData] = await Promise.all([
+            const [employeesData, settingsData, notificationsData, inspectionsData, nonEmployeesData] = await Promise.all([
                 getEmployees(), 
                 getSettings(),
                 getNotifications(),
                 getInspections(),
+                getNonEmployees(),
             ]);
             setAllEmployees(employeesData.map((e: any) => ({
                 ...e,
@@ -64,6 +69,11 @@ function MainContent() {
                 contractStartDate: e.contractStartDate ? new Date(e.contractStartDate) : null,
                 contractEndDate: e.contractEndDate ? new Date(e.contractEndDate) : null,
                 departureReportDate: e.departureReportDate ? new Date(e.departureReportDate) : null,
+            })));
+            setAllNonEmployees(nonEmployeesData.map((ne: any) => ({
+                ...ne,
+                checkInDate: new Date(ne.checkInDate),
+                checkOutDate: ne.checkOutDate ? new Date(ne.checkOutDate) : null,
             })));
             setSettings(settingsData);
             setAllNotifications(notificationsData.map((n:any) => ({...n, createdAt: new Date(n.createdAt)})));
@@ -85,28 +95,25 @@ function MainContent() {
     useEffect(() => {
         const loggedInUser = sessionStorage.getItem('currentUser');
         if (loggedInUser) {
-            setCurrentUser(JSON.parse(loggedInUser));
+            const user = JSON.parse(loggedInUser);
+            setCurrentUser(user);
+            // Don't call fetchData here, it will be called in the next useEffect
+        } else {
+            // If no user, we might still need settings for the login page
+            getSettings().then(setSettings).catch(console.error);
+            setIsLoading(false); // Stop loading if no user is logged in
         }
-        fetchData(true);
-    }, [fetchData]);
+    }, []);
 
     useEffect(() => {
         if (currentUser) {
             sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
-            if(currentUser.isAdmin) {
-                // Admin can see all by default, no filter change needed unless they select one
-            } else {
-                // When a non-admin coordinator logs in, set the filter to their ID
+            if(!currentUser.isAdmin) {
                 setSelectedCoordinatorId(currentUser.uid);
             }
-            // No automatic refetch on currentUser change to prevent loops
-        } else {
-            sessionStorage.removeItem('currentUser');
-            // Reset state when logging out
-            setActiveView('dashboard');
-            setSelectedCoordinatorId('all');
+            fetchData(true); // Fetch data only after user is confirmed
         }
-    }, [currentUser]);
+    }, [currentUser, fetchData]);
 
     const filteredEmployees = useMemo(() => {
         if (!currentUser) return [];
@@ -155,7 +162,7 @@ function MainContent() {
                 };
                 setCurrentUser(adminUser);
                 setSelectedCoordinatorId('all');
-                await fetchData(); // Fetch data after successful login
+                // Data will be fetched by the useEffect that watches currentUser
             } else {
                  (window as any).setLoginError('Nieprawidłowe hasło administratora.');
             }
@@ -182,24 +189,18 @@ function MainContent() {
                 
                 const userWithPassword = { ...coordinator, password };
 
-                // Update settings in the background
                 await updateSettings({ coordinators: updatedCoordinators });
-                toast({ title: "Sukces", description: "Twoje hasło zostało ustawione." });
-                
-                // Manually update local settings state and current user
                 setSettings(prevSettings => prevSettings ? {...prevSettings, coordinators: updatedCoordinators} : null);
                 setCurrentUser(userWithPassword);
-
-
+                toast({ title: "Sukces", description: "Twoje hasło zostało ustawione." });
             } catch (error) {
                 (window as any).setLoginError('Nie udało się ustawić hasła. Spróbuj ponownie.');
-                 setCurrentUser(null); // Rollback on error
+                 setCurrentUser(null);
                  sessionStorage.removeItem('currentUser');
             }
         } else { // Subsequent logins
             if (coordinator.password === password) {
                 setCurrentUser(coordinator);
-                await fetchData(); // Fetch data after successful login
             } else {
                 (window as any).setLoginError('Nieprawidłowe hasło.');
             }
@@ -208,6 +209,13 @@ function MainContent() {
 
     const handleLogout = () => {
         setCurrentUser(null);
+        sessionStorage.removeItem('currentUser');
+        setAllEmployees([]);
+        setAllInspections([]);
+        setAllNonEmployees([]);
+        setAllNotifications([]);
+        setActiveView('dashboard');
+        setSelectedCoordinatorId('all');
     };
 
     const handleSaveEmployee = async (data: Omit<Employee, 'id' | 'status'> & { oldAddress?: string | null }) => {
@@ -225,6 +233,31 @@ function MainContent() {
              toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać pracownika." });
         }
     };
+
+    const handleSaveNonEmployee = async (data: Omit<NonEmployee, 'id'>) => {
+      try {
+        if(editingNonEmployee) {
+          await updateNonEmployee(editingNonEmployee.id, data);
+          toast({ title: "Sukces", description: "Dane mieszkańca zostały zaktualizowane." });
+        } else {
+          await addNonEmployee(data);
+          toast({ title: "Sukces", description: "Nowy mieszkaniec został dodany." });
+        }
+        fetchData();
+      } catch (e: any) {
+        toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać mieszkańca." });
+      }
+    }
+    
+    const handleDeleteNonEmployee = async (id: string) => {
+      try {
+        await deleteNonEmployee(id);
+        toast({ title: "Sukces", description: "Mieszkaniec został usunięty." });
+        fetchData();
+      } catch(e: any) {
+        toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć mieszkańca." });
+      }
+    }
     
     const handleUpdateSettings = async (newSettings: Partial<Settings>) => {
         if (!settings || !currentUser?.isAdmin) {
@@ -275,10 +308,20 @@ function MainContent() {
         setIsFormOpen(true);
     };
 
+    const handleAddNonEmployeeClick = () => {
+      setEditingNonEmployee(null);
+      setIsNonEmployeeFormOpen(true);
+    }
+
     const handleEditEmployeeClick = (employee: Employee) => {
         setEditingEmployee(employee);
         setIsFormOpen(true);
     };
+
+    const handleEditNonEmployeeClick = (nonEmployee: NonEmployee) => {
+      setEditingNonEmployee(nonEmployee);
+      setIsNonEmployeeFormOpen(true);
+    }
     
     const handleNotificationClick = async (notification: Notification) => {
         const employeeToEdit = allEmployees.find(e => e.id === notification.employeeId);
@@ -360,9 +403,9 @@ function MainContent() {
 
         switch (activeView) {
             case 'dashboard':
-                return <DashboardView employees={filteredEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={fetchData} />;
+                return <DashboardView employees={filteredEmployees} nonEmployees={allNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={fetchData} />;
             case 'employees':
-                return <EmployeesView employees={filteredEmployees} settings={settings} onAddEmployee={handleAddEmployeeClick} onEditEmployee={handleEditEmployeeClick} onDismissEmployee={handleDismissEmployee} onRestoreEmployee={handleRestoreEmployee} onBulkDelete={handleBulkDeleteEmployees} currentUser={currentUser} />;
+                return <EmployeesView employees={filteredEmployees} nonEmployees={allNonEmployees} settings={settings} onAddEmployee={handleAddEmployeeClick} onEditEmployee={handleEditEmployeeClick} onDismissEmployee={handleDismissEmployee} onRestoreEmployee={handleRestoreEmployee} onBulkDelete={handleBulkDeleteEmployees} currentUser={currentUser} onAddNonEmployee={handleAddNonEmployeeClick} onEditNonEmployee={handleEditNonEmployeeClick} onDeleteNonEmployee={handleDeleteNonEmployee} />;
             case 'settings':
                 if (!currentUser.isAdmin) {
                     return <div className="p-4 text-center text-red-500">Brak uprawnień do przeglądania tej strony.</div>;
@@ -378,7 +421,7 @@ function MainContent() {
                     onDeleteInspection={handleDeleteInspection}
                 />;
             default:
-                return <DashboardView employees={filteredEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={fetchData} />;
+                return <DashboardView employees={filteredEmployees} nonEmployees={allNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={fetchData} />;
         }
     };
     
@@ -463,6 +506,15 @@ function MainContent() {
                     onSave={handleSaveEmployee}
                     settings={settings}
                     employee={editingEmployee}
+                />
+            )}
+             {settings && (
+                 <AddNonEmployeeForm
+                    isOpen={isNonEmployeeFormOpen}
+                    onOpenChange={setIsNonEmployeeFormOpen}
+                    onSave={handleSaveNonEmployee}
+                    settings={settings}
+                    nonEmployee={editingNonEmployee}
                 />
             )}
         </div>

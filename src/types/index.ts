@@ -33,7 +33,7 @@ export type NonEmployee = {
   roomNumber: string;
   checkInDate: Date;
   checkOutDate: Date | null;
-  relationshipToEmployee: string; // e.g., 'Spouse', 'Child'
+  comments?: string;
 };
 
 export type Room = {

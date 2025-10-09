@@ -3,11 +3,12 @@
 // src/lib/sheets.ts
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
-import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, InspectionCategory, InspectionCategoryItem, Photo, InspectionDetail } from '@/types';
+import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, InspectionCategory, InspectionCategoryItem, Photo, InspectionDetail, NonEmployee } from '@/types';
 import { format, isEqual, parseISO } from 'date-fns';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
 const SHEET_NAME_EMPLOYEES = 'Employees';
+const SHEET_NAME_NON_EMPLOYEES = 'NonEmployees';
 const SHEET_NAME_NOTIFICATIONS = 'Powiadomienia';
 const SHEET_NAME_ADDRESSES = 'Addresses';
 const SHEET_NAME_ROOMS = 'Rooms';
@@ -86,6 +87,30 @@ const deserializeEmployee = (row: any): Employee | null => {
     };
 };
 
+const deserializeNonEmployee = (row: any): NonEmployee | null => {
+    const id = row.get('id');
+    const fullName = row.get('fullName');
+    
+    if (!id && !fullName) {
+        return null;
+    }
+
+    const checkInDate = parseDate(row.get('checkInDate'));
+    if (!checkInDate) {
+        return null;
+    }
+
+    return {
+        id: id,
+        fullName: fullName,
+        address: row.get('address'),
+        roomNumber: row.get('roomNumber'),
+        checkInDate: checkInDate,
+        checkOutDate: parseDate(row.get('checkOutDate')),
+        comments: row.get('comments'),
+    };
+};
+
 const deserializeNotification = (row: any): Notification => {
     const createdAtString = row.get('createdAt');
     const createdAt = new Date(createdAtString);
@@ -110,6 +135,10 @@ const EMPLOYEE_HEADERS = [
     'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 
     'zaklad', 'checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 
     'departureReportDate', 'comments', 'status', 'oldAddress'
+];
+
+const NON_EMPLOYEE_HEADERS = [
+    'id', 'fullName', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'comments'
 ];
 
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
@@ -139,6 +168,17 @@ export async function getEmployees(): Promise<Employee[]> {
   } catch (error) {
     console.error("Error in getEmployees from sheets.ts:", error);
     throw new Error(`Could not fetch employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+export async function getNonEmployees(): Promise<NonEmployee[]> {
+  try {
+    const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
+    const rows = await sheet.getRows();
+    return rows.map(deserializeNonEmployee).filter((ne): ne is NonEmployee => ne !== null);
+  } catch (error) {
+    console.error("Error in getNonEmployees from sheets.ts:", error);
+    throw new Error(`Could not fetch non-employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 

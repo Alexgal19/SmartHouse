@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
-import type { Employee, Settings, Coordinator } from '@/types';
+import type { Employee, Settings, Coordinator, NonEmployee } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ScrollArea } from './ui/scroll-area';
 import { Skeleton } from './ui/skeleton';
@@ -27,6 +26,7 @@ import { Label } from './ui/label';
 
 interface EmployeesViewProps {
   employees: Employee[];
+  nonEmployees: NonEmployee[];
   settings: Settings;
   onAddEmployee: () => void;
   onEditEmployee: (employee: Employee) => void;
@@ -34,6 +34,9 @@ interface EmployeesViewProps {
   onRestoreEmployee: (employeeId: string) => void;
   onBulkDelete: (status: 'active' | 'dismissed') => void;
   currentUser: Coordinator;
+  onAddNonEmployee: () => void;
+  onEditNonEmployee: (nonEmployee: NonEmployee) => void;
+  onDeleteNonEmployee: (id: string) => void;
 }
 
 const EmployeeActions = ({
@@ -181,6 +184,112 @@ const EmployeeCardList = ({
     )
 }
 
+const NonEmployeeTable = ({
+  nonEmployees,
+  onEdit,
+  onDelete,
+}: {
+  nonEmployees: NonEmployee[];
+  onEdit: (nonEmployee: NonEmployee) => void;
+  onDelete: (id: string) => void;
+}) => {
+  return (
+    <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Imię i nazwisko</TableHead>
+              <TableHead>Adres</TableHead>
+              <TableHead>Numer pokoju</TableHead>
+              <TableHead>Data zameldowania</TableHead>
+              <TableHead>Data wymeldowania</TableHead>
+              <TableHead><span className="sr-only">Akcje</span></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {nonEmployees.length > 0 ? (
+              nonEmployees.map((person) => (
+                <TableRow key={person.id} onClick={() => onEdit(person)} className="cursor-pointer">
+                  <TableCell className="font-medium">{person.fullName}</TableCell>
+                  <TableCell>{person.address}</TableCell>
+                  <TableCell>{person.roomNumber}</TableCell>
+                  <TableCell>{format(person.checkInDate, 'dd-MM-yyyy')}</TableCell>
+                  <TableCell>{person.checkOutDate ? format(person.checkOutDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <span className="sr-only">Otwórz menu</span>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onEdit(person)}>Edytuj</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onDelete(person.id)} className="text-destructive">Usuń</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center">Brak mieszkańców (NZ) do wyświetlenia.</TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+    </div>
+  );
+};
+
+const NonEmployeeCardList = ({
+    nonEmployees,
+    onEdit,
+    onDelete,
+  }: {
+    nonEmployees: NonEmployee[];
+    onEdit: (nonEmployee: NonEmployee) => void;
+    onDelete: (id: string) => void;
+  }) => {
+    return (
+        <div className="space-y-4">
+             {nonEmployees.length > 0 ? (
+                nonEmployees.map((person) => (
+                    <Card key={person.id} onClick={() => onEdit(person)} className="cursor-pointer">
+                        <CardHeader className="flex flex-row items-start justify-between pb-4">
+                           <div>
+                             <CardTitle className="text-lg">{person.fullName}</CardTitle>
+                             <CardDescription>{person.address}, pokój {person.roomNumber}</CardDescription>
+                           </div>
+                           <div onClick={(e) => e.stopPropagation()}>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" className="h-8 w-8 p-0">
+                                            <span className="sr-only">Otwórz menu</span>
+                                            <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => onEdit(person)}>Edytuj</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => onDelete(person.id)} className="text-destructive">Usuń</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                           </div>
+                        </CardHeader>
+                        <CardContent className="text-base space-y-2">
+                           <p><span className="font-semibold text-muted-foreground">Zameldowanie:</span> {format(person.checkInDate, 'dd-MM-yyyy')}</p>
+                           <p><span className="font-semibold text-muted-foreground">Wymeldowanie:</span> {person.checkOutDate ? format(person.checkOutDate, 'dd-MM-yyyy') : 'N/A'}</p>
+                        </CardContent>
+                    </Card>
+                ))
+             ) : (
+                <div className="text-center text-muted-foreground py-8">Brak mieszkańców (NZ) do wyświetlenia.</div>
+             )}
+        </div>
+    )
+}
+
+
 const FilterDialog = ({
     isOpen,
     onOpenChange,
@@ -200,7 +309,7 @@ const FilterDialog = ({
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Filtruj pracowników</DialogTitle>
+                    <DialogTitle>Filtruj</DialogTitle>
                     <DialogDescription>
                         Zawęź listę, aby znaleźć to, czego szukasz.
                     </DialogDescription>
@@ -261,6 +370,7 @@ const FilterDialog = ({
 
 export default function EmployeesView({
   employees,
+  nonEmployees,
   settings,
   onAddEmployee,
   onEditEmployee,
@@ -268,6 +378,9 @@ export default function EmployeesView({
   onRestoreEmployee,
   onBulkDelete,
   currentUser,
+  onAddNonEmployee,
+  onEditNonEmployee,
+  onDeleteNonEmployee,
 }: EmployeesViewProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
@@ -295,6 +408,14 @@ export default function EmployeesView({
     });
   }, [employees, searchTerm, filters]);
 
+  const filteredNonEmployees = useMemo(() => {
+    return nonEmployees.filter(person => {
+      const searchMatch = searchTerm === '' || person.fullName.toLowerCase().includes(searchTerm.toLowerCase());
+      const addressMatch = filters.addressFilter === 'all' || person.address === filters.addressFilter;
+      return searchMatch && addressMatch;
+    });
+  }, [nonEmployees, searchTerm, filters]);
+
   const activeEmployees = useMemo(() => filteredEmployees.filter(e => e.status === 'active'), [filteredEmployees]);
   const dismissedEmployees = useMemo(() => filteredEmployees.filter(e => e.status === 'dismissed'), [filteredEmployees]);
   
@@ -311,8 +432,9 @@ export default function EmployeesView({
   const hasActiveFilters = searchTerm !== '' || Object.values(filters).some(v => v !== 'all');
   
   const EmployeeListComponent = isMobile ? EmployeeCardList : EmployeeTable;
+  const NonEmployeeListComponent = isMobile ? NonEmployeeCardList : NonEmployeeTable;
 
-  const renderContent = (list: Employee[], isDismissed: boolean) => {
+  const renderEmployeeContent = (list: Employee[], isDismissed: boolean) => {
     if (!isMounted) {
       return <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>;
     }
@@ -356,16 +478,31 @@ export default function EmployeesView({
     );
   };
 
+  const renderNonEmployeeContent = (list: NonEmployee[]) => {
+    if (!isMounted) {
+      return <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>;
+    }
+    return <NonEmployeeListComponent nonEmployees={list} onEdit={onEditNonEmployee} onDelete={onDeleteNonEmployee} />
+  }
+
 
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between gap-4">
-            <CardTitle>Zarządzanie pracownikami</CardTitle>
-            <Button onClick={onAddEmployee} size={isMobile ? "icon" : "default"}>
-              <PlusCircle className={isMobile ? "h-5 w-5" : "mr-2 h-4 w-4"} />
-              <span className="hidden sm:inline">Dodaj</span>
-            </Button>
+            <CardTitle>Zarządzanie mieszkańcami</CardTitle>
+             <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button size={isMobile ? "icon" : "default"}>
+                        <PlusCircle className={isMobile ? "h-5 w-5" : "mr-2 h-4 w-4"} />
+                        <span className="hidden sm:inline">Dodaj</span>
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                    <DropdownMenuItem onClick={onAddEmployee}>Dodaj pracownika</DropdownMenuItem>
+                    <DropdownMenuItem onClick={onAddNonEmployee}>Dodaj mieszkańca (NZ)</DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
         </div>
         <div className="mt-4">
             <div className="flex items-center gap-2">
@@ -388,18 +525,24 @@ export default function EmployeesView({
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="active">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="active">Aktywni ({activeEmployees.length})</TabsTrigger>
             <TabsTrigger value="dismissed">Zwolnieni ({dismissedEmployees.length})</TabsTrigger>
+            <TabsTrigger value="non-employees">NZ ({filteredNonEmployees.length})</TabsTrigger>
           </TabsList>
           <TabsContent value="active" className="mt-4">
              <ScrollArea className="h-[55vh]">
-                {renderContent(activeEmployees, false)}
+                {renderEmployeeContent(activeEmployees, false)}
              </ScrollArea>
           </TabsContent>
           <TabsContent value="dismissed" className="mt-4">
             <ScrollArea className="h-[55vh]">
-                {renderContent(dismissedEmployees, true)}
+                {renderEmployeeContent(dismissedEmployees, true)}
+            </ScrollArea>
+          </TabsContent>
+           <TabsContent value="non-employees" className="mt-4">
+            <ScrollArea className="h-[55vh]">
+                {renderNonEmployeeContent(filteredNonEmployees)}
             </ScrollArea>
           </TabsContent>
         </Tabs>

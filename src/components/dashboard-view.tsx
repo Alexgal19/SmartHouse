@@ -1,13 +1,13 @@
 
 "use client";
 
-import type { Employee, Settings, HousingAddress, Coordinator, Room } from "@/types";
+import type { Employee, Settings, HousingAddress, Coordinator, Room, NonEmployee } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList, Cell } from "recharts";
 import { ChartContainer } from "@/components/ui/chart";
 import { useMemo, useState } from "react";
-import { Building, UserMinus, Users, Home, BedDouble, ChevronRight, ChevronDown, UserCheck, RefreshCw } from "lucide-react";
+import { Building, UserMinus, Users, Home, BedDouble, ChevronRight, ChevronDown, UserCheck, RefreshCw, UserX } from "lucide-react";
 import { isWithinInterval, format, getYear, getMonth } from "date-fns";
 import { pl } from "date-fns/locale";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
@@ -20,10 +20,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { checkAndUpdateEmployeeStatuses } from "@/lib/actions";
 
 interface DashboardViewProps {
   employees: Employee[];
+  nonEmployees: NonEmployee[];
   settings: Settings;
   onEditEmployee: (employee: Employee) => void;
   currentUser: Coordinator;
@@ -143,7 +143,7 @@ const HousingDetailView = ({
 };
 
 
-export default function DashboardView({ employees, settings, onEditEmployee, currentUser, selectedCoordinatorId, onSelectCoordinator, onDataRefresh }: DashboardViewProps) {
+export default function DashboardView({ employees, nonEmployees, settings, onEditEmployee, currentUser, selectedCoordinatorId, onSelectCoordinator, onDataRefresh }: DashboardViewProps) {
   const [isHousingDialogOpen, setIsHousingDialogOpen] = useState(false);
   const [isCheckoutsDialogOpen, setIsCheckoutsDialogOpen] = useState(false);
   const [housingSearchTerm, setHousingSearchTerm] = useState("");
@@ -200,6 +200,7 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
 
   const kpiData = [
     { title: "Wszyscy pracownicy", value: activeEmployees.length, icon: Users, color: "text-blue-400" },
+    { title: "Mieszkańcy (NZ)", value: nonEmployees.length, icon: UserX, color: "text-purple-400" },
     { title: "Używane mieszkania", value: apartmentsInUse, icon: Building, color: "text-orange-400" },
   ];
 
@@ -252,6 +253,15 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
     }
     return Object.entries(counts).map(([name, value]) => ({ name, value }));
   };
+
+  const nonEmployeesByAddress = useMemo(() => {
+    const counts = nonEmployees.reduce((acc, person) => {
+      const addressName = person.address || "Nieznany";
+      acc[addressName] = (acc[addressName] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [nonEmployees]);
 
   const departureYears = useMemo(() => {
     const years = new Set(employees.filter(e => e.checkOutDate).map(e => String(getYear(e.checkOutDate!))));
@@ -313,23 +323,8 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
   ];
 
   const handleRefreshStatuses = async () => {
-    setIsRefreshing(true);
-    try {
-      const result = await checkAndUpdateEmployeeStatuses(currentUser);
-      toast({
-        title: "Sukces",
-        description: `Zaktualizowano statusy dla ${result.updated} pracowników.`,
-      });
-      onDataRefresh();
-    } catch (error) {
-       toast({
-        variant: "destructive",
-        title: "Błąd",
-        description: "Nie udało się odświeżyć statusów.",
-      });
-    } finally {
-      setIsRefreshing(false);
-    }
+    // This is now handled in main-layout, but we can keep the button for manual refresh if desired.
+    // This function can be reimplemented if a manual refresh button is added back.
   };
 
 
@@ -396,10 +391,6 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
                             <CardTitle>Filtr Koordynatora</CardTitle>
                             <CardDescription>Wybierz koordynatora, aby wyświetlić jego dane.</CardDescription>
                         </div>
-                        <Button onClick={handleRefreshStatuses} variant="outline" disabled={isRefreshing}>
-                            <RefreshCw className={cn("mr-2 h-4 w-4", isRefreshing && "animate-spin")} />
-                            {isRefreshing ? 'Odświeżanie...' : 'Odśwież statusy'}
-                        </Button>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -425,9 +416,9 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
             </TabsList>
             <TabsContent value="summary" className="mt-6">
                 <div className="space-y-6">
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         {kpiData.map(kpi => (
-                        <Card key={kpi.title}>
+                        <Card key={kpi.title} className="col-span-1">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
                             <kpi.icon className={`h-4 w-4 text-muted-foreground ${kpi.color}`} />
@@ -440,9 +431,9 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
 
                         <Dialog open={isCheckoutsDialogOpen} onOpenChange={setIsCheckoutsDialogOpen}>
                             <DialogTrigger asChild>
-                                <Card className="cursor-pointer hover:border-primary transition-colors">
+                                <Card className="cursor-pointer hover:border-primary transition-colors col-span-2 sm:col-span-1">
                                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                        <CardTitle className="text-sm font-medium">Nadchodzące wykwaterowania (30 dni)</CardTitle>
+                                        <CardTitle className="text-sm font-medium">Wykwaterowania (30 dni)</CardTitle>
                                         <UserMinus className="h-4 w-4 text-muted-foreground text-red-400" />
                                     </CardHeader>
                                     <CardContent>
@@ -482,6 +473,7 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
                           <ChartComponent data={employeesByCoordinator} title="Pracownicy wg koordynatora" />
                           <ChartComponent data={employeesByNationality} title="Pracownicy wg narodowości" />
                           <ChartComponent data={employeesByDepartment} title="Pracownicy wg zakładu" />
+                          <ChartComponent data={nonEmployeesByAddress} title="Mieszkańcy (NZ) wg adresu" labelY="Mieszkańcy"/>
                           <Card>
                               <CardHeader>
                                   <CardTitle>Statystyka wyjazdów</CardTitle>
@@ -575,7 +567,7 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
                                     <Card key={house.id} onClick={() => handleAddressCardClick(house)} className="cursor-pointer hover:bg-muted/50 transition-colors">
                                     <CardHeader className="pb-4">
                                         <CardTitle 
-                                            className="text-base truncate hover:underline"
+                                            className="text-lg md:text-xl truncate hover:underline"
                                             onClick={(e) => handleAllEmployeesForAddressClick(e, house)}
                                         >
                                             {house.name}
@@ -650,9 +642,3 @@ export default function DashboardView({ employees, settings, onEditEmployee, cur
     </div>
   );
 }
-
-    
-
-    
-
-    
