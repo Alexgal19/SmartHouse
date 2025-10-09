@@ -155,7 +155,7 @@ const ChartComponent = ({ data, title, labelY }: { data: {name: string, value: n
       <CardContent className="pl-0 sm:pl-2">
         <ChartContainer config={{value: {label: labelY || "Pracownicy"}}} className="h-64 w-full">
           <ResponsiveContainer>
-            <BarChart data={data} margin={{ top: 20, right: 20, left: -10, bottom: 20 }} barSize={50}>
+            <BarChart data={data} margin={{ top: 20, right: 20, left: -10, bottom: 40 }} barSize={50}>
                <defs>
                 {chartColors.map((color, index) => (
                   <linearGradient id={color.id} x1="0" y1="0" x2="0" y2="1" key={index}>
@@ -174,7 +174,6 @@ const ChartComponent = ({ data, title, labelY }: { data: {name: string, value: n
                 interval={0}
                 angle={-45}
                 textAnchor="end"
-                height={60}
               />
               <YAxis tickLine={false} axisLine={false} tickMargin={10} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
               <Tooltip 
@@ -271,7 +270,7 @@ const DeparturesChart = ({ allEmployees }: { allEmployees: Employee[] }) => {
             <CardContent className="pl-0 sm:pl-2">
                 <ChartContainer config={{value: {label: "Wyjazdy"}}} className="h-64 w-full">
                 <ResponsiveContainer>
-                    <BarChart data={departuresByMonth} margin={{ top: 20, right: 20, left: -10, bottom: 20 }} barSize={50}>
+                    <BarChart data={departuresByMonth} margin={{ top: 20, right: 20, left: -10, bottom: 40 }} barSize={50}>
                     <defs>
                         {chartColors.map((color, index) => (
                         <linearGradient id={color.id} x1="0" y1="0" x2="0" y2="1" key={index}>
@@ -290,7 +289,6 @@ const DeparturesChart = ({ allEmployees }: { allEmployees: Employee[] }) => {
                         interval={0}
                         angle={-45}
                         textAnchor="end"
-                        height={60}
                     />
                     <YAxis tickLine={false} axisLine={false} tickMargin={10} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
                     <Tooltip 
