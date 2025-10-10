@@ -17,7 +17,7 @@ import MainLayout from '@/components/main-layout';
 function DashboardPageContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
-    const view = searchParams.get('view') as View || 'dashboard';
+    const view = (searchParams.get('view') as View) || 'dashboard';
     const editEmployeeId = searchParams.get('edit');
 
     const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
@@ -69,8 +69,10 @@ function DashboardPageContent() {
                     setSelectedCoordinatorId(user.uid);
                 }
             }
+        } else {
+            router.push('/');
         }
-    }, [currentUser]);
+    }, [currentUser, router]);
 
     useEffect(() => {
         if (currentUser) {
@@ -340,7 +342,7 @@ function DashboardPageContent() {
     if (!currentUser) return null;
 
     return (
-        <>
+        <MainLayout>
             {renderView()}
             
             {settings && (
@@ -361,16 +363,16 @@ function DashboardPageContent() {
                     nonEmployee={editingNonEmployee}
                 />
             )}
-        </>
+        </MainLayout>
     );
 }
 
 export default function DashboardPage() {
     return (
-        <MainLayout>
-            <React.Suspense fallback={<div>Ładowanie...</div>}>
-                 <DashboardPageContent />
-            </React.Suspense>
-        </MainLayout>
+        <React.Suspense fallback={<div>Ładowanie...</div>}>
+             <DashboardPageContent />
+        </React.Suspense>
     )
 }
+
+    

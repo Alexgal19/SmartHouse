@@ -15,7 +15,7 @@ import Header from './header';
 import { MobileNav } from './mobile-nav';
 import type { View, Notification, Coordinator } from '@/types';
 import { Building, ClipboardList, Home, Settings as SettingsIcon, Users } from 'lucide-react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { clearAllNotifications, markNotificationAsRead, getNotifications } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 
@@ -33,7 +33,7 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
     const router = useRouter();
-    const pathname = usePathname();
+    const searchParams = useSearchParams();
     const { toast } = useToast();
 
     const [currentUser, setCurrentUser] = useState<Coordinator | null>(null);
@@ -41,9 +41,8 @@ export default function MainLayout({
     const [allNotifications, setAllNotifications] = useState<Notification[]>([]);
     
     const activeView = useMemo(() => {
-        const path = pathname.split('/').pop() || 'dashboard';
-        return path as View;
-    }, [pathname]);
+        return (searchParams.get('view') as View) || 'dashboard';
+    }, [searchParams]);
 
     useEffect(() => {
         try {
@@ -108,7 +107,6 @@ export default function MainLayout({
         if (currentUser?.isAdmin) {
             return navItems;
         }
-        // Simplified: assuming non-admins can see everything but 'settings' check is handled by click handler
         return navItems;
     }, [currentUser]);
 
@@ -167,3 +165,5 @@ export default function MainLayout({
         </div>
     );
 }
+
+    

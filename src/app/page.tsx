@@ -89,3 +89,5 @@ export default function LoginPage() {
     
     return <LoginView coordinators={coordinators} onLogin={handleLogin} />;
 }
+
+    
