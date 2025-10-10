@@ -98,7 +98,8 @@ export async function getEmployees({ filters = {}, all = false }: { filters?: Re
 }
 
 export async function getAllEmployees(): Promise<Employee[]> {
-    return getEmployees({ all: true });
+    const { employees } = await getEmployeesFromSheet({ all: true });
+    return employees;
 }
 
 export async function getNonEmployees(): Promise<NonEmployee[]> {
@@ -899,5 +900,7 @@ export async function checkAndUpdateEmployeeStatuses(actor: Coordinator): Promis
     throw new Error("Could not update statuses.");
   }
 }
+
+    
 
     

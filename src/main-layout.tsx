@@ -22,7 +22,7 @@ import InspectionsView from './inspections-view';
 import { AddEmployeeForm } from './add-employee-form';
 import { AddNonEmployeeForm } from './add-non-employee-form';
 import { LoginView } from './login-view';
-import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead, getInspections, addInspection, updateInspection, deleteInspection, transferEmployees, bulkDeleteEmployees, bulkImportEmployees, clearAllNotifications, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee, checkAndUpdateEmployeeStatuses } from '@/lib/actions';
+import { getAllEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead, getInspections, addInspection, updateInspection, deleteInspection, transferEmployees, bulkDeleteEmployees, bulkImportEmployees, clearAllNotifications, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee, checkAndUpdateEmployeeStatuses, getEmployees } from '@/lib/actions';
 import type { Employee, Settings, User, View, Notification, Coordinator, Inspection, NonEmployee } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Building, ClipboardList, Home, Settings as SettingsIcon, Users } from 'lucide-react';
@@ -56,7 +56,7 @@ function MainContent() {
         if (isInitialLoad) setIsLoading(true);
         try {
             const [employeesData, settingsData, notificationsData, inspectionsData, nonEmployeesData] = await Promise.all([
-                getEmployees(), 
+                getAllEmployees(), 
                 getSettings(),
                 getNotifications(),
                 getInspections(),
@@ -94,7 +94,7 @@ function MainContent() {
                 .catch(console.error)
                 .finally(() => setIsLoading(false));
         }
-    }, []);
+    }, [fetchData]);
 
     const filteredEmployees = useMemo(() => {
         if (!currentUser) return [];
@@ -227,70 +227,42 @@ function MainContent() {
     const handleSaveEmployee = async (data: Omit<Employee, 'id' | 'status'> & { oldAddress?: string | null }) => {
         if (!currentUser) return;
         
-        // Optimistic update
-        if (editingEmployee) {
-            const updatedEmployee = { ...editingEmployee, ...data };
-            setAllEmployees(prev => prev.map(e => e.id === editingEmployee.id ? updatedEmployee : e));
-        } else {
-            const tempId = `temp-${Date.now()}`;
-            const newEmployee: Employee = {
-                ...data,
-                id: tempId,
-                status: 'active',
-            };
-            setAllEmployees(prev => [newEmployee, ...prev]);
-        }
-        
         try {
-            const savedEmployee = await (editingEmployee
-                ? updateEmployee(editingEmployee.id, data, currentUser)
-                : addEmployee(data, currentUser));
-
-            // Replace temp employee with saved one or update existing
-            setAllEmployees(prev => prev.map(e => e.id === (editingEmployee?.id || savedEmployee.id) || e.id.startsWith('temp-') ? savedEmployee : e));
-            toast({ title: "Sukces", description: editingEmployee ? "Dane pracownika zostały zaktualizowane." : "Nowy pracownik został dodany." });
-            
-            // Light refetch for notifications
-            getNotifications().then(notificationsData => setAllNotifications(notificationsData.map((n:any) => ({...n, createdAt: new Date(n.createdAt)}))));
+            if (editingEmployee) {
+                await updateEmployee(editingEmployee.id, data, currentUser);
+                 toast({ title: "Sukces", description: "Dane pracownika zostały zaktualizowane." });
+            } else {
+                 await addEmployee(data, currentUser);
+                 toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
+            }
+            // Refetch all data to ensure UI consistency
+            fetchData();
 
         } catch(e: any) {
              toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać pracownika." });
-             fetchData(true); // Revert optimistic update on error
         }
     };
 
     const handleSaveNonEmployee = async (data: Omit<NonEmployee, 'id'>) => {
-        if (editingNonEmployee) {
-            const updatedNonEmployee = { ...editingNonEmployee, ...data };
-            setAllNonEmployees(prev => prev.map(ne => ne.id === editingNonEmployee.id ? updatedNonEmployee : ne));
-        } else {
-            const tempId = `temp-ne-${Date.now()}`;
-            const newNonEmployee: NonEmployee = { ...data, id: tempId };
-            setAllNonEmployees(prev => [newNonEmployee, ...prev]);
-        }
-
         try {
-            const savedNonEmployee = await (editingNonEmployee
-                ? updateNonEmployee(editingNonEmployee.id, data)
-                : addNonEmployee(data));
-            
-            setAllNonEmployees(prev => prev.map(ne => ne.id === (editingNonEmployee?.id || savedNonEmployee.id) || ne.id.startsWith('temp-') ? savedNonEmployee : ne));
+            if (editingNonEmployee) {
+                await updateNonEmployee(editingNonEmployee.id, data)
+            } else {
+                await addNonEmployee(data);
+            }
             toast({ title: "Sukces", description: editingNonEmployee ? "Dane mieszkańca zostały zaktualizowane." : "Nowy mieszkaniec został dodany." });
+            fetchData();
         } catch (e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać mieszkańca." });
-            fetchData(true); // Revert
         }
     }
     
     const handleDeleteNonEmployee = async (id: string) => {
-        const originalNonEmployees = allNonEmployees;
-        setAllNonEmployees(prev => prev.filter(ne => ne.id !== id));
-        
         try {
             await deleteNonEmployee(id);
             toast({ title: "Sukces", description: "Mieszkaniec został usunięty." });
+            fetchData();
         } catch(e: any) {
-            setAllNonEmployees(originalNonEmployees); // Revert
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć mieszkańca." });
         }
     }
@@ -301,58 +273,41 @@ function MainContent() {
             return;
         }
         
-        const originalSettings = settings;
-        setSettings({ ...originalSettings, ...newSettings });
-
         try {
             await updateSettings(newSettings);
             toast({ title: "Sukces", description: "Ustawienia zostały zaktualizowane." });
-            // Refetch settings to confirm changes from server
-            getSettings().then(setSettings);
+            fetchData();
         } catch(e: any) {
-            setSettings(originalSettings); // Revert
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać ustawień." });
         }
     };
     
     const handleAddInspection = async (inspectionData: Omit<Inspection, 'id'>) => {
-        const tempId = `temp-insp-${Date.now()}`;
-        const newInspection: Inspection = { ...inspectionData, id: tempId };
-        setAllInspections(prev => [newInspection, ...prev].sort((a, b) => b.date.getTime() - a.date.getTime()));
-
         try {
             await addInspection(inspectionData);
             toast({ title: "Sukces", description: "Nowa inspekcja została dodana." });
-            getInspections().then(data => setAllInspections(data.map((i: any) => ({...i, date: new Date(i.date)})))); // light refetch
+            fetchData();
         } catch(e: any) {
-            setAllInspections(prev => prev.filter(i => i.id !== tempId)); // Revert
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać inspekcji." });
         }
     };
 
     const handleUpdateInspection = async (id: string, inspectionData: Omit<Inspection, 'id'>) => {
-        const updatedInspection: Inspection = { ...inspectionData, id };
-        setAllInspections(prev => prev.map(i => i.id === id ? updatedInspection : i));
-
         try {
             await updateInspection(id, inspectionData);
             toast({ title: "Sukces", description: "Inspekcja została zaktualizowana." });
-            getInspections().then(data => setAllInspections(data.map((i: any) => ({...i, date: new Date(i.date)})))); // light refetch
+            fetchData();
         } catch(e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zaktualizować inspekcji." });
-            await fetchData(true); // Revert
         }
     };
 
     const handleDeleteInspection = async (id: string) => {
-        const originalInspections = allInspections;
-        setAllInspections(prev => prev.filter(i => i.id !== id));
-
         try {
             await deleteInspection(id);
             toast({ title: "Sukces", description: "Inspekcja została usunięta." });
+            fetchData();
         } catch(e: any) {
-            setAllInspections(originalInspections); // Revert
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć inspekcji." });
         }
     };
@@ -397,62 +352,55 @@ function MainContent() {
              toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administrator może usuwać powiadomienia." });
              return;
         }
-        const originalNotifications = allNotifications;
-        setAllNotifications([]);
         try {
             await clearAllNotifications();
+            setAllNotifications([]);
             toast({ title: "Sukces", description: "Wszystkie powiadomienia zostały usunięte." });
         } catch (e: any) {
-             setAllNotifications(originalNotifications); // Revert
              toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć powiadomień." });
         }
     }
 
     const handleDismissEmployee = async (employeeId: string) => {
-        if (!currentUser) return;
-        const originalEmployees = allEmployees;
-        const todayString = new Date().toISOString().split('T')[0];
-        setAllEmployees(prev => prev.map(e => e.id === employeeId ? { ...e, status: 'dismissed', checkOutDate: todayString } : e));
-
+        if (!currentUser) return false;
         try {
-            await updateEmployee(employeeId, { status: 'dismissed', checkOutDate: todayString }, currentUser);
+            await updateEmployee(employeeId, { status: 'dismissed', checkOutDate: new Date().toISOString().split('T')[0] }, currentUser);
             toast({ title: "Sukces", description: "Pracownik został zwolniony." });
+            fetchData();
+            return true;
         } catch(e: any) {
-            setAllEmployees(originalEmployees); // Revert
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zwolnić pracownika." });
+            return false;
         }
     };
 
     const handleRestoreEmployee = async (employeeId: string) => {
-        if (!currentUser) return;
-        const originalEmployees = allEmployees;
-        setAllEmployees(prev => prev.map(e => e.id === employeeId ? { ...e, status: 'active', checkOutDate: null } : e));
-
+        if (!currentUser) return false;
         try {
             await updateEmployee(employeeId, { status: 'active', checkOutDate: null }, currentUser);
             toast({ title: "Sukces", description: "Pracownik został przywrócony." });
+            fetchData();
+            return true;
         } catch(e: any) {
-            setAllEmployees(originalEmployees); // Revert
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się przywrócić pracownika." });
+            return false;
         }
     };
     
     const handleBulkDeleteEmployees = async (status: 'active' | 'dismissed') => {
         if (!currentUser || !currentUser.isAdmin) {
              toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administrator może usuwać pracowników." });
-            return;
+            return false;
         }
         
-        const originalEmployees = allEmployees;
-        const employeesToDelete = originalEmployees.filter(e => e.status === status);
-        setAllEmployees(prev => prev.filter(e => e.status !== status));
-
          try {
             await bulkDeleteEmployees(status, currentUser);
-            toast({ title: "Sukces", description: `Wszyscy ${status === 'active' ? 'aktywni' : 'zwolnieni'} pracownicy (${employeesToDelete.length}) zostali usunięci.` });
+            toast({ title: "Sukces", description: `Wszyscy ${status === 'active' ? 'aktywni' : 'zwolnieni'} pracownicy zostali usunięci.` });
+            fetchData();
+             return true;
         } catch(e: any) {
-            setAllEmployees(originalEmployees); // Revert
             toast({ variant: "destructive", title: "Błąd", description: e.message || `Nie udało się usunąć pracowników.` });
+             return false;
         }
     }
 
@@ -462,12 +410,7 @@ function MainContent() {
             const { updated } = await checkAndUpdateEmployeeStatuses(currentUser);
             if (updated > 0) {
                 toast({ title: "Sukces", description: `Zaktualizowano statusy dla ${updated} pracowników.`});
-                const [employeesData, notificationsData] = await Promise.all([
-                    getEmployees(),
-                    getNotifications()
-                ]);
-                 setAllEmployees(employeesData);
-                 setAllNotifications(notificationsData.map((n:any) => ({...n, createdAt: new Date(n.createdAt)})));
+                fetchData();
             } else {
                  toast({ title: "Brak zmian", description: "Wszyscy pracownicy mają aktualne statusy."});
             }
@@ -627,3 +570,5 @@ export default function MainLayout() {
         </SidebarProvider>
     );
 }
+
+    
