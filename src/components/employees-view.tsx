@@ -453,19 +453,24 @@ export default function EmployeesView({
       setIsLoading(false);
     }
   }, [page, activeTab, filters, searchTerm, toast]);
+
+    useEffect(() => {
+        fetchPageData();
+    }, []);
   
-  useEffect(() => {
-    const handler = setTimeout(() => {
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setPage(1);
+            fetchPageData();
+        }, 500);
+
+        return () => clearTimeout(handler);
+    }, [searchTerm, fetchPageData]);
+
+    useEffect(() => {
         setPage(1);
         fetchPageData();
-    }, 500);
-
-    return () => clearTimeout(handler);
-  }, [searchTerm, fetchPageData]);
-
-  useEffect(() => {
-    fetchPageData();
-  }, [page, activeTab, filters]);
+    }, [activeTab, filters]);
 
 
   const filteredNonEmployees = useMemo(() => {
@@ -662,13 +667,5 @@ export default function EmployeesView({
     </Card>
   );
 }
-
-    
-
-    
-
-    
-
-    
 
     
