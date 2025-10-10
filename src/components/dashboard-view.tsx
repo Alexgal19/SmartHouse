@@ -264,31 +264,28 @@ const DeparturesChart = ({ allEmployees }: { allEmployees: Employee[] }) => {
             <CardContent className="pr-0 sm:pr-2 pl-4">
                <ChartContainer config={{value: {label: "Wyjazdy"}}} className="h-[400px] w-full">
                 <ResponsiveContainer>
-                    <BarChart data={departuresByMonth} layout="vertical" margin={{ top: 20, right: 40, left: 20, bottom: 20 }}>
+                    <BarChart data={departuresByMonth} margin={{ top: 20, right: 20, left: 0, bottom: 20 }}>
                     <defs>
-                        <linearGradient id="chartGradient" x1="0" y1="0" x2="1" y2="0">
+                        <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0%" stopColor="hsl(var(--primary) / 0.7)" />
                             <stop offset="100%" stopColor="hsl(var(--primary) / 0.2)" />
                         </linearGradient>
                     </defs>
-                    <CartesianGrid horizontal={false} strokeDasharray="3 3" stroke="hsl(var(--border) / 0.5)" />
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border) / 0.5)" />
                     <XAxis 
-                        type="number"
+                        dataKey="name" 
+                        tickLine={false} 
+                        axisLine={false} 
+                        tickMargin={10} 
+                        tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} 
+                        interval={0}
+                    />
+                    <YAxis 
                         tickLine={false} 
                         axisLine={false} 
                         tickMargin={10} 
                         tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} 
                         allowDecimals={false}
-                    />
-                    <YAxis 
-                        type="category"
-                        dataKey="name" 
-                        tickLine={false} 
-                        axisLine={false} 
-                        tickMargin={10} 
-                        width={80}
-                        tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} 
-                        interval={0}
                     />
                     <Tooltip 
                         cursor={{ fill: 'hsl(var(--accent) / 0.1)' }} 
@@ -299,8 +296,8 @@ const DeparturesChart = ({ allEmployees }: { allEmployees: Employee[] }) => {
                             </div>
                         )}
                     />
-                    <Bar dataKey="value" radius={[0, 8, 8, 0]} fill="url(#chartGradient)" animationDuration={500}>
-                      <LabelList dataKey="value" position="right" offset={10} className="fill-foreground font-semibold" />
+                    <Bar dataKey="value" radius={[8, 8, 0, 0]} fill="url(#chartGradient)" animationDuration={500}>
+                      <LabelList dataKey="value" position="top" offset={10} className="fill-foreground font-semibold" />
                     </Bar>
                     </BarChart>
                 </ResponsiveContainer>
@@ -324,7 +321,7 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
 
   const { isMobile } = useIsMobile();
   
-  const activeEmployees = useMemo(() => employees.filter(e => e.status === 'active'), [employees]);
+  const activeEmployees = useMemo(() => allEmployees.filter(e => e.status === 'active'), [allEmployees]);
   const activeOccupants = useMemo(() => [...activeEmployees, ...nonEmployees], [activeEmployees, nonEmployees]);
 
   const apartmentsInUse = useMemo(() => [...new Set(activeOccupants.map(o => o.address))].length, [activeOccupants]);
@@ -366,7 +363,7 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
   const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
 
   const kpiData = [
-    { title: "Wszyscy pracownicy", value: activeEmployees.length, icon: Users, color: "text-blue-400" },
+    { title: "Wszyscy pracownicy", value: employees.filter(e => e.status === 'active').length, icon: Users, color: "text-blue-400" },
     { title: "Mieszkańcy (NZ)", value: nonEmployees.length, icon: UserX, color: "text-purple-400" },
     { title: "Używane mieszkania", value: apartmentsInUse, icon: Building, color: "text-orange-400" },
   ];
@@ -376,7 +373,7 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
 
     if (currentUser.isAdmin && selectedCoordinatorId !== 'all') {
         const coordinatorAddresses = new Set(
-            activeEmployees
+            employees
                 .filter(e => e.coordinatorId === selectedCoordinatorId)
                 .map(e => e.address)
         );
@@ -398,7 +395,7 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
     return baseOverview.filter(house =>
       house.name.toLowerCase().includes(housingSearchTerm.toLowerCase())
     ).sort((a, b) => b.occupancy - a.occupancy);
-  }, [settings.addresses, activeOccupants, activeEmployees, housingSearchTerm, currentUser.isAdmin, selectedCoordinatorId]);
+  }, [settings.addresses, activeOccupants, employees, housingSearchTerm, currentUser.isAdmin, selectedCoordinatorId]);
   
   const occupantsForSelectedAddress = useMemo(() => {
     if (!selectedAddress) return [];
@@ -406,7 +403,7 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
   }, [activeOccupants, selectedAddress]);
 
   const aggregateData = (key: 'coordinatorId' | 'nationality' | 'zaklad') => {
-    const counts = activeEmployees.reduce((acc, employee) => {
+    const counts = employees.filter(e => e.status === 'active').reduce((acc, employee) => {
       const value = employee[key];
       acc[value] = (acc[value] || 0) + 1;
       return acc;
@@ -431,9 +428,9 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
   }, [nonEmployees]);
 
 
-  const employeesByCoordinator = useMemo(() => aggregateData('coordinatorId'), [activeEmployees, settings.coordinators]);
-  const employeesByNationality = useMemo(() => aggregateData('nationality'), [activeEmployees]);
-  const employeesByDepartment = useMemo(() => aggregateData('zaklad'), [activeEmployees]);
+  const employeesByCoordinator = useMemo(() => aggregateData('coordinatorId'), [employees, settings.coordinators]);
+  const employeesByNationality = useMemo(() => aggregateData('nationality'), [employees]);
+  const employeesByDepartment = useMemo(() => aggregateData('zaklad'), [employees]);
 
   const handleRefreshClick = async () => {
     setIsRefreshing(true);
