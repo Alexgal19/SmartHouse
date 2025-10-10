@@ -87,23 +87,13 @@ const NON_EMPLOYEE_HEADERS = [
 
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
 
-export async function getEmployees({
-    page = 1,
-    limit = 50,
-    filters = {},
-    searchTerm = '',
-    status = 'all'
-}: {
-    page?: number;
-    limit?: number;
-    filters?: Record<string, string>;
-    searchTerm?: string;
-    status?: 'active' | 'dismissed' | 'all';
-} = {}): Promise<{ employees: Employee[], total: number }> {
+export async function getEmployees(): Promise<Employee[]> {
   try {
-    return await getEmployeesFromSheet({ page, limit, filters, searchTerm, status });
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/employees`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to fetch employees');
+    return res.json();
   } catch (error) {
-    console.error("Error in getEmployees (actions):", error);
+    console.error("Error in getEmployees:", error);
     throw new Error(`Could not fetch employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
@@ -129,7 +119,12 @@ export async function getNonEmployees(): Promise<NonEmployee[]> {
 
 export async function getSettings(): Promise<Settings> {
   try {
-    return await getSettingsFromSheet();
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/settings`, { next: { revalidate: 0 } });
+    if (!res.ok) {
+        const errorBody = await res.text();
+        throw new Error(`Failed to fetch settings: ${res.statusText} - ${errorBody}`);
+    }
+    return res.json();
   } catch (error) {
     console.error("Error in getSettings:", error);
     throw new Error(`Could not fetch settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -454,7 +449,9 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Se
 
 export async function getNotifications(): Promise<Notification[]> {
     try {
-        return await getNotificationsFromSheet();
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/notifications`, { cache: 'no-store' });
+        if (!res.ok) throw new Error('Failed to fetch notifications');
+        return res.json();
     } catch (error) {
         console.error("Error fetching notifications:", error);
         return [];
@@ -511,7 +508,9 @@ const serializeInspection = (inspection: Omit<Inspection, 'categories'>): Record
 
 export async function getInspections(): Promise<Inspection[]> {
     try {
-        return await getInspectionsFromSheet();
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/inspections`, { cache: 'no-store' });
+        if (!res.ok) throw new Error('Failed to fetch inspections');
+        return res.json();
     } catch (error) {
         console.error("Error fetching inspections:", error);
         return [];
@@ -916,3 +915,5 @@ export async function checkAndUpdateEmployeeStatuses(actor: Coordinator): Promis
     throw new Error("Could not update statuses.");
   }
 }
+
+    
