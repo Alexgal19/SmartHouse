@@ -20,15 +20,17 @@ const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 
 
 const serializeDate = (date: string | null | undefined): string => {
-    if (date && isValid(new Date(date))) {
-        return date; // It's already a YYYY-MM-DD string
+    if (!date || !isValid(new Date(date))) {
+        return '';
     }
-    return '';
+    return date; // It's already a YYYY-MM-DD string
 };
 
 const serializeEmployee = (employee: Partial<Employee>): Record<string, string | number | boolean> => {
     const serialized: Record<string, any> = {};
-    for (const [key, value] of Object.entries(employee)) {
+    const dataToSerialize = { ...employee };
+
+    for (const [key, value] of Object.entries(dataToSerialize)) {
         if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate'].includes(key)) {
             serialized[key] = serializeDate(value as string);
         } else if (Array.isArray(value)) {
@@ -41,6 +43,7 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
     }
     return serialized;
 };
+
 
 const serializeNonEmployee = (nonEmployee: Partial<NonEmployee>): Record<string, string | number | boolean> => {
     const serialized: Record<string, any> = {};
@@ -189,8 +192,8 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>): 
 }
 
 const formatDateForChanges = (date: string | null | undefined): string => {
-    if (!date || !isValid(new Date(date))) return 'N/A';
-    return format(new Date(date + 'T00:00:00'), 'dd-MM-yyyy');
+    if (!date || !isValid(parse(date, 'yyyy-MM-dd', new Date()))) return 'N/A';
+    return format(parse(date, 'yyyy-MM-dd', new Date()), 'dd-MM-yyyy');
 };
 
 
@@ -249,9 +252,9 @@ const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): 
                  oldFormatted = formatDateForChanges(oldValue as string);
                  newFormatted = formatDateForChanges(newValue as string);
              } else if(Array.isArray(oldValue)) {
-                oldFormatted = oldValue.join(', ');
+                oldFormatted = oldValue.map(item => typeof item === 'object' ? item.name : item).join(', ');
              } else if (Array.isArray(newValue)) {
-                newFormatted = newValue.join(', ');
+                newFormatted = newValue.map(item => typeof item === 'object' ? item.name : item).join(', ');
              }
               else {
                  oldFormatted = String(oldValue ?? 'N/A');
@@ -648,23 +651,51 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
 
 
 const parseExcelDate = (excelDate: any): string | null => {
-    if (!excelDate) return null;
-    let date;
+    if (excelDate === null || excelDate === undefined || excelDate === '') return null;
+
+    // Case 1: It's already a JS Date object from xlsx parsing
+    if (excelDate instanceof Date) {
+        if (isValid(excelDate)) {
+            // Correctly format to YYYY-MM-DD, ignoring timezone
+            const year = excelDate.getFullYear();
+            const month = String(excelDate.getMonth() + 1).padStart(2, '0');
+            const day = String(excelDate.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        return null;
+    }
+
+    // Case 2: It's a number (Excel's date serial number)
     if (typeof excelDate === 'number') {
-        date = new Date((excelDate - 25569) * 86400 * 1000);
-    } else {
-        date = new Date(excelDate);
+        // This formula converts Excel's serial date number to a JS Date.
+        // It correctly handles the 1900 leap year bug in Excel.
+        const jsDate = new Date(Math.round((excelDate - 25569) * 86400 * 1000));
+        if (isValid(jsDate)) {
+            const year = jsDate.getFullYear();
+            const month = String(jsDate.getMonth() + 1).padStart(2, '0');
+            const day = String(jsDate.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        return null;
     }
-    
-    if (isValid(date)) {
-        // Return as YYYY-MM-DD string to avoid any timezone issues
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
+
+    // Case 3: It's a string, try to parse it
+    if (typeof excelDate === 'string') {
+        const trimmedDate = excelDate.trim();
+        // Try parsing different common formats
+        const formats = ['dd.MM.yyyy', 'dd/MM/yyyy', 'yyyy-MM-dd'];
+        for (const fmt of formats) {
+            const parsedDate = parse(trimmedDate, fmt, new Date());
+            if (isValid(parsedDate)) {
+                return format(parsedDate, 'yyyy-MM-dd');
+            }
+        }
     }
+
+    // If all else fails, return null
     return null;
 }
+
 
 export async function bulkImportEmployees(
     fileData: ArrayBuffer,
@@ -876,3 +907,5 @@ export async function checkAndUpdateEmployeeStatuses(actor: Coordinator): Promis
     throw new Error("Could not update statuses.");
   }
 }
+
+    
