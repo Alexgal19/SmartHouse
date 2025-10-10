@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Building } from 'lucide-react';
 import type { Coordinator } from '@/types';
+import { InstallPwaButton } from './install-pwa-button';
 
 interface LoginViewProps {
   coordinators: Coordinator[];
@@ -78,8 +79,9 @@ export function LoginView({ coordinators, onLogin }: LoginViewProps) {
                 </div>
                  {error && <p className="text-sm font-medium text-destructive">{error}</p>}
             </CardContent>
-            <CardFooter>
+            <CardFooter className="flex-col gap-4">
                 <Button type="submit" className="w-full">Zaloguj się</Button>
+                <InstallPwaButton />
             </CardFooter>
         </form>
       </Card>

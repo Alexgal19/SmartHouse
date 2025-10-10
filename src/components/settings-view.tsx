@@ -20,7 +20,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
 import { Alert, AlertTitle, AlertDescription } from "./ui/alert";
-import { InstallPwaButton } from "./install-pwa-button";
 
 
 interface SettingsViewProps {
@@ -555,7 +554,6 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <CardTitle>Ustawienia Aplikacji</CardTitle>
             <div className="flex gap-2">
-                <InstallPwaButton />
                 <Button onClick={() => setIsImportOpen(true)} variant="outline">
                     <Upload className="mr-2 h-4 w-4" />
                     Importuj
