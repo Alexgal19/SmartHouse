@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 
 interface DashboardViewProps {
   employees: Employee[];
+  allEmployees: Employee[];
   nonEmployees: NonEmployee[];
   settings: Settings;
   onEditEmployee: (employee: Employee) => void;
@@ -309,7 +310,7 @@ const DeparturesChart = ({ allEmployees }: { allEmployees: Employee[] }) => {
     );
 }
 
-export default function DashboardView({ employees, nonEmployees, settings, onEditEmployee, currentUser, selectedCoordinatorId, onSelectCoordinator, onDataRefresh }: DashboardViewProps) {
+export default function DashboardView({ employees, allEmployees, nonEmployees, settings, onEditEmployee, currentUser, selectedCoordinatorId, onSelectCoordinator, onDataRefresh }: DashboardViewProps) {
   const [isHousingDialogOpen, setIsHousingDialogOpen] = useState(false);
   const [isCheckoutsDialogOpen, setIsCheckoutsDialogOpen] = useState(false);
   const [housingSearchTerm, setHousingSearchTerm] = useState("");
@@ -537,7 +538,7 @@ export default function DashboardView({ employees, nonEmployees, settings, onEdi
                           <VerticalChartComponent data={employeesByNationality} title="Pracownicy wg narodowości" labelX="Pracownicy" />
                           <VerticalChartComponent data={employeesByDepartment} title="Pracownicy wg zakładu" labelX="Pracownicy" />
                           <VerticalChartComponent data={nonEmployeesByAddress} title="Mieszkańcy (NZ) wg adresu" labelX="Mieszkańcy"/>
-                          <DeparturesChart allEmployees={employees} />
+                          <DeparturesChart allEmployees={allEmployees} />
                           </div>
                       )}
                 </div>
