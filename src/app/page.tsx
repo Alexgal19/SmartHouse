@@ -21,7 +21,9 @@ export default function LoginPage() {
         } else {
              getSettings()
                 .then(settings => {
-                    setCoordinators(settings.coordinators)
+                    if (settings && settings.coordinators) {
+                        setCoordinators(settings.coordinators)
+                    }
                 })
                 .catch(err => {
                     toast({
@@ -52,6 +54,11 @@ export default function LoginPage() {
             } else {
                  (window as any).setLoginError('Nieprawidłowe hasło administratora.');
             }
+            return;
+        }
+
+        if (coordinators.length === 0) {
+            (window as any).setLoginError('Lista koordynatorów jest pusta lub nie załadowała się. Spróbuj ponownie.');
             return;
         }
 
@@ -89,3 +96,5 @@ export default function LoginPage() {
     
     return <LoginView coordinators={coordinators} onLogin={handleLogin} />;
 }
+
+    

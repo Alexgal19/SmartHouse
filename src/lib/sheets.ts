@@ -59,16 +59,17 @@ function getAuth() {
         }
         serviceAccountAuth = new JWT({
           email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-          key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+          key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
           scopes: ['https://www.googleapis.com/auth/spreadsheets'],
         });
     }
     return serviceAccountAuth;
 }
 
-function getDoc() {
+async function getDoc() {
     if (!doc) {
         doc = new GoogleSpreadsheet(SPREADSHEET_ID, getAuth());
+        await doc.loadInfo();
     }
     return doc;
 }
@@ -199,8 +200,7 @@ const NON_EMPLOYEE_HEADERS = [
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
 
 export async function getSheet(title: string, headers: string[]): Promise<GoogleSpreadsheetWorksheet> {
-    const doc = getDoc();
-    await doc.loadInfo();
+    const doc = await getDoc();
     let sheet = doc.sheetsByTitle[title];
     if (!sheet) {
         sheet = await doc.addSheet({ title, headerValues: headers });
@@ -424,3 +424,5 @@ export async function getInspectionsFromSheet(): Promise<Inspection[]> {
         throw new Error("Could not fetch inspections.");
     }
 }
+
+    
