@@ -410,7 +410,7 @@ function MainContent() {
     const handleBulkDeleteEmployees = async (status: 'active' | 'dismissed') => {
         if (!currentUser || !currentUser.isAdmin) {
              toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administrator może usuwać pracowników." });
-            return;
+            return false;
         }
         
          try {
@@ -462,7 +462,7 @@ function MainContent() {
             case 'dashboard':
                 return <DashboardView employees={filteredEmployeesForDashboard} allEmployees={allEmployeesForDashboard} nonEmployees={filteredNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={handleRefreshStatuses} />;
             case 'employees':
-                return <EmployeesView employees={[]} nonEmployees={[]} settings={settings} onAddEmployee={handleAddEmployeeClick} onEditEmployee={handleEditEmployeeClick} onDismissEmployee={handleDismissEmployee} onRestoreEmployee={handleRestoreEmployee} onBulkDelete={handleBulkDeleteEmployees} currentUser={currentUser} onAddNonEmployee={handleAddNonEmployeeClick} onEditNonEmployee={handleEditNonEmployeeClick} onDeleteNonEmployee={handleDeleteNonEmployee} />;
+                return <EmployeesView initialEmployees={filteredEmployeesForDashboard} nonEmployees={filteredNonEmployees} settings={settings} onAddEmployee={handleAddEmployeeClick} onEditEmployee={handleEditEmployeeClick} onDismissEmployee={handleDismissEmployee} onRestoreEmployee={handleRestoreEmployee} onBulkDelete={handleBulkDeleteEmployees} currentUser={currentUser} onAddNonEmployee={handleAddNonEmployeeClick} onEditNonEmployee={handleEditNonEmployeeClick} onDeleteNonEmployee={handleDeleteNonEmployee} />;
             case 'settings':
                 if (!currentUser.isAdmin) {
                     return <div className="p-4 text-center text-red-500">Brak uprawnień do przeglądania tej strony.</div>;

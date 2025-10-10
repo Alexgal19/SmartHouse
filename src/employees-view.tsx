@@ -1,570 +1,595 @@
-
 "use client";
 
-import React, { useState, useMemo, useEffect } from 'react';
-import type { Employee, Settings, Coordinator, NonEmployee } from '@/types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, PlusCircle, X, SlidersHorizontal, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { format, parseISO } from 'date-fns';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { ScrollArea } from './ui/scroll-area';
-import { Skeleton } from './ui/skeleton';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
-import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter, DialogClose } from './ui/dialog';
-import { Label } from './ui/label';
+  SidebarProvider,
+  Sidebar,
+  SidebarHeader,
+  SidebarContent,
+  SidebarFooter,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  useSidebar
+} from '@/components/ui/sidebar';
+import Header from './header';
+import { MobileNav } from './mobile-nav';
+import DashboardView from './dashboard-view';
+import EmployeesView from './employees-view';
+import SettingsView from './settings-view';
+import InspectionsView from './inspections-view';
+import { AddEmployeeForm } from './add-employee-form';
+import { AddNonEmployeeForm } from './add-non-employee-form';
+import { LoginView } from './login-view';
+import { getAllEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead, getInspections, addInspection, updateInspection, deleteInspection, transferEmployees, bulkDeleteEmployees, bulkImportEmployees, clearAllNotifications, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee, checkAndUpdateEmployeeStatuses, getEmployees } from '@/lib/actions';
+import type { Employee, Settings, User, View, Notification, Coordinator, Inspection, NonEmployee } from '@/types';
+import { useToast } from '@/hooks/use-toast';
+import { Building, ClipboardList, Home, Settings as SettingsIcon, Users } from 'lucide-react';
 
-interface EmployeesViewProps {
-  employees: Employee[];
-  nonEmployees: NonEmployee[];
-  settings: Settings;
-  onAddEmployee: () => void;
-  onEditEmployee: (employee: Employee) => void;
-  onDismissEmployee: (employeeId: string) => void;
-  onRestoreEmployee: (employeeId: string) => void;
-  onBulkDelete: (status: 'active' | 'dismissed') => void;
-  currentUser: Coordinator;
-  onAddNonEmployee: () => void;
-  onEditNonEmployee: (nonEmployee: NonEmployee) => void;
-  onDeleteNonEmployee: (id: string) => void;
-}
+const navItems: { view: View; icon: React.ElementType; label: string }[] = [
+    { view: 'dashboard', icon: Home, label: 'Pulpit' },
+    { view: 'employees', icon: Users, label: 'Pracownicy' },
+    { view: 'inspections', icon: ClipboardList, label: 'Inspekcje' },
+    { view: 'settings', icon: SettingsIcon, label: 'Ustawienia' },
+];
 
-const formatDate = (dateString: string | null | undefined) => {
-    if (!dateString) return 'N/A';
-    try {
-        // Add time to treat it as local date, avoiding timezone shifts
-        return format(new Date(dateString + 'T00:00:00'), 'dd-MM-yyyy');
-    } catch {
-        return 'Invalid Date';
-    }
-}
-
-const EmployeeActions = ({
-  employee,
-  onEdit,
-  onDismiss,
-  onRestore,
-  isDismissedTab,
-}: {
-  employee: Employee;
-  onEdit: (employee: Employee) => void;
-  onDismiss: (employeeId: string) => void;
-  onRestore: (employeeId: string) => void;
-  isDismissedTab: boolean;
-}) => (
-  <DropdownMenu>
-    <DropdownMenuTrigger asChild>
-      <Button variant="ghost" className="h-8 w-8 p-0">
-        <span className="sr-only">Otwórz menu</span>
-        <MoreHorizontal className="h-4 w-4" />
-      </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent align="end">
-      <DropdownMenuItem onClick={() => onEdit(employee)}>Edytuj</DropdownMenuItem>
-      {isDismissedTab ? (
-        <DropdownMenuItem onClick={() => onRestore(employee.id)}>Przywróć</DropdownMenuItem>
-      ) : (
-        <DropdownMenuItem onClick={() => onDismiss(employee.id)}>Zwolnij</DropdownMenuItem>
-      )}
-    </DropdownMenuContent>
-  </DropdownMenu>
-);
-
-const EmployeeTable = ({
-  employees,
-  settings,
-  onEdit,
-  onDismiss,
-  onRestore,
-  isDismissedTab,
-}: {
-  employees: Employee[];
-  settings: Settings;
-  onEdit: (employee: Employee) => void;
-  onDismiss: (employeeId: string) => void;
-  onRestore: (employeeId: string) => void;
-  isDismissedTab: boolean;
-}) => {
-  const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
-  
-  return (
-    <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Imię i nazwisko</TableHead>
-              <TableHead>Narodowość</TableHead>
-              <TableHead>Płeć</TableHead>
-              <TableHead>Koordynator</TableHead>
-              <TableHead>Adres</TableHead>
-              <TableHead>Stara adresa</TableHead>
-              <TableHead>Data zameldowania</TableHead>
-              <TableHead>Data wymeldowania</TableHead>
-              <TableHead>Data zgłoszenia wyjazdu</TableHead>
-              <TableHead>Umowa od</TableHead>
-              <TableHead>Umowa do</TableHead>
-              <TableHead><span className="sr-only">Akcje</span></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {employees.length > 0 ? (
-              employees.map((employee) => (
-                <TableRow key={employee.id} onClick={() => onEdit(employee)} className="cursor-pointer">
-                  <TableCell className="font-medium">{employee.fullName}</TableCell>
-                  <TableCell>{employee.nationality}</TableCell>
-                  <TableCell>{employee.gender}</TableCell>
-                  <TableCell>{getCoordinatorName(employee.coordinatorId)}</TableCell>
-                  <TableCell>{employee.address}</TableCell>
-                  <TableCell>{employee.oldAddress || 'N/A'}</TableCell>
-                  <TableCell>{formatDate(employee.checkInDate)}</TableCell>
-                  <TableCell>{formatDate(employee.checkOutDate)}</TableCell>
-                  <TableCell>{formatDate(employee.departureReportDate)}</TableCell>
-                  <TableCell>{formatDate(employee.contractStartDate)}</TableCell>
-                  <TableCell>{formatDate(employee.contractEndDate)}</TableCell>
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <EmployeeActions {...{ employee, onEdit, onDismiss, onRestore, isDismissedTab }} />
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={12} className="text-center">Brak pracowników do wyświetlenia.</TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-    </div>
-  );
-};
-
-
-const EmployeeCardList = ({
-    employees,
-    settings,
-    onEdit,
-    onDismiss,
-    onRestore,
-    isDismissedTab,
-  }: {
-    employees: Employee[];
-    settings: Settings;
-    onEdit: (employee: Employee) => void;
-    onDismiss: (employeeId: string) => void;
-    onRestore: (employeeId: string) => void;
-    isDismissedTab: boolean;
-  }) => {
-    const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
+function MainContent() {
+    const [activeView, setActiveView] = useState<View>('dashboard');
+    const [allEmployeesForDashboard, setAllEmployeesForDashboard] = useState<Employee[]>([]);
+    const [allNonEmployees, setAllNonEmployees] = useState<NonEmployee[]>([]);
+    const [allInspections, setAllInspections] = useState<Inspection[]>([]);
+    const [settings, setSettings] = useState<Settings | null>(null);
+    const [allNotifications, setAllNotifications] = useState<Notification[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isFormOpen, setIsFormOpen] = useState(false);
+    const [isNonEmployeeFormOpen, setIsNonEmployeeFormOpen] = useState(false);
+    const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+    const [editingNonEmployee, setEditingNonEmployee] = useState<NonEmployee | null>(null);
+    const [currentUser, setCurrentUser] = useState<Coordinator | null>(null);
+    const [selectedCoordinatorId, setSelectedCoordinatorId] = useState('all');
     
-    return (
-        <div className="space-y-4">
-             {employees.length > 0 ? (
-                employees.map((employee) => (
-                    <Card key={employee.id} onClick={() => onEdit(employee)} className="cursor-pointer">
-                        <CardHeader className="flex flex-row items-start justify-between pb-4">
-                           <div>
-                             <CardTitle className="text-lg">{employee.fullName}</CardTitle>
-                             <CardDescription>{getCoordinatorName(employee.coordinatorId)}</CardDescription>
-                           </div>
-                           <div onClick={(e) => e.stopPropagation()}>
-                                <EmployeeActions {...{ employee, onEdit, onDismiss, onRestore, isDismissedTab }} />
-                           </div>
-                        </CardHeader>
-                        <CardContent className="text-base space-y-2">
-                            <p><span className="font-semibold text-muted-foreground">Adres:</span> {employee.address}</p>
-                            <p><span className="font-semibold text-muted-foreground">Pokój:</span> {employee.roomNumber}</p>
-                            <p><span className="font-semibold text-muted-foreground">Narodowość:</span> {employee.nationality}</p>
-                            <p><span className="font-semibold text-muted-foreground">Umowa do:</span> {formatDate(employee.contractEndDate)}</p>
-                        </CardContent>
-                    </Card>
-                ))
-             ) : (
-                <div className="text-center text-muted-foreground py-8">Brak pracowników do wyświetlenia.</div>
-             )}
-        </div>
-    )
-}
+    const { toast } = useToast();
+    const { isMobile } = useSidebar();
+    
+    const fetchData = useCallback(async (isInitialLoad = false) => {
+        if (isInitialLoad) setIsLoading(true);
+        try {
+            const [employeesData, settingsData, notificationsData, inspectionsData, nonEmployeesData] = await Promise.all([
+                getAllEmployees(), // For dashboard view
+                getSettings(),
+                getNotifications(),
+                getInspections(),
+                getNonEmployees(),
+            ]);
+            setAllEmployeesForDashboard(employeesData);
+            setAllNonEmployees(nonEmployeesData);
+            setSettings(settingsData);
+            setAllNotifications(notificationsData.map((n:any) => ({...n, createdAt: new Date(n.createdAt)})));
+            setAllInspections(inspectionsData.map((i: any) => ({...i, date: new Date(i.date)})));
+        } catch (error) {
+            console.error(error);
+            if (isInitialLoad) {
+                toast({
+                    variant: "destructive",
+                    title: "Błąd ładowania danych",
+                    description: `Nie udało się pobrać danych z serwera. ${error instanceof Error ? error.message : ''}`,
+                });
+            }
+        } finally {
+            if (isInitialLoad) setIsLoading(false);
+        }
+    }, [toast]);
+    
+     useEffect(() => {
+        const loggedInUser = sessionStorage.getItem('currentUser');
+        if (loggedInUser) {
+            const user = JSON.parse(loggedInUser);
+            setCurrentUser(user);
+            fetchData(true);
+        } else {
+             setIsLoading(true);
+             getSettings()
+                .then(setSettings)
+                .catch(console.error)
+                .finally(() => setIsLoading(false));
+        }
+    }, [fetchData]);
 
-const NonEmployeeTable = ({
-  nonEmployees,
-  onEdit,
-  onDelete,
-}: {
-  nonEmployees: NonEmployee[];
-  onEdit: (nonEmployee: NonEmployee) => void;
-  onDelete: (id: string) => void;
-}) => {
-  return (
-    <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Imię i nazwisko</TableHead>
-              <TableHead>Adres</TableHead>
-              <TableHead>Numer pokoju</TableHead>
-              <TableHead>Data zameldowania</TableHead>
-              <TableHead>Data wymeldowania</TableHead>
-              <TableHead><span className="sr-only">Akcje</span></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {nonEmployees.length > 0 ? (
-              nonEmployees.map((person) => (
-                <TableRow key={person.id} onClick={() => onEdit(person)} className="cursor-pointer">
-                  <TableCell className="font-medium">{person.fullName}</TableCell>
-                  <TableCell>{person.address}</TableCell>
-                  <TableCell>{person.roomNumber}</TableCell>
-                  <TableCell>{formatDate(person.checkInDate)}</TableCell>
-                  <TableCell>{formatDate(person.checkOutDate)}</TableCell>
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Otwórz menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onEdit(person)}>Edytuj</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onDelete(person.id)} className="text-destructive">Usuń</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center">Brak mieszkańców (NZ) do wyświetlenia.</TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-    </div>
-  );
-};
+    const filteredEmployeesForDashboard = useMemo(() => {
+        if (!currentUser) return [];
+        if (currentUser.isAdmin) {
+            if (selectedCoordinatorId === 'all') {
+                return allEmployeesForDashboard;
+            }
+            return allEmployeesForDashboard.filter(e => e.coordinatorId === selectedCoordinatorId);
+        }
+        return allEmployeesForDashboard.filter(e => e.coordinatorId === currentUser.uid);
+    }, [currentUser, allEmployeesForDashboard, selectedCoordinatorId]);
 
-const NonEmployeeCardList = ({
-    nonEmployees,
-    onEdit,
-    onDelete,
-  }: {
-    nonEmployees: NonEmployee[];
-    onEdit: (nonEmployee: NonEmployee) => void;
-    onDelete: (id: string) => void;
-  }) => {
-    return (
-        <div className="space-y-4">
-             {nonEmployees.length > 0 ? (
-                nonEmployees.map((person) => (
-                    <Card key={person.id} onClick={() => onEdit(person)} className="cursor-pointer">
-                        <CardHeader className="flex flex-row items-start justify-between pb-4">
-                           <div>
-                             <CardTitle className="text-lg">{person.fullName}</CardTitle>
-                             <CardDescription>{person.address}, pokój {person.roomNumber}</CardDescription>
-                           </div>
-                           <div onClick={(e) => e.stopPropagation()}>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" className="h-8 w-8 p-0">
-                                            <span className="sr-only">Otwórz menu</span>
-                                            <MoreHorizontal className="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => onEdit(person)}>Edytuj</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => onDelete(person.id)} className="text-destructive">Usuń</DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                           </div>
-                        </CardHeader>
-                        <CardContent className="text-base space-y-2">
-                           <p><span className="font-semibold text-muted-foreground">Zameldowanie:</span> {formatDate(person.checkInDate)}</p>
-                           <p><span className="font-semibold text-muted-foreground">Wymeldowanie:</span> {formatDate(person.checkOutDate)}</p>
-                        </CardContent>
-                    </Card>
-                ))
-             ) : (
-                <div className="text-center text-muted-foreground py-8">Brak mieszkańców (NZ) do wyświetlenia.</div>
-             )}
-        </div>
-    )
-}
+    const filteredNonEmployees = useMemo(() => {
+        if (!currentUser) return [];
+        if (selectedCoordinatorId === 'all' || !currentUser.isAdmin) {
+            return allNonEmployees;
+        }
 
+        const coordinatorAddresses = new Set(
+            allEmployeesForDashboard
+                .filter(e => e.coordinatorId === selectedCoordinatorId)
+                .map(e => e.address)
+        );
 
-const FilterDialog = ({
-    isOpen,
-    onOpenChange,
-    settings,
-    filters,
-    onFilterChange,
-    onReset
-} : {
-    isOpen: boolean;
-    onOpenChange: (open: boolean) => void;
-    settings: Settings;
-    filters: Record<string, string>;
-    onFilterChange: (key: string, value: string) => void;
-    onReset: () => void;
-}) => {
-    return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                    <DialogTitle>Filtruj</DialogTitle>
-                    <DialogDescription>
-                        Zawęź listę, aby znaleźć to, czego szukasz.
-                    </DialogDescription>
-                </DialogHeader>
-                <ScrollArea className="max-h-[60vh]">
-                  <div className="grid gap-4 p-4">
-                      <div className="space-y-2">
-                        <Label>Koordynator</Label>
-                        <Select value={filters.coordinatorFilter} onValueChange={(v) => onFilterChange('coordinatorFilter', v)}>
-                        <SelectTrigger><SelectValue placeholder="Filtruj wg koordynatora" /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
-                            {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
-                        </SelectContent>
-                        </Select>
-                      </div>
-                       <div className="space-y-2">
-                        <Label>Adres</Label>
-                        <Select value={filters.addressFilter} onValueChange={(v) => onFilterChange('addressFilter', v)}>
-                        <SelectTrigger><SelectValue placeholder="Filtruj wg adresu" /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Wszystkie adresy</SelectItem>
-                            {settings.addresses.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
-                        </SelectContent>
-                        </Select>
-                      </div>
-                       <div className="space-y-2">
-                        <Label>Zakład</Label>
-                        <Select value={filters.departmentFilter} onValueChange={(v) => onFilterChange('departmentFilter', v)}>
-                        <SelectTrigger><SelectValue placeholder="Filtruj wg zakładu" /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Wszystkie zakłady</SelectItem>
-                            {settings.departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                        </SelectContent>
-                        </Select>
-                      </div>
-                       <div className="space-y-2">
-                        <Label>Narodowość</Label>
-                        <Select value={filters.nationalityFilter} onValueChange={(v) => onFilterChange('nationalityFilter', v)}>
-                        <SelectTrigger><SelectValue placeholder="Filtruj wg narodowości" /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Wszystkie narodowości</SelectItem>
-                            {settings.nationalities.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
-                        </SelectContent>
-                        </Select>
-                      </div>
-                  </div>
-                </ScrollArea>
-                <DialogFooter className="flex-row !justify-between">
-                     <Button variant="ghost" onClick={onReset}>Wyczyść wszystko</Button>
-                    <Button onClick={() => onOpenChange(false)}>Zastosuj</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    )
-}
+        return allNonEmployees.filter(ne => ne.address && coordinatorAddresses.has(ne.address));
+   }, [currentUser, allNonEmployees, allEmployeesForDashboard, selectedCoordinatorId]);
 
+    const filteredInspections = useMemo(() => {
+        if (!currentUser) return [];
+        if (currentUser.isAdmin) {
+            if (selectedCoordinatorId === 'all') {
+                return allInspections;
+            }
+            return allInspections.filter(i => i.coordinatorId === selectedCoordinatorId);
+        }
+        return allInspections.filter(i => i.coordinatorId === currentUser.uid);
+    }, [currentUser, allInspections, selectedCoordinatorId]);
 
-export default function EmployeesView({
-  employees,
-  nonEmployees,
-  settings,
-  onAddEmployee,
-  onEditEmployee,
-  onDismissEmployee,
-  onRestoreEmployee,
-  onBulkDelete,
-  currentUser,
-  onAddNonEmployee,
-  onEditNonEmployee,
-  onDeleteNonEmployee,
-}: EmployeesViewProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filters, setFilters] = useState({
-      coordinatorFilter: 'all',
-      addressFilter: 'all',
-      departmentFilter: 'all',
-      nationalityFilter: 'all'
-  });
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const {isMobile, isMounted} = useIsMobile();
-  
-  const handleFilterChange = (key: string, value: string) => {
-    setFilters(prev => ({...prev, [key]: value}));
-  }
+    const filteredNotifications = useMemo(() => {
+        if (!currentUser) return [];
+        if (currentUser.isAdmin) {
+            return allNotifications;
+        }
+        return allNotifications.filter(n => n.coordinatorId === currentUser.uid);
+    }, [currentUser, allNotifications]);
 
-  const filteredEmployees = useMemo(() => {
-    return employees.filter(employee => {
-      const searchMatch = searchTerm === '' || employee.fullName.toLowerCase().includes(searchTerm.toLowerCase());
-      const coordinatorMatch = filters.coordinatorFilter === 'all' || employee.coordinatorId === filters.coordinatorFilter;
-      const addressMatch = filters.addressFilter === 'all' || employee.address === filters.addressFilter;
-      const departmentMatch = filters.departmentFilter === 'all' || employee.zaklad === filters.departmentFilter;
-      const nationalityMatch = filters.nationalityFilter === 'all' || employee.nationality === filters.nationalityFilter;
+    const handleLogin = async (user: {name: string}, password?: string) => {
+        if (!settings) return;
+        
+        const adminLogin = process.env.ADMIN_LOGIN || 'admin';
+        const adminPassword = process.env.ADMIN_PASSWORD || 'password';
+        const lowerCaseName = user.name.toLowerCase();
 
-      return searchMatch && coordinatorMatch && addressMatch && departmentMatch && nationalityMatch;
-    });
-  }, [employees, searchTerm, filters]);
+        if (lowerCaseName === adminLogin.toLowerCase()) {
+            if (password === adminPassword) {
+                 const adminUser = {
+                    uid: 'admin-super-user',
+                    name: 'Admin',
+                    isAdmin: true,
+                    password: ''
+                };
+                setCurrentUser(adminUser);
+                sessionStorage.setItem('currentUser', JSON.stringify(adminUser));
+                setSelectedCoordinatorId('all');
+                await fetchData(true);
+            } else {
+                 (window as any).setLoginError('Nieprawidłowe hasło administratora.');
+            }
+            return;
+        }
 
-  const filteredNonEmployees = useMemo(() => {
-    return nonEmployees.filter(person => {
-      const searchMatch = searchTerm === '' || person.fullName.toLowerCase().includes(searchTerm.toLowerCase());
-      const addressMatch = filters.addressFilter === 'all' || person.address === filters.addressFilter;
-      return searchMatch && addressMatch;
-    });
-  }, [nonEmployees, searchTerm, filters]);
+        const coordinator = settings.coordinators.find(c => c.name.toLowerCase() === lowerCaseName);
 
-  const activeEmployees = useMemo(() => filteredEmployees.filter(e => e.status === 'active'), [filteredEmployees]);
-  const dismissedEmployees = useMemo(() => filteredEmployees.filter(e => e.status === 'dismissed'), [filteredEmployees]);
-  
-  const resetFilters = () => {
-    setSearchTerm('');
-    setFilters({
-      coordinatorFilter: 'all',
-      addressFilter: 'all',
-      departmentFilter: 'all',
-      nationalityFilter: 'all'
-    });
-  };
+        if (!coordinator) {
+            (window as any).setLoginError('Brak dostępu. Sprawdź, czy Twoje imię i nazwisko są poprawne.');
+            return;
+        }
 
-  const hasActiveFilters = searchTerm !== '' || Object.values(filters).some(v => v !== 'all');
-  
-  const EmployeeListComponent = isMobile ? EmployeeCardList : EmployeeTable;
-  const NonEmployeeListComponent = isMobile ? NonEmployeeCardList : NonEmployeeTable;
+        if (!password) {
+            (window as any).setLoginError('Hasło jest wymagane.');
+            return;
+        }
+        
+        const loginAction = async (coord: Coordinator) => {
+            setCurrentUser(coord);
+            sessionStorage.setItem('currentUser', JSON.stringify(coord));
+            if(!coord.isAdmin) {
+                setSelectedCoordinatorId(coord.uid);
+            }
+            await fetchData(true);
+        };
 
-  const renderEmployeeContent = (list: Employee[], isDismissed: boolean) => {
-    if (!isMounted) {
-      return <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>;
+        if (!coordinator.password) { // First login, set password
+            try {
+                const updatedCoordinators = settings.coordinators.map(c => 
+                    c.uid === coordinator.uid ? { ...c, password } : c
+                );
+                
+                await updateSettings({ coordinators: updatedCoordinators });
+                setSettings(prevSettings => prevSettings ? {...prevSettings, coordinators: updatedCoordinators} : null);
+                
+                const userWithPassword = { ...coordinator, password };
+                await loginAction(userWithPassword);
+                toast({ title: "Sukces", description: "Twoje hasło zostało ustawione." });
+            } catch (error) {
+                (window as any).setLoginError('Nie udało się ustawić hasła. Spróbuj ponownie.');
+                 setCurrentUser(null);
+                 sessionStorage.removeItem('currentUser');
+            }
+        } else { // Subsequent logins
+            if (coordinator.password === password) {
+                await loginAction(coordinator);
+            } else {
+                (window as any).setLoginError('Nieprawidłowe hasło.');
+            }
+        }
+    };
+
+    const handleLogout = () => {
+        setCurrentUser(null);
+        sessionStorage.removeItem('currentUser');
+        setAllEmployeesForDashboard([]);
+        setAllInspections([]);
+        setAllNonEmployees([]);
+        setAllNotifications([]);
+        setActiveView('dashboard');
+        setSelectedCoordinatorId('all');
+    };
+
+    const handleSaveEmployee = async (data: Omit<Employee, 'id' | 'status'> & { oldAddress?: string | null }) => {
+        if (!currentUser) return;
+        
+        try {
+            if (editingEmployee) {
+                await updateEmployee(editingEmployee.id, data, currentUser);
+                 toast({ title: "Sukces", description: "Dane pracownika zostały zaktualizowane." });
+            } else {
+                 await addEmployee(data, currentUser);
+                 toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
+            }
+            // Light refetch for notifications & dashboard
+            Promise.all([getNotifications(), getAllEmployees()]).then(([notificationsData, employeesData]) => {
+                setAllNotifications(notificationsData.map((n:any) => ({...n, createdAt: new Date(n.createdAt)})));
+                setAllEmployeesForDashboard(employeesData);
+            });
+
+        } catch(e: any) {
+             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać pracownika." });
+        }
+    };
+
+    const handleSaveNonEmployee = async (data: Omit<NonEmployee, 'id'>) => {
+        try {
+            if (editingNonEmployee) {
+                await updateNonEmployee(editingNonEmployee.id, data)
+            } else {
+                await addNonEmployee(data);
+            }
+            toast({ title: "Sukces", description: editingNonEmployee ? "Dane mieszkańca zostały zaktualizowane." : "Nowy mieszkaniec został dodany." });
+            getNonEmployees().then(setAllNonEmployees);
+        } catch (e: any) {
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać mieszkańca." });
+        }
     }
-    return (
-        <>
-            {currentUser.isAdmin && list.length > 0 && (
-                <div className="flex justify-end mb-4">
-                     <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="sm" >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Usuń wszystkich ({list.length})
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>Czy na pewno chcesz usunąć wszystkich {isDismissed ? 'zwolnionych' : 'aktywnych'} pracowników?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    Tej operacji nie można cofnąć. Spowoduje to trwałe usunięcie {list.length} rekordów pracowników z arkusza Google.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>Anuluj</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => onBulkDelete(isDismissed ? 'dismissed' : 'active')} className="bg-destructive hover:bg-destructive/90">
-                                    Tak, usuń wszystkich
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
+    
+    const handleDeleteNonEmployee = async (id: string) => {
+        const originalNonEmployees = allNonEmployees;
+        setAllNonEmployees(prev => prev.filter(ne => ne.id !== id));
+        
+        try {
+            await deleteNonEmployee(id);
+            toast({ title: "Sukces", description: "Mieszkaniec został usunięty." });
+        } catch(e: any) {
+            setAllNonEmployees(originalNonEmployees); // Revert
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć mieszkańca." });
+        }
+    }
+    
+    const handleUpdateSettings = async (newSettings: Partial<Settings>) => {
+        if (!settings || !currentUser?.isAdmin) {
+             toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administrator może zmieniać ustawienia." });
+            return;
+        }
+        
+        const originalSettings = settings;
+        setSettings({ ...originalSettings, ...newSettings });
+
+        try {
+            await updateSettings(newSettings);
+            toast({ title: "Sukces", description: "Ustawienia zostały zaktualizowane." });
+            // Refetch settings to confirm changes from server
+            getSettings().then(setSettings);
+        } catch(e: any) {
+            setSettings(originalSettings); // Revert
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać ustawień." });
+        }
+    };
+    
+    const handleAddInspection = async (inspectionData: Omit<Inspection, 'id'>) => {
+        try {
+            await addInspection(inspectionData);
+            toast({ title: "Sukces", description: "Nowa inspekcja została dodana." });
+            getInspections().then(data => setAllInspections(data.map((i: any) => ({...i, date: new Date(i.date)}))));
+        } catch(e: any) {
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać inspekcji." });
+        }
+    };
+
+    const handleUpdateInspection = async (id: string, inspectionData: Omit<Inspection, 'id'>) => {
+        try {
+            await updateInspection(id, inspectionData);
+            toast({ title: "Sukces", description: "Inspekcja została zaktualizowana." });
+            getInspections().then(data => setAllInspections(data.map((i: any) => ({...i, date: new Date(i.date)}))));
+        } catch(e: any) {
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zaktualizować inspekcji." });
+        }
+    };
+
+    const handleDeleteInspection = async (id: string) => {
+        const originalInspections = allInspections;
+        setAllInspections(prev => prev.filter(i => i.id !== id));
+
+        try {
+            await deleteInspection(id);
+            toast({ title: "Sukces", description: "Inspekcja została usunięta." });
+        } catch(e: any) {
+            setAllInspections(originalInspections); // Revert
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć inspekcji." });
+        }
+    };
+
+    const handleAddEmployeeClick = () => {
+        setEditingEmployee(null);
+        setIsFormOpen(true);
+    };
+
+    const handleAddNonEmployeeClick = () => {
+      setEditingNonEmployee(null);
+      setIsNonEmployeeFormOpen(true);
+    }
+
+    const handleEditEmployeeClick = (employee: Employee) => {
+        setEditingEmployee(employee);
+        setIsFormOpen(true);
+    };
+
+    const handleEditNonEmployeeClick = (nonEmployee: NonEmployee) => {
+      setEditingNonEmployee(nonEmployee);
+      setIsNonEmployeeFormOpen(true);
+    }
+    
+    const handleNotificationClick = async (notification: Notification) => {
+        // Refetching all employees to find one is inefficient.
+        // A dedicated getEmployeeById would be better. For now, this is a compromise.
+        if (notification.employeeId) {
+            try {
+                const { employees: [employeeToEdit] } = await getEmployees({ filters: { id: notification.employeeId } });
+                if (employeeToEdit) {
+                    handleEditEmployeeClick(employeeToEdit);
+                }
+            } catch (e) {
+                toast({ variant: "destructive", title: "Błąd", description: "Nie udało się znaleźć pracownika." });
+            }
+        }
+        
+        if (!notification.isRead) {
+            setAllNotifications(prev => prev.map(n => n.id === notification.id ? {...n, isRead: true} : n));
+            await markNotificationAsRead(notification.id);
+            // No full refetch needed
+        }
+    };
+    
+    const handleClearNotifications = async () => {
+        if (!currentUser?.isAdmin) {
+             toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administrator może usuwać powiadomienia." });
+             return;
+        }
+        const originalNotifications = allNotifications;
+        setAllNotifications([]);
+        try {
+            await clearAllNotifications();
+            toast({ title: "Sukces", description: "Wszystkie powiadomienia zostały usunięte." });
+        } catch (e: any) {
+             setAllNotifications(originalNotifications); // Revert
+             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć powiadomień." });
+        }
+    }
+
+    const handleDismissEmployee = async (employeeId: string) => {
+        if (!currentUser) return;
+        try {
+            await updateEmployee(employeeId, { status: 'dismissed', checkOutDate: new Date().toISOString().split('T')[0] }, currentUser);
+            toast({ title: "Sukces", description: "Pracownik został zwolniony." });
+            return true; // Indicate success for UI update
+        } catch(e: any) {
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zwolnić pracownika." });
+            return false;
+        }
+    };
+
+    const handleRestoreEmployee = async (employeeId: string) => {
+        if (!currentUser) return;
+        try {
+            await updateEmployee(employeeId, { status: 'active', checkOutDate: null }, currentUser);
+            toast({ title: "Sukces", description: "Pracownik został przywrócony." });
+            return true; // Indicate success for UI update
+        } catch(e: any) {
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się przywrócić pracownika." });
+            return false;
+        }
+    };
+    
+    const handleBulkDeleteEmployees = async (status: 'active' | 'dismissed') => {
+        if (!currentUser || !currentUser.isAdmin) {
+             toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administrator może usuwać pracowników." });
+            return false;
+        }
+        
+         try {
+            await bulkDeleteEmployees(status, currentUser);
+            toast({ title: "Sukces", description: `Wszyscy ${status === 'active' ? 'aktywni' : 'zwolnieni'} pracownicy zostali usunięci.` });
+             return true;
+        } catch(e: any) {
+            toast({ variant: "destructive", title: "Błąd", description: e.message || `Nie udało się usunąć pracowników.` });
+             return false;
+        }
+    }
+
+    const handleRefreshStatuses = async () => {
+        if (!currentUser) return;
+        try {
+            const { updated } = await checkAndUpdateEmployeeStatuses(currentUser);
+            if (updated > 0) {
+                toast({ title: "Sukces", description: `Zaktualizowano statusy dla ${updated} pracowników.`});
+                const [employeesData, notificationsData] = await Promise.all([
+                    getAllEmployees(),
+                    getNotifications()
+                ]);
+                 setAllEmployeesForDashboard(employeesData);
+                 setAllNotifications(notificationsData.map((n:any) => ({...n, createdAt: new Date(n.createdAt)})));
+            } else {
+                 toast({ title: "Brak zmian", description: "Wszyscy pracownicy mają aktualne statusy."});
+            }
+        } catch (e: any) {
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się odświeżyć statusów." });
+        }
+    };
+    
+    const handleBulkImport = async (fileData: ArrayBuffer) => {
+      try {
+          const result = await bulkImportEmployees(fileData, settings?.coordinators || [], currentUser as Coordinator);
+          await fetchData(true); // Full refresh after import
+          return result;
+      } catch (e: any) {
+          return { success: false, message: e.message || "Wystąpił nieznany błąd." };
+      }
+    };
+
+    const renderView = () => {
+        if (!currentUser || !settings) {
+            return null;
+        }
+
+        switch (activeView) {
+            case 'dashboard':
+                return <DashboardView employees={filteredEmployeesForDashboard} allEmployees={allEmployeesForDashboard} nonEmployees={filteredNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={handleRefreshStatuses} />;
+            case 'employees':
+                return <EmployeesView initialEmployees={filteredEmployeesForDashboard} nonEmployees={filteredNonEmployees} settings={settings} onAddEmployee={handleAddEmployeeClick} onEditEmployee={handleEditEmployeeClick} onDismissEmployee={handleDismissEmployee} onRestoreEmployee={handleRestoreEmployee} onBulkDelete={handleBulkDeleteEmployees} currentUser={currentUser} onAddNonEmployee={handleAddNonEmployeeClick} onEditNonEmployee={handleEditNonEmployeeClick} onDeleteNonEmployee={handleDeleteNonEmployee} />;
+            case 'settings':
+                if (!currentUser.isAdmin) {
+                    return <div className="p-4 text-center text-red-500">Brak uprawnień do przeglądania tej strony.</div>;
+                }
+                return <SettingsView settings={settings} onUpdateSettings={handleUpdateSettings} allEmployees={allEmployeesForDashboard} currentUser={currentUser} onDataRefresh={fetchData} onBulkImport={handleBulkImport}/>;
+            case 'inspections':
+                 return <InspectionsView 
+                    inspections={filteredInspections} 
+                    settings={settings}
+                    currentUser={currentUser}
+                    onAddInspection={handleAddInspection}
+                    onUpdateInspection={handleUpdateInspection}
+                    onDeleteInspection={handleDeleteInspection}
+                />;
+            default:
+                return <DashboardView employees={filteredEmployeesForDashboard} allEmployees={allEmployeesForDashboard} nonEmployees={filteredNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={handleRefreshStatuses} />;
+        }
+    };
+    
+    const visibleNavItems = useMemo(() => {
+        if (currentUser?.isAdmin) {
+            return navItems;
+        }
+        return navItems;
+    }, [currentUser]);
+
+    if (isLoading) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center bg-background">
+                <div className="flex animate-fade-in flex-col items-center gap-6">
+                     <h1 className="text-4xl sm:text-5xl md:text-7xl font-semibold tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm">
+                        SmartHouse
+                    </h1>
                 </div>
-            )}
-            <EmployeeListComponent
-                employees={list}
-                settings={settings}
-                onEdit={onEditEmployee}
-                onDismiss={onDismissEmployee}
-                onRestore={onRestoreEmployee}
-                isDismissedTab={isDismissed}
-            />
-        </>
-    );
-  };
-
-  const renderNonEmployeeContent = (list: NonEmployee[]) => {
-    if (!isMounted) {
-      return <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>;
-    }
-    return <NonEmployeeListComponent nonEmployees={list} onEdit={onEditNonEmployee} onDelete={onDeleteNonEmployee} />
-  }
-
-
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between gap-4">
-            <CardTitle>Zarządzanie mieszkańcami</CardTitle>
-             <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button size={isMobile ? "icon" : "default"}>
-                        <PlusCircle className={isMobile ? "h-5 w-5" : "mr-2 h-4 w-4"} />
-                        <span className="hidden sm:inline">Dodaj</span>
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                    <DropdownMenuItem onClick={onAddEmployee}>Dodaj pracownika</DropdownMenuItem>
-                    <DropdownMenuItem onClick={onAddNonEmployee}>Dodaj mieszkańca (NZ)</DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
-        </div>
-        <div className="mt-4">
-            <div className="flex items-center gap-2">
-                 <Input
-                    placeholder="Szukaj po nazwisku..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full"
-                />
-                 <Button variant="outline" size="icon" onClick={() => setIsFilterOpen(true)}>
-                    <SlidersHorizontal className="h-4 w-4"/>
-                </Button>
-                {hasActiveFilters && (
-                     <Button variant="ghost" size="icon" onClick={resetFilters} className="text-muted-foreground">
-                        <X className="h-4 w-4" />
-                    </Button>
-                )}
             </div>
+        );
+    }
+
+    if (!currentUser) {
+        if (settings) {
+            return <LoginView coordinators={settings.coordinators} onLogin={handleLogin} />;
+        }
+        return (
+             <div className="flex h-screen w-full items-center justify-center bg-background">
+                <div className="flex animate-fade-in flex-col items-center gap-6">
+                     <h1 className="text-4xl sm:text-5xl md:text-7xl font-semibold tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm">
+                        SmartHouse
+                    </h1>
+                </div>
+            </div>
+        );
+    }
+    
+    if (!settings) {
+        return (
+           <div className="flex h-screen w-full items-center justify-center">
+               <p>Błąd ładowania ustawień. Spróbuj odświeżyć stronę.</p>
+           </div>
+       );
+   }
+
+    return (
+        <div className="flex h-screen w-full bg-muted/50">
+             <Sidebar>
+                <SidebarHeader>
+                    <div className="flex items-center gap-2">
+                        <Building className="h-8 w-8 text-primary" />
+                        <span className="font-semibold text-xl group-data-[collapsible=icon]:hidden">SmartHouse</span>
+                    </div>
+                </SidebarHeader>
+                <SidebarContent>
+                    <SidebarMenu>
+                        {visibleNavItems.map(item => (
+                             <SidebarMenuItem key={item.view}>
+                                <SidebarMenuButton 
+                                    onClick={() => {
+                                        if (item.view === 'settings' && !currentUser?.isAdmin) return;
+                                        setActiveView(item.view)
+                                    }} 
+                                    isActive={activeView === item.view}
+                                    tooltip={item.label}
+                                    disabled={item.view === 'settings' && !currentUser?.isAdmin}
+                                >
+                                    <item.icon />
+                                    <span>{item.label}</span>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        ))}
+                    </SidebarMenu>
+                </SidebarContent>
+                <SidebarFooter>
+                </SidebarFooter>
+            </Sidebar>
+            <div className="flex flex-1 flex-col">
+                <Header user={currentUser} activeView={activeView} notifications={filteredNotifications} onNotificationClick={handleNotificationClick} onLogout={handleLogout} onClearNotifications={handleClearNotifications} />
+                <main className="flex-1 overflow-y-auto px-2 sm:px-6 pb-6 pt-4">
+                    {renderView()}
+                </main>
+            </div>
+            
+            {isMobile && <MobileNav activeView={activeView} setActiveView={setActiveView} navItems={visibleNavItems} currentUser={currentUser}/>}
+            
+            {settings && (
+                 <AddEmployeeForm
+                    isOpen={isFormOpen}
+                    onOpenChange={setIsFormOpen}
+                    onSave={handleSaveEmployee}
+                    settings={settings}
+                    employee={editingEmployee}
+                />
+            )}
+             {settings && (
+                 <AddNonEmployeeForm
+                    isOpen={isNonEmployeeFormOpen}
+                    onOpenChange={setIsNonEmployeeFormOpen}
+                    onSave={handleSaveNonEmployee}
+                    settings={settings}
+                    nonEmployee={editingNonEmployee}
+                />
+            )}
         </div>
-      </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="active">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="active">Aktywni ({activeEmployees.length})</TabsTrigger>
-            <TabsTrigger value="dismissed">Zwolnieni ({dismissedEmployees.length})</TabsTrigger>
-            <TabsTrigger value="non-employees">NZ ({filteredNonEmployees.length})</TabsTrigger>
-          </TabsList>
-          <TabsContent value="active" className="mt-4">
-             <ScrollArea className="h-[55vh]">
-                {renderEmployeeContent(activeEmployees, false)}
-             </ScrollArea>
-          </TabsContent>
-          <TabsContent value="dismissed" className="mt-4">
-            <ScrollArea className="h-[55vh]">
-                {renderEmployeeContent(dismissedEmployees, true)}
-            </ScrollArea>
-          </TabsContent>
-           <TabsContent value="non-employees" className="mt-4">
-            <ScrollArea className="h-[55vh]">
-                {renderNonEmployeeContent(filteredNonEmployees)}
-            </ScrollArea>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-       <FilterDialog 
-          isOpen={isFilterOpen}
-          onOpenChange={setIsFilterOpen}
-          settings={settings}
-          filters={filters}
-          onFilterChange={handleFilterChange}
-          onReset={resetFilters}
-      />
-    </Card>
-  );
+    );
+}
+
+export default function MainLayout() {
+    return (
+        <SidebarProvider>
+            <MainContent />
+        </SidebarProvider>
+    );
 }
