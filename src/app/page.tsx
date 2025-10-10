@@ -8,7 +8,6 @@ import type { Coordinator } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 
-
 export default function LoginPage() {
     const [coordinators, setCoordinators] = useState<Coordinator[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -21,7 +20,9 @@ export default function LoginPage() {
             router.push('/dashboard');
         } else {
              getSettings()
-                .then(settings => setCoordinators(settings.coordinators))
+                .then(settings => {
+                    setCoordinators(settings.coordinators)
+                })
                 .catch(err => {
                     toast({
                         variant: "destructive",
@@ -73,7 +74,6 @@ export default function LoginPage() {
             (window as any).setLoginError('Nieprawidłowe hasło.');
         }
     };
-
 
     if (isLoading) {
          return (
