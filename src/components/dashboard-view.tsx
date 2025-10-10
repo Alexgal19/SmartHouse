@@ -36,10 +36,9 @@ interface DashboardViewProps {
 const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return 'N/A';
     try {
-        const date = new Date(dateString);
+        const date = parseISO(dateString);
         if (isNaN(date.getTime())) return 'Invalid Date';
-        // Add time to treat it as local date, avoiding timezone shifts
-        return format(new Date(dateString + 'T00:00:00'), 'dd-MM-yyyy');
+        return format(date, 'dd-MM-yyyy');
     } catch {
         return 'Invalid Date';
     }
