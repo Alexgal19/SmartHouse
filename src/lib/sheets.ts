@@ -408,5 +408,3 @@ export async function getInspectionsFromSheet(): Promise<Inspection[]> {
         throw new Error("Could not fetch inspections.");
     }
 }
-
-    
