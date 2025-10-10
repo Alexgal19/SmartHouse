@@ -461,7 +461,7 @@ export default function EmployeesView({
     }, 500);
 
     return () => clearTimeout(handler);
-  }, [searchTerm]);
+  }, [searchTerm, fetchPageData]);
 
   useEffect(() => {
     fetchPageData();
@@ -536,7 +536,7 @@ export default function EmployeesView({
     )
   }
 
-  const renderEmployeeContent = (list: Employee[], isDismissed: boolean) => {
+  const renderEmployeeContent = (list: Employee[] | undefined, isDismissed: boolean) => {
     if (!list || isLoading) {
         return <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>;
     }
@@ -661,5 +661,7 @@ export default function EmployeesView({
     </Card>
   );
 }
+
+    
 
     
