@@ -374,5 +374,3 @@ export default function DashboardPage() {
         </React.Suspense>
     )
 }
-
-    

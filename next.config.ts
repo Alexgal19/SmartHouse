@@ -1,10 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  env: {
-    GOOGLE_SERVICE_ACCOUNT_EMAIL: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-    GOOGLE_PRIVATE_KEY: process.env.GOOGLE_PRIVATE_KEY,
-  }
+  // Environment variables are available on the server-side by default,
+  // this configuration is not needed to expose them to server components/actions.
+  // The 'env' key is for exposing variables to the browser, which is not what's needed here.
 };
 
 export default nextConfig;
