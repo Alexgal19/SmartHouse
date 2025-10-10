@@ -4,7 +4,7 @@
 import type { Employee, Settings, HousingAddress, Coordinator, Room, NonEmployee } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList, Cell, Label } from "recharts";
+import { AreaChart, Area, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList, Cell, Label, Bar, BarChart } from "recharts";
 import { ChartContainer } from "@/components/ui/chart";
 import { useMemo, useState } from "react";
 import { Building, UserMinus, Users, Home, BedDouble, ChevronRight, ChevronDown, UserCheck, RefreshCw, UserX } from "lucide-react";
@@ -139,30 +139,20 @@ const HousingDetailView = ({
   );
 };
 
-const chartColors = [
-    { from: 'hsl(var(--chart-1))', to: 'hsl(var(--chart-2))', id: 'grad1' },
-    { from: 'hsl(var(--chart-2))', to: 'hsl(var(--chart-3))', id: 'grad2' },
-    { from: 'hsl(var(--chart-3))', to: 'hsl(var(--chart-4))', id: 'grad4' },
-    { from: 'hsl(var(--chart-4))', to: 'hsl(var(--chart-5))', id: 'grad5' },
-    { from: 'hsl(var(--chart-5))', to: 'hsl(var(--chart-1))', id: 'grad5' },
-];
-
 const VerticalChartComponent = ({ data, title, labelX }: { data: {name: string, value: number}[], title: string, labelX?: string }) => (
     <Card>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent className="pr-0 sm:pr-2 pl-4">
-        <ChartContainer config={{value: {label: labelX || "Pracownicy"}}} className="h-80 w-full">
+        <ChartContainer config={{value: {label: labelX || "Pracownicy"}}} className="h-[400px] w-full">
           <ResponsiveContainer>
-            <BarChart data={data} layout="vertical" margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
-               <defs>
-                {chartColors.map((color, index) => (
-                  <linearGradient id={color.id} x1="0" y1="0" x2="1" y2="0" key={index}>
-                    <stop offset="5%" stopColor={color.from} stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor={color.to} stopOpacity={0.8}/>
+            <BarChart data={data} layout="vertical" margin={{ top: 20, right: 40, left: 20, bottom: 20 }}>
+              <defs>
+                  <linearGradient id="chartGradient" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="hsl(var(--primary) / 0.7)" />
+                      <stop offset="100%" stopColor="hsl(var(--primary) / 0.2)" />
                   </linearGradient>
-                ))}
               </defs>
               <CartesianGrid horizontal={false} strokeDasharray="3 3" stroke="hsl(var(--border) / 0.5)" />
               <XAxis 
@@ -192,12 +182,8 @@ const VerticalChartComponent = ({ data, title, labelX }: { data: {name: string, 
                     </div>
                 )}
               />
-              <Bar dataKey="value" radius={[0, 8, 8, 0]} >
+              <Bar dataKey="value" radius={[0, 8, 8, 0]} fill="url(#chartGradient)" animationDuration={500}>
                 <LabelList dataKey="value" position="right" offset={10} className="fill-foreground font-semibold" />
-                 {data.map((entry, index) => {
-                    const color = chartColors[index % chartColors.length];
-                    return <Cell key={`cell-${index}`} fill={`url(#${color.id})`} />
-                 })}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -214,15 +200,13 @@ const ChartComponent = ({ data, title, labelY }: { data: {name: string, value: n
       <CardContent className="pl-0 sm:pl-2">
         <ChartContainer config={{value: {label: labelY || "Pracownicy"}}} className="h-64 w-full">
           <ResponsiveContainer>
-            <BarChart data={data} margin={{ top: 20, right: 20, left: -10, bottom: 40 }} barSize={50}>
+            <AreaChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 45 }}>
                <defs>
-                {chartColors.map((color, index) => (
-                  <linearGradient id={color.id} x1="0" y1="0" x2="0" y2="1" key={index}>
-                    <stop offset="5%" stopColor={color.from} stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor={color.to} stopOpacity={0.8}/>
+                  <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
                   </linearGradient>
-                ))}
-              </defs>
+                </defs>
               <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border) / 0.5)" />
               <XAxis 
                 dataKey="name" 
@@ -244,14 +228,8 @@ const ChartComponent = ({ data, title, labelY }: { data: {name: string, value: n
                     </div>
                 )}
               />
-              <Bar dataKey="value" radius={[8, 8, 0, 0]} >
-                <LabelList dataKey="value" position="top" offset={10} className="fill-foreground font-semibold" />
-                 {data.map((entry, index) => {
-                    const color = chartColors[index % chartColors.length];
-                    return <Cell key={`cell-${index}`} fill={`url(#${color.id})`} />
-                 })}
-              </Bar>
-            </BarChart>
+              <Area type="monotone" dataKey="value" stroke="hsl(var(--primary))" fill="url(#chartGradient)" strokeWidth={2} activeDot={{ r: 6 }} dot={{r: 3, strokeWidth: 2}} animationDuration={500}/>
+            </AreaChart>
           </ResponsiveContainer>
         </ChartContainer>
       </CardContent>
@@ -329,14 +307,12 @@ const DeparturesChart = ({ allEmployees }: { allEmployees: Employee[] }) => {
             <CardContent className="pl-0 sm:pl-2">
                 <ChartContainer config={{value: {label: "Wyjazdy"}}} className="h-64 w-full">
                 <ResponsiveContainer>
-                    <BarChart data={departuresByMonth} margin={{ top: 20, right: 20, left: -10, bottom: 40 }} barSize={50}>
+                    <AreaChart data={departuresByMonth} margin={{ top: 20, right: 30, left: 0, bottom: 45 }}>
                     <defs>
-                        {chartColors.map((color, index) => (
-                        <linearGradient id={color.id} x1="0" y1="0" x2="0" y2="1" key={index}>
-                            <stop offset="5%" stopColor={color.from} stopOpacity={0.8}/>
-                            <stop offset="95%" stopColor={color.to} stopOpacity={0.8}/>
+                        <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
                         </linearGradient>
-                        ))}
                     </defs>
                     <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border) / 0.5)" />
                     <XAxis 
@@ -359,14 +335,8 @@ const DeparturesChart = ({ allEmployees }: { allEmployees: Employee[] }) => {
                             </div>
                         )}
                     />
-                    <Bar dataKey="value" radius={[8, 8, 0, 0]} >
-                        <LabelList dataKey="value" position="top" offset={10} className="fill-foreground font-semibold" />
-                        {departuresByMonth.map((entry, index) => {
-                            const color = chartColors[index % chartColors.length];
-                            return <Cell key={`cell-${index}`} fill={`url(#${color.id})`} />
-                        })}
-                    </Bar>
-                    </BarChart>
+                    <Area type="monotone" dataKey="value" stroke="hsl(var(--primary))" fill="url(#chartGradient)" strokeWidth={2} activeDot={{ r: 6 }} dot={{r: 3, strokeWidth: 2}} animationDuration={500}/>
+                    </AreaChart>
                 </ResponsiveContainer>
                 </ChartContainer>
             </CardContent>
