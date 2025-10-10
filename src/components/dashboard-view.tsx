@@ -36,6 +36,8 @@ interface DashboardViewProps {
 const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return 'N/A';
     try {
+        const date = new Date(dateString);
+        if (!isValid(date)) return 'Invalid Date';
         // Add time to treat it as local date, avoiding timezone shifts
         return format(new Date(dateString + 'T00:00:00'), 'dd-MM-yyyy');
     } catch {
@@ -205,7 +207,7 @@ const VerticalChartComponent = ({ data, title, labelX }: { data: {name: string, 
 
 const DeparturesChart = ({ allEmployees }: { allEmployees: Employee[] }) => {
     const [departureYear, setDepartureYear] = useState<string>(String(new Date().getFullYear()));
-    const [departureMonth, setDepartureMonth] = useState<string>('all');
+    const [departureMonth, setDepartureMonth] = useState<string>(String(new Date().getMonth()));
     
     const departureYears = useMemo(() => {
         const years = new Set(allEmployees.filter(e => e.checkOutDate).map(e => String(getYear(parseISO(e.checkOutDate!)))));
@@ -317,6 +319,138 @@ const DeparturesChart = ({ allEmployees }: { allEmployees: Employee[] }) => {
         </Card>
     );
 }
+
+const DeductionsChart = ({ allEmployees }: { allEmployees: Employee[] }) => {
+    const [deductionYear, setDeductionYear] = useState<string>(String(new Date().getFullYear()));
+    const [deductionMonth, setDeductionMonth] = useState<string>(String(new Date().getMonth()));
+
+    const deductionYears = useMemo(() => {
+        const years = new Set(allEmployees.filter(e => e.checkOutDate).map(e => String(getYear(parseISO(e.checkOutDate!)))));
+        return Array.from(years).sort((a,b) => Number(b) - Number(a));
+    }, [allEmployees]);
+
+    const deductionsByTime = useMemo(() => {
+        const employeesWithDeductions = allEmployees.filter(e => 
+            e.checkOutDate &&
+            getYear(parseISO(e.checkOutDate)) === Number(deductionYear) &&
+            (deductionMonth === 'all' || getMonth(parseISO(e.checkOutDate)) === Number(deductionMonth)) &&
+            (
+                (e.deductionRegulation || 0) > 0 ||
+                (e.deductionNo4Months || 0) > 0 ||
+                (e.deductionNo30Days || 0) > 0 ||
+                (e.deductionReason?.some(d => d.checked && (d.amount || 0) > 0))
+            )
+        );
+        
+        const sums = employeesWithDeductions.reduce((acc, employee) => {
+            const checkOutDate = parseISO(employee.checkOutDate!);
+            let key;
+            if (deductionMonth === 'all') {
+                key = format(checkOutDate, 'yyyy-MM');
+            } else {
+                key = format(checkOutDate, 'dd');
+            }
+
+            const reasonDeductions = employee.deductionReason
+                ?.filter(d => d.checked && d.amount)
+                .reduce((sum, d) => sum + (d.amount || 0), 0) || 0;
+            
+            const totalDeduction = (employee.deductionRegulation || 0) +
+                                   (employee.deductionNo4Months || 0) +
+                                   (employee.deductionNo30Days || 0) +
+                                   reasonDeductions;
+
+            acc[key] = (acc[key] || 0) + totalDeduction;
+            return acc;
+        }, {} as Record<string, number>);
+        
+        return Object.entries(sums)
+            .map(([key, value]) => {
+                let name;
+                if (deductionMonth === 'all') {
+                    name = format(new Date(key), 'MMM', { locale: pl });
+                } else {
+                    const date = new Date(Number(deductionYear), Number(deductionMonth), Number(key));
+                    name = format(date, 'dd MMM', { locale: pl });
+                }
+                return { name, value: parseFloat(value.toFixed(2)) };
+            })
+            .sort((a, b) => {
+                if (deductionMonth === 'all') {
+                    return new Date(a.name + ' 1, 2000').getTime() - new Date(b.name + ' 1, 2000').getTime();
+                }
+                return new Date(a.name).getTime() - new Date(b.name).getTime();
+            });
+    }, [allEmployees, deductionYear, deductionMonth]);
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Statystyka штрафів</CardTitle>
+                <div className="flex gap-2 pt-2">
+                    <Select value={deductionYear} onValueChange={setDeductionYear}>
+                        <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            {deductionYears.map(year => <SelectItem key={year} value={year}>{year}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <Select value={deductionMonth} onValueChange={setDeductionMonth}>
+                        <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Wszystkie miesiące</SelectItem>
+                            {Array.from({length: 12}).map((_, i) => (
+                                <SelectItem key={i} value={String(i)}>{format(new Date(2000, i), 'LLLL', {locale: pl})}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            </CardHeader>
+            <CardContent className="pr-0 sm:pr-2 pl-4">
+               <ChartContainer config={{value: {label: "Suma (zł)"}}} className="h-[400px] w-full">
+                <ResponsiveContainer>
+                    <BarChart data={deductionsByTime} margin={{ top: 20, right: 20, left: 0, bottom: 20 }}>
+                    <defs>
+                        <linearGradient id="deductionGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="hsl(var(--destructive) / 0.7)" />
+                            <stop offset="100%" stopColor="hsl(var(--destructive) / 0.2)" />
+                        </linearGradient>
+                    </defs>
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border) / 0.5)" />
+                    <XAxis 
+                        dataKey="name" 
+                        tickLine={false} 
+                        axisLine={false} 
+                        tickMargin={10} 
+                        tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} 
+                        interval={0}
+                    />
+                    <YAxis 
+                        tickLine={false} 
+                        axisLine={false} 
+                        tickMargin={10} 
+                        tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} 
+                        allowDecimals={false}
+                        tickFormatter={(value) => `${value} zł`}
+                    />
+                    <Tooltip 
+                        cursor={{ fill: 'hsl(var(--destructive) / 0.1)' }} 
+                        content={({ active, payload, label }) => active && payload && payload.length && (
+                            <div className="bg-background/95 p-3 rounded-lg border shadow-lg">
+                                <p className="font-bold text-foreground">{label}</p>
+                                <p className="text-sm text-destructive">{`${payload[0].value} zł`}</p>
+                            </div>
+                        )}
+                    />
+                    <Bar dataKey="value" radius={[8, 8, 0, 0]} fill="url(#deductionGradient)" animationDuration={500}>
+                      <LabelList dataKey="value" position="top" offset={10} className="fill-foreground font-semibold" formatter={(value: number) => `${value} zł`} />
+                    </Bar>
+                    </BarChart>
+                </ResponsiveContainer>
+                </ChartContainer>
+            </CardContent>
+        </Card>
+    );
+};
 
 export default function DashboardView({ employees, allEmployees, nonEmployees, settings, onEditEmployee, currentUser, selectedCoordinatorId, onSelectCoordinator, onDataRefresh }: DashboardViewProps) {
   const [isHousingDialogOpen, setIsHousingDialogOpen] = useState(false);
@@ -550,6 +684,7 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                           <VerticalChartComponent data={employeesByDepartment} title="Pracownicy wg zakładu" labelX="Pracownicy" />
                           <VerticalChartComponent data={nonEmployeesByAddress} title="Mieszkańcy (NZ) wg adresu" labelX="Mieszkańcy"/>
                           <DeparturesChart allEmployees={allEmployees} />
+                          <DeductionsChart allEmployees={allEmployees} />
                           </div>
                       )}
                 </div>
