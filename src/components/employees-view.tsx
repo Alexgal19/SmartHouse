@@ -537,8 +537,8 @@ export default function EmployeesView({
   }
 
   const renderEmployeeContent = (list: Employee[], isDismissed: boolean) => {
-    if (isLoading) {
-      return <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>;
+    if (!list || isLoading) {
+        return <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>;
     }
     return (
         <>
