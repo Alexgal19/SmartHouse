@@ -330,8 +330,8 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
     const today = new Date();
     const next30Days = { start: today, end: new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000) };
     return allEmployees
-      .filter(e => e.status === 'active' && e.contractEndDate && isWithinInterval(e.contractEndDate, next30Days))
-      .sort((a, b) => a.contractEndDate!.getTime() - b.contractEndDate!.getTime());
+      .filter(e => e.status === 'active' && e.checkOutDate && isWithinInterval(e.checkOutDate, next30Days))
+      .sort((a, b) => a.checkOutDate!.getTime() - b.checkOutDate!.getTime());
   }, [allEmployees]);
   
   const upcomingCheckoutsCount = upcomingCheckoutsList.length;
@@ -517,7 +517,7 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                                                 </CardHeader>
                                                 <CardContent className="text-sm space-y-1">
                                                     <p><span className="font-semibold">Adres:</span> {employee.address}</p>
-                                                    <p><span className="font-semibold">Data wyjazdu:</span> {employee.contractEndDate ? format(employee.contractEndDate, 'dd-MM-yyyy') : 'N/A'}</p>
+                                                    <p><span className="font-semibold">Data wyjazdu:</span> {employee.checkOutDate ? format(employee.checkOutDate, 'dd-MM-yyyy') : 'N/A'}</p>
                                                 </CardContent>
                                             </Card>
                                         ))
