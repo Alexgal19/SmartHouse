@@ -455,21 +455,17 @@ export default function EmployeesView({
   }, [page, activeTab, filters, searchTerm, toast]);
   
   useEffect(() => {
-    fetchPageData();
-  }, [fetchPageData]);
-  
-  // Debounce search term
-  useEffect(() => {
     const handler = setTimeout(() => {
-        setPage(1);
-        fetchPageData();
-    }, 500); // 500ms delay
+      setPage(1);
+      fetchPageData();
+    }, 500);
 
-    return () => {
-      clearTimeout(handler);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => clearTimeout(handler);
   }, [searchTerm]);
+
+  useEffect(() => {
+    fetchPageData();
+  }, [fetchPageData, page, activeTab, filters]);
 
 
   const filteredNonEmployees = useMemo(() => {
@@ -665,3 +661,5 @@ export default function EmployeesView({
     </Card>
   );
 }
+
+    
