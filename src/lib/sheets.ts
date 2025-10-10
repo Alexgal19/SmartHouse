@@ -4,7 +4,7 @@
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
 import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, InspectionCategory, InspectionCategoryItem, Photo, InspectionDetail, NonEmployee, DeductionReason } from '@/types';
-import { format, isEqual, parseISO } from 'date-fns';
+import { format, isEqual, parseISO, isValid, parse } from 'date-fns';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
 const SHEET_NAME_EMPLOYEES = 'Employees';
@@ -29,30 +29,24 @@ const serviceAccountAuth = new JWT({
 const doc = new GoogleSpreadsheet(SPREADSHEET_ID, serviceAccountAuth);
 
 const parseDate = (dateStr: string | undefined | null): Date | null => {
-  if (!dateStr) return null;
-  // This will parse YYYY-MM-DD as local time, not UTC.
-  const date = new Date(`${dateStr}T00:00:00`); 
-  if (!isNaN(date.getTime())) {
-    return date;
-  }
-  return null;
+    if (!dateStr) return null;
+    
+    // Try parsing as YYYY-MM-DD first.
+    let date = parse(dateStr, 'yyyy-MM-dd', new Date());
+    if (isValid(date)) {
+        return date;
+    }
+
+    // Try parsing as a full ISO string
+    date = parseISO(dateStr);
+    if (isValid(date)) {
+        return date;
+    }
+
+    console.warn(`Could not parse date: ${dateStr}`);
+    return null;
 };
 
-const serializeEmployee = (employee: Partial<Employee>): Record<string, string | number | boolean> => {
-    const serialized: Record<string, string | number | boolean> = {};
-    for (const [key, value] of Object.entries(employee)) {
-        if (value instanceof Date) {
-            serialized[key] = value.toISOString().split('T')[0];
-        } else if (Array.isArray(value)) {
-            serialized[key] = JSON.stringify(value);
-        } else if (value !== null && value !== undefined) {
-            serialized[key] = value.toString();
-        } else {
-            serialized[key] = '';
-        }
-    }
-    return serialized;
-};
 
 const deserializeEmployee = (row: any): Employee | null => {
     const id = row.get('id');
@@ -66,7 +60,6 @@ const deserializeEmployee = (row: any): Employee | null => {
     const checkInDate = parseDate(row.get('checkInDate'));
     if (!checkInDate) {
         console.warn(`Invalid or missing checkInDate for employee row, but loading anyway: ${id || fullName}`);
-        // Return a dummy date or null, but still process the employee
     }
 
     const deductionReasonRaw = row.get('deductionReason');
@@ -86,7 +79,9 @@ const deserializeEmployee = (row: any): Employee | null => {
                  }
             } catch (e2) {
                  // Or just a single string
-                 deductionReason = [{ name: deductionReasonRaw, checked: true, amount: null }];
+                 if(deductionReasonRaw.trim()) {
+                    deductionReason = [{ name: deductionReasonRaw, checked: true, amount: null }];
+                 }
             }
         }
     }
@@ -433,6 +428,8 @@ export async function getInspections(): Promise<Inspection[]> {
         return [];
     }
 }
+
+    
 
     
 

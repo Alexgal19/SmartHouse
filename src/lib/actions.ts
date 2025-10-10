@@ -3,7 +3,7 @@
 
 import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, NonEmployee, DeductionReason } from '@/types';
 import { getSheet, getEmployees as getEmployeesFromSheet, getSettings as getSettingsFromSheet, getNotifications as getNotificationsFromSheet, getInspections as getInspectionsFromSheet, getNonEmployees as getNonEmployeesFromSheet } from '@/lib/sheets';
-import { format, isEqual, parseISO, isPast, isValid } from 'date-fns';
+import { format, isEqual, parseISO, isPast, isValid, parse } from 'date-fns';
 import * as XLSX from 'xlsx';
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
@@ -19,11 +19,16 @@ const SHEET_NAME_INSPECTIONS = 'Inspections';
 const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 
 
+const serializeDate = (date: Date | null | undefined): string => {
+    if (!date || !isValid(date)) return '';
+    return format(date, 'yyyy-MM-dd');
+};
+
 const serializeEmployee = (employee: Partial<Employee>): Record<string, string | number | boolean> => {
-    const serialized: Record<string, string | number | boolean> = {};
+    const serialized: Record<string, any> = {};
     for (const [key, value] of Object.entries(employee)) {
-        if (value instanceof Date) {
-            serialized[key] = value.toISOString().split('T')[0];
+        if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate'].includes(key)) {
+            serialized[key] = serializeDate(value as Date);
         } else if (Array.isArray(value)) {
             serialized[key] = JSON.stringify(value);
         } else if (value !== null && value !== undefined) {
@@ -36,10 +41,10 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
 };
 
 const serializeNonEmployee = (nonEmployee: Partial<NonEmployee>): Record<string, string | number | boolean> => {
-    const serialized: Record<string, string | number | boolean> = {};
+    const serialized: Record<string, any> = {};
     for (const [key, value] of Object.entries(nonEmployee)) {
-        if (value instanceof Date) {
-            serialized[key] = value.toISOString().split('T')[0];
+        if (['checkInDate', 'checkOutDate'].includes(key)) {
+            serialized[key] = serializeDate(value as Date);
         } else if (value !== null && value !== undefined) {
             serialized[key] = value.toString();
         } else {
@@ -181,18 +186,18 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>): 
     }
 }
 
-const formatDate = (date: Date | null | undefined): string => {
-    if (!date || isNaN(date.getTime())) return 'N/A';
+const formatDateForChanges = (date: Date | null | undefined): string => {
+    if (!date || !isValid(date)) return 'N/A';
     return format(date, 'dd-MM-yyyy');
 };
 
-const parseDate = (dateStr: string | undefined | null): Date | null => {
+const parseDateForChanges = (dateStr: string | undefined | null): Date | null => {
   if (!dateStr) return null;
-  const date = new Date(dateStr);
-   if (!isNaN(date.getTime())) {
-    date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
-    return date;
-  }
+  // Try to parse different formats that might come from sheet or UI
+  let date = parse(dateStr, 'yyyy-MM-dd', new Date());
+  if (isValid(date)) return date;
+  date = parseISO(dateStr);
+  if (isValid(date)) return date;
   return null;
 };
 
@@ -231,18 +236,22 @@ const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): 
         
         let areEqual = false;
         
-        const oldValueIsDate = oldValue instanceof Date;
-        const newValueIsDate = newValue instanceof Date;
+        const isDateField = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate'].includes(typedKey);
 
         if (Array.isArray(oldValue) && Array.isArray(newValue)) {
             areEqual = JSON.stringify(oldValue.sort()) === JSON.stringify(newValue.sort());
-        } else if (oldValueIsDate && newValueIsDate) {
-            areEqual = isEqual(oldValue, newValue);
-        } else if (oldValueIsDate && typeof newValue === 'string') {
-             areEqual = isEqual(oldValue, parseISO(newValue));
-        } else if (typeof oldValue === 'string' && newValueIsDate) {
-             areEqual = isEqual(parseISO(oldValue), newValue);
-        } else if ((oldValue === null || oldValue === undefined) && (newValue === null || newValue === undefined)) {
+        } else if (isDateField) {
+            const oldDate = oldValue instanceof Date ? oldValue : parseDateForChanges(oldValue as string);
+            const newDate = newValue instanceof Date ? newValue : parseDateForChanges(newValue as string);
+             if (oldDate === null && newDate === null) {
+                areEqual = true;
+            } else if (oldDate && newDate) {
+                areEqual = isEqual(oldDate, newDate);
+            } else {
+                areEqual = false;
+            }
+        }
+        else if ((oldValue === null || oldValue === undefined) && (newValue === null || newValue === undefined)) {
              areEqual = true;
         } else if (oldValue === null || oldValue === undefined || newValue === null || newValue === undefined) {
              areEqual = oldValue === newValue;
@@ -255,23 +264,16 @@ const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): 
              let oldFormatted: string;
              let newFormatted: string;
  
-             if (oldValue instanceof Date) {
-                 oldFormatted = formatDate(oldValue);
+             if (isDateField) {
+                 oldFormatted = formatDateForChanges(oldValue as Date);
+                 newFormatted = formatDateForChanges(newValue as Date);
              } else if(Array.isArray(oldValue)) {
                 oldFormatted = oldValue.join(', ');
-             }
-             else {
-                 oldFormatted = String(oldValue ?? 'N/A');
-             }
- 
-             if (newValue instanceof Date) {
-                 newFormatted = formatDate(newValue);
-             } else if (typeof newValue === 'string' && /^\d{4}-\d{2}-\d{2}/.test(newValue)) {
-                newFormatted = formatDate(parseDate(newValue));
              } else if (Array.isArray(newValue)) {
                 newFormatted = newValue.join(', ');
              }
               else {
+                 oldFormatted = String(oldValue ?? 'N/A');
                  newFormatted = String(newValue ?? 'N/A');
              }
 
@@ -861,7 +863,7 @@ export async function checkAndUpdateEmployeeStatuses(actor: Coordinator): Promis
       const contractEndDateStr = row.get('contractEndDate');
       
       if (status === 'active' && contractEndDateStr) {
-        const contractEndDate = parseDate(contractEndDateStr);
+        const contractEndDate = parseDateForChanges(contractEndDateStr);
         if (contractEndDate && isPast(contractEndDate)) {
           const employeeId = row.get('id');
           const employeeName = row.get('fullName');
@@ -891,5 +893,7 @@ export async function checkAndUpdateEmployeeStatuses(actor: Coordinator): Promis
   }
 }
 
+
+    
 
     
