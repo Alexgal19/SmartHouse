@@ -39,6 +39,16 @@ interface EmployeesViewProps {
   onDeleteNonEmployee: (id: string) => void;
 }
 
+const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return 'N/A';
+    try {
+        // Add time to treat it as local date, avoiding timezone shifts
+        return format(new Date(dateString + 'T00:00:00'), 'dd-MM-yyyy');
+    } catch {
+        return 'Invalid Date';
+    }
+}
+
 const EmployeeActions = ({
   employee,
   onEdit,
@@ -116,11 +126,11 @@ const EmployeeTable = ({
                   <TableCell>{getCoordinatorName(employee.coordinatorId)}</TableCell>
                   <TableCell>{employee.address}</TableCell>
                   <TableCell>{employee.oldAddress || 'N/A'}</TableCell>
-                  <TableCell>{format(employee.checkInDate, 'dd-MM-yyyy')}</TableCell>
-                  <TableCell>{employee.checkOutDate ? format(employee.checkOutDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
-                  <TableCell>{employee.departureReportDate ? format(employee.departureReportDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
-                  <TableCell>{employee.contractStartDate ? format(employee.contractStartDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
-                  <TableCell>{employee.contractEndDate ? format(employee.contractEndDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
+                  <TableCell>{formatDate(employee.checkInDate)}</TableCell>
+                  <TableCell>{formatDate(employee.checkOutDate)}</TableCell>
+                  <TableCell>{formatDate(employee.departureReportDate)}</TableCell>
+                  <TableCell>{formatDate(employee.contractStartDate)}</TableCell>
+                  <TableCell>{formatDate(employee.contractEndDate)}</TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <EmployeeActions {...{ employee, onEdit, onDismiss, onRestore, isDismissedTab }} />
                   </TableCell>
@@ -173,7 +183,7 @@ const EmployeeCardList = ({
                             <p><span className="font-semibold text-muted-foreground">Adres:</span> {employee.address}</p>
                             <p><span className="font-semibold text-muted-foreground">Pokój:</span> {employee.roomNumber}</p>
                             <p><span className="font-semibold text-muted-foreground">Narodowość:</span> {employee.nationality}</p>
-                            <p><span className="font-semibold text-muted-foreground">Umowa do:</span> {employee.contractEndDate ? format(employee.contractEndDate, 'dd-MM-yyyy') : 'N/A'}</p>
+                            <p><span className="font-semibold text-muted-foreground">Umowa do:</span> {formatDate(employee.contractEndDate)}</p>
                         </CardContent>
                     </Card>
                 ))
@@ -213,8 +223,8 @@ const NonEmployeeTable = ({
                   <TableCell className="font-medium">{person.fullName}</TableCell>
                   <TableCell>{person.address}</TableCell>
                   <TableCell>{person.roomNumber}</TableCell>
-                  <TableCell>{format(person.checkInDate, 'dd-MM-yyyy')}</TableCell>
-                  <TableCell>{person.checkOutDate ? format(person.checkOutDate, 'dd-MM-yyyy') : 'N/A'}</TableCell>
+                  <TableCell>{formatDate(person.checkInDate)}</TableCell>
+                  <TableCell>{formatDate(person.checkOutDate)}</TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -277,8 +287,8 @@ const NonEmployeeCardList = ({
                            </div>
                         </CardHeader>
                         <CardContent className="text-base space-y-2">
-                           <p><span className="font-semibold text-muted-foreground">Zameldowanie:</span> {format(person.checkInDate, 'dd-MM-yyyy')}</p>
-                           <p><span className="font-semibold text-muted-foreground">Wymeldowanie:</span> {person.checkOutDate ? format(person.checkOutDate, 'dd-MM-yyyy') : 'N/A'}</p>
+                           <p><span className="font-semibold text-muted-foreground">Zameldowanie:</span> {formatDate(person.checkInDate)}</p>
+                           <p><span className="font-semibold text-muted-foreground">Wymeldowanie:</span> {formatDate(person.checkOutDate)}</p>
                         </CardContent>
                     </Card>
                 ))
