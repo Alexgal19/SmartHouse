@@ -20,10 +20,12 @@ const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 
 
 const serializeDate = (date: Date | null | undefined): string => {
-    if (!date || !isValid(date)) return '';
-    // Format as YYYY-MM-DD to avoid timezone issues.
-    // The sheet will interpret this correctly as a date.
-    return format(date, 'yyyy-MM-dd');
+    // Only return the date string if the date is valid
+    if (date && isValid(date)) {
+        // Format as YYYY-MM-DD to avoid timezone issues.
+        return format(date, 'yyyy-MM-dd');
+    }
+    return '';
 };
 
 const serializeEmployee = (employee: Partial<Employee>): Record<string, string | number | boolean> => {
@@ -236,18 +238,24 @@ const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): 
         } else if (isDateField) {
             const oldDate = oldValue instanceof Date ? oldValue : null;
             const newDate = newValue instanceof Date ? newValue : null;
-            if (oldDate === null && newDate === null) {
+            
+            // Treat null, undefined, and invalid dates as the same for comparison
+            const oldIsValid = oldDate && isValid(oldDate);
+            const newIsValid = newDate && isValid(newDate);
+
+            if (!oldIsValid && !newIsValid) {
                 areEqual = true;
-            } else if (oldDate && newDate) {
-                areEqual = isEqual(oldDate, newDate);
+            } else if (oldIsValid && newIsValid) {
+                // Compare just the date part, ignoring time
+                areEqual = format(oldDate, 'yyyy-MM-dd') === format(newDate, 'yyyy-MM-dd');
             } else {
                 areEqual = false;
             }
         }
         else if ((oldValue === null || oldValue === undefined) && (newValue === null || newValue === undefined)) {
              areEqual = true;
-        } else if (oldValue === null || oldValue === undefined || newValue === null || newValue === undefined) {
-             areEqual = oldValue === newValue;
+        } else if ((oldValue === null || oldValue === undefined || oldValue === '') && (newValue === null || newValue === undefined || newValue === '')) {
+             areEqual = true;
         }
         else {
             areEqual = String(oldValue) === String(newValue);
@@ -305,16 +313,19 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
             if (employeeData.status === 'active' && currentData.status !== 'active') action = 'przywrócił(a)';
         } 
         
-        const updatedData = { ...currentData, ...employeeData };
-        const serializedData = serializeEmployee(updatedData);
+        // **FIX:** Serialize only the changed data to prevent accidental overwrites
+        const serializedChanges = serializeEmployee(employeeData);
 
-        for (const key of sheet.headerValues) {
-            if (key in serializedData) {
-                rowToUpdate.set(key, serializedData[key as keyof typeof serializedData]);
+        for (const key of Object.keys(serializedChanges)) {
+            // Only set the value if it's one of the headers
+            if (sheet.headerValues.includes(key)) {
+                 rowToUpdate.set(key, serializedChanges[key as keyof typeof serializedChanges]);
             }
         }
         
         await rowToUpdate.save({ raw: false, valueInputOption: 'USER_ENTERED' });
+
+        const updatedData = { ...currentData, ...employeeData };
 
         if(changes.length > 0 && createNotif) { 
             await createNotification(actor, action, updatedData, changes);
@@ -341,17 +352,17 @@ export async function updateNonEmployee(id: string, data: Partial<Omit<NonEmploy
         const currentData = allNonEmployees.find(e => e.id === id);
         if (!currentData) throw new Error("Non-employee not found for update");
 
-        const updatedData = { ...currentData, ...data };
-        const serializedData = serializeNonEmployee(updatedData);
+        const serializedChanges = serializeNonEmployee(data);
 
-        for (const key of sheet.headerValues) {
-            if (key in serializedData) {
-                rowToUpdate.set(key, serializedData[key as keyof typeof serializedData]);
-            }
+        for (const key of Object.keys(serializedChanges)) {
+             if (sheet.headerValues.includes(key)) {
+                rowToUpdate.set(key, serializedChanges[key as keyof typeof serializedChanges]);
+             }
         }
         
         await rowToUpdate.save({ raw: false, valueInputOption: 'USER_ENTERED' });
-
+        
+        const updatedData = { ...currentData, ...data };
         return updatedData;
     } catch (error) {
         console.error("Error updating non-employee in Google Sheets:", error);
