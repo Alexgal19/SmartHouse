@@ -720,7 +720,7 @@ export async function bulkImportEmployees(
         const headers = data[0] as string[];
         const rows = data.slice(1);
 
-        const requiredHeaders = ['fullName', 'coordinatorName', 'nationality', 'gender', 'address', 'roomNumber', 'zaklad', 'checkInDate'];
+        const requiredHeaders = ['fullName', 'coordinatorName', 'checkInDate'];
         for(const header of requiredHeaders) {
             if (!headers.includes(header)) {
                 throw new Error(`Brak wymaganej kolumny w pliku Excel: ${header}`);
@@ -735,16 +735,11 @@ export async function bulkImportEmployees(
             });
 
             try {
-                const { fullName, coordinatorName, nationality, gender, address, roomNumber, zaklad } = row;
+                const { fullName, coordinatorName } = row;
 
                 if (!fullName) continue; // Ignore empty rows
 
                 if (!coordinatorName) throw new Error(`Brak 'coordinatorName' w wierszu ${rowNum}.`);
-                if (!nationality) throw new Error(`Brak 'nationality' w wierszu ${rowNum}.`);
-                if (!gender) throw new Error(`Brak 'gender' w wierszu ${rowNum}.`);
-                if (!address) throw new Error(`Brak 'address' w wierszu ${rowNum}.`);
-                if (!roomNumber) throw new Error(`Brak 'roomNumber' w wierszu ${rowNum}.`);
-                if (!zaklad) throw new Error(`Brak 'zaklad' w wierszu ${rowNum}.`);
                 
                 const checkInDate = parseExcelDate(row.checkInDate);
                 if (!checkInDate) {
@@ -759,11 +754,11 @@ export async function bulkImportEmployees(
                 const employeeData = {
                     fullName: String(fullName),
                     coordinatorId: coordinator.uid,
-                    nationality: String(nationality),
-                    gender: String(gender),
-                    address: String(address),
-                    roomNumber: String(roomNumber),
-                    zaklad: String(zaklad),
+                    nationality: row.nationality ? String(row.nationality) : '',
+                    gender: row.gender ? String(row.gender) : '',
+                    address: row.address ? String(row.address) : '',
+                    roomNumber: row.roomNumber ? String(row.roomNumber) : '',
+                    zaklad: row.zaklad ? String(row.zaklad) : '',
                     checkInDate: checkInDate,
                     contractStartDate: parseExcelDate(row.contractStartDate),
                     contractEndDate: parseExcelDate(row.contractEndDate),
@@ -907,5 +902,3 @@ export async function checkAndUpdateEmployeeStatuses(actor: Coordinator): Promis
     throw new Error("Could not update statuses.");
   }
 }
-
-    
