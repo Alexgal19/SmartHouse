@@ -22,7 +22,7 @@ import InspectionsView from './inspections-view';
 import { AddEmployeeForm } from './add-employee-form';
 import { AddNonEmployeeForm } from './add-non-employee-form';
 import { LoginView } from './login-view';
-import { getAllEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead, getInspections, addInspection, updateInspection, deleteInspection, transferEmployees, bulkDeleteEmployees, bulkImportEmployees, clearAllNotifications, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee, checkAndUpdateEmployeeStatuses } from '@/lib/actions';
+import { getAllEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead, getInspections, addInspection, updateInspection, deleteInspection, transferEmployees, bulkDeleteEmployees, bulkImportEmployees, clearAllNotifications, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee, checkAndUpdateEmployeeStatuses, getEmployees } from '@/lib/actions';
 import type { Employee, Settings, User, View, Notification, Coordinator, Inspection, NonEmployee } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Building, ClipboardList, Home, Settings as SettingsIcon, Users } from 'lucide-react';
@@ -462,7 +462,7 @@ function MainContent() {
             case 'dashboard':
                 return <DashboardView employees={filteredEmployeesForDashboard} allEmployees={allEmployeesForDashboard} nonEmployees={filteredNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={handleRefreshStatuses} />;
             case 'employees':
-                return <EmployeesView settings={settings} onAddEmployee={handleAddEmployeeClick} onEditEmployee={handleEditEmployeeClick} onDismissEmployee={handleDismissEmployee} onRestoreEmployee={handleRestoreEmployee} onBulkDelete={handleBulkDeleteEmployees} currentUser={currentUser} onAddNonEmployee={handleAddNonEmployeeClick} onEditNonEmployee={handleEditNonEmployeeClick} onDeleteNonEmployee={handleDeleteNonEmployee} />;
+                return <EmployeesView employees={[]} nonEmployees={[]} settings={settings} onAddEmployee={handleAddEmployeeClick} onEditEmployee={handleEditEmployeeClick} onDismissEmployee={handleDismissEmployee} onRestoreEmployee={handleRestoreEmployee} onBulkDelete={handleBulkDeleteEmployees} currentUser={currentUser} onAddNonEmployee={handleAddNonEmployeeClick} onEditNonEmployee={handleEditNonEmployeeClick} onDeleteNonEmployee={handleDeleteNonEmployee} />;
             case 'settings':
                 if (!currentUser.isAdmin) {
                     return <div className="p-4 text-center text-red-500">Brak uprawnień do przeglądania tej strony.</div>;
