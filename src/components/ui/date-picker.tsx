@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { format } from "date-fns"
+import { format, isValid } from "date-fns"
 import { pl } from "date-fns/locale"
 import { Calendar as CalendarIcon } from "lucide-react"
 
@@ -24,7 +24,7 @@ type DatePickerProps = {
 export function DatePicker({ value, onChange, className }: DatePickerProps) {
     const [isOpen, setIsOpen] = React.useState(false);
 
-    const dateValue = value ? new Date(value + 'T00:00:00') : undefined;
+    const dateValue = value && isValid(new Date(value)) ? new Date(value + 'T00:00:00') : undefined;
 
     const handleSelect = (date: Date | undefined) => {
         if (date) {
