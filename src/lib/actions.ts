@@ -151,12 +151,13 @@ export async function addEmployee(employeeData: Omit<Employee, 'id' | 'status'>,
             ...employeeData,
             id: `emp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
             status: 'active',
-            checkOutDate: employeeData.checkOutDate || null,
-            contractStartDate: employeeData.contractStartDate || null,
-            contractEndDate: employeeData.contractEndDate || null,
-            departureReportDate: employeeData.departureReportDate || null,
+            checkInDate: employeeData.checkInDate || '',
+            checkOutDate: employeeData.checkOutDate,
+            contractStartDate: employeeData.contractStartDate,
+            contractEndDate: employeeData.contractEndDate,
+            departureReportDate: employeeData.departureReportDate,
             comments: employeeData.comments || '',
-            oldAddress: employeeData.oldAddress || null,
+            oldAddress: employeeData.oldAddress || undefined,
         };
 
         const serialized = serializeEmployee(newEmployee);
@@ -177,7 +178,7 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>): 
         const newNonEmployee: NonEmployee = {
             ...nonEmployeeData,
             id: `ne-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-            checkOutDate: nonEmployeeData.checkOutDate || null,
+            checkOutDate: nonEmployeeData.checkOutDate,
             comments: nonEmployeeData.comments || '',
         };
 
@@ -192,8 +193,16 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>): 
 }
 
 const formatDateForChanges = (date: string | null | undefined): string => {
-    if (!date || !isValid(parse(date, 'yyyy-MM-dd', new Date()))) return 'N/A';
-    return format(parse(date, 'yyyy-MM-dd', new Date()), 'dd-MM-yyyy');
+    if (!date) return 'N/A';
+    try {
+        const parsedDate = parse(date, 'yyyy-MM-dd', new Date());
+        if(isValid(parsedDate)) {
+            return format(parsedDate, 'dd-MM-yyyy');
+        }
+        return 'N/A';
+    } catch {
+        return 'N/A';
+    }
 };
 
 
@@ -720,7 +729,7 @@ export async function bulkImportEmployees(
         const headers = data[0] as string[];
         const rows = data.slice(1);
 
-        const requiredHeaders = ['fullName', 'coordinatorName', 'checkInDate'];
+        const requiredHeaders = ['fullName'];
         for(const header of requiredHeaders) {
             if (!headers.includes(header)) {
                 throw new Error(`Brak wymaganej kolumny w pliku Excel: ${header}`);
@@ -739,27 +748,17 @@ export async function bulkImportEmployees(
 
                 if (!fullName) continue; // Ignore empty rows
 
-                if (!coordinatorName) throw new Error(`Brak 'coordinatorName' w wierszu ${rowNum}.`);
-                
-                const checkInDate = parseExcelDate(row.checkInDate);
-                if (!checkInDate) {
-                    throw new Error(`Nieprawidłowa lub pusta 'checkInDate' w wierszu ${rowNum}.`);
-                }
-
-                const coordinator = coordinators.find(c => c.name.toLowerCase() === String(coordinatorName).toLowerCase());
-                if (!coordinator) {
-                    throw new Error(`Koordynator "${coordinatorName}" nie został znaleziony w wierszu ${rowNum}.`);
-                }
+                const coordinator = coordinatorName ? coordinators.find(c => c.name.toLowerCase() === String(coordinatorName).toLowerCase()) : undefined;
 
                 const employeeData = {
                     fullName: String(fullName),
-                    coordinatorId: coordinator.uid,
+                    coordinatorId: coordinator ? coordinator.uid : '',
                     nationality: row.nationality ? String(row.nationality) : '',
                     gender: row.gender ? String(row.gender) : '',
                     address: row.address ? String(row.address) : '',
                     roomNumber: row.roomNumber ? String(row.roomNumber) : '',
                     zaklad: row.zaklad ? String(row.zaklad) : '',
-                    checkInDate: checkInDate,
+                    checkInDate: parseExcelDate(row.checkInDate) || '',
                     contractStartDate: parseExcelDate(row.contractStartDate),
                     contractEndDate: parseExcelDate(row.contractEndDate),
                     departureReportDate: parseExcelDate(row.departureReportDate),
@@ -770,7 +769,7 @@ export async function bulkImportEmployees(
 
             } catch (e: any) {
                 errorCount++;
-                errors.push(e.message);
+                errors.push(`Wiersz ${rowNum}: ${e.message}`);
             }
         }
         
