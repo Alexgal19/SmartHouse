@@ -4,7 +4,7 @@
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
 import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, InspectionCategory, InspectionCategoryItem, Photo, InspectionDetail, NonEmployee, DeductionReason } from '@/types';
-import { format, isEqual, parseISO, isValid, parse } from 'date-fns';
+import { format, isValid, parse } from 'date-fns';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
 const SHEET_NAME_EMPLOYEES = 'Employees';
@@ -31,20 +31,21 @@ const doc = new GoogleSpreadsheet(SPREADSHEET_ID, serviceAccountAuth);
 const parseDate = (dateStr: string | undefined | null): Date | null => {
     if (!dateStr) return null;
     
-    // Try parsing as YYYY-MM-DD. This is the most reliable format.
-    // The 'new Date()' constructor can be inconsistent with timezone-less dates.
-    const date = parse(dateStr, 'yyyy-MM-dd', new Date());
-    if (isValid(date)) {
-        return date;
+    // The most reliable format we expect from Google Sheets for a date-only value
+    const parsedDate = parse(dateStr, 'yyyy-MM-dd', new Date());
+    
+    if (isValid(parsedDate)) {
+        return parsedDate;
     }
 
-    // Fallback for full ISO strings or other formats JS can handle
-    const isoDate = parseISO(dateStr);
+    // Fallback for full ISO strings or other formats JS can handle, which might include timezones
+    const isoDate = new Date(dateStr);
     if (isValid(isoDate)) {
-        return isoDate;
+        // We strip the time part to avoid timezone issues down the line.
+        return new Date(isoDate.getFullYear(), isoDate.getMonth(), isoDate.getDate());
     }
 
-    console.warn(`Could not parse date: ${dateStr}`);
+    console.warn(`Could not parse date: ${dateStr}. Returning null.`);
     return null;
 };
 

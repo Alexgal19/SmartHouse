@@ -3,7 +3,7 @@
 
 import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, NonEmployee, DeductionReason } from '@/types';
 import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getInspectionsFromSheet, getNonEmployeesFromSheet } from '@/lib/sheets';
-import { format, isEqual, parseISO, isPast, isValid, parse } from 'date-fns';
+import { format, isEqual, isPast, isValid, parse } from 'date-fns';
 import * as XLSX from 'xlsx';
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
@@ -680,8 +680,10 @@ const parseExcelDate = (excelDate: any): Date | null => {
         if(isValid(date)) return date;
     }
     if (typeof excelDate === 'string') {
-        const date = new Date(excelDate);
+        const date = parse(excelDate, 'yyyy-MM-dd', new Date());
         if (isValid(date)) return date;
+        const isoDate = new Date(excelDate);
+        if (isValid(isoDate)) return isoDate;
     }
     return null;
 }
