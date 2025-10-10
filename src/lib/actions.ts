@@ -2,7 +2,7 @@
 "use server";
 
 import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, NonEmployee, DeductionReason } from '@/types';
-import { getSheet, getEmployeesFromSheet, getSettings as getSettingsFromSheet, getNotifications as getNotificationsFromSheet, getInspections as getInspectionsFromSheet, getNonEmployees as getNonEmployeesFromSheet } from '@/lib/sheets';
+import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getInspectionsFromSheet, getNonEmployeesFromSheet } from '@/lib/sheets';
 import { format, isEqual, parseISO, isPast, isValid, parse } from 'date-fns';
 import * as XLSX from 'xlsx';
 
