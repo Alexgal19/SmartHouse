@@ -85,16 +85,26 @@ function MainContent() {
         const loggedInUser = sessionStorage.getItem('currentUser');
         if (loggedInUser) {
             const user = JSON.parse(loggedInUser);
-            setCurrentUser(user);
-            fetchData(true);
+            if (!currentUser || currentUser.uid !== user.uid) {
+                setCurrentUser(user);
+            }
         } else {
-             setIsLoading(true);
-             getSettings()
-                .then(setSettings)
-                .catch(console.error)
-                .finally(() => setIsLoading(false));
+             if (!settings) {
+                setIsLoading(true);
+                getSettings()
+                    .then(setSettings)
+                    .catch(console.error)
+                    .finally(() => setIsLoading(false));
+             }
         }
-    }, [fetchData]);
+    }, [currentUser, settings]);
+
+    useEffect(() => {
+        if (currentUser) {
+            fetchData(true);
+        }
+    }, [currentUser, fetchData]);
+
 
     const filteredEmployees = useMemo(() => {
         if (!currentUser) return [];
@@ -159,7 +169,6 @@ function MainContent() {
                 setCurrentUser(adminUser);
                 sessionStorage.setItem('currentUser', JSON.stringify(adminUser));
                 setSelectedCoordinatorId('all');
-                await fetchData(true);
             } else {
                  (window as any).setLoginError('Nieprawidłowe hasło administratora.');
             }
@@ -178,13 +187,12 @@ function MainContent() {
             return;
         }
         
-        const loginAction = async (coord: Coordinator) => {
+        const loginAction = (coord: Coordinator) => {
             setCurrentUser(coord);
             sessionStorage.setItem('currentUser', JSON.stringify(coord));
             if(!coord.isAdmin) {
                 setSelectedCoordinatorId(coord.uid);
             }
-            await fetchData(true);
         };
 
         if (!coordinator.password) { // First login, set password
@@ -197,7 +205,7 @@ function MainContent() {
                 setSettings(prevSettings => prevSettings ? {...prevSettings, coordinators: updatedCoordinators} : null);
                 
                 const userWithPassword = { ...coordinator, password };
-                await loginAction(userWithPassword);
+                loginAction(userWithPassword);
                 toast({ title: "Sukces", description: "Twoje hasło zostało ustawione." });
             } catch (error) {
                 (window as any).setLoginError('Nie udało się ustawić hasła. Spróbuj ponownie.');
@@ -206,7 +214,7 @@ function MainContent() {
             }
         } else { // Subsequent logins
             if (coordinator.password === password) {
-                await loginAction(coordinator);
+                loginAction(coordinator);
             } else {
                 (window as any).setLoginError('Nieprawidłowe hasło.');
             }
@@ -570,7 +578,3 @@ export default function MainLayout() {
         </SidebarProvider>
     );
 }
-
-    
-
-    
