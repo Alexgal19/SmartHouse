@@ -568,7 +568,7 @@ export default function DashboardView({ employees, nonEmployees, settings, onEdi
                     {!isMobile && (
                       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
                           <VerticalChartComponent data={employeesByCoordinator} title="Pracownicy wg koordynatora" />
-                          <ChartComponent data={employeesByNationality} title="Pracownicy wg narodowości" />
+                          <VerticalChartComponent data={employeesByNationality} title="Pracownicy wg narodowości" />
                           <ChartComponent data={employeesByDepartment} title="Pracownicy wg zakładu" />
                           <ChartComponent data={nonEmployeesByAddress} title="Mieszkańcy (NZ) wg adresu" labelY="Mieszkańcy"/>
                           <DeparturesChart allEmployees={employees} />
@@ -678,5 +678,7 @@ export default function DashboardView({ employees, nonEmployees, settings, onEdi
     </div>
   );
 }
+
+    
 
     
