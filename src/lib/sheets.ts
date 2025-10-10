@@ -6,52 +6,7 @@ import { JWT } from 'google-auth-library';
 import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, InspectionCategory, InspectionCategoryItem, Photo, InspectionDetail, NonEmployee, DeductionReason } from '@/types';
 import { format, isValid, parse } from 'date-fns';
 
-// ⚙️ Константа для формату дати в Google Sheets
-// ПРИМІТКА: Якщо дати зберігаються в іншому форматі (наприклад, 'yyyy-MM-dd' або 'MM/dd/yyyy'),
-// цю константу потрібно буде змінити.
-const SHEET_DATE_FORMAT = 'dd.MM.yyyy'; 
-
-// 🎯 Хелпер функція для безпечного парсингу дати
-const parseDateString = (dateString: string | undefined): string | undefined => {
-    if (!dateString) {
-        return undefined;
-    }
-
-    // 1. Спроба парсингу
-    const parsedDate = parse(dateString, SHEET_DATE_FORMAT, new Date());
-    
-    // 2. Валідація
-    if (isValid(parsedDate)) {
-        // Повертаємо дату у стандартному форматі ISO для безпечного використання в TypeScript/JS
-        return format(parsedDate, 'yyyy-MM-dd'); 
-    }
-    
-    // Якщо парсинг за форматом не вдався, спробуємо нативний Date() як резервний варіант
-    const nativeDate = new Date(dateString);
-    if(isValid(nativeDate)) {
-         return format(nativeDate, 'yyyy-MM-dd');
-    }
-
-    console.warn(`Invalid or unrecognized date format for string: ${dateString}`);
-    return undefined;
-};
-
-const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
-const SHEET_NAME_EMPLOYEES = 'Employees';
-const SHEET_NAME_NON_EMPLOYEES = 'NonEmployees';
-const SHEET_NAME_NOTIFICATIONS = 'Powiadomienia';
-const SHEET_NAME_ADDRESSES = 'Addresses';
-const SHEET_NAME_ROOMS = 'Rooms';
-const SHEET_NAME_NATIONALITIES = 'Nationalities';
-const SHEET_NAME_DEPARTMENTS = 'Departments';
-const SHEET_NAME_COORDINATORS = 'Coordinators';
-const SHEET_NAME_GENDERS = 'Genders';
-const SHEET_NAME_INSPECTIONS = 'Inspections';
-const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
-
 let serviceAccountAuth: JWT | null = null;
-let doc: GoogleSpreadsheet | null = null;
-
 function getAuth() {
     if (!serviceAccountAuth) {
         if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
@@ -66,6 +21,21 @@ function getAuth() {
     return serviceAccountAuth;
 }
 
+const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
+const SHEET_NAME_EMPLOYEES = 'Employees';
+const SHEET_NAME_NON_EMPLOYEES = 'NonEmployees';
+const SHEET_NAME_NOTIFICATIONS = 'Powiadomienia';
+const SHEET_NAME_ADDRESSES = 'Addresses';
+const SHEET_NAME_ROOMS = 'Rooms';
+const SHEET_NAME_NATIONALITIES = 'Nationalities';
+const SHEET_NAME_DEPARTMENTS = 'Departments';
+const SHEET_NAME_COORDINATORS = 'Coordinators';
+const SHEET_NAME_GENDERS = 'Genders';
+const SHEET_NAME_INSPECTIONS = 'Inspections';
+const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
+
+
+let doc: GoogleSpreadsheet | null = null;
 async function getDoc() {
     if (!doc) {
         doc = new GoogleSpreadsheet(SPREADSHEET_ID, getAuth());
@@ -83,12 +53,8 @@ const deserializeEmployee = (row: any): Employee | null => {
     if (!id && !fullName) {
         return null;
     }
-
-    // ✅ Використовуємо parseDateString для надійної обробки
-    const checkInDate = parseDateString(row.get('checkInDate'));
-    if (!checkInDate) {
-        console.warn(`Invalid or missing checkInDate for employee row, but loading anyway: ${id || fullName}`);
-    }
+    
+    const checkInDate = row.get('checkInDate') ? format(new Date(row.get('checkInDate')), 'yyyy-MM-dd') : '';
 
     const deductionReasonRaw = row.get('deductionReason');
     let deductionReason: DeductionReason[] | undefined = undefined;
@@ -99,7 +65,7 @@ const deserializeEmployee = (row: any): Employee | null => {
                 deductionReason = parsed;
             }
         } catch(e) {
-            // It's probably an old string array, try to adapt it
+            console.warn(`Could not parse deductionReason for employee ${id}:`, e);
         }
     }
 
@@ -112,11 +78,11 @@ const deserializeEmployee = (row: any): Employee | null => {
         address: row.get('address'),
         roomNumber: row.get('roomNumber'),
         zaklad: row.get('zaklad'),
-        checkInDate: checkInDate || '', // Залишаємо fallback до порожнього рядка, якщо тип Employee['checkInDate'] це дозволяє
-        checkOutDate: parseDateString(row.get('checkOutDate')),
-        contractStartDate: parseDateString(row.get('contractStartDate')),
-        contractEndDate: parseDateString(row.get('contractEndDate')),
-        departureReportDate: parseDateString(row.get('departureReportDate')),
+        checkInDate: checkInDate,
+        checkOutDate: row.get('checkOutDate') ? format(new Date(row.get('checkOutDate')), 'yyyy-MM-dd') : null,
+        contractStartDate: row.get('contractStartDate') ? format(new Date(row.get('contractStartDate')), 'yyyy-MM-dd') : null,
+        contractEndDate: row.get('contractEndDate') ? format(new Date(row.get('contractEndDate')), 'yyyy-MM-dd') : null,
+        departureReportDate: row.get('departureReportDate') ? format(new Date(row.get('departureReportDate')), 'yyyy-MM-dd') : null,
         comments: row.get('comments'),
         status: row.get('status') as 'active' | 'dismissed',
         oldAddress: row.get('oldAddress') || undefined,
@@ -136,11 +102,10 @@ const deserializeNonEmployee = (row: any): NonEmployee | null => {
     if (!id && !fullName) {
         return null;
     }
-
-    // ✅ Використовуємо parseDateString
-    const checkInDate = parseDateString(row.get('checkInDate'));
+    
+    const checkInDate = row.get('checkInDate') ? format(new Date(row.get('checkInDate')), 'yyyy-MM-dd') : null;
     if (!checkInDate) {
-        return null; // Залишаємо логіку, що NonEmployee без checkInDate ігнорується
+        return null;
     }
 
     return {
@@ -149,29 +114,15 @@ const deserializeNonEmployee = (row: any): NonEmployee | null => {
         address: row.get('address'),
         roomNumber: row.get('roomNumber'),
         checkInDate: checkInDate,
-        checkOutDate: parseDateString(row.get('checkOutDate')),
+        checkOutDate: row.get('checkOutDate') ? format(new Date(row.get('checkOutDate')), 'yyyy-MM-dd') : null,
         comments: row.get('comments'),
     };
 };
 
 const deserializeNotification = (row: any): Notification => {
     const createdAtString = row.get('createdAt');
-    // ⚠️ Тут потрібно повернути об'єкт Date, а не рядок.
-    let createdAt: Date;
+    const createdAt = createdAtString ? new Date(createdAtString) : new Date(0);
     
-    // Спробуємо розпарсити як Date, використовуючи обидва формати (SHEET_DATE_FORMAT та нативний)
-    const parsedByFormat = parse(createdAtString, SHEET_DATE_FORMAT, new Date());
-    const parsedNatively = new Date(createdAtString);
-
-    if (isValid(parsedByFormat)) {
-        createdAt = parsedByFormat;
-    } else if (isValid(parsedNatively)) {
-        createdAt = parsedNatively;
-    } else {
-        console.error(`Invalid date string for notification: ${createdAtString}`);
-        createdAt = new Date(0); // Fallback до мінімальної дати
-    }
-
     const changesString = row.get('changes');
     return {
         id: row.get('id'),

@@ -87,7 +87,7 @@ const NON_EMPLOYEE_HEADERS = [
 
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
 
-export async function getEmployees({ filters = {}, all = false }: { filters?: Record<string, string>; all?: boolean } = {}): Promise<Employee[]> {
+export async function getEmployees({ filters = {}, all = true }: { filters?: Record<string, string>; all?: boolean } = {}): Promise<Employee[]> {
     try {
         const { employees } = await getEmployeesFromSheet({ all, filters });
         return employees;
@@ -905,3 +905,5 @@ export async function checkAndUpdateEmployeeStatuses(actor: Coordinator): Promis
     throw new Error("Could not update statuses.");
   }
 }
+
+    
