@@ -87,13 +87,34 @@ const NON_EMPLOYEE_HEADERS = [
 
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
 
-export async function getEmployees(): Promise<Employee[]> {
+export async function getEmployees({
+    page = 1,
+    limit = 50,
+    filters = {},
+    searchTerm = '',
+    status = 'all'
+}: {
+    page?: number;
+    limit?: number;
+    filters?: Record<string, string>;
+    searchTerm?: string;
+    status?: 'active' | 'dismissed' | 'all';
+} = {}): Promise<{ employees: Employee[], total: number }> {
   try {
-    return await getEmployeesFromSheet();
+    return await getEmployeesFromSheet({ page, limit, filters, searchTerm, status });
   } catch (error) {
     console.error("Error in getEmployees (actions):", error);
     throw new Error(`Could not fetch employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
+}
+
+export async function getAllEmployees(): Promise<Employee[]> {
+    try {
+        return await getEmployeesFromSheet({ all: true });
+    } catch (error) {
+        console.error("Error in getAllEmployees (actions):", error);
+        throw new Error(`Could not fetch all employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
 }
 
 export async function getNonEmployees(): Promise<NonEmployee[]> {
@@ -292,8 +313,8 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
         
         const rowToUpdate = rows[rowIndex];
         
-        const allEmployees: Employee[] = await getEmployeesFromSheet();
-        const currentData = allEmployees.find(e => e.id === employeeId);
+        const { employees: [currentData] } = await getEmployeesFromSheet({ filters: { id: employeeId } });
+
         if (!currentData) throw new Error("Employee not found for change detection");
 
 
@@ -460,7 +481,7 @@ export async function clearAllNotifications(): Promise<void> {
         await sheet.clearRows();
     } catch (error) {
         console.error("Error clearing notifications:", error);
-        throw new Error("Nie udało się usunąć powiadomień.");
+        throw new Error("Nie udało się usunąć powiadomienia.");
     }
 }
 
@@ -728,13 +749,6 @@ export async function bulkImportEmployees(
         
         const headers = data[0] as string[];
         const rows = data.slice(1);
-
-        const requiredHeaders = ['fullName'];
-        for(const header of requiredHeaders) {
-            if (!headers.includes(header)) {
-                throw new Error(`Brak wymaganej kolumny w pliku Excel: ${header}`);
-            }
-        }
 
         for (const [index, rowArray] of rows.entries()) {
             const rowNum = index + 2;
