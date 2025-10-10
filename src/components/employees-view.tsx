@@ -454,18 +454,18 @@ export default function EmployeesView({
     }
   }, [page, activeTab, filters, searchTerm, toast]);
   
-    useEffect(() => {
-        const handler = setTimeout(() => {
-            setPage(1); // Reset page to 1 on search
-            fetchPageData();
-        }, 500); // Debounce search input
-
-        return () => clearTimeout(handler);
-    }, [searchTerm, fetchPageData]);
-
-    useEffect(() => {
+  useEffect(() => {
+    const handler = setTimeout(() => {
+        setPage(1);
         fetchPageData();
-    }, [page, activeTab, filters, fetchPageData]);
+    }, 500);
+
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    fetchPageData();
+  }, [page, activeTab, filters, fetchPageData]);
 
 
   const filteredNonEmployees = useMemo(() => {
@@ -537,12 +537,13 @@ export default function EmployeesView({
   }
 
   const renderEmployeeContent = (list: Employee[]) => {
+    const safeList = list || [];
     if (isLoading) {
         return <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>;
     }
     return (
         <>
-            {currentUser.isAdmin && list.length > 0 && (
+            {currentUser.isAdmin && safeList.length > 0 && (
                 <div className="flex justify-end mb-4">
                      <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -569,7 +570,7 @@ export default function EmployeesView({
                 </div>
             )}
             <EmployeeListComponent
-                employees={list}
+                employees={safeList}
                 settings={settings}
                 onEdit={onEditEmployee}
                 onDismiss={(id) => handleAction('dismiss', id)}
@@ -661,8 +662,6 @@ export default function EmployeesView({
     </Card>
   );
 }
-
-    
 
     
 
