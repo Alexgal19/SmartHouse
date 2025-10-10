@@ -76,13 +76,13 @@ const deserializeEmployee = (row: any): Employee | null => {
         roomNumber: row.get('roomNumber'),
         zaklad: row.get('zaklad'),
         checkInDate: checkInDate || '',
-        checkOutDate: row.get('checkOutDate') || null,
-        contractStartDate: row.get('contractStartDate') || null,
-        contractEndDate: row.get('contractEndDate') || null,
-        departureReportDate: row.get('departureReportDate') || null,
+        checkOutDate: row.get('checkOutDate') || undefined,
+        contractStartDate: row.get('contractStartDate') || undefined,
+        contractEndDate: row.get('contractEndDate') || undefined,
+        departureReportDate: row.get('departureReportDate') || undefined,
         comments: row.get('comments'),
         status: row.get('status') as 'active' | 'dismissed',
-        oldAddress: row.get('oldAddress') || null,
+        oldAddress: row.get('oldAddress') || undefined,
         depositReturned: row.get('depositReturned') as Employee['depositReturned'] || null,
         depositReturnAmount: row.get('depositReturnAmount') ? parseFloat(row.get('depositReturnAmount')) : null,
         deductionRegulation: row.get('deductionRegulation') ? parseFloat(row.get('deductionRegulation')) : null,
@@ -111,7 +111,7 @@ const deserializeNonEmployee = (row: any): NonEmployee | null => {
         address: row.get('address'),
         roomNumber: row.get('roomNumber'),
         checkInDate: checkInDate,
-        checkOutDate: row.get('checkOutDate') || null,
+        checkOutDate: row.get('checkOutDate') || undefined,
         comments: row.get('comments'),
     };
 };
@@ -408,3 +408,5 @@ export async function getInspectionsFromSheet(): Promise<Inspection[]> {
         return [];
     }
 }
+
+    

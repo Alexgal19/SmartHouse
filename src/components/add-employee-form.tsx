@@ -129,10 +129,10 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
         roomNumber: "",
         zaklad: "",
         checkInDate: todayString,
-        contractStartDate: null,
-        contractEndDate: null,
-        checkOutDate: null,
-        departureReportDate: null,
+        contractStartDate: undefined,
+        contractEndDate: undefined,
+        checkOutDate: undefined,
+        departureReportDate: undefined,
         comments: "",
         oldAddress: undefined,
         depositReturned: 'Nie dotyczy',
@@ -565,3 +565,5 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
     </Dialog>
   );
 }
+
+    
