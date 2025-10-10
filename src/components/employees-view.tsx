@@ -465,7 +465,7 @@ export default function EmployeesView({
 
   useEffect(() => {
     fetchPageData();
-  }, [fetchPageData, page, activeTab, filters]);
+  }, [page, activeTab, filters]);
 
 
   const filteredNonEmployees = useMemo(() => {
@@ -542,7 +542,7 @@ export default function EmployeesView({
     }
     return (
         <>
-            {currentUser.isAdmin && list && list.length > 0 && (
+            {currentUser.isAdmin && list.length > 0 && (
                 <div className="flex justify-end mb-4">
                      <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -661,6 +661,8 @@ export default function EmployeesView({
     </Card>
   );
 }
+
+    
 
     
 
