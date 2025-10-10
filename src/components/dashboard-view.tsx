@@ -8,7 +8,7 @@ import { AreaChart, Area, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tool
 import { ChartContainer } from "@/components/ui/chart";
 import { useMemo, useState } from "react";
 import { Building, UserMinus, Users, Home, BedDouble, ChevronRight, ChevronDown, UserCheck, RefreshCw, UserX } from "lucide-react";
-import { isWithinInterval, format, getYear, getMonth } from "date-fns";
+import { isWithinInterval, format, getYear, getMonth, parseISO } from "date-fns";
 import { pl } from "date-fns/locale";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "./ui/button";
@@ -31,6 +31,16 @@ interface DashboardViewProps {
   selectedCoordinatorId: string;
   onSelectCoordinator: (id: string) => void;
   onDataRefresh: () => Promise<void>;
+}
+
+const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return 'N/A';
+    try {
+        // Add time to treat it as local date, avoiding timezone shifts
+        return format(new Date(dateString + 'T00:00:00'), 'dd-MM-yyyy');
+    } catch {
+        return 'Invalid Date';
+    }
 }
 
 
@@ -198,23 +208,24 @@ const DeparturesChart = ({ allEmployees }: { allEmployees: Employee[] }) => {
     const [departureMonth, setDepartureMonth] = useState<string>('all');
     
     const departureYears = useMemo(() => {
-        const years = new Set(allEmployees.filter(e => e.checkOutDate).map(e => String(getYear(e.checkOutDate!))));
+        const years = new Set(allEmployees.filter(e => e.checkOutDate).map(e => String(getYear(parseISO(e.checkOutDate!)))));
         return Array.from(years).sort((a,b) => Number(b) - Number(a));
     }, [allEmployees]);
 
     const departuresByMonth = useMemo(() => {
         const departures = allEmployees.filter(e => 
         e.checkOutDate && 
-        getYear(e.checkOutDate) === Number(departureYear) &&
-        (departureMonth === 'all' || getMonth(e.checkOutDate) === Number(departureMonth))
+        getYear(parseISO(e.checkOutDate)) === Number(departureYear) &&
+        (departureMonth === 'all' || getMonth(parseISO(e.checkOutDate)) === Number(departureMonth))
         );
         
         const counts = departures.reduce((acc, employee) => {
+        const checkOutDate = parseISO(employee.checkOutDate!);
         let key;
         if (departureMonth === 'all') {
-            key = format(employee.checkOutDate!, 'yyyy-MM');
+            key = format(checkOutDate, 'yyyy-MM');
         } else {
-            key = format(employee.checkOutDate!, 'dd');
+            key = format(checkOutDate, 'dd');
         }
         acc[key] = (acc[key] || 0) + 1;
         return acc;
@@ -328,10 +339,13 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
   
   const upcomingCheckoutsList = useMemo(() => {
     const today = new Date();
-    const next30Days = { start: today, end: new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000) };
+    today.setHours(0, 0, 0, 0);
+    const next30DaysEnd = new Date(today);
+    next30DaysEnd.setDate(today.getDate() + 30);
+
     return allEmployees
-      .filter(e => e.status === 'active' && e.checkOutDate && isWithinInterval(e.checkOutDate, next30Days))
-      .sort((a, b) => a.checkOutDate!.getTime() - b.checkOutDate!.getTime());
+      .filter(e => e.status === 'active' && e.checkOutDate && isWithinInterval(parseISO(e.checkOutDate), { start: today, end: next30DaysEnd }))
+      .sort((a, b) => parseISO(a.checkOutDate!).getTime() - parseISO(b.checkOutDate!).getTime());
   }, [allEmployees]);
   
   const upcomingCheckoutsCount = upcomingCheckoutsList.length;
@@ -517,7 +531,7 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                                                 </CardHeader>
                                                 <CardContent className="text-sm space-y-1">
                                                     <p><span className="font-semibold">Adres:</span> {employee.address}</p>
-                                                    <p><span className="font-semibold">Data wyjazdu:</span> {employee.checkOutDate ? format(employee.checkOutDate, 'dd-MM-yyyy') : 'N/A'}</p>
+                                                    <p><span className="font-semibold">Data wyjazdu:</span> {formatDate(employee.checkOutDate)}</p>
                                                 </CardContent>
                                             </Card>
                                         ))

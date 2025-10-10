@@ -19,11 +19,9 @@ const SHEET_NAME_INSPECTIONS = 'Inspections';
 const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 
 
-const serializeDate = (date: Date | null | undefined): string => {
-    // Only return the date string if the date is valid
-    if (date && isValid(date)) {
-        // Format as YYYY-MM-DD to avoid timezone issues.
-        return format(date, 'yyyy-MM-dd');
+const serializeDate = (date: string | null | undefined): string => {
+    if (date && isValid(new Date(date))) {
+        return date; // It's already a YYYY-MM-DD string
     }
     return '';
 };
@@ -32,7 +30,7 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
     const serialized: Record<string, any> = {};
     for (const [key, value] of Object.entries(employee)) {
         if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate'].includes(key)) {
-            serialized[key] = serializeDate(value as Date);
+            serialized[key] = serializeDate(value as string);
         } else if (Array.isArray(value)) {
             serialized[key] = JSON.stringify(value);
         } else if (value !== null && value !== undefined) {
@@ -48,7 +46,7 @@ const serializeNonEmployee = (nonEmployee: Partial<NonEmployee>): Record<string,
     const serialized: Record<string, any> = {};
     for (const [key, value] of Object.entries(nonEmployee)) {
         if (['checkInDate', 'checkOutDate'].includes(key)) {
-            serialized[key] = serializeDate(value as Date);
+            serialized[key] = serializeDate(value as string);
         } else if (value !== null && value !== undefined) {
             serialized[key] = value.toString();
         } else {
@@ -190,9 +188,9 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>): 
     }
 }
 
-const formatDateForChanges = (date: Date | null | undefined): string => {
-    if (!date || !isValid(date)) return 'N/A';
-    return format(date, 'dd-MM-yyyy');
+const formatDateForChanges = (date: string | null | undefined): string => {
+    if (!date || !isValid(new Date(date))) return 'N/A';
+    return format(new Date(date + 'T00:00:00'), 'dd-MM-yyyy');
 };
 
 
@@ -235,26 +233,8 @@ const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): 
 
         if (Array.isArray(oldValue) && Array.isArray(newValue)) {
             areEqual = JSON.stringify(oldValue.sort()) === JSON.stringify(newValue.sort());
-        } else if (isDateField) {
-            const oldDate = oldValue instanceof Date ? oldValue : null;
-            const newDate = newValue instanceof Date ? newValue : null;
-            
-            // Treat null, undefined, and invalid dates as the same for comparison
-            const oldIsValid = oldDate && isValid(oldDate);
-            const newIsValid = newDate && isValid(newDate);
-
-            if (!oldIsValid && !newIsValid) {
-                areEqual = true;
-            } else if (oldIsValid && newIsValid) {
-                // Compare just the date part, ignoring time
-                areEqual = format(oldDate, 'yyyy-MM-dd') === format(newDate, 'yyyy-MM-dd');
-            } else {
-                areEqual = false;
-            }
         }
-        else if ((oldValue === null || oldValue === undefined) && (newValue === null || newValue === undefined)) {
-             areEqual = true;
-        } else if ((oldValue === null || oldValue === undefined || oldValue === '') && (newValue === null || newValue === undefined || newValue === '')) {
+        else if ((oldValue === null || oldValue === undefined || oldValue === '') && (newValue === null || newValue === undefined || newValue === '')) {
              areEqual = true;
         }
         else {
@@ -266,8 +246,8 @@ const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): 
              let newFormatted: string;
  
              if (isDateField) {
-                 oldFormatted = formatDateForChanges(oldValue as Date);
-                 newFormatted = formatDateForChanges(newValue as Date);
+                 oldFormatted = formatDateForChanges(oldValue as string);
+                 newFormatted = formatDateForChanges(newValue as string);
              } else if(Array.isArray(oldValue)) {
                 oldFormatted = oldValue.join(', ');
              } else if (Array.isArray(newValue)) {
@@ -313,11 +293,9 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
             if (employeeData.status === 'active' && currentData.status !== 'active') action = 'przywrócił(a)';
         } 
         
-        // **FIX:** Serialize only the changed data to prevent accidental overwrites
         const serializedChanges = serializeEmployee(employeeData);
 
         for (const key of Object.keys(serializedChanges)) {
-            // Only set the value if it's one of the headers
             if (sheet.headerValues.includes(key)) {
                  rowToUpdate.set(key, serializedChanges[key as keyof typeof serializedChanges]);
             }
@@ -669,21 +647,21 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
 }
 
 
-const parseExcelDate = (excelDate: any): Date | null => {
-    if (excelDate instanceof Date && isValid(excelDate)) {
-        return excelDate;
-    }
+const parseExcelDate = (excelDate: any): string | null => {
+    if (!excelDate) return null;
+    let date;
     if (typeof excelDate === 'number') {
-        // Excel stores dates as number of days since 1900-01-01.
-        // The '25569' is the number of days between 1970-01-01 and 1900-01-01 (with a bug fix for leap year).
-        const date = new Date((excelDate - 25569) * 86400 * 1000);
-        if(isValid(date)) return date;
+        date = new Date((excelDate - 25569) * 86400 * 1000);
+    } else {
+        date = new Date(excelDate);
     }
-    if (typeof excelDate === 'string') {
-        const date = parse(excelDate, 'yyyy-MM-dd', new Date());
-        if (isValid(date)) return date;
-        const isoDate = new Date(excelDate);
-        if (isValid(isoDate)) return isoDate;
+    
+    if (isValid(date)) {
+        // Return as YYYY-MM-DD string to avoid any timezone issues
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     }
     return null;
 }
@@ -898,5 +876,3 @@ export async function checkAndUpdateEmployeeStatuses(actor: Coordinator): Promis
     throw new Error("Could not update statuses.");
   }
 }
-
-    

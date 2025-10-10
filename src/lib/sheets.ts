@@ -28,28 +28,6 @@ const serviceAccountAuth = new JWT({
 
 const doc = new GoogleSpreadsheet(SPREADSHEET_ID, serviceAccountAuth);
 
-const parseDate = (dateStr: string | undefined | null): Date | null => {
-    if (!dateStr) return null;
-    
-    // The most reliable format we expect from Google Sheets for a date-only value
-    const parsedDate = parse(dateStr, 'yyyy-MM-dd', new Date());
-    
-    if (isValid(parsedDate)) {
-        return parsedDate;
-    }
-
-    // Fallback for full ISO strings or other formats JS can handle, which might include timezones
-    const isoDate = new Date(dateStr);
-    if (isValid(isoDate)) {
-        // We strip the time part to avoid timezone issues down the line.
-        return new Date(isoDate.getFullYear(), isoDate.getMonth(), isoDate.getDate());
-    }
-
-    console.warn(`Could not parse date: ${dateStr}. Returning null.`);
-    return null;
-};
-
-
 const deserializeEmployee = (row: any): Employee | null => {
     const id = row.get('id');
     const fullName = row.get('fullName');
@@ -59,7 +37,7 @@ const deserializeEmployee = (row: any): Employee | null => {
         return null;
     }
 
-    const checkInDate = parseDate(row.get('checkInDate'));
+    const checkInDate = row.get('checkInDate');
     if (!checkInDate) {
         console.warn(`Invalid or missing checkInDate for employee row, but loading anyway: ${id || fullName}`);
     }
@@ -97,11 +75,11 @@ const deserializeEmployee = (row: any): Employee | null => {
         address: row.get('address'),
         roomNumber: row.get('roomNumber'),
         zaklad: row.get('zaklad'),
-        checkInDate: checkInDate || new Date(0), // Use a placeholder date if invalid
-        checkOutDate: parseDate(row.get('checkOutDate')),
-        contractStartDate: parseDate(row.get('contractStartDate')),
-        contractEndDate: parseDate(row.get('contractEndDate')),
-        departureReportDate: parseDate(row.get('departureReportDate')),
+        checkInDate: checkInDate || '',
+        checkOutDate: row.get('checkOutDate') || null,
+        contractStartDate: row.get('contractStartDate') || null,
+        contractEndDate: row.get('contractEndDate') || null,
+        departureReportDate: row.get('departureReportDate') || null,
         comments: row.get('comments'),
         status: row.get('status') as 'active' | 'dismissed',
         oldAddress: row.get('oldAddress') || null,
@@ -122,7 +100,7 @@ const deserializeNonEmployee = (row: any): NonEmployee | null => {
         return null;
     }
 
-    const checkInDate = parseDate(row.get('checkInDate'));
+    const checkInDate = row.get('checkInDate');
     if (!checkInDate) {
         return null;
     }
@@ -133,7 +111,7 @@ const deserializeNonEmployee = (row: any): NonEmployee | null => {
         address: row.get('address'),
         roomNumber: row.get('roomNumber'),
         checkInDate: checkInDate,
-        checkOutDate: parseDate(row.get('checkOutDate')),
+        checkOutDate: row.get('checkOutDate') || null,
         comments: row.get('comments'),
     };
 };
@@ -430,9 +408,3 @@ export async function getInspectionsFromSheet(): Promise<Inspection[]> {
         return [];
     }
 }
-
-    
-
-    
-
-    

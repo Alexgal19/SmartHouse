@@ -36,6 +36,11 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "./ui/label";
 import { Checkbox } from "./ui/checkbox";
+import { format, isValid } from 'date-fns';
+
+const dateStringSchema = z.string().refine(val => val.match(/^\d{4}-\d{2}-\d{2}$/), {
+  message: "Data musi być w formacie YYYY-MM-DD.",
+}).nullable().optional();
 
 const deductionReasonSchema = z.object({
     name: z.string(),
@@ -51,11 +56,11 @@ const employeeSchema = z.object({
   address: z.string().min(1, "Adres jest wymagany."),
   roomNumber: z.string().min(1, "Numer pokoju jest wymagany."),
   zaklad: z.string().min(1, "Zakład jest wymagany."),
-  checkInDate: z.date({ required_error: "Data zameldowania jest wymagana." }),
-  contractStartDate: z.date().optional().nullable(),
-  contractEndDate: z.date().optional().nullable(),
-  checkOutDate: z.date().optional().nullable(),
-  departureReportDate: z.date().optional().nullable(),
+  checkInDate: z.string({ required_error: "Data zameldowania jest wymagana." }).refine(val => val.match(/^\d{4}-\d{2}-\d{2}$/)),
+  contractStartDate: dateStringSchema,
+  contractEndDate: dateStringSchema,
+  checkOutDate: dateStringSchema,
+  departureReportDate: dateStringSchema,
   comments: z.string().optional(),
   oldAddress: z.string().optional().nullable(),
   // Financial fields
@@ -114,6 +119,8 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
             return savedReason ? { ...defaultReason, ...savedReason } : defaultReason;
         });
       }
+      
+      const todayString = format(new Date(), 'yyyy-MM-dd');
 
       const defaultVals = {
         fullName: "",
@@ -123,11 +130,11 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
         address: "",
         roomNumber: "",
         zaklad: "",
-        checkInDate: new Date(),
-        contractStartDate: undefined,
-        contractEndDate: undefined,
-        checkOutDate: undefined,
-        departureReportDate: undefined,
+        checkInDate: todayString,
+        contractStartDate: null,
+        contractEndDate: null,
+        checkOutDate: null,
+        departureReportDate: null,
         comments: "",
         oldAddress: undefined,
         depositReturned: 'Nie dotyczy',
@@ -141,26 +148,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
       if (employee) {
         form.reset({
             ...defaultVals,
-            fullName: employee.fullName,
-            coordinatorId: employee.coordinatorId,
-            nationality: employee.nationality,
-            gender: employee.gender,
-            address: employee.address,
-            roomNumber: employee.roomNumber,
-            zaklad: employee.zaklad,
-            checkInDate: employee.checkInDate,
-            contractStartDate: employee.contractStartDate ?? undefined,
-            contractEndDate: employee.contractEndDate ?? undefined,
-            checkOutDate: employee.checkOutDate ?? undefined,
-            departureReportDate: employee.departureReportDate ?? undefined,
-            comments: employee.comments,
-            oldAddress: employee.oldAddress ?? undefined,
-            depositReturned: employee.depositReturned ?? 'Nie dotyczy',
-            depositReturnAmount: employee.depositReturnAmount ?? undefined,
-            deductionRegulation: employee.deductionRegulation ?? undefined,
-            deductionNo4Months: employee.deductionNo4Months ?? undefined,
-            deductionNo30Days: employee.deductionNo30Days ?? undefined,
-            deductionReason: deductionReasonInitial,
+            ...employee,
         });
         setInitialAddress(employee.address);
       } else {
@@ -369,7 +357,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                     render={({ field }) => (
                         <FormItem className="flex flex-col">
                         <FormLabel className="mb-1.5">Umowa od</FormLabel>
-                        <DatePicker value={field.value ?? undefined} onChange={field.onChange} />
+                        <DatePicker value={field.value} onChange={field.onChange} />
                         <FormMessage />
                         </FormItem>
                     )}
@@ -380,7 +368,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
                             <FormLabel className="mb-1.5">Umowa do</FormLabel>
-                            <DatePicker value={field.value ?? undefined} onChange={field.onChange} />
+                            <DatePicker value={field.value} onChange={field.onChange} />
                             <FormMessage />
                             </FormItem>
                         )}
@@ -404,7 +392,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                     render={({ field }) => (
                         <FormItem className="flex flex-col">
                         <FormLabel className="mb-1.5">Data wymeldowania</FormLabel>
-                        <DatePicker value={field.value ?? undefined} onChange={field.onChange} />
+                        <DatePicker value={field.value} onChange={field.onChange} />
                         <FormMessage />
                         </FormItem>
                     )}
@@ -416,7 +404,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                     render={({ field }) => (
                         <FormItem className="flex flex-col">
                         <FormLabel className="mb-1.5">Data zgłoszenia wyjazdu</FormLabel>
-                        <DatePicker value={field.value ?? undefined} onChange={field.onChange} />
+                        <DatePicker value={field.value} onChange={field.onChange} />
                         <FormMessage />
                         </FormItem>
                     )}

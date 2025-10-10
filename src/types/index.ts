@@ -22,11 +22,11 @@ export type Employee = {
   address: string;
   roomNumber: string;
   zaklad: string; // department
-  checkInDate: Date;
-  checkOutDate: Date | null;
-  contractStartDate?: Date | null;
-  contractEndDate?: Date | null;
-  departureReportDate?: Date | null;
+  checkInDate: string; // YYYY-MM-DD
+  checkOutDate: string | null; // YYYY-MM-DD
+  contractStartDate?: string | null; // YYYY-MM-DD
+  contractEndDate?: string | null; // YYYY-MM-DD
+  departureReportDate?: string | null; // YYYY-MM-DD
   comments?: string;
   status: 'active' | 'dismissed';
   oldAddress?: string | null;
@@ -44,8 +44,8 @@ export type NonEmployee = {
   fullName:string;
   address: string;
   roomNumber: string;
-  checkInDate: Date;
-  checkOutDate: Date | null;
+  checkInDate: string; // YYYY-MM-DD
+  checkOutDate: string | null; // YYYY-MM-DD
   comments?: string;
 };
 

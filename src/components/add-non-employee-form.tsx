@@ -33,13 +33,18 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
+import { format } from "date-fns";
+
+const dateStringSchema = z.string().refine(val => val.match(/^\d{4}-\d{2}-\d{2}$/), {
+  message: "Data musi być w formacie YYYY-MM-DD.",
+}).nullable().optional();
 
 const nonEmployeeSchema = z.object({
   fullName: z.string().min(3, "Imię i nazwisko musi mieć co najmniej 3 znaki."),
   address: z.string().min(1, "Adres jest wymagany."),
   roomNumber: z.string().min(1, "Numer pokoju jest wymagany."),
-  checkInDate: z.date({ required_error: "Data zameldowania jest wymagana." }),
-  checkOutDate: z.date().optional().nullable(),
+  checkInDate: z.string({ required_error: "Data zameldowania jest wymagana." }).refine(val => val.match(/^\d{4}-\d{2}-\d{2}$/)),
+  checkOutDate: dateStringSchema,
   comments: z.string().optional(),
 });
 
@@ -58,7 +63,7 @@ export function AddNonEmployeeForm({ isOpen, onOpenChange, onSave, settings, non
       fullName: "",
       address: "",
       roomNumber: "",
-      checkInDate: new Date(),
+      checkInDate: format(new Date(), 'yyyy-MM-dd'),
       checkOutDate: undefined,
       comments: "",
     },
@@ -69,15 +74,13 @@ export function AddNonEmployeeForm({ isOpen, onOpenChange, onSave, settings, non
       if (nonEmployee) {
         form.reset({
             ...nonEmployee,
-            checkInDate: new Date(nonEmployee.checkInDate),
-            checkOutDate: nonEmployee.checkOutDate ? new Date(nonEmployee.checkOutDate) : undefined,
         });
       } else {
         form.reset({
             fullName: "",
             address: "",
             roomNumber: "",
-            checkInDate: new Date(),
+            checkInDate: format(new Date(), 'yyyy-MM-dd'),
             checkOutDate: undefined,
             comments: "",
         });
@@ -168,7 +171,7 @@ export function AddNonEmployeeForm({ isOpen, onOpenChange, onSave, settings, non
                   render={({ field }) => (
                       <FormItem className="flex flex-col">
                       <FormLabel className="mb-1.5">Data wymeldowania</FormLabel>
-                      <DatePicker value={field.value ?? undefined} onChange={field.onChange} />
+                      <DatePicker value={field.value} onChange={field.onChange} />
                       <FormMessage />
                       </FormItem>
                   )}
