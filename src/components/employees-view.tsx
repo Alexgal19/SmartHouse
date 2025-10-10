@@ -454,18 +454,18 @@ export default function EmployeesView({
     }
   }, [page, activeTab, filters, searchTerm, toast]);
   
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setPage(1);
-      fetchPageData();
-    }, 500);
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setPage(1); // Reset page to 1 on search
+            fetchPageData();
+        }, 500); // Debounce search input
 
-    return () => clearTimeout(handler);
-  }, [searchTerm, fetchPageData]);
+        return () => clearTimeout(handler);
+    }, [searchTerm, fetchPageData]);
 
-  useEffect(() => {
-    fetchPageData();
-  }, [page, activeTab, filters]);
+    useEffect(() => {
+        fetchPageData();
+    }, [page, activeTab, filters, fetchPageData]);
 
 
   const filteredNonEmployees = useMemo(() => {
@@ -536,8 +536,8 @@ export default function EmployeesView({
     )
   }
 
-  const renderEmployeeContent = (list: Employee[] | undefined, isDismissed: boolean) => {
-    if (!list || isLoading) {
+  const renderEmployeeContent = (list: Employee[]) => {
+    if (isLoading) {
         return <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>;
     }
     return (
@@ -553,7 +553,7 @@ export default function EmployeesView({
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                             <AlertDialogHeader>
-                                <AlertDialogTitle>Czy na pewno chcesz usunąć wszystkich {isDismissed ? 'zwolnionych' : 'aktywnych'} pracowników?</AlertDialogTitle>
+                                <AlertDialogTitle>Czy na pewno chcesz usunąć wszystkich {activeTab === 'dismissed' ? 'zwolnionych' : 'aktywnych'} pracowników?</AlertDialogTitle>
                                 <AlertDialogDescription>
                                     Tej operacji nie można cofnąć. Spowoduje to trwałe usunięcie {total} rekordów pracowników z arkusza Google.
                                 </AlertDialogDescription>
@@ -574,7 +574,7 @@ export default function EmployeesView({
                 onEdit={onEditEmployee}
                 onDismiss={(id) => handleAction('dismiss', id)}
                 onRestore={(id) => handleAction('restore', id)}
-                isDismissedTab={isDismissed}
+                isDismissedTab={activeTab === 'dismissed'}
             />
             <Pagination />
         </>
@@ -635,12 +635,12 @@ export default function EmployeesView({
           </TabsList>
           <TabsContent value="active" className="mt-4">
              <ScrollArea className="h-[55vh]">
-                {renderEmployeeContent(activeEmployees, false)}
+                {renderEmployeeContent(activeEmployees)}
              </ScrollArea>
           </TabsContent>
           <TabsContent value="dismissed" className="mt-4">
             <ScrollArea className="h-[55vh]">
-                {renderEmployeeContent(dismissedEmployees, true)}
+                {renderEmployeeContent(dismissedEmployees)}
             </ScrollArea>
           </TabsContent>
            <TabsContent value="non-employees" className="mt-4">
@@ -661,6 +661,10 @@ export default function EmployeesView({
     </Card>
   );
 }
+
+    
+
+    
 
     
 
