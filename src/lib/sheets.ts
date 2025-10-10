@@ -1,7 +1,6 @@
 
 "use server";
 import 'dotenv/config';
-import 'dotenv/config';
 // src/lib/sheets.ts
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
@@ -241,273 +240,481 @@ export async function getEmployeesFromSheet({
         }
 
         const filtered = allEmployees.filter(employee => {
-            const statusMatch = status === 'all' || employee.status === status;
-            const searchMatch = searchTerm === '' || employee.fullName.toLowerCase().includes(searchTerm.toLowerCase());
-            
-            const filterMatch = Object.entries(filters).every(([key, value]) => {
-                if (value === 'all') return true;
-                // 💡 Асерцію типу залишаємо як компроміс для динамічного фільтру
-                return employee[key as keyof Employee] === value;
-            });
+          _fetchData(false);
+        }
+    }, [fetchData]);
 
-            return statusMatch && searchMatch && filterMatch;
-        });
+    const filteredEmployees = useMemo(() => {
+        if (!currentUser) return [];
+        if (currentUser.isAdmin) {
+            if (selectedCoordinatorId === 'all') {
+                return allEmployees;
+            }
+            return allEmployees.filter(e => e.coordinatorId === selectedCoordinatorId);
+        }
+        return allEmployees.filter(e => e.coordinatorId === currentUser.uid);
+    }, [currentUser, allEmployees, selectedCoordinatorId]);
 
-        const total = filtered.length;
-        const paginated = filtered.slice((page - 1) * limit, page * limit);
-        
-        return { employees: paginated, total };
+    const filteredNonEmployees = useMemo(() => {
+        if (!currentUser) return [];
+        if (selectedCoordinatorId === 'all' || !currentUser.isAdmin) {
+            return allNonEmployees;
+        }
 
-    } catch (error) {
-        console.error("Error in getEmployees from sheets.ts:", error);
-        throw new Error(`Could not fetch employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-}
+        const coordinatorAddresses = new Set(
+            allEmployees
+                .filter(e => e.coordinatorId === selectedCoordinatorId)
+                .map(e => e.address)
+        );
 
-export async function getNonEmployeesFromSheet(): Promise<NonEmployee[]> {
-  try {
-    const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
-    const rows = await sheet.getRows();
-    return rows.map(deserializeNonEmployee).filter((ne): ne is NonEmployee => ne !== null);
-  } catch (error) {
-    console.error("Error in getNonEmployees from sheets.ts:", error);
-    throw new Error(`Could not fetch non-employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-}
+        return allNonEmployees.filter(ne => ne.address && coordinatorAddresses.has(ne.address));
+   }, [currentUser, allNonEmployees, allEmployees, selectedCoordinatorId]);
 
-export async function getSettingsFromSheet(): Promise<Settings> {
-  try {
-    const nationalitiesSheet = await getSheet(SHEET_NAME_NATIONALITIES, ['name']);
-    const departmentsSheet = await getSheet(SHEET_NAME_DEPARTMENTS, ['name']);
-    const coordinatorsSheet = await getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS);
-    const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ['id', 'name']);
-    const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity']);
-    const gendersSheet = await getSheet(SHEET_NAME_GENDERS, ['name']);
+    const filteredInspections = useMemo(() => {
+        if (!currentUser) return [];
+        if (currentUser.isAdmin) {
+            if (selectedCoordinatorId === 'all') {
+                return allInspections;
+            }
+            return allInspections.filter(i => i.coordinatorId === selectedCoordinatorId);
+        }
+        return allInspections.filter(i => i.coordinatorId === currentUser.uid);
+    }, [currentUser, allInspections, selectedCoordinatorId]);
 
-    const [nationalityRows, departmentRows, coordinatorRows, addressRows, roomRows, genderRows] = await Promise.all([
-        nationalitiesSheet.getRows(),
-        departmentsSheet.getRows(),
-        coordinatorsSheet.getRows(),
-        addressesSheet.getRows(),
-        roomsSheet.getRows(),
-        gendersSheet.getRows()
-    ]);
-    
-    const allRooms: (Room & { addressId: string })[] = roomRows.map(row => ({
-        id: row.get('id'),
-        addressId: row.get('addressId'),
-        name: row.get('name'),
-        capacity: parseInt(row.get('capacity'), 10) || 0,
-    }));
-    
-    const addresses: HousingAddress[] = addressRows.map(row => {
-        const addressId = row.get('id');
-        return {
-            id: addressId,
-            name: row.get('name'),
-            rooms: allRooms.filter(room => room.addressId === addressId).map(({ addressId, ...rest }) => rest),
-        };
-    });
-    
-    const genders = genderRows.map(row => row.get('name'));
+    const filteredNotifications = useMemo(() => {
+        if (!currentUser) return [];
+        if (currentUser.isAdmin) {
+            return allNotifications;
+        }
+        return allNotifications.filter(n => n.coordinatorId === currentUser.uid);
+    }, [currentUser, allNotifications]);
 
-    const settings: Settings = {
-      id: 'global-settings',
-      addresses: addresses,
-      nationalities: nationalityRows.map(row => row.get('name')),
-      departments: departmentRows.map(row => row.get('name')),
-      coordinators: coordinatorRows.map(row => ({
-        uid: row.get('uid'),
-        name: row.get('name'),
-        isAdmin: row.get('isAdmin') === 'TRUE',
-        password: row.get('password') || '',
-      })),
-      genders: genders.length > 0 ? genders : ['Mężczyzna', 'Kobieta'],
-    };
+    const handleLogin = async (user: {name: string}, password?: string) => {
+        if (!settings) return;
+        
+        const adminLogin = process.env.ADMIN_LOGIN || 'admin';
+        const adminPassword = process.env.ADMIN_PASSWORD || 'password';
+        const lowerCaseName = user.name.toLowerCase();
 
-    return settings;
-  } catch (error) {
-    console.error("Error in getSettings:", error);
-    throw new Error(`Could not fetch settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-}
+        if (lowerCaseName === adminLogin.toLowerCase()) {
+            if (password === adminPassword) {
+                 const adminUser = {
+                    uid: 'admin-super-user',
+                    name: 'Admin',
+                    isAdmin: true,
+                    password: ''
+                };
+                setCurrentUser(adminUser);
+                sessionStorage.setItem('currentUser', JSON.stringify(adminUser));
+                setSelectedCoordinatorId('all');
+                await fetchData(true);
+            } else {
+                 (window as any).setLoginError('Nieprawidłowe hasło administratora.');
+            }
+            return;
+        }
 
-export async function getNotificationsFromSheet(): Promise<Notification[]> {
-    try {
-        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
-        const rows = await sheet.getRows();
-        return rows.map(deserializeNotification).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-    } catch (error) {
-        console.error("Error fetching notifications:", error);
-        return [];
-    }
-}
+        const coordinator = settings.coordinators.find(c => c.name.toLowerCase() === lowerCaseName);
 
-const INSPECTION_HEADERS = ['id', 'addressId', 'addressName', 'date', 'coordinatorId', 'coordinatorName', 'standard'];
-const INSPECTION_DETAILS_HEADERS = ['id', 'inspectionId', 'addressName', 'date', 'coordinatorName', 'category', 'itemLabel', 'itemValue', 'uwagi', 'photoData'];
+        if (!coordinator) {
+            (window as any).setLoginError('Brak dostępu. Sprawdź, czy Twoje imię i nazwisko są poprawne.');
+            return;
+        }
 
-const cleanlinessOptions = ["Bardzo czysto", "Czysto", "Brudno", "Bardzo brudno"];
+        if (!password) {
+            (window as any).setLoginError('Hasło jest wymagane.');
+            return;
+        }
+        
+        const loginAction = async (coord: Coordinator) => {
+            setCurrentUser(coord);
+            sessionStorage.setItem('currentUser', JSON.stringify(coord));
+            if(!coord.isAdmin) {
+                setSelectedCoordinatorId(coord.uid);
+            }
+            await fetchData(true);
+        };
 
-const getInitialChecklist = (): InspectionCategory[] => [
-    {
-        name: "Kuchnia", uwagi: "", items: [
-            { label: "Czystość kuchnia", type: "select", value: null, options: cleanlinessOptions },
-            { label: "Czystość lodówki", type: "select", value: null, options: cleanlinessOptions },
-            { label: "Czystość płyty gazowej, elektrycznej i piekarnika", type: "select", value: null, options: cleanlinessOptions }
-        ], photos: []
-    },
-    {
-        name: "Łazienka", uwagi: "", items: [
-            { label: "Czystość łazienki", type: "select", value: null, options: cleanlinessOptions },
-            { label: "Czystość toalety", type: "select", value: null, options: cleanlinessOptions },
-            { label: "Czystość brodzika", type: "select", value: null, options: cleanlinessOptions },
-        ], photos: []
-    },
-    {
-        name: "Pokoje", uwagi: "", items: [
-            { label: "Czystość pokoju", type: "select", value: null, options: cleanlinessOptions },
-            { label: "Чи нема плісняви в приміщеннях?", type: "yes_no", value: null }, // Виправив українську назву
-            { label: "Ліжка не поламані", type: "yes_no", value: null }, // Виправив українську назву
-            { label: "Стіни чисті", type: "yes_no", value: null }, // Виправив українську назву
-            { label: "Шафи та шафки чисті", type: "yes_no", value: null }, // Виправив українську назву
-            { label: "Старі речі викинуті", type: "yes_no", value: null }, // Виправив українську назву
-            { label: "Постіль чиста", type: "yes_no", value: null }, // Виправив українську назву
-            { label: "Обладнання не пошкоджене", type: "yes_no", value: null }, // Виправив українську назву
-        ], photos: []
-    },
-    {
-        name: "Інсталяція", uwagi: "", items: [ // Виправив українську назву
-            { label: "Газова інсталяція працює", type: "yes_no", value: null }, // Виправив українську назву
-            { label: "Інтернет-інсталяція працює", type: "yes_no", value: null }, // Виправив українську назву
-            { label: "Електрична інсталяція працює", type: "yes_no", value: null }, // Виправив українську назву
-            { label: "Водопровідно-каналізаційна інсталяція працює", type: "yes_no", value: null }, // Виправив українську назву
-            { label: "Опалення", type: "text", value: "" },
-            { label: "Температура в приміщенні", type: "text", value: "" }
-        ], photos: []
-    },
-     {
-        name: "Лічильники", uwagi: "", items: [], photos: []
-    },
-];
+        if (!coordinator.password) { // First login, set password
+            try {
+                const updatedCoordinators = settings.coordinators.map(c => 
+                    c.uid === coordinator.uid ? { ...c, password } : c
+                );
+                
+                await updateSettings({ coordinators: updatedCoordinators });
+                setSettings(prevSettings => prevSettings ? {...prevSettings, coordinators: updatedCoordinators} : null);
+                
+                const userWithPassword = { ...coordinator, password };
+                await loginAction(userWithPassword);
+                toast({ title: "Sukces", description: "Twoje hasło zostało ustawione." });
+            } catch (error) {
+                (window as any).setLoginError('Nie udało się ustawić hasła. Spróbuj ponownie.');
+                 setCurrentUser(null);
+                 sessionStorage.removeItem('currentUser');
+            }
+        } else { // Subsequent logins
+            if (coordinator.password === password) {
+                await loginAction(coordinator);
+            } else {
+                (window as any).setLoginError('Nieprawidłowe hasło.');
+            }
+        }
+    };
 
-const deserializeInspection = (row: any, allDetails: InspectionDetail[]): Inspection | null => {
-    const inspectionId = row.get('id');
-    const addressName = row.get('addressName');
+    const handleLogout = () => {
+        setCurrentUser(null);
+        sessionStorage.removeItem('currentUser');
+        setAllEmployees([]);
+        setAllInspections([]);
+        setAllNonEmployees([]);
+        setAllNotifications([]);
+        setActiveView('dashboard');
+        setSelectedCoordinatorId('all');
+    };
 
-    if (!inspectionId && !addressName) {
-        return null;
-    }
-    
-    const detailsForInspection = allDetails.filter(d => d.inspectionId === inspectionId);
-    
-    const categoriesMap = detailsForInspection.reduce((acc, detail) => {
-        if (!acc[detail.category]) {
-            acc[detail.category] = { name: detail.category, items: [], uwagi: '', photos: [] };
-        }
+    const handleSaveEmployee = async (data: Omit<Employee, 'id' | 'status'> & { oldAddress?: string | null }) => {
+        if (!currentUser) return;
+        
+        try {
+            if (editingEmployee) {
+                await updateEmployee(editingEmployee.id, data, currentUser);
+                 toast({ title: "Sukces", description: "Dane pracownika zostały zaktualizowane." });
+            } else {
+                 await addEmployee(data, currentUser);
+                 toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
+            }
+            // Refetch all data to ensure UI consistency
+            fetchData();
 
-        if(detail.itemLabel === 'Photo' && detail.photoData) {
-            acc[detail.category].photos!.push(detail.photoData);
-        }
-        else if (detail.itemLabel) {
-            const valueStr = detail.itemValue;
-            let value: any = valueStr;
-            
-            if (valueStr === 'true') value = true;
-            else if (valueStr === 'false') value = false;
-            else if (valueStr && valueStr.startsWith('[') && valueStr.endsWith(']')) {
-                try { value = JSON.parse(valueStr); } catch (e) { value = []; }
-            }
-            else if (valueStr && !isNaN(Number(valueStr)) && valueStr.trim() !== '') value = Number(valueStr);
-            else if (valueStr === null || valueStr === '') value = null;
+        } catch(e: any) {
+             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać pracownika." });
+        }
+    };
 
-            const existingItem = acc[detail.category].items.find(i => i.label === detail.itemLabel);
-            if (!existingItem) {
-                 const itemFromChecklist = getInitialChecklist().flatMap(c => c.items).find(i => i.label === detail.itemLabel);
-                 acc[detail.category].items.push({
-                    type: itemFromChecklist?.type || 'info',
-                    label: detail.itemLabel, 
-                    value: value,
-                    options: itemFromChecklist?.options
-                });
-            }
-        }
-        if (detail.uwagi && !acc[detail.category].uwagi) {
-            acc[detail.category].uwagi = detail.uwagi;
-        }
-        return acc;
-    }, {} as Record<string, {name: string, items: InspectionCategoryItem[], uwagi: string, photos?: string[]}>);
-
-    const checklistCategories = getInitialChecklist();
-    const finalCategories = checklistCategories.map(checklistCategory => {
-        const foundCategory = categoriesMap[checklistCategory.name];
-        if (foundCategory) {
-            const finalItems = checklistCategory.items.map(checklistItem => {
-                const foundItem = foundCategory.items.find(i => i.label === checklistItem.label);
-                return foundItem || checklistItem;
-            });
-            return { ...checklistCategory, items: finalItems, uwagi: foundCategory.uwagi || '', photos: foundCategory.photos || [] };
-        }
-        return checklistCategory;
-    });
-
-    // ✅ Використовуємо parse для дати перевірки (потрібен об'єкт Date)
-    const rawDate = row.get('date');
-    let inspectionDate: Date;
-
-    const parsedByFormat = parse(rawDate, SHEET_DATE_FORMAT, new Date());
-    const parsedNatively = new Date(rawDate);
-
-    if (isValid(parsedByFormat)) {
-        inspectionDate = parsedByFormat;
-    } else if (isValid(parsedNatively)) {
-        inspectionDate = parsedNatively;
-    } else {
-        console.error(`Invalid date string for inspection ID ${inspectionId}: ${rawDate}`);
-        inspectionDate = new Date(0); // Fallback
+    const handleSaveNonEmployee = async (data: Omit<NonEmployee, 'id'>) => {
+        try {
+            if (editingNonEmployee) {
+                await updateNonEmployee(editingNonEmployee.id, data)
+            } else {
+                await addNonEmployee(data);
+            }
+            toast({ title: "Sukces", description: editingNonEmployee ? "Dane mieszkańca zostały zaktualizowane." : "Nowy mieszkaniec został dodany." });
+            fetchData();
+        } catch (e: any) {
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać mieszkańca." });
+        }
     }
     
-    return {
-        id: inspectionId,
-        addressId: row.get('addressId'),
-        addressName: addressName,
-        date: inspectionDate, // Використовуємо коректно розпарсену дату
-        coordinatorId: row.get('coordinatorId'),
-        coordinatorName: row.get('coordinatorName'),
-        standard: (row.get('standard') as 'Wysoki' | 'Normalny' | 'Niski') || null,
-        categories: finalCategories,
-    }
-};
+    const handleDeleteNonEmployee = async (id: string) => {
+        try {
+            await deleteNonEmployee(id);
+            toast({ title: "Sukces", description: "Mieszkaniec został usunięty." });
+            fetchData();
+        } catch(e: any) {
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć mieszkańca." });
+        }
+    }
+    
+    const handleUpdateSettings = async (newSettings: Partial<Settings>) => {
+        if (!settings || !currentUser?.isAdmin) {
+             toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administrator może zmieniać ustawienia." });
+            return;
+        }
+        
+        try {
+            await updateSettings(newSettings);
+            toast({ title: "Sukces", description: "Ustawienia zostały zaktualizowane." });
+            fetchData();
+        } catch(e: any) {
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać ustawień." });
+        }
+    };
+    
+    const handleAddInspection = async (inspectionData: Omit<Inspection, 'id'>) => {
+        try {
+            await addInspection(inspectionData);
+            toast({ title: "Sukces", description: "Nowa inspekcja została dodana." });
+            fetchData();
+        } catch(e: any) {
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać inspekcji." });
+        }
+    };
 
-export async function getInspectionsFromSheet(): Promise<Inspection[]> {
-    try {
-        const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, INSPECTION_HEADERS);
-        const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, INSPECTION_DETAILS_HEADERS);
-        
-        const [inspectionRows, detailRows] = await Promise.all([
-            inspectionsSheet.getRows(),
-            detailsSheet.getRows(),
-        ]);
-        
-        const allDetails: InspectionDetail[] = detailRows.map(row => ({
-            id: row.get('id'),
-            inspectionId: row.get('inspectionId'),
-            addressName: row.get('addressName'),
-            date: row.get('date'), // Залишаємо рядок, він потрібен лише для довідки
-            coordinatorName: row.get('coordinatorName'),
-            category: row.get('category'),
-            itemLabel: row.get('itemLabel') || null,
-            itemValue: row.get('itemValue') || null,
-            uwagi: row.get('uwagi') || null,
-            photoData: row.get('photoData') || null,
-        }));
+    const handleUpdateInspection = async (id: string, inspectionData: Omit<Inspection, 'id'>) => {
+        try {
+            await updateInspection(id, inspectionData);
+            toast({ title: "Sukces", description: "Inspekcja została zaktualizowana." });
+            fetchData();
+        } catch(e: any) {
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zaktualizować inspekcji." });
+        }
+    };
 
+    const handleDeleteInspection = async (id: string) => {
+        try {
+            await deleteInspection(id);
+            toast({ title: "Sukces", description: "Inspekcja została usunięta." });
+            fetchData();
+        } catch(e: any) {
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć inspekcji." });
+        }
+    };
 
-        return inspectionRows
-            .map(row => deserializeInspection(row, allDetails))
-            .filter((i): i is Inspection => i !== null)
-            .sort((a, b) => b.date.getTime() - a.date.getTime());
-    } catch (error) {
-        console.error("Error fetching inspections:", error);
-        return [];
-    }
+    const handleAddEmployeeClick = () => {
+        setEditingEmployee(null);
+        setIsFormOpen(true);
+    };
+
+    const handleAddNonEmployeeClick = () => {
+      setEditingNonEmployee(null);
+      setIsNonEmployeeFormOpen(true);
+    }
+
+    const handleEditEmployeeClick = (employee: Employee) => {
+        setEditingEmployee(employee);
+        setIsFormOpen(true);
+    };
+
+    const handleEditNonEmployeeClick = (nonEmployee: NonEmployee) => {
+      setEditingNonEmployee(nonEmployee);
+      setIsNonEmployeeFormOpen(true);
+    }
+    
+    const handleNotificationClick = async (notification: Notification) => {
+        if (notification.employeeId) {
+            const employeeToEdit = allEmployees.find(e => e.id === notification.employeeId);
+            if (employeeToEdit) {
+                handleEditEmployeeClick(employeeToEdit);
+            }
+        }
+        
+        if (!notification.isRead) {
+            setAllNotifications(prev => prev.map(n => n.id === notification.id ? {...n, isRead: true} : n));
+            await markNotificationAsRead(notification.id);
+            // No full refetch needed
+        }
+    };
+    
+    const handleClearNotifications = async () => {
+        if (!currentUser?.isAdmin) {
+             toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administrator może usuwać powiadomienia." });
+             return;
+        }
+        try {
+            await clearAllNotifications();
+            setAllNotifications([]);
+            toast({ title: "Sukces", description: "Wszystkie powiadomienia zostały usunięte." });
+        } catch (e: any) {
+             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć powiadomień." });
+        }
+    }
+
+    const handleDismissEmployee = async (employeeId: string) => {
+        if (!currentUser) return false;
+        try {
+            await updateEmployee(employeeId, { status: 'dismissed', checkOutDate: new Date().toISOString().split('T')[0] }, currentUser);
+            toast({ title: "Sukces", description: "Pracownik został zwolniony." });
+            fetchData();
+            return true;
+        } catch(e: any) {
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zwolnić pracownika." });
+            return false;
+        }
+    };
+
+    const handleRestoreEmployee = async (employeeId: string) => {
+        if (!currentUser) return false;
+        try {
+            await updateEmployee(employeeId, { status: 'active', checkOutDate: null }, currentUser);
+            toast({ title: "Sukces", description: "Pracownik został przywrócony." });
+            fetchData();
+            return true;
+        } catch(e: any) {
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się przywrócić pracownika." });
+            return false;
+        }
+    };
+    
+    const handleBulkDeleteEmployees = async (status: 'active' | 'dismissed') => {
+        if (!currentUser || !currentUser.isAdmin) {
+             toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administrator może usuwać pracowników." });
+            return false;
+        }
+        
+         try {
+            await bulkDeleteEmployees(status, currentUser);
+            toast({ title: "Sukces", description: `Wszyscy ${status === 'active' ? 'aktywni' : 'zwolnieni'} pracownicy zostali usunięci.` });
+            fetchData();
+             return true;
+        } catch(e: any) {
+            toast({ variant: "destructive", title: "Błąd", description: e.message || `Nie udało się usunąć pracowników.` });
+             return false;
+        }
+    }
+
+    const handleRefreshStatuses = async () => {
+        if (!currentUser) return;
+        try {
+            const { updated } = await checkAndUpdateEmployeeStatuses(currentUser);
+            if (updated > 0) {
+                toast({ title: "Sukces", description: `Zaktualizowano statusy dla ${updated} pracowników.`});
+                fetchData();
+            } else {
+                 toast({ title: "Brak zmian", description: "Wszyscy pracownicy mają aktualne statusy."});
+            }
+        } catch (e: any) {
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się odświeżyć statusów." });
+        }
+    };
+    
+    const handleBulkImport = async (fileData: ArrayBuffer) => {
+      try {
+          const result = await bulkImportEmployees(fileData, settings?.coordinators || [], currentUser as Coordinator);
+          await fetchData(true); // Full refresh after import
+          return result;
+      } catch (e: any) {
+          return { success: false, message: e.message || "Wystąpił nieznany błąd." };
+      }
+    };
+
+    const renderView = () => {
+        if (!currentUser || !settings) {
+            return null;
+        }
+
+        switch (activeView) {
+            case 'dashboard':
+                return <DashboardView employees={filteredEmployees} allEmployees={allEmployees} nonEmployees={filteredNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={handleRefreshStatuses} />;
+            case 'employees':
+                return <EmployeesView employees={filteredEmployees} nonEmployees={filteredNonEmployees} settings={settings} onAddEmployee={handleAddEmployeeClick} onEditEmployee={handleEditEmployeeClick} onDismissEmployee={handleDismissEmployee} onRestoreEmployee={handleRestoreEmployee} onBulkDelete={handleBulkDeleteEmployees} currentUser={currentUser} onAddNonEmployee={handleAddNonEmployeeClick} onEditNonEmployee={handleEditNonEmployeeClick} onDeleteNonEmployee={handleDeleteNonEmployee} />;
+            case 'settings':
+                if (!currentUser.isAdmin) {
+                    return <div className="p-4 text-center text-red-500">Brak uprawnień do przeglądania tej strony.</div>;
+                }
+                return <SettingsView settings={settings} onUpdateSettings={handleUpdateSettings} allEmployees={allEmployees} currentUser={currentUser} onDataRefresh={fetchData} onBulkImport={handleBulkImport}/>;
+            case 'inspections':
+                 return <InspectionsView 
+                    inspections={filteredInspections} 
+                    settings={settings}
+                    currentUser={currentUser}
+                    onAddInspection={handleAddInspection}
+                    onUpdateInspection={handleUpdateInspection}
+                    onDeleteInspection={handleDeleteInspection}
+                />;
+            default:
+                return <DashboardView employees={filteredEmployees} allEmployees={allEmployees} nonEmployees={filteredNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={handleRefreshStatuses} />;
+        }
+    };
+    
+    const visibleNavItems = useMemo(() => {
+        if (currentUser?.isAdmin) {
+            return navItems;
+        }
+        return navItems;
+    }, [currentUser]);
+
+    if (isLoading) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center bg-background">
+                <div className="flex animate-fade-in flex-col items-center gap-6">
+                     <h1 className="text-4xl sm:text-5xl md:text-7xl font-semibold tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm">
+                        SmartHouse
+                    </h1>
+                </div>
+            </div>
+        );
+    }
+
+    if (!currentUser) {
+        if (settings) {
+            return <LoginView coordinators={settings.coordinators} onLogin={handleLogin} />;
+        }
+        return (
+             <div className="flex h-screen w-full items-center justify-center bg-background">
+                <div className="flex animate-fade-in flex-col items-center gap-6">
+                     <h1 className="text-4xl sm:text-5xl md:text-7xl font-semibold tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm">
+                        SmartHouse
+                    </h1>
+                </div>
+            </div>
+        );
+    }
+    
+    if (!settings) {
+        return (
+           <div className="flex h-screen w-full items-center justify-center">
+               <p>Błąd ładowania ustawień. Spróbuj odświeżyć stronę.</p>
+           </div>
+       );
+   }
+
+    return (
+        <div className="flex h-screen w-full bg-muted/50">
+             <Sidebar>
+                <SidebarHeader>
+                    <div className="flex items-center gap-2">
+                        <Building className="h-8 w-8 text-primary" />
+                        <span className="font-semibold text-xl group-data-[collapsible=icon]:hidden">SmartHouse</span>
+                    </div>
+                </SidebarHeader>
+                <SidebarContent>
+                    <SidebarMenu>
+                        {visibleNavItems.map(item => (
+                             <SidebarMenuItem key={item.view}>
+                                <SidebarMenuButton 
+                                    onClick={() => {
+                                        if (item.view === 'settings' && !currentUser?.isAdmin) return;
+                                        setActiveView(item.view)
+                                    }} 
+                                    isActive={activeView === item.view}
+                                    tooltip={item.label}
+                                    disabled={item.view === 'settings' && !currentUser?.isAdmin}
+                                >
+                                    <item.icon />
+                                    <span>{item.label}</span>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        ))}
+                    </SidebarMenu>
+                </SidebarContent>
+                <SidebarFooter>
+                </SidebarFooter>
+            </Sidebar>
+            <div className="flex flex-1 flex-col">
+                <Header user={currentUser} activeView={activeView} notifications={filteredNotifications} onNotificationClick={handleNotificationClick} onLogout={handleLogout} onClearNotifications={handleClearNotifications} />
+                <main className="flex-1 overflow-y-auto px-2 sm:px-6 pb-6 pt-4">
+                    {renderView()}
+                </main>
+            </div>
+            
+            {isMobile && <MobileNav activeView={activeView} setActiveView={setActiveView} navItems={visibleNavItems} currentUser={currentUser}/>}
+            
+            {settings && (
+                 <AddEmployeeForm
+                    isOpen={isFormOpen}
+                    onOpenChange={setIsFormOpen}
+                    onSave={handleSaveEmployee}
+                    settings={settings}
+                    employee={editingEmployee}
+                />
+            )}
+             {settings && (
+                 <AddNonEmployeeForm
+                    isOpen={isNonEmployeeFormOpen}
+                    onOpenChange={setIsNonEmployeeFormOpen}
+                    onSave={handleSaveNonEmployee}
+                    settings={settings}
+                    nonEmployee={editingNonEmployee}
+                />
+            )}
+        </div>
+    );
+}
+
+export default function MainLayout() {
+    return (
+        <SidebarProvider>
+            <MainContent />
+        </SidebarProvider>
+    );
 }
