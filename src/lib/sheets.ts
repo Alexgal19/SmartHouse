@@ -31,16 +31,17 @@ const doc = new GoogleSpreadsheet(SPREADSHEET_ID, serviceAccountAuth);
 const parseDate = (dateStr: string | undefined | null): Date | null => {
     if (!dateStr) return null;
     
-    // Try parsing as YYYY-MM-DD first.
-    let date = parse(dateStr, 'yyyy-MM-dd', new Date());
+    // Try parsing as YYYY-MM-DD. This is the most reliable format.
+    // The 'new Date()' constructor can be inconsistent with timezone-less dates.
+    const date = parse(dateStr, 'yyyy-MM-dd', new Date());
     if (isValid(date)) {
         return date;
     }
 
-    // Try parsing as a full ISO string
-    date = parseISO(dateStr);
-    if (isValid(date)) {
-        return date;
+    // Fallback for full ISO strings or other formats JS can handle
+    const isoDate = parseISO(dateStr);
+    if (isValid(isoDate)) {
+        return isoDate;
     }
 
     console.warn(`Could not parse date: ${dateStr}`);
@@ -186,7 +187,7 @@ export async function getSheet(title: string, headers: string[]): Promise<Google
 }
 
 
-export async function getEmployees(): Promise<Employee[]> {
+export async function getEmployeesFromSheet(): Promise<Employee[]> {
   try {
     const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
     const rows = await sheet.getRows();
@@ -197,7 +198,7 @@ export async function getEmployees(): Promise<Employee[]> {
   }
 }
 
-export async function getNonEmployees(): Promise<NonEmployee[]> {
+export async function getNonEmployeesFromSheet(): Promise<NonEmployee[]> {
   try {
     const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
     const rows = await sheet.getRows();
@@ -208,7 +209,7 @@ export async function getNonEmployees(): Promise<NonEmployee[]> {
   }
 }
 
-export async function getSettings(): Promise<Settings> {
+export async function getSettingsFromSheet(): Promise<Settings> {
   try {
     const nationalitiesSheet = await getSheet(SHEET_NAME_NATIONALITIES, ['name']);
     const departmentsSheet = await getSheet(SHEET_NAME_DEPARTMENTS, ['name']);
@@ -265,7 +266,7 @@ export async function getSettings(): Promise<Settings> {
   }
 }
 
-export async function getNotifications(): Promise<Notification[]> {
+export async function getNotificationsFromSheet(): Promise<Notification[]> {
     try {
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
         const rows = await sheet.getRows();
@@ -395,7 +396,7 @@ const deserializeInspection = (row: any, allDetails: InspectionDetail[]): Inspec
     }
 };
 
-export async function getInspections(): Promise<Inspection[]> {
+export async function getInspectionsFromSheet(): Promise<Inspection[]> {
     try {
         const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, INSPECTION_HEADERS);
         const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, INSPECTION_DETAILS_HEADERS);

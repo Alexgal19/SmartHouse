@@ -2,7 +2,7 @@
 "use server";
 
 import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, NonEmployee, DeductionReason } from '@/types';
-import { getSheet, getEmployees as getEmployeesFromSheet, getSettings as getSettingsFromSheet, getNotifications as getNotificationsFromSheet, getInspections as getInspectionsFromSheet, getNonEmployees as getNonEmployeesFromSheet } from '@/lib/sheets';
+import { getSheet, getEmployeesFromSheet, getSettings as getSettingsFromSheet, getNotifications as getNotificationsFromSheet, getInspections as getInspectionsFromSheet, getNonEmployees as getNonEmployeesFromSheet } from '@/lib/sheets';
 import { format, isEqual, parseISO, isPast, isValid, parse } from 'date-fns';
 import * as XLSX from 'xlsx';
 
@@ -21,6 +21,8 @@ const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 
 const serializeDate = (date: Date | null | undefined): string => {
     if (!date || !isValid(date)) return '';
+    // Format as YYYY-MM-DD to avoid timezone issues.
+    // The sheet will interpret this correctly as a date.
     return format(date, 'yyyy-MM-dd');
 };
 
@@ -191,15 +193,6 @@ const formatDateForChanges = (date: Date | null | undefined): string => {
     return format(date, 'dd-MM-yyyy');
 };
 
-const parseDateForChanges = (dateStr: string | undefined | null): Date | null => {
-  if (!dateStr) return null;
-  // Try to parse different formats that might come from sheet or UI
-  let date = parse(dateStr, 'yyyy-MM-dd', new Date());
-  if (isValid(date)) return date;
-  date = parseISO(dateStr);
-  if (isValid(date)) return date;
-  return null;
-};
 
 const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): NotificationChange[] => {
     const changes: NotificationChange[] = [];
@@ -241,9 +234,9 @@ const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): 
         if (Array.isArray(oldValue) && Array.isArray(newValue)) {
             areEqual = JSON.stringify(oldValue.sort()) === JSON.stringify(newValue.sort());
         } else if (isDateField) {
-            const oldDate = oldValue instanceof Date ? oldValue : parseDateForChanges(oldValue as string);
-            const newDate = newValue instanceof Date ? newValue : parseDateForChanges(newValue as string);
-             if (oldDate === null && newDate === null) {
+            const oldDate = oldValue instanceof Date ? oldValue : null;
+            const newDate = newValue instanceof Date ? newValue : null;
+            if (oldDate === null && newDate === null) {
                 areEqual = true;
             } else if (oldDate && newDate) {
                 areEqual = isEqual(oldDate, newDate);
@@ -863,8 +856,8 @@ export async function checkAndUpdateEmployeeStatuses(actor: Coordinator): Promis
       const contractEndDateStr = row.get('contractEndDate');
       
       if (status === 'active' && contractEndDateStr) {
-        const contractEndDate = parseDateForChanges(contractEndDateStr);
-        if (contractEndDate && isPast(contractEndDate)) {
+        const contractEndDate = parse(contractEndDateStr, 'yyyy-MM-dd', new Date());
+        if (isValid(contractEndDate) && isPast(contractEndDate)) {
           const employeeId = row.get('id');
           const employeeName = row.get('fullName');
           row.set('status', 'dismissed');
@@ -892,8 +885,5 @@ export async function checkAndUpdateEmployeeStatuses(actor: Coordinator): Promis
     throw new Error("Could not update statuses.");
   }
 }
-
-
-    
 
     
