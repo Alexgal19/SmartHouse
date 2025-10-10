@@ -904,5 +904,3 @@ export async function checkAndUpdateEmployeeStatuses(actor: Coordinator): Promis
     throw new Error("Could not update statuses.");
   }
 }
-
-    
