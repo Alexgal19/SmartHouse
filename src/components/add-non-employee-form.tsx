@@ -35,15 +35,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
 import { format } from "date-fns";
 
-const dateStringSchema = z.string().refine(val => val.match(/^\d{4}-\d{2}-\d{2}$/), {
-  message: "Data musi być w formacie YYYY-MM-DD.",
-}).nullable().optional();
+const dateStringSchema = z.string().nullable().optional();
 
 const nonEmployeeSchema = z.object({
   fullName: z.string().min(3, "Imię i nazwisko musi mieć co najmniej 3 znaki."),
   address: z.string().min(1, "Adres jest wymagany."),
   roomNumber: z.string().min(1, "Numer pokoju jest wymagany."),
-  checkInDate: z.string({ required_error: "Data zameldowania jest wymagana." }).refine(val => val.match(/^\d{4}-\d{2}-\d{2}$/)),
+  checkInDate: z.string({ required_error: "Data zameldowania jest wymagana." }),
   checkOutDate: dateStringSchema,
   comments: z.string().optional(),
 });
