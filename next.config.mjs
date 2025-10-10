@@ -1,16 +1,16 @@
-/** @type {import('next').NextConfig} */
-import withPWA from 'next-pwa';
 
+import nextPwa from 'next-pwa';
+
+const withPWA = nextPwa({
+  dest: 'public',
+  register: true,
+  skipWaiting: true,
+  disable: false,
+});
+
+/** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Your existing Next.js config
+  // Your Next.js config ...
 };
 
-export default withPWA({
-  ...nextConfig,
-  pwa: {
-    dest: 'public',
-    register: true,
-    skipWaiting: true,
-    disable: false, // Ensure PWA is enabled in development
-  },
-});
+export default withPWA(nextConfig);
