@@ -62,19 +62,8 @@ function MainContent() {
                 getInspections(),
                 getNonEmployees(),
             ]);
-            setAllEmployees(employeesData.map((e: any) => ({
-                ...e,
-                checkInDate: new Date(e.checkInDate),
-                checkOutDate: e.checkOutDate ? new Date(e.checkOutDate) : null,
-                contractStartDate: e.contractStartDate ? new Date(e.contractStartDate) : null,
-                contractEndDate: e.contractEndDate ? new Date(e.contractEndDate) : null,
-                departureReportDate: e.departureReportDate ? new Date(e.departureReportDate) : null,
-            })));
-            setAllNonEmployees(nonEmployeesData.map((ne: any) => ({
-                ...ne,
-                checkInDate: new Date(ne.checkInDate),
-                checkOutDate: ne.checkOutDate ? new Date(ne.checkOutDate) : null,
-            })));
+            setAllEmployees(employeesData);
+            setAllNonEmployees(nonEmployeesData);
             setSettings(settingsData);
             setAllNotifications(notificationsData.map((n:any) => ({...n, createdAt: new Date(n.createdAt)})));
             setAllInspections(inspectionsData.map((i: any) => ({...i, date: new Date(i.date)})));
@@ -105,7 +94,7 @@ function MainContent() {
                 .catch(console.error)
                 .finally(() => setIsLoading(false));
         }
-    }, []);
+    }, [fetchData]);
 
     const filteredEmployees = useMemo(() => {
         if (!currentUser) return [];
@@ -422,10 +411,10 @@ function MainContent() {
     const handleDismissEmployee = async (employeeId: string) => {
         if (!currentUser) return;
         const originalEmployees = allEmployees;
-        setAllEmployees(prev => prev.map(e => e.id === employeeId ? { ...e, status: 'dismissed', checkOutDate: new Date() } : e));
+        setAllEmployees(prev => prev.map(e => e.id === employeeId ? { ...e, status: 'dismissed', checkOutDate: new Date().toISOString().split('T')[0] } : e));
 
         try {
-            await updateEmployee(employeeId, { status: 'dismissed', checkOutDate: new Date() }, currentUser);
+            await updateEmployee(employeeId, { status: 'dismissed', checkOutDate: new Date().toISOString().split('T')[0] }, currentUser);
             toast({ title: "Sukces", description: "Pracownik został zwolniony." });
         } catch(e: any) {
             setAllEmployees(originalEmployees); // Revert
@@ -476,14 +465,7 @@ function MainContent() {
                     getEmployees(),
                     getNotifications()
                 ]);
-                 setAllEmployees(employeesData.map((e: any) => ({
-                    ...e,
-                    checkInDate: new Date(e.checkInDate),
-                    checkOutDate: e.checkOutDate ? new Date(e.checkOutDate) : null,
-                    contractStartDate: e.contractStartDate ? new Date(e.contractStartDate) : null,
-                    contractEndDate: e.contractEndDate ? new Date(e.contractEndDate) : null,
-                    departureReportDate: e.departureReportDate ? new Date(e.departureReportDate) : null,
-                })));
+                 setAllEmployees(employeesData);
                  setAllNotifications(notificationsData.map((n:any) => ({...n, createdAt: new Date(n.createdAt)})));
             } else {
                  toast({ title: "Brak zmian", description: "Wszyscy pracownicy mają aktualne statusy."});
