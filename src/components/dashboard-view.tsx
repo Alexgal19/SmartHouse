@@ -37,7 +37,7 @@ const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return 'N/A';
     try {
         const date = new Date(dateString);
-        if (!isValid(date)) return 'Invalid Date';
+        if (isNaN(date.getTime())) return 'Invalid Date';
         // Add time to treat it as local date, avoiding timezone shifts
         return format(new Date(dateString + 'T00:00:00'), 'dd-MM-yyyy');
     } catch {
@@ -654,7 +654,7 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                                 <DialogHeader>
                                     <DialogTitle>Pracownicy z nadchodzącym terminem wykwaterowania</DialogTitle>
                                 </DialogHeader>
-                                <ScrollArea className="h-full">
+                                <ScrollArea className="h-[60vh]">
                                 <div className="pr-4">
                                     {upcomingCheckoutsList.length > 0 ? (
                                         upcomingCheckoutsList.map(employee => (
@@ -791,3 +791,5 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
     </div>
   );
 }
+
+    
