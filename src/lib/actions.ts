@@ -1,4 +1,3 @@
-
 "use server";
 
 import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, NonEmployee } from '@/types';
@@ -890,5 +889,3 @@ export async function checkAndUpdateEmployeeStatuses(actor: Coordinator): Promis
     throw new Error("Could not update statuses.");
   }
 }
-
-    
