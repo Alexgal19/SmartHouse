@@ -383,7 +383,7 @@ const FilterDialog = ({
 const PAGE_SIZE = 50;
 
 export default function EmployeesView({
-  employees: initialEmployees,
+  employees,
   nonEmployees,
   settings,
   onAddEmployee,
@@ -461,11 +461,11 @@ export default function EmployeesView({
     }, 500);
 
     return () => clearTimeout(handler);
-  }, [searchTerm]);
+  }, [searchTerm, fetchPageData]);
 
   useEffect(() => {
     fetchPageData();
-  }, [page, activeTab, filters, fetchPageData]);
+  }, [page, activeTab, filters]);
 
 
   const filteredNonEmployees = useMemo(() => {
@@ -662,6 +662,8 @@ export default function EmployeesView({
     </Card>
   );
 }
+
+    
 
     
 
