@@ -1,6 +1,5 @@
 
 "use server";
-import 'dotenv/config';
 // src/lib/sheets.ts
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';

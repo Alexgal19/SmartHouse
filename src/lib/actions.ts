@@ -87,20 +87,46 @@ const NON_EMPLOYEE_HEADERS = [
 
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
 
-export async function getEmployees(): Promise<Employee[]> {
-  try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/employees`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('Failed to fetch employees');
-    return res.json();
-  } catch (error) {
-    console.error("Error in getEmployees:", error);
-    throw new Error(`Could not fetch employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
+function getBaseUrl() {
+    if (process.env.VERCEL_URL) {
+      return `https://${process.env.VERCEL_URL}`;
+    }
+    // Assume localhost for development
+    return `http://localhost:${process.env.PORT || 9002}`;
+}
+
+export async function getEmployees({ filters = {}, all = false }: { filters?: Record<string, string>; all?: boolean } = {}): Promise<{ employees: Employee[]; total: number }> {
+    try {
+        const baseUrl = getBaseUrl();
+        const url = new URL(`${baseUrl}/api/employees`);
+        
+        const params = new URLSearchParams();
+        if (all) {
+            params.append('all', 'true');
+        }
+        Object.entries(filters).forEach(([key, value]) => {
+            if (value) params.append(key, value);
+        });
+        url.search = params.toString();
+
+        const res = await fetch(url.toString(), { cache: 'no-store' });
+        if (!res.ok) throw new Error('Failed to fetch employees');
+        
+        if (all) {
+            const employees = await res.json();
+            return { employees, total: employees.length };
+        }
+        
+        return res.json();
+    } catch (error) {
+        console.error("Error in getEmployees:", error);
+        throw new Error(`Could not fetch employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
 }
 
 export async function getAllEmployees(): Promise<Employee[]> {
     try {
-        const { employees } = await getEmployeesFromSheet({ all: true });
+        const { employees } = await getEmployees({ all: true });
         return employees;
     } catch (error) {
         console.error("Error in getAllEmployees (actions):", error);
@@ -110,7 +136,10 @@ export async function getAllEmployees(): Promise<Employee[]> {
 
 export async function getNonEmployees(): Promise<NonEmployee[]> {
   try {
-    return await getNonEmployeesFromSheet();
+    const baseUrl = getBaseUrl();
+    const res = await fetch(`${baseUrl}/api/non-employees`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to fetch non-employees');
+    return res.json();
   } catch (error) {
     console.error("Error in getNonEmployees (actions):", error);
     throw new Error(`Could not fetch non-employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -119,7 +148,8 @@ export async function getNonEmployees(): Promise<NonEmployee[]> {
 
 export async function getSettings(): Promise<Settings> {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/settings`, { next: { revalidate: 0 } });
+    const baseUrl = getBaseUrl();
+    const res = await fetch(`${baseUrl}/api/settings`, { next: { revalidate: 0 } });
     if (!res.ok) {
         const errorBody = await res.text();
         throw new Error(`Failed to fetch settings: ${res.statusText} - ${errorBody}`);
@@ -309,7 +339,7 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
         
         const rowToUpdate = rows[rowIndex];
         
-        const { employees: [currentData] } = await getEmployeesFromSheet({ filters: { id: employeeId } });
+        const { employees: [currentData] } = await getEmployees({ filters: { id: employeeId } });
 
         if (!currentData) throw new Error("Employee not found for change detection");
 
@@ -449,7 +479,8 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Se
 
 export async function getNotifications(): Promise<Notification[]> {
     try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/notifications`, { cache: 'no-store' });
+        const baseUrl = getBaseUrl();
+        const res = await fetch(`${baseUrl}/api/notifications`, { cache: 'no-store' });
         if (!res.ok) throw new Error('Failed to fetch notifications');
         return res.json();
     } catch (error) {
@@ -508,7 +539,8 @@ const serializeInspection = (inspection: Omit<Inspection, 'categories'>): Record
 
 export async function getInspections(): Promise<Inspection[]> {
     try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/inspections`, { cache: 'no-store' });
+        const baseUrl = getBaseUrl();
+        const res = await fetch(`${baseUrl}/api/inspections`, { cache: 'no-store' });
         if (!res.ok) throw new Error('Failed to fetch inspections');
         return res.json();
     } catch (error) {
