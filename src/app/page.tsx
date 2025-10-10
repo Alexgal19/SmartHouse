@@ -15,26 +15,22 @@ export default function LoginPage() {
     const router = useRouter();
 
     useEffect(() => {
-        const loggedInUser = sessionStorage.getItem('currentUser');
-        if (loggedInUser) {
-            router.push('/dashboard');
-        } else {
-             getSettings()
-                .then(settings => {
-                    if (settings && settings.coordinators) {
-                        setCoordinators(settings.coordinators)
-                    }
+        // We only fetch settings, no more automatic redirection
+        getSettings()
+            .then(settings => {
+                if (settings && settings.coordinators) {
+                    setCoordinators(settings.coordinators)
+                }
+            })
+            .catch(err => {
+                toast({
+                    variant: "destructive",
+                    title: "Błąd ładowania",
+                    description: `Nie udało się pobrać listy koordynatorów. ${err.message}`
                 })
-                .catch(err => {
-                    toast({
-                        variant: "destructive",
-                        title: "Błąd ładowania",
-                        description: `Nie udało się pobrać listy koordynatorów. ${err.message}`
-                    })
-                })
-                .finally(() => setIsLoading(false));
-        }
-    }, [router, toast]);
+            })
+            .finally(() => setIsLoading(false));
+    }, [toast]);
     
     const handleLogin = async (user: {name: string}, password?: string) => {
         const adminLogin = process.env.NEXT_PUBLIC_ADMIN_LOGIN || 'admin';
@@ -96,5 +92,3 @@ export default function LoginPage() {
     
     return <LoginView coordinators={coordinators} onLogin={handleLogin} />;
 }
-
-    

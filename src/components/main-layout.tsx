@@ -45,22 +45,41 @@ export default function MainLayout({
     }, [searchParams]);
 
     useEffect(() => {
-        try {
-            const loggedInUser = sessionStorage.getItem('currentUser');
-            if (loggedInUser) {
-                const user = JSON.parse(loggedInUser);
-                setCurrentUser(user);
-                 getNotifications()
-                    .then(notificationsData => setAllNotifications(notificationsData.map((n:any) => ({...n, createdAt: new Date(n.createdAt)}))))
-                    .catch(() => toast({variant: "destructive", title: "Błąd", description: "Nie udało się załadować powiadomień"}));
-            } else {
+        const checkUser = () => {
+            try {
+                const loggedInUser = sessionStorage.getItem('currentUser');
+                if (loggedInUser) {
+                    const user = JSON.parse(loggedInUser);
+                    setCurrentUser(user);
+                     getNotifications()
+                        .then(notificationsData => setAllNotifications(notificationsData.map((n:any) => ({...n, createdAt: new Date(n.createdAt)}))))
+                        .catch(() => toast({variant: "destructive", title: "Błąd", description: "Nie udało się załadować powiadomień"}));
+                } else {
+                    router.push('/');
+                }
+            } catch (error) {
                 router.push('/');
+            } finally {
+                setIsLoading(false);
             }
-        } catch (error) {
-            router.push('/');
-        } finally {
-            setIsLoading(false);
-        }
+        };
+
+        // On component mount, check the user's login status.
+        checkUser();
+
+        // Optional: you can add a listener for storage changes if you want to
+        // handle logout/login from other tabs.
+        const handleStorageChange = (event: StorageEvent) => {
+            if (event.key === 'currentUser') {
+                checkUser();
+            }
+        };
+
+        window.addEventListener('storage', handleStorageChange);
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+        };
+
     }, [router, toast]);
     
     const handleLogout = () => {
@@ -165,5 +184,3 @@ export default function MainLayout({
         </div>
     );
 }
-
-    
