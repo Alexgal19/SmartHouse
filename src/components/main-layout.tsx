@@ -22,7 +22,7 @@ import InspectionsView from './inspections-view';
 import { AddEmployeeForm } from './add-employee-form';
 import { AddNonEmployeeForm } from './add-non-employee-form';
 import { LoginView } from './login-view';
-import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead, getInspections, addInspection, updateInspection, deleteInspection, transferEmployees, bulkDeleteEmployees, bulkImportEmployees, clearAllNotifications, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee } from '@/lib/actions';
+import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getNotifications, markNotificationAsRead, getInspections, addInspection, updateInspection, deleteInspection, transferEmployees, bulkDeleteEmployees, bulkImportEmployees, clearAllNotifications, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee, checkAndUpdateEmployeeStatuses } from '@/lib/actions';
 import type { Employee, Settings, User, View, Notification, Coordinator, Inspection, NonEmployee } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Building, ClipboardList, Home, Settings as SettingsIcon, Users } from 'lucide-react';
@@ -260,7 +260,10 @@ function MainContent() {
             // Replace temp employee with saved one or update existing
             setAllEmployees(prev => prev.map(e => e.id === (editingEmployee?.id || savedEmployee.id) || e.id.startsWith('temp-') ? savedEmployee : e));
             toast({ title: "Sukces", description: editingEmployee ? "Dane pracownika zostały zaktualizowane." : "Nowy pracownik został dodany." });
-            fetchData(); // Sync notifications and other potential changes
+            
+            // Light refetch for notifications
+            getNotifications().then(notificationsData => setAllNotifications(notificationsData.map((n:any) => ({...n, createdAt: new Date(n.createdAt)}))));
+
         } catch(e: any) {
              toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać pracownika." });
              fetchData(true); // Revert optimistic update on error
@@ -315,7 +318,8 @@ function MainContent() {
         try {
             await updateSettings(newSettings);
             toast({ title: "Sukces", description: "Ustawienia zostały zaktualizowane." });
-            await fetchData(); // Refetch to confirm changes
+            // Refetch settings to confirm changes from server
+            getSettings().then(setSettings);
         } catch(e: any) {
             setSettings(originalSettings); // Revert
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać ustawień." });
@@ -330,7 +334,7 @@ function MainContent() {
         try {
             await addInspection(inspectionData);
             toast({ title: "Sukces", description: "Nowa inspekcja została dodana." });
-            await fetchData(); // Full refetch to get real ID
+            getInspections().then(data => setAllInspections(data.map((i: any) => ({...i, date: new Date(i.date)})))); // light refetch
         } catch(e: any) {
             setAllInspections(prev => prev.filter(i => i.id !== tempId)); // Revert
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać inspekcji." });
@@ -344,7 +348,7 @@ function MainContent() {
         try {
             await updateInspection(id, inspectionData);
             toast({ title: "Sukces", description: "Inspekcja została zaktualizowana." });
-            await fetchData(); // Full refetch
+            getInspections().then(data => setAllInspections(data.map((i: any) => ({...i, date: new Date(i.date)})))); // light refetch
         } catch(e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zaktualizować inspekcji." });
             await fetchData(true); // Revert
@@ -462,6 +466,32 @@ function MainContent() {
         }
     }
 
+    const handleRefreshStatuses = async () => {
+        if (!currentUser) return;
+        try {
+            const { updated } = await checkAndUpdateEmployeeStatuses(currentUser);
+            if (updated > 0) {
+                toast({ title: "Sukces", description: `Zaktualizowano statusy dla ${updated} pracowników.`});
+                const [employeesData, notificationsData] = await Promise.all([
+                    getEmployees(),
+                    getNotifications()
+                ]);
+                 setAllEmployees(employeesData.map((e: any) => ({
+                    ...e,
+                    checkInDate: new Date(e.checkInDate),
+                    checkOutDate: e.checkOutDate ? new Date(e.checkOutDate) : null,
+                    contractStartDate: e.contractStartDate ? new Date(e.contractStartDate) : null,
+                    contractEndDate: e.contractEndDate ? new Date(e.contractEndDate) : null,
+                    departureReportDate: e.departureReportDate ? new Date(e.departureReportDate) : null,
+                })));
+                 setAllNotifications(notificationsData.map((n:any) => ({...n, createdAt: new Date(n.createdAt)})));
+            } else {
+                 toast({ title: "Brak zmian", description: "Wszyscy pracownicy mają aktualne statusy."});
+            }
+        } catch (e: any) {
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się odświeżyć statusów." });
+        }
+    };
     
     const handleBulkImport = async (fileData: ArrayBuffer) => {
       try {
@@ -480,7 +510,7 @@ function MainContent() {
 
         switch (activeView) {
             case 'dashboard':
-                return <DashboardView employees={filteredEmployees} nonEmployees={filteredNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={fetchData} />;
+                return <DashboardView employees={filteredEmployees} nonEmployees={filteredNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={handleRefreshStatuses} />;
             case 'employees':
                 return <EmployeesView employees={filteredEmployees} nonEmployees={filteredNonEmployees} settings={settings} onAddEmployee={handleAddEmployeeClick} onEditEmployee={handleEditEmployeeClick} onDismissEmployee={handleDismissEmployee} onRestoreEmployee={handleRestoreEmployee} onBulkDelete={handleBulkDeleteEmployees} currentUser={currentUser} onAddNonEmployee={handleAddNonEmployeeClick} onEditNonEmployee={handleEditNonEmployeeClick} onDeleteNonEmployee={handleDeleteNonEmployee} />;
             case 'settings':
@@ -498,7 +528,7 @@ function MainContent() {
                     onDeleteInspection={handleDeleteInspection}
                 />;
             default:
-                return <DashboardView employees={filteredEmployees} nonEmployees={filteredNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={fetchData} />;
+                return <DashboardView employees={filteredEmployees} nonEmployees={filteredNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={handleRefreshStatuses} />;
         }
     };
     

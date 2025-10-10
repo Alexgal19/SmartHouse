@@ -29,7 +29,7 @@ interface DashboardViewProps {
   currentUser: Coordinator;
   selectedCoordinatorId: string;
   onSelectCoordinator: (id: string) => void;
-  onDataRefresh: () => void;
+  onDataRefresh: () => Promise<void>;
 }
 
 
@@ -434,10 +434,11 @@ export default function DashboardView({ employees, nonEmployees, settings, onEdi
   const employeesByNationality = useMemo(() => aggregateData('nationality'), [activeEmployees]);
   const employeesByDepartment = useMemo(() => aggregateData('zaklad'), [activeEmployees]);
 
-  const handleRefreshStatuses = async () => {
-    // This is now handled in main-layout, but we can keep the button for manual refresh if desired.
-    // This function can be reimplemented if a manual refresh button is added back.
-  };
+  const handleRefreshClick = async () => {
+    setIsRefreshing(true);
+    await onDataRefresh();
+    setIsRefreshing(false);
+  }
 
   return (
     <div className="space-y-6">
@@ -449,7 +450,7 @@ export default function DashboardView({ employees, nonEmployees, settings, onEdi
                             <CardTitle>Filtry Główne</CardTitle>
                             <CardDescription>Wybierz koordynatora i odśwież statusy umów.</CardDescription>
                         </div>
-                        <Button onClick={onDataRefresh} disabled={isRefreshing}>
+                        <Button onClick={handleRefreshClick} disabled={isRefreshing}>
                             <RefreshCw className={cn("mr-2 h-4 w-4", isRefreshing && "animate-spin")} />
                            {isRefreshing ? 'Odświeżanie...' : 'Odśwież statusy'}
                         </Button>
