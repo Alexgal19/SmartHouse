@@ -332,10 +332,10 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
   const upcomingCheckoutsList = useMemo(() => {
     const today = new Date();
     const next30Days = { start: today, end: new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000) };
-    return activeEmployees
-      .filter(e => e.contractEndDate && isWithinInterval(e.contractEndDate, next30Days))
+    return allEmployees
+      .filter(e => e.status === 'active' && e.contractEndDate && isWithinInterval(e.contractEndDate, next30Days))
       .sort((a, b) => a.contractEndDate!.getTime() - b.contractEndDate!.getTime());
-  }, [activeEmployees]);
+  }, [allEmployees]);
   
   const upcomingCheckoutsCount = upcomingCheckoutsList.length;
 
@@ -645,9 +645,3 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
     </div>
   );
 }
-
-    
-
-    
-
-    
