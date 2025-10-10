@@ -30,9 +30,9 @@ const doc = new GoogleSpreadsheet(SPREADSHEET_ID, serviceAccountAuth);
 
 const parseDate = (dateStr: string | undefined | null): Date | null => {
   if (!dateStr) return null;
-  const date = new Date(dateStr);
-   if (!isNaN(date.getTime())) {
-    date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+  // This will parse YYYY-MM-DD as local time, not UTC.
+  const date = new Date(`${dateStr}T00:00:00`); 
+  if (!isNaN(date.getTime())) {
     return date;
   }
   return null;
@@ -433,5 +433,7 @@ export async function getInspections(): Promise<Inspection[]> {
         return [];
     }
 }
+
+    
 
     

@@ -1,6 +1,7 @@
+
 "use server";
 
-import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, NonEmployee } from '@/types';
+import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, NonEmployee, DeductionReason } from '@/types';
 import { getSheet, getEmployees as getEmployeesFromSheet, getSettings as getSettingsFromSheet, getNotifications as getNotificationsFromSheet, getInspections as getInspectionsFromSheet, getNonEmployees as getNonEmployeesFromSheet } from '@/lib/sheets';
 import { format, isEqual, parseISO, isPast, isValid } from 'date-fns';
 import * as XLSX from 'xlsx';
@@ -22,7 +23,7 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
     const serialized: Record<string, string | number | boolean> = {};
     for (const [key, value] of Object.entries(employee)) {
         if (value instanceof Date) {
-            serialized[key] = format(value, 'yyyy-MM-dd');
+            serialized[key] = value.toISOString().split('T')[0];
         } else if (Array.isArray(value)) {
             serialized[key] = JSON.stringify(value);
         } else if (value !== null && value !== undefined) {
@@ -38,7 +39,7 @@ const serializeNonEmployee = (nonEmployee: Partial<NonEmployee>): Record<string,
     const serialized: Record<string, string | number | boolean> = {};
     for (const [key, value] of Object.entries(nonEmployee)) {
         if (value instanceof Date) {
-            serialized[key] = format(value, 'yyyy-MM-dd');
+            serialized[key] = value.toISOString().split('T')[0];
         } else if (value !== null && value !== undefined) {
             serialized[key] = value.toString();
         } else {
@@ -889,3 +890,6 @@ export async function checkAndUpdateEmployeeStatuses(actor: Coordinator): Promis
     throw new Error("Could not update statuses.");
   }
 }
+
+
+    
