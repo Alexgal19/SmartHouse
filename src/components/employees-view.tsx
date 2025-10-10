@@ -468,10 +468,12 @@ export default function EmployeesView({
     return () => {
       clearTimeout(handler);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm]);
 
 
   const filteredNonEmployees = useMemo(() => {
+    if (!nonEmployees) return [];
     return nonEmployees.filter(person => {
       const searchMatch = searchTerm === '' || person.fullName.toLowerCase().includes(searchTerm.toLowerCase());
       const addressMatch = filters.addressFilter === 'all' || person.address === filters.addressFilter;
@@ -544,7 +546,7 @@ export default function EmployeesView({
     }
     return (
         <>
-            {currentUser.isAdmin && list.length > 0 && (
+            {currentUser.isAdmin && list && list.length > 0 && (
                 <div className="flex justify-end mb-4">
                      <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -587,7 +589,7 @@ export default function EmployeesView({
     if (!isMounted) {
       return <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>;
     }
-    return <NonEmployeeListComponent nonEmployees={list} onEdit={onEditNonEmployee} onDelete={onDeleteNonEmployee} />
+    return <NonEmployeeListComponent nonEmployees={list || []} onEdit={onEditNonEmployee} onDelete={onDeleteNonEmployee} />
   }
 
 
