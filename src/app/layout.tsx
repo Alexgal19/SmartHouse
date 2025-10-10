@@ -8,11 +8,13 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 export const metadata: Metadata = {
   title: 'SmartHouse',
   description: 'Zarządzanie zakwaterowaniem pracowników',
+  manifest: '/manifest.json',
 };
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  themeColor: '#F97316',
 };
 
 export default function RootLayout({
