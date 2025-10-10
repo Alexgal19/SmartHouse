@@ -154,8 +154,8 @@ function MainContent() {
     const handleLogin = async (user: {name: string}, password?: string) => {
         if (!settings) return;
         
-        const adminLogin = process.env.ADMIN_LOGIN || 'admin';
-        const adminPassword = process.env.ADMIN_PASSWORD || 'password';
+        const adminLogin = process.env.NEXT_PUBLIC_ADMIN_LOGIN || 'admin';
+        const adminPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'password';
         const lowerCaseName = user.name.toLowerCase();
 
         if (lowerCaseName === adminLogin.toLowerCase()) {
@@ -578,3 +578,5 @@ export default function MainLayout() {
         </SidebarProvider>
     );
 }
+
+    
