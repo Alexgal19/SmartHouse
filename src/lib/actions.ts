@@ -1,4 +1,3 @@
-
 "use server";
 
 import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, NonEmployee, DeductionReason } from '@/types';
