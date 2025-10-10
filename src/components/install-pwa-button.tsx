@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import { Download } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: Array<string>;
@@ -50,9 +51,18 @@ export function InstallPwaButton() {
   }
 
   return (
-    <Button onClick={handleInstallClick}>
-      <Download className="mr-2 h-4 w-4" />
-      Zainstaluj Aplikację
-    </Button>
+    <TooltipProvider>
+        <Tooltip>
+            <TooltipTrigger asChild>
+                 <Button onClick={handleInstallClick} variant="ghost" size="icon">
+                    <Download className="h-5 w-5" />
+                    <span className="sr-only">Zainstaluj Aplikację</span>
+                </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+                <p>Zainstaluj Aplikację</p>
+            </TooltipContent>
+        </Tooltip>
+    </TooltipProvider>
   );
 }
