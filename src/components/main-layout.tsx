@@ -36,7 +36,7 @@ const navItems: { view: View; icon: React.ElementType; label: string }[] = [
 
 function MainContent() {
     const [activeView, setActiveView] = useState<View>('dashboard');
-    const [allEmployeesForDashboard, setAllEmployeesForDashboard] = useState<Employee[]>([]);
+    const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
     const [allNonEmployees, setAllNonEmployees] = useState<NonEmployee[]>([]);
     const [allInspections, setAllInspections] = useState<Inspection[]>([]);
     const [settings, setSettings] = useState<Settings | null>(null);
@@ -56,13 +56,13 @@ function MainContent() {
         if (isInitialLoad) setIsLoading(true);
         try {
             const [employeesData, settingsData, notificationsData, inspectionsData, nonEmployeesData] = await Promise.all([
-                getAllEmployees(), // For dashboard view
+                getAllEmployees(), 
                 getSettings(),
                 getNotifications(),
                 getInspections(),
                 getNonEmployees(),
             ]);
-            setAllEmployeesForDashboard(employeesData);
+            setAllEmployees(employeesData);
             setAllNonEmployees(nonEmployeesData);
             setSettings(settingsData);
             setAllNotifications(notificationsData.map((n:any) => ({...n, createdAt: new Date(n.createdAt)})));
@@ -96,16 +96,16 @@ function MainContent() {
         }
     }, [fetchData]);
 
-    const filteredEmployeesForDashboard = useMemo(() => {
+    const filteredEmployees = useMemo(() => {
         if (!currentUser) return [];
         if (currentUser.isAdmin) {
             if (selectedCoordinatorId === 'all') {
-                return allEmployeesForDashboard;
+                return allEmployees;
             }
-            return allEmployeesForDashboard.filter(e => e.coordinatorId === selectedCoordinatorId);
+            return allEmployees.filter(e => e.coordinatorId === selectedCoordinatorId);
         }
-        return allEmployeesForDashboard.filter(e => e.coordinatorId === currentUser.uid);
-    }, [currentUser, allEmployeesForDashboard, selectedCoordinatorId]);
+        return allEmployees.filter(e => e.coordinatorId === currentUser.uid);
+    }, [currentUser, allEmployees, selectedCoordinatorId]);
 
     const filteredNonEmployees = useMemo(() => {
         if (!currentUser) return [];
@@ -114,13 +114,13 @@ function MainContent() {
         }
 
         const coordinatorAddresses = new Set(
-            allEmployeesForDashboard
+            allEmployees
                 .filter(e => e.coordinatorId === selectedCoordinatorId)
                 .map(e => e.address)
         );
 
         return allNonEmployees.filter(ne => ne.address && coordinatorAddresses.has(ne.address));
-   }, [currentUser, allNonEmployees, allEmployeesForDashboard, selectedCoordinatorId]);
+   }, [currentUser, allNonEmployees, allEmployees, selectedCoordinatorId]);
 
     const filteredInspections = useMemo(() => {
         if (!currentUser) return [];
@@ -216,7 +216,7 @@ function MainContent() {
     const handleLogout = () => {
         setCurrentUser(null);
         sessionStorage.removeItem('currentUser');
-        setAllEmployeesForDashboard([]);
+        setAllEmployees([]);
         setAllInspections([]);
         setAllNonEmployees([]);
         setAllNotifications([]);
@@ -235,11 +235,8 @@ function MainContent() {
                  await addEmployee(data, currentUser);
                  toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
             }
-            // Light refetch for notifications & dashboard
-            Promise.all([getNotifications(), getAllEmployees()]).then(([notificationsData, employeesData]) => {
-                setAllNotifications(notificationsData.map((n:any) => ({...n, createdAt: new Date(n.createdAt)})));
-                setAllEmployeesForDashboard(employeesData);
-            });
+            // Refetch all data to ensure UI consistency
+            fetchData();
 
         } catch(e: any) {
              toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać pracownika." });
@@ -254,21 +251,18 @@ function MainContent() {
                 await addNonEmployee(data);
             }
             toast({ title: "Sukces", description: editingNonEmployee ? "Dane mieszkańca zostały zaktualizowane." : "Nowy mieszkaniec został dodany." });
-            getNonEmployees().then(setAllNonEmployees);
+            fetchData();
         } catch (e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać mieszkańca." });
         }
     }
     
     const handleDeleteNonEmployee = async (id: string) => {
-        const originalNonEmployees = allNonEmployees;
-        setAllNonEmployees(prev => prev.filter(ne => ne.id !== id));
-        
         try {
             await deleteNonEmployee(id);
             toast({ title: "Sukces", description: "Mieszkaniec został usunięty." });
+            fetchData();
         } catch(e: any) {
-            setAllNonEmployees(originalNonEmployees); // Revert
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć mieszkańca." });
         }
     }
@@ -279,16 +273,11 @@ function MainContent() {
             return;
         }
         
-        const originalSettings = settings;
-        setSettings({ ...originalSettings, ...newSettings });
-
         try {
             await updateSettings(newSettings);
             toast({ title: "Sukces", description: "Ustawienia zostały zaktualizowane." });
-            // Refetch settings to confirm changes from server
-            getSettings().then(setSettings);
+            fetchData();
         } catch(e: any) {
-            setSettings(originalSettings); // Revert
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać ustawień." });
         }
     };
@@ -297,7 +286,7 @@ function MainContent() {
         try {
             await addInspection(inspectionData);
             toast({ title: "Sukces", description: "Nowa inspekcja została dodana." });
-            getInspections().then(data => setAllInspections(data.map((i: any) => ({...i, date: new Date(i.date)}))));
+            fetchData();
         } catch(e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać inspekcji." });
         }
@@ -307,21 +296,18 @@ function MainContent() {
         try {
             await updateInspection(id, inspectionData);
             toast({ title: "Sukces", description: "Inspekcja została zaktualizowana." });
-            getInspections().then(data => setAllInspections(data.map((i: any) => ({...i, date: new Date(i.date)}))));
+            fetchData();
         } catch(e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zaktualizować inspekcji." });
         }
     };
 
     const handleDeleteInspection = async (id: string) => {
-        const originalInspections = allInspections;
-        setAllInspections(prev => prev.filter(i => i.id !== id));
-
         try {
             await deleteInspection(id);
             toast({ title: "Sukces", description: "Inspekcja została usunięta." });
+            fetchData();
         } catch(e: any) {
-            setAllInspections(originalInspections); // Revert
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć inspekcji." });
         }
     };
@@ -347,16 +333,10 @@ function MainContent() {
     }
     
     const handleNotificationClick = async (notification: Notification) => {
-        // Refetching all employees to find one is inefficient.
-        // A dedicated getEmployeeById would be better. For now, this is a compromise.
         if (notification.employeeId) {
-            try {
-                const { employees: [employeeToEdit] } = await getEmployees({ filters: { id: notification.employeeId } });
-                if (employeeToEdit) {
-                    handleEditEmployeeClick(employeeToEdit);
-                }
-            } catch (e) {
-                toast({ variant: "destructive", title: "Błąd", description: "Nie udało się znaleźć pracownika." });
+            const employeeToEdit = allEmployees.find(e => e.id === notification.employeeId);
+            if (employeeToEdit) {
+                handleEditEmployeeClick(employeeToEdit);
             }
         }
         
@@ -372,23 +352,22 @@ function MainContent() {
              toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administrator może usuwać powiadomienia." });
              return;
         }
-        const originalNotifications = allNotifications;
-        setAllNotifications([]);
         try {
             await clearAllNotifications();
+            setAllNotifications([]);
             toast({ title: "Sukces", description: "Wszystkie powiadomienia zostały usunięte." });
         } catch (e: any) {
-             setAllNotifications(originalNotifications); // Revert
              toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć powiadomień." });
         }
     }
 
     const handleDismissEmployee = async (employeeId: string) => {
-        if (!currentUser) return;
+        if (!currentUser) return false;
         try {
             await updateEmployee(employeeId, { status: 'dismissed', checkOutDate: new Date().toISOString().split('T')[0] }, currentUser);
             toast({ title: "Sukces", description: "Pracownik został zwolniony." });
-            return true; // Indicate success for UI update
+            fetchData();
+            return true;
         } catch(e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zwolnić pracownika." });
             return false;
@@ -396,11 +375,12 @@ function MainContent() {
     };
 
     const handleRestoreEmployee = async (employeeId: string) => {
-        if (!currentUser) return;
+        if (!currentUser) return false;
         try {
             await updateEmployee(employeeId, { status: 'active', checkOutDate: null }, currentUser);
             toast({ title: "Sukces", description: "Pracownik został przywrócony." });
-            return true; // Indicate success for UI update
+            fetchData();
+            return true;
         } catch(e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się przywrócić pracownika." });
             return false;
@@ -416,6 +396,7 @@ function MainContent() {
          try {
             await bulkDeleteEmployees(status, currentUser);
             toast({ title: "Sukces", description: `Wszyscy ${status === 'active' ? 'aktywni' : 'zwolnieni'} pracownicy zostali usunięci.` });
+            fetchData();
              return true;
         } catch(e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || `Nie udało się usunąć pracowników.` });
@@ -429,12 +410,7 @@ function MainContent() {
             const { updated } = await checkAndUpdateEmployeeStatuses(currentUser);
             if (updated > 0) {
                 toast({ title: "Sukces", description: `Zaktualizowano statusy dla ${updated} pracowników.`});
-                const [employeesData, notificationsData] = await Promise.all([
-                    getAllEmployees(),
-                    getNotifications()
-                ]);
-                 setAllEmployeesForDashboard(employeesData);
-                 setAllNotifications(notificationsData.map((n:any) => ({...n, createdAt: new Date(n.createdAt)})));
+                fetchData();
             } else {
                  toast({ title: "Brak zmian", description: "Wszyscy pracownicy mają aktualne statusy."});
             }
@@ -460,14 +436,14 @@ function MainContent() {
 
         switch (activeView) {
             case 'dashboard':
-                return <DashboardView employees={filteredEmployeesForDashboard} allEmployees={allEmployeesForDashboard} nonEmployees={filteredNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={handleRefreshStatuses} />;
+                return <DashboardView employees={filteredEmployees} allEmployees={allEmployees} nonEmployees={filteredNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={handleRefreshStatuses} />;
             case 'employees':
-                return <EmployeesView employees={filteredEmployeesForDashboard} nonEmployees={filteredNonEmployees} settings={settings} onAddEmployee={handleAddEmployeeClick} onEditEmployee={handleEditEmployeeClick} onDismissEmployee={handleDismissEmployee} onRestoreEmployee={handleRestoreEmployee} onBulkDelete={handleBulkDeleteEmployees} currentUser={currentUser} onAddNonEmployee={handleAddNonEmployeeClick} onEditNonEmployee={handleEditNonEmployeeClick} onDeleteNonEmployee={handleDeleteNonEmployee} />;
+                return <EmployeesView employees={filteredEmployees} nonEmployees={filteredNonEmployees} settings={settings} onAddEmployee={handleAddEmployeeClick} onEditEmployee={handleEditEmployeeClick} onDismissEmployee={handleDismissEmployee} onRestoreEmployee={handleRestoreEmployee} onBulkDelete={handleBulkDeleteEmployees} currentUser={currentUser} onAddNonEmployee={handleAddNonEmployeeClick} onEditNonEmployee={handleEditNonEmployeeClick} onDeleteNonEmployee={handleDeleteNonEmployee} />;
             case 'settings':
                 if (!currentUser.isAdmin) {
                     return <div className="p-4 text-center text-red-500">Brak uprawnień do przeglądania tej strony.</div>;
                 }
-                return <SettingsView settings={settings} onUpdateSettings={handleUpdateSettings} allEmployees={allEmployeesForDashboard} currentUser={currentUser} onDataRefresh={fetchData} onBulkImport={handleBulkImport}/>;
+                return <SettingsView settings={settings} onUpdateSettings={handleUpdateSettings} allEmployees={allEmployees} currentUser={currentUser} onDataRefresh={fetchData} onBulkImport={handleBulkImport}/>;
             case 'inspections':
                  return <InspectionsView 
                     inspections={filteredInspections} 
@@ -478,7 +454,7 @@ function MainContent() {
                     onDeleteInspection={handleDeleteInspection}
                 />;
             default:
-                return <DashboardView employees={filteredEmployeesForDashboard} allEmployees={allEmployeesForDashboard} nonEmployees={filteredNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={handleRefreshStatuses} />;
+                return <DashboardView employees={filteredEmployees} allEmployees={allEmployees} nonEmployees={filteredNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={handleRefreshStatuses} />;
         }
     };
     
@@ -594,5 +570,7 @@ export default function MainLayout() {
         </SidebarProvider>
     );
 }
+
+    
 
     

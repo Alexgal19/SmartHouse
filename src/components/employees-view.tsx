@@ -380,8 +380,6 @@ const FilterDialog = ({
     )
 }
 
-const PAGE_SIZE = 50;
-
 export default function EmployeesView({
   employees,
   nonEmployees,
@@ -396,13 +394,6 @@ export default function EmployeesView({
   onEditNonEmployee,
   onDeleteNonEmployee,
 }: EmployeesViewProps) {
-  const [activeEmployees, setActiveEmployees] = useState<Employee[]>([]);
-  const [dismissedEmployees, setDismissedEmployees] = useState<Employee[]>([]);
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'active' | 'dismissed'>('active');
-
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
       coordinatorFilter: 'all',
@@ -416,62 +407,21 @@ export default function EmployeesView({
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters(prev => ({...prev, [key]: value}));
-    setPage(1); // Reset to first page on filter change
   }
   
-  const fetchPageData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-        const filtersForApi: Record<string, string> = {};
-        if (filters.coordinatorFilter !== 'all') filtersForApi.coordinatorId = filters.coordinatorFilter;
-        if (filters.addressFilter !== 'all') filtersForApi.address = filters.addressFilter;
-        if (filters.departmentFilter !== 'all') filtersForApi.zaklad = filters.departmentFilter;
-        if (filters.nationalityFilter !== 'all') filtersForApi.nationality = filters.nationalityFilter;
-        
-      const { employees: fetchedEmployees, total: fetchedTotal } = await getEmployees({
-        page,
-        limit: PAGE_SIZE,
-        filters: filtersForApi,
-        searchTerm,
-        status: activeTab,
-      });
-
-      if (activeTab === 'active') {
-        setActiveEmployees(fetchedEmployees);
-      } else {
-        setDismissedEmployees(fetchedEmployees);
-      }
-      setTotal(fetchedTotal);
-
-    } catch (error) {
-        toast({
-            variant: "destructive",
-            title: "Błąd ładowania pracowników",
-            description: `Nie udało się pobrać danych. Spróbuj ponownie.`,
-        });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [page, activeTab, filters, searchTerm, toast]);
-
-    useEffect(() => {
-        fetchPageData();
-    }, []);
+  const filteredEmployees = useMemo(() => {
+    return employees.filter(employee => {
+      const searchMatch = searchTerm === '' || employee.fullName.toLowerCase().includes(searchTerm.toLowerCase());
+      const coordinatorMatch = filters.coordinatorFilter === 'all' || employee.coordinatorId === filters.coordinatorFilter;
+      const addressMatch = filters.addressFilter === 'all' || employee.address === filters.addressFilter;
+      const departmentMatch = filters.departmentFilter === 'all' || employee.zaklad === filters.departmentFilter;
+      const nationalityMatch = filters.nationalityFilter === 'all' || employee.nationality === filters.nationalityFilter;
+      return searchMatch && coordinatorMatch && addressMatch && departmentMatch && nationalityMatch;
+    });
+  }, [employees, searchTerm, filters]);
   
-    useEffect(() => {
-        const handler = setTimeout(() => {
-            setPage(1);
-            fetchPageData();
-        }, 500);
-
-        return () => clearTimeout(handler);
-    }, [searchTerm, fetchPageData]);
-
-    useEffect(() => {
-        setPage(1);
-        fetchPageData();
-    }, [activeTab, filters]);
-
+  const activeEmployees = useMemo(() => filteredEmployees.filter(e => e.status === 'active'), [filteredEmployees]);
+  const dismissedEmployees = useMemo(() => filteredEmployees.filter(e => e.status === 'dismissed'), [filteredEmployees]);
 
   const filteredNonEmployees = useMemo(() => {
     if (!nonEmployees) return [];
@@ -490,13 +440,7 @@ export default function EmployeesView({
       departmentFilter: 'all',
       nationalityFilter: 'all'
     });
-    setPage(1);
   };
-
-  const handleTabChange = (value: string) => {
-    setActiveTab(value as 'active' | 'dismissed');
-    setPage(1);
-  }
 
   const hasActiveFilters = searchTerm !== '' || Object.values(filters).some(v => v !== 'all');
   
@@ -510,40 +454,15 @@ export default function EmployeesView({
     } else {
         success = await onRestoreEmployee(employeeId);
     }
-    if (success) {
-        fetchPageData(); // Refetch current page after action
-    }
   };
   
-  const handleBulkAction = async () => {
-    const success = await onBulkDelete(activeTab);
-    if(success) {
-        fetchPageData();
-    }
+  const handleBulkAction = async (status : 'active' | 'dismissed') => {
+    await onBulkDelete(status);
   }
 
-  const Pagination = () => {
-    const pageCount = Math.ceil(total / PAGE_SIZE);
-    if (pageCount <= 1) return null;
-    
-    return (
-         <div className="flex items-center justify-end space-x-2 py-4">
-            <div className="flex-1 text-sm text-muted-foreground">
-                Strona {page} z {pageCount} ({total} rekordów)
-            </div>
-            <div className="flex items-center space-x-2">
-                <Button variant="outline" size="sm" onClick={() => setPage(1)} disabled={page === 1}> <ChevronsLeft className="h-4 w-4" /> </Button>
-                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1}> <ChevronLeft className="h-4 w-4" /> </Button>
-                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(pageCount, p+1))} disabled={page === pageCount}> <ChevronRight className="h-4 w-4" /> </Button>
-                <Button variant="outline" size="sm" onClick={() => setPage(pageCount)} disabled={page === pageCount}> <ChevronsRight className="h-4 w-4" /> </Button>
-            </div>
-        </div>
-    )
-  }
-
-  const renderEmployeeContent = (list: Employee[]) => {
+  const renderEmployeeContent = (list: Employee[], isDismissedTab: boolean) => {
     const safeList = list || [];
-    if (isLoading) {
+    if (!isMounted) {
         return <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>;
     }
     return (
@@ -554,19 +473,19 @@ export default function EmployeesView({
                         <AlertDialogTrigger asChild>
                             <Button variant="destructive" size="sm" >
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                Usuń wszystkich ({total})
+                                Usuń wszystkich ({safeList.length})
                             </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                             <AlertDialogHeader>
-                                <AlertDialogTitle>Czy na pewno chcesz usunąć wszystkich {activeTab === 'dismissed' ? 'zwolnionych' : 'aktywnych'} pracowników?</AlertDialogTitle>
+                                <AlertDialogTitle>Czy na pewno chcesz usunąć wszystkich {isDismissedTab ? 'zwolnionych' : 'aktywnych'} pracowników?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                    Tej operacji nie można cofnąć. Spowoduje to trwałe usunięcie {total} rekordów pracowników z arkusza Google.
+                                    Tej operacji nie można cofnąć. Spowoduje to trwałe usunięcie {safeList.length} rekordów pracowników z arkusza Google.
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                                 <AlertDialogCancel>Anuluj</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleBulkAction} className="bg-destructive hover:bg-destructive/90">
+                                <AlertDialogAction onClick={() => handleBulkAction(isDismissedTab ? 'dismissed' : 'active')} className="bg-destructive hover:bg-destructive/90">
                                     Tak, usuń wszystkich
                                 </AlertDialogAction>
                             </AlertDialogFooter>
@@ -580,9 +499,8 @@ export default function EmployeesView({
                 onEdit={onEditEmployee}
                 onDismiss={(id) => handleAction('dismiss', id)}
                 onRestore={(id) => handleAction('restore', id)}
-                isDismissedTab={activeTab === 'dismissed'}
+                isDismissedTab={isDismissedTab}
             />
-            <Pagination />
         </>
     );
   };
@@ -633,20 +551,20 @@ export default function EmployeesView({
         </div>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="active" onValueChange={handleTabChange}>
+        <Tabs defaultValue="active">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="active">Aktywni ({activeTab === 'active' ? total : ''})</TabsTrigger>
-            <TabsTrigger value="dismissed">Zwolnieni ({activeTab === 'dismissed' ? total : ''})</TabsTrigger>
+            <TabsTrigger value="active">Aktywni ({activeEmployees.length})</TabsTrigger>
+            <TabsTrigger value="dismissed">Zwolnieni ({dismissedEmployees.length})</TabsTrigger>
             <TabsTrigger value="non-employees">NZ ({filteredNonEmployees.length})</TabsTrigger>
           </TabsList>
           <TabsContent value="active" className="mt-4">
              <ScrollArea className="h-[55vh]">
-                {renderEmployeeContent(activeEmployees)}
+                {renderEmployeeContent(activeEmployees, false)}
              </ScrollArea>
           </TabsContent>
           <TabsContent value="dismissed" className="mt-4">
             <ScrollArea className="h-[55vh]">
-                {renderEmployeeContent(dismissedEmployees)}
+                {renderEmployeeContent(dismissedEmployees, true)}
             </ScrollArea>
           </TabsContent>
            <TabsContent value="non-employees" className="mt-4">
@@ -667,5 +585,7 @@ export default function EmployeesView({
     </Card>
   );
 }
+
+    
 
     

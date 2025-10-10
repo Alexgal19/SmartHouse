@@ -110,7 +110,8 @@ export async function getEmployees({
 
 export async function getAllEmployees(): Promise<Employee[]> {
     try {
-        return await getEmployeesFromSheet({ all: true });
+        const { employees } = await getEmployeesFromSheet({ all: true });
+        return employees;
     } catch (error) {
         console.error("Error in getAllEmployees (actions):", error);
         throw new Error(`Could not fetch all employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -915,5 +916,7 @@ export async function checkAndUpdateEmployeeStatuses(actor: Coordinator): Promis
     throw new Error("Could not update statuses.");
   }
 }
+
+    
 
     

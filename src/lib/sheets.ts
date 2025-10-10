@@ -166,15 +166,52 @@ export async function getSheet(title: string, headers: string[]): Promise<Google
 }
 
 
-export async function getEmployeesFromSheet(): Promise<Employee[]> {
-  try {
-    const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-    const rows = await sheet.getRows();
-    return rows.map(deserializeEmployee).filter((e): e is Employee => e !== null);
-  } catch (error) {
-    console.error("Error in getEmployees from sheets.ts:", error);
-    throw new Error(`Could not fetch employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
+export async function getEmployeesFromSheet({
+    page = 1,
+    limit = 50,
+    filters = {},
+    searchTerm = '',
+    status = 'all',
+    all = false
+}: {
+    page?: number;
+    limit?: number;
+    filters?: Record<string, string>;
+    searchTerm?: string;
+    status?: 'active' | 'dismissed' | 'all';
+    all?: boolean;
+} = {}): Promise<{ employees: Employee[], total: number }> {
+    try {
+        const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
+        const rows = await sheet.getRows();
+        
+        const allEmployees = rows.map(deserializeEmployee).filter((e): e is Employee => e !== null);
+
+        if (all) {
+            return { employees: allEmployees, total: allEmployees.length };
+        }
+
+        const filtered = allEmployees.filter(employee => {
+            const statusMatch = status === 'all' || employee.status === status;
+            const searchMatch = searchTerm === '' || employee.fullName.toLowerCase().includes(searchTerm.toLowerCase());
+            
+            const filterMatch = Object.entries(filters).every(([key, value]) => {
+                if (value === 'all') return true;
+                return employee[key as keyof Employee] === value;
+            });
+
+            return statusMatch && searchMatch && filterMatch;
+        });
+
+        const total = filtered.length;
+        const paginated = filtered.slice((page - 1) * limit, page * limit);
+        
+        return { employees: paginated, total };
+
+    } catch (error) {
+        console.error("Error in getEmployees from sheets.ts:", error);
+        throw new Error(`Could not fetch employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
 }
 
 export async function getNonEmployeesFromSheet(): Promise<NonEmployee[]> {
@@ -408,5 +445,7 @@ export async function getInspectionsFromSheet(): Promise<Inspection[]> {
         return [];
     }
 }
+
+    
 
     
