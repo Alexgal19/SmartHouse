@@ -36,7 +36,6 @@ const parseDateString = (dateString: string | undefined): string | undefined => 
     return undefined;
 };
 
-
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
 const SHEET_NAME_EMPLOYEES = 'Employees';
 const SHEET_NAME_NON_EMPLOYEES = 'NonEmployees';
@@ -50,17 +49,30 @@ const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_INSPECTIONS = 'Inspections';
 const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 
-if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
-    throw new Error('GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_PRIVATE_KEY environment variables are not set.');
+let serviceAccountAuth: JWT | null = null;
+let doc: GoogleSpreadsheet | null = null;
+
+function getAuth() {
+    if (!serviceAccountAuth) {
+        if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
+            throw new Error('GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_PRIVATE_KEY environment variables are not set.');
+        }
+        serviceAccountAuth = new JWT({
+          email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+          key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+          scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+        });
+    }
+    return serviceAccountAuth;
 }
 
-const serviceAccountAuth = new JWT({
-  email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-  key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-  scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-});
+function getDoc() {
+    if (!doc) {
+        doc = new GoogleSpreadsheet(SPREADSHEET_ID, getAuth());
+    }
+    return doc;
+}
 
-const doc = new GoogleSpreadsheet(SPREADSHEET_ID, serviceAccountAuth);
 
 const deserializeEmployee = (row: any): Employee | null => {
     const id = row.get('id');
@@ -187,6 +199,7 @@ const NON_EMPLOYEE_HEADERS = [
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
 
 export async function getSheet(title: string, headers: string[]): Promise<GoogleSpreadsheetWorksheet> {
+    const doc = getDoc();
     await doc.loadInfo();
     let sheet = doc.sheetsByTitle[title];
     if (!sheet) {
