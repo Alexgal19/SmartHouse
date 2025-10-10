@@ -192,50 +192,6 @@ const VerticalChartComponent = ({ data, title, labelX }: { data: {name: string, 
     </Card>
 );
 
-const ChartComponent = ({ data, title, labelY }: { data: {name: string, value: number}[], title: string, labelY?: string }) => (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="pl-0 sm:pl-2">
-        <ChartContainer config={{value: {label: labelY || "Pracownicy"}}} className="h-64 w-full">
-          <ResponsiveContainer>
-            <AreaChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 45 }}>
-               <defs>
-                  <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-              <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border) / 0.5)" />
-              <XAxis 
-                dataKey="name" 
-                tickLine={false} 
-                axisLine={false} 
-                tickMargin={10} 
-                tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} 
-                interval={0}
-                angle={-45}
-                textAnchor="end"
-              />
-              <YAxis tickLine={false} axisLine={false} tickMargin={10} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false}/>
-              <Tooltip 
-                cursor={{ fill: 'hsl(var(--accent) / 0.1)' }} 
-                content={({ active, payload, label }) => active && payload && payload.length && (
-                    <div className="bg-background/95 p-3 rounded-lg border shadow-lg">
-                        <p className="font-bold text-foreground">{label}</p>
-                        <p className="text-sm text-primary">{`${payload[0].value} ${labelY || 'pracowników'}`}</p>
-                    </div>
-                )}
-              />
-              <Area type="monotone" dataKey="value" stroke="hsl(var(--primary))" fill="url(#chartGradient)" strokeWidth={2} activeDot={{ r: 6 }} dot={{r: 3, strokeWidth: 2}} animationDuration={500}/>
-            </AreaChart>
-          </ResponsiveContainer>
-        </ChartContainer>
-      </CardContent>
-    </Card>
-  );
-
 const DeparturesChart = ({ allEmployees }: { allEmployees: Employee[] }) => {
     const [departureYear, setDepartureYear] = useState<string>(String(new Date().getFullYear()));
     const [departureMonth, setDepartureMonth] = useState<string>('all');
@@ -304,28 +260,35 @@ const DeparturesChart = ({ allEmployees }: { allEmployees: Employee[] }) => {
                     </Select>
                 </div>
             </CardHeader>
-            <CardContent className="pl-0 sm:pl-2">
-                <ChartContainer config={{value: {label: "Wyjazdy"}}} className="h-64 w-full">
+            <CardContent className="pr-0 sm:pr-2 pl-4">
+               <ChartContainer config={{value: {label: "Wyjazdy"}}} className="h-[400px] w-full">
                 <ResponsiveContainer>
-                    <AreaChart data={departuresByMonth} margin={{ top: 20, right: 30, left: 0, bottom: 45 }}>
+                    <BarChart data={departuresByMonth} layout="vertical" margin={{ top: 20, right: 40, left: 20, bottom: 20 }}>
                     <defs>
-                        <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
-                            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                        <linearGradient id="chartGradient" x1="0" y1="0" x2="1" y2="0">
+                            <stop offset="0%" stopColor="hsl(var(--primary) / 0.7)" />
+                            <stop offset="100%" stopColor="hsl(var(--primary) / 0.2)" />
                         </linearGradient>
                     </defs>
-                    <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border) / 0.5)" />
+                    <CartesianGrid horizontal={false} strokeDasharray="3 3" stroke="hsl(var(--border) / 0.5)" />
                     <XAxis 
-                        dataKey="name" 
+                        type="number"
                         tickLine={false} 
                         axisLine={false} 
                         tickMargin={10} 
                         tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} 
-                        interval={0}
-                        angle={-45}
-                        textAnchor="end"
+                        allowDecimals={false}
                     />
-                    <YAxis tickLine={false} axisLine={false} tickMargin={10} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
+                    <YAxis 
+                        type="category"
+                        dataKey="name" 
+                        tickLine={false} 
+                        axisLine={false} 
+                        tickMargin={10} 
+                        width={80}
+                        tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} 
+                        interval={0}
+                    />
                     <Tooltip 
                         cursor={{ fill: 'hsl(var(--accent) / 0.1)' }} 
                         content={({ active, payload, label }) => active && payload && payload.length && (
@@ -335,8 +298,10 @@ const DeparturesChart = ({ allEmployees }: { allEmployees: Employee[] }) => {
                             </div>
                         )}
                     />
-                    <Area type="monotone" dataKey="value" stroke="hsl(var(--primary))" fill="url(#chartGradient)" strokeWidth={2} activeDot={{ r: 6 }} dot={{r: 3, strokeWidth: 2}} animationDuration={500}/>
-                    </AreaChart>
+                    <Bar dataKey="value" radius={[0, 8, 8, 0]} fill="url(#chartGradient)" animationDuration={500}>
+                      <LabelList dataKey="value" position="right" offset={10} className="fill-foreground font-semibold" />
+                    </Bar>
+                    </BarChart>
                 </ResponsiveContainer>
                 </ChartContainer>
             </CardContent>
@@ -567,10 +532,10 @@ export default function DashboardView({ employees, nonEmployees, settings, onEdi
                     </div>
                     {!isMobile && (
                       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
-                          <VerticalChartComponent data={employeesByCoordinator} title="Pracownicy wg koordynatora" />
-                          <VerticalChartComponent data={employeesByNationality} title="Pracownicy wg narodowości" />
-                          <ChartComponent data={employeesByDepartment} title="Pracownicy wg zakładu" />
-                          <ChartComponent data={nonEmployeesByAddress} title="Mieszkańcy (NZ) wg adresu" labelY="Mieszkańcy"/>
+                          <VerticalChartComponent data={employeesByCoordinator} title="Pracownicy wg koordynatora" labelX="Pracownicy"/>
+                          <VerticalChartComponent data={employeesByNationality} title="Pracownicy wg narodowości" labelX="Pracownicy" />
+                          <VerticalChartComponent data={employeesByDepartment} title="Pracownicy wg zakładu" labelX="Pracownicy" />
+                          <VerticalChartComponent data={nonEmployeesByAddress} title="Mieszkańcy (NZ) wg adresu" labelX="Mieszkańcy"/>
                           <DeparturesChart allEmployees={employees} />
                           </div>
                       )}
@@ -678,6 +643,8 @@ export default function DashboardView({ employees, nonEmployees, settings, onEdi
     </div>
   );
 }
+
+    
 
     
 
