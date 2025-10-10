@@ -71,7 +71,7 @@ const deserializeEmployee = (row: any): Employee | null => {
 
     const deductionReasonRaw = row.get('deductionReason');
     let deductionReason: DeductionReason[] | undefined = undefined;
-    if (deductionReasonRaw) {
+    if (deductionReasonRaw && typeof deductionReasonRaw === 'string') {
         try {
             const parsed = JSON.parse(deductionReasonRaw);
             if(Array.isArray(parsed)) {
