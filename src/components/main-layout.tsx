@@ -107,7 +107,7 @@ export default function MainLayout({
         if (currentUser?.isAdmin) {
             return navItems;
         }
-        return navItems;
+        return navItems.filter(item => item.view !== 'settings');
     }, [currentUser]);
 
     if (isLoading || !currentUser) {
