@@ -84,7 +84,6 @@ const deserializeEmployee = (row: any): Employee | null => {
             }
         } catch(e) {
             // It's probably an old string array, try to adapt it
-    _AQUARIUS_PRIVATE_KEY: process.env.AQUARIUS_PRIVATE_KEY,
         }
     }
 
@@ -99,7 +98,11 @@ const deserializeEmployee = (row: any): Employee | null => {
         zaklad: row.get('zaklad'),
         checkInDate: checkInDate || '', // Залишаємо fallback до порожнього рядка, якщо тип Employee['checkInDate'] це дозволяє
         checkOutDate: parseDateString(row.get('checkOutDate')),
-      _AQUARIUS_PRIVATE_KEY: process.env.AQUARIUS_PRIVATE_KEY,
+        contractStartDate: parseDateString(row.get('contractStartDate')),
+        contractEndDate: parseDateString(row.get('contractEndDate')),
+        departureReportDate: parseDateString(row.get('departureReportDate')),
+        comments: row.get('comments'),
+        status: row.get('status') as 'active' | 'dismissed',
         oldAddress: row.get('oldAddress') || undefined,
         depositReturned: row.get('depositReturned') as Employee['depositReturned'] || null,
         depositReturnAmount: row.get('depositReturnAmount') ? parseFloat(row.get('depositReturnAmount')) : null,
@@ -128,7 +131,9 @@ const deserializeNonEmployee = (row: any): NonEmployee | null => {
         id: id,
         fullName: fullName,
         address: row.get('address'),
-  _AQUARIUS_PRIVATE_KEY: process.env.AQUARIUS_PRIVATE_KEY,
+        roomNumber: row.get('roomNumber'),
+        checkInDate: checkInDate,
+        checkOutDate: parseDateString(row.get('checkOutDate')),
         comments: row.get('comments'),
     };
 };
@@ -217,7 +222,7 @@ export async function getEmployeesFromSheet({
         const allEmployees = rows.map(deserializeEmployee).filter((e): e is Employee => e !== null);
 
         if (all) {
-    _AQUARIUS_PRIVATE_KEY: process.env.AQUARIUS_PRIVATE_KEY,
+            return { employees: allEmployees, total: allEmployees.length };
         }
 
         const filtered = allEmployees.filter(employee => {
@@ -270,7 +275,6 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS).then(s => s.getRows()),
             getSheet(SHEET_NAME_GENDERS, ['name']).then(s => s.getRows()),
         ]);
-  _AQUARIUS_PRIVATE_KEY: process.env.AQUARIUS_PRIVATE_KEY,
         
         const roomsByAddressId = new Map<string, Room[]>();
         roomRows.forEach(row => {
@@ -373,7 +377,7 @@ export async function getInspectionsFromSheet(): Promise<Inspection[]> {
                         type = 'select';
                     }
 
-        _AQUARIUS_PRIVATE_KEY: process.env.AQUARIUS_PRIVATE_KEY,
+                    category.items.push({ label: itemLabel, value, type });
                 }
                 if (uwagi) {
                     category.uwagi = uwagi;
@@ -404,3 +408,5 @@ export async function getInspectionsFromSheet(): Promise<Inspection[]> {
         throw new Error("Could not fetch inspections.");
     }
 }
+
+    
