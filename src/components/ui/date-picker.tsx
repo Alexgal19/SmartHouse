@@ -24,7 +24,7 @@ type DatePickerProps = {
 export function DatePicker({ value, onChange, className }: DatePickerProps) {
     const [isOpen, setIsOpen] = React.useState(false);
 
-    const dateValue = value && isValid(new Date(value)) ? new Date(value + 'T00:00:00') : undefined;
+    const dateValue = value && isValid(new Date(value)) ? new Date(value) : undefined;
 
     const handleSelect = (date: Date | undefined) => {
         if (date) {
