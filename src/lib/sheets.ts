@@ -226,6 +226,20 @@ export async function getNonEmployeesFromSheet(): Promise<NonEmployee[]> {
 }
 
 export async function getSettingsFromSheet(): Promise<Settings> {
+    const getRowsSafe = async (sheetName: string, headers: string[]) => {
+        try {
+            const sheet = await getSheet(sheetName, headers);
+            // Check if sheet has rows before getting them
+            if (sheet.rowCount > 1) { // >1 because of header
+                return await sheet.getRows();
+            }
+            return [];
+        } catch (e) {
+            console.warn(`Could not get rows from sheet "${sheetName}":`, e);
+            return []; // Return empty array on error
+        }
+    };
+
     try {
         const [
             addressRows,
@@ -235,12 +249,12 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             coordinatorRows,
             genderRows,
         ] = await Promise.all([
-            getSheet(SHEET_NAME_ADDRESSES, ['id', 'name']).then(s => s.getRows()),
-            getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity']).then(s => s.getRows()),
-            getSheet(SHEET_NAME_NATIONALITIES, ['name']).then(s => s.getRows()),
-            getSheet(SHEET_NAME_DEPARTMENTS, ['name']).then(s => s.getRows()),
-            getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS).then(s => s.getRows()),
-            getSheet(SHEET_NAME_GENDERS, ['name']).then(s => s.getRows()),
+            getRowsSafe(SHEET_NAME_ADDRESSES, ['id', 'name']),
+            getRowsSafe(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity']),
+            getRowsSafe(SHEET_NAME_NATIONALITIES, ['name']),
+            getRowsSafe(SHEET_NAME_DEPARTMENTS, ['name']),
+            getRowsSafe(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS),
+            getRowsSafe(SHEET_NAME_GENDERS, ['name']),
         ]);
         
         const roomsByAddressId = new Map<string, Room[]>();
