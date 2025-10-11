@@ -93,7 +93,7 @@ const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
 
 export async function getEmployees({ filters = {} }: { filters?: Record<string, string>; } = {}): Promise<Employee[]> {
     try {
-        const { employees } = await getEmployeesFromSheet({ all: true });
+        const { employees } = await getEmployeesFromSheet();
         return employees;
     } catch (error) {
         console.error("Error in getEmployees (actions):", error);
@@ -733,3 +733,9 @@ export async function bulkImportEmployees(fileData: ArrayBuffer, coordinators: C
          return { success: false, message: e.message || "Wystąpił nieznany błąd podczas przetwarzania pliku." };
     }
 }
+function deserializeEmployee(row: any): Employee | null {
+    throw new Error("Function not implemented.");
+}
+
+
+    
