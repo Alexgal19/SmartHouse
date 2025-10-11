@@ -186,7 +186,7 @@ export async function getEmployeesFromSheet({
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows();
         
-        const allEmployees = rows.map(deserializeEmployee).filter((e): e is Employee => e !== null);
+        let allEmployees = rows.map(deserializeEmployee).filter((e): e is Employee => e !== null);
 
         if (all) {
             return { employees: allEmployees, total: allEmployees.length };
@@ -196,8 +196,8 @@ export async function getEmployeesFromSheet({
             const statusMatch = status === 'all' || employee.status === status;
             const searchMatch = searchTerm === '' || employee.fullName.toLowerCase().includes(searchTerm.toLowerCase());
             const filterMatch = Object.entries(filters).every(([key, value]) => {
-                if (value === 'all') return true;
-                return employee[key as keyof Employee] === value;
+                if (value === 'all' || !value) return true;
+                return String(employee[key as keyof Employee]) === value;
             });
             return statusMatch && searchMatch && filterMatch;
         });
@@ -229,8 +229,7 @@ export async function getSettingsFromSheet(): Promise<Settings> {
     const getRowsSafe = async (sheetName: string, headers: string[]) => {
         try {
             const sheet = await getSheet(sheetName, headers);
-            // Check if sheet has rows before getting them
-            if (sheet.rowCount > 1) { // >1 because of header
+            if (sheet.rowCount > 0) { // Check if sheet has any rows, including header
                 return await sheet.getRows();
             }
             return [];
