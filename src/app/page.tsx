@@ -9,86 +9,66 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-    const [coordinators, setCoordinators] = useState<Coordinator[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
     const { toast } = useToast();
     const router = useRouter();
 
-    useEffect(() => {
-        // We only fetch settings, no more automatic redirection
-        getSettings()
-            .then(settings => {
-                if (settings && settings.coordinators) {
-                    setCoordinators(settings.coordinators)
-                }
-            })
-            .catch(err => {
-                toast({
-                    variant: "destructive",
-                    title: "Błąd ładowania",
-                    description: `Nie udało się pobrać listy koordynatorów. ${err.message}`
-                })
-            })
-            .finally(() => setIsLoading(false));
-    }, [toast]);
-    
     const handleLogin = async (user: {name: string}, password?: string) => {
-        const adminLogin = process.env.NEXT_PUBLIC_ADMIN_LOGIN || 'admin';
-        const adminPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'password';
-        const lowerCaseName = user.name.toLowerCase();
+        try {
+            const settings = await getSettings();
+            const coordinators = settings.coordinators;
 
-        if (lowerCaseName === adminLogin.toLowerCase()) {
-            if (password === adminPassword) {
-                 const adminUser = {
-                    uid: 'admin-super-user',
-                    name: 'Admin',
-                    isAdmin: true,
-                    password: ''
-                };
-                sessionStorage.setItem('currentUser', JSON.stringify(adminUser));
+            const adminLogin = process.env.NEXT_PUBLIC_ADMIN_LOGIN || 'admin';
+            const adminPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'password';
+            const lowerCaseName = user.name.toLowerCase();
+
+            if (lowerCaseName === adminLogin.toLowerCase()) {
+                if (password === adminPassword) {
+                     const adminUser = {
+                        uid: 'admin-super-user',
+                        name: 'Admin',
+                        isAdmin: true,
+                        password: ''
+                    };
+                    sessionStorage.setItem('currentUser', JSON.stringify(adminUser));
+                    router.push('/dashboard');
+                } else {
+                     (window as any).setLoginError('Nieprawidłowe hasło administratora.');
+                }
+                return;
+            }
+
+            if (coordinators.length === 0) {
+                (window as any).setLoginError('Lista koordynatorów jest pusta lub nie załadowała się. Spróbuj ponownie.');
+                return;
+            }
+
+            const coordinator = coordinators.find(c => c.name.toLowerCase() === lowerCaseName);
+
+            if (!coordinator) {
+                (window as any).setLoginError('Brak dostępu. Sprawdź, czy Twoje imię i nazwisko są poprawne.');
+                return;
+            }
+            
+             if (!password) {
+                (window as any).setLoginError('Hasło jest wymagane.');
+                return;
+            }
+
+            if (coordinator.password === password) {
+                sessionStorage.setItem('currentUser', JSON.stringify(coordinator));
                 router.push('/dashboard');
             } else {
-                 (window as any).setLoginError('Nieprawidłowe hasło administratora.');
+                (window as any).setLoginError('Nieprawidłowe hasło.');
             }
-            return;
-        }
-
-        if (coordinators.length === 0) {
-            (window as any).setLoginError('Lista koordynatorów jest pusta lub nie załadowała się. Spróbuj ponownie.');
-            return;
-        }
-
-        const coordinator = coordinators.find(c => c.name.toLowerCase() === lowerCaseName);
-
-        if (!coordinator) {
-            (window as any).setLoginError('Brak dostępu. Sprawdź, czy Twoje imię i nazwisko są poprawne.');
-            return;
-        }
-        
-         if (!password) {
-            (window as any).setLoginError('Hasło jest wymagane.');
-            return;
-        }
-
-        if (coordinator.password === password) {
-            sessionStorage.setItem('currentUser', JSON.stringify(coordinator));
-            router.push('/dashboard');
-        } else {
-            (window as any).setLoginError('Nieprawidłowe hasło.');
+        } catch (err: any) {
+            toast({
+                variant: "destructive",
+                title: "Błąd krytyczny",
+                description: `Nie udało się pobrać ustawień aplikacji. ${err.message}`
+            });
+             (window as any).setLoginError('Błąd serwera. Spróbuj ponownie później.');
         }
     };
-
-    if (isLoading) {
-         return (
-            <div className="flex h-screen w-full items-center justify-center bg-background">
-                <div className="flex animate-fade-in flex-col items-center gap-6">
-                     <h1 className="text-4xl sm:text-5xl md:text-7xl font-semibold tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm">
-                        SmartHouse
-                    </h1>
-                </div>
-            </div>
-        );
-    }
     
-    return <LoginView coordinators={coordinators} onLogin={handleLogin} />;
+    return <LoginView coordinators={[]} onLogin={handleLogin} />;
 }
