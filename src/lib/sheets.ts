@@ -33,12 +33,19 @@ const NON_EMPLOYEE_HEADERS = [
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
 
 function getAuth() {
-    if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
-        throw new Error('GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_PRIVATE_KEY environment variables are not set.');
+    const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+    const key = process.env.GOOGLE_PRIVATE_KEY;
+
+    if (!email) {
+        throw new Error('Missing GOOGLE_SERVICE_ACCOUNT_EMAIL. Please add it to your .env.local file.');
     }
+    if (!key) {
+        throw new Error('Missing GOOGLE_PRIVATE_KEY. Please add it to your .env.local file.');
+    }
+
     return new JWT({
-      email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      email: email,
+      key: key.replace(/\\n/g, '\n'),
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
 }
@@ -176,17 +183,13 @@ export async function getNonEmployeesFromSheet(): Promise<NonEmployee[]> {
 const getRowsSafe = async (sheetName: string, headers: string[]) => {
     try {
         const sheet = await getSheet(sheetName, headers);
-        // A newly created sheet has 1 row (the header) but getRows will be empty.
-        // A sheet with just a header has a rowCount of 1. A sheet with header + 1 data row has rowCount of 2.
-        // But getRows() only returns data rows. So if rowCount > 1, we can fetch rows.
-        // If the sheet was just created, rowCount will be 1, getRows() will be empty, which is what we want.
         if (sheet.rowCount > 0) { 
             return await sheet.getRows();
         }
         return [];
     } catch (e) {
         console.warn(`Could not get rows from sheet "${sheetName}":`, e);
-        return []; // Return empty array on error
+        return [];
     }
 };
 
