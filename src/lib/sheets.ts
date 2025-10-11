@@ -345,7 +345,7 @@ export async function getInspectionsFromSheet(): Promise<Inspection[]> {
                 const uwagi = detail.get('uwagi');
                 const photoData = detail.get('photoData');
 
-                if (itemLabel && itemLabel !== 'Photo') {
+                if (itemLabel && itemLabel !== 'Photo' && itemLabel !== 'Uwagi') {
                     // Assuming we need to know the type, but it's not stored. We infer it.
                     let type: InspectionCategoryItem['type'] = 'text';
                     let value: any = detail.get('itemValue');
@@ -388,6 +388,8 @@ export async function getInspectionsFromSheet(): Promise<Inspection[]> {
         throw new Error("Could not fetch inspections.");
     }
 }
+
+    
 
     
 

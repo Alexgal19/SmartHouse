@@ -356,7 +356,14 @@ const InspectionDialog = ({
                 
                 const mergedCategories = fullChecklist.map(checklistCategory => {
                     const existingCategory = currentCategories.find(c => c.name === checklistCategory.name);
-                    return existingCategory ? { ...checklistCategory, ...existingCategory } : checklistCategory;
+                    if (existingCategory) {
+                        const mergedItems = checklistCategory.items.map(checklistItem => {
+                            const existingItem = existingCategory.items.find(i => i.label === checklistItem.label);
+                            return existingItem ? { ...checklistItem, ...existingItem } : checklistItem;
+                        });
+                        return { ...checklistCategory, ...existingCategory, items: mergedItems };
+                    }
+                    return checklistCategory;
                 });
 
                 form.reset({
@@ -483,7 +490,7 @@ const InspectionDialog = ({
                                     <FormField control={form.control} name="date" render={({ field }) => (
                                         <FormItem className="flex flex-col">
                                             <FormLabel className="mb-1.5">Data wypełnienia</FormLabel>
-                                            <DatePicker value={field.value} onChange={field.onChange} />
+                                            <DatePicker value={field.value.toISOString()} onChange={(val) => field.onChange(val ? new Date(val) : new Date())} />
                                             <FormMessage />
                                         </FormItem>
                                     )} />
@@ -840,5 +847,7 @@ export default function InspectionsView({ inspections, settings, currentUser, on
         </Card>
     );
 }
+
+    
 
     
