@@ -63,16 +63,14 @@ function DashboardPageContent() {
         const loggedInUser = sessionStorage.getItem('currentUser');
         if (loggedInUser) {
             const user = JSON.parse(loggedInUser);
-             if (!currentUser || currentUser.uid !== user.uid) {
-                setCurrentUser(user);
-                 if (!user.isAdmin) {
-                    setSelectedCoordinatorId(user.uid);
-                }
+            setCurrentUser(user);
+             if (!user.isAdmin) {
+                setSelectedCoordinatorId(user.uid);
             }
         } else {
             router.push('/');
         }
-    }, [currentUser, router]);
+    }, [router]);
 
     useEffect(() => {
         if (currentUser) {

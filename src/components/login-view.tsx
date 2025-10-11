@@ -10,17 +10,17 @@ import { Building } from 'lucide-react';
 import type { Coordinator } from '@/types';
 
 interface LoginViewProps {
-  coordinators: Coordinator[];
   onLogin: (user: { name: string }, password?: string) => void;
 }
 
-export function LoginView({ coordinators, onLogin }: LoginViewProps) {
+export function LoginView({ onLogin }: LoginViewProps) {
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     onLogin({ name: name.trim() }, password);
   };
   

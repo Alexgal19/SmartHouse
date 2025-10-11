@@ -2,7 +2,6 @@
 "use client";
 
 import { LoginView } from "@/components/login-view";
-import { useState, useEffect } from "react";
 import { getSettings } from "@/lib/actions";
 import type { Coordinator } from "@/types";
 import { useToast } from "@/hooks/use-toast";
@@ -70,5 +69,5 @@ export default function LoginPage() {
         }
     };
     
-    return <LoginView coordinators={[]} onLogin={handleLogin} />;
+    return <LoginView onLogin={handleLogin} />;
 }

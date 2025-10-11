@@ -1,25 +1,10 @@
 
 "use server";
-// src/lib/sheets.ts
+
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
-import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, InspectionCategory, InspectionCategoryItem, Photo, InspectionDetail, NonEmployee, DeductionReason } from '@/types';
-import { format, isValid, parse } from 'date-fns';
-
-let serviceAccountAuth: JWT | null = null;
-function getAuth() {
-    if (!serviceAccountAuth) {
-        if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
-            throw new Error('GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_PRIVATE_KEY environment variables are not set.');
-        }
-        serviceAccountAuth = new JWT({
-          email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-          key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-          scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-        });
-    }
-    return serviceAccountAuth;
-}
+import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, NonEmployee, DeductionReason } from '@/types';
+import { format, isValid } from 'date-fns';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
 const SHEET_NAME_EMPLOYEES = 'Employees';
@@ -34,25 +19,58 @@ const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_INSPECTIONS = 'Inspections';
 const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 
+const EMPLOYEE_HEADERS = [
+    'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 
+    'zaklad', 'checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 
+    'departureReportDate', 'comments', 'status', 'oldAddress',
+    'depositReturned', 'depositReturnAmount', 'deductionRegulation', 'deductionNo4Months', 'deductionNo30Days', 'deductionReason'
+];
 
-let doc: GoogleSpreadsheet | null = null;
-async function getDoc() {
-    if (!doc) {
-        doc = new GoogleSpreadsheet(SPREADSHEET_ID, getAuth());
-        await doc.loadInfo();
+const NON_EMPLOYEE_HEADERS = [
+    'id', 'fullName', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'comments'
+];
+
+const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
+
+function getAuth() {
+    if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
+        throw new Error('GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_PRIVATE_KEY environment variables are not set.');
     }
+    return new JWT({
+      email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+      key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+}
+
+async function getDoc(): Promise<GoogleSpreadsheet> {
+    const auth = getAuth();
+    const doc = new GoogleSpreadsheet(SPREADSHEET_ID, auth);
+    await doc.loadInfo();
     return doc;
 }
 
+export async function getSheet(title: string, headers: string[]): Promise<GoogleSpreadsheetWorksheet> {
+    const doc = await getDoc();
+    let sheet = doc.sheetsByTitle[title];
+    if (!sheet) {
+        sheet = await doc.addSheet({ title, headerValues: headers });
+    } else {
+        await sheet.loadHeaderRow();
+        const currentHeaders = sheet.headerValues;
+        const missingHeaders = headers.filter(h => !currentHeaders.includes(h));
+        if(missingHeaders.length > 0) {
+            await sheet.setHeaderRow([...currentHeaders, ...missingHeaders]);
+        }
+    }
+    return sheet;
+}
 
 const deserializeEmployee = (row: any): Employee | null => {
     const id = row.get('id');
     const fullName = row.get('fullName');
     
-    // Ignore empty rows
-    if (!id && !fullName) {
-        return null;
-    }
+    if (!id && !fullName) return null;
     
     const checkInDate = row.get('checkInDate') ? format(new Date(row.get('checkInDate')), 'yyyy-MM-dd') : '';
 
@@ -99,14 +117,10 @@ const deserializeNonEmployee = (row: any): NonEmployee | null => {
     const id = row.get('id');
     const fullName = row.get('fullName');
     
-    if (!id && !fullName) {
-        return null;
-    }
+    if (!id && !fullName) return null;
     
     const checkInDate = row.get('checkInDate') ? format(new Date(row.get('checkInDate')), 'yyyy-MM-dd') : null;
-    if (!checkInDate) {
-        return null;
-    }
+    if (!checkInDate) return null;
 
     return {
         id: id,
@@ -137,108 +151,46 @@ const deserializeNotification = (row: any): Notification => {
     };
 };
 
-const EMPLOYEE_HEADERS = [
-    'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 
-    'zaklad', 'checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 
-    'departureReportDate', 'comments', 'status', 'oldAddress',
-    'depositReturned', 'depositReturnAmount', 'deductionRegulation', 'deductionNo4Months', 'deductionNo30Days', 'deductionReason'
-];
-
-const NON_EMPLOYEE_HEADERS = [
-    'id', 'fullName', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'comments'
-];
-
-const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
-
-export async function getSheet(title: string, headers: string[]): Promise<GoogleSpreadsheetWorksheet> {
-    const doc = await getDoc();
-    let sheet = doc.sheetsByTitle[title];
-    if (!sheet) {
-        sheet = await doc.addSheet({ title, headerValues: headers });
-    } else {
-        await sheet.loadHeaderRow();
-        const currentHeaders = sheet.headerValues;
-        const missingHeaders = headers.filter(h => !currentHeaders.includes(h));
-        if(missingHeaders.length > 0) {
-            await sheet.setHeaderRow([...currentHeaders, ...missingHeaders]);
-        }
-    }
-    return sheet;
-}
-
-
-export async function getEmployeesFromSheet({
-    page = 1,
-    limit = 50,
-    filters = {},
-    searchTerm = '',
-    status = 'all',
-    all = false
-}: {
-    page?: number;
-    limit?: number;
-    filters?: Record<string, string>;
-    searchTerm?: string;
-    status?: 'active' | 'dismissed' | 'all';
-    all?: boolean;
-} = {}): Promise<{ employees: Employee[], total: number }> {
+export async function getEmployeesFromSheet(): Promise<Employee[]> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows();
-        
-        const allEmployees = rows.map(deserializeEmployee).filter((e): e is Employee => e !== null);
-
-        if (all) {
-            return { employees: allEmployees, total: allEmployees.length };
-        }
-
-        const filtered = allEmployees.filter(employee => {
-            const statusMatch = status === 'all' || employee.status === status;
-            const searchMatch = searchTerm === '' || employee.fullName.toLowerCase().includes(searchTerm.toLowerCase());
-            const filterMatch = Object.entries(filters).every(([key, value]) => {
-                if (value === 'all' || !value) return true;
-                return String(employee[key as keyof Employee]) === value;
-            });
-            return statusMatch && searchMatch && filterMatch;
-        });
-
-        const total = filtered.length;
-        const paginated = filtered.slice((page - 1) * limit, page * limit);
-
-        return { employees: paginated, total };
+        return rows.map(deserializeEmployee).filter((e): e is Employee => e !== null);
     } catch (error) {
         console.error("Error fetching employees from sheet:", error);
         throw new Error("Could not fetch employees from sheet.");
     }
 }
 
-
 export async function getNonEmployeesFromSheet(): Promise<NonEmployee[]> {
   try {
     const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
     const rows = await sheet.getRows();
-    const nonEmployees = rows.map(deserializeNonEmployee).filter((e): e is NonEmployee => e !== null);
-    return nonEmployees;
+    return rows.map(deserializeNonEmployee).filter((e): e is NonEmployee => e !== null);
   } catch (error) {
     console.error("Error fetching non-employees from sheet:", error);
     throw new Error("Could not fetch non-employees from sheet.");
   }
 }
 
-export async function getSettingsFromSheet(): Promise<Settings> {
-    const getRowsSafe = async (sheetName: string, headers: string[]) => {
-        try {
-            const sheet = await getSheet(sheetName, headers);
-            if (sheet.rowCount > 0) { // Check if sheet has any rows, including header
-                return await sheet.getRows();
-            }
-            return [];
-        } catch (e) {
-            console.warn(`Could not get rows from sheet "${sheetName}":`, e);
-            return []; // Return empty array on error
+const getRowsSafe = async (sheetName: string, headers: string[]) => {
+    try {
+        const sheet = await getSheet(sheetName, headers);
+        // A newly created sheet has 1 row (the header) but getRows will be empty.
+        // A sheet with just a header has a rowCount of 1. A sheet with header + 1 data row has rowCount of 2.
+        // But getRows() only returns data rows. So if rowCount > 1, we can fetch rows.
+        // If the sheet was just created, rowCount will be 1, getRows() will be empty, which is what we want.
+        if (sheet.rowCount > 0) { 
+            return await sheet.getRows();
         }
-    };
+        return [];
+    } catch (e) {
+        console.warn(`Could not get rows from sheet "${sheetName}":`, e);
+        return []; // Return empty array on error
+    }
+};
 
+export async function getSettingsFromSheet(): Promise<Settings> {
     try {
         const [
             addressRows,
@@ -259,14 +211,16 @@ export async function getSettingsFromSheet(): Promise<Settings> {
         const roomsByAddressId = new Map<string, Room[]>();
         roomRows.forEach(row => {
             const addressId = row.get('addressId');
-            if (!roomsByAddressId.has(addressId)) {
+            if (addressId && !roomsByAddressId.has(addressId)) {
                 roomsByAddressId.set(addressId, []);
             }
-            roomsByAddressId.get(addressId)!.push({
-                id: row.get('id'),
-                name: row.get('name'),
-                capacity: Number(row.get('capacity')) || 0,
-            });
+            if (addressId) {
+                roomsByAddressId.get(addressId)!.push({
+                    id: row.get('id'),
+                    name: row.get('name'),
+                    capacity: Number(row.get('capacity')) || 0,
+                });
+            }
         });
 
         const addresses: HousingAddress[] = addressRows.map(row => ({
@@ -282,7 +236,7 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             password: row.get('password'),
         }));
 
-        const settings: Settings = {
+        return {
             id: 'global-settings',
             addresses,
             nationalities: nationalityRows.map(row => row.get('name')).filter(Boolean),
@@ -290,7 +244,6 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             coordinators,
             genders: genderRows.map(row => row.get('name')).filter(Boolean),
         };
-        return settings;
     } catch (error) {
         console.error("Error fetching settings from sheet:", error);
         throw new Error("Could not fetch settings.");
@@ -322,10 +275,12 @@ export async function getInspectionsFromSheet(): Promise<Inspection[]> {
         const detailsByInspectionId = new Map<string, any[]>();
         detailRows.forEach(row => {
             const inspectionId = row.get('inspectionId');
-            if (!detailsByInspectionId.has(inspectionId)) {
-                detailsByInspectionId.set(inspectionId, []);
+            if (inspectionId) {
+                if (!detailsByInspectionId.has(inspectionId)) {
+                    detailsByInspectionId.set(inspectionId, []);
+                }
+                detailsByInspectionId.get(inspectionId)!.push(row);
             }
-            detailsByInspectionId.get(inspectionId)!.push(row);
         });
 
         const inspections = inspectionRows.map(row => {
@@ -346,8 +301,8 @@ export async function getInspectionsFromSheet(): Promise<Inspection[]> {
                 const photoData = detail.get('photoData');
 
                 if (itemLabel && itemLabel !== 'Photo' && itemLabel !== 'Uwagi') {
-                    // Assuming we need to know the type, but it's not stored. We infer it.
-                    let type: InspectionCategoryItem['type'] = 'text';
+                    // This logic is imperfect but better than nothing
+                    let type: Inspection['categories'][0]['items'][0]['type'] = 'text';
                     let value: any = detail.get('itemValue');
                     
                     if (value === 'true' || value === 'false') {
@@ -357,7 +312,7 @@ export async function getInspectionsFromSheet(): Promise<Inspection[]> {
                         type = 'select';
                     }
 
-                    category.items.push({ label: itemLabel, value, type });
+                    category.items.push({ label: itemLabel, value, type, options: [] }); // Options cannot be recovered here
                 }
                 if (uwagi) {
                     category.uwagi = uwagi;
@@ -388,9 +343,3 @@ export async function getInspectionsFromSheet(): Promise<Inspection[]> {
         throw new Error("Could not fetch inspections.");
     }
 }
-
-    
-
-    
-
-    

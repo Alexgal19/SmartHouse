@@ -86,25 +86,11 @@ const NON_EMPLOYEE_HEADERS = [
     'id', 'fullName', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'comments'
 ];
 
-const INSPECTION_HEADERS = ['id', 'address', 'date', 'inspectors', 'comments'];
-const INSPECTION_DETAILS_HEADERS = ['id', 'inspectionId', 'category', 'status', 'comment'];
-
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
-
-export async function getEmployees({ filters = {} }: { filters?: Record<string, string>; } = {}): Promise<Employee[]> {
-    try {
-        const { employees } = await getEmployeesFromSheet({ all: true });
-        return employees;
-    } catch (error) {
-        console.error("Error in getEmployees (actions):", error);
-        throw new Error(`Could not fetch employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-}
 
 export async function getAllEmployees(): Promise<Employee[]> {
     try {
-        const { employees } = await getEmployeesFromSheet({ all: true });
-        return employees;
+        return await getEmployeesFromSheet();
     } catch (error) {
         console.error("Error in getAllEmployees (actions):", error);
         throw new Error(`Could not fetch all employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -123,7 +109,6 @@ export async function getNonEmployees(): Promise<NonEmployee[]> {
 export async function getSettings(): Promise<Settings> {
     return getSettingsFromSheet();
 }
-
 
 const createNotification = async (
     actor: Coordinator,
@@ -148,7 +133,7 @@ const createNotification = async (
             changes
         };
 
-        await sheet.addRow(serializeNotification(newNotification), { raw: false, valueInputOption: 'USER_ENTERED' });
+        await sheet.addRow(serializeNotification(newNotification), { raw: false, insert: true, valueInputOption: 'USER_ENTERED' });
     } catch (e) {
         console.error("Could not create notification:", e);
     }
@@ -171,7 +156,7 @@ export async function addEmployee(employeeData: Omit<Employee, 'id' | 'status'>,
         };
 
         const serialized = serializeEmployee(newEmployee);
-        await sheet.addRow(serialized, { raw: false, valueInputOption: 'USER_ENTERED' });
+        await sheet.addRow(serialized, { raw: false, insert: true, valueInputOption: 'USER_ENTERED' });
         
         await createNotification(actor, 'dodał', newEmployee);
         
@@ -255,7 +240,7 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>): 
         };
 
         const serialized = serializeNonEmployee(newNonEmployee);
-        await sheet.addRow(serialized, { raw: false, valueInputOption: 'USER_ENTERED' });
+        await sheet.addRow(serialized, { raw: false, insert: true, valueInputOption: 'USER_ENTERED' });
         
         return newNonEmployee;
     } catch (e) {
@@ -412,7 +397,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
         const sheet = await getSheet(sheetName, ['name']);
         await sheet.clearRows();
         if (items.length > 0) {
-            await sheet.addRows(items.map(name => ({ name })));
+            await sheet.addRows(items.map(name => ({ name })), { raw: false, insert: true });
         }
     };
     
@@ -442,10 +427,10 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
             });
 
             if (addressesData.length > 0) {
-                await addressesSheet.addRows(addressesData);
+                await addressesSheet.addRows(addressesData, { raw: false, insert: true });
             }
             if (allRooms.length > 0) {
-                 await roomsSheet.addRows(allRooms.map(r => ({...r, capacity: r.capacity.toString()})));
+                 await roomsSheet.addRows(allRooms.map(r => ({...r, capacity: r.capacity.toString()})), { raw: false, insert: true });
             }
         }
         if (newSettings.coordinators) {
@@ -455,7 +440,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
                 await sheet.addRows(newSettings.coordinators.map(c => ({
                     ...c,
                     isAdmin: String(c.isAdmin).toUpperCase()
-                })));
+                })), { raw: false, insert: true });
              }
         }
     } catch (error) {
@@ -517,7 +502,7 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
         coordinatorId: inspectionData.coordinatorId,
         coordinatorName: inspectionData.coordinatorName,
         standard: inspectionData.standard || '',
-    });
+    }, { raw: false, insert: true });
 
     const detailRows: any[] = [];
     inspectionData.categories.forEach(category => {
@@ -565,7 +550,7 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
     });
     
     if (detailRows.length > 0) {
-        await detailsSheet.addRows(detailRows);
+        await detailsSheet.addRows(detailRows, { raw: false, insert: true });
     }
     
     return inspectionId;
@@ -643,7 +628,7 @@ export async function updateInspection(id: string, inspectionData: Omit<Inspecti
     });
 
      if (newDetailRows.length > 0) {
-        await detailsSheet.addRows(newDetailRows);
+        await detailsSheet.addRows(newDetailRows, { raw: false, insert: true });
     }
 }
 
@@ -725,7 +710,7 @@ export async function bulkImportEmployees(fileData: ArrayBuffer, coordinators: C
         // Add employees to sheet
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const newRows = employeesToAdd.map(emp => serializeEmployee({ ...emp, id: `emp-${Date.now()}-${Math.random()}`, status: 'active' }));
-        await sheet.addRows(newRows, { raw: false, valueInputOption: 'USER_ENTERED' });
+        await sheet.addRows(newRows, { raw: false, insert: true, valueInputOption: 'USER_ENTERED' });
 
         return { success: true, message: `Pomyślnie zaimportowano ${employeesToAdd.length} pracowników.` };
 
@@ -779,8 +764,3 @@ function deserializeEmployee(row: any): Employee | null {
         deductionReason: deductionReason,
     };
 }
-
-
-    
-
-    
