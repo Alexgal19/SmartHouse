@@ -32,23 +32,29 @@ const NON_EMPLOYEE_HEADERS = [
 
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
 
-function getAuth() {
-    const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-    const key = process.env.GOOGLE_PRIVATE_KEY;
+let serviceAccountAuth: JWT | null = null;
 
-    if (!email) {
-        throw new Error('Missing GOOGLE_SERVICE_ACCOUNT_EMAIL. Please add it to your .env.local file.');
-    }
-    if (!key) {
-        throw new Error('Missing GOOGLE_PRIVATE_KEY. Please add it to your .env.local file.');
-    }
+function getAuth(): JWT {
+    if (!serviceAccountAuth) {
+        const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+        const key = process.env.GOOGLE_PRIVATE_KEY;
 
-    return new JWT({
-      email: email,
-      key: key.replace(/\\n/g, '\n'),
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-    });
+        if (!email) {
+            throw new Error('Missing GOOGLE_SERVICE_ACCOUNT_EMAIL. Please add it to your .env.local file.');
+        }
+        if (!key) {
+            throw new Error('Missing GOOGLE_PRIVATE_KEY. Please add it to your .env.local file.');
+        }
+
+        serviceAccountAuth = new JWT({
+          email: email,
+          key: key.replace(/\\n/g, '\n'),
+          scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+        });
+    }
+    return serviceAccountAuth;
 }
+
 
 async function getDoc(): Promise<GoogleSpreadsheet> {
     const auth = getAuth();
@@ -163,9 +169,9 @@ export async function getEmployeesFromSheet(): Promise<Employee[]> {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows();
         return rows.map(deserializeEmployee).filter((e): e is Employee => e !== null);
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error fetching employees from sheet:", error);
-        throw new Error("Could not fetch employees from sheet.");
+        throw new Error(`Could not fetch employees from sheet. Original error: ${error.message}`);
     }
 }
 
@@ -174,9 +180,9 @@ export async function getNonEmployeesFromSheet(): Promise<NonEmployee[]> {
     const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
     const rows = await sheet.getRows();
     return rows.map(deserializeNonEmployee).filter((e): e is NonEmployee => e !== null);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error fetching non-employees from sheet:", error);
-    throw new Error("Could not fetch non-employees from sheet.");
+    throw new Error(`Could not fetch non-employees from sheet. Original error: ${error.message}`);
   }
 }
 
@@ -187,8 +193,8 @@ const getRowsSafe = async (sheetName: string, headers: string[]) => {
             return await sheet.getRows();
         }
         return [];
-    } catch (e) {
-        console.warn(`Could not get rows from sheet "${sheetName}":`, e);
+    } catch (e: any) {
+        console.warn(`Could not get rows from sheet "${sheetName}":`, e.message);
         return [];
     }
 };
@@ -247,9 +253,9 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             coordinators,
             genders: genderRows.map(row => row.get('name')).filter(Boolean),
         };
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error fetching settings from sheet:", error);
-        throw new Error("Could not fetch settings.");
+        throw new Error(`Could not fetch settings. Original error: ${error.message}`);
     }
 }
 
@@ -261,9 +267,9 @@ export async function getNotificationsFromSheet(): Promise<Notification[]> {
         return rows.map(deserializeNotification)
             .filter((n): n is Notification => n !== null)
             .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error fetching notifications from sheet:", error);
-        throw new Error("Could not fetch notifications.");
+        throw new Error(`Could not fetch notifications. Original error: ${error.message}`);
     }
 }
 
@@ -341,8 +347,8 @@ export async function getInspectionsFromSheet(): Promise<Inspection[]> {
 
         return inspections;
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error fetching inspections from sheet:", error);
-        throw new Error("Could not fetch inspections.");
+        throw new Error(`Could not fetch inspections. Original error: ${error.message}`);
     }
 }
