@@ -17,7 +17,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { PlusCircle, Star, FileImage, Trash2, Camera, MoreVertical, Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
+import { PlusCircle, Star, FileImage, Trash2, Camera, MoreVertical, Pencil, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { Input } from './ui/input';
 import Image from 'next/image';
@@ -26,6 +26,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertTitle, AlertDescription } from './ui/alert';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
+import { Checkbox } from './ui/checkbox';
 
 
 interface InspectionsViewProps {
@@ -46,8 +47,8 @@ const inspectionSchema = z.object({
         name: z.string(),
         items: z.array(z.object({
             label: z.string(),
-            type: z.enum(['rating', 'yes_no', 'text', 'info', 'select']),
-            value: z.union([z.number(), z.boolean(), z.string()]).nullable(),
+            type: z.enum(['rating', 'yes_no', 'text', 'info', 'select', 'checkbox_group', 'number']),
+            value: z.any(),
             options: z.array(z.string()).optional()
         })),
         uwagi: z.string().optional(),
@@ -97,7 +98,7 @@ const getInitialChecklist = (): InspectionCategory[] => [
             { label: "Temperatura w pomieszczeniu", type: "text", value: "" }
         ], photos: []
     },
-     {
+    {
         name: "Liczniki", uwagi: "", items: [], photos: []
     },
 ];
@@ -135,6 +136,45 @@ const YesNoInput = ({ value, onChange, readOnly = false }: { value: boolean | nu
         </RadioGroup>
     );
 }
+
+const CheckboxGroupInput = ({ value, onChange, options, readOnly = false }: { value: string[] | null, onChange?: (value: string[]) => void, options: string[], readOnly?: boolean }) => {
+    const currentValues = value || [];
+    
+    if (readOnly) {
+        if (currentValues.length === 0) return <Badge variant="secondary">Brak</Badge>;
+        return (
+            <div className="flex flex-wrap gap-2">
+                {currentValues.map(v => <Badge key={v} variant="secondary">{v}</Badge>)}
+            </div>
+        )
+    }
+
+    const handleCheckedChange = (checked: boolean, option: string) => {
+        let newValues: string[];
+        if (checked) {
+            newValues = [...currentValues, option];
+        } else {
+            newValues = currentValues.filter(v => v !== option);
+        }
+        onChange?.(newValues);
+    };
+
+    return (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {options.map(option => (
+                <div key={option} className="flex items-center gap-2">
+                    <Checkbox
+                        id={option}
+                        checked={currentValues.includes(option)}
+                        onCheckedChange={(checked) => handleCheckedChange(checked as boolean, option)}
+                    />
+                    <Label htmlFor={option} className="text-sm font-normal">{option}</Label>
+                </div>
+            ))}
+        </div>
+    );
+};
+
 
 const SelectInput = ({ value, onChange, options, readOnly = false }: { value: string | null, onChange?: (value: string) => void, options: string[], readOnly?: boolean }) => {
      if(readOnly){
@@ -513,14 +553,16 @@ const InspectionDialog = ({
                                                         control={form.control}
                                                         name={fieldName as any}
                                                         render={({ field }) => (
-                                                            <FormItem className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-md border p-3">
-                                                                <FormLabel>{item.label}</FormLabel>
+                                                            <FormItem className="flex flex-col sm:flex-row sm:items-start sm:justify-between rounded-md border p-3 gap-3">
+                                                                <FormLabel className="pt-2">{item.label}</FormLabel>
                                                                 <FormControl>
-                                                                    <div>
+                                                                    <div className="w-full sm:w-auto">
                                                                         {item.type === 'rating' && <RatingInput value={field.value as number | null} onChange={field.onChange} />}
                                                                         {item.type === 'yes_no' && <YesNoInput value={field.value as boolean | null} onChange={field.onChange} />}
                                                                         {item.type === 'text' && <Textarea {...field} value={field.value || ''} className="w-full sm:w-64" />}
+                                                                        {item.type === 'number' && <Input type="number" {...field} value={field.value || ''} className="w-full sm:w-48" onChange={e => field.onChange(e.target.value === '' ? null : Number(e.target.value))} />}
                                                                         {item.type === 'select' && item.options && <SelectInput value={field.value as string | null} onChange={field.onChange} options={item.options} />}
+                                                                        {item.type === 'checkbox_group' && item.options && <CheckboxGroupInput value={field.value as string[] | null} onChange={field.onChange} options={item.options} />}
                                                                     </div>
                                                                 </FormControl>
                                                             </FormItem>
@@ -604,7 +646,7 @@ const InspectionDetailDialog = ({ inspection, isOpen, onOpenChange }: { inspecti
                 <DialogHeader>
                     <DialogTitle>{inspection.addressName}</DialogTitle>
                     <DialogDescription>
-                        Inspekcja z dnia {format(inspection.date, 'd MMMM yyyy, HH:mm', { locale: pl })} przez {inspection.coordinatorName}
+                        Inspekcja z dnia {format(inspection.date, 'dd-MM-yyyy, HH:mm')} przez {inspection.coordinatorName}
                     </DialogDescription>
                     {inspection.standard && <Badge className="w-fit">{inspection.standard}</Badge>}
                 </DialogHeader>
@@ -621,8 +663,10 @@ const InspectionDetailDialog = ({ inspection, isOpen, onOpenChange }: { inspecti
                                             <div>
                                                 {item.type === 'yes_no' && <YesNoInput readOnly value={item.value as boolean | null} />}
                                                 {item.type === 'select' && item.options && <SelectInput readOnly options={item.options} value={item.value as string | null} />}
+                                                {item.type === 'number' && <p className="text-muted-foreground">{item.value !== null ? `${item.value} zł` : 'N/A'}</p>}
                                                 {item.type === 'text' && <p className="text-muted-foreground">{item.value as string || 'N/A'}</p>}
                                                 {item.type === 'rating' && <RatingInput value={item.value as number | null} readOnly />}
+                                                {item.type === 'checkbox_group' && <CheckboxGroupInput readOnly options={item.options || []} value={item.value as string[] | null} />}
                                             </div>
                                         </li>
                                     ))}
@@ -725,7 +769,7 @@ export default function InspectionsView({ inspections, settings, currentUser, on
                                     <div className="cursor-pointer flex-1" onClick={() => setSelectedInspection(inspection)}>
                                         <CardTitle className="text-lg">{inspection.addressName}</CardTitle>
                                         <CardDescription>
-                                            {format(inspection.date, 'd MMMM yyyy', { locale: pl })} przez {inspection.coordinatorName}
+                                            {format(inspection.date, 'dd-MM-yyyy')} przez {inspection.coordinatorName}
                                         </CardDescription>
                                     </div>
                                     <DropdownMenu>
@@ -796,3 +840,5 @@ export default function InspectionsView({ inspections, settings, currentUser, on
         </Card>
     );
 }
+
+    

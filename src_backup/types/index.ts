@@ -7,23 +7,36 @@ export type User = {
   isAdmin?: boolean;
 };
 
+export type DeductionReason = {
+  name: string;
+  checked: boolean;
+  amount?: number | null;
+};
+
 export type Employee = {
   id: string;
   fullName: string;
   coordinatorId: string;
   nationality: string;
-  gender: 'Mężczyzna' | 'Kobieta';
+  gender: string;
   address: string;
   roomNumber: string;
   zaklad: string; // department
-  checkInDate: Date;
-  checkOutDate: Date | null;
-  contractStartDate?: Date | null;
-  contractEndDate?: Date | null;
-  departureReportDate?: Date | null;
+  checkInDate: string; // YYYY-MM-DD
+  checkOutDate: string | null; // YYYY-MM-DD
+  contractStartDate?: string | null; // YYYY-MM-DD
+  contractEndDate?: string | null; // YYYY-MM-DD
+  departureReportDate?: string | null; // YYYY-MM-DD
   comments?: string;
   status: 'active' | 'dismissed';
   oldAddress?: string | null;
+  // Financial fields
+  depositReturned?: 'Tak' | 'Nie' | 'Nie dotyczy' | null;
+  depositReturnAmount?: number | null;
+  deductionRegulation?: number | null;
+  deductionNo4Months?: number | null;
+  deductionNo30Days?: number | null;
+  deductionReason?: DeductionReason[];
 };
 
 export type NonEmployee = {
@@ -31,9 +44,9 @@ export type NonEmployee = {
   fullName:string;
   address: string;
   roomNumber: string;
-  checkInDate: Date;
-  checkOutDate: Date | null;
-  relationshipToEmployee: string; // e.g., 'Spouse', 'Child'
+  checkInDate: string; // YYYY-MM-DD
+  checkOutDate: string | null; // YYYY-MM-DD
+  comments?: string;
 };
 
 export type Room = {
@@ -50,8 +63,8 @@ export type HousingAddress = {
 
 export type InspectionCategoryItem = {
     label: string;
-    type: 'rating' | 'yes_no' | 'text' | 'info' | 'select';
-    value: number | boolean | string | null;
+    type: 'rating' | 'yes_no' | 'text' | 'info' | 'select' | 'checkbox_group' | 'number';
+    value: any; // Can be number, boolean, string, string[] or null
     options?: string[];
 };
 
@@ -108,7 +121,7 @@ export type Settings = {
   nationalities: string[];
   departments: string[];
   coordinators: Coordinator[];
-  genders: ('Mężczyzna' | 'Kobieta')[];
+  genders: string[];
 };
 
 export type Coordinator = {
@@ -137,3 +150,5 @@ export type Notification = {
 };
 
 export type View = 'dashboard' | 'employees' | 'settings' | 'inspections';
+
+    

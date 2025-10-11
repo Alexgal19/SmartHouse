@@ -186,7 +186,7 @@ export async function getEmployeesFromSheet({
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows();
         
-        let allEmployees = rows.map(deserializeEmployee).filter((e): e is Employee => e !== null);
+        const allEmployees = rows.map(deserializeEmployee).filter((e): e is Employee => e !== null);
 
         if (all) {
             return { employees: allEmployees, total: allEmployees.length };

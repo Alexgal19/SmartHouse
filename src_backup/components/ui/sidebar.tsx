@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -10,7 +11,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { Sheet, SheetContent } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
@@ -204,6 +205,7 @@ const Sidebar = React.forwardRef<
             }
             side={side}
           >
+            <SheetTitle className="sr-only">Mobile Sidebar</SheetTitle>
             <div className="flex h-full w-full flex-col">{children}</div>
           </SheetContent>
         </Sheet>
@@ -214,7 +216,7 @@ const Sidebar = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-            "hidden md:flex flex-col m-2 rounded-2xl bg-card/60 backdrop-blur-xl border shadow-lg shadow-orange-400/10 duration-200 transition-[width] ease-in-out",
+            "hidden md:flex flex-col m-2 rounded-lg bg-sidebar border text-sidebar-foreground shadow-sm duration-200 transition-[width] ease-in-out",
             "h-[calc(100svh-1rem)]",
             state === 'expanded' && 'w-[--sidebar-width]',
             state === 'collapsed' && 'w-[--sidebar-width-icon]',

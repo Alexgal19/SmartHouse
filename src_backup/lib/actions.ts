@@ -1,26 +1,55 @@
 
 "use server";
 
-import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection } from '@/types';
-import { getSheet } from '@/lib/sheets';
-import { format, isEqual, parseISO } from 'date-fns';
+import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, NonEmployee, DeductionReason } from '@/types';
+import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getInspectionsFromSheet, getNonEmployeesFromSheet } from '@/lib/sheets';
+import { format, isEqual, isPast, isValid, parse } from 'date-fns';
+import * as XLSX from 'xlsx';
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
+const SHEET_NAME_NON_EMPLOYEES = 'NonEmployees';
 const SHEET_NAME_NOTIFICATIONS = 'Powiadomienia';
 const SHEET_NAME_ADDRESSES = 'Addresses';
 const SHEET_NAME_ROOMS = 'Rooms';
 const SHEET_NAME_NATIONALITIES = 'Nationalities';
 const SHEET_NAME_DEPARTMENTS = 'Departments';
 const SHEET_NAME_COORDINATORS = 'Coordinators';
+const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_INSPECTIONS = 'Inspections';
 const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 
 
+const serializeDate = (date: string | null | undefined): string => {
+    if (!date || !isValid(new Date(date))) {
+        return '';
+    }
+    return date; // It's already a YYYY-MM-DD string
+};
+
 const serializeEmployee = (employee: Partial<Employee>): Record<string, string | number | boolean> => {
-    const serialized: Record<string, string | number | boolean> = {};
-    for (const [key, value] of Object.entries(employee)) {
-        if (value instanceof Date) {
-            serialized[key] = value.toISOString().split('T')[0];
+    const serialized: Record<string, any> = {};
+    const dataToSerialize = { ...employee };
+
+    for (const [key, value] of Object.entries(dataToSerialize)) {
+        if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate'].includes(key)) {
+            serialized[key] = serializeDate(value as string);
+        } else if (Array.isArray(value)) {
+            serialized[key] = JSON.stringify(value);
+        } else if (value !== null && value !== undefined) {
+            serialized[key] = value.toString();
+        } else {
+            serialized[key] = '';
+        }
+    }
+    return serialized;
+};
+
+
+const serializeNonEmployee = (nonEmployee: Partial<NonEmployee>): Record<string, string | number | boolean> => {
+    const serialized: Record<string, any> = {};
+    for (const [key, value] of Object.entries(nonEmployee)) {
+        if (['checkInDate', 'checkOutDate'].includes(key)) {
+            serialized[key] = serializeDate(value as string);
         } else if (value !== null && value !== undefined) {
             serialized[key] = value.toString();
         } else {
@@ -47,32 +76,48 @@ const serializeNotification = (notification: Omit<Notification, 'changes'> & { c
 const EMPLOYEE_HEADERS = [
     'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 
     'zaklad', 'checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 
-    'departureReportDate', 'comments', 'status', 'oldAddress'
+    'departureReportDate', 'comments', 'status', 'oldAddress',
+    'depositReturned', 'depositReturnAmount', 'deductionRegulation', 'deductionNo4Months', 'deductionNo30Days', 'deductionReason'
 ];
+
+const NON_EMPLOYEE_HEADERS = [
+    'id', 'fullName', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'comments'
+];
+
 
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
 
+export async function getEmployees({ filters = {}, all = true }: { filters?: Record<string, string>; all?: boolean } = {}): Promise<Employee[]> {
+    try {
+        const { employees } = await getEmployeesFromSheet({ all, filters });
+        return employees;
+    } catch (error) {
+        console.error("Error in getEmployees (actions):", error);
+        throw new Error(`Could not fetch employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+}
 
-export async function getEmployees(): Promise<Employee[]> {
+export async function getAllEmployees(): Promise<Employee[]> {
+    try {
+        const { employees } = await getEmployeesFromSheet({ all: true });
+        return employees;
+    } catch (error) {
+        console.error("Error in getAllEmployees (actions):", error);
+        throw new Error(`Could not fetch all employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+}
+
+export async function getNonEmployees(): Promise<NonEmployee[]> {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/employees`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('Failed to fetch employees');
-    return res.json();
+    return await getNonEmployeesFromSheet();
   } catch (error) {
-    console.error("Error in getEmployees:", error);
-    throw new Error(`Could not fetch employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error("Error in getNonEmployees (actions):", error);
+    throw new Error(`Could not fetch non-employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
 export async function getSettings(): Promise<Settings> {
-  try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/settings`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('Failed to fetch settings');
-    return res.json();
-  } catch (error) {
-    console.error("Error in getSettings:", error);
-    throw new Error(`Could not fetch settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
+    return getSettingsFromSheet();
 }
 
 
@@ -112,12 +157,13 @@ export async function addEmployee(employeeData: Omit<Employee, 'id' | 'status'>,
             ...employeeData,
             id: `emp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
             status: 'active',
-            checkOutDate: null,
-            contractStartDate: employeeData.contractStartDate || null,
-            contractEndDate: employeeData.contractEndDate || null,
-            departureReportDate: employeeData.departureReportDate || null,
+            checkInDate: employeeData.checkInDate || '',
+            checkOutDate: employeeData.checkOutDate,
+            contractStartDate: employeeData.contractStartDate,
+            contractEndDate: employeeData.contractEndDate,
+            departureReportDate: employeeData.departureReportDate,
             comments: employeeData.comments || '',
-            oldAddress: employeeData.oldAddress || null,
+            oldAddress: employeeData.oldAddress || undefined,
         };
 
         const serialized = serializeEmployee(newEmployee);
@@ -132,10 +178,39 @@ export async function addEmployee(employeeData: Omit<Employee, 'id' | 'status'>,
     }
 }
 
-const formatDate = (date: Date | null | undefined): string => {
-    if (!date || isNaN(date.getTime())) return 'N/A';
-    return format(date, 'dd-MM-yyyy');
+export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>): Promise<NonEmployee> {
+    try {
+        const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
+        const newNonEmployee: NonEmployee = {
+            ...nonEmployeeData,
+            id: `ne-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            checkOutDate: nonEmployeeData.checkOutDate,
+            comments: nonEmployeeData.comments || '',
+        };
+
+        const serialized = serializeNonEmployee(newNonEmployee);
+        await sheet.addRow(serialized, { raw: false, valueInputOption: 'USER_ENTERED' });
+
+        return newNonEmployee;
+    } catch (error) {
+        console.error("Error adding non-employee to Google Sheets:", error);
+        throw new Error("Could not add non-employee.");
+    }
+}
+
+const formatDateForChanges = (date: string | null | undefined): string => {
+    if (!date) return 'N/A';
+    try {
+        const parsedDate = parse(date, 'yyyy-MM-dd', new Date());
+        if(isValid(parsedDate)) {
+            return format(parsedDate, 'dd-MM-yyyy');
+        }
+        return 'N/A';
+    } catch {
+        return 'N/A';
+    }
 };
+
 
 const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): NotificationChange[] => {
     const changes: NotificationChange[] = [];
@@ -155,6 +230,12 @@ const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): 
         comments: 'Komentarze',
         status: 'Status',
         oldAddress: 'Stary adres',
+        depositReturned: 'Zwrot kaucji',
+        depositReturnAmount: 'Kwota zwrotu kaucji',
+        deductionRegulation: 'Potrącenie (regulamin)',
+        deductionNo4Months: 'Potrącenie (4 miesiące)',
+        deductionNo30Days: 'Potrącenie (30 dni)',
+        deductionReason: 'Powód potrącenia',
     };
 
     for (const key in newData) {
@@ -166,19 +247,13 @@ const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): 
         
         let areEqual = false;
         
-        const oldValueIsDate = oldValue instanceof Date;
-        const newValueIsDate = newValue instanceof Date;
+        const isDateField = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate'].includes(typedKey);
 
-        if (oldValueIsDate && newValueIsDate) {
-            areEqual = isEqual(oldValue, newValue);
-        } else if (oldValueIsDate && typeof newValue === 'string') {
-             areEqual = isEqual(oldValue, parseISO(newValue));
-        } else if (typeof oldValue === 'string' && newValueIsDate) {
-             areEqual = isEqual(parseISO(oldValue), newValue);
-        } else if ((oldValue === null || oldValue === undefined) && (newValue === null || newValue === undefined)) {
+        if (Array.isArray(oldValue) && Array.isArray(newValue)) {
+            areEqual = JSON.stringify(oldValue.sort()) === JSON.stringify(newValue.sort());
+        }
+        else if ((oldValue === null || oldValue === undefined || oldValue === '') && (newValue === null || newValue === undefined || newValue === '')) {
              areEqual = true;
-        } else if (oldValue === null || oldValue === undefined || newValue === null || newValue === undefined) {
-             areEqual = oldValue === newValue;
         }
         else {
             areEqual = String(oldValue) === String(newValue);
@@ -188,18 +263,16 @@ const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): 
              let oldFormatted: string;
              let newFormatted: string;
  
-             if (oldValue instanceof Date) {
-                 oldFormatted = formatDate(oldValue);
-             } else {
-                 oldFormatted = String(oldValue ?? 'N/A');
-             }
- 
-             if (newValue instanceof Date) {
-                 newFormatted = formatDate(newValue);
-             } else if (typeof newValue === 'string' && /^\d{4}-\d{2}-\d{2}/.test(newValue)) {
-                newFormatted = formatDate(parseDate(newValue));
+             if (isDateField) {
+                 oldFormatted = formatDateForChanges(oldValue as string);
+                 newFormatted = formatDateForChanges(newValue as string);
+             } else if(Array.isArray(oldValue)) {
+                oldFormatted = oldValue.map(item => typeof item === 'object' ? item.name : item).join(', ');
+             } else if (Array.isArray(newValue)) {
+                newFormatted = newValue.map(item => typeof item === 'object' ? item.name : item).join(', ');
              }
               else {
+                 oldFormatted = String(oldValue ?? 'N/A');
                  newFormatted = String(newValue ?? 'N/A');
              }
 
@@ -213,7 +286,7 @@ const getChanges = (oldData: Employee, newData: Partial<Omit<Employee, 'id'>>): 
     return changes;
 };
 
-export async function updateEmployee(employeeId: string, employeeData: Partial<Omit<Employee, 'id'>>, actor: Coordinator): Promise<Employee> {
+export async function updateEmployee(employeeId: string, employeeData: Partial<Omit<Employee, 'id'>>, actor: Coordinator, createNotif: boolean = true): Promise<Employee> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows();
@@ -225,8 +298,8 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
         
         const rowToUpdate = rows[rowIndex];
         
-        const allEmployees: Employee[] = await getEmployees();
-        const currentData = allEmployees.find(e => e.id === employeeId);
+        const { employees: [currentData] } = await getEmployeesFromSheet({ filters: { id: employeeId } });
+
         if (!currentData) throw new Error("Employee not found for change detection");
 
 
@@ -238,18 +311,19 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
             if (employeeData.status === 'active' && currentData.status !== 'active') action = 'przywrócił(a)';
         } 
         
-        const updatedData = { ...currentData, ...employeeData };
-        const serializedData = serializeEmployee(updatedData);
+        const serializedChanges = serializeEmployee(employeeData);
 
-        for (const key of sheet.headerValues) {
-            if (key in serializedData) {
-                rowToUpdate.set(key, serializedData[key as keyof typeof serializedData]);
+        for (const key of Object.keys(serializedChanges)) {
+            if (sheet.headerValues.includes(key)) {
+                 rowToUpdate.set(key, serializedChanges[key as keyof typeof serializedChanges]);
             }
         }
         
         await rowToUpdate.save({ raw: false, valueInputOption: 'USER_ENTERED' });
 
-        if(changes.length > 0) { 
+        const updatedData = { ...currentData, ...employeeData };
+
+        if(changes.length > 0 && createNotif) { 
             await createNotification(actor, action, updatedData, changes);
         }
 
@@ -258,6 +332,54 @@ export async function updateEmployee(employeeId: string, employeeData: Partial<O
     } catch (error) {
         console.error("Error updating employee in Google Sheets:", error);
         throw new Error(`Could not update employee: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+}
+
+export async function updateNonEmployee(id: string, data: Partial<Omit<NonEmployee, 'id'>>): Promise<NonEmployee> {
+    try {
+        const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
+        const rows = await sheet.getRows();
+        const rowIndex = rows.findIndex(row => row.get('id') === id);
+
+        if (rowIndex === -1) throw new Error("Non-employee not found");
+        
+        const rowToUpdate = rows[rowIndex];
+        const allNonEmployees: NonEmployee[] = await getNonEmployeesFromSheet();
+        const currentData = allNonEmployees.find(e => e.id === id);
+        if (!currentData) throw new Error("Non-employee not found for update");
+
+        const serializedChanges = serializeNonEmployee(data);
+
+        for (const key of Object.keys(serializedChanges)) {
+             if (sheet.headerValues.includes(key)) {
+                rowToUpdate.set(key, serializedChanges[key as keyof typeof serializedChanges]);
+             }
+        }
+        
+        await rowToUpdate.save({ raw: false, valueInputOption: 'USER_ENTERED' });
+        
+        const updatedData = { ...currentData, ...data };
+        return updatedData;
+    } catch (error) {
+        console.error("Error updating non-employee in Google Sheets:", error);
+        throw new Error(`Could not update non-employee: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+}
+
+export async function deleteNonEmployee(id: string): Promise<void> {
+    try {
+        const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
+        const rows = await sheet.getRows();
+        const rowToDelete = rows.find(row => row.get('id') === id);
+
+        if (rowToDelete) {
+            await rowToDelete.delete();
+        } else {
+            throw new Error("Non-employee not found to delete");
+        }
+    } catch (error) {
+        console.error("Error deleting non-employee:", error);
+        throw new Error(`Could not delete non-employee. ${error instanceof Error ? error.message : ''}`);
     }
 }
 
@@ -294,6 +416,9 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Se
         if (newSettings.departments) {
             await syncSheet(SHEET_NAME_DEPARTMENTS, ['name'], updatedSettings.departments.map((name: string) => ({ name })));
         }
+        if (newSettings.genders) {
+            await syncSheet(SHEET_NAME_GENDERS, ['name'], updatedSettings.genders.map((name: string) => ({ name })));
+        }
         if (newSettings.coordinators) {
              await syncSheet(
                 SHEET_NAME_COORDINATORS, 
@@ -313,9 +438,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Se
 
 export async function getNotifications(): Promise<Notification[]> {
     try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/notifications`, { cache: 'no-store' });
-        if (!res.ok) throw new Error('Failed to fetch notifications');
-        return res.json();
+        return await getNotificationsFromSheet();
     } catch (error) {
         console.error("Error fetching notifications:", error);
         return [];
@@ -337,6 +460,17 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
     }
 }
 
+export async function clearAllNotifications(): Promise<void> {
+    try {
+        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
+        await sheet.clearRows();
+    } catch (error) {
+        console.error("Error clearing notifications:", error);
+        throw new Error("Nie udało się usunąć powiadomienia.");
+    }
+}
+
+
 // --- Inspections Actions ---
 
 const INSPECTION_HEADERS = ['id', 'addressId', 'addressName', 'date', 'coordinatorId', 'coordinatorName', 'standard'];
@@ -353,7 +487,7 @@ const serializeInspection = (inspection: Omit<Inspection, 'categories'>): Record
     id: inspection.id,
     addressId: inspection.addressId,
     addressName: inspection.addressName,
-    date: inspection.date.toISOString().split('T')[0],
+    date: inspection.date.toISOString(),
     coordinatorId: inspection.coordinatorId,
     coordinatorName: inspection.coordinatorName,
     standard: serializeRaw(inspection.standard),
@@ -361,9 +495,7 @@ const serializeInspection = (inspection: Omit<Inspection, 'categories'>): Record
 
 export async function getInspections(): Promise<Inspection[]> {
     try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/inspections`, { cache: 'no-store' });
-        if (!res.ok) throw new Error('Failed to fetch inspections');
-        return res.json();
+        return await getInspectionsFromSheet();
     } catch (error) {
         console.error("Error fetching inspections:", error);
         return [];
@@ -377,11 +509,13 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
     const inspectionId = id || `insp-${Date.now()}`;
     const { categories, ...restOfData } = inspectionData;
     
+    // Efficiently delete old details
     const allDetailRows = await detailsSheet.getRows();
     const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === inspectionId);
     
-    for (let i = detailsToDelete.length - 1; i >= 0; i--) {
-        await detailsToDelete[i].delete();
+    // Using for...of loop to ensure sequential deletion
+    for (const row of detailsToDelete) {
+        await row.delete();
     }
 
     const mainInspectionData = serializeInspection({ ...restOfData, id: inspectionId });
@@ -404,7 +538,7 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
                 id: `detail-${Date.now()}-${Math.random()}`,
                 inspectionId: inspectionId,
                 addressName: inspectionData.addressName,
-                date: inspectionData.date.toISOString().split('T')[0],
+                date: inspectionData.date.toISOString(),
                 coordinatorName: inspectionData.coordinatorName,
                 category: category.name,
                 itemLabel: '', itemValue: '', photoData: '',
@@ -416,7 +550,7 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
                 id: `detail-${Date.now()}-${Math.random()}`,
                 inspectionId: inspectionId,
                 addressName: inspectionData.addressName,
-                date: inspectionData.date.toISOString().split('T')[0],
+                date: inspectionData.date.toISOString(),
                 coordinatorName: inspectionData.coordinatorName,
                 category: category.name,
                 itemLabel: item.label,
@@ -430,7 +564,7 @@ async function saveInspectionData(inspectionData: Omit<Inspection, 'id'>, id?: s
                     id: `detail-${Date.now()}-${Math.random()}`,
                     inspectionId: inspectionId,
                     addressName: inspectionData.addressName,
-                    date: inspectionData.date.toISOString().split('T')[0],
+                    date: inspectionData.date.toISOString(),
                     coordinatorName: inspectionData.coordinatorName,
                     category: category.name,
                     itemLabel: 'Photo',
@@ -478,8 +612,8 @@ export async function deleteInspection(id: string): Promise<void> {
         }
 
         const detailsToDelete = allDetailRows.filter(r => r.get('inspectionId') === id);
-        for (let i = detailsToDelete.length - 1; i >= 0; i--) {
-            await detailsToDelete[i].delete();
+        for (const row of detailsToDelete) {
+            await row.delete();
         }
 
     } catch (error) {
@@ -531,12 +665,240 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
 }
 
 
-const parseDate = (dateStr: string | undefined | null): Date | null => {
-  if (!dateStr) return null;
-  const date = new Date(dateStr);
-   if (!isNaN(date.getTime())) {
-    date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
-    return date;
+const parseExcelDate = (excelDate: any): string | null => {
+    if (excelDate === null || excelDate === undefined || excelDate === '') return null;
+
+    // Case 1: It's already a JS Date object from xlsx parsing
+    if (excelDate instanceof Date) {
+        if (isValid(excelDate)) {
+            // Correctly format to YYYY-MM-DD, ignoring timezone
+            const year = excelDate.getFullYear();
+            const month = String(excelDate.getMonth() + 1).padStart(2, '0');
+            const day = String(excelDate.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        return null;
+    }
+
+    // Case 2: It's a number (Excel's date serial number)
+    if (typeof excelDate === 'number') {
+        // This formula converts Excel's serial date number to a JS Date.
+        // It correctly handles the 1900 leap year bug in Excel.
+        const jsDate = new Date(Math.round((excelDate - 25569) * 86400 * 1000));
+        if (isValid(jsDate)) {
+            const year = jsDate.getFullYear();
+            const month = String(jsDate.getMonth() + 1).padStart(2, '0');
+            const day = String(jsDate.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        return null;
+    }
+
+    // Case 3: It's a string, try to parse it
+    if (typeof excelDate === 'string') {
+        const trimmedDate = excelDate.trim();
+        // Try parsing different common formats
+        const formats = ['dd.MM.yyyy', 'dd/MM/yyyy', 'yyyy-MM-dd'];
+        for (const fmt of formats) {
+            const parsedDate = parse(trimmedDate, fmt, new Date());
+            if (isValid(parsedDate)) {
+                return format(parsedDate, 'yyyy-MM-dd');
+            }
+        }
+    }
+
+    // If all else fails, return null
+    return null;
+}
+
+
+export async function bulkImportEmployees(
+    fileData: ArrayBuffer,
+    coordinators: Coordinator[],
+    actor: Coordinator
+): Promise<{ success: boolean, message: string }> {
+    let importedCount = 0;
+    let errorCount = 0;
+    const errors: string[] = [];
+    const newEmployees: Omit<Employee, 'id' | 'status'>[] = [];
+    
+    try {
+        const workbook = XLSX.read(fileData, { type: 'array', cellDates: true });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const data = XLSX.utils.sheet_to_json<any>(worksheet, { header: 1, defval: null });
+        
+        if (data.length < 2) {
+          return { success: false, message: "Plik Excel jest pusty lub zawiera tylko nagłówek."};
+        }
+        
+        const headers = data[0] as string[];
+        const rows = data.slice(1);
+
+        for (const [index, rowArray] of rows.entries()) {
+            const rowNum = index + 2;
+            const row: Record<string, any> = {};
+            headers.forEach((header, i) => {
+                row[header] = (rowArray as any[])[i];
+            });
+
+            try {
+                const { fullName } = row;
+                if (!fullName) continue;
+
+                const coordinatorName = row.coordinatorName;
+                const coordinator = coordinatorName ? coordinators.find(c => c.name.toLowerCase() === String(coordinatorName).toLowerCase()) : undefined;
+
+                const employeeData = {
+                    fullName: String(fullName),
+                    coordinatorId: coordinator ? coordinator.uid : '',
+                    nationality: row.nationality ? String(row.nationality) : '',
+                    gender: row.gender ? String(row.gender) : '',
+                    address: row.address ? String(row.address) : '',
+                    roomNumber: row.roomNumber ? String(row.roomNumber) : '',
+                    zaklad: row.zaklad ? String(row.zaklad) : '',
+                    checkInDate: parseExcelDate(row.checkInDate) || '',
+                    contractStartDate: parseExcelDate(row.contractStartDate),
+                    contractEndDate: parseExcelDate(row.contractEndDate),
+                    departureReportDate: parseExcelDate(row.departureReportDate),
+                    comments: row.comments || '',
+                };
+                
+                newEmployees.push(employeeData);
+
+            } catch (e: any) {
+                errorCount++;
+                errors.push(`Wiersz ${rowNum}: ${e.message}`);
+            }
+        }
+        
+        if (newEmployees.length > 0) {
+            const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
+            const employeesToSave = newEmployees.map(emp => serializeEmployee({
+                ...emp,
+                id: `emp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                status: 'active',
+            }));
+            await sheet.addRows(employeesToSave, { raw: false, valueInputOption: 'USER_ENTERED' });
+            importedCount = employeesToSave.length;
+        }
+
+        if (importedCount > 0) {
+            const message = `${actor.name} zaimportował masowo ${importedCount} nowych pracowników.`;
+             const notificationSheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
+            const newNotification = {
+                id: `notif-${Date.now()}`,
+                message,
+                employeeId: '',
+                employeeName: '',
+                coordinatorId: actor.uid,
+                coordinatorName: actor.name,
+                createdAt: new Date().toISOString(),
+                isRead: 'FALSE',
+                changes: '[]',
+            };
+            await notificationSheet.addRow(newNotification as any, { raw: false, valueInputOption: 'USER_ENTERED' });
+        }
+        
+        if (errorCount > 0) {
+            return { 
+                success: importedCount > 0, 
+                message: `Import zakończony. Zaimportowano: ${importedCount}, Błędy: ${errorCount}.\n\nBłędy:\n- ${errors.join('\n- ')}`
+            };
+        }
+        
+        return { success: true, message: `Pomyślnie zaimportowano ${importedCount} pracowników.` };
+
+    } catch(e: any) {
+        console.error("Error in bulkImportEmployees:", e);
+        return { success: false, message: `Критична помилка імпорту: ${e instanceof Error ? e.message : 'Unknown error'}. Помилки у рядках: ${errors.join('; ')}` };
+    }
+}
+
+export async function bulkDeleteEmployees(status: 'active' | 'dismissed', actor: Coordinator): Promise<void> {
+    try {
+        const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
+        const rows = await sheet.getRows();
+        
+        const rowsToKeep = rows.filter(row => row.get('status') !== status || !row.get('id'));
+        const numDeleted = rows.length - rowsToKeep.length;
+
+        if (numDeleted === 0) {
+            throw new Error(`Brak ${status === 'active' ? 'aktywnych' : 'zwolnionych'} pracowników do usunięcia.`);
+        }
+        
+        await sheet.clearRows();
+        if (rowsToKeep.length > 0) {
+            await sheet.addRows(rowsToKeep.map(r => r.toObject()), { raw: false, valueInputOption: 'USER_ENTERED' });
+        }
+
+
+        const message = `${actor.name} usunął masowo ${numDeleted} ${status === 'active' ? 'aktywnych' : 'zwolnionych'} pracowników.`;
+        
+        const notificationSheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
+        const newNotification = {
+            id: `notif-${Date.now()}`,
+            message,
+            employeeId: '',
+            employeeName: '',
+            coordinatorId: actor.uid,
+            coordinatorName: actor.name,
+            createdAt: new Date().toISOString(),
+            isRead: 'FALSE',
+            changes: '[]',
+        };
+        await notificationSheet.addRow(newNotification as any, { raw: false, valueInputOption: 'USER_ENTERED' });
+
+    } catch (error) {
+        console.error(`Error bulk deleting ${status} employees:`, error);
+        throw new Error(`Nie udało się usunąć pracowników. ${error instanceof Error ? error.message : ''}`);
+    }
+}
+
+export async function checkAndUpdateEmployeeStatuses(actor: Coordinator): Promise<{ updated: number }> {
+  let updatedCount = 0;
+  try {
+    const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
+    const rows = await sheet.getRows();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); 
+
+    const updates: Promise<any>[] = [];
+    const notificationPromises: Promise<any>[] = [];
+
+    for (const row of rows) {
+      const status = row.get('status');
+      const contractEndDateStr = row.get('contractEndDate');
+      
+      if (status === 'active' && contractEndDateStr) {
+        const contractEndDate = parse(contractEndDateStr, 'yyyy-MM-dd', new Date());
+        if (isValid(contractEndDate) && isPast(contractEndDate)) {
+          const employeeId = row.get('id');
+          const employeeName = row.get('fullName');
+          row.set('status', 'dismissed');
+          row.set('checkOutDate', format(today, 'yyyy-MM-dd'));
+          updates.push(row.save({ raw: false, valueInputOption: 'USER_ENTERED' }));
+          
+          notificationPromises.push(createNotification(
+            actor, 
+            'automatycznie zmienił status na "Zwolniony" dla', 
+            { id: employeeId, fullName: employeeName },
+            [{ field: 'Status', oldValue: 'active', newValue: 'dismissed'}]
+          ));
+
+          updatedCount++;
+        }
+      }
+    }
+
+    if (updatedCount > 0) {
+      await Promise.all([...updates, ...notificationPromises]);
+    }
+     return { updated: updatedCount };
+  } catch (error) {
+    console.error("Error updating employee statuses:", error);
+    throw new Error("Could not update statuses.");
   }
-  return null;
-};
+}
+
+    

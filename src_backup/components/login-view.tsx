@@ -39,8 +39,8 @@ export function LoginView({ coordinators, onLogin }: LoginViewProps) {
 
   return (
     <div className="flex h-screen w-full items-center justify-center bg-muted/50 p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
+      <Card className="w-full max-w-sm relative">
+        <CardHeader className="text-center pt-12">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border bg-background">
              <Building className="h-8 w-8 text-primary" />
           </div>
@@ -78,7 +78,7 @@ export function LoginView({ coordinators, onLogin }: LoginViewProps) {
                 </div>
                  {error && <p className="text-sm font-medium text-destructive">{error}</p>}
             </CardContent>
-            <CardFooter>
+            <CardFooter className="flex-col gap-4">
                 <Button type="submit" className="w-full">Zaloguj się</Button>
             </CardFooter>
         </form>

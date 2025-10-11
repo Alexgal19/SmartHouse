@@ -2,23 +2,24 @@
 "use client";
 
 import type { Settings, HousingAddress, Coordinator, Room, Employee } from "@/types";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, PlusCircle, Trash2, ShieldCheck, KeyRound } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Trash2, ShieldCheck, KeyRound, Upload, FileWarning } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Input } from "./ui/input";
 import { Switch } from "./ui/switch";
-import { transferEmployees, getEmployees } from "@/lib/actions";
+import { transferEmployees } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
+import { Alert, AlertTitle, AlertDescription } from "./ui/alert";
 
 
 interface SettingsViewProps {
@@ -27,7 +28,91 @@ interface SettingsViewProps {
   allEmployees: Employee[];
   currentUser: Coordinator;
   onDataRefresh: () => void;
+  onBulkImport: (fileData: ArrayBuffer) => Promise<{success: boolean, message: string}>;
 }
+
+const EmployeeImportDialog = ({ isOpen, onOpenChange, onImport }: { isOpen: boolean, onOpenChange: (isOpen: boolean) => void, onImport: (fileData: ArrayBuffer) => Promise<{success: boolean, message: string}> }) => {
+    const [file, setFile] = useState<File | null>(null);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const { toast } = useToast();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const selectedFile = e.target.files?.[0];
+        if (selectedFile) {
+            setFile(selectedFile);
+        }
+    };
+
+    const handleImportClick = async () => {
+        if (!file) {
+            toast({ variant: 'destructive', title: "Brak pliku", description: "Proszę wybrać plik do importu." });
+            return;
+        }
+        setIsProcessing(true);
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            if (event.target?.result) {
+                const result = await onImport(event.target.result as ArrayBuffer);
+                setIsProcessing(false);
+
+                if (result.success) {
+                    toast({ title: "Sukces", description: result.message });
+                    onOpenChange(false);
+                } else {
+                    toast({ 
+                        variant: 'destructive', 
+                        title: "Błąd importu", 
+                        description: <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4"><code className="text-white">{result.message}</code></pre>,
+                        duration: 15000
+                    });
+                }
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    };
+
+    return (
+         <Dialog open={isOpen} onOpenChange={(open) => {
+            if (!open) {
+                setFile(null);
+            }
+            onOpenChange(open);
+        }}>
+            <DialogContent className="max-w-xl max-h-[90vh]">
+                <DialogHeader>
+                    <DialogTitle>Importuj pracowników z Excel</DialogTitle>
+                    <DialogDescription>
+                        Wybierz plik .xlsx lub .xls. Upewnij się, że plik ma poprawną strukturę.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                     <Alert>
+                        <FileWarning className="h-4 w-4" />
+                        <AlertTitle>Wymagane Kolumny</AlertTitle>
+                        <AlertDescription>
+                            <code className="text-xs bg-muted p-1 rounded-md">fullName, coordinatorName, nationality, gender, address, roomNumber, zaklad, checkInDate</code>
+                            <p className="text-xs mt-1">Opcjonalne: <code className="text-xs bg-muted p-1 rounded-md">contractStartDate, contractEndDate, departureReportDate, comments</code></p>
+                        </AlertDescription>
+                    </Alert>
+                    <div className="p-4 border-2 border-dashed rounded-lg text-center">
+                        <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".xlsx, .xls" className="hidden" />
+                        <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                           <Upload className="mr-2 h-4 w-4" /> Wybierz plik
+                        </Button>
+                        {file && <p className="text-sm text-muted-foreground mt-2">{file.name}</p>}
+                    </div>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild><Button variant="secondary" type="button">Anuluj</Button></DialogClose>
+                    <Button onClick={handleImportClick} disabled={!file || isProcessing}>
+                        {isProcessing ? 'Importowanie...' : `Importuj`}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
 
 // Generic List Manager for simple string arrays
 const ListManager = ({ title, items, onUpdate }: { title: string; items: string[]; onUpdate: (newItems: string[]) => void }) => {
@@ -94,9 +179,12 @@ const AddressManager = ({ items, onUpdate }: { items: HousingAddress[]; onUpdate
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [newAddressName, setNewAddressName] = useState('');
     const [currentAddress, setCurrentAddress] = useState<HousingAddress | null>(null);
+    const [roomsText, setRoomsText] = useState('');
+    const { toast } = useToast();
 
     const openEditDialog = (address: HousingAddress) => {
-        setCurrentAddress(JSON.parse(JSON.stringify(address))); // Deep copy
+        setCurrentAddress(address);
+        setRoomsText(address.rooms.map(r => `${r.name}: ${r.capacity}`).join('\n'));
         setIsEditDialogOpen(true);
     };
 
@@ -116,7 +204,46 @@ const AddressManager = ({ items, onUpdate }: { items: HousingAddress[]; onUpdate
     
     const handleSaveEdit = () => {
         if (!currentAddress) return;
-        const newItems = items.map(item => item.id === currentAddress.id ? currentAddress : item);
+
+        const newRooms: Room[] = [];
+        const lines = roomsText.split('\n').filter(line => line.trim() !== '');
+        const roomNames = new Set<string>();
+
+        for (const line of lines) {
+            const parts = line.split(':');
+            if (parts.length !== 2) {
+                toast({ variant: 'destructive', title: 'Błąd formatu', description: `Nieprawidłowy format w linii: "${line}". Użyj formatu "Nazwa: Ilość".`});
+                return;
+            }
+            const name = parts[0].trim();
+            const capacity = parseInt(parts[1].trim(), 10);
+
+            if (!name) {
+                toast({ variant: 'destructive', title: 'Błąd formatu', description: `Nazwa pokoju nie może być pusta w linii: "${line}".`});
+                return;
+            }
+            if (isNaN(capacity) || capacity < 0) {
+                toast({ variant: 'destructive', title: 'Błąd formatu', description: `Nieprawidłowa ilość miejsc w linii: "${line}".`});
+                return;
+            }
+            if (roomNames.has(name.toLowerCase())) {
+                 toast({ variant: 'destructive', title: 'Zduplikowana nazwa', description: `Nazwa pokoju "${name}" jest użyta więcej niż raz.`});
+                return;
+            }
+            
+            roomNames.add(name.toLowerCase());
+            
+            const existingRoom = currentAddress.rooms.find(r => r.name.toLowerCase() === name.toLowerCase());
+            newRooms.push({
+                id: existingRoom?.id || `room-${Date.now()}-${Math.random()}`,
+                name: name,
+                capacity: capacity
+            });
+        }
+        
+        const updatedAddress = { ...currentAddress, rooms: newRooms };
+        const newItems = items.map(item => item.id === updatedAddress.id ? updatedAddress : item);
+        
         onUpdate(newItems);
         setIsEditDialogOpen(false);
     };
@@ -125,29 +252,6 @@ const AddressManager = ({ items, onUpdate }: { items: HousingAddress[]; onUpdate
         onUpdate(items.filter(item => item.id !== id));
     };
 
-    const handleRoomChange = (roomId: string, field: keyof Room, value: string | number) => {
-        if (!currentAddress) return;
-        const updatedRooms = currentAddress.rooms.map(room => 
-            room.id === roomId ? { ...room, [field]: value } : room
-        );
-        setCurrentAddress({ ...currentAddress, rooms: updatedRooms });
-    };
-
-    const addRoom = () => {
-        if (!currentAddress) return;
-        const newRoom: Room = {
-            id: `room-${Date.now()}-${Math.random()}`,
-            name: '',
-            capacity: 0,
-        };
-        setCurrentAddress({ ...currentAddress, rooms: [...currentAddress.rooms, newRoom] });
-    };
-
-    const deleteRoom = (roomId: string) => {
-        if (!currentAddress) return;
-        setCurrentAddress({ ...currentAddress, rooms: currentAddress.rooms.filter(r => r.id !== roomId) });
-    };
-    
     return (
         <Card>
             <CardHeader className="flex-row items-center justify-between">
@@ -203,34 +307,18 @@ const AddressManager = ({ items, onUpdate }: { items: HousingAddress[]; onUpdate
                             <Label htmlFor="name">Adres</Label>
                             <Input id="name" value={currentAddress?.name || ''} onChange={(e) => setCurrentAddress(p => p ? {...p, name: e.target.value} : null)} />
                         </div>
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h4 className="font-medium">Pokoje</h4>
-                                <Button size="sm" variant="outline" onClick={addRoom}>
-                                    <PlusCircle className="mr-2 h-4 w-4"/>
-                                    Dodaj pokój
-                                </Button>
-                            </div>
-                            <div className="space-y-3">
-                                {currentAddress?.rooms.map(room => (
-                                    <div key={room.id} className="flex items-center gap-3 p-3 border rounded-lg bg-background">
-                                        <div className="flex-1 space-y-2">
-                                            <Label htmlFor={`room-name-${room.id}`}>Nazwa pokoju</Label>
-                                            <Input id={`room-name-${room.id}`} value={room.name} placeholder="Np. 1A" onChange={(e) => handleRoomChange(room.id, 'name', e.target.value)} />
-                                        </div>
-                                        <div className="w-24 space-y-2">
-                                            <Label htmlFor={`room-capacity-${room.id}`}>Miejsca</Label>
-                                            <Input id={`room-capacity-${room.id}`} type="number" value={room.capacity} onChange={(e) => handleRoomChange(room.id, 'capacity', parseInt(e.target.value, 10) || 0)} />
-                                        </div>
-                                        <Button variant="ghost" size="icon" className="self-end" onClick={() => deleteRoom(room.id)}>
-                                            <Trash2 className="h-4 w-4 text-destructive" />
-                                        </Button>
-                                    </div>
-                                ))}
-                                 {currentAddress?.rooms.length === 0 && (
-                                    <p className="text-sm text-center text-muted-foreground py-4">Brak pokoi. Dodaj pierwszy pokój.</p>
-                                 )}
-                            </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="rooms">Pokoje</Label>
+                             <Textarea
+                                id="rooms"
+                                value={roomsText}
+                                onChange={(e) => setRoomsText(e.target.value)}
+                                placeholder="1A: 4&#10;1B: 2&#10;Pokój 3: 3"
+                                className="h-64 font-mono text-sm"
+                            />
+                            <DialogDescription className="text-xs">
+                                Wprowadź każdą кімнату w nowym wierszu w formacie "Nazwa: Ilość miejsc".
+                            </DialogDescription>
                         </div>
                     </div>
                     <DialogFooter>
@@ -456,19 +544,29 @@ const CoordinatorManager = ({ items, onUpdate, allEmployees, currentUser, onData
 };
 
 
-export default function SettingsView({ settings, onUpdateSettings, allEmployees, currentUser, onDataRefresh }: SettingsViewProps) {
+export default function SettingsView({ settings, onUpdateSettings, allEmployees, currentUser, onDataRefresh, onBulkImport }: SettingsViewProps) {
   const { isMobile } = useIsMobile();
+  const [isImportOpen, setIsImportOpen] = useState(false);
   
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Ustawienia Aplikacji</CardTitle>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <CardTitle>Ustawienia Aplikacji</CardTitle>
+            <div className="flex gap-2">
+                <Button onClick={() => setIsImportOpen(true)} variant="outline">
+                    <Upload className="mr-2 h-4 w-4" />
+                    Importuj
+                </Button>
+            </div>
+        </div>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="addresses" className="w-full" orientation={isMobile ? "vertical" : "horizontal"}>
-          <TabsList className={cn("flex-wrap h-auto sm:h-10",isMobile ? "flex-col items-stretch" : "grid w-full grid-cols-4")}>
+          <TabsList className={cn("flex-wrap h-auto sm:h-10",isMobile ? "flex-col items-stretch" : "grid w-full grid-cols-5")}>
             <TabsTrigger value="addresses">Adresy</TabsTrigger>
             <TabsTrigger value="nationalities">Narodowości</TabsTrigger>
+            <TabsTrigger value="genders">Płeć</TabsTrigger>
             <TabsTrigger value="departments">Zakłady</TabsTrigger>
             <TabsTrigger value="coordinators">Koordynatorzy</TabsTrigger>
           </TabsList>
@@ -479,6 +577,9 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
             <TabsContent value="nationalities" className="mt-0">
                <ListManager title="Narodowości" items={settings.nationalities} onUpdate={(newNationalities) => onUpdateSettings({ nationalities: newNationalities })} />
             </TabsContent>
+            <TabsContent value="genders" className="mt-0">
+               <ListManager title="Płeć" items={settings.genders} onUpdate={(newGenders) => onUpdateSettings({ genders: newGenders })} />
+            </TabsContent>
             <TabsContent value="departments" className="mt-0">
                <ListManager title="Zakłady" items={settings.departments} onUpdate={(newDepartments) => onUpdateSettings({ departments: newDepartments })} />
             </TabsContent>
@@ -488,6 +589,13 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
           </div>
         </Tabs>
       </CardContent>
+      <EmployeeImportDialog 
+        isOpen={isImportOpen} 
+        onOpenChange={setIsImportOpen} 
+        onImport={onBulkImport}
+      />
     </Card>
   );
 }
+
+    

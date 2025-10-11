@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -8,7 +9,7 @@ body {
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 0 0% 98%;
     --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
     --card-foreground: 240 10% 3.9%;
@@ -27,19 +28,19 @@ body {
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
     --ring: 24.6 95% 53.1%;
-    --radius: 1.5rem;
+    --radius: 1rem;
     --chart-1: 25 95% 53%; /* Orange */
     --chart-2: 35 95% 58%; /* Lighter Orange */
     --chart-3: 15 90% 48%; /* Darker Orange */
     --chart-4: 45 90% 62%; /* Yellowish Orange */
     --chart-5: 20 85% 55%; /* Reddish Orange */
-    --sidebar-background: 240 10% 3.9%;
-    --sidebar-foreground: 60 9.1% 97.8%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 240 10% 3.9%;
     --sidebar-primary: 24.6 95% 53.1%;
     --sidebar-primary-foreground: 60 9.1% 97.8%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 60 9.1% 97.8%;
-    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 240 5.9% 90%;
     --sidebar-ring: 24.6 95% 53.1%;
   }
  
@@ -63,7 +64,7 @@ body {
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
     --ring: 24.6 95% 53.1%;
-    --radius: 1.5rem;
+    --radius: 1rem;
     --chart-1: 25 95% 53%; /* Orange */
     --chart-2: 35 95% 58%; /* Lighter Orange */
     --chart-3: 15 90% 48%; /* Darker Orange */
@@ -90,5 +91,5 @@ body {
 }
 
 .glass-card {
-    @apply bg-card/60 backdrop-blur-xl border rounded-3xl shadow-lg shadow-orange-400/10;
+    @apply bg-card border rounded-2xl shadow-sm;
 }

@@ -87,9 +87,9 @@ const NON_EMPLOYEE_HEADERS = [
 
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
 
-export async function getEmployees({ filters = {}, all = true }: { filters?: Record<string, string>; all?: boolean } = {}): Promise<Employee[]> {
+export async function getEmployees({ filters = {} }: { filters?: Record<string, string>; } = {}): Promise<Employee[]> {
     try {
-        const { employees } = await getEmployeesFromSheet({ all, filters });
+        const { employees } = await getEmployeesFromSheet({ filters });
         return employees;
     } catch (error) {
         console.error("Error in getEmployees (actions):", error);

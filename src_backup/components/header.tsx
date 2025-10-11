@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { User, View, Notification, Coordinator } from "@/types";
@@ -6,15 +7,27 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 import { Button } from "@/components/ui/button";
-import { Settings, UserCircle, Building, Bell, ArrowRight, LogOut } from "lucide-react";
+import { Settings, UserCircle, Building, Bell, ArrowRight, LogOut, Trash2, Search } from "lucide-react";
 import { SidebarTrigger } from "./ui/sidebar";
 import { useSidebar } from "./ui/sidebar";
 import { formatDistanceToNow } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { ScrollArea } from "./ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { Input } from "./ui/input";
 
 interface HeaderProps {
   user: User | Coordinator;
@@ -22,6 +35,7 @@ interface HeaderProps {
   notifications: Notification[];
   onNotificationClick: (notification: Notification) => void;
   onLogout: () => void;
+  onClearNotifications: () => void;
 }
 
 const viewTitles: Record<View, string> = {
@@ -31,22 +45,35 @@ const viewTitles: Record<View, string> = {
   inspections: 'Inspekcje'
 }
 
-export default function Header({ user, activeView, notifications, onNotificationClick, onLogout }: HeaderProps) {
+export default function Header({ user, activeView, notifications, onNotificationClick, onLogout, onClearNotifications }: HeaderProps) {
     const { isMobile, open } = useSidebar();
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
-    <header className="sticky top-2 z-30 mx-4 flex h-14 items-center gap-4 rounded-2xl border bg-card/60 px-4 shadow-lg shadow-orange-400/10 backdrop-blur-xl sm:px-6">
-      {!open && <div className="flex items-center gap-2 md:hidden">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/95 px-4 backdrop-blur sm:px-6">
+      <div className="flex items-center gap-2 md:hidden">
         <Building className="h-6 w-6 text-primary" />
         <span className="font-semibold text-lg">SmartHouse</span>
       </div>
-      }
       <div className="flex items-center gap-4">
         {isMobile && <SidebarTrigger />}
         <h1 className="text-xl font-semibold hidden md:block">{viewTitles[activeView]}</h1>
       </div>
-      <div className="flex flex-1 items-center justify-end gap-2">
+
+       <div className="flex w-full flex-1 items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
+          <form className="ml-auto flex-1 sm:flex-initial">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Szukaj..."
+                className="pl-8 sm:w-[300px] md:w-[200px] lg:w-[300px]"
+              />
+            </div>
+          </form>
+        </div>
+
+      <div className="flex items-center justify-end gap-2">
          <Popover>
             <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative">
@@ -60,8 +87,30 @@ export default function Header({ user, activeView, notifications, onNotification
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-96 p-0">
-                <div className="p-4">
+                <div className="p-4 flex items-center justify-between">
                   <h4 className="font-medium text-sm">Powiadomienia</h4>
+                  {user.isAdmin && notifications.length > 0 && (
+                     <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Очистити все
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Ви впевнені?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Ця дія призведе до остаточного видалення всіх сповіщень. Ви не зможете скасувати цю дію.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Скасувати</AlertDialogCancel>
+                          <AlertDialogAction onClick={onClearNotifications}>Видалити</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                 </div>
                 <ScrollArea className="h-96">
                   {notifications.length > 0 ? (
