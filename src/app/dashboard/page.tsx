@@ -26,8 +26,8 @@ function DashboardPageContent() {
     const [allNonEmployees, setAllNonEmployees] = useState<NonEmployee[] | null>(null);
     const [allInspections, setAllInspections] = useState<Inspection[] | null>(null);
     const [settings, setSettings] = useState<Settings | null>(null);
-    const [isAppLoading, setIsAppLoading] = useState(true); // For initial settings load
-    const [isDataLoading, setIsDataLoading] = useState(true); // For main data load
+    const [isLoading, setIsLoading] = useState(true);
+    const [loadingMessage, setLoadingMessage] = useState('Ładowanie ustawień...');
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isNonEmployeeFormOpen, setIsNonEmployeeFormOpen] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
@@ -50,26 +50,14 @@ function DashboardPageContent() {
         }
     }, [router]);
 
-    const fetchInitialSettings = useCallback(async () => {
-        setIsAppLoading(true);
+    const fetchAllData = useCallback(async () => {
+        setIsLoading(true);
         try {
+            setLoadingMessage('Ładowanie ustawień...');
             const settingsData = await getSettings();
             setSettings(settingsData);
-        } catch (error) {
-             console.error(error);
-            toast({
-                variant: "destructive",
-                title: "Błąd krytyczny",
-                description: `Nie udało się pobrać ustawień aplikacji. ${error instanceof Error ? error.message : ''}`,
-            });
-        } finally {
-            setIsAppLoading(false);
-        }
-    }, [toast]);
-    
-    const fetchAllData = useCallback(async () => {
-        setIsDataLoading(true);
-        try {
+            
+            setLoadingMessage('Ładowanie danych...');
             const [employeesData, inspectionsData, nonEmployeesData] = await Promise.all([
                 getAllEmployees(),
                 getInspections(),
@@ -85,13 +73,20 @@ function DashboardPageContent() {
                 title: "Błąd ładowania danych",
                 description: `Nie udało się pobrać danych z serwera. ${error instanceof Error ? error.message : ''}`,
             });
+             // Keep loading state on critical error to prevent broken UI
+             return;
         } finally {
-             setIsDataLoading(false);
+             setIsLoading(false);
         }
     }, [toast]);
 
+    useEffect(() => {
+        if (currentUser) {
+            fetchAllData();
+        }
+    }, [currentUser, fetchAllData]);
+
     const refreshData = useCallback(async (showToast = true) => {
-         setIsDataLoading(true);
         try {
             const [employeesData, settingsData, inspectionsData, nonEmployeesData] = await Promise.all([
                 getAllEmployees(), 
@@ -113,23 +108,9 @@ function DashboardPageContent() {
                 title: "Błąd odświeżania danych",
                 description: `Nie udało się pobrać danych z serwera. ${error instanceof Error ? error.message : ''}`,
             });
-        } finally {
-            setIsDataLoading(false);
         }
     }, [toast]);
     
-     useEffect(() => {
-        if (currentUser) {
-            fetchInitialSettings();
-        }
-    }, [currentUser, fetchInitialSettings]);
-
-    useEffect(() => {
-        if(settings){ // As soon as settings are loaded
-            fetchAllData(); // Start fetching the rest of the data
-        }
-    }, [settings, fetchAllData]);
-
     useEffect(() => {
         if (editEmployeeId && allEmployees) {
             const employeeToEdit = allEmployees.find(e => e.id === editEmployeeId);
@@ -439,32 +420,20 @@ function DashboardPageContent() {
       }
     };
 
-    if (isAppLoading || !currentUser || !settings) {
+    if (isLoading || !currentUser || !settings) {
         return (
              <div className="flex h-screen w-full items-center justify-center bg-background">
                 <div className="flex animate-fade-in flex-col items-center gap-6">
                     <h1 className="text-4xl sm:text-5xl md:text-7xl font-semibold tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm">
                         SmartHouse
                     </h1>
-                    <p className="text-muted-foreground">Ładowanie ustawień...</p>
+                    <p className="text-muted-foreground">{loadingMessage}</p>
                 </div>
             </div>
         )
     }
 
     const renderView = () => {
-        if (isDataLoading) {
-            return (
-                <div className="space-y-6">
-                    <Skeleton className="h-48 w-full" />
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <Skeleton className="h-96 w-full" />
-                        <Skeleton className="h-96 w-full" />
-                    </div>
-                </div>
-            )
-        }
-        
         switch (view) {
             case 'dashboard':
                 return <DashboardView employees={filteredEmployees} allEmployees={allEmployees || []} nonEmployees={filteredNonEmployees || []} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={handleRefreshStatuses} />;
@@ -524,7 +493,5 @@ export default function DashboardPage() {
         </React.Suspense>
     )
 }
-
-    
 
     
