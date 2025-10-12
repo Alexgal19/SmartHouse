@@ -299,20 +299,20 @@ function DashboardPageContent() {
       }
     };
 
-    const renderView = () => {
-        if (isLoading || !currentUser || !settings) {
-            return (
-                 <div className="flex h-[80vh] w-full items-center justify-center bg-background">
-                    <div className="flex animate-fade-in flex-col items-center gap-6">
-                        <h1 className="text-4xl sm:text-5xl md:text-7xl font-semibold tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm">
-                            SmartHouse
-                        </h1>
-                        <p className="text-muted-foreground">Ładowanie danych...</p>
-                    </div>
+    if (isLoading || !currentUser || !settings) {
+        return (
+             <div className="flex h-screen w-full items-center justify-center bg-background">
+                <div className="flex animate-fade-in flex-col items-center gap-6">
+                    <h1 className="text-4xl sm:text-5xl md:text-7xl font-semibold tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm">
+                        SmartHouse
+                    </h1>
+                    <p className="text-muted-foreground">Ładowanie danych...</p>
                 </div>
-            )
-        }
+            </div>
+        )
+    }
 
+    const renderView = () => {
         switch (view) {
             case 'dashboard':
                 return <DashboardView employees={filteredEmployees} allEmployees={allEmployees} nonEmployees={filteredNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={handleRefreshStatuses} />;
@@ -336,8 +336,6 @@ function DashboardPageContent() {
                 return <DashboardView employees={filteredEmployees} allEmployees={allEmployees} nonEmployees={filteredNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={handleRefreshStatuses} />;
         }
     };
-
-    if (!currentUser) return null;
 
     return (
         <MainLayout>
@@ -367,7 +365,7 @@ function DashboardPageContent() {
 
 export default function DashboardPage() {
     return (
-        <React.Suspense fallback={<div>Ładowanie...</div>}>
+        <React.Suspense fallback={<div className="flex h-screen w-full items-center justify-center bg-background"><p>Ładowanie komponentów...</p></div>}>
              <DashboardPageContent />
         </React.Suspense>
     )
