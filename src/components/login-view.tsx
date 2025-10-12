@@ -43,8 +43,8 @@ export function LoginView({ onLogin, isLoading }: LoginViewProps) {
   }, []);
 
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-muted/50 p-4">
-      <Card className="w-full max-w-sm">
+    <div className="flex h-screen w-full items-center justify-center bg-muted/50 p-4 animate-in fade-in-0 duration-500">
+      <Card className="w-full max-w-sm animate-in fade-in-0 zoom-in-95 duration-500">
         <CardHeader className="text-center pt-12">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border bg-background">
              <Building className="h-8 w-8 text-primary" />
@@ -101,3 +101,5 @@ export function LoginView({ onLogin, isLoading }: LoginViewProps) {
     </div>
   );
 }
+
+    

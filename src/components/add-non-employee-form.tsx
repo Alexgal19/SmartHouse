@@ -34,6 +34,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
 import { format } from "date-fns";
+import { Loader2 } from "lucide-react";
 
 const dateStringSchema = z.string().nullable().optional();
 
@@ -99,7 +100,7 @@ export function AddNonEmployeeForm({ isOpen, onOpenChange, onSave, settings, non
           <DialogTitle>{nonEmployee ? 'Edytuj mieszkańca (NZ)' : 'Dodaj nowego mieszkańca (NZ)'}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 pt-4 animate-in fade-in-0 duration-500">
             <FormField
               control={form.control}
               name="fullName"
@@ -192,10 +193,10 @@ export function AddNonEmployeeForm({ isOpen, onOpenChange, onSave, settings, non
 
             <DialogFooter>
               <DialogClose asChild>
-                <Button type="button" variant="secondary">Anuluj</Button>
+                <Button type="button" variant="secondary" disabled={form.formState.isSubmitting}>Anuluj</Button>
               </DialogClose>
-              <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? 'Zapisywanie...' : 'Zapisz'}
+              <Button type="submit" disabled={form.formState.isSubmitting} className="transition-all active:scale-95">
+                {form.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Zapisywanie...</> : 'Zapisz'}
               </Button>
             </DialogFooter>
           </form>
@@ -204,3 +205,5 @@ export function AddNonEmployeeForm({ isOpen, onOpenChange, onSave, settings, non
     </Dialog>
   );
 }
+
+    

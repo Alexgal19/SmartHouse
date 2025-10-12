@@ -37,6 +37,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "./ui/label";
 import { Checkbox } from "./ui/checkbox";
 import { format, isValid } from 'date-fns';
+import { Loader2 } from "lucide-react";
 
 const dateStringSchema = z.string().nullable().optional();
 
@@ -65,7 +66,7 @@ const employeeSchema = z.object({
   depositReturned: z.enum(['Tak', 'Nie', 'Nie dotyczy']).optional().nullable(),
   depositReturnAmount: z.number().optional().nullable(),
   deductionRegulation: z.number().optional().nullable(),
-  deductionNo4Months: z.number().optional().nullable(),
+  deductionNo4Months: z>number().optional().nullable(),
   deductionNo30Days: z.number().optional().nullable(),
   deductionReason: z.array(deductionReasonSchema).optional(),
 });
@@ -185,7 +186,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                 <TabsTrigger value="main">Dane Główne</TabsTrigger>
                 <TabsTrigger value="finance">Kaucja i Potrącenia</TabsTrigger>
               </TabsList>
-              <div className="flex-1 overflow-y-auto p-1">
+              <div className="flex-1 overflow-y-auto p-1 animate-in fade-in-0 duration-500">
               <TabsContent value="main" className="space-y-4 pt-4 px-2 data-[state=active]:animate-in data-[state=active]:fade-in-0">
                 <FormField
                   control={form.control}
@@ -553,10 +554,10 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
             </Tabs>
             <DialogFooter className="mt-4 shrink-0 px-2">
               <DialogClose asChild>
-                <Button type="button" variant="secondary">Anuluj</Button>
+                <Button type="button" variant="secondary" disabled={form.formState.isSubmitting}>Anuluj</Button>
               </DialogClose>
-              <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? 'Zapisywanie...' : 'Zapisz'}
+              <Button type="submit" disabled={form.formState.isSubmitting} className="transition-all active:scale-95">
+                {form.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Zapisywanie...</> : 'Zapisz'}
               </Button>
             </DialogFooter>
           </form>
@@ -565,5 +566,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
     </Dialog>
   );
 }
+
+    
 
     
