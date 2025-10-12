@@ -58,6 +58,7 @@ const serializeNonEmployee = (nonEmployee: Partial<NonEmployee>): Record<string,
             serialized[key] = '';
         }
     }
+    return serialized;
 };
 
 const serializeNotification = (notification: Omit<Notification, 'changes'> & { changes?: NotificationChange[] }): Record<string, string> => {
@@ -89,17 +90,8 @@ const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
 
 export async function getAllEmployees(): Promise<Employee[]> {
     try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/employees`, { next: { revalidate: 60 } });
-        if (!response.ok) {
-            const errorText = await response.text();
-            try {
-                const error = JSON.parse(errorText);
-                throw new Error(error.message || 'Failed to fetch employees');
-            } catch (e) {
-                throw new Error(`Failed to fetch employees. Server returned: ${errorText}`);
-            }
-        }
-        return await response.json();
+        const employees = await getEmployeesFromSheet();
+        return employees;
     } catch (error) {
         console.error("Error in getAllEmployees (actions):", error);
         throw new Error(`Could not fetch all employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -108,19 +100,8 @@ export async function getAllEmployees(): Promise<Employee[]> {
 
 export async function getNonEmployees(): Promise<NonEmployee[]> {
   try {
-     const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/non-employees`, { next: { revalidate: 60 } });
-     if (!response.ok) {
-        const errorText = await response.text();
-        try {
-            const error = JSON.parse(errorText);
-            throw new Error(error.message || 'Failed to fetch non-employees');
-        } catch(e) {
-            // This will catch the "Unexpected token '<'" error
-            console.error(`Failed to parse JSON from /api/non-employees. Response: ${errorText}`);
-            return []; // Return empty array to prevent app crash
-        }
-     }
-    return await response.json();
+     const nonEmployees = await getNonEmployeesFromSheet();
+     return nonEmployees;
   } catch (error) {
     console.error("Error in getNonEmployees (actions):", error);
     // Return empty array on any other error to keep the app running
@@ -130,12 +111,8 @@ export async function getNonEmployees(): Promise<NonEmployee[]> {
 
 export async function getSettings(): Promise<Settings> {
     try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/settings`, { next: { revalidate: 60 } });
-        if (!response.ok) {
-             const error = await response.json();
-            throw new Error(error.message || 'Failed to fetch settings');
-        }
-        return await response.json();
+        const settings = await getSettingsFromSheet();
+        return settings;
     } catch (error) {
         console.error("Error in getSettings (actions):", error);
         throw new Error(`Could not fetch settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -486,12 +463,8 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
 
 export async function getNotifications(): Promise<Notification[]> {
     try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/notifications`, { next: { revalidate: 10 } });
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Failed to fetch notifications');
-        }
-        return await response.json();
+        const notifications = await getNotificationsFromSheet();
+        return notifications;
     } catch (error) {
          console.error("Error in getNotifications (actions):", error);
         throw new Error(`Could not fetch notifications: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -527,12 +500,8 @@ export async function clearAllNotifications(): Promise<void> {
 
 export async function getInspections(): Promise<Inspection[]> {
     try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/inspections`, { next: { revalidate: 60 } });
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Failed to fetch inspections');
-        }
-        return await response.json();
+        const inspections = await getInspectionsFromSheet();
+        return inspections;
     } catch (error) {
          console.error("Error in getInspections (actions):", error);
         throw new Error(`Could not fetch inspections: ${error instanceof Error ? error.message : 'Unknown error'}`);
