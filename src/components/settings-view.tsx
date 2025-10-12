@@ -79,7 +79,7 @@ const EmployeeImportDialog = ({ isOpen, onOpenChange, onImport }: { isOpen: bool
             }
             onOpenChange(open);
         }}>
-            <DialogContent className="max-w-xl max-h-[90vh]">
+            <DialogContent className="max-w-xl max-h-[90vh] data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
                 <DialogHeader>
                     <DialogTitle>Importuj pracowników z Excel</DialogTitle>
                     <DialogDescription>
@@ -154,7 +154,7 @@ const ListManager = ({ title, items, onUpdate }: { title: string; items: string[
                 </div>
             </CardContent>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent>
+                <DialogContent className="data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
                     <DialogHeader>
                         <DialogTitle>Dodaj nowe pozycje do: {title}</DialogTitle>
                     </DialogHeader>
@@ -285,7 +285,7 @@ const AddressManager = ({ items, onUpdate }: { items: HousingAddress[]; onUpdate
                 </div>
             </CardContent>
              <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                <DialogContent>
+                <DialogContent className="data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
                     <DialogHeader><DialogTitle>Dodaj nowe adresy</DialogTitle></DialogHeader>
                     <div className="grid gap-4 py-4">
                         <Label htmlFor="newAddresses">Adresy (każdy w nowej linii)</Label>
@@ -298,7 +298,7 @@ const AddressManager = ({ items, onUpdate }: { items: HousingAddress[]; onUpdate
                 </DialogContent>
             </Dialog>
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
+                <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
                     <DialogHeader>
                         <DialogTitle>Edytuj adres</DialogTitle>
                     </DialogHeader>
@@ -448,7 +448,7 @@ const CoordinatorManager = ({ items, onUpdate, allEmployees, currentUser, onData
                 </div>
             </CardContent>
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                <DialogContent>
+                <DialogContent className="data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
                     <DialogHeader>
                         <DialogTitle>Dodaj nowych koordynatorów</DialogTitle>
                     </DialogHeader>
@@ -463,7 +463,7 @@ const CoordinatorManager = ({ items, onUpdate, allEmployees, currentUser, onData
                 </DialogContent>
             </Dialog>
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                <DialogContent>
+                <DialogContent className="data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
                     <DialogHeader>
                         <DialogTitle>Edytuj koordynatora</DialogTitle>
                     </DialogHeader>
@@ -488,7 +488,7 @@ const CoordinatorManager = ({ items, onUpdate, allEmployees, currentUser, onData
                 </DialogContent>
             </Dialog>
              <Dialog open={isTransferDialogOpen} onOpenChange={setIsTransferDialogOpen}>
-                <DialogContent>
+                <DialogContent className="data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
                     <DialogHeader>
                         <DialogTitle>Przenieś pracowników</DialogTitle>
                         <DialogDescription>
@@ -570,20 +570,20 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
             <TabsTrigger value="departments">Zakłady</TabsTrigger>
             <TabsTrigger value="coordinators">Koordynatorzy</TabsTrigger>
           </TabsList>
-          <div className={cn(isMobile ? "mt-4" : "mt-6")}>
-            <TabsContent value="addresses" className="mt-0">
+          <div className={cn("data-[orientation=horizontal]:mt-6", isMobile ? "mt-4 ml-4" : "data-[orientation=vertical]:ml-6")}>
+            <TabsContent value="addresses" className="mt-0 data-[state=active]:animate-in data-[state=active]:fade-in-0">
               <AddressManager items={settings.addresses} onUpdate={(newAddresses) => onUpdateSettings({ addresses: newAddresses })} />
             </TabsContent>
-            <TabsContent value="nationalities" className="mt-0">
+            <TabsContent value="nationalities" className="mt-0 data-[state=active]:animate-in data-[state=active]:fade-in-0">
                <ListManager title="Narodowości" items={settings.nationalities} onUpdate={(newNationalities) => onUpdateSettings({ nationalities: newNationalities })} />
             </TabsContent>
-            <TabsContent value="genders" className="mt-0">
+            <TabsContent value="genders" className="mt-0 data-[state=active]:animate-in data-[state=active]:fade-in-0">
                <ListManager title="Płeć" items={settings.genders} onUpdate={(newGenders) => onUpdateSettings({ genders: newGenders })} />
             </TabsContent>
-            <TabsContent value="departments" className="mt-0">
+            <TabsContent value="departments" className="mt-0 data-[state=active]:animate-in data-[state=active]:fade-in-0">
                <ListManager title="Zakłady" items={settings.departments} onUpdate={(newDepartments) => onUpdateSettings({ departments: newDepartments })} />
             </TabsContent>
-            <TabsContent value="coordinators" className="mt-0">
+            <TabsContent value="coordinators" className="mt-0 data-[state=active]:animate-in data-[state=active]:fade-in-0">
                <CoordinatorManager items={settings.coordinators} onUpdate={(newCoordinators) => onUpdateSettings({ coordinators: newCoordinators })} allEmployees={allEmployees} currentUser={currentUser} onDataRefresh={onDataRefresh} />
             </TabsContent>
           </div>

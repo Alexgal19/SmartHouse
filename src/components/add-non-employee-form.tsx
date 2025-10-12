@@ -94,7 +94,7 @@ export function AddNonEmployeeForm({ isOpen, onOpenChange, onSave, settings, non
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
         <DialogHeader>
           <DialogTitle>{nonEmployee ? 'Edytuj mieszkańca (NZ)' : 'Dodaj nowego mieszkańca (NZ)'}</DialogTitle>
         </DialogHeader>

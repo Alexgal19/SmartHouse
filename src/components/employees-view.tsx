@@ -172,7 +172,7 @@ const EmployeeCardList = ({
         <div className="space-y-4">
              {employees.length > 0 ? (
                 employees.map((employee) => (
-                    <Card key={employee.id} onClick={() => onEdit(employee)} className="cursor-pointer">
+                    <Card key={employee.id} onClick={() => onEdit(employee)} className="cursor-pointer animate-in fade-in-0 duration-300">
                         <CardHeader className="flex flex-row items-start justify-between pb-4">
                            <div>
                              <CardTitle className="text-lg">{employee.fullName}</CardTitle>
@@ -268,7 +268,7 @@ const NonEmployeeCardList = ({
         <div className="space-y-4">
              {nonEmployees.length > 0 ? (
                 nonEmployees.map((person) => (
-                    <Card key={person.id} onClick={() => onEdit(person)} className="cursor-pointer">
+                    <Card key={person.id} onClick={() => onEdit(person)} className="cursor-pointer animate-in fade-in-0 duration-300">
                         <CardHeader className="flex flex-row items-start justify-between pb-4">
                            <div>
                              <CardTitle className="text-lg">{person.fullName}</CardTitle>
@@ -320,7 +320,7 @@ const FilterDialog = ({
 }) => {
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
                 <DialogHeader>
                     <DialogTitle>Filtruj</DialogTitle>
                     <DialogDescription>
@@ -557,17 +557,17 @@ export default function EmployeesView({
             <TabsTrigger value="dismissed">Zwolnieni ({dismissedEmployees.length})</TabsTrigger>
             <TabsTrigger value="non-employees">NZ ({filteredNonEmployees.length})</TabsTrigger>
           </TabsList>
-          <TabsContent value="active" className="mt-4">
+          <TabsContent value="active" className="mt-4 data-[state=active]:animate-in data-[state=active]:fade-in-0">
              <ScrollArea className="h-[55vh]">
                 {renderEmployeeContent(activeEmployees, false)}
              </ScrollArea>
           </TabsContent>
-          <TabsContent value="dismissed" className="mt-4">
+          <TabsContent value="dismissed" className="mt-4 data-[state=active]:animate-in data-[state=active]:fade-in-0">
             <ScrollArea className="h-[55vh]">
                 {renderEmployeeContent(dismissedEmployees, true)}
             </ScrollArea>
           </TabsContent>
-           <TabsContent value="non-employees" className="mt-4">
+           <TabsContent value="non-employees" className="mt-4 data-[state=active]:animate-in data-[state=active]:fade-in-0">
             <ScrollArea className="h-[55vh]">
                 {renderNonEmployeeContent(filteredNonEmployees)}
             </ScrollArea>

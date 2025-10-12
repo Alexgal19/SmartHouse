@@ -261,7 +261,7 @@ const CameraCapture = ({ isOpen, onOpenChange, onCapture }: { isOpen: boolean, o
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent>
+            <DialogContent className="data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
                 <DialogHeader>
                     <DialogTitle>Зробіть фото</DialogTitle>
                 </DialogHeader>
@@ -466,7 +466,7 @@ const InspectionDialog = ({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh]">
+            <DialogContent className="max-w-4xl max-h-[90vh] data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
                 <DialogHeader>
                     <DialogTitle>{editingInspection ? "Edytuj Inspekcję" : "Nowa Kontrola Mieszkania"}</DialogTitle>
                 </DialogHeader>
@@ -649,7 +649,7 @@ const InspectionDetailDialog = ({ inspection, isOpen, onOpenChange }: { inspecti
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh]">
+            <DialogContent className="max-w-4xl max-h-[90vh] data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
                 <DialogHeader>
                     <DialogTitle>{inspection.addressName}</DialogTitle>
                     <DialogDescription>
@@ -707,7 +707,7 @@ const InspectionDetailDialog = ({ inspection, isOpen, onOpenChange }: { inspecti
                 </DialogFooter>
                 
                 <Dialog open={isPhotoViewerOpen} onOpenChange={setIsPhotoViewerOpen}>
-                    <DialogContent className="max-w-5xl w-full h-[90vh] flex flex-col p-2">
+                    <DialogContent className="max-w-5xl w-full h-[90vh] flex flex-col p-2 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
                        <DialogHeader>
                           <DialogTitle>Zdjęcie {selectedPhoto.index + 1} z {allPhotos.length}</DialogTitle>
                        </DialogHeader>
@@ -771,7 +771,7 @@ export default function InspectionsView({ inspections, settings, currentUser, on
                 {inspections.length > 0 ? (
                     <div className="space-y-4">
                         {inspections.map(inspection => (
-                             <Card key={inspection.id}>
+                             <Card key={inspection.id} className="animate-in fade-in-0 duration-300">
                                 <CardHeader className="flex-row items-center justify-between">
                                     <div className="cursor-pointer flex-1" onClick={() => setSelectedInspection(inspection)}>
                                         <CardTitle className="text-lg">{inspection.addressName}</CardTitle>

@@ -13,6 +13,7 @@ import { getAllEmployees, getSettings, addEmployee, updateEmployee, updateSettin
 import type { Employee, Settings, View, Coordinator, Inspection, NonEmployee } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/main-layout';
+import { cn } from '@/lib/utils';
 
 function DashboardPageContent() {
     const searchParams = useSearchParams();
@@ -339,7 +340,9 @@ function DashboardPageContent() {
 
     return (
         <MainLayout>
-            {renderView()}
+            <div key={view} className={cn("animate-in fade-in-0 duration-300")}>
+                {renderView()}
+            </div>
             
             {settings && (
                  <AddEmployeeForm
