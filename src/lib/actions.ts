@@ -107,7 +107,12 @@ export async function getNonEmployees(): Promise<NonEmployee[]> {
 }
 
 export async function getSettings(): Promise<Settings> {
-    return getSettingsFromSheet();
+    try {
+        return await getSettingsFromSheet();
+    } catch (error) {
+        console.error("Error in getSettings (actions):", error);
+        throw new Error(`Could not fetch settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
 }
 
 const createNotification = async (
