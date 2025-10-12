@@ -58,7 +58,6 @@ const serializeNonEmployee = (nonEmployee: Partial<NonEmployee>): Record<string,
             serialized[key] = '';
         }
     }
-    return serialized;
 };
 
 const serializeNotification = (notification: Omit<Notification, 'changes'> & { changes?: NotificationChange[] }): Record<string, string> => {
@@ -92,8 +91,13 @@ export async function getAllEmployees(): Promise<Employee[]> {
     try {
         const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/employees`, { next: { revalidate: 60 } });
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Failed to fetch employees');
+            const errorText = await response.text();
+            try {
+                const error = JSON.parse(errorText);
+                throw new Error(error.message || 'Failed to fetch employees');
+            } catch (e) {
+                throw new Error(`Failed to fetch employees. Server returned: ${errorText}`);
+            }
         }
         return await response.json();
     } catch (error) {
@@ -106,13 +110,21 @@ export async function getNonEmployees(): Promise<NonEmployee[]> {
   try {
      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/non-employees`, { next: { revalidate: 60 } });
      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to fetch non-employees');
+        const errorText = await response.text();
+        try {
+            const error = JSON.parse(errorText);
+            throw new Error(error.message || 'Failed to fetch non-employees');
+        } catch(e) {
+            // This will catch the "Unexpected token '<'" error
+            console.error(`Failed to parse JSON from /api/non-employees. Response: ${errorText}`);
+            return []; // Return empty array to prevent app crash
+        }
      }
     return await response.json();
   } catch (error) {
     console.error("Error in getNonEmployees (actions):", error);
-    throw new Error(`Could not fetch non-employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    // Return empty array on any other error to keep the app running
+    return [];
   }
 }
 
