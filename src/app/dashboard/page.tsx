@@ -26,8 +26,8 @@ function DashboardPageContent() {
     const [allNonEmployees, setAllNonEmployees] = useState<NonEmployee[] | null>(null);
     const [allInspections, setAllInspections] = useState<Inspection[] | null>(null);
     const [settings, setSettings] = useState<Settings | null>(null);
-    const [isAppLoading, setIsAppLoading] = useState(true);
-    const [isDataLoading, setIsDataLoading] = useState(true);
+    const [isAppLoading, setIsAppLoading] = useState(true); // For initial settings load
+    const [isDataLoading, setIsDataLoading] = useState(true); // For main data load
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isNonEmployeeFormOpen, setIsNonEmployeeFormOpen] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
@@ -125,8 +125,8 @@ function DashboardPageContent() {
     }, [currentUser, fetchInitialSettings]);
 
     useEffect(() => {
-        if(settings){
-            fetchAllData();
+        if(settings){ // As soon as settings are loaded
+            fetchAllData(); // Start fetching the rest of the data
         }
     }, [settings, fetchAllData]);
 
@@ -446,7 +446,7 @@ function DashboardPageContent() {
                     <h1 className="text-4xl sm:text-5xl md:text-7xl font-semibold tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm">
                         SmartHouse
                     </h1>
-                    <p className="text-muted-foreground">Ładowanie danych...</p>
+                    <p className="text-muted-foreground">Ładowanie ustawień...</p>
                 </div>
             </div>
         )
@@ -524,5 +524,7 @@ export default function DashboardPage() {
         </React.Suspense>
     )
 }
+
+    
 
     

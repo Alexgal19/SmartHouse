@@ -88,7 +88,7 @@ export function LoginView({ onLogin, isLoading }: LoginViewProps) {
             </CardContent>
             <CardFooter className="flex-col gap-4">
                 <Button type="submit" className="w-full" disabled={isLoggingIn || isLoading}>
-                    {isLoggingIn ? (
+                    {isLoggingIn || isLoading ? (
                         <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                             Logowanie...
@@ -101,5 +101,7 @@ export function LoginView({ onLogin, isLoading }: LoginViewProps) {
     </div>
   );
 }
+
+    
 
     
