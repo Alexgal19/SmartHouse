@@ -90,7 +90,12 @@ const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
 
 export async function getAllEmployees(): Promise<Employee[]> {
     try {
-        return await getEmployeesFromSheet();
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/employees`, { next: { revalidate: 60 } });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to fetch employees');
+        }
+        return await response.json();
     } catch (error) {
         console.error("Error in getAllEmployees (actions):", error);
         throw new Error(`Could not fetch all employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -99,7 +104,12 @@ export async function getAllEmployees(): Promise<Employee[]> {
 
 export async function getNonEmployees(): Promise<NonEmployee[]> {
   try {
-    return await getNonEmployeesFromSheet();
+     const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/non-employees`, { next: { revalidate: 60 } });
+     if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to fetch non-employees');
+     }
+    return await response.json();
   } catch (error) {
     console.error("Error in getNonEmployees (actions):", error);
     throw new Error(`Could not fetch non-employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -108,7 +118,12 @@ export async function getNonEmployees(): Promise<NonEmployee[]> {
 
 export async function getSettings(): Promise<Settings> {
     try {
-        return await getSettingsFromSheet();
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/settings`, { next: { revalidate: 60 } });
+        if (!response.ok) {
+             const error = await response.json();
+            throw new Error(error.message || 'Failed to fetch settings');
+        }
+        return await response.json();
     } catch (error) {
         console.error("Error in getSettings (actions):", error);
         throw new Error(`Could not fetch settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -458,7 +473,17 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
 
 
 export async function getNotifications(): Promise<Notification[]> {
-    return getNotificationsFromSheet();
+    try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/notifications`, { next: { revalidate: 10 } });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to fetch notifications');
+        }
+        return await response.json();
+    } catch (error) {
+         console.error("Error in getNotifications (actions):", error);
+        throw new Error(`Could not fetch notifications: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
 }
 
 export async function markNotificationAsRead(notificationId: string): Promise<void> {
@@ -489,7 +514,17 @@ export async function clearAllNotifications(): Promise<void> {
 
 
 export async function getInspections(): Promise<Inspection[]> {
-    return getInspectionsFromSheet();
+    try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/inspections`, { next: { revalidate: 60 } });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to fetch inspections');
+        }
+        return await response.json();
+    } catch (error) {
+         console.error("Error in getInspections (actions):", error);
+        throw new Error(`Could not fetch inspections: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
 }
 
 export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Promise<string> {
@@ -769,3 +804,5 @@ function deserializeEmployee(row: any): Employee | null {
         deductionReason: deductionReason,
     };
 }
+
+    

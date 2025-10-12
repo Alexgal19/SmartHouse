@@ -1,15 +1,19 @@
+
 // src/app/api/employees/route.ts
 import { NextResponse } from 'next/server';
-import { getEmployees } from '@/lib/sheets';
+import { getEmployeesFromSheet } from '@/lib/sheets';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const employees = await getEmployees();
+    const employees = await getEmployeesFromSheet();
     return NextResponse.json(employees);
   } catch (error) {
     console.error('[API_EMPLOYEES_ERROR]', error);
-    return new NextResponse('Internal Server Error', { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
+    return new NextResponse(JSON.stringify({ message: errorMessage }), { status: 500 });
   }
 }
+
+    

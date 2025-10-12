@@ -24,32 +24,37 @@ let docInstance: GoogleSpreadsheet | null = null;
 let authInstance: JWT | null = null;
 
 function getAuth(): JWT {
-    if (!authInstance) {
-        const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-        const key = process.env.GOOGLE_PRIVATE_KEY;
-
-        if (!email) {
-            throw new Error('Missing GOOGLE_SERVICE_ACCOUNT_EMAIL. Please add it to your .env.local file.');
-        }
-        if (!key) {
-            throw new Error('Missing GOOGLE_PRIVATE_KEY. Please add it to your .env.local file.');
-        }
-
-        authInstance = new JWT({
-          email: email,
-          key: key.replace(/\\n/g, '\n'),
-          scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-        });
+    if (authInstance) {
+        return authInstance;
     }
+
+    const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+    const key = process.env.GOOGLE_PRIVATE_KEY;
+
+    if (!email) {
+        throw new Error('Missing GOOGLE_SERVICE_ACCOUNT_EMAIL. Please add it to your .env.local file.');
+    }
+    if (!key) {
+        throw new Error('Missing GOOGLE_PRIVATE_KEY. Please add it to your .env.local file.');
+    }
+
+    authInstance = new JWT({
+      email: email,
+      key: key.replace(/\\n/g, '\n'),
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+    
     return authInstance;
 }
 
 async function getDoc(): Promise<GoogleSpreadsheet> {
-    if (!docInstance) {
-        const auth = getAuth();
-        docInstance = new GoogleSpreadsheet(SPREADSHEET_ID, auth);
-        await docInstance.loadInfo();
+    if (docInstance) {
+        return docInstance;
     }
+    const auth = getAuth();
+    const doc = new GoogleSpreadsheet(SPREADSHEET_ID, auth);
+    await doc.loadInfo();
+    docInstance = doc;
     return docInstance;
 }
 
@@ -161,7 +166,7 @@ export async function getEmployeesFromSheet(): Promise<Employee[]> {
         const rows = await sheet.getRows();
         return rows.map(deserializeEmployee).filter((e): e is Employee => e !== null);
     } catch (error: any) {
-        console.error("Error fetching employees from sheet:", error);
+        console.error("Error fetching employees from sheet:", error.message);
         throw new Error(`Could not fetch employees from sheet. Original error: ${error.message}`);
     }
 }
@@ -172,16 +177,14 @@ export async function getNonEmployeesFromSheet(): Promise<NonEmployee[]> {
     const rows = await sheet.getRows();
     return rows.map(deserializeNonEmployee).filter((e): e is NonEmployee => e !== null);
   } catch (error: any) {
-    console.error("Error fetching non-employees from sheet:", error);
+    console.error("Error fetching non-employees from sheet:", error.message);
     throw new Error(`Could not fetch non-employees from sheet. Original error: ${error.message}`);
   }
 }
 
 export async function getSettingsFromSheet(): Promise<Settings> {
      try {
-        const auth = getAuth();
-        const doc = new GoogleSpreadsheet(SPREADSHEET_ID, auth);
-        await doc.loadInfo();
+        const doc = await getDoc();
 
         const getSheetData = async (title: string) => {
             const sheet = doc.sheetsByTitle[title];
@@ -246,7 +249,7 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             genders: genderRows.map(row => row.get('name')).filter(Boolean),
         };
     } catch (error: any) {
-        console.error("Error fetching settings from sheet:", error);
+        console.error("Error fetching settings from sheet:", error.message);
         throw new Error(`Could not fetch settings. Original error: ${error.message}`);
     }
 }
@@ -260,7 +263,7 @@ export async function getNotificationsFromSheet(): Promise<Notification[]> {
             .filter((n): n is Notification => n !== null)
             .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     } catch (error: any) {
-        console.error("Error fetching notifications from sheet:", error);
+        console.error("Error fetching notifications from sheet:", error.message);
         throw new Error(`Could not fetch notifications. Original error: ${error.message}`);
     }
 }
@@ -340,7 +343,9 @@ export async function getInspectionsFromSheet(): Promise<Inspection[]> {
         return inspections;
 
     } catch (error: any) {
-        console.error("Error fetching inspections from sheet:", error);
+        console.error("Error fetching inspections from sheet:", error.message);
         throw new Error(`Could not fetch inspections. Original error: ${error.message}`);
     }
 }
+
+    
