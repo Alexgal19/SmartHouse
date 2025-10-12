@@ -42,6 +42,8 @@ interface EmployeesViewProps {
   onDeleteNonEmployee: (id: string) => void;
 }
 
+const ITEMS_PER_PAGE = 20;
+
 const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return 'N/A';
     try {
@@ -82,6 +84,31 @@ const EmployeeActions = ({
     </DropdownMenuContent>
   </DropdownMenu>
 );
+
+const PaginationControls = ({ currentPage, totalPages, onPageChange }: { currentPage: number, totalPages: number, onPageChange: (page: number) => void }) => {
+    if (totalPages <= 1) return null;
+
+    return (
+        <div className="flex items-center justify-center space-x-2 py-4">
+            <Button variant="outline" size="icon" onClick={() => onPageChange(1)} disabled={currentPage === 1}>
+                <ChevronsLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1}>
+                <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm font-medium">
+                Strona {currentPage} z {totalPages}
+            </span>
+            <Button variant="outline" size="icon" onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages}>
+                <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" onClick={() => onPageChange(totalPages)} disabled={currentPage === totalPages}>
+                <ChevronsRight className="h-4 w-4" />
+            </Button>
+        </div>
+    );
+};
+
 
 const EmployeeTable = ({
   employees,
@@ -403,10 +430,21 @@ export default function EmployeesView({
   });
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const {isMobile, isMounted} = useIsMobile();
-  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState('active');
+  const [pagination, setPagination] = useState({
+      active: 1,
+      dismissed: 1,
+      'non-employees': 1,
+  });
 
+  const handlePageChange = (tab: 'active' | 'dismissed' | 'non-employees', page: number) => {
+      setPagination(prev => ({...prev, [tab]: page}));
+  };
+  
   const handleFilterChange = (key: string, value: string) => {
     setFilters(prev => ({...prev, [key]: value}));
+    // Reset pagination on filter change
+    setPagination({ active: 1, dismissed: 1, 'non-employees': 1 });
   }
   
   const filteredEmployees = useMemo(() => {
@@ -431,6 +469,29 @@ export default function EmployeesView({
       return searchMatch && addressMatch;
     });
   }, [nonEmployees, searchTerm, filters]);
+
+  const paginatedData = useMemo(() => {
+    const activeTotalPages = Math.ceil(activeEmployees.length / ITEMS_PER_PAGE);
+    const dismissedTotalPages = Math.ceil(dismissedEmployees.length / ITEMS_PER_PAGE);
+    const nonEmployeesTotalPages = Math.ceil(filteredNonEmployees.length / ITEMS_PER_PAGE);
+
+    const activePage = Math.min(pagination.active, activeTotalPages) || 1;
+    const dismissedPage = Math.min(pagination.dismissed, dismissedTotalPages) || 1;
+    const nonEmployeesPage = Math.min(pagination['non-employees'], nonEmployeesTotalPages) || 1;
+    
+    if (pagination.active !== activePage || pagination.dismissed !== dismissedPage || pagination['non-employees'] !== nonEmployeesPage) {
+        setTimeout(() => setPagination({ active: activePage, dismissed: dismissedPage, 'non-employees': nonEmployeesPage }), 0);
+    }
+
+    return {
+        active: activeEmployees.slice((activePage - 1) * ITEMS_PER_PAGE, activePage * ITEMS_PER_PAGE),
+        dismissed: dismissedEmployees.slice((dismissedPage - 1) * ITEMS_PER_PAGE, dismissedPage * ITEMS_PER_PAGE),
+        'non-employees': filteredNonEmployees.slice((nonEmployeesPage - 1) * ITEMS_PER_PAGE, nonEmployeesPage * ITEMS_PER_PAGE),
+        activeTotalPages,
+        dismissedTotalPages,
+        nonEmployeesTotalPages,
+    };
+}, [activeEmployees, dismissedEmployees, filteredNonEmployees, pagination]);
   
   const resetFilters = () => {
     setSearchTerm('');
@@ -440,6 +501,7 @@ export default function EmployeesView({
       departmentFilter: 'all',
       nationalityFilter: 'all'
     });
+     setPagination({ active: 1, dismissed: 1, 'non-employees': 1 });
   };
 
   const hasActiveFilters = searchTerm !== '' || Object.values(filters).some(v => v !== 'all');
@@ -462,6 +524,10 @@ export default function EmployeesView({
 
   const renderEmployeeContent = (list: Employee[], isDismissedTab: boolean) => {
     const safeList = list || [];
+    const totalPages = isDismissedTab ? paginatedData.dismissedTotalPages : paginatedData.activeTotalPages;
+    const currentPage = isDismissedTab ? pagination.dismissed : pagination.active;
+    const onPageChange = (page: number) => handlePageChange(isDismissedTab ? 'dismissed' : 'active', page);
+
     if (!isMounted) {
         return <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>;
     }
@@ -493,23 +559,37 @@ export default function EmployeesView({
                     </AlertDialog>
                 </div>
             )}
-            <EmployeeListComponent
-                employees={safeList}
-                settings={settings}
-                onEdit={onEditEmployee}
-                onDismiss={(id) => handleAction('dismiss', id)}
-                onRestore={(id) => handleAction('restore', id)}
-                isDismissedTab={isDismissedTab}
-            />
+            <ScrollArea className="h-[55vh]">
+                <EmployeeListComponent
+                    employees={isDismissedTab ? paginatedData.dismissed : paginatedData.active}
+                    settings={settings}
+                    onEdit={onEditEmployee}
+                    onDismiss={(id) => handleAction('dismiss', id)}
+                    onRestore={(id) => handleAction('restore', id)}
+                    isDismissedTab={isDismissedTab}
+                />
+            </ScrollArea>
+             <PaginationControls currentPage={currentPage} totalPages={totalPages} onPageChange={onPageChange} />
         </>
     );
   };
 
   const renderNonEmployeeContent = (list: NonEmployee[]) => {
+    const totalPages = paginatedData.nonEmployeesTotalPages;
+    const currentPage = pagination['non-employees'];
+    const onPageChange = (page: number) => handlePageChange('non-employees', page);
+
     if (!isMounted) {
       return <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>;
     }
-    return <NonEmployeeListComponent nonEmployees={list || []} onEdit={onEditNonEmployee} onDelete={onDeleteNonEmployee} />
+    return (
+      <>
+        <ScrollArea className="h-[55vh]">
+          <NonEmployeeListComponent nonEmployees={paginatedData['non-employees']} onEdit={onEditNonEmployee} onDelete={onDeleteNonEmployee} />
+        </ScrollArea>
+        <PaginationControls currentPage={currentPage} totalPages={totalPages} onPageChange={onPageChange} />
+      </>
+    );
   }
 
 
@@ -536,7 +616,10 @@ export default function EmployeesView({
                  <Input
                     placeholder="Szukaj po nazwisku..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => {
+                        setSearchTerm(e.target.value);
+                        setPagination({ active: 1, dismissed: 1, 'non-employees': 1 });
+                    }}
                     className="w-full"
                 />
                  <Button variant="outline" size="icon" onClick={() => setIsFilterOpen(true)}>
@@ -551,26 +634,20 @@ export default function EmployeesView({
         </div>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="active">
+        <Tabs defaultValue="active" onValueChange={(v) => setActiveTab(v)}>
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="active">Aktywni ({activeEmployees.length})</TabsTrigger>
             <TabsTrigger value="dismissed">Zwolnieni ({dismissedEmployees.length})</TabsTrigger>
             <TabsTrigger value="non-employees">NZ ({filteredNonEmployees.length})</TabsTrigger>
           </TabsList>
           <TabsContent value="active" className="mt-4 data-[state=active]:animate-in data-[state=active]:fade-in-0">
-             <ScrollArea className="h-[55vh]">
                 {renderEmployeeContent(activeEmployees, false)}
-             </ScrollArea>
           </TabsContent>
           <TabsContent value="dismissed" className="mt-4 data-[state=active]:animate-in data-[state=active]:fade-in-0">
-            <ScrollArea className="h-[55vh]">
                 {renderEmployeeContent(dismissedEmployees, true)}
-            </ScrollArea>
           </TabsContent>
            <TabsContent value="non-employees" className="mt-4 data-[state=active]:animate-in data-[state=active]:fade-in-0">
-            <ScrollArea className="h-[55vh]">
                 {renderNonEmployeeContent(filteredNonEmployees)}
-            </ScrollArea>
           </TabsContent>
         </Tabs>
       </CardContent>
