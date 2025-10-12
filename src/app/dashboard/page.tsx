@@ -51,6 +51,7 @@ function DashboardPageContent() {
     }, [router]);
 
     const fetchAllData = useCallback(async () => {
+        if (!currentUser) return;
         setIsLoading(true);
         try {
             setLoadingMessage('Ładowanie ustawień...');
@@ -63,9 +64,17 @@ function DashboardPageContent() {
                 getInspections(),
                 getNonEmployees(),
             ]);
-            setAllEmployees(employeesData);
+
+            if (currentUser.isAdmin) {
+                setAllEmployees(employeesData);
+                setAllInspections(inspectionsData.map((i: any) => ({...i, date: new Date(i.date)})));
+            } else {
+                setAllEmployees(employeesData.filter(e => e.coordinatorId === currentUser.uid));
+                setAllInspections(inspectionsData.filter(i => i.coordinatorId === currentUser.uid).map((i: any) => ({...i, date: new Date(i.date)})));
+            }
+
             setAllNonEmployees(nonEmployeesData);
-            setAllInspections(inspectionsData.map((i: any) => ({...i, date: new Date(i.date)})));
+            
         } catch (error) {
              console.error(error);
             toast({
@@ -78,7 +87,7 @@ function DashboardPageContent() {
         } finally {
              setIsLoading(false);
         }
-    }, [toast]);
+    }, [toast, currentUser]);
 
     useEffect(() => {
         if (currentUser) {
@@ -87,6 +96,7 @@ function DashboardPageContent() {
     }, [currentUser, fetchAllData]);
 
     const refreshData = useCallback(async (showToast = true) => {
+        if (!currentUser) return;
         try {
             const [employeesData, settingsData, inspectionsData, nonEmployeesData] = await Promise.all([
                 getAllEmployees(), 
@@ -94,10 +104,18 @@ function DashboardPageContent() {
                 getInspections(),
                 getNonEmployees(),
             ]);
-            setAllEmployees(employeesData);
+
+            if (currentUser.isAdmin) {
+                setAllEmployees(employeesData);
+                setAllInspections(inspectionsData.map((i: any) => ({...i, date: new Date(i.date)})));
+            } else {
+                setAllEmployees(employeesData.filter(e => e.coordinatorId === currentUser.uid));
+                setAllInspections(inspectionsData.filter(i => i.coordinatorId === currentUser.uid).map((i: any) => ({...i, date: new Date(i.date)})));
+            }
+            
             setAllNonEmployees(nonEmployeesData);
             setSettings(settingsData);
-            setAllInspections(inspectionsData.map((i: any) => ({...i, date: new Date(i.date)})));
+            
             if(showToast) {
                 toast({ title: "Sukces", description: "Dane zostały odświeżone." });
             }
@@ -109,7 +127,7 @@ function DashboardPageContent() {
                 description: `Nie udało się pobrać danych z serwera. ${error instanceof Error ? error.message : ''}`,
             });
         }
-    }, [toast]);
+    }, [toast, currentUser]);
     
     useEffect(() => {
         if (editEmployeeId && allEmployees) {
@@ -493,5 +511,7 @@ export default function DashboardPage() {
         </React.Suspense>
     )
 }
+
+    
 
     
