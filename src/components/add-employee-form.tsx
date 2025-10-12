@@ -66,7 +66,7 @@ const employeeSchema = z.object({
   depositReturned: z.enum(['Tak', 'Nie', 'Nie dotyczy']).optional().nullable(),
   depositReturnAmount: z.number().optional().nullable(),
   deductionRegulation: z.number().optional().nullable(),
-  deductionNo4Months: z>number().optional().nullable(),
+  deductionNo4Months: z.number().optional().nullable(),
   deductionNo30Days: z.number().optional().nullable(),
   deductionReason: z.array(deductionReasonSchema).optional(),
 });
@@ -566,6 +566,8 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
     </Dialog>
   );
 }
+
+    
 
     
 
