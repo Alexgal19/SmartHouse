@@ -1,19 +1,45 @@
 
 "use client";
 
+import React, { useState, useEffect } from 'react';
 import { LoginView } from "@/components/login-view";
 import { getSettings } from "@/lib/actions";
-import type { Coordinator } from "@/types";
+import type { Coordinator, Settings } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
     const { toast } = useToast();
     const router = useRouter();
+    const [settings, setSettings] = useState<Settings | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const appSettings = await getSettings();
+                setSettings(appSettings);
+            } catch (err: any) {
+                toast({
+                    variant: "destructive",
+                    title: "Błąd krytyczny",
+                    description: `Nie udało się pobrać ustawień aplikacji. ${err.message}`
+                });
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchSettings();
+    }, [toast]);
 
     const handleLogin = async (user: {name: string}, password?: string) => {
+        if (!settings) {
+            (window as any).setLoginError('Ustawienia aplikacji jeszcze nie załadowane. Spróbuj ponownie za chwilę.');
+            return;
+        }
+
         try {
-            const settings = await getSettings();
             const coordinators = settings.coordinators;
 
             const adminLogin = process.env.NEXT_PUBLIC_ADMIN_LOGIN || 'admin';
@@ -62,12 +88,12 @@ export default function LoginPage() {
         } catch (err: any) {
             toast({
                 variant: "destructive",
-                title: "Błąd krytyczny",
-                description: `Nie udało się pobrać ustawień aplikacji. ${err.message}`
+                title: "Błąd logowania",
+                description: `Wystąpił nieoczekiwany błąd. ${err.message}`
             });
              (window as any).setLoginError('Błąd serwera. Spróbuj ponownie później.');
         }
     };
     
-    return <LoginView onLogin={handleLogin} />;
+    return <LoginView onLogin={handleLogin} isLoading={isLoading} />;
 }
