@@ -90,7 +90,7 @@ function DashboardPageContent() {
         }
     }, [toast]);
 
-    const refreshData = useCallback(async () => {
+    const refreshData = useCallback(async (showToast = true) => {
          setIsDataLoading(true);
         try {
             const [employeesData, settingsData, inspectionsData, nonEmployeesData] = await Promise.all([
@@ -103,6 +103,9 @@ function DashboardPageContent() {
             setAllNonEmployees(nonEmployeesData);
             setSettings(settingsData);
             setAllInspections(inspectionsData.map((i: any) => ({...i, date: new Date(i.date)})));
+            if(showToast) {
+                toast({ title: "Sukces", description: "Dane zostały odświeżone." });
+            }
         } catch (error) {
             console.error(error);
             toast({
@@ -177,42 +180,94 @@ function DashboardPageContent() {
 
     const handleSaveEmployee = async (data: Omit<Employee, 'id' | 'status'> & { oldAddress?: string | null }) => {
         if (!currentUser) return;
-        try {
-            if (editingEmployee) {
-                await updateEmployee(editingEmployee.id, data, currentUser);
-                 toast({ title: "Sukces", description: "Dane pracownika zostały zaktualizowane." });
-            } else {
-                 await addEmployee(data, currentUser);
-                 toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
-            }
-            refreshData();
-        } catch(e: any) {
-             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać pracownika." });
+        
+        const originalEmployees = allEmployees;
+
+        if (editingEmployee) {
+            // Optimistic Update
+            const updatedEmployee = { ...editingEmployee, ...data };
+            setAllEmployees(prev => prev!.map(e => e.id === editingEmployee.id ? updatedEmployee : e));
+            
+            updateEmployee(editingEmployee.id, data, currentUser)
+                .then(() => {
+                    toast({ title: "Sukces", description: "Dane pracownika zostały zaktualizowane." });
+                    refreshData(false); // Refresh in background to sync
+                })
+                .catch((e: any) => {
+                    setAllEmployees(originalEmployees); // Revert on error
+                    toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać pracownika." });
+                });
+        } else {
+            // Optimistic Add
+            const tempId = `temp-${Date.now()}`;
+            const newEmployee: Employee = {
+                ...data,
+                id: tempId,
+                status: 'active',
+            };
+            setAllEmployees(prev => [newEmployee, ...prev!]);
+
+            addEmployee(data, currentUser)
+                .then(() => {
+                    toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
+                    refreshData(false); // Refresh to get the real ID
+                })
+                .catch((e: any) => {
+                    setAllEmployees(originalEmployees); // Revert
+                    toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać pracownika." });
+                });
         }
     };
 
     const handleSaveNonEmployee = async (data: Omit<NonEmployee, 'id'>) => {
-        try {
-            if (editingNonEmployee) {
-                await updateNonEmployee(editingNonEmployee.id, data)
-            } else {
-                await addNonEmployee(data);
-            }
-            toast({ title: "Sukces", description: editingNonEmployee ? "Dane mieszkańca zostały zaktualizowane." : "Nowy mieszkaniec został dodany." });
-            refreshData();
-        } catch (e: any) {
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać mieszkańca." });
+        const originalNonEmployees = allNonEmployees;
+
+        if (editingNonEmployee) {
+            // Optimistic Update
+            const updatedNonEmployee = { ...editingNonEmployee, ...data };
+            setAllNonEmployees(prev => prev!.map(ne => ne.id === editingNonEmployee.id ? updatedNonEmployee : ne));
+
+            updateNonEmployee(editingNonEmployee.id, data)
+                .then(() => {
+                    toast({ title: "Sukces", description: "Dane mieszkańca zostały zaktualizowane." });
+                    refreshData(false);
+                })
+                .catch((e: any) => {
+                    setAllNonEmployees(originalNonEmployees);
+                    toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać mieszkańca." });
+                });
+        } else {
+            // Optimistic Add
+            const tempId = `temp-ne-${Date.now()}`;
+            const newNonEmployee: NonEmployee = { ...data, id: tempId };
+            setAllNonEmployees(prev => [newNonEmployee, ...prev!]);
+
+            addNonEmployee(data)
+                .then(() => {
+                    toast({ title: "Sukces", description: "Nowy mieszkaniec został dodany." });
+                    refreshData(false);
+                })
+                .catch((e: any) => {
+                    setAllNonEmployees(originalNonEmployees);
+                    toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać mieszkańca." });
+                });
         }
     }
     
     const handleDeleteNonEmployee = async (id: string) => {
-        try {
-            await deleteNonEmployee(id);
-            toast({ title: "Sukces", description: "Mieszkaniec został usunięty." });
-            refreshData();
-        } catch(e: any) {
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć mieszkańca." });
-        }
+        const originalNonEmployees = allNonEmployees;
+        
+        // Optimistic Delete
+        setAllNonEmployees(prev => prev!.filter(ne => ne.id !== id));
+        
+        deleteNonEmployee(id)
+            .then(() => {
+                toast({ title: "Sukces", description: "Mieszkaniec został usunięty." });
+            })
+            .catch((e: any) => {
+                setAllNonEmployees(originalNonEmployees); // Revert
+                toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć mieszkańca." });
+            });
     }
     
     const handleUpdateSettings = async (newSettings: Partial<Settings>) => {
@@ -220,43 +275,66 @@ function DashboardPageContent() {
              toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administrator może zmieniać ustawienia." });
             return;
         }
-        try {
-            await updateSettings(newSettings);
-            toast({ title: "Sukces", description: "Ustawienia zostały zaktualizowane." });
-            refreshData();
-        } catch(e: any) {
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać ustawień." });
-        }
+
+        const originalSettings = settings;
+        // Optimistic Update for settings
+        setSettings(prev => ({ ...prev!, ...newSettings }));
+
+        updateSettings(newSettings)
+            .then(() => {
+                 toast({ title: "Sukces", description: "Ustawienia zostały zaktualizowane." });
+            })
+            .catch((e: any) => {
+                setSettings(originalSettings); // Revert on error
+                toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać ustawień." });
+            });
     };
     
     const handleAddInspection = async (inspectionData: Omit<Inspection, 'id'>) => {
-        try {
-            await addInspection(inspectionData);
-            toast({ title: "Sukces", description: "Nowa inspekcja została dodana." });
-            refreshData();
-        } catch(e: any) {
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać inspekcji." });
-        }
+        const originalInspections = allInspections;
+        const tempId = `temp-insp-${Date.now()}`;
+        const newInspection = { ...inspectionData, id: tempId };
+        setAllInspections(prev => [newInspection, ...prev!]);
+
+        addInspection(inspectionData)
+            .then(() => {
+                toast({ title: "Sukces", description: "Nowa inspekcja została dodana." });
+                refreshData(false);
+            })
+            .catch((e: any) => {
+                setAllInspections(originalInspections);
+                toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać inspekcji." });
+            });
     };
 
     const handleUpdateInspection = async (id: string, inspectionData: Omit<Inspection, 'id'>) => {
-        try {
-            await updateInspection(id, inspectionData);
-            toast({ title: "Sukces", description: "Inspekcja została zaktualizowana." });
-            refreshData();
-        } catch(e: any) {
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zaktualizować inspekcji." });
-        }
+        const originalInspections = allInspections;
+        const updatedInspection = { ...inspectionData, id };
+        setAllInspections(prev => prev!.map(i => i.id === id ? updatedInspection : i));
+
+        updateInspection(id, inspectionData)
+            .then(() => {
+                toast({ title: "Sukces", description: "Inspekcja została zaktualizowana." });
+                refreshData(false);
+            })
+            .catch((e: any) => {
+                setAllInspections(originalInspections);
+                toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zaktualizować inspekcji." });
+            });
     };
 
     const handleDeleteInspection = async (id: string) => {
-        try {
-            await deleteInspection(id);
-            toast({ title: "Sukces", description: "Inspekcja została usunięta." });
-            refreshData();
-        } catch(e: any) {
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć inspekcji." });
-        }
+        const originalInspections = allInspections;
+        setAllInspections(prev => prev!.filter(i => i.id !== id));
+
+        deleteInspection(id)
+            .then(() => {
+                toast({ title: "Sukces", description: "Inspekcja została usunięta." });
+            })
+            .catch((e: any) => {
+                setAllInspections(originalInspections);
+                toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć inspekcji." });
+            });
     };
 
     const handleAddEmployeeClick = () => {
@@ -281,12 +359,19 @@ function DashboardPageContent() {
 
     const handleDismissEmployee = async (employeeId: string) => {
         if (!currentUser) return false;
+        
+        const originalEmployees = allEmployees;
+        const updatedData = { status: 'dismissed', checkOutDate: new Date().toISOString().split('T')[0] };
+
+        // Optimistic update
+        setAllEmployees(prev => prev!.map(e => e.id === employeeId ? { ...e, ...updatedData } : e));
+
         try {
-            await updateEmployee(employeeId, { status: 'dismissed', checkOutDate: new Date().toISOString().split('T')[0] }, currentUser);
+            await updateEmployee(employeeId, updatedData, currentUser);
             toast({ title: "Sukces", description: "Pracownik został zwolniony." });
-            refreshData();
             return true;
         } catch(e: any) {
+            setAllEmployees(originalEmployees); // Revert
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zwolnić pracownika." });
             return false;
         }
@@ -294,12 +379,19 @@ function DashboardPageContent() {
 
     const handleRestoreEmployee = async (employeeId: string) => {
         if (!currentUser) return false;
+        
+        const originalEmployees = allEmployees;
+        const updatedData = { status: 'active', checkOutDate: null };
+        
+        // Optimistic update
+        setAllEmployees(prev => prev!.map(e => e.id === employeeId ? { ...e, ...updatedData } : e));
+        
         try {
-            await updateEmployee(employeeId, { status: 'active', checkOutDate: null }, currentUser);
+            await updateEmployee(employeeId, updatedData, currentUser);
             toast({ title: "Sukces", description: "Pracownik został przywrócony." });
-            fetchData();
             return true;
         } catch(e: any) {
+            setAllEmployees(originalEmployees); // Revert
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się przywrócić pracownika." });
             return false;
         }
@@ -314,7 +406,7 @@ function DashboardPageContent() {
          try {
             await bulkDeleteEmployees(status, currentUser);
             toast({ title: "Sukces", description: `Wszyscy ${status === 'active' ? 'aktywni' : 'zwolnieni'} pracownicy zostali usunięci.` });
-            refreshData();
+            refreshData(false);
              return true;
         } catch(e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || `Nie udało się usunąć pracowników.` });
@@ -328,7 +420,7 @@ function DashboardPageContent() {
             const { updated } = await checkAndUpdateEmployeeStatuses(currentUser);
             if (updated > 0) {
                 toast({ title: "Sukces", description: `Zaktualizowano statusy dla ${updated} pracowników.`});
-                refreshData();
+                refreshData(false);
             } else {
                  toast({ title: "Brak zmian", description: "Wszyscy pracownicy mają aktualne statusy."});
             }
@@ -340,7 +432,7 @@ function DashboardPageContent() {
     const handleBulkImport = async (fileData: ArrayBuffer) => {
       try {
           const result = await bulkImportEmployees(fileData, settings?.coordinators || [], currentUser as Coordinator);
-          await refreshData();
+          await refreshData(false);
           return result;
       } catch (e: any) {
           return { success: false, message: e.message || "Wystąpił nieznany błąd." };
@@ -375,17 +467,17 @@ function DashboardPageContent() {
         
         switch (view) {
             case 'dashboard':
-                return <DashboardView employees={filteredEmployees} allEmployees={allEmployees || []} nonEmployees={filteredNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={handleRefreshStatuses} />;
+                return <DashboardView employees={filteredEmployees} allEmployees={allEmployees || []} nonEmployees={filteredNonEmployees || []} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={handleRefreshStatuses} />;
             case 'employees':
-                return <EmployeesView employees={filteredEmployees} nonEmployees={filteredNonEmployees} settings={settings} onAddEmployee={handleAddEmployeeClick} onEditEmployee={handleEditEmployeeClick} onDismissEmployee={handleDismissEmployee} onRestoreEmployee={handleRestoreEmployee} onBulkDelete={handleBulkDeleteEmployees} currentUser={currentUser} onAddNonEmployee={handleAddNonEmployeeClick} onEditNonEmployee={handleEditNonEmployeeClick} onDeleteNonEmployee={handleDeleteNonEmployee} />;
+                return <EmployeesView employees={filteredEmployees} nonEmployees={filteredNonEmployees || []} settings={settings} onAddEmployee={handleAddEmployeeClick} onEditEmployee={handleEditEmployeeClick} onDismissEmployee={handleDismissEmployee} onRestoreEmployee={handleRestoreEmployee} onBulkDelete={handleBulkDeleteEmployees} currentUser={currentUser} onAddNonEmployee={handleAddNonEmployeeClick} onEditNonEmployee={handleEditNonEmployeeClick} onDeleteNonEmployee={handleDeleteNonEmployee} />;
             case 'settings':
                 if (!currentUser.isAdmin) {
                     return <div className="p-4 text-center text-red-500">Brak uprawnień do przeglądania tej strony.</div>;
                 }
-                return <SettingsView settings={settings} onUpdateSettings={handleUpdateSettings} allEmployees={allEmployees || []} currentUser={currentUser} onDataRefresh={refreshData} onBulkImport={handleBulkImport}/>;
+                return <SettingsView settings={settings} onUpdateSettings={handleUpdateSettings} allEmployees={allEmployees || []} currentUser={currentUser} onDataRefresh={() => refreshData(false)} onBulkImport={handleBulkImport}/>;
             case 'inspections':
                  return <InspectionsView 
-                    inspections={filteredInspections} 
+                    inspections={filteredInspections || []} 
                     settings={settings}
                     currentUser={currentUser}
                     onAddInspection={handleAddInspection}
@@ -393,7 +485,7 @@ function DashboardPageContent() {
                     onDeleteInspection={handleDeleteInspection}
                 />;
             default:
-                return <DashboardView employees={filteredEmployees} allEmployees={allEmployees || []} nonEmployees={filteredNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={handleRefreshStatuses} />;
+                return <DashboardView employees={filteredEmployees} allEmployees={allEmployees || []} nonEmployees={filteredNonEmployees || []} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={handleRefreshStatuses} />;
         }
     };
 
