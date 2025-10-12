@@ -14,6 +14,7 @@ import type { Employee, Settings, View, Coordinator, Inspection, NonEmployee } f
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/main-layout';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 function DashboardPageContent() {
     const searchParams = useSearchParams();
@@ -21,11 +22,12 @@ function DashboardPageContent() {
     const view = (searchParams.get('view') as View) || 'dashboard';
     const editEmployeeId = searchParams.get('edit');
 
-    const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
-    const [allNonEmployees, setAllNonEmployees] = useState<NonEmployee[]>([]);
-    const [allInspections, setAllInspections] = useState<Inspection[]>([]);
+    const [allEmployees, setAllEmployees] = useState<Employee[] | null>(null);
+    const [allNonEmployees, setAllNonEmployees] = useState<NonEmployee[] | null>(null);
+    const [allInspections, setAllInspections] = useState<Inspection[] | null>(null);
     const [settings, setSettings] = useState<Settings | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isAppLoading, setIsAppLoading] = useState(true);
+    const [isDataLoading, setIsDataLoading] = useState(true);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isNonEmployeeFormOpen, setIsNonEmployeeFormOpen] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
@@ -35,8 +37,61 @@ function DashboardPageContent() {
     
     const { toast } = useToast();
     
-    const fetchData = useCallback(async (isInitialLoad = false) => {
-        if (isInitialLoad) setIsLoading(true);
+    useEffect(() => {
+        const loggedInUser = sessionStorage.getItem('currentUser');
+        if (loggedInUser) {
+            const user = JSON.parse(loggedInUser);
+            setCurrentUser(user);
+             if (!user.isAdmin) {
+                setSelectedCoordinatorId(user.uid);
+            }
+        } else {
+            router.push('/');
+        }
+    }, [router]);
+
+    const fetchInitialSettings = useCallback(async () => {
+        setIsAppLoading(true);
+        try {
+            const settingsData = await getSettings();
+            setSettings(settingsData);
+        } catch (error) {
+             console.error(error);
+            toast({
+                variant: "destructive",
+                title: "Błąd krytyczny",
+                description: `Nie udało się pobrać ustawień aplikacji. ${error instanceof Error ? error.message : ''}`,
+            });
+        } finally {
+            setIsAppLoading(false);
+        }
+    }, [toast]);
+    
+    const fetchAllData = useCallback(async () => {
+        setIsDataLoading(true);
+        try {
+            const [employeesData, inspectionsData, nonEmployeesData] = await Promise.all([
+                getAllEmployees(),
+                getInspections(),
+                getNonEmployees(),
+            ]);
+            setAllEmployees(employeesData);
+            setAllNonEmployees(nonEmployeesData);
+            setAllInspections(inspectionsData.map((i: any) => ({...i, date: new Date(i.date)})));
+        } catch (error) {
+             console.error(error);
+            toast({
+                variant: "destructive",
+                title: "Błąd ładowania danych",
+                description: `Nie udało się pobrać danych z serwera. ${error instanceof Error ? error.message : ''}`,
+            });
+        } finally {
+             setIsDataLoading(false);
+        }
+    }, [toast]);
+
+    const refreshData = useCallback(async () => {
+         setIsDataLoading(true);
         try {
             const [employeesData, settingsData, inspectionsData, nonEmployeesData] = await Promise.all([
                 getAllEmployees(), 
@@ -52,40 +107,32 @@ function DashboardPageContent() {
             console.error(error);
             toast({
                 variant: "destructive",
-                title: "Błąd ładowania danych",
+                title: "Błąd odświeżania danych",
                 description: `Nie udało się pobrać danych z serwera. ${error instanceof Error ? error.message : ''}`,
             });
         } finally {
-            if (isInitialLoad) setIsLoading(false);
+            setIsDataLoading(false);
         }
     }, [toast]);
     
      useEffect(() => {
-        const loggedInUser = sessionStorage.getItem('currentUser');
-        if (loggedInUser) {
-            const user = JSON.parse(loggedInUser);
-            setCurrentUser(user);
-             if (!user.isAdmin) {
-                setSelectedCoordinatorId(user.uid);
-            }
-        } else {
-            router.push('/');
-        }
-    }, [router]);
-
-    useEffect(() => {
         if (currentUser) {
-            fetchData(true);
+            fetchInitialSettings();
         }
-    }, [currentUser, fetchData]);
+    }, [currentUser, fetchInitialSettings]);
 
     useEffect(() => {
-        if (editEmployeeId) {
+        if(settings){
+            fetchAllData();
+        }
+    }, [settings, fetchAllData]);
+
+    useEffect(() => {
+        if (editEmployeeId && allEmployees) {
             const employeeToEdit = allEmployees.find(e => e.id === editEmployeeId);
             if (employeeToEdit) {
                 setEditingEmployee(employeeToEdit);
                 setIsFormOpen(true);
-                // Clean the URL
                 router.replace('/dashboard?view=employees', { scroll: false });
             }
         }
@@ -93,7 +140,7 @@ function DashboardPageContent() {
 
 
     const filteredEmployees = useMemo(() => {
-        if (!currentUser) return [];
+        if (!currentUser || !allEmployees) return [];
         if (currentUser.isAdmin) {
             if (selectedCoordinatorId === 'all') {
                 return allEmployees;
@@ -104,7 +151,7 @@ function DashboardPageContent() {
     }, [currentUser, allEmployees, selectedCoordinatorId]);
 
     const filteredNonEmployees = useMemo(() => {
-        if (!currentUser) return [];
+        if (!currentUser || !allNonEmployees || !allEmployees) return [];
         if (currentUser.isAdmin && selectedCoordinatorId !== 'all') {
              const coordinatorAddresses = new Set(
                 allEmployees
@@ -117,7 +164,7 @@ function DashboardPageContent() {
    }, [currentUser, allNonEmployees, allEmployees, selectedCoordinatorId]);
 
     const filteredInspections = useMemo(() => {
-        if (!currentUser) return [];
+        if (!currentUser || !allInspections) return [];
         if (currentUser.isAdmin) {
             if (selectedCoordinatorId === 'all') {
                 return allInspections;
@@ -138,7 +185,7 @@ function DashboardPageContent() {
                  await addEmployee(data, currentUser);
                  toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
             }
-            fetchData();
+            refreshData();
         } catch(e: any) {
              toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać pracownika." });
         }
@@ -152,7 +199,7 @@ function DashboardPageContent() {
                 await addNonEmployee(data);
             }
             toast({ title: "Sukces", description: editingNonEmployee ? "Dane mieszkańca zostały zaktualizowane." : "Nowy mieszkaniec został dodany." });
-            fetchData();
+            refreshData();
         } catch (e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać mieszkańca." });
         }
@@ -162,7 +209,7 @@ function DashboardPageContent() {
         try {
             await deleteNonEmployee(id);
             toast({ title: "Sukces", description: "Mieszkaniec został usunięty." });
-            fetchData();
+            refreshData();
         } catch(e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć mieszkańca." });
         }
@@ -176,7 +223,7 @@ function DashboardPageContent() {
         try {
             await updateSettings(newSettings);
             toast({ title: "Sukces", description: "Ustawienia zostały zaktualizowane." });
-            fetchData();
+            refreshData();
         } catch(e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać ustawień." });
         }
@@ -186,7 +233,7 @@ function DashboardPageContent() {
         try {
             await addInspection(inspectionData);
             toast({ title: "Sukces", description: "Nowa inspekcja została dodana." });
-            fetchData();
+            refreshData();
         } catch(e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać inspekcji." });
         }
@@ -196,7 +243,7 @@ function DashboardPageContent() {
         try {
             await updateInspection(id, inspectionData);
             toast({ title: "Sukces", description: "Inspekcja została zaktualizowana." });
-            fetchData();
+            refreshData();
         } catch(e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zaktualizować inspekcji." });
         }
@@ -206,7 +253,7 @@ function DashboardPageContent() {
         try {
             await deleteInspection(id);
             toast({ title: "Sukces", description: "Inspekcja została usunięta." });
-            fetchData();
+            refreshData();
         } catch(e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć inspekcji." });
         }
@@ -237,7 +284,7 @@ function DashboardPageContent() {
         try {
             await updateEmployee(employeeId, { status: 'dismissed', checkOutDate: new Date().toISOString().split('T')[0] }, currentUser);
             toast({ title: "Sukces", description: "Pracownik został zwolniony." });
-            fetchData();
+            refreshData();
             return true;
         } catch(e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zwolnić pracownika." });
@@ -267,7 +314,7 @@ function DashboardPageContent() {
          try {
             await bulkDeleteEmployees(status, currentUser);
             toast({ title: "Sukces", description: `Wszyscy ${status === 'active' ? 'aktywni' : 'zwolnieni'} pracownicy zostali usunięci.` });
-            fetchData();
+            refreshData();
              return true;
         } catch(e: any) {
             toast({ variant: "destructive", title: "Błąd", description: e.message || `Nie udało się usunąć pracowników.` });
@@ -281,7 +328,7 @@ function DashboardPageContent() {
             const { updated } = await checkAndUpdateEmployeeStatuses(currentUser);
             if (updated > 0) {
                 toast({ title: "Sukces", description: `Zaktualizowano statusy dla ${updated} pracowników.`});
-                fetchData();
+                refreshData();
             } else {
                  toast({ title: "Brak zmian", description: "Wszyscy pracownicy mają aktualne statusy."});
             }
@@ -293,14 +340,14 @@ function DashboardPageContent() {
     const handleBulkImport = async (fileData: ArrayBuffer) => {
       try {
           const result = await bulkImportEmployees(fileData, settings?.coordinators || [], currentUser as Coordinator);
-          await fetchData(true); // Full refresh after import
+          await refreshData();
           return result;
       } catch (e: any) {
           return { success: false, message: e.message || "Wystąpił nieznany błąd." };
       }
     };
 
-    if (isLoading || !currentUser || !settings) {
+    if (isAppLoading || !currentUser || !settings) {
         return (
              <div className="flex h-screen w-full items-center justify-center bg-background">
                 <div className="flex animate-fade-in flex-col items-center gap-6">
@@ -314,16 +361,28 @@ function DashboardPageContent() {
     }
 
     const renderView = () => {
+        if (isDataLoading) {
+            return (
+                <div className="space-y-6">
+                    <Skeleton className="h-48 w-full" />
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <Skeleton className="h-96 w-full" />
+                        <Skeleton className="h-96 w-full" />
+                    </div>
+                </div>
+            )
+        }
+        
         switch (view) {
             case 'dashboard':
-                return <DashboardView employees={filteredEmployees} allEmployees={allEmployees} nonEmployees={filteredNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={handleRefreshStatuses} />;
+                return <DashboardView employees={filteredEmployees} allEmployees={allEmployees || []} nonEmployees={filteredNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={handleRefreshStatuses} />;
             case 'employees':
                 return <EmployeesView employees={filteredEmployees} nonEmployees={filteredNonEmployees} settings={settings} onAddEmployee={handleAddEmployeeClick} onEditEmployee={handleEditEmployeeClick} onDismissEmployee={handleDismissEmployee} onRestoreEmployee={handleRestoreEmployee} onBulkDelete={handleBulkDeleteEmployees} currentUser={currentUser} onAddNonEmployee={handleAddNonEmployeeClick} onEditNonEmployee={handleEditNonEmployeeClick} onDeleteNonEmployee={handleDeleteNonEmployee} />;
             case 'settings':
                 if (!currentUser.isAdmin) {
                     return <div className="p-4 text-center text-red-500">Brak uprawnień do przeglądania tej strony.</div>;
                 }
-                return <SettingsView settings={settings} onUpdateSettings={handleUpdateSettings} allEmployees={allEmployees} currentUser={currentUser} onDataRefresh={fetchData} onBulkImport={handleBulkImport}/>;
+                return <SettingsView settings={settings} onUpdateSettings={handleUpdateSettings} allEmployees={allEmployees || []} currentUser={currentUser} onDataRefresh={refreshData} onBulkImport={handleBulkImport}/>;
             case 'inspections':
                  return <InspectionsView 
                     inspections={filteredInspections} 
@@ -334,7 +393,7 @@ function DashboardPageContent() {
                     onDeleteInspection={handleDeleteInspection}
                 />;
             default:
-                return <DashboardView employees={filteredEmployees} allEmployees={allEmployees} nonEmployees={filteredNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={handleRefreshStatuses} />;
+                return <DashboardView employees={filteredEmployees} allEmployees={allEmployees || []} nonEmployees={filteredNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={handleRefreshStatuses} />;
         }
     };
 
