@@ -13,6 +13,7 @@ import { getAllEmployees, getSettings, addEmployee, updateEmployee, updateSettin
 import type { Employee, Settings, View, Coordinator, Inspection, NonEmployee } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/main-layout';
+import { cn } from '@/lib/utils';
 
 function DashboardPageContent() {
     const searchParams = useSearchParams();
@@ -63,16 +64,14 @@ function DashboardPageContent() {
         const loggedInUser = sessionStorage.getItem('currentUser');
         if (loggedInUser) {
             const user = JSON.parse(loggedInUser);
-             if (!currentUser || currentUser.uid !== user.uid) {
-                setCurrentUser(user);
-                 if (!user.isAdmin) {
-                    setSelectedCoordinatorId(user.uid);
-                }
+            setCurrentUser(user);
+             if (!user.isAdmin) {
+                setSelectedCoordinatorId(user.uid);
             }
         } else {
             router.push('/');
         }
-    }, [currentUser, router]);
+    }, [router]);
 
     useEffect(() => {
         if (currentUser) {
@@ -301,20 +300,20 @@ function DashboardPageContent() {
       }
     };
 
-    const renderView = () => {
-        if (isLoading || !currentUser || !settings) {
-            return (
-                 <div className="flex h-[80vh] w-full items-center justify-center bg-background">
-                    <div className="flex animate-fade-in flex-col items-center gap-6">
-                        <h1 className="text-4xl sm:text-5xl md:text-7xl font-semibold tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm">
-                            SmartHouse
-                        </h1>
-                        <p className="text-muted-foreground">Ładowanie danych...</p>
-                    </div>
+    if (isLoading || !currentUser || !settings) {
+        return (
+             <div className="flex h-screen w-full items-center justify-center bg-background">
+                <div className="flex animate-fade-in flex-col items-center gap-6">
+                    <h1 className="text-4xl sm:text-5xl md:text-7xl font-semibold tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm">
+                        SmartHouse
+                    </h1>
+                    <p className="text-muted-foreground">Ładowanie danych...</p>
                 </div>
-            )
-        }
+            </div>
+        )
+    }
 
+    const renderView = () => {
         switch (view) {
             case 'dashboard':
                 return <DashboardView employees={filteredEmployees} allEmployees={allEmployees} nonEmployees={filteredNonEmployees} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={handleRefreshStatuses} />;
@@ -339,11 +338,11 @@ function DashboardPageContent() {
         }
     };
 
-    if (!currentUser) return null;
-
     return (
         <MainLayout>
-            {renderView()}
+            <div key={view} className={cn("animate-in fade-in-0 duration-300")}>
+                {renderView()}
+            </div>
             
             {settings && (
                  <AddEmployeeForm
@@ -369,7 +368,7 @@ function DashboardPageContent() {
 
 export default function DashboardPage() {
     return (
-        <React.Suspense fallback={<div>Ładowanie...</div>}>
+        <React.Suspense fallback={<div className="flex h-screen w-full items-center justify-center bg-background"><p>Ładowanie komponentów...</p></div>}>
              <DashboardPageContent />
         </React.Suspense>
     )

@@ -261,7 +261,7 @@ const CameraCapture = ({ isOpen, onOpenChange, onCapture }: { isOpen: boolean, o
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent>
+            <DialogContent className="data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
                 <DialogHeader>
                     <DialogTitle>Зробіть фото</DialogTitle>
                 </DialogHeader>
@@ -356,7 +356,14 @@ const InspectionDialog = ({
                 
                 const mergedCategories = fullChecklist.map(checklistCategory => {
                     const existingCategory = currentCategories.find(c => c.name === checklistCategory.name);
-                    return existingCategory ? { ...checklistCategory, ...existingCategory } : checklistCategory;
+                    if (existingCategory) {
+                        const mergedItems = checklistCategory.items.map(checklistItem => {
+                            const existingItem = existingCategory.items.find(i => i.label === checklistItem.label);
+                            return existingItem ? { ...checklistItem, ...existingItem } : checklistItem;
+                        });
+                        return { ...checklistCategory, ...existingCategory, items: mergedItems };
+                    }
+                    return checklistCategory;
                 });
 
                 form.reset({
@@ -459,7 +466,7 @@ const InspectionDialog = ({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh]">
+            <DialogContent className="max-w-4xl max-h-[90vh] data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
                 <DialogHeader>
                     <DialogTitle>{editingInspection ? "Edytuj Inspekcję" : "Nowa Kontrola Mieszkania"}</DialogTitle>
                 </DialogHeader>
@@ -483,7 +490,7 @@ const InspectionDialog = ({
                                     <FormField control={form.control} name="date" render={({ field }) => (
                                         <FormItem className="flex flex-col">
                                             <FormLabel className="mb-1.5">Data wypełnienia</FormLabel>
-                                            <DatePicker value={field.value} onChange={field.onChange} />
+                                            <DatePicker value={field.value.toISOString()} onChange={(val) => field.onChange(val ? new Date(val) : new Date())} />
                                             <FormMessage />
                                         </FormItem>
                                     )} />
@@ -642,7 +649,7 @@ const InspectionDetailDialog = ({ inspection, isOpen, onOpenChange }: { inspecti
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh]">
+            <DialogContent className="max-w-4xl max-h-[90vh] data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
                 <DialogHeader>
                     <DialogTitle>{inspection.addressName}</DialogTitle>
                     <DialogDescription>
@@ -700,7 +707,7 @@ const InspectionDetailDialog = ({ inspection, isOpen, onOpenChange }: { inspecti
                 </DialogFooter>
                 
                 <Dialog open={isPhotoViewerOpen} onOpenChange={setIsPhotoViewerOpen}>
-                    <DialogContent className="max-w-5xl w-full h-[90vh] flex flex-col p-2">
+                    <DialogContent className="max-w-5xl w-full h-[90vh] flex flex-col p-2 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
                        <DialogHeader>
                           <DialogTitle>Zdjęcie {selectedPhoto.index + 1} z {allPhotos.length}</DialogTitle>
                        </DialogHeader>
@@ -764,7 +771,7 @@ export default function InspectionsView({ inspections, settings, currentUser, on
                 {inspections.length > 0 ? (
                     <div className="space-y-4">
                         {inspections.map(inspection => (
-                             <Card key={inspection.id}>
+                             <Card key={inspection.id} className="animate-in fade-in-0 duration-300">
                                 <CardHeader className="flex-row items-center justify-between">
                                     <div className="cursor-pointer flex-1" onClick={() => setSelectedInspection(inspection)}>
                                         <CardTitle className="text-lg">{inspection.addressName}</CardTitle>
@@ -840,5 +847,7 @@ export default function InspectionsView({ inspections, settings, currentUser, on
         </Card>
     );
 }
+
+    
 
     

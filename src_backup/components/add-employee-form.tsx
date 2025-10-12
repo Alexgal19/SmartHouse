@@ -174,7 +174,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
         <DialogHeader>
           <DialogTitle>{employee ? 'Edytuj pracownika' : 'Dodaj nowego pracownika'}</DialogTitle>
         </DialogHeader>
@@ -186,7 +186,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                 <TabsTrigger value="finance">Kaucja i Potrącenia</TabsTrigger>
               </TabsList>
               <div className="flex-1 overflow-y-auto p-1">
-              <TabsContent value="main" className="space-y-4 pt-4 px-2">
+              <TabsContent value="main" className="space-y-4 pt-4 px-2 data-[state=active]:animate-in data-[state=active]:fade-in-0">
                 <FormField
                   control={form.control}
                   name="fullName"
@@ -421,7 +421,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                 )}
                 />
               </TabsContent>
-              <TabsContent value="finance" className="space-y-4 pt-4 px-2">
+              <TabsContent value="finance" className="space-y-4 pt-4 px-2 data-[state=active]:animate-in data-[state=active]:fade-in-0">
                  <div className="grid grid-cols-2 gap-4 items-end">
                     <FormField
                         control={form.control}

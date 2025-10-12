@@ -6,30 +6,35 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Building } from 'lucide-react';
+import { Building, Loader2 } from 'lucide-react';
 import type { Coordinator } from '@/types';
 
 interface LoginViewProps {
-  coordinators: Coordinator[];
-  onLogin: (user: { name: string }, password?: string) => void;
+  onLogin: (user: { name: string }, password?: string) => Promise<void>;
+  isLoading: boolean;
 }
 
-export function LoginView({ coordinators, onLogin }: LoginViewProps) {
+export function LoginView({ onLogin, isLoading }: LoginViewProps) {
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    onLogin({ name: name.trim() }, password);
+    setError('');
+    setIsLoggingIn(true);
+    try {
+        await onLogin({ name: name.trim() }, password);
+    } finally {
+        setIsLoggingIn(false);
+    }
   };
   
   const handleSetError = (message: string) => {
     setError(message);
   }
   
-  // This is a bit of a hack to expose setError to the parent.
-  // A better solution would be to lift the state up.
   React.useEffect(() => {
     (window as any).setLoginError = handleSetError;
     return () => {
@@ -60,6 +65,7 @@ export function LoginView({ coordinators, onLogin }: LoginViewProps) {
                     }}
                     placeholder="Jan Kowalski lub admin"
                     required
+                    disabled={isLoggingIn || isLoading}
                     />
                 </div>
                  <div className="space-y-2">
@@ -74,12 +80,21 @@ export function LoginView({ coordinators, onLogin }: LoginViewProps) {
                     }}
                     placeholder="Wprowadź hasło"
                     required
+                    disabled={isLoggingIn || isLoading}
                     />
                 </div>
                  {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+                 {isLoading && <p className="text-sm font-medium text-muted-foreground text-center">Ładowanie konfiguracji...</p>}
             </CardContent>
             <CardFooter className="flex-col gap-4">
-                <Button type="submit" className="w-full">Zaloguj się</Button>
+                <Button type="submit" className="w-full" disabled={isLoggingIn || isLoading}>
+                    {isLoggingIn ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Logowanie...
+                        </>
+                    ) : 'Zaloguj się'}
+                </Button>
             </CardFooter>
         </form>
       </Card>
