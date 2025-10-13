@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { Employee, Settings, HousingAddress, Coordinator, Room, NonEmployee } from "@/types";
@@ -439,7 +440,7 @@ const DeductionsChart = ({ employees }: { employees: Employee[] }) => {
                         tickLine={false} 
                         axisLine={false} 
                         tickMargin={10} 
-                        tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} _
+                        tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
                         allowDecimals={false}
                         tickFormatter={(value) => `${value} zł`}
                     />
