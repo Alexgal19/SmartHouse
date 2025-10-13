@@ -397,7 +397,7 @@ const DeductionsChart = ({ allEmployees }: { allEmployees: Employee[] }) => {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Statystyka штрафів</CardTitle>
+                <CardTitle>Statystyka potrąceń</CardTitle>
                 <div className="flex gap-2 pt-2">
                     <Select value={deductionYear} onValueChange={setDeductionYear}>
                         <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
@@ -439,7 +439,7 @@ const DeductionsChart = ({ allEmployees }: { allEmployees: Employee[] }) => {
                         tickLine={false} 
                         axisLine={false} 
                         tickMargin={10} 
-                        tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} 
+                        tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} _
                         allowDecimals={false}
                         tickFormatter={(value) => `${value} zł`}
                     />
