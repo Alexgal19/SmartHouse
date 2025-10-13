@@ -360,7 +360,7 @@ function DashboardPageContent() {
         if (!currentUser) return false;
         
         const originalEmployees = allEmployees;
-        const updatedData = { status: 'dismissed', checkOutDate: new Date().toISOString().split('T')[0] };
+        const updatedData: Partial<Employee> = { status: 'dismissed', checkOutDate: new Date().toISOString().split('T')[0] };
 
         // Optimistic update
         setAllEmployees(prev => prev!.map(e => e.id === employeeId ? { ...e, ...updatedData } : e));
@@ -380,7 +380,7 @@ function DashboardPageContent() {
         if (!currentUser) return false;
         
         const originalEmployees = allEmployees;
-        const updatedData = { status: 'active', checkOutDate: null };
+        const updatedData: Partial<Employee> = { status: 'active', checkOutDate: null };
         
         // Optimistic update
         setAllEmployees(prev => prev!.map(e => e.id === employeeId ? { ...e, ...updatedData } : e));
