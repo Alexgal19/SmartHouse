@@ -105,9 +105,11 @@ const deserializeEmployee = (row: any): Employee | null => {
     const depositReturned = validDepositValues.includes(depositReturnedRaw) ? depositReturnedRaw as Employee['depositReturned'] : null;
 
     const safeFormat = (dateStr: string | undefined | null): string | null => {
-      if (!dateStr || !isValid(new Date(dateStr))) return null;
+      if (!dateStr) return null;
+      const date = new Date(dateStr);
+      if (!isValid(date)) return null;
       try {
-          return format(new Date(dateStr), 'yyyy-MM-dd');
+          return format(date, 'yyyy-MM-dd');
       } catch {
           return null;
       }
@@ -182,11 +184,11 @@ export async function getEmployeesFromSheet(coordinatorId?: string): Promise<Emp
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, ['id']);
         const rows = await sheet.getRows();
-        let employees = rows.map(deserializeEmployee).filter((e): e is Employee => e !== null);
-        if (coordinatorId) {
-            employees = employees.filter(e => e.coordinatorId === coordinatorId);
-        }
-        return employees;
+        
+        const filteredRows = coordinatorId ? rows.filter(row => row.get('coordinatorId') === coordinatorId) : rows;
+
+        return filteredRows.map(deserializeEmployee).filter((e): e is Employee => e !== null);
+
     } catch (error: any) {
         console.error("Error fetching employees from sheet:", error.message, error.stack);
         throw new Error(`Could not fetch employees from sheet. Original error: ${error.message}`);
@@ -374,3 +376,5 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
         throw new Error(`Could not fetch inspections. Original error: ${error.message}`);
     }
 }
+
+    

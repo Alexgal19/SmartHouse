@@ -604,7 +604,7 @@ const InspectionDialog = ({
                                 ))}
                                 </div>
                                 
-                                <FinalRating categories={watchedCategories} isCalculated />
+                                <FinalRating categories={watchedCategories || []} isCalculated />
                             </div>
                         </ScrollArea>
                         <DialogFooter className="mt-6">

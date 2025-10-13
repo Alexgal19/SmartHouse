@@ -20,7 +20,11 @@ const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 
 
 const serializeDate = (date?: string | null): string => {
-    if (!date || !isValid(new Date(date))) {
+    if (!date) {
+        return '';
+    }
+    const d = new Date(date);
+    if (!isValid(d)) {
         return '';
     }
     return date; 
@@ -794,3 +798,6 @@ function deserializeEmployee(row: any): Employee | null {
     };
 }
 
+
+
+    

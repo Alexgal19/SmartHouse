@@ -20,14 +20,13 @@ import {
 } from "@/components/ui/alert-dialog"
 
 import { Button } from "@/components/ui/button";
-import { Settings, UserCircle, Building, Bell, ArrowRight, LogOut, Trash2, Search } from "lucide-react";
+import { Settings, UserCircle, Building, Bell, ArrowRight, LogOut, Trash2 } from "lucide-react";
 import { SidebarTrigger } from "./ui/sidebar";
 import { useSidebar } from "./ui/sidebar";
 import { formatDistanceToNow } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { ScrollArea } from "./ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { Input } from "./ui/input";
 
 interface HeaderProps {
   user: User | Coordinator;
@@ -55,13 +54,10 @@ export default function Header({ user, activeView, notifications, onNotification
         <Building className="h-6 w-6 text-primary" />
         <span className="font-semibold text-lg">SmartHouse</span>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 flex-1">
         {isMobile && <SidebarTrigger />}
         <h1 className="text-xl font-semibold hidden md:block">{viewTitles[activeView]}</h1>
       </div>
-
-       <div className="flex w-full flex-1 items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
-        </div>
 
       <div className="flex items-center justify-end gap-2">
          <Popover>
@@ -70,7 +66,7 @@ export default function Header({ user, activeView, notifications, onNotification
                     <Bell className="h-5 w-5" />
                     {unreadCount > 0 && (
                         <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
-                           {unreadCount > 10 ? '9+' : unreadCount}
+                           {unreadCount > 9 ? '9+' : unreadCount}
                         </span>
                     )}
                     <span className="sr-only">Otwórz powiadomienia</span>
@@ -146,3 +142,5 @@ export default function Header({ user, activeView, notifications, onNotification
     </header>
   );
 }
+
+    

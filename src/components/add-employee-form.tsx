@@ -124,7 +124,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
       
       const todayString = format(new Date(), 'yyyy-MM-dd');
 
-      const defaultVals = {
+      const defaultVals: EmployeeFormData = {
         fullName: "",
         coordinatorId: "",
         nationality: "",
@@ -133,17 +133,8 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
         roomNumber: "",
         zaklad: "",
         checkInDate: todayString,
-        contractStartDate: undefined,
-        contractEndDate: undefined,
-        checkOutDate: undefined,
-        departureReportDate: undefined,
         comments: "",
-        oldAddress: undefined,
         depositReturned: 'Nie dotyczy' as const,
-        depositReturnAmount: undefined,
-        deductionRegulation: undefined,
-        deductionNo4Months: undefined,
-        deductionNo30Days: undefined,
         deductionReason: deductionReasonInitial,
       };
 
@@ -164,7 +155,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
 
 
   const handleSubmit = async (values: EmployeeFormData) => {
-    const dataToSave = { ...values };
+    const dataToSave: EmployeeFormData = { ...values };
     if (employee && watchedAddress !== initialAddress) {
       dataToSave.oldAddress = initialAddress;
     } else if (employee) {
