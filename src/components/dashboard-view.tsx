@@ -44,6 +44,9 @@ const formatDate = (dateString: string | null | undefined) => {
     }
 }
 
+const isEmployee = (person: Employee | NonEmployee): person is Employee => {
+    return 'status' in person;
+}
 
 // New component for detailed housing view
 const HousingDetailView = ({
@@ -104,14 +107,22 @@ const HousingDetailView = ({
         </DialogHeader>
         <ScrollArea className="h-[60vh] mt-4">
           {occupants.length > 0 ? (
-            occupants.map(occupant => (
-            <Card key={occupant.id} onClick={() => 'status' in occupant && onEmployeeClick(occupant)} className={cn("mb-3", 'status' in occupant && "cursor-pointer hover:bg-muted/50")}>
-              <CardHeader>
-                <CardTitle className="text-base">{occupant.fullName}</CardTitle>
-                {'nationality' in occupant && <CardDescription>{occupant.nationality}</CardDescription>}
-              </CardHeader>
-            </Card>
-          ))
+            occupants.map(occupant => {
+                const canClick = isEmployee(occupant);
+                return (
+                    <Card 
+                        key={occupant.id} 
+                        onClick={() => canClick && onEmployeeClick(occupant)} 
+                        className={cn("mb-3", canClick && "cursor-pointer hover:bg-muted/50")}
+                    >
+                      <CardHeader>
+                        <CardTitle className="text-base">{occupant.fullName}</CardTitle>
+                        {isEmployee(occupant) && <CardDescription>{occupant.nationality}</CardDescription>}
+                        {!isEmployee(occupant) && <CardDescription>Mieszkaniec (NZ)</CardDescription>}
+                      </CardHeader>
+                    </Card>
+                )
+            })
           ) : (
              <p className="text-center text-muted-foreground pt-8">Brak mieszkańców w tym pokoju.</p>
           )}
@@ -769,19 +780,22 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                         <DialogDescription>{selectedAddress.name}</DialogDescription>
                     </DialogHeader>
                     <ScrollArea className="h-[60vh] mt-4">
-                        {occupantsForSelectedAddress.map(occupant => (
-                           <Card key={occupant.id} onClick={() => 'status' in occupant && handleEmployeeClick(occupant)} className={cn("mb-3", 'status' in occupant && "cursor-pointer hover:bg-muted/50")}>
-                             <CardHeader>
-                               <CardTitle className="text-base">{occupant.fullName}</CardTitle>
-                               <CardDescription>
-                                {'status' in occupant 
-                                    ? `Pracownik / Pokój: ${occupant.roomNumber} / ${occupant.nationality}`
-                                    : `NZ / Pokój: ${occupant.roomNumber}`
-                                }
-                               </CardDescription>
-                             </CardHeader>
-                           </Card>
-                        ))}
+                        {occupantsForSelectedAddress.map(occupant => {
+                           const canClick = isEmployee(occupant);
+                           return (
+                               <Card key={occupant.id} onClick={() => canClick && handleEmployeeClick(occupant)} className={cn("mb-3", canClick && "cursor-pointer hover:bg-muted/50")}>
+                                 <CardHeader>
+                                   <CardTitle className="text-base">{occupant.fullName}</CardTitle>
+                                   <CardDescription>
+                                    {isEmployee(occupant)
+                                        ? `Pracownik / Pokój: ${occupant.roomNumber} / ${occupant.nationality}`
+                                        : `NZ / Pokój: ${occupant.roomNumber}`
+                                    }
+                                   </CardDescription>
+                                 </CardHeader>
+                               </Card>
+                           )
+                        })}
                     </ScrollArea>
                 </>
             )}
@@ -791,4 +805,5 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
   );
 }
 
+    
     
