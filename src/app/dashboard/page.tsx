@@ -172,32 +172,24 @@ function DashboardPageContent() {
     const handleSaveEmployee = async (data: EmployeeFormData) => {
         if (!currentUser) return;
         
-        const originalEmployees = allEmployees;
-
-        if (editingEmployee) {
-            const updatedData: Partial<Employee> = { ...data };
-            if (editingEmployee && data.address !== editingEmployee.address) {
-              updatedData.oldAddress = editingEmployee.address;
-            } else if (editingEmployee) {
-              updatedData.oldAddress = editingEmployee.oldAddress;
-            }
-            
-            try {
+        try {
+            if (editingEmployee) {
+                const updatedData: Partial<Employee> = { ...data };
+                if (editingEmployee && data.address !== editingEmployee.address) {
+                  updatedData.oldAddress = editingEmployee.address;
+                } else if (editingEmployee) {
+                  updatedData.oldAddress = editingEmployee.oldAddress;
+                }
+                
                 await updateEmployee(editingEmployee.id, updatedData, currentUser)
                 toast({ title: "Sukces", description: "Dane pracownika zostały zaktualizowane." });
-                await refreshData(false);
-            } catch (e: any) {
-                setAllEmployees(originalEmployees);
-                toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać pracownika." });
-            }
-        } else {
-            try {
+            } else {
                 await addEmployee(data, currentUser);
                 toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
-                await refreshData(false);
-            } catch (e: any) {
-                toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać pracownika." });
             }
+            await refreshData(false);
+        } catch (e: any) {
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać pracownika." });
         }
     };
 
