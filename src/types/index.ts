@@ -10,7 +10,7 @@ export type User = {
 export type DeductionReason = {
   name: string;
   checked: boolean;
-  amount: number | null;
+  amount?: number | null;
 };
 
 export type Employee = {
