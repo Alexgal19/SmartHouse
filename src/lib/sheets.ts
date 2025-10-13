@@ -336,15 +336,16 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
 
                 if (itemLabel && itemLabel !== 'Photo' && itemLabel !== 'Uwagi') {
                     let type: InspectionCategoryItem['type'] = 'text';
-                    let value: any = detail.get('itemValue');
+                    let rawValue = detail.get('itemValue');
+                    let value: any = rawValue;
                     
-                    if (value === 'true' || value === 'false') {
+                    if (rawValue?.toLowerCase() === 'true' || rawValue?.toLowerCase() === 'false') {
                         type = 'yes_no';
-                        value = value === 'true';
-                    } else if (['Wysoki', 'Normalny', 'Niski', 'Bardzo czysto', 'Czysto', 'Brudno', 'Bardzo brudno'].includes(value)) {
+                        value = rawValue.toLowerCase() === 'true';
+                    } else if (['Wysoki', 'Normalny', 'Niski', 'Bardzo czysto', 'Czysto', 'Brudno', 'Bardzo brudno'].includes(rawValue)) {
                         type = 'select';
-                    } else if (!isNaN(parseFloat(value)) && isFinite(value)) {
-                        const num = parseFloat(value);
+                    } else if (!isNaN(parseFloat(rawValue)) && isFinite(rawValue)) {
+                        const num = parseFloat(rawValue);
                         if (num >= 1 && num <= 5 && Number.isInteger(num)) {
                             type = 'rating';
                             value = num;
@@ -385,5 +386,3 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
         throw new Error(`Could not fetch inspections. Original error: ${error.message}`);
     }
 }
-
-    
