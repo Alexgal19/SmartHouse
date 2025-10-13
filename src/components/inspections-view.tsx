@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
@@ -542,7 +543,7 @@ const InspectionDialog = ({
                                                     </Button>
                                                     <input
                                                         type="file"
-                                                        ref={(el) => (fileInputRefs.current[categoryIndex] = el)}
+                                                        ref={(el) => { fileInputRefs.current[categoryIndex] = el; }}
                                                         className="hidden"
                                                         accept="image/*"
                                                         multiple
