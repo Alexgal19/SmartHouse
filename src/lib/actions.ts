@@ -378,13 +378,12 @@ export async function checkAndUpdateEmployeeStatuses(actor: Coordinator): Promis
 
         for (const row of rows) {
             const status = row.get('status');
-            const contractEndDateString = row.get('contractEndDate');
+            const checkOutDateString = row.get('checkOutDate');
 
-            if (status === 'active' && contractEndDateString) {
-                const contractEndDate = new Date(contractEndDateString);
-                if (isValid(contractEndDate) && isPast(contractEndDate)) {
+            if (status === 'active' && checkOutDateString) {
+                const checkOutDate = new Date(checkOutDateString);
+                if (isValid(checkOutDate) && isPast(checkOutDate)) {
                     row.set('status', 'dismissed');
-                    row.set('checkOutDate', format(contractEndDate, 'yyyy-MM-dd'));
                     await row.save();
                     updatedCount++;
 
@@ -805,6 +804,8 @@ function deserializeEmployee(row: any): Employee | null {
 }
 
 
+
+    
 
     
 
