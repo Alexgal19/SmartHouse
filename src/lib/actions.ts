@@ -20,13 +20,10 @@ const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 
 
 const serializeDate = (date: string | null | undefined): string => {
-    if (!date) {
+    if (!date || !isValid(new Date(date))) {
         return '';
     }
-    if (!isValid(new Date(date))) {
-        return '';
-    }
-    return date; // It's already a YYYY-MM-DD string
+    return date; 
 };
 
 const serializeEmployee = (employee: Partial<Omit<Employee, 'id' | 'status'> & { id?: string; status?: string }>): Record<string, string | number | boolean> => {
@@ -107,7 +104,6 @@ export async function getNonEmployees(): Promise<NonEmployee[]> {
      return nonEmployees;
   } catch (error) {
     console.error("Error in getNonEmployees (actions):", error);
-    // Return empty array on any other error to keep the app running
     return [];
   }
 }
@@ -722,7 +718,6 @@ export async function bulkImportEmployees(fileData: ArrayBuffer, coordinators: C
                 roomNumber: String(row.roomNumber),
                 zaklad: String(row.zaklad),
                 checkInDate,
-                checkOutDate: null,
             };
             employeesToAdd.push(employee);
         }
@@ -768,6 +763,10 @@ function deserializeEmployee(row: any): Employee | null {
     }
     
     const status = row.get('status');
+    const depositReturnedRaw = row.get('depositReturned');
+    const validDepositValues = ['Tak', 'Nie', 'Nie dotyczy'];
+    const depositReturned = validDepositValues.includes(depositReturnedRaw) ? depositReturnedRaw as Employee['depositReturned'] : null;
+
 
     return {
         id: id,
@@ -785,8 +784,8 @@ function deserializeEmployee(row: any): Employee | null {
         departureReportDate: safeFormat(row.get('departureReportDate')),
         comments: row.get('comments') || '',
         status: status === 'active' || status === 'dismissed' ? status : 'active',
-        oldAddress: row.get('oldAddress') || undefined,
-        depositReturned: row.get('depositReturned') as Employee['depositReturned'] || null,
+        oldAddress: row.get('oldAddress') || null,
+        depositReturned: depositReturned,
         depositReturnAmount: row.get('depositReturnAmount') ? parseFloat(row.get('depositReturnAmount')) : null,
         deductionRegulation: row.get('deductionRegulation') ? parseFloat(row.get('deductionRegulation')) : null,
         deductionNo4Months: row.get('deductionNo4Months') ? parseFloat(row.get('deductionNo4Months')) : null,
