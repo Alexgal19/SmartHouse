@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -41,12 +42,20 @@ const locales = [
 const LanguageSwitcher = () => {
     const t = useTranslations('LanguageSwitcher');
     const pathname = usePathname();
+    const searchParams = useSearchParams();
     const currentLocale = pathname.split('/')[1];
 
-    const getCleanPath = () => {
-        const parts = pathname.split('/');
-        parts.splice(1, 1); // remove locale
-        return parts.join('/') || '/';
+    const getLocalizedPath = (locale: string) => {
+        const pathWithoutLocale = pathname.startsWith(`/${currentLocale}`)
+            ? pathname.substring(`/${currentLocale}`.length)
+            : pathname;
+        
+        const newPath = `/${locale}${pathWithoutLocale || '/'}`;
+        
+        const currentSearchParams = new URLSearchParams(searchParams.toString());
+        const queryString = currentSearchParams.toString();
+
+        return queryString ? `${newPath}?${queryString}` : newPath;
     }
 
     return (
@@ -59,7 +68,7 @@ const LanguageSwitcher = () => {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
                 {locales.map((locale) => (
-                    <Link href={getCleanPath()} locale={locale.code} key={locale.code}>
+                    <Link href={getLocalizedPath(locale.code)} key={locale.code}>
                         <DropdownMenuItem className={currentLocale === locale.code ? 'font-bold' : ''}>
                            {locale.name}
                         </DropdownMenuItem>
