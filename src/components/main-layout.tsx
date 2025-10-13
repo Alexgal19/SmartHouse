@@ -516,7 +516,7 @@ export default function MainLayout({
       }
     };
 
-    if (isAuthenticating || isLoadingData) {
+    if (isAuthenticating || isLoadingData || !currentUser) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
                 <div className="flex animate-fade-in flex-col items-center gap-6">
@@ -590,7 +590,7 @@ export default function MainLayout({
                 </Sidebar>
                 <div className="flex flex-1 flex-col">
                     <Header 
-                        user={currentUser!} 
+                        user={currentUser} 
                         activeView={activeView} 
                         notifications={filteredNotifications} 
                         onNotificationClick={(n) => handleNotificationClick(n, n.employeeId)} 
@@ -603,7 +603,7 @@ export default function MainLayout({
                     </main>
                 </div>
                 
-                <MobileNav activeView={activeView} setActiveView={(v) => router.push(`/dashboard?view=${v}`)} navItems={visibleNavItems} currentUser={currentUser!}/>
+                <MobileNav activeView={activeView} setActiveView={(v) => router.push(`/dashboard?view=${v}`)} navItems={visibleNavItems} currentUser={currentUser}/>
             </div>
             
             {settings && (
@@ -629,4 +629,5 @@ export default function MainLayout({
     );
 }
 
+    
     
