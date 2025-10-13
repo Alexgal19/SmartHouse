@@ -255,7 +255,7 @@ export default function MainLayout({
             } else if (showNoChangesToast) {
                  toast({ title: t_dashboard('toast.statusUpdateNoChangesTitle'), description: t_dashboard('toast.statusUpdateNoChangesDescription')});
             }
-        } catch (e: any) => {
+        } catch (e: any) {
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.statusUpdateError') });
         }
     }, [currentUser, refreshData, toast, t_dashboard]);
@@ -628,3 +628,5 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
+
+    
