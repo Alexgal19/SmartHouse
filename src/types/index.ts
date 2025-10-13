@@ -71,7 +71,7 @@ export type InspectionCategoryItem = {
 export type InspectionCategory = {
     name: string;
     items: InspectionCategoryItem[];
-    uwagi: string;
+    uwagi?: string;
     photos?: string[];
 };
 
