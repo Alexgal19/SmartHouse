@@ -10,7 +10,7 @@ export type User = {
 export type DeductionReason = {
   name: string;
   checked: boolean;
-  amount?: number | null;
+  amount: number | null;
 };
 
 export type Employee = {
@@ -23,10 +23,10 @@ export type Employee = {
   roomNumber: string;
   zaklad: string; // department
   checkInDate: string; // YYYY-MM-DD
-  checkOutDate?: string | null; // YYYY-MM-DD
-  contractStartDate?: string | null; // YYYY-MM-DD
-  contractEndDate?: string | null; // YYYY-MM-DD
-  departureReportDate?: string | null; // YYYY-MM-DD
+  checkOutDate?: string | null; 
+  contractStartDate?: string | null; 
+  contractEndDate?: string | null; 
+  departureReportDate?: string | null; 
   comments?: string;
   status: 'active' | 'dismissed';
   oldAddress?: string | null;
@@ -64,7 +64,7 @@ export type HousingAddress = {
 export type InspectionCategoryItem = {
     label: string;
     type: 'rating' | 'yes_no' | 'text' | 'info' | 'select' | 'checkbox_group' | 'number';
-    value: any; // Can be number, boolean, string, string[] or null
+    value?: any; // Can be number, boolean, string, string[] or null
     options?: string[];
 };
 
@@ -150,5 +150,3 @@ export type Notification = {
 };
 
 export type View = 'dashboard' | 'employees' | 'settings' | 'inspections';
-
-    

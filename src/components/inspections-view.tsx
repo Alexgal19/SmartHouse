@@ -48,7 +48,7 @@ const inspectionSchema = z.object({
         items: z.array(z.object({
             label: z.string(),
             type: z.enum(['rating', 'yes_no', 'text', 'info', 'select', 'checkbox_group', 'number']),
-            value: z.any(),
+            value: z.any().optional(),
             options: z.array(z.string()).optional()
         })),
         uwagi: z.string().optional(),
@@ -456,7 +456,7 @@ const InspectionDialog = ({
             coordinatorId: data.coordinatorId,
             coordinatorName: coordinator.name,
             standard: data.standard,
-            categories: data.categories,
+            categories: data.categories as InspectionCategory[],
         };
         
         await onSave(inspectionData, editingInspection?.id);
@@ -847,5 +847,3 @@ export default function InspectionsView({ inspections, settings, currentUser, on
         </Card>
     );
 }
-
-    
