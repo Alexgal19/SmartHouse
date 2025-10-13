@@ -53,9 +53,14 @@ async function getDoc(): Promise<GoogleSpreadsheet> {
     }
     const auth = getAuth();
     const doc = new GoogleSpreadsheet(SPREADSHEET_ID, auth);
-    await doc.loadInfo();
-    docInstance = doc;
-    return docInstance;
+    try {
+        await doc.loadInfo();
+        docInstance = doc;
+        return docInstance;
+    } catch (error) {
+        console.error("Failed to load Google Sheet document:", error);
+        throw new Error("Could not connect to Google Sheets. Please check credentials and sheet ID.");
+    }
 }
 
 export async function getSheet(title: string, headers: string[]): Promise<GoogleSpreadsheetWorksheet> {
@@ -94,6 +99,19 @@ const deserializeEmployee = (row: any): Employee | null => {
             console.warn(`Could not parse deductionReason for employee ${id}:`, e);
         }
     }
+    
+    const depositReturnedRaw = row.get('depositReturned');
+    const validDepositValues = ['Tak', 'Nie', 'Nie dotyczy'];
+    const depositReturned = validDepositValues.includes(depositReturnedRaw) ? depositReturnedRaw as Employee['depositReturned'] : null;
+
+    const safeFormat = (dateStr: string | undefined | null): string | null => {
+      if (!dateStr || !isValid(new Date(dateStr))) return null;
+      try {
+          return format(new Date(dateStr), 'yyyy-MM-dd');
+      } catch {
+          return null;
+      }
+    }
 
     return {
         id: id,
@@ -105,14 +123,14 @@ const deserializeEmployee = (row: any): Employee | null => {
         roomNumber: row.get('roomNumber'),
         zaklad: row.get('zaklad'),
         checkInDate: checkInDate,
-        checkOutDate: row.get('checkOutDate') ? format(new Date(row.get('checkOutDate')), 'yyyy-MM-dd') : null,
-        contractStartDate: row.get('contractStartDate') ? format(new Date(row.get('contractStartDate')), 'yyyy-MM-dd') : null,
-        contractEndDate: row.get('contractEndDate') ? format(new Date(row.get('contractEndDate')), 'yyyy-MM-dd') : null,
-        departureReportDate: row.get('departureReportDate') ? format(new Date(row.get('departureReportDate')), 'yyyy-MM-dd') : null,
+        checkOutDate: safeFormat(row.get('checkOutDate')),
+        contractStartDate: safeFormat(row.get('contractStartDate')),
+        contractEndDate: safeFormat(row.get('contractEndDate')),
+        departureReportDate: safeFormat(row.get('departureReportDate')),
         comments: row.get('comments'),
         status: row.get('status') as 'active' | 'dismissed',
         oldAddress: row.get('oldAddress') || undefined,
-        depositReturned: row.get('depositReturned') as Employee['depositReturned'] || null,
+        depositReturned: depositReturned,
         depositReturnAmount: row.get('depositReturnAmount') ? parseFloat(row.get('depositReturnAmount')) : null,
         deductionRegulation: row.get('deductionRegulation') ? parseFloat(row.get('deductionRegulation')) : null,
         deductionNo4Months: row.get('deductionNo4Months') ? parseFloat(row.get('deductionNo4Months')) : null,
@@ -160,13 +178,17 @@ const deserializeNotification = (row: any): Notification => {
 };
 
 
-export async function getEmployeesFromSheet(): Promise<Employee[]> {
+export async function getEmployeesFromSheet(coordinatorId?: string): Promise<Employee[]> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, ['id']);
         const rows = await sheet.getRows();
-        return rows.map(deserializeEmployee).filter((e): e is Employee => e !== null);
+        let employees = rows.map(deserializeEmployee).filter((e): e is Employee => e !== null);
+        if (coordinatorId) {
+            employees = employees.filter(e => e.coordinatorId === coordinatorId);
+        }
+        return employees;
     } catch (error: any) {
-        console.error("Error fetching employees from sheet:", error.message);
+        console.error("Error fetching employees from sheet:", error.message, error.stack);
         throw new Error(`Could not fetch employees from sheet. Original error: ${error.message}`);
     }
 }
@@ -177,7 +199,7 @@ export async function getNonEmployeesFromSheet(): Promise<NonEmployee[]> {
     const rows = await sheet.getRows();
     return rows.map(deserializeNonEmployee).filter((e): e is NonEmployee => e !== null);
   } catch (error: any) {
-    console.error("Error fetching non-employees from sheet:", error.message);
+    console.error("Error fetching non-employees from sheet:", error.message, error.stack);
     throw new Error(`Could not fetch non-employees from sheet. Original error: ${error.message}`);
   }
 }
@@ -192,6 +214,7 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             try {
                 return await sheet.getRows();
             } catch (e) {
+                 console.warn(`Could not get rows from sheet: ${title}. It might be empty or missing.`);
                 return [];
             }
         };
@@ -249,7 +272,7 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             genders: genderRows.map(row => row.get('name')).filter(Boolean),
         };
     } catch (error: any) {
-        console.error("Error fetching settings from sheet:", error.message);
+        console.error("Error fetching settings from sheet:", error.message, error.stack);
         throw new Error(`Could not fetch settings. Original error: ${error.message}`);
     }
 }
@@ -263,18 +286,22 @@ export async function getNotificationsFromSheet(): Promise<Notification[]> {
             .filter((n): n is Notification => n !== null)
             .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     } catch (error: any) {
-        console.error("Error fetching notifications from sheet:", error.message);
+        console.error("Error fetching notifications from sheet:", error.message, error.stack);
         throw new Error(`Could not fetch notifications. Original error: ${error.message}`);
     }
 }
 
 
-export async function getInspectionsFromSheet(): Promise<Inspection[]> {
+export async function getInspectionsFromSheet(coordinatorId?: string): Promise<Inspection[]> {
     try {
         const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, ['id']);
         const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, ['id']);
         
-        const inspectionRows = await inspectionsSheet.getRows();
+        let inspectionRows = await inspectionsSheet.getRows();
+        if (coordinatorId) {
+            inspectionRows = inspectionRows.filter(row => row.get('coordinatorId') === coordinatorId);
+        }
+
         const detailRows = await detailsSheet.getRows();
 
         const detailsByInspectionId = new Map<string, any[]>();
@@ -343,9 +370,7 @@ export async function getInspectionsFromSheet(): Promise<Inspection[]> {
         return inspections;
 
     } catch (error: any) {
-        console.error("Error fetching inspections from sheet:", error.message);
+        console.error("Error fetching inspections from sheet:", error.message, error.stack);
         throw new Error(`Could not fetch inspections. Original error: ${error.message}`);
     }
 }
-
-    

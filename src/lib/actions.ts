@@ -19,7 +19,7 @@ const SHEET_NAME_INSPECTIONS = 'Inspections';
 const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 
 
-const serializeDate = (date: string | null | undefined): string => {
+const serializeDate = (date?: string | null): string => {
     if (!date || !isValid(new Date(date))) {
         return '';
     }
@@ -88,13 +88,13 @@ const NON_EMPLOYEE_HEADERS = [
 
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
 
-export async function getAllEmployees(): Promise<Employee[]> {
+export async function getEmployees(coordinatorId?: string): Promise<Employee[]> {
     try {
-        const employees = await getEmployeesFromSheet();
+        const employees = await getEmployeesFromSheet(coordinatorId);
         return employees;
     } catch (error) {
-        console.error("Error in getAllEmployees (actions):", error);
-        throw new Error(`Could not fetch all employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.error("Error in getEmployees (actions):", error);
+        throw new Error(`Could not fetch employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }
 
@@ -104,7 +104,7 @@ export async function getNonEmployees(): Promise<NonEmployee[]> {
      return nonEmployees;
   } catch (error) {
     console.error("Error in getNonEmployees (actions):", error);
-    return [];
+    throw new Error(`Could not fetch non-employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
@@ -493,9 +493,9 @@ export async function clearAllNotifications(): Promise<void> {
 }
 
 
-export async function getInspections(): Promise<Inspection[]> {
+export async function getInspections(coordinatorId?: string): Promise<Inspection[]> {
     try {
-        const inspections = await getInspectionsFromSheet();
+        const inspections = await getInspectionsFromSheet(coordinatorId);
         return inspections;
     } catch (error) {
          console.error("Error in getInspections (actions):", error);
@@ -793,3 +793,4 @@ function deserializeEmployee(row: any): Employee | null {
         deductionReason: deductionReason,
     };
 }
+

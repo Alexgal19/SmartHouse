@@ -9,7 +9,7 @@ import SettingsView from '@/components/settings-view';
 import InspectionsView from '@/components/inspections-view';
 import { AddEmployeeForm, type EmployeeFormData } from '@/components/add-employee-form';
 import { AddNonEmployeeForm } from '@/components/add-non-employee-form';
-import { getAllEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getInspections, addInspection, updateInspection, deleteInspection, transferEmployees, bulkDeleteEmployees, bulkImportEmployees, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee, checkAndUpdateEmployeeStatuses } from '@/lib/actions';
+import { getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getInspections, addInspection, updateInspection, deleteInspection, transferEmployees, bulkDeleteEmployees, bulkImportEmployees, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee, checkAndUpdateEmployeeStatuses } from '@/lib/actions';
 import type { Employee, Settings, View, Coordinator, Inspection, NonEmployee } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/main-layout';
@@ -59,20 +59,16 @@ function DashboardPageContent() {
             setSettings(settingsData);
             
             setLoadingMessage('Ładowanie danych...');
+            const coordinatorIdToFetch = currentUser.isAdmin ? undefined : currentUser.uid;
+
             const [employeesData, inspectionsData, nonEmployeesData] = await Promise.all([
-                getAllEmployees(),
-                getInspections(),
-                getNonEmployees(),
+                getEmployees(coordinatorIdToFetch),
+                getInspections(coordinatorIdToFetch),
+                getNonEmployees(), // Non-employees are not tied to coordinators
             ]);
 
-            if (currentUser.isAdmin) {
-                setAllEmployees(employeesData);
-                setAllInspections(inspectionsData.map((i: any) => ({...i, date: new Date(i.date)})));
-            } else {
-                setAllEmployees(employeesData.filter(e => e.coordinatorId === currentUser.uid));
-                setAllInspections(inspectionsData.filter(i => i.coordinatorId === currentUser.uid).map((i: any) => ({...i, date: new Date(i.date)})));
-            }
-
+            setAllEmployees(employeesData);
+            setAllInspections(inspectionsData);
             setAllNonEmployees(nonEmployeesData);
             
         } catch (error) {
@@ -98,21 +94,16 @@ function DashboardPageContent() {
     const refreshData = useCallback(async (showToast = true) => {
         if (!currentUser) return;
         try {
+            const coordinatorIdToFetch = currentUser.isAdmin ? undefined : currentUser.uid;
             const [employeesData, settingsData, inspectionsData, nonEmployeesData] = await Promise.all([
-                getAllEmployees(), 
+                getEmployees(coordinatorIdToFetch),
                 getSettings(),
-                getInspections(),
+                getInspections(coordinatorIdToFetch),
                 getNonEmployees(),
             ]);
 
-            if (currentUser.isAdmin) {
-                setAllEmployees(employeesData);
-                setAllInspections(inspectionsData.map((i: any) => ({...i, date: new Date(i.date)})));
-            } else {
-                setAllEmployees(employeesData.filter(e => e.coordinatorId === currentUser.uid));
-                setAllInspections(inspectionsData.filter(i => i.coordinatorId === currentUser.uid).map((i: any) => ({...i, date: new Date(i.date)})));
-            }
-            
+            setAllEmployees(employeesData);
+            setAllInspections(inspectionsData);
             setAllNonEmployees(nonEmployeesData);
             setSettings(settingsData);
             
@@ -181,14 +172,20 @@ function DashboardPageContent() {
         if (!currentUser) return;
         
         const originalEmployees = allEmployees;
-        const dataToSave: Omit<Employee, 'id' | 'status'> = data;
 
         if (editingEmployee) {
-            // Optimistic Update
-            const updatedEmployee: Employee = { ...editingEmployee, ...dataToSave };
+            // Optimistic Update for existing employee
+            const updatedData = { ...data };
+            if (editingEmployee && data.address !== editingEmployee.address) {
+              updatedData.oldAddress = editingEmployee.address;
+            } else if (editingEmployee) {
+              updatedData.oldAddress = editingEmployee.oldAddress;
+            }
+
+            const updatedEmployee: Employee = { ...editingEmployee, ...updatedData };
             setAllEmployees(prev => prev!.map(e => e.id === editingEmployee.id ? updatedEmployee : e));
             
-            updateEmployee(editingEmployee.id, dataToSave, currentUser)
+            updateEmployee(editingEmployee.id, updatedData, currentUser)
                 .then(() => {
                     toast({ title: "Sukces", description: "Dane pracownika zostały zaktualizowane." });
                     refreshData(false); // Refresh in background to sync
@@ -198,22 +195,13 @@ function DashboardPageContent() {
                     toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać pracownika." });
                 });
         } else {
-            // Optimistic Add
-            const tempId = `temp-${Date.now()}`;
-            const newEmployee: Employee = {
-                ...dataToSave,
-                id: tempId,
-                status: 'active',
-            };
-            setAllEmployees(prev => [newEmployee, ...prev!]);
-
-            addEmployee(dataToSave, currentUser)
+            // No optimistic update for new employee, just add and refresh
+            addEmployee(data, currentUser)
                 .then(() => {
                     toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
-                    refreshData(false); // Refresh to get the real ID
+                    refreshData(false); // Refresh to get the new data
                 })
                 .catch((e: any) => {
-                    setAllEmployees(originalEmployees); // Revert
                     toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać pracownika." });
                 });
         }
@@ -283,18 +271,12 @@ function DashboardPageContent() {
     };
     
     const handleAddInspection = async (inspectionData: Omit<Inspection, 'id'>) => {
-        const originalInspections = allInspections;
-        const tempId = `temp-insp-${Date.now()}`;
-        const newInspection = { ...inspectionData, id: tempId };
-        setAllInspections(prev => [newInspection, ...prev!]);
-
         addInspection(inspectionData)
             .then(() => {
                 toast({ title: "Sukces", description: "Nowa inspekcja została dodana." });
                 refreshData(false);
             })
             .catch((e: any) => {
-                setAllInspections(originalInspections);
                 toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać inspekcji." });
             });
     };

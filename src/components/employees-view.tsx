@@ -44,7 +44,7 @@ interface EmployeesViewProps {
 
 const ITEMS_PER_PAGE = 20;
 
-const formatDate = (dateString: string | null | undefined) => {
+const formatDate = (dateString?: string | null) => {
     if (!dateString) return 'N/A';
     try {
         // Add time to treat it as local date, avoiding timezone shifts
@@ -559,7 +559,7 @@ export default function EmployeesView({
                     </AlertDialog>
                 </div>
             )}
-            <ScrollArea className="h-[55vh]">
+            <ScrollArea className="h-[55vh] overflow-x-auto">
                 <EmployeeListComponent
                     employees={isDismissedTab ? paginatedData.dismissed : paginatedData.active}
                     settings={settings}
@@ -584,7 +584,7 @@ export default function EmployeesView({
     }
     return (
       <>
-        <ScrollArea className="h-[55vh]">
+        <ScrollArea className="h-[55vh] overflow-x-auto">
           <NonEmployeeListComponent nonEmployees={paginatedData['non-employees']} onEdit={onEditNonEmployee} onDelete={onDeleteNonEmployee} />
         </ScrollArea>
         <PaginationControls currentPage={currentPage} totalPages={totalPages} onPageChange={onPageChange} />
@@ -662,9 +662,3 @@ export default function EmployeesView({
     </Card>
   );
 }
-
-    
-
-    
-
-    
