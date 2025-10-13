@@ -241,10 +241,12 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>): 
     try {
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
         const newNonEmployee: NonEmployee = {
-            ...nonEmployeeData,
             id: `nonemp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            fullName: nonEmployeeData.fullName,
+            address: nonEmployeeData.address,
+            roomNumber: nonEmployeeData.roomNumber,
             checkInDate: nonEmployeeData.checkInDate || '',
-            checkOutDate: nonEmployeeData.checkOutDate,
+            checkOutDate: nonEmployeeData.checkOutDate || null,
             comments: nonEmployeeData.comments || '',
         };
 
@@ -745,8 +747,12 @@ function deserializeEmployee(row: any): Employee | null {
 
     const safeFormat = (dateStr: string | undefined | null) => {
         if (!dateStr) return null;
-        const date = new Date(dateStr);
-        return isValid(date) ? format(date, 'yyyy-MM-dd') : null;
+        try {
+            const date = new Date(dateStr);
+            return isValid(date) ? format(date, 'yyyy-MM-dd') : null;
+        } catch {
+            return null;
+        }
     }
 
     const checkInDate = safeFormat(row.get('checkInDate'));
@@ -764,6 +770,8 @@ function deserializeEmployee(row: any): Employee | null {
             // Ignore parse error
         }
     }
+    
+    const status = row.get('status');
 
     return {
         id: id,
@@ -780,7 +788,7 @@ function deserializeEmployee(row: any): Employee | null {
         contractEndDate: safeFormat(row.get('contractEndDate')),
         departureReportDate: safeFormat(row.get('departureReportDate')),
         comments: row.get('comments') || '',
-        status: row.get('status') as 'active' | 'dismissed' || 'active',
+        status: status === 'active' || status === 'dismissed' ? status : 'active',
         oldAddress: row.get('oldAddress') || undefined,
         depositReturned: row.get('depositReturned') as Employee['depositReturned'] || null,
         depositReturnAmount: row.get('depositReturnAmount') ? parseFloat(row.get('depositReturnAmount')) : null,
@@ -790,3 +798,5 @@ function deserializeEmployee(row: any): Employee | null {
         deductionReason: deductionReason,
     };
 }
+
+    
