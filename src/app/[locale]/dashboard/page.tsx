@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import DashboardView from '@/components/dashboard-view';
 import EmployeesView from '@/components/employees-view';
 import SettingsView from '@/components/settings-view';
@@ -454,4 +454,3 @@ export default function DashboardPage() {
     );
 }
 
-    
