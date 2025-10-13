@@ -13,7 +13,7 @@ export default async function RootLayout({
   children: React.ReactNode;
   params: {locale: string};
 }) {
-  const messages = await getMessages(locale);
+  const messages = await getMessages();
 
   return (
     <html lang={locale}>
