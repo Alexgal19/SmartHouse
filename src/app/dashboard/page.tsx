@@ -181,9 +181,6 @@ function DashboardPageContent() {
             } else if (editingEmployee) {
               updatedData.oldAddress = editingEmployee.oldAddress;
             }
-
-            const updatedEmployee: Employee = { ...editingEmployee, ...updatedData };
-            setAllEmployees(prev => prev!.map(e => e.id === editingEmployee.id ? updatedEmployee : e));
             
             try {
                 await updateEmployee(editingEmployee.id, updatedData, currentUser)
@@ -195,7 +192,7 @@ function DashboardPageContent() {
             }
         } else {
             try {
-                await addEmployee(data as Omit<Employee, 'id' | 'status'>, currentUser);
+                await addEmployee(data, currentUser);
                 toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
                 await refreshData(false);
             } catch (e: any) {

@@ -39,8 +39,6 @@ import { Checkbox } from "./ui/checkbox";
 import { format, isValid } from 'date-fns';
 import { Loader2 } from "lucide-react";
 
-const dateStringSchema = z.string().nullable().optional();
-
 const deductionReasonSchema = z.object({
     name: z.string(),
     checked: z.boolean(),
@@ -56,10 +54,10 @@ export const employeeSchema = z.object({
   roomNumber: z.string().min(1, "Numer pokoju jest wymagany."),
   zaklad: z.string().min(1, "Zakład jest wymagany."),
   checkInDate: z.string({ required_error: "Data zameldowania jest wymagana." }),
-  contractStartDate: dateStringSchema,
-  contractEndDate: dateStringSchema,
-  checkOutDate: dateStringSchema,
-  departureReportDate: dateStringSchema,
+  contractStartDate: z.string().nullable().optional(),
+  contractEndDate: z.string().nullable().optional(),
+  checkOutDate: z.string().nullable().optional(),
+  departureReportDate: z.string().nullable().optional(),
   comments: z.string().optional(),
   oldAddress: z.string().optional().nullable(),
   // Financial fields
@@ -560,5 +558,3 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
     </Dialog>
   );
 }
-
-    
