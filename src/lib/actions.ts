@@ -145,7 +145,7 @@ const createNotification = async (
             changes
         };
 
-        await sheet.addRow(serializeNotification(newNotification), { raw: false, insert: true, valueInputOption: 'USER_ENTERED' });
+        await sheet.addRow(serializeNotification(newNotification), { raw: false, insert: true });
     } catch (e) {
         console.error("Could not create notification:", e);
     }
@@ -168,7 +168,7 @@ export async function addEmployee(employeeData: Partial<Employee>, actor: Coordi
         };
 
         const serialized = serializeEmployee(newEmployee);
-        await sheet.addRow(serialized, { raw: false, insert: true, valueInputOption: 'USER_ENTERED' });
+        await sheet.addRow(serialized, { raw: false, insert: true });
         
         await createNotification(actor, 'dodał', newEmployee);
         
@@ -254,7 +254,7 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>): 
         };
 
         const serialized = serializeNonEmployee(newNonEmployee);
-        await sheet.addRow(serialized, { raw: false, insert: true, valueInputOption: 'USER_ENTERED' });
+        await sheet.addRow(serialized, { raw: false, insert: true });
         
         return newNonEmployee;
     } catch (e) {
@@ -735,7 +735,7 @@ export async function bulkImportEmployees(fileData: ArrayBuffer, coordinators: C
         // Add employees to sheet
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const newRows = employeesToAdd.map(emp => serializeEmployee({ ...emp, id: `emp-${Date.now()}-${Math.random()}`, status: 'active' }));
-        await sheet.addRows(newRows, { raw: false, insert: true, valueInputOption: 'USER_ENTERED' });
+        await sheet.addRows(newRows, { raw: false, insert: true });
 
         return { success: true, message: `Pomyślnie zaimportowano ${employeesToAdd.length} pracowników.` };
 
@@ -805,5 +805,7 @@ function deserializeEmployee(row: any): Employee | null {
 }
 
 
+
+    
 
     
