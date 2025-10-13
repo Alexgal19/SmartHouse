@@ -15,8 +15,10 @@ import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/main-layout';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useTranslations } from 'next-intl';
 
-function DashboardPageContent() {
+export default function DashboardPage() {
+    const t = useTranslations('Dashboard');
     const searchParams = useSearchParams();
     const router = useRouter();
     const view = (searchParams.get('view') as View) || 'dashboard';
@@ -27,7 +29,7 @@ function DashboardPageContent() {
     const [allInspections, setAllInspections] = useState<Inspection[] | null>(null);
     const [settings, setSettings] = useState<Settings | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [loadingMessage, setLoadingMessage] = useState('Ładowanie ustawień...');
+    const [loadingMessage, setLoadingMessage] = useState(t('loadingSettings'));
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isNonEmployeeFormOpen, setIsNonEmployeeFormOpen] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
@@ -67,48 +69,48 @@ function DashboardPageContent() {
             setSettings(settingsData);
             
             if(showToast) {
-                toast({ title: "Sukces", description: "Dane zostały odświeżone." });
+                toast({ title: t('toast.refreshSuccessTitle'), description: t('toast.refreshSuccessDescription') });
             }
         } catch (error) {
             console.error(error);
             toast({
                 variant: "destructive",
-                title: "Błąd odświeżania danych",
-                description: `Nie udało się pobrać danych z serwera. ${error instanceof Error ? error.message : ''}`,
+                title: t('toast.refreshErrorTitle'),
+                description: `${t('toast.refreshErrorDescription')} ${error instanceof Error ? error.message : ''}`,
             });
         }
-    }, [toast, currentUser]);
+    }, [toast, currentUser, t]);
 
     const handleRefreshStatuses = useCallback(async (showNoChangesToast = true) => {
         if (!currentUser) return;
         try {
             const { updated } = await checkAndUpdateEmployeeStatuses(currentUser);
             if (updated > 0) {
-                toast({ title: "Sukces", description: `Zaktualizowano statusy dla ${updated} pracowników.`});
+                toast({ title: t('toast.statusUpdateSuccessTitle'), description: t('toast.statusUpdateSuccessDescription', {count: updated})});
                 await refreshData(false);
             } else if (showNoChangesToast) {
-                 toast({ title: "Brak zmian", description: "Wszyscy pracownicy mają aktualne statusy."});
+                 toast({ title: t('toast.statusUpdateNoChangesTitle'), description: t('toast.statusUpdateNoChangesDescription')});
             }
         } catch (e: any) {
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się odświeżyć statusów." });
+            toast({ variant: "destructive", title: t('toast.error'), description: e.message || t('toast.statusUpdateError') });
         }
-    }, [currentUser, refreshData, toast]);
+    }, [currentUser, refreshData, toast, t]);
 
     const fetchAllData = useCallback(async () => {
         if (!currentUser) return;
         setIsLoading(true);
         try {
-            setLoadingMessage('Ładowanie ustawień...');
+            setLoadingMessage(t('loadingSettings'));
             const settingsData = await getSettings();
             setSettings(settingsData);
             
-            setLoadingMessage('Ładowanie danych...');
+            setLoadingMessage(t('loadingData'));
             const coordinatorIdToFetch = currentUser.isAdmin ? undefined : currentUser.uid;
 
             const [employeesData, inspectionsData, nonEmployeesData] = await Promise.all([
                 getEmployees(coordinatorIdToFetch),
                 getInspections(coordinatorIdToFetch),
-                getNonEmployees(), // Non-employees are not tied to coordinators
+                getNonEmployees(),
             ]);
 
             setAllEmployees(employeesData);
@@ -119,21 +121,19 @@ function DashboardPageContent() {
              console.error("Critical data loading error:", error);
             toast({
                 variant: "destructive",
-                title: "Błąd krytyczny ładowania danych",
-                description: `Nie udało się pobrać podstawowych danych z serwera. ${error instanceof Error ? error.message : ''}`,
+                title: t('toast.criticalErrorTitle'),
+                description: `${t('toast.criticalErrorDescription')} ${error instanceof Error ? error.message : ''}`,
                 duration: 10000,
             });
-             // Keep loading state on critical error to prevent broken UI
              return;
         } finally {
              setIsLoading(false);
         }
-    }, [toast, currentUser]);
+    }, [toast, currentUser, t]);
 
     useEffect(() => {
         if (currentUser) {
             fetchAllData().then(() => {
-                // Automatically refresh statuses after initial data load, without showing "no changes" toast.
                 handleRefreshStatuses(false);
             });
         }
@@ -201,14 +201,14 @@ function DashboardPageContent() {
                 }
                 
                 await updateEmployee(editingEmployee.id, updatedData, currentUser)
-                toast({ title: "Sukces", description: "Dane pracownika zostały zaktualizowane." });
+                toast({ title: t('toast.success'), description: t('toast.employeeUpdated') });
             } else {
                 await addEmployee(data, currentUser);
-                toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
+                toast({ title: t('toast.success'), description: t('toast.employeeAdded') });
             }
             await refreshData(false);
         } catch (e: any) {
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać pracownika." });
+            toast({ variant: "destructive", title: t('toast.error'), description: e.message || t('toast.employeeSaveError') });
         }
     };
 
@@ -216,16 +216,16 @@ function DashboardPageContent() {
         if (editingNonEmployee) {
             try {
                 await updateNonEmployee(editingNonEmployee.id, data);
-                toast({ title: "Sukces", description: "Dane mieszkańca zostały zaktualizowane." });
+                toast({ title: t('toast.success'), description: t('toast.nonEmployeeUpdated') });
             } catch(e: any) {
-                toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać mieszkańca." });
+                toast({ variant: "destructive", title: t('toast.error'), description: e.message || t('toast.nonEmployeeSaveError') });
             }
         } else {
              try {
                 await addNonEmployee(data);
-                toast({ title: "Sukces", description: "Nowy mieszkaniec został dodany." });
+                toast({ title: t('toast.success'), description: t('toast.nonEmployeeAdded') });
             } catch (e: any) {
-                toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać mieszkańca." });
+                toast({ variant: "destructive", title: t('toast.error'), description: e.message || t('toast.nonEmployeeAddError') });
             }
         }
         await refreshData(false);
@@ -238,16 +238,16 @@ function DashboardPageContent() {
         
         try {
             await deleteNonEmployee(id);
-            toast({ title: "Sukces", description: "Mieszkaniec został usunięty." });
+            toast({ title: t('toast.success'), description: t('toast.nonEmployeeDeleted') });
         } catch(e: any) {
             setAllNonEmployees(originalNonEmployees); // Revert
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć mieszkańca." });
+            toast({ variant: "destructive", title: t('toast.error'), description: e.message || t('toast.nonEmployeeDeleteError') });
         }
     }
     
     const handleUpdateSettings = async (newSettings: Partial<Settings>) => {
         if (!settings || !currentUser?.isAdmin) {
-             toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administrator może zmieniać ustawienia." });
+             toast({ variant: "destructive", title: t('toast.permissionErrorTitle'), description: t('toast.permissionErrorDescription') });
             return;
         }
 
@@ -256,20 +256,20 @@ function DashboardPageContent() {
 
         try {
             await updateSettings(newSettings);
-            toast({ title: "Sukces", description: "Ustawienia zostały zaktualizowane." });
+            toast({ title: t('toast.success'), description: t('toast.settingsUpdated') });
         } catch(e: any) {
             setSettings(originalSettings); // Revert on error
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać ustawień." });
+            toast({ variant: "destructive", title: t('toast.error'), description: e.message || t('toast.settingsUpdateError') });
         }
     };
     
     const handleAddInspection = async (inspectionData: Omit<Inspection, 'id'>) => {
         try {
             await addInspection(inspectionData);
-            toast({ title: "Sukces", description: "Nowa inspekcja została dodana." });
+            toast({ title: t('toast.success'), description: t('toast.inspectionAdded') });
             await refreshData(false);
         } catch(e: any) {
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać inspekcji." });
+            toast({ variant: "destructive", title: t('toast.error'), description: e.message || t('toast.inspectionAddError') });
         }
     };
 
@@ -280,11 +280,11 @@ function DashboardPageContent() {
 
         try {
             await updateInspection(id, inspectionData);
-            toast({ title: "Sukces", description: "Inspekcja została zaktualizowana." });
+            toast({ title: t('toast.success'), description: t('toast.inspectionUpdated') });
             await refreshData(false);
         } catch (e: any) {
             setAllInspections(originalInspections);
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zaktualizować inspekcji." });
+            toast({ variant: "destructive", title: t('toast.error'), description: e.message || t('toast.inspectionUpdateError') });
         }
     };
 
@@ -294,10 +294,10 @@ function DashboardPageContent() {
 
         try {
             await deleteInspection(id);
-            toast({ title: "Sukces", description: "Inspekcja została usunięta." });
+            toast({ title: t('toast.success'), description: t('toast.inspectionDeleted') });
         } catch(e: any) {
             setAllInspections(originalInspections);
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć inspekcji." });
+            toast({ variant: "destructive", title: t('toast.error'), description: e.message || t('toast.inspectionDeleteError') });
         }
     };
 
@@ -332,11 +332,11 @@ function DashboardPageContent() {
 
         try {
             await updateEmployee(employeeId, updatedData, currentUser);
-            toast({ title: "Sukces", description: "Pracownik został zwolniony." });
+            toast({ title: t('toast.success'), description: t('toast.employeeDismissed') });
             return true;
         } catch(e: any) {
             setAllEmployees(originalEmployees); // Revert
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zwolnić pracownika." });
+            toast({ variant: "destructive", title: t('toast.error'), description: e.message || t('toast.employeeDismissError') });
             return false;
         }
     };
@@ -352,28 +352,28 @@ function DashboardPageContent() {
         
         try {
             await updateEmployee(employeeId, updatedData, currentUser);
-            toast({ title: "Sukces", description: "Pracownik został przywrócony." });
+            toast({ title: t('toast.success'), description: t('toast.employeeRestored') });
             return true;
         } catch(e: any) {
             setAllEmployees(originalEmployees); // Revert
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się przywrócić pracownika." });
+            toast({ variant: "destructive", title: t('toast.error'), description: e.message || t('toast.employeeRestoreError') });
             return false;
         }
     };
     
     const handleBulkDeleteEmployees = async (status: 'active' | 'dismissed') => {
         if (!currentUser || !currentUser.isAdmin) {
-             toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administrator może usuwać pracowników." });
+             toast({ variant: "destructive", title: t('toast.permissionErrorTitle'), description: t('toast.permissionErrorDescription') });
             return false;
         }
         
          try {
             await bulkDeleteEmployees(status, currentUser);
-            toast({ title: "Sukces", description: `Wszyscy ${status === 'active' ? 'aktywni' : 'zwolnieni'} pracownicy zostali usunięci.` });
+            toast({ title: t('toast.success'), description: t('toast.bulkDeleteSuccess', {status: status === 'active' ? t('active') : t('dismissed')}) });
             await refreshData(false);
              return true;
         } catch(e: any) {
-            toast({ variant: "destructive", title: "Błąd", description: e.message || `Nie udało się usunąć pracowników.` });
+            toast({ variant: "destructive", title: t('toast.error'), description: e.message || t('toast.bulkDeleteError') });
              return false;
         }
     }
@@ -384,7 +384,7 @@ function DashboardPageContent() {
           await refreshData(false);
           return result;
       } catch (e: any) {
-          return { success: false, message: e.message || "Wystąpił nieznany błąd." };
+          return { success: false, message: e.message || t('toast.unknownError') };
       }
     };
 
@@ -409,7 +409,7 @@ function DashboardPageContent() {
                 return <EmployeesView employees={filteredEmployees} nonEmployees={filteredNonEmployees || []} settings={settings} onAddEmployee={handleAddEmployeeClick} onEditEmployee={handleEditEmployeeClick} onDismissEmployee={handleDismissEmployee} onRestoreEmployee={handleRestoreEmployee} onBulkDelete={handleBulkDeleteEmployees} currentUser={currentUser} onAddNonEmployee={handleAddNonEmployeeClick} onEditNonEmployee={handleEditNonEmployeeClick} onDeleteNonEmployee={handleDeleteNonEmployee} />;
             case 'settings':
                 if (!currentUser.isAdmin) {
-                    return <div className="p-4 text-center text-red-500">Brak uprawnień do przeglądania tej strony.</div>;
+                    return <div className="p-4 text-center text-red-500">{t('noPermission')}</div>;
                 }
                 return <SettingsView settings={settings} onUpdateSettings={handleUpdateSettings} allEmployees={allEmployees || []} currentUser={currentUser} onDataRefresh={() => refreshData(false)} onBulkImport={handleBulkImport}/>;
             case 'inspections':
@@ -454,10 +454,3 @@ function DashboardPageContent() {
     );
 }
 
-export default function DashboardPage() {
-    return (
-        <React.Suspense fallback={<div className="flex h-screen w-full items-center justify-center bg-background"><p>Ładowanie komponentów...</p></div>}>
-             <DashboardPageContent />
-        </React.Suspense>
-    )
-}
