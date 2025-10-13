@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import DashboardView from '@/components/dashboard-view';
 import EmployeesView from '@/components/employees-view';
@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTranslations } from 'next-intl';
 
-function DashboardPageContent() {
+export default function DashboardPage() {
     const t = useTranslations('Dashboard');
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -455,12 +455,4 @@ function DashboardPageContent() {
             )}
         </MainLayout>
     );
-}
-
-export default function DashboardPage() {
-    return (
-        <Suspense fallback={<div>Loading...</div>}>
-            <DashboardPageContent />
-        </Suspense>
-    )
 }
