@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/main-layout';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useTranslations, useMessages } from 'next-intl';
+import { useTranslations } from 'next-intl';
 
 export default function DashboardPage() {
     const t = useTranslations('Dashboard');
@@ -453,5 +453,3 @@ export default function DashboardPage() {
         </MainLayout>
     );
 }
-
-    
