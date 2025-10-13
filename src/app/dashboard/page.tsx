@@ -50,6 +50,50 @@ function DashboardPageContent() {
         }
     }, [router]);
 
+    const refreshData = useCallback(async (showToast = true) => {
+        if (!currentUser) return;
+        try {
+            const coordinatorIdToFetch = currentUser.isAdmin ? undefined : currentUser.uid;
+            const [employeesData, settingsData, inspectionsData, nonEmployeesData] = await Promise.all([
+                getEmployees(coordinatorIdToFetch),
+                getSettings(),
+                getInspections(coordinatorIdToFetch),
+                getNonEmployees(),
+            ]);
+
+            setAllEmployees(employeesData);
+            setAllInspections(inspectionsData);
+            setAllNonEmployees(nonEmployeesData);
+            setSettings(settingsData);
+            
+            if(showToast) {
+                toast({ title: "Sukces", description: "Dane zostały odświeżone." });
+            }
+        } catch (error) {
+            console.error(error);
+            toast({
+                variant: "destructive",
+                title: "Błąd odświeżania danych",
+                description: `Nie udało się pobrać danych z serwera. ${error instanceof Error ? error.message : ''}`,
+            });
+        }
+    }, [toast, currentUser]);
+
+    const handleRefreshStatuses = useCallback(async (showNoChangesToast = true) => {
+        if (!currentUser) return;
+        try {
+            const { updated } = await checkAndUpdateEmployeeStatuses(currentUser);
+            if (updated > 0) {
+                toast({ title: "Sukces", description: `Zaktualizowano statusy dla ${updated} pracowników.`});
+                await refreshData(false);
+            } else if (showNoChangesToast) {
+                 toast({ title: "Brak zmian", description: "Wszyscy pracownicy mają aktualne statusy."});
+            }
+        } catch (e: any) {
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się odświeżyć statusów." });
+        }
+    }, [currentUser, refreshData, toast]);
+
     const fetchAllData = useCallback(async () => {
         if (!currentUser) return;
         setIsLoading(true);
@@ -88,38 +132,13 @@ function DashboardPageContent() {
 
     useEffect(() => {
         if (currentUser) {
-            fetchAllData();
-        }
-    }, [currentUser, fetchAllData]);
-
-    const refreshData = useCallback(async (showToast = true) => {
-        if (!currentUser) return;
-        try {
-            const coordinatorIdToFetch = currentUser.isAdmin ? undefined : currentUser.uid;
-            const [employeesData, settingsData, inspectionsData, nonEmployeesData] = await Promise.all([
-                getEmployees(coordinatorIdToFetch),
-                getSettings(),
-                getInspections(coordinatorIdToFetch),
-                getNonEmployees(),
-            ]);
-
-            setAllEmployees(employeesData);
-            setAllInspections(inspectionsData);
-            setAllNonEmployees(nonEmployeesData);
-            setSettings(settingsData);
-            
-            if(showToast) {
-                toast({ title: "Sukces", description: "Dane zostały odświeżone." });
-            }
-        } catch (error) {
-            console.error(error);
-            toast({
-                variant: "destructive",
-                title: "Błąd odświeżania danych",
-                description: `Nie udało się pobrać danych z serwera. ${error instanceof Error ? error.message : ''}`,
+            fetchAllData().then(() => {
+                // Automatically refresh statuses after initial data load, without showing "no changes" toast.
+                handleRefreshStatuses(false);
             });
         }
-    }, [toast, currentUser]);
+    }, [currentUser, fetchAllData, handleRefreshStatuses]);
+
     
     useEffect(() => {
         if (editEmployeeId && allEmployees) {
@@ -358,21 +377,6 @@ function DashboardPageContent() {
              return false;
         }
     }
-
-    const handleRefreshStatuses = async () => {
-        if (!currentUser) return;
-        try {
-            const { updated } = await checkAndUpdateEmployeeStatuses(currentUser);
-            if (updated > 0) {
-                toast({ title: "Sukces", description: `Zaktualizowano statusy dla ${updated} pracowników.`});
-                await refreshData(false);
-            } else {
-                 toast({ title: "Brak zmian", description: "Wszyscy pracownicy mają aktualne statusy."});
-            }
-        } catch (e: any) {
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się odświeżyć statusów." });
-        }
-    };
     
     const handleBulkImport = async (fileData: ArrayBuffer) => {
       try {
@@ -400,7 +404,7 @@ function DashboardPageContent() {
     const renderView = () => {
         switch (view) {
             case 'dashboard':
-                return <DashboardView employees={filteredEmployees} allEmployees={allEmployees || []} nonEmployees={filteredNonEmployees || []} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={handleRefreshStatuses} />;
+                return <DashboardView employees={filteredEmployees} allEmployees={allEmployees || []} nonEmployees={filteredNonEmployees || []} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={() => handleRefreshStatuses(true)} />;
             case 'employees':
                 return <EmployeesView employees={filteredEmployees} nonEmployees={filteredNonEmployees || []} settings={settings} onAddEmployee={handleAddEmployeeClick} onEditEmployee={handleEditEmployeeClick} onDismissEmployee={handleDismissEmployee} onRestoreEmployee={handleRestoreEmployee} onBulkDelete={handleBulkDeleteEmployees} currentUser={currentUser} onAddNonEmployee={handleAddNonEmployeeClick} onEditNonEmployee={handleEditNonEmployeeClick} onDeleteNonEmployee={handleDeleteNonEmployee} />;
             case 'settings':
@@ -418,7 +422,7 @@ function DashboardPageContent() {
                     onDeleteInspection={handleDeleteInspection}
                 />;
             default:
-                return <DashboardView employees={filteredEmployees} allEmployees={allEmployees || []} nonEmployees={filteredNonEmployees || []} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={handleRefreshStatuses} />;
+                return <DashboardView employees={filteredEmployees} allEmployees={allEmployees || []} nonEmployees={filteredNonEmployees || []} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={() => handleRefreshStatuses(true)} />;
         }
     };
 
