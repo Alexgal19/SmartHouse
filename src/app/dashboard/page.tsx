@@ -236,18 +236,14 @@ function DashboardPageContent() {
                     toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać mieszkańca." });
                 });
         } else {
-            // Optimistic Add
-            const tempId = `temp-ne-${Date.now()}`;
-            const newNonEmployee: NonEmployee = { ...data, id: tempId };
-            setAllNonEmployees(prev => [newNonEmployee, ...prev!]);
-
+            // This is not truly optimistic, as we need the real ID from the backend.
+            // We show a toast and refresh to show the new data.
             addNonEmployee(data)
                 .then(() => {
                     toast({ title: "Sukces", description: "Nowy mieszkaniec został dodany." });
-                    refreshData(false);
+                    refreshData(false); // Refresh to get the new non-employee
                 })
                 .catch((e: any) => {
-                    setAllNonEmployees(originalNonEmployees);
                     toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać mieszkańca." });
                 });
         }
@@ -511,7 +507,3 @@ export default function DashboardPage() {
         </React.Suspense>
     )
 }
-
-    
-
-    

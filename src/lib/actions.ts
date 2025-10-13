@@ -743,8 +743,13 @@ function deserializeEmployee(row: any): Employee | null {
     const id = row.get('id');
     if (!id) return null;
 
-    const checkInDate = row.get('checkInDate') ? format(new Date(row.get('checkInDate')), 'yyyy-MM-dd') : null;
+    const safeFormat = (dateStr: string | undefined | null) => {
+        if (!dateStr) return null;
+        const date = new Date(dateStr);
+        return isValid(date) ? format(date, 'yyyy-MM-dd') : null;
+    }
 
+    const checkInDate = safeFormat(row.get('checkInDate'));
     if (!checkInDate) return null;
 
     const deductionReasonRaw = row.get('deductionReason');
@@ -770,10 +775,10 @@ function deserializeEmployee(row: any): Employee | null {
         roomNumber: row.get('roomNumber') || '',
         zaklad: row.get('zaklad') || '',
         checkInDate: checkInDate,
-        checkOutDate: row.get('checkOutDate') ? format(new Date(row.get('checkOutDate')), 'yyyy-MM-dd') : null,
-        contractStartDate: row.get('contractStartDate') ? format(new Date(row.get('contractStartDate')), 'yyyy-MM-dd') : null,
-        contractEndDate: row.get('contractEndDate') ? format(new Date(row.get('contractEndDate')), 'yyyy-MM-dd') : null,
-        departureReportDate: row.get('departureReportDate') ? format(new Date(row.get('departureReportDate')), 'yyyy-MM-dd') : null,
+        checkOutDate: safeFormat(row.get('checkOutDate')),
+        contractStartDate: safeFormat(row.get('contractStartDate')),
+        contractEndDate: safeFormat(row.get('contractEndDate')),
+        departureReportDate: safeFormat(row.get('departureReportDate')),
         comments: row.get('comments') || '',
         status: row.get('status') as 'active' | 'dismissed' || 'active',
         oldAddress: row.get('oldAddress') || undefined,
@@ -785,5 +790,3 @@ function deserializeEmployee(row: any): Employee | null {
         deductionReason: deductionReason,
     };
 }
-
-    

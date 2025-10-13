@@ -89,7 +89,3 @@ body {
     @apply bg-background text-foreground;
   }
 }
-
-.glass-card {
-    @apply bg-card border rounded-2xl shadow-sm;
-}
