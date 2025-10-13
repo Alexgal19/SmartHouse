@@ -155,7 +155,6 @@ export async function addEmployee(employeeData: Partial<Employee>, actor: Coordi
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const newEmployee: Employee = {
-            ...employeeData,
             id: `emp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
             status: 'active',
             fullName: employeeData.fullName || '',
