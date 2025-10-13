@@ -236,12 +236,10 @@ function DashboardPageContent() {
                     toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać mieszkańca." });
                 });
         } else {
-            // This is not truly optimistic, as we need the real ID from the backend.
-            // We show a toast and refresh to show the new data.
             addNonEmployee(data)
                 .then(() => {
                     toast({ title: "Sukces", description: "Nowy mieszkaniec został dodany." });
-                    refreshData(false); // Refresh to get the new non-employee
+                    refreshData(false);
                 })
                 .catch((e: any) => {
                     toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać mieszkańca." });
@@ -252,7 +250,6 @@ function DashboardPageContent() {
     const handleDeleteNonEmployee = async (id: string) => {
         const originalNonEmployees = allNonEmployees;
         
-        // Optimistic Delete
         setAllNonEmployees(prev => prev!.filter(ne => ne.id !== id));
         
         deleteNonEmployee(id)
@@ -272,7 +269,6 @@ function DashboardPageContent() {
         }
 
         const originalSettings = settings;
-        // Optimistic Update for settings
         setSettings(prev => ({ ...prev!, ...newSettings }));
 
         updateSettings(newSettings)
@@ -359,7 +355,7 @@ function DashboardPageContent() {
         const updatedData: Partial<Employee> = { status: 'dismissed', checkOutDate: new Date().toISOString().split('T')[0] };
 
         // Optimistic update
-        setAllEmployees(prev => prev!.map(e => e.id === employeeId ? { ...e, ...updatedData } : e));
+        setAllEmployees(prev => prev!.map(e => e.id === employeeId ? Object.assign(e, updatedData) : e));
 
         try {
             await updateEmployee(employeeId, updatedData, currentUser);
@@ -379,7 +375,7 @@ function DashboardPageContent() {
         const updatedData: Partial<Employee> = { status: 'active', checkOutDate: null };
         
         // Optimistic update
-        setAllEmployees(prev => prev!.map(e => e.id === employeeId ? { ...e, ...updatedData } : e));
+        setAllEmployees(prev => prev!.map(e => e.id === employeeId ? Object.assign(e, updatedData) : e));
         
         try {
             await updateEmployee(employeeId, updatedData, currentUser);
@@ -507,3 +503,5 @@ export default function DashboardPage() {
         </React.Suspense>
     )
 }
+
+    
