@@ -24,7 +24,7 @@ import { Settings, UserCircle, Building, Bell, ArrowRight, LogOut, Trash2 } from
 import { SidebarTrigger } from "./ui/sidebar";
 import { useSidebar } from "./ui/sidebar";
 import { formatDistanceToNow } from 'date-fns';
-import { pl, uk, enUS, es } from 'date-fns/locale';
+import { type Locale, pl, uk, enUS, es } from 'date-fns/locale';
 import { ScrollArea } from "./ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
