@@ -3,15 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack -p 9002",
-    "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
-    "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
-    "build": "NODE_ENV=production next build",
+    "dev": "next dev",
+    "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "typecheck": "tsc --noEmit",
-    "backup": "node -e \"require('fs-extra').copy('src', 'src_backup', { overwrite: true }, err => { if (err) return console.error(err); console.log('Backup of src folder created successfully!'); });\"",
-    "restore": "node -e \"require('fs-extra').remove('src', err => { if (err) return console.error(err); require('fs-extra').copy('src_backup', 'src', err => { if (err) return console.error(err); console.log('src folder restored from backup!'); }); });\""
+    "lint": "eslint \"{src,pages,components}/**/*.{ts,tsx}\" --fix",
+    "format": "prettier --write \"{src,pages,components}/**/*.{ts,tsx,json,css}\"",
+    "check-types": "tsc --noEmit",
+    "pre-commit-check": "npm run check-types && npm run lint"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "npm run check-types",
+      "npm run lint -- --cache",
+      "npm run format"
+    ]
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.20.0",
