@@ -216,17 +216,17 @@ const VerticalChartComponent = ({ data, title, labelX }: { data: {name: string, 
     </Card>
 );
 
-const DeparturesChart = ({ allEmployees }: { allEmployees: Employee[] }) => {
+const DeparturesChart = ({ employees }: { employees: Employee[] }) => {
     const [departureYear, setDepartureYear] = useState<string>(String(new Date().getFullYear()));
     const [departureMonth, setDepartureMonth] = useState<string>(String(new Date().getMonth()));
     
     const departureYears = useMemo(() => {
-        const years = new Set(allEmployees.filter(e => e.checkOutDate).map(e => String(getYear(parseISO(e.checkOutDate!)))));
+        const years = new Set(employees.filter(e => e.checkOutDate).map(e => String(getYear(parseISO(e.checkOutDate!)))));
         return Array.from(years).sort((a,b) => Number(b) - Number(a));
-    }, [allEmployees]);
+    }, [employees]);
 
     const departuresByMonth = useMemo(() => {
-        const departures = allEmployees.filter(e => 
+        const departures = employees.filter(e => 
         e.checkOutDate && 
         getYear(parseISO(e.checkOutDate)) === Number(departureYear) &&
         (departureMonth === 'all' || getMonth(parseISO(e.checkOutDate)) === Number(departureMonth))
@@ -261,7 +261,7 @@ const DeparturesChart = ({ allEmployees }: { allEmployees: Employee[] }) => {
             }
             return new Date(a.name).getTime() - new Date(b.name).getTime();
         });
-    }, [allEmployees, departureYear, departureMonth]);
+    }, [employees, departureYear, departureMonth]);
 
     return (
         <Card>
@@ -331,17 +331,17 @@ const DeparturesChart = ({ allEmployees }: { allEmployees: Employee[] }) => {
     );
 }
 
-const DeductionsChart = ({ allEmployees }: { allEmployees: Employee[] }) => {
+const DeductionsChart = ({ employees }: { employees: Employee[] }) => {
     const [deductionYear, setDeductionYear] = useState<string>(String(new Date().getFullYear()));
     const [deductionMonth, setDeductionMonth] = useState<string>(String(new Date().getMonth()));
 
     const deductionYears = useMemo(() => {
-        const years = new Set(allEmployees.filter(e => e.checkOutDate).map(e => String(getYear(parseISO(e.checkOutDate!)))));
+        const years = new Set(employees.filter(e => e.checkOutDate).map(e => String(getYear(parseISO(e.checkOutDate!)))));
         return Array.from(years).sort((a,b) => Number(b) - Number(a));
-    }, [allEmployees]);
+    }, [employees]);
 
     const deductionsByTime = useMemo(() => {
-        const employeesWithDeductions = allEmployees.filter(e => 
+        const employeesWithDeductions = employees.filter(e => 
             e.checkOutDate &&
             getYear(parseISO(e.checkOutDate)) === Number(deductionYear) &&
             (deductionMonth === 'all' || getMonth(parseISO(e.checkOutDate)) === Number(deductionMonth)) &&
@@ -392,7 +392,7 @@ const DeductionsChart = ({ allEmployees }: { allEmployees: Employee[] }) => {
                 }
                 return new Date(a.name).getTime() - new Date(b.name).getTime();
             });
-    }, [allEmployees, deductionYear, deductionMonth]);
+    }, [employees, deductionYear, deductionMonth]);
 
     return (
         <Card>
@@ -694,8 +694,8 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                           <VerticalChartComponent data={employeesByNationality} title="Pracownicy wg narodowości" labelX="Pracownicy" />
                           <VerticalChartComponent data={employeesByDepartment} title="Pracownicy wg zakładu" labelX="Pracownicy" />
                           <VerticalChartComponent data={nonEmployeesByAddress} title="Mieszkańcy (NZ) wg adresu" labelX="Mieszkańcy"/>
-                          <DeparturesChart allEmployees={allEmployees} />
-                          <DeductionsChart allEmployees={allEmployees} />
+                          <DeparturesChart employees={employees} />
+                          <DeductionsChart employees={employees} />
                           </div>
                       )}
                 </div>
@@ -805,3 +805,5 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
     </div>
   );
 }
+
+    
