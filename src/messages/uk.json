@@ -1,0 +1,108 @@
+{
+    "LoginPage": {
+        "title": "Ласкаво просимо до SmartHouse",
+        "description": "Увійдіть, щоб продовжити",
+        "nameLabel": "Повне ім'я / Логін",
+        "namePlaceholder": "Іван Петренко або admin",
+        "passwordLabel": "Пароль",
+        "passwordPlaceholder": "Введіть пароль",
+        "loginButton": "Увійти",
+        "loggingInButton": "Вхід...",
+        "configLoading": "Завантаження конфігурації...",
+        "settingsNotLoadedError": "Налаштування програми ще не завантажені. Спробуйте ще раз за мить.",
+        "incorrectAdminPasswordError": "Неправильний пароль адміністратора.",
+        "coordinatorListEmptyError": "Список координаторів порожній або не завантажився. Спробуйте ще раз.",
+        "accessDeniedError": "Доступ заборонено. Перевірте, чи правильне ваше ім'я.",
+        "passwordRequiredError": "Пароль є обов'язковим.",
+        "incorrectPasswordError": "Неправильний пароль.",
+        "serverError": "Помилка сервера. Спробуйте ще раз пізніше.",
+        "toast": {
+            "criticalErrorTitle": "Критична помилка",
+            "settingsLoadError": "Не вдалося завантажити налаштування програми.",
+            "loginErrorTitle": "Помилка входу",
+            "unexpectedError": "Сталася неочікувана помилка."
+        }
+    },
+    "Dashboard": {
+        "loadingSettings": "Завантаження налаштувань...",
+        "loadingData": "Завантаження даних...",
+        "loadingComponents": "Завантаження компонентів...",
+        "noPermission": "У вас немає дозволу на перегляд цієї сторінки.",
+        "active": "Активні",
+        "dismissed": "Звільнені",
+        "toast": {
+            "refreshSuccessTitle": "Успіх",
+            "refreshSuccessDescription": "Дані було оновлено.",
+            "refreshErrorTitle": "Помилка оновлення даних",
+            "refreshErrorDescription": "Не вдалося отримати дані з сервера.",
+            "statusUpdateSuccessTitle": "Успіх",
+            "statusUpdateSuccessDescription": "Оновлено статуси для {count} працівників.",
+            "statusUpdateNoChangesTitle": "Без змін",
+            "statusUpdateNoChangesDescription": "Усі працівники мають актуальні статуси.",
+            "error": "Помилка",
+            "statusUpdateError": "Не вдалося оновити статуси.",
+            "criticalErrorTitle": "Критична помилка завантаження даних",
+            "criticalErrorDescription": "Не вдалося завантажити основні дані з сервера.",
+            "success": "Успіх",
+            "employeeUpdated": "Дані працівника було оновлено.",
+            "employeeAdded": "Нового працівника було додано.",
+            "employeeSaveError": "Не вдалося зберегти працівника.",
+            "nonEmployeeUpdated": "Дані мешканця було оновлено.",
+            "nonEmployeeSaveError": "Не вдалося зберегти мешканця.",
+            "nonEmployeeAdded": "Нового мешканця було додано.",
+            "nonEmployeeAddError": "Не вдалося додати мешканця.",
+            "nonEmployeeDeleted": "Мешканця було видалено.",
+            "nonEmployeeDeleteError": "Не вдалося видалити мешканця.",
+            "permissionErrorTitle": "Немає дозволу",
+            "permissionErrorDescription": "Тільки адміністратор може змінювати налаштування.",
+            "settingsUpdated": "Налаштування було оновлено.",
+            "settingsUpdateError": "Не вдалося зберегти налаштування.",
+            "inspectionAdded": "Нову інспекцію було додано.",
+            "inspectionAddError": "Не вдалося додати інспекцію.",
+            "inspectionUpdated": "Інспекцію було оновлено.",
+            "inspectionUpdateError": "Не вдалося оновити інспекцію.",
+            "inspectionDeleted": "Інспекцію було видалено.",
+            "inspectionDeleteError": "Не вдалося видалити інспекцію.",
+            "employeeDismissed": "Працівника було звільнено.",
+            "employeeDismissError": "Не вдалося звільнити працівника.",
+            "employeeRestored": "Працівника було відновлено.",
+            "employeeRestoreError": "Не вдалося відновити працівника.",
+            "bulkDeleteSuccess": "Усіх {status} працівників було видалено.",
+            "bulkDeleteError": "Не вдалося видалити працівників.",
+            "unknownError": "Сталася невідома помилка."
+        }
+    },
+    "Navigation": {
+        "pulpit": "Панель",
+        "employees": "Працівники",
+        "inspections": "Інспекції",
+        "settings": "Налаштування",
+        "toast": {
+            "error": "Помилка",
+            "notificationLoadError": "Не вдалося завантажити сповіщення.",
+            "permissionErrorTitle": "Помилка дозволу",
+            "permissionErrorDescription": "Тільки адміністратори можуть виконувати цю дію.",
+            "success": "Успіх",
+            "clearNotificationsSuccess": "Усі сповіщення видалено.",
+            "clearNotificationsError": "Не вдалося видалити сповіщення."
+        }
+    },
+    "Header": {
+        "logout": "Вийти",
+        "notifications": {
+            "open": "Відкрити сповіщення",
+            "title": "Сповіщення",
+            "clearAll": "Очистити все",
+            "noNew": "Немає нових сповіщень.",
+            "confirmClear": {
+                "title": "Ви впевнені, що хочете очистити всі сповіщення?",
+                "description": "Цю дію неможливо скасувати.",
+                "cancel": "Скасувати",
+                "confirm": "Підтвердити"
+            }
+        }
+    },
+    "LanguageSwitcher": {
+        "title": "Змінити мову"
+    }
+}

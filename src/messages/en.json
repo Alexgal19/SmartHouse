@@ -1,0 +1,109 @@
+{
+    "LoginPage": {
+        "title": "Welcome to SmartHouse",
+        "description": "Log in to continue",
+        "nameLabel": "Full Name / Login",
+        "namePlaceholder": "John Smith or admin",
+        "passwordLabel": "Password",
+        "passwordPlaceholder": "Enter password",
+        "loginButton": "Log In",
+        "loggingInButton": "Logging in...",
+        "configLoading": "Loading configuration...",
+        "settingsNotLoadedError": "Application settings not yet loaded. Please try again in a moment.",
+        "incorrectAdminPasswordError": "Incorrect administrator password.",
+        "coordinatorListEmptyError": "Coordinator list is empty or has not loaded. Please try again.",
+        "accessDeniedError": "Access denied. Check if your name is correct.",
+        "passwordRequiredError": "Password is required.",
+        "incorrectPasswordError": "Incorrect password.",
+        "serverError": "Server error. Please try again later.",
+        "toast": {
+            "criticalErrorTitle": "Critical Error",
+            "settingsLoadError": "Failed to load application settings.",
+            "loginErrorTitle": "Login Error",
+            "unexpectedError": "An unexpected error occurred."
+        }
+    },
+    "Dashboard": {
+        "loadingSettings": "Loading settings...",
+        "loadingData": "Loading data...",
+        "loadingComponents": "Loading components...",
+        "noPermission": "You do not have permission to view this page.",
+        "active": "Active",
+        "dismissed": "Dismissed",
+        "toast": {
+            "refreshSuccessTitle": "Success",
+            "refreshSuccessDescription": "Data has been refreshed.",
+            "refreshErrorTitle": "Data Refresh Error",
+
+            "refreshErrorDescription": "Failed to fetch data from the server.",
+            "statusUpdateSuccessTitle": "Success",
+            "statusUpdateSuccessDescription": "Updated statuses for {count} employees.",
+            "statusUpdateNoChangesTitle": "No Changes",
+            "statusUpdateNoChangesDescription": "All employees have up-to-date statuses.",
+            "error": "Error",
+            "statusUpdateError": "Failed to refresh statuses.",
+            "criticalErrorTitle": "Critical Data Loading Error",
+            "criticalErrorDescription": "Failed to load essential data from the server.",
+            "success": "Success",
+            "employeeUpdated": "Employee data has been updated.",
+            "employeeAdded": "A new employee has been added.",
+            "employeeSaveError": "Failed to save employee.",
+            "nonEmployeeUpdated": "Resident data has been updated.",
+            "nonEmployeeSaveError": "Failed to save resident.",
+            "nonEmployeeAdded": "A new resident has been added.",
+            "nonEmployeeAddError": "Failed to add resident.",
+            "nonEmployeeDeleted": "Resident has been deleted.",
+            "nonEmployeeDeleteError": "Failed to delete resident.",
+            "permissionErrorTitle": "No Permissions",
+            "permissionErrorDescription": "Only an administrator can change settings.",
+            "settingsUpdated": "Settings have been updated.",
+            "settingsUpdateError": "Failed to save settings.",
+            "inspectionAdded": "A new inspection has been added.",
+            "inspectionAddError": "Failed to add inspection.",
+            "inspectionUpdated": "Inspection has been updated.",
+            "inspectionUpdateError": "Failed to update inspection.",
+            "inspectionDeleted": "Inspection has been deleted.",
+            "inspectionDeleteError": "Failed to delete inspection.",
+            "employeeDismissed": "Employee has been dismissed.",
+            "employeeDismissError": "Failed to dismiss employee.",
+            "employeeRestored": "Employee has been restored.",
+            "employeeRestoreError": "Failed to restore employee.",
+            "bulkDeleteSuccess": "All {status} employees have been deleted.",
+            "bulkDeleteError": "Failed to delete employees.",
+            "unknownError": "An unknown error occurred."
+        }
+    },
+    "Navigation": {
+        "pulpit": "Dashboard",
+        "employees": "Employees",
+        "inspections": "Inspections",
+        "settings": "Settings",
+        "toast": {
+            "error": "Error",
+            "notificationLoadError": "Could not load notifications.",
+            "permissionErrorTitle": "Permission Error",
+            "permissionErrorDescription": "Only administrators can perform this action.",
+            "success": "Success",
+            "clearNotificationsSuccess": "All notifications cleared.",
+            "clearNotificationsError": "Failed to clear notifications."
+        }
+    },
+    "Header": {
+        "logout": "Log Out",
+        "notifications": {
+            "open": "Open notifications",
+            "title": "Notifications",
+            "clearAll": "Clear All",
+            "noNew": "No new notifications.",
+            "confirmClear": {
+                "title": "Are you sure you want to clear all notifications?",
+                "description": "This action cannot be undone.",
+                "cancel": "Cancel",
+                "confirm": "Confirm"
+            }
+        }
+    },
+    "LanguageSwitcher": {
+        "title": "Change language"
+    }
+}

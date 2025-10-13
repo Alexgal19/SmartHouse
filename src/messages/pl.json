@@ -1,0 +1,108 @@
+{
+    "LoginPage": {
+        "title": "Witaj w SmartHouse",
+        "description": "Zaloguj się, aby kontynuować",
+        "nameLabel": "Imię i nazwisko / Login",
+        "namePlaceholder": "Jan Kowalski lub admin",
+        "passwordLabel": "Hasło",
+        "passwordPlaceholder": "Wprowadź hasło",
+        "loginButton": "Zaloguj się",
+        "loggingInButton": "Logowanie...",
+        "configLoading": "Ładowanie konfiguracji...",
+        "settingsNotLoadedError": "Ustawienia aplikacji jeszcze nie załadowane. Spróbuj ponownie za chwilę.",
+        "incorrectAdminPasswordError": "Nieprawidłowe hasło administratora.",
+        "coordinatorListEmptyError": "Lista koordynatorów jest pusta lub nie załadowała się. Spróbuj ponownie.",
+        "accessDeniedError": "Brak dostępu. Sprawdź, czy Twoje imię i nazwisko są poprawne.",
+        "passwordRequiredError": "Hasło jest wymagane.",
+        "incorrectPasswordError": "Nieprawidłowe hasło.",
+        "serverError": "Błąd serwera. Spróbuj ponownie później.",
+        "toast": {
+            "criticalErrorTitle": "Błąd krytyczny",
+            "settingsLoadError": "Nie udało się pobrać ustawień aplikacji.",
+            "loginErrorTitle": "Błąd logowania",
+            "unexpectedError": "Wystąpił nieoczekiwany błąd."
+        }
+    },
+    "Dashboard": {
+        "loadingSettings": "Ładowanie ustawień...",
+        "loadingData": "Ładowanie danych...",
+        "loadingComponents": "Ładowanie komponentów...",
+        "noPermission": "Brak uprawnień do przeglądania tej strony.",
+        "active": "Aktywni",
+        "dismissed": "Zwolnieni",
+        "toast": {
+            "refreshSuccessTitle": "Sukces",
+            "refreshSuccessDescription": "Dane zostały odświeżone.",
+            "refreshErrorTitle": "Błąd odświeżania danych",
+            "refreshErrorDescription": "Nie udało się pobrać danych z serwera.",
+            "statusUpdateSuccessTitle": "Sukces",
+            "statusUpdateSuccessDescription": "Zaktualizowano statusy dla {count} pracowników.",
+            "statusUpdateNoChangesTitle": "Brak zmian",
+            "statusUpdateNoChangesDescription": "Wszyscy pracownicy mają aktualne statusy.",
+            "error": "Błąd",
+            "statusUpdateError": "Nie udało się odświeżyć statusów.",
+            "criticalErrorTitle": "Błąd krytyczny ładowania danych",
+            "criticalErrorDescription": "Nie udało się pobrać podstawowych danych z serwera.",
+            "success": "Sukces",
+            "employeeUpdated": "Dane pracownika zostały zaktualizowane.",
+            "employeeAdded": "Nowy pracownik został dodany.",
+            "employeeSaveError": "Nie udało się zapisać pracownika.",
+            "nonEmployeeUpdated": "Dane mieszkańca zostały zaktualizowane.",
+            "nonEmployeeSaveError": "Nie udało się zapisać mieszkańca.",
+            "nonEmployeeAdded": "Nowy mieszkaniec został dodany.",
+            "nonEmployeeAddError": "Nie udało się dodać mieszkańca.",
+            "nonEmployeeDeleted": "Mieszkaniec został usunięty.",
+            "nonEmployeeDeleteError": "Nie udało się usunąć mieszkańca.",
+            "permissionErrorTitle": "Brak uprawnień",
+            "permissionErrorDescription": "Tylko administrator może zmieniać ustawienia.",
+            "settingsUpdated": "Ustawienia zostały zaktualizowane.",
+            "settingsUpdateError": "Nie udało się zapisać ustawień.",
+            "inspectionAdded": "Nowa inspekcja została dodana.",
+            "inspectionAddError": "Nie udało się dodać inspekcji.",
+            "inspectionUpdated": "Inspekcja została zaktualizowana.",
+            "inspectionUpdateError": "Nie udało się zaktualizować inspekcji.",
+            "inspectionDeleted": "Inspekcja została usunięta.",
+            "inspectionDeleteError": "Nie udało się usunąć inspekcji.",
+            "employeeDismissed": "Pracownik został zwolniony.",
+            "employeeDismissError": "Nie udało się zwolnić pracownika.",
+            "employeeRestored": "Pracownik został przywrócony.",
+            "employeeRestoreError": "Nie udało się przywrócić pracownika.",
+            "bulkDeleteSuccess": "Wszyscy {status} pracownicy zostali usunięci.",
+            "bulkDeleteError": "Nie udało się usunąć pracowników.",
+            "unknownError": "Wystąpił nieznany błąd."
+        }
+    },
+    "Navigation": {
+        "pulpit": "Pulpit",
+        "employees": "Pracownicy",
+        "inspections": "Inspekcje",
+        "settings": "Ustawienia",
+        "toast": {
+            "error": "Błąd",
+            "notificationLoadError": "Nie udało się wczytać powiadomień.",
+            "permissionErrorTitle": "Błąd uprawnień",
+            "permissionErrorDescription": "Tylko administratorzy mogą wykonać tę akcję.",
+            "success": "Sukces",
+            "clearNotificationsSuccess": "Wszystkie powiadomienia zostały wyczyszczone.",
+            "clearNotificationsError": "Nie udało się wyczyścić powiadomień."
+        }
+    },
+    "Header": {
+        "logout": "Wyloguj się",
+        "notifications": {
+            "open": "Otwórz powiadomienia",
+            "title": "Powiadomienia",
+            "clearAll": "Wyczyść wszystko",
+            "noNew": "Brak nowych powiadomień.",
+            "confirmClear": {
+                "title": "Czy na pewno chcesz wyczyścić wszystkie powiadomienia?",
+                "description": "Tej operacji nie można cofnąć.",
+                "cancel": "Anuluj",
+                "confirm": "Potwierdź"
+            }
+        }
+    },
+    "LanguageSwitcher": {
+        "title": "Zmień język"
+    }
+}

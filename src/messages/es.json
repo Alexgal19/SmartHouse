@@ -1,0 +1,108 @@
+{
+    "LoginPage": {
+        "title": "Bienvenido a SmartHouse",
+        "description": "Inicia sesión para continuar",
+        "nameLabel": "Nombre Completo / Usuario",
+        "namePlaceholder": "Juan Pérez o admin",
+        "passwordLabel": "Contraseña",
+        "passwordPlaceholder": "Introduce la contraseña",
+        "loginButton": "Iniciar Sesión",
+        "loggingInButton": "Iniciando sesión...",
+        "configLoading": "Cargando configuración...",
+        "settingsNotLoadedError": "La configuración de la aplicación aún no se ha cargado. Por favor, inténtalo de nuevo en un momento.",
+        "incorrectAdminPasswordError": "Contraseña de administrador incorrecta.",
+        "coordinatorListEmptyError": "La lista de coordinadores está vacía o no se ha cargado. Por favor, inténtalo de nuevo.",
+        "accessDeniedError": "Acceso denegado. Comprueba si tu nombre es correcto.",
+        "passwordRequiredError": "La contraseña es obligatoria.",
+        "incorrectPasswordError": "Contraseña incorrecta.",
+        "serverError": "Error del servidor. Por favor, inténtalo de nuevo más tarde.",
+        "toast": {
+            "criticalErrorTitle": "Error Crítico",
+            "settingsLoadError": "No se pudo cargar la configuración de la aplicación.",
+            "loginErrorTitle": "Error de Inicio de Sesión",
+            "unexpectedError": "Ocurrió un error inesperado."
+        }
+    },
+    "Dashboard": {
+        "loadingSettings": "Cargando configuración...",
+        "loadingData": "Cargando datos...",
+        "loadingComponents": "Cargando componentes...",
+        "noPermission": "No tienes permiso para ver esta página.",
+        "active": "Activos",
+        "dismissed": "Despedidos",
+        "toast": {
+            "refreshSuccessTitle": "Éxito",
+            "refreshSuccessDescription": "Los datos han sido actualizados.",
+            "refreshErrorTitle": "Error al actualizar datos",
+            "refreshErrorDescription": "No se pudieron obtener los datos del servidor.",
+            "statusUpdateSuccessTitle": "Éxito",
+            "statusUpdateSuccessDescription": "Se actualizaron los estados de {count} empleados.",
+            "statusUpdateNoChangesTitle": "Sin Cambios",
+            "statusUpdateNoChangesDescription": "Todos los empleados tienen estados actualizados.",
+            "error": "Error",
+            "statusUpdateError": "No se pudieron actualizar los estados.",
+            "criticalErrorTitle": "Error Crítico al Cargar Datos",
+            "criticalErrorDescription": "No se pudieron cargar los datos esenciales del servidor.",
+            "success": "Éxito",
+            "employeeUpdated": "Los datos del empleado han sido actualizados.",
+            "employeeAdded": "Se ha añadido un nuevo empleado.",
+            "employeeSaveError": "No se pudo guardar el empleado.",
+            "nonEmployeeUpdated": "Los datos del residente han sido actualizados.",
+            "nonEmployeeSaveError": "No se pudo guardar el residente.",
+            "nonEmployeeAdded": "Se ha añadido un nuevo residente.",
+            "nonEmployeeAddError": "No se pudo añadir el residente.",
+            "nonEmployeeDeleted": "El residente ha sido eliminado.",
+            "nonEmployeeDeleteError": "No se pudo eliminar el residente.",
+            "permissionErrorTitle": "Sin Permisos",
+            "permissionErrorDescription": "Solo un administrador puede cambiar la configuración.",
+            "settingsUpdated": "La configuración ha sido actualizada.",
+            "settingsUpdateError": "No se pudo guardar la configuración.",
+            "inspectionAdded": "Se ha añadido una nueva inspección.",
+            "inspectionAddError": "No se pudo añadir la inspección.",
+            "inspectionUpdated": "La inspección ha sido actualizada.",
+            "inspectionUpdateError": "No se pudo actualizar la inspección.",
+            "inspectionDeleted": "La inspección ha sido eliminada.",
+            "inspectionDeleteError": "No se pudo eliminar la inspección.",
+            "employeeDismissed": "El empleado ha sido despedido.",
+            "employeeDismissError": "No se pudo despedir al empleado.",
+            "employeeRestored": "El empleado ha sido restaurado.",
+            "employeeRestoreError": "No se pudo restaurar al empleado.",
+            "bulkDeleteSuccess": "Todos los empleados {status} han sido eliminados.",
+            "bulkDeleteError": "No se pudieron eliminar los empleados.",
+            "unknownError": "Ocurrió un error desconocido."
+        }
+    },
+    "Navigation": {
+        "pulpit": "Panel",
+        "employees": "Empleados",
+        "inspections": "Inspecciones",
+        "settings": "Configuración",
+        "toast": {
+            "error": "Error",
+            "notificationLoadError": "No se pudieron cargar las notificaciones.",
+            "permissionErrorTitle": "Error de Permiso",
+            "permissionErrorDescription": "Solo los administradores pueden realizar esta acción.",
+            "success": "Éxito",
+            "clearNotificationsSuccess": "Todas las notificaciones han sido borradas.",
+            "clearNotificationsError": "No se pudieron borrar las notificaciones."
+        }
+    },
+    "Header": {
+        "logout": "Cerrar Sesión",
+        "notifications": {
+            "open": "Abrir notificaciones",
+            "title": "Notificaciones",
+            "clearAll": "Limpiar Todo",
+            "noNew": "No hay notificaciones nuevas.",
+            "confirmClear": {
+                "title": "¿Estás seguro de que quieres borrar todas las notificaciones?",
+                "description": "Esta acción no se puede deshacer.",
+                "cancel": "Cancelar",
+                "confirm": "Confirmar"
+            }
+        }
+    },
+    "LanguageSwitcher": {
+        "title": "Cambiar idioma"
+    }
+}
