@@ -36,12 +36,14 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { format } from "date-fns";
 import { Loader2 } from "lucide-react";
 
+const dateStringSchema = z.string().nullable().optional();
+
 const nonEmployeeSchema = z.object({
   fullName: z.string().min(3, "Imię i nazwisko musi mieć co najmniej 3 znaki."),
   address: z.string().min(1, "Adres jest wymagany."),
   roomNumber: z.string().min(1, "Numer pokoju jest wymagany."),
   checkInDate: z.string({ required_error: "Data zameldowania jest wymagana." }),
-  checkOutDate: z.string().nullable().optional(),
+  checkOutDate: dateStringSchema,
   comments: z.string().optional(),
 });
 
@@ -158,7 +160,7 @@ export function AddNonEmployeeForm({ isOpen, onOpenChange, onSave, settings, non
                     render={({ field }) => (
                         <FormItem className="flex flex-col">
                         <FormLabel className="mb-1.5">Data zameldowania</FormLabel>
-                        <DatePicker value={field.value} onChange={field.onChange} />
+                        <DatePicker value={field.value} onChange={(val) => field.onChange(val || '')} />
                         <FormMessage />
                         </FormItem>
                     )}
@@ -169,7 +171,7 @@ export function AddNonEmployeeForm({ isOpen, onOpenChange, onSave, settings, non
                   render={({ field }) => (
                       <FormItem className="flex flex-col">
                       <FormLabel className="mb-1.5">Data wymeldowania</FormLabel>
-                      <DatePicker value={field.value} onChange={(val) => field.onChange(val || null)} />
+                      <DatePicker value={field.value} onChange={(val) => field.onChange(val || undefined)} />
                       <FormMessage />
                       </FormItem>
                   )}
@@ -204,5 +206,3 @@ export function AddNonEmployeeForm({ isOpen, onOpenChange, onSave, settings, non
     </Dialog>
   );
 }
-
-    

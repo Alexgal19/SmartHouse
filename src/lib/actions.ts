@@ -746,17 +746,16 @@ function deserializeEmployee(row: any): Employee | null {
     if (!id) return null;
 
     const safeFormat = (dateStr: string | undefined | null) => {
-        if (!dateStr) return null;
+        if (!dateStr || !isValid(new Date(dateStr))) return null;
         try {
-            const date = new Date(dateStr);
-            return isValid(date) ? format(date, 'yyyy-MM-dd') : null;
+            return format(new Date(dateStr), 'yyyy-MM-dd');
         } catch {
             return null;
         }
     }
 
     const checkInDate = safeFormat(row.get('checkInDate'));
-    if (!checkInDate) return null;
+    if (!checkInDate) return null; // checkInDate is required
 
     const deductionReasonRaw = row.get('deductionReason');
     let deductionReason: DeductionReason[] | undefined = undefined;
@@ -798,5 +797,3 @@ function deserializeEmployee(row: any): Employee | null {
         deductionReason: deductionReason,
     };
 }
-
-    
