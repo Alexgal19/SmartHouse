@@ -1,28 +1,28 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Building, Loader2 } from 'lucide-react';
-import type { Coordinator } from '@/types';
 
 interface LoginViewProps {
   onLogin: (user: { name: string }, password?: string) => Promise<void>;
   isLoading: boolean;
+  loginError: string;
+  setLoginError: (error: string) => void;
 }
 
-export function LoginView({ onLogin, isLoading }: LoginViewProps) {
-  const [name, setName] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+export function LoginView({ onLogin, isLoading, loginError, setLoginError }: LoginViewProps) {
+  const [name, setName] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [isLoggingIn, setIsLoggingIn] = React.useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setLoginError('');
     setIsLoggingIn(true);
     try {
         await onLogin({ name: name.trim() }, password);
@@ -30,17 +30,6 @@ export function LoginView({ onLogin, isLoading }: LoginViewProps) {
         setIsLoggingIn(false);
     }
   };
-  
-  const handleSetError = (message: string) => {
-    setError(message);
-  }
-  
-  React.useEffect(() => {
-    (window as any).setLoginError = handleSetError;
-    return () => {
-      delete (window as any).setLoginError;
-    }
-  }, []);
 
   return (
     <div className="flex h-screen w-full items-center justify-center bg-muted/50 p-4 animate-in fade-in-0 duration-500">
@@ -61,7 +50,7 @@ export function LoginView({ onLogin, isLoading }: LoginViewProps) {
                     value={name}
                     onChange={(e) => {
                         setName(e.target.value);
-                        setError('');
+                        setLoginError('');
                     }}
                     placeholder="Jan Kowalski lub admin"
                     required
@@ -76,14 +65,14 @@ export function LoginView({ onLogin, isLoading }: LoginViewProps) {
                     value={password}
                     onChange={(e) => {
                         setPassword(e.target.value);
-                        setError('');
+                        setLoginError('');
                     }}
                     placeholder="Wprowadź hasło"
                     required
                     disabled={isLoggingIn || isLoading}
                     />
                 </div>
-                 {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+                 {loginError && <p className="text-sm font-medium text-destructive">{loginError}</p>}
                  {isLoading && <p className="text-sm font-medium text-muted-foreground text-center">Ładowanie konfiguracji...</p>}
             </CardContent>
             <CardFooter className="flex-col gap-4">
@@ -101,7 +90,3 @@ export function LoginView({ onLogin, isLoading }: LoginViewProps) {
     </div>
   );
 }
-
-    
-
-    

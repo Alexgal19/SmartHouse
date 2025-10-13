@@ -13,6 +13,7 @@ export default function LoginPage() {
     const router = useRouter();
     const [settings, setSettings] = useState<Settings | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [loginError, setLoginError] = useState('');
 
     useEffect(() => {
         const fetchSettings = async () => {
@@ -35,7 +36,7 @@ export default function LoginPage() {
 
     const handleLogin = async (user: {name: string}, password?: string) => {
         if (!settings) {
-            (window as any).setLoginError('Ustawienia aplikacji jeszcze nie załadowane. Spróbuj ponownie za chwilę.');
+            setLoginError('Ustawienia aplikacji jeszcze nie załadowane. Spróbuj ponownie za chwilę.');
             return;
         }
 
@@ -57,25 +58,25 @@ export default function LoginPage() {
                     sessionStorage.setItem('currentUser', JSON.stringify(adminUser));
                     router.push('/dashboard');
                 } else {
-                     (window as any).setLoginError('Nieprawidłowe hasło administratora.');
+                     setLoginError('Nieprawidłowe hasło administratora.');
                 }
                 return;
             }
 
             if (coordinators.length === 0) {
-                (window as any).setLoginError('Lista koordynatorów jest pusta lub nie załadowała się. Spróbuj ponownie.');
+                setLoginError('Lista koordynatorów jest pusta lub nie załadowała się. Spróbuj ponownie.');
                 return;
             }
 
             const coordinator = coordinators.find(c => c.name.toLowerCase() === lowerCaseName);
 
             if (!coordinator) {
-                (window as any).setLoginError('Brak dostępu. Sprawdź, czy Twoje imię i nazwisko są poprawne.');
+                setLoginError('Brak dostępu. Sprawdź, czy Twoje imię i nazwisko są poprawne.');
                 return;
             }
             
              if (!password) {
-                (window as any).setLoginError('Hasło jest wymagane.');
+                setLoginError('Hasło jest wymagane.');
                 return;
             }
 
@@ -83,7 +84,7 @@ export default function LoginPage() {
                 sessionStorage.setItem('currentUser', JSON.stringify(coordinator));
                 router.push('/dashboard');
             } else {
-                (window as any).setLoginError('Nieprawidłowe hasło.');
+                setLoginError('Nieprawidłowe hasło.');
             }
         } catch (err: any) {
             toast({
@@ -91,11 +92,9 @@ export default function LoginPage() {
                 title: "Błąd logowania",
                 description: `Wystąpił nieoczekiwany błąd. ${err.message}`
             });
-             (window as any).setLoginError('Błąd serwera. Spróbuj ponownie później.');
+             setLoginError('Błąd serwera. Spróbuj ponownie później.');
         }
     };
     
-    return <LoginView onLogin={handleLogin} isLoading={isLoading} />;
+    return <LoginView onLogin={handleLogin} isLoading={isLoading} loginError={loginError} setLoginError={setLoginError} />;
 }
-
-    
