@@ -138,7 +138,8 @@ function DashboardPageContent() {
                 handleRefreshStatuses(false);
             });
         }
-    }, [currentUser, fetchAllData, handleRefreshStatuses]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentUser]);
 
     
     useEffect(() => {
@@ -462,3 +463,5 @@ export default function DashboardPage() {
         </Suspense>
     )
 }
+
+    
