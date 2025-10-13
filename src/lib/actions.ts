@@ -30,7 +30,7 @@ const serializeDate = (date?: string | null): string => {
     return date; 
 };
 
-const serializeEmployee = (employee: Partial<Omit<Employee, 'id' | 'status'> & { id?: string; status?: string }>): Record<string, string | number | boolean> => {
+const serializeEmployee = (employee: Partial<Employee>): Record<string, string | number | boolean> => {
     const serialized: Record<string, any> = {};
     const dataToSerialize = { ...employee };
 
@@ -151,13 +151,20 @@ const createNotification = async (
     }
 };
 
-export async function addEmployee(employeeData: Omit<Employee, 'id' | 'status'>, actor: Coordinator): Promise<Employee> {
+export async function addEmployee(employeeData: Partial<Employee>, actor: Coordinator): Promise<Employee> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const newEmployee: Employee = {
             ...employeeData,
             id: `emp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
             status: 'active',
+            fullName: employeeData.fullName || '',
+            coordinatorId: employeeData.coordinatorId || '',
+            nationality: employeeData.nationality || '',
+            gender: employeeData.gender || '',
+            address: employeeData.address || '',
+            roomNumber: employeeData.roomNumber || '',
+            zaklad: employeeData.zaklad || '',
             checkInDate: employeeData.checkInDate || '',
         };
 
@@ -688,7 +695,7 @@ export async function bulkImportEmployees(fileData: ArrayBuffer, coordinators: C
             return { success: false, message: `Brakujące kolumny w pliku: ${missingHeaders.join(', ')}` };
         }
         
-        const employeesToAdd: (Omit<Employee, 'id' | 'status'>)[] = [];
+        const employeesToAdd: (Partial<Employee>)[] = [];
         
         for (const row of json) {
             const coordinator = coordinators.find(c => c.name.toLowerCase() === String(row.coordinatorName).toLowerCase());
@@ -713,7 +720,7 @@ export async function bulkImportEmployees(fileData: ArrayBuffer, coordinators: C
                 continue;
             }
 
-            const employee: Omit<Employee, 'id' | 'status'> = {
+            const employee: Partial<Employee> = {
                 fullName: String(row.fullName),
                 coordinatorId: coordinator.uid,
                 nationality: String(row.nationality),

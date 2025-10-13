@@ -335,7 +335,7 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
                 const photoData = detail.get('photoData');
 
                 if (itemLabel && itemLabel !== 'Photo' && itemLabel !== 'Uwagi') {
-                    let type: Inspection['categories'][0]['items'][0]['type'] = 'text';
+                    let type: InspectionCategoryItem['type'] = 'text';
                     let value: any = detail.get('itemValue');
                     
                     if (value === 'true' || value === 'false') {
@@ -343,6 +343,15 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
                         value = value === 'true';
                     } else if (['Wysoki', 'Normalny', 'Niski', 'Bardzo czysto', 'Czysto', 'Brudno', 'Bardzo brudno'].includes(value)) {
                         type = 'select';
+                    } else if (!isNaN(parseFloat(value)) && isFinite(value)) {
+                        const num = parseFloat(value);
+                        if (num >= 1 && num <= 5 && Number.isInteger(num)) {
+                            type = 'rating';
+                            value = num;
+                        } else {
+                            type = 'number';
+                            value = num;
+                        }
                     }
 
                     category.items.push({ label: itemLabel, value, type, options: [] });
