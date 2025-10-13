@@ -175,7 +175,6 @@ function DashboardPageContent() {
         const originalEmployees = allEmployees;
 
         if (editingEmployee) {
-            // Optimistic Update for existing employee
             const updatedData: Partial<Employee> = { ...data };
             if (editingEmployee && data.address !== editingEmployee.address) {
               updatedData.oldAddress = editingEmployee.address;
@@ -189,17 +188,16 @@ function DashboardPageContent() {
             try {
                 await updateEmployee(editingEmployee.id, updatedData, currentUser)
                 toast({ title: "Sukces", description: "Dane pracownika zostały zaktualizowane." });
-                await refreshData(false); // Refresh in background to sync
+                await refreshData(false);
             } catch (e: any) {
-                setAllEmployees(originalEmployees); // Revert on error
+                setAllEmployees(originalEmployees);
                 toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać pracownika." });
             }
         } else {
-            // No optimistic update for new employee, just add and refresh
             try {
-                await addEmployee(data, currentUser);
+                await addEmployee(data as Omit<Employee, 'id' | 'status'>, currentUser);
                 toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
-                await refreshData(false); // Refresh to get the new data
+                await refreshData(false);
             } catch (e: any) {
                 toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać pracownika." });
             }
@@ -207,30 +205,22 @@ function DashboardPageContent() {
     };
 
     const handleSaveNonEmployee = async (data: Omit<NonEmployee, 'id'>) => {
-        const originalNonEmployees = allNonEmployees;
-
         if (editingNonEmployee) {
-            // Optimistic Update
-            const updatedNonEmployee = { ...editingNonEmployee, ...data };
-            setAllNonEmployees(prev => prev!.map(ne => ne.id === editingNonEmployee.id ? updatedNonEmployee : ne));
-
             try {
                 await updateNonEmployee(editingNonEmployee.id, data);
                 toast({ title: "Sukces", description: "Dane mieszkańca zostały zaktualizowane." });
-                await refreshData(false);
             } catch(e: any) {
-                setAllNonEmployees(originalNonEmployees);
                 toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać mieszkańca." });
             }
         } else {
              try {
                 await addNonEmployee(data);
                 toast({ title: "Sukces", description: "Nowy mieszkaniec został dodany." });
-                await refreshData(false);
             } catch (e: any) {
                 toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać mieszkańca." });
             }
         }
+        await refreshData(false);
     }
     
     const handleDeleteNonEmployee = async (id: string) => {
@@ -478,5 +468,3 @@ export default function DashboardPage() {
         </React.Suspense>
     )
 }
-
-    
