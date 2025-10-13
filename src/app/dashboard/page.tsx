@@ -7,7 +7,7 @@ import DashboardView from '@/components/dashboard-view';
 import EmployeesView from '@/components/employees-view';
 import SettingsView from '@/components/settings-view';
 import InspectionsView from '@/components/inspections-view';
-import { AddEmployeeForm } from '@/components/add-employee-form';
+import { AddEmployeeForm, type EmployeeFormData } from '@/components/add-employee-form';
 import { AddNonEmployeeForm } from '@/components/add-non-employee-form';
 import { getAllEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getInspections, addInspection, updateInspection, deleteInspection, transferEmployees, bulkDeleteEmployees, bulkImportEmployees, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee, checkAndUpdateEmployeeStatuses } from '@/lib/actions';
 import type { Employee, Settings, View, Coordinator, Inspection, NonEmployee } from '@/types';
@@ -177,17 +177,18 @@ function DashboardPageContent() {
     }, [currentUser, allInspections, selectedCoordinatorId]);
 
 
-    const handleSaveEmployee = async (data: Omit<Employee, 'id' | 'status'> & { oldAddress?: string | null }) => {
+    const handleSaveEmployee = async (data: EmployeeFormData) => {
         if (!currentUser) return;
         
         const originalEmployees = allEmployees;
+        const dataToSave: Omit<Employee, 'id' | 'status'> = data;
 
         if (editingEmployee) {
             // Optimistic Update
-            const updatedEmployee = { ...editingEmployee, ...data };
+            const updatedEmployee: Employee = { ...editingEmployee, ...dataToSave };
             setAllEmployees(prev => prev!.map(e => e.id === editingEmployee.id ? updatedEmployee : e));
             
-            updateEmployee(editingEmployee.id, data, currentUser)
+            updateEmployee(editingEmployee.id, dataToSave, currentUser)
                 .then(() => {
                     toast({ title: "Sukces", description: "Dane pracownika zostały zaktualizowane." });
                     refreshData(false); // Refresh in background to sync
@@ -200,13 +201,13 @@ function DashboardPageContent() {
             // Optimistic Add
             const tempId = `temp-${Date.now()}`;
             const newEmployee: Employee = {
-                ...data,
+                ...dataToSave,
                 id: tempId,
                 status: 'active',
             };
             setAllEmployees(prev => [newEmployee, ...prev!]);
 
-            addEmployee(data, currentUser)
+            addEmployee(dataToSave, currentUser)
                 .then(() => {
                     toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
                     refreshData(false); // Refresh to get the real ID
@@ -503,5 +504,3 @@ export default function DashboardPage() {
         </React.Suspense>
     )
 }
-
-    

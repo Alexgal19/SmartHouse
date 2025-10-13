@@ -23,10 +23,10 @@ export type Employee = {
   roomNumber: string;
   zaklad: string; // department
   checkInDate: string; // YYYY-MM-DD
-  checkOutDate: string | null | undefined; // YYYY-MM-DD
-  contractStartDate?: string | null | undefined; // YYYY-MM-DD
-  contractEndDate?: string | null | undefined; // YYYY-MM-DD
-  departureReportDate?: string | null | undefined; // YYYY-MM-DD
+  checkOutDate?: string | null; // YYYY-MM-DD
+  contractStartDate?: string | null; // YYYY-MM-DD
+  contractEndDate?: string | null; // YYYY-MM-DD
+  departureReportDate?: string | null; // YYYY-MM-DD
   comments?: string;
   status: 'active' | 'dismissed';
   oldAddress?: string | null;
@@ -45,7 +45,7 @@ export type NonEmployee = {
   address: string;
   roomNumber: string;
   checkInDate: string; // YYYY-MM-DD
-  checkOutDate: string | null | undefined; // YYYY-MM-DD
+  checkOutDate?: string | null; // YYYY-MM-DD
   comments?: string;
 };
 
@@ -150,5 +150,3 @@ export type Notification = {
 };
 
 export type View = 'dashboard' | 'employees' | 'settings' | 'inspections';
-
-    

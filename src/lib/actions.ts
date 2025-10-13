@@ -20,13 +20,16 @@ const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 
 
 const serializeDate = (date: string | null | undefined): string => {
-    if (!date || !isValid(new Date(date))) {
+    if (!date) {
+        return '';
+    }
+    if (!isValid(new Date(date))) {
         return '';
     }
     return date; // It's already a YYYY-MM-DD string
 };
 
-const serializeEmployee = (employee: Partial<Employee>): Record<string, string | number | boolean> => {
+const serializeEmployee = (employee: Partial<Omit<Employee, 'id' | 'status'> & { id?: string; status?: string }>): Record<string, string | number | boolean> => {
     const serialized: Record<string, any> = {};
     const dataToSerialize = { ...employee };
 
@@ -156,12 +159,6 @@ export async function addEmployee(employeeData: Omit<Employee, 'id' | 'status'>,
             id: `emp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
             status: 'active',
             checkInDate: employeeData.checkInDate || '',
-            checkOutDate: employeeData.checkOutDate,
-            contractStartDate: employeeData.contractStartDate,
-            contractEndDate: employeeData.contractEndDate,
-            departureReportDate: employeeData.departureReportDate,
-            comments: employeeData.comments || '',
-            oldAddress: employeeData.oldAddress || undefined,
         };
 
         const serialized = serializeEmployee(newEmployee);
@@ -205,14 +202,14 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
             
             const areDates = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate'].includes(key);
 
-            let oldValStr, newValStr;
+            let oldValStr: string = 'Brak';
+            let newValStr: string = 'Brak';
 
-            if(areDates) {
-                oldValStr = oldValue ? format(new Date(oldValue as string), 'dd-MM-yyyy') : 'Brak';
-                newValStr = newValue ? format(new Date(newValue as string), 'dd-MM-yyyy') : 'Brak';
-            } else {
-                 oldValStr = String(oldValue);
-                 newValStr = String(newValue);
+            if (oldValue) {
+                oldValStr = areDates && isValid(new Date(oldValue as string)) ? format(new Date(oldValue as string), 'dd-MM-yyyy') : String(oldValue);
+            }
+            if (newValue) {
+                newValStr = areDates && isValid(new Date(newValue as string)) ? format(new Date(newValue as string), 'dd-MM-yyyy') : String(newValue);
             }
            
             if (oldValStr !== newValStr) {
@@ -246,7 +243,7 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>): 
             address: nonEmployeeData.address,
             roomNumber: nonEmployeeData.roomNumber,
             checkInDate: nonEmployeeData.checkInDate || '',
-            checkOutDate: nonEmployeeData.checkOutDate || null,
+            checkOutDate: nonEmployeeData.checkOutDate,
             comments: nonEmployeeData.comments || '',
         };
 
@@ -745,7 +742,7 @@ function deserializeEmployee(row: any): Employee | null {
     const id = row.get('id');
     if (!id) return null;
 
-    const safeFormat = (dateStr: string | undefined | null) => {
+    const safeFormat = (dateStr: string | undefined | null): string | null => {
         if (!dateStr || !isValid(new Date(dateStr))) return null;
         try {
             return format(new Date(dateStr), 'yyyy-MM-dd');

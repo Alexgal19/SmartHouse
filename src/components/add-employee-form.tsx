@@ -47,7 +47,7 @@ const deductionReasonSchema = z.object({
     amount: z.number().nullable().optional(),
 });
 
-const employeeSchema = z.object({
+export const employeeSchema = z.object({
   fullName: z.string().min(3, "Imię i nazwisko musi mieć co najmniej 3 znaki."),
   coordinatorId: z.string().min(1, "Koordynator jest wymagany."),
   nationality: z.string().min(1, "Narodowość jest wymagana."),
@@ -71,6 +71,9 @@ const employeeSchema = z.object({
   deductionReason: z.array(deductionReasonSchema).optional(),
 });
 
+export type EmployeeFormData = z.infer<typeof employeeSchema>;
+
+
 const deductionReasonsList = [
     "Rezygnacja", "Alkohol", "Brudne ściany", "Zniszczone wyposażenie",
     "Nie sprzątanie mieszkania", "Brudne kołdra i poduszka", "Uszkodzone drzwi", "Palenia papierosów"
@@ -82,13 +85,13 @@ const getDefaultDeductionReasons = (): DeductionReason[] =>
 interface AddEmployeeFormProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSave: (data: z.infer<typeof employeeSchema>) => Promise<void>;
+  onSave: (data: EmployeeFormData) => Promise<void>;
   settings: Settings;
   employee?: Employee | null;
 }
 
 export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employee }: AddEmployeeFormProps) {
-  const form = useForm<z.infer<typeof employeeSchema>>({
+  const form = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeSchema),
     defaultValues: {
       deductionReason: getDefaultDeductionReasons(),
@@ -160,7 +163,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
   const showOldAddress = !!employee?.oldAddress || (employee && watchedAddress !== initialAddress && !!initialAddress);
 
 
-  const handleSubmit = async (values: z.infer<typeof employeeSchema>) => {
+  const handleSubmit = async (values: EmployeeFormData) => {
     const dataToSave = { ...values };
     if (employee && watchedAddress !== initialAddress) {
       dataToSave.oldAddress = initialAddress;
@@ -168,7 +171,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
       dataToSave.oldAddress = employee.oldAddress;
     }
     
-    await onSave(dataToSave as any);
+    await onSave(dataToSave);
     form.reset();
     onOpenChange(false);
   };
@@ -566,9 +569,3 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
     </Dialog>
   );
 }
-
-    
-
-    
-
-    
