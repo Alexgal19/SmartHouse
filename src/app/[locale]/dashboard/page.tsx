@@ -41,6 +41,7 @@ function DashboardPageContent() {
     const { toast } = useToast();
     
     useEffect(() => {
+        // Ensure this runs only on the client
         const loggedInUser = sessionStorage.getItem('currentUser');
         if (loggedInUser) {
             const user = JSON.parse(loggedInUser);
