@@ -3,4 +3,8 @@ const nextConfig = {
   reactStrictMode: true,
 };
 
-export default nextConfig;
+import createWithIntl from 'next-intl/plugin';
+
+const withIntl = createWithIntl('./src/i18n.ts');
+
+export default withIntl(nextConfig);

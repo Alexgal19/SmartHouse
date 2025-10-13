@@ -1,7 +1,8 @@
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { NextIntlClientProvider, useMessages } from 'next-intl';
-import '../../i18n'; // Re-add this critical import
+import '../../i18n'; 
+import { Toaster } from '@/components/ui/toaster';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -19,6 +20,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <NextIntlClientProvider locale={locale} messages={messages}>
           {children}
+          <Toaster />
         </NextIntlClientProvider>
       </body>
     </html>

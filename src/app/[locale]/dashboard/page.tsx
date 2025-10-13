@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -18,7 +17,7 @@ import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTranslations } from 'next-intl';
 
-function DashboardPageContent() {
+export default function DashboardPage() {
     const t = useTranslations('Dashboard');
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -453,13 +452,4 @@ function DashboardPageContent() {
             )}
         </MainLayout>
     );
-}
-
-export default function DashboardPage() {
-    const t = useTranslations('Dashboard');
-    return (
-        <React.Suspense fallback={<div className="flex h-screen w-full items-center justify-center bg-background"><p>{t('loadingComponents')}</p></div>}>
-             <DashboardPageContent />
-        </React.Suspense>
-    )
 }
