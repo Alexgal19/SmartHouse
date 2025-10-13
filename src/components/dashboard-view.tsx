@@ -45,7 +45,7 @@ const formatDate = (dateString: string | null | undefined) => {
 }
 
 const isEmployee = (person: Employee | NonEmployee): person is Employee => {
-    return 'status' in person;
+    return 'status' in person && 'coordinatorId' in person;
 }
 
 // New component for detailed housing view
@@ -117,8 +117,9 @@ const HousingDetailView = ({
                     >
                       <CardHeader>
                         <CardTitle className="text-base">{occupant.fullName}</CardTitle>
-                        {isEmployee(occupant) && <CardDescription>{occupant.nationality}</CardDescription>}
-                        {!isEmployee(occupant) && <CardDescription>Mieszkaniec (NZ)</CardDescription>}
+                        <CardDescription>
+                          {isEmployee(occupant) ? occupant.nationality : "Mieszkaniec (NZ)"}
+                        </CardDescription>
                       </CardHeader>
                     </Card>
                 )
@@ -805,5 +806,4 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
   );
 }
 
-    
     

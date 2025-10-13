@@ -139,7 +139,7 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
         departureReportDate: undefined,
         comments: "",
         oldAddress: undefined,
-        depositReturned: 'Nie dotyczy',
+        depositReturned: 'Nie dotyczy' as const,
         depositReturnAmount: undefined,
         deductionRegulation: undefined,
         deductionNo4Months: undefined,
@@ -569,3 +569,5 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
     </Dialog>
   );
 }
+
+    

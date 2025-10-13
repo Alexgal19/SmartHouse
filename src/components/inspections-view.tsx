@@ -567,7 +567,7 @@ const InspectionDialog = ({
                                                                         {item.type === 'rating' && <RatingInput value={field.value as number | null} onChange={field.onChange} />}
                                                                         {item.type === 'yes_no' && <YesNoInput value={field.value as boolean | null} onChange={field.onChange} />}
                                                                         {item.type === 'text' && <Textarea {...field} value={field.value || ''} className="w-full sm:w-64" />}
-                                                                        {item.type === 'number' && <Input type="number" {...field} value={field.value || ''} className="w-full sm:w-48" onChange={e => field.onChange(e.target.value === '' ? null : Number(e.target.value))} />}
+                                                                        {item.type === 'number' && <Input type="number" {...field} value={field.value ?? ''} className="w-full sm:w-48" onChange={e => field.onChange(e.target.value === '' ? null : Number(e.target.value))} />}
                                                                         {item.type === 'select' && item.options && <SelectInput value={field.value as string | null} onChange={field.onChange} options={item.options} />}
                                                                         {item.type === 'checkbox_group' && item.options && <CheckboxGroupInput value={field.value as string[] | null} onChange={field.onChange} options={item.options} />}
                                                                     </div>
@@ -670,7 +670,7 @@ const InspectionDetailDialog = ({ inspection, isOpen, onOpenChange }: { inspecti
                                             <div>
                                                 {item.type === 'yes_no' && <YesNoInput readOnly value={item.value as boolean | null} />}
                                                 {item.type === 'select' && item.options && <SelectInput readOnly options={item.options} value={item.value as string | null} />}
-                                                {item.type === 'number' && <p className="text-muted-foreground">{item.value !== null ? `${item.value} zł` : 'N/A'}</p>}
+                                                {item.type === 'number' && <p className="text-muted-foreground">{item.value !== null ? `${item.value}` : 'N/A'}</p>}
                                                 {item.type === 'text' && <p className="text-muted-foreground">{item.value as string || 'N/A'}</p>}
                                                 {item.type === 'rating' && <RatingInput value={item.value as number | null} readOnly />}
                                                 {item.type === 'checkbox_group' && <CheckboxGroupInput readOnly options={item.options || []} value={item.value as string[] | null} />}
@@ -847,7 +847,5 @@ export default function InspectionsView({ inspections, settings, currentUser, on
         </Card>
     );
 }
-
-    
 
     
