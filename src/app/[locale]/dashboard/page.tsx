@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -37,20 +36,27 @@ export default function DashboardPage() {
     const [editingNonEmployee, setEditingNonEmployee] = useState<NonEmployee | null>(null);
     const [currentUser, setCurrentUser] = useState<Coordinator | null>(null);
     const [selectedCoordinatorId, setSelectedCoordinatorId] = useState('all');
+    const [isAuthenticating, setIsAuthenticating] = useState(true);
     
     const { toast } = useToast();
     
     useEffect(() => {
         // Ensure this runs only on the client
-        const loggedInUser = sessionStorage.getItem('currentUser');
-        if (loggedInUser) {
-            const user = JSON.parse(loggedInUser);
-            setCurrentUser(user);
-             if (!user.isAdmin) {
-                setSelectedCoordinatorId(user.uid);
+        try {
+            const loggedInUser = sessionStorage.getItem('currentUser');
+            if (loggedInUser) {
+                const user = JSON.parse(loggedInUser);
+                setCurrentUser(user);
+                 if (!user.isAdmin) {
+                    setSelectedCoordinatorId(user.uid);
+                }
+            } else {
+                router.push('/');
             }
-        } else {
-            router.push('/');
+        } catch (error) {
+             router.push('/');
+        } finally {
+            setIsAuthenticating(false);
         }
     }, [router]);
 
@@ -391,14 +397,14 @@ export default function DashboardPage() {
       }
     };
 
-    if (isLoading || !currentUser || !settings) {
+    if (isAuthenticating || isLoading || !currentUser || !settings) {
         return (
              <div className="flex h-screen w-full items-center justify-center bg-background">
                 <div className="flex animate-fade-in flex-col items-center gap-6">
                     <h1 className="text-4xl sm:text-5xl md:text-7xl font-semibold tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm">
                         SmartHouse
                     </h1>
-                    <p className="text-muted-foreground">{loadingMessage}</p>
+                    <p className="text-muted-foreground">{isAuthenticating ? 'Аутентифікація...' : loadingMessage}</p>
                 </div>
             </div>
         )
