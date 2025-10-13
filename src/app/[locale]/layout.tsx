@@ -1,3 +1,4 @@
+
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { NextIntlClientProvider, useMessages } from 'next-intl';
@@ -26,3 +27,5 @@ export default function RootLayout({
     </html>
   );
 }
+
+    

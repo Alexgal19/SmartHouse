@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import DashboardView from '@/components/dashboard-view';
 import EmployeesView from '@/components/employees-view';
 import SettingsView from '@/components/settings-view';
@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/main-layout';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useMessages } from 'next-intl';
 
 export default function DashboardPage() {
     const t = useTranslations('Dashboard');
@@ -23,6 +23,10 @@ export default function DashboardPage() {
     const router = useRouter();
     const view = (searchParams.get('view') as View) || 'dashboard';
     const editEmployeeId = searchParams.get('edit');
+    const pathname = usePathname();
+    const locale = pathname.split('/')[1];
+    const messages = useMessages();
+
 
     const [allEmployees, setAllEmployees] = useState<Employee[] | null>(null);
     const [allNonEmployees, setAllNonEmployees] = useState<NonEmployee[] | null>(null);
@@ -427,7 +431,7 @@ export default function DashboardPage() {
     };
 
     return (
-        <MainLayout>
+        <MainLayout locale={locale} messages={messages}>
             <div key={view} className={cn("animate-in fade-in-0 duration-300")}>
                 {renderView()}
             </div>
@@ -453,3 +457,5 @@ export default function DashboardPage() {
         </MainLayout>
     );
 }
+
+    
