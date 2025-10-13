@@ -19,7 +19,7 @@ import { Building, ClipboardList, Home, Settings as SettingsIcon, Users, Globe }
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { clearAllNotifications, markNotificationAsRead, getNotifications } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
-import { useTranslations, NextIntlClientProvider } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from './ui/dropdown-menu';
 import { Button } from './ui/button';
 import Link from 'next/link';
@@ -73,13 +73,9 @@ const LanguageSwitcher = () => {
 
 
 export default function MainLayout({
-  children,
-  locale,
-  messages,
+  children
 }: {
   children: React.ReactNode;
-  locale: string;
-  messages: any;
 }) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -189,8 +185,7 @@ export default function MainLayout({
     }
     
     return (
-       <NextIntlClientProvider locale={locale} messages={messages}>
-        <SidebarProvider>
+       <SidebarProvider>
             <div className="flex h-screen w-full bg-muted/50">
                 <Sidebar>
                     <SidebarHeader>
@@ -240,7 +235,6 @@ export default function MainLayout({
                 <MobileNav activeView={activeView} setActiveView={(v) => router.push(`/dashboard?view=${v}`)} navItems={visibleNavItems} currentUser={currentUser}/>
             </div>
         </SidebarProvider>
-      </NextIntlClientProvider>
     );
 }
 

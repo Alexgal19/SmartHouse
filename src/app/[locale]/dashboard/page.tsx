@@ -23,10 +23,6 @@ export default function DashboardPage() {
     const router = useRouter();
     const view = (searchParams.get('view') as View) || 'dashboard';
     const editEmployeeId = searchParams.get('edit');
-    const pathname = usePathname();
-    const locale = pathname.split('/')[1];
-    const messages = useMessages();
-
 
     const [allEmployees, setAllEmployees] = useState<Employee[] | null>(null);
     const [allNonEmployees, setAllNonEmployees] = useState<NonEmployee[] | null>(null);
@@ -431,7 +427,7 @@ export default function DashboardPage() {
     };
 
     return (
-        <MainLayout locale={locale} messages={messages}>
+        <MainLayout>
             <div key={view} className={cn("animate-in fade-in-0 duration-300")}>
                 {renderView()}
             </div>
