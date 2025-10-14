@@ -104,5 +104,10 @@
     },
     "LanguageSwitcher": {
         "title": "Zmień język"
+    },
+    "LoadingScreen": {
+        "authenticating": "Uwierzytelnianie...",
+        "loadingSettings": "Wczytywanie ustawień...",
+        "loadingData": "Wczytywanie danych..."
     }
 }

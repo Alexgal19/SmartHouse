@@ -104,5 +104,10 @@
     },
     "LanguageSwitcher": {
         "title": "Змінити мову"
+    },
+    "LoadingScreen": {
+        "authenticating": "Аутентифікація...",
+        "loadingSettings": "Завантаження налаштувань...",
+        "loadingData": "Завантаження даних..."
     }
 }

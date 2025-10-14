@@ -34,7 +34,6 @@
             "refreshSuccessTitle": "Success",
             "refreshSuccessDescription": "Data has been refreshed.",
             "refreshErrorTitle": "Data Refresh Error",
-
             "refreshErrorDescription": "Failed to fetch data from the server.",
             "statusUpdateSuccessTitle": "Success",
             "statusUpdateSuccessDescription": "Updated statuses for {count} employees.",
@@ -105,5 +104,10 @@
     },
     "LanguageSwitcher": {
         "title": "Change language"
+    },
+    "LoadingScreen": {
+        "authenticating": "Authenticating...",
+        "loadingSettings": "Loading settings...",
+        "loadingData": "Loading data..."
     }
 }

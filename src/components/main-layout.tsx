@@ -53,7 +53,6 @@ type MainLayoutContextType = {
     handleDismissEmployee: (employeeId: string) => Promise<boolean>;
     handleRestoreEmployee: (employeeId: string) => Promise<boolean>;
     handleBulkDeleteEmployees: (status: "active" | "dismissed") => Promise<boolean>;
-    handleRefreshStatuses: (showNoChangesToast?: boolean) => Promise<void>;
     handleAddEmployeeClick: () => void;
     handleUpdateSettings: (newSettings: Partial<Settings>) => Promise<void>;
     refreshData: (showToast?: boolean) => Promise<void>;
@@ -128,6 +127,7 @@ export default function MainLayout({
     const { toast } = useToast();
     const t = useTranslations('Navigation');
     const t_dashboard = useTranslations('Dashboard');
+    const t_loading = useTranslations('LoadingScreen');
     const editEmployeeId = searchParams.get('edit');
 
     const [currentUser, setCurrentUser] = useState<Coordinator | null>(null);
@@ -145,7 +145,7 @@ export default function MainLayout({
     
     const [isAuthenticating, setIsAuthenticating] = useState(true);
     const [isLoadingData, setIsLoadingData] = useState(true);
-    const [loadingMessage, setLoadingMessage] = useState('Аутентифікація...');
+    const [loadingMessage, setLoadingMessage] = useState(t_loading('authenticating'));
     
     const activeView = useMemo(() => {
         return (searchParams.get('view') as View) || 'dashboard';
@@ -257,30 +257,15 @@ export default function MainLayout({
         }
     }, [toast, currentUser, t_dashboard]);
 
-    const handleRefreshStatuses = useCallback(async (showNoChangesToast = true) => {
-        if (!currentUser) return;
-        try {
-            const { updated } = await checkAndUpdateEmployeeStatuses(currentUser);
-            if (updated > 0) {
-                toast({ title: t_dashboard('toast.statusUpdateSuccessTitle'), description: t_dashboard('toast.statusUpdateSuccessDescription', {count: updated})});
-                await refreshData(false);
-            } else if (showNoChangesToast) {
-                 toast({ title: t_dashboard('toast.statusUpdateNoChangesTitle'), description: t_dashboard('toast.statusUpdateNoChangesDescription')});
-            }
-        } catch (e: any) {
-            toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.statusUpdateError') });
-        }
-    }, [currentUser, refreshData, toast, t_dashboard]);
-
     const fetchAllData = useCallback(async () => {
         if (!currentUser) return;
         setIsLoadingData(true);
         try {
-            setLoadingMessage(t_dashboard('loadingSettings'));
+            setLoadingMessage(t_loading('loadingSettings'));
             const settingsData = await getSettings();
             setSettings(settingsData);
             
-            setLoadingMessage(t_dashboard('loadingData'));
+            setLoadingMessage(t_loading('loadingData'));
             const coordinatorIdToFetch = currentUser.isAdmin ? undefined : currentUser.uid;
             
             const { updated } = await checkAndUpdateEmployeeStatuses(currentUser);
@@ -312,7 +297,7 @@ export default function MainLayout({
         } finally {
              setIsLoadingData(false);
         }
-    }, [toast, currentUser, t_dashboard]);
+    }, [toast, currentUser, t_dashboard, t_loading]);
 
     useEffect(() => {
         if (!isAuthenticating && currentUser) {
@@ -559,7 +544,6 @@ export default function MainLayout({
         handleDismissEmployee,
         handleRestoreEmployee,
         handleBulkDeleteEmployees,
-        handleRefreshStatuses,
         handleAddEmployeeClick,
         handleUpdateSettings,
         refreshData,
