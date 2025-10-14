@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import type { Employee, Settings, HousingAddress, Coordinator, Room, NonEmployee } from "@/types";
@@ -478,7 +477,7 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
 
   const { isMobile } = useIsMobile();
   
-  const activeEmployees = useMemo(() => allEmployees.filter(e => e.status === 'active'), [allEmployees]);
+  const activeEmployees = useMemo(() => employees.filter(e => e.status === 'active'), [employees]);
   const activeOccupants = useMemo(() => [...activeEmployees, ...nonEmployees], [activeEmployees, nonEmployees]);
 
   const apartmentsInUse = useMemo(() => [...new Set(activeOccupants.map(o => o.address))].length, [activeOccupants]);
@@ -489,10 +488,10 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
     const next30DaysEnd = new Date(today);
     next30DaysEnd.setDate(today.getDate() + 30);
 
-    return allEmployees
+    return employees
       .filter(e => e.status === 'active' && e.checkOutDate && isWithinInterval(parseISO(e.checkOutDate), { start: today, end: next30DaysEnd }))
       .sort((a, b) => parseISO(a.checkOutDate!).getTime() - parseISO(b.checkOutDate!).getTime());
-  }, [allEmployees]);
+  }, [employees]);
   
   const upcomingCheckoutsCount = upcomingCheckoutsList.length;
 
@@ -608,10 +607,6 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                             <CardTitle>Filtry Główne</CardTitle>
                             <CardDescription>Wybierz koordynatora, aby filtrować dane w całej aplikacji.</CardDescription>
                         </div>
-                        <Button onClick={handleRefreshClick} disabled={isRefreshing}>
-                            <RefreshCw className={cn("mr-2 h-4 w-4", isRefreshing && "animate-spin")} />
-                           {isRefreshing ? 'Odświeżanie...' : 'Odśwież dane'}
-                        </Button>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -806,5 +801,3 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
     </div>
   );
 }
-
-    
