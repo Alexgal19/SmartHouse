@@ -303,8 +303,7 @@ export default function MainLayout({
                 handleRefreshStatuses(false);
             });
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isAuthenticating, currentUser]);
+    }, [isAuthenticating, currentUser, fetchAllData, handleRefreshStatuses]);
 
     useEffect(() => {
         if (editEmployeeId && allEmployees) {
@@ -516,7 +515,7 @@ export default function MainLayout({
       }
     };
 
-    if (isAuthenticating || isLoadingData || !currentUser) {
+    if (isAuthenticating || isLoadingData) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
                 <div className="flex animate-fade-in flex-col items-center gap-6">
@@ -589,7 +588,7 @@ export default function MainLayout({
                     </SidebarFooter>
                 </Sidebar>
                 <div className="flex flex-1 flex-col">
-                    <Header 
+                    {currentUser && <Header 
                         user={currentUser} 
                         activeView={activeView} 
                         notifications={filteredNotifications} 
@@ -597,13 +596,13 @@ export default function MainLayout({
                         onLogout={handleLogout} 
                         onClearNotifications={handleClearNotifications}
                         languageSwitcher={<LanguageSwitcher />}
-                    />
+                    />}
                     <main className="flex-1 overflow-y-auto px-2 sm:px-6 pb-6 pt-4">
                         {children}
                     </main>
                 </div>
                 
-                <MobileNav activeView={activeView} setActiveView={(v) => router.push(`/dashboard?view=${v}`)} navItems={visibleNavItems} currentUser={currentUser}/>
+                {currentUser && <MobileNav activeView={activeView} setActiveView={(v) => router.push(`/dashboard?view=${v}`)} navItems={visibleNavItems} currentUser={currentUser}/>}
             </div>
             
             {settings && (
