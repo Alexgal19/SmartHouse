@@ -429,12 +429,23 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
         if (newSettings.addresses) {
             const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ADDRESS_HEADERS);
             const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity']);
+             const coordinatorsSheet = await getSheet(SHEET_NAME_COORDINATORS, ['uid', 'name']);
+            const coordinatorRows = await coordinatorsSheet.getRows();
+            const coordinator = coordinatorRows.find(row => row.get('name') === 'Holiadynets Oleksandr');
+            const coordinatorId = coordinator ? coordinator.get('uid') : null;
+
+            const addressesToUpdate = newSettings.addresses.map(addr => {
+                if (!addr.coordinatorId && coordinatorId) {
+                    addr.coordinatorId = coordinatorId;
+                }
+                return addr;
+            });
             
             await addressesSheet.clearRows();
             await roomsSheet.clearRows();
 
             const allRooms: (Room & {addressId: string})[] = [];
-            const addressesData = newSettings.addresses.map(addr => {
+            const addressesData = addressesToUpdate.map(addr => {
                 addr.rooms.forEach(room => {
                     allRooms.push({ ...room, addressId: addr.id });
                 });
@@ -812,3 +823,4 @@ function deserializeEmployee(row: any): Employee | null {
     
 
     
+
