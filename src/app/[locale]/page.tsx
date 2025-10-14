@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -7,6 +8,7 @@ import type { Coordinator, Settings } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useTranslations } from 'next-intl';
+import LanguageSwitcher from '@/components/language-switcher';
 
 export default function LoginPage() {
     const t = useTranslations('LoginPage');
@@ -97,5 +99,12 @@ export default function LoginPage() {
         }
     };
     
-    return <LoginView onLogin={handleLogin} isLoading={isLoading} loginError={loginError} setLoginError={setLoginError} />;
+    return (
+      <div className="relative h-screen w-full">
+        <div className="absolute top-4 right-4 z-10">
+          <LanguageSwitcher />
+        </div>
+        <LoginView onLogin={handleLogin} isLoading={isLoading} loginError={loginError} setLoginError={setLoginError} />
+      </div>
+    );
 }

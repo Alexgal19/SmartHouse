@@ -25,6 +25,7 @@ import { Button } from './ui/button';
 import Link from 'next/link';
 import { AddEmployeeForm, type EmployeeFormData } from '@/components/add-employee-form';
 import { AddNonEmployeeForm } from '@/components/add-non-employee-form';
+import LanguageSwitcher from './language-switcher';
 
 
 const navItems: { view: View; icon: React.ElementType; label: string }[] = [
@@ -32,13 +33,6 @@ const navItems: { view: View; icon: React.ElementType; label: string }[] = [
     { view: 'employees', icon: Users, label: 'employees' },
     { view: 'inspections', icon: ClipboardList, label: 'inspections' },
     { view: 'settings', icon: SettingsIcon, label: 'settings' },
-];
-
-const locales = [
-    { code: 'pl', name: 'Polski' },
-    { code: 'en', name: 'English' },
-    { code: 'uk', name: 'Українська' },
-    { code: 'es', name: 'Español' },
 ];
 
 type MainLayoutContextType = {
@@ -75,50 +69,6 @@ export const useMainLayout = () => {
     }
     return context;
 };
-
-const LanguageSwitcher = () => {
-    const t = useTranslations('LanguageSwitcher');
-    const pathname = usePathname();
-    const searchParams = useSearchParams();
-    const currentLocale = pathname.split('/')[1];
-
-    const handleLocaleChange = (locale: string) => {
-        const pathWithoutLocale = pathname.startsWith(`/${currentLocale}`)
-            ? pathname.substring(`/${currentLocale}`.length)
-            : pathname;
-        
-        const newPath = `/${locale}${pathWithoutLocale || '/'}`;
-        
-        const currentSearchParams = new URLSearchParams(searchParams.toString());
-        const queryString = currentSearchParams.toString();
-
-        const finalPath = queryString ? `${newPath}?${queryString}` : newPath;
-        window.location.href = finalPath;
-    };
-
-    return (
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                    <Globe className="h-5 w-5" />
-                    <span className="sr-only">{t('title')}</span>
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-                {locales.map((locale) => (
-                    <DropdownMenuItem 
-                        key={locale.code} 
-                        className={currentLocale === locale.code ? 'font-bold' : ''}
-                        onSelect={() => handleLocaleChange(locale.code)}
-                    >
-                       {locale.name}
-                    </DropdownMenuItem>
-                ))}
-            </DropdownMenuContent>
-        </DropdownMenu>
-    );
-};
-
 
 export default function MainLayout({
   children
