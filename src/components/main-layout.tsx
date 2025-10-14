@@ -24,6 +24,7 @@ import Link from 'next/link';
 import { AddEmployeeForm, type EmployeeFormData } from '@/components/add-employee-form';
 import { AddNonEmployeeForm } from '@/components/add-non-employee-form';
 import LanguageSwitcher from './language-switcher';
+import { locales } from '@/navigation';
 
 
 const navItems: { view: View; icon: React.ElementType; label: string }[] = [
@@ -196,8 +197,8 @@ export default function MainLayout({
             console.error(error);
             toast({
                 variant: "destructive",
-                title: t_dashboard('toast.refreshErrorTitle'),
-                description: `${t_dashboard('toast.refreshErrorDescription')} ${error instanceof Error ? error.message : ''}`,
+                title: t_dashboard('toast.criticalErrorTitle'),
+                description: `${t_dashboard('toast.criticalErrorDescription')} ${error instanceof Error ? error.message : ''}`,
             });
         }
     }, [toast, currentUser, t_dashboard]);
@@ -603,4 +604,3 @@ export default function MainLayout({
     );
 }
 
-    
