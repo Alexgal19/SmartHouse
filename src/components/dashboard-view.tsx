@@ -9,7 +9,7 @@ import { ChartContainer } from "@/components/ui/chart";
 import { useMemo, useState } from "react";
 import { Building, UserMinus, Users, Home, BedDouble, ChevronRight, ChevronDown, UserCheck, RefreshCw, UserX } from "lucide-react";
 import { isWithinInterval, format, getYear, getMonth, parseISO } from "date-fns";
-import { pl } from "date-fns/locale";
+import { pl, uk, enUS, es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "./ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslations } from "next-intl";
 
 interface DashboardViewProps {
   employees: Employee[];
@@ -30,7 +31,13 @@ interface DashboardViewProps {
   currentUser: Coordinator;
   selectedCoordinatorId: string;
   onSelectCoordinator: (id: string) => void;
-  onDataRefresh: () => Promise<void>;
+}
+
+const localesMap: Record<string, Locale> = {
+    pl,
+    uk,
+    en: enUS,
+    es
 }
 
 const formatDate = (dateString: string | null | undefined) => {
@@ -61,7 +68,7 @@ const HousingDetailView = ({
   highlightAvailable: boolean;
 }) => {
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
-
+  const t = useTranslations('Dashboard');
   const rooms = useMemo(() => {
     const roomMap = new Map<string, { occupants: (Employee | NonEmployee)[], capacity: number }>();
     
@@ -99,11 +106,11 @@ const HousingDetailView = ({
     return (
       <div>
         <Button variant="ghost" onClick={() => setSelectedRoom(null)} className="mb-4">
-          &larr; Wróć do pokoi
+          &larr; {t('backToRooms')}
         </Button>
         <DialogHeader>
-          <DialogTitle>Mieszkańcy w pokoju {selectedRoom}</DialogTitle>
-          <DialogDescription>{address.name}</DialogDescription>
+          <DialogTitle>{t('housingDetailViewTitle', {roomNumber: selectedRoom})}</DialogTitle>
+          <DialogDescription>{t('housingDetailViewDescription', {addressName: address.name})}</DialogDescription>
         </DialogHeader>
         <ScrollArea className="h-[60vh] mt-4">
           {occupants.length > 0 ? (
@@ -118,14 +125,14 @@ const HousingDetailView = ({
                       <CardHeader>
                         <CardTitle className="text-base">{occupant.fullName}</CardTitle>
                         <CardDescription>
-                          {isEmployee(occupant) ? `Pracownik / ${occupant.nationality}` : "Mieszkaniec (NZ)"}
+                          {isEmployee(occupant) ? `${t('employeeLabel')} / ${occupant.nationality}` : t('residentLabel')}
                         </CardDescription>
                       </CardHeader>
                     </Card>
                 )
             })
           ) : (
-             <p className="text-center text-muted-foreground pt-8">Brak mieszkańców w tym pokoju.</p>
+             <p className="text-center text-muted-foreground pt-8">{t('noResidentsInRoom')}</p>
           )}
         </ScrollArea>
       </div>
@@ -136,7 +143,7 @@ const HousingDetailView = ({
     <div>
        <DialogHeader>
           <DialogTitle>{address.name}</DialogTitle>
-          <DialogDescription>Wybierz pokój, aby zobaczyć mieszkańców</DialogDescription>
+          <DialogDescription>{t('selectRoom')}</DialogDescription>
         </DialogHeader>
       <ScrollArea className="h-[60vh] mt-4">
         <div className="space-y-3">
@@ -147,7 +154,7 @@ const HousingDetailView = ({
                 <CardHeader className="flex-row items-center justify-between">
                     <div className="flex items-center gap-3">
                         <BedDouble className="h-5 w-5 text-primary" />
-                        <CardTitle className="text-base">Pokój {roomNumber}</CardTitle>
+                        <CardTitle className="text-base">{t('roomLabel')} {roomNumber}</CardTitle>
                     </div>
                     <div className="flex items-center gap-3">
                         <Badge variant={highlightAvailable && hasAvailability ? 'default' : 'secondary'} className={cn(highlightAvailable && hasAvailability && 'bg-green-600')}>{occupants.length} / {capacity}</Badge>
@@ -163,13 +170,15 @@ const HousingDetailView = ({
   );
 };
 
-const VerticalChartComponent = ({ data, title, labelX }: { data: {name: string, value: number}[], title: string, labelX?: string }) => (
+const VerticalChartComponent = ({ data, title, labelX }: { data: {name: string, value: number}[], title: string, labelX?: string }) => {
+    const t = useTranslations('Dashboard');
+    return(
     <Card>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent className="pr-0 sm:pr-2 pl-4">
-        <ChartContainer config={{value: {label: labelX || "Pracownicy"}}} className="h-[400px] w-full">
+        <ChartContainer config={{value: {label: labelX || t('employeeLabel')}}} className="h-[400px] w-full">
           <ResponsiveContainer>
             <BarChart data={data} layout="vertical" margin={{ top: 20, right: 40, left: 20, bottom: 20 }}>
               <defs>
@@ -202,7 +211,7 @@ const VerticalChartComponent = ({ data, title, labelX }: { data: {name: string, 
                 content={({ active, payload, label }) => active && payload && payload.length && (
                     <div className="bg-background/95 p-3 rounded-lg border shadow-lg">
                         <p className="font-bold text-foreground">{label}</p>
-                        <p className="text-sm text-primary">{`${payload[0].value} ${labelX || 'pracowników'}`}</p>
+                        <p className="text-sm text-primary">{`${payload[0].value} ${labelX || t('employeeLabel')}`}</p>
                     </div>
                 )}
               />
@@ -214,9 +223,11 @@ const VerticalChartComponent = ({ data, title, labelX }: { data: {name: string, 
         </ChartContainer>
       </CardContent>
     </Card>
-);
+)};
 
-const DeparturesChart = ({ employees }: { employees: Employee[] }) => {
+const DeparturesChart = ({ employees, currentLocale }: { employees: Employee[], currentLocale: string }) => {
+    const t = useTranslations('Dashboard');
+    const locale = localesMap[currentLocale] || pl;
     const [departureYear, setDepartureYear] = useState<string>(String(new Date().getFullYear()));
     const [departureMonth, setDepartureMonth] = useState<string>(String(new Date().getMonth()));
     
@@ -248,10 +259,10 @@ const DeparturesChart = ({ employees }: { employees: Employee[] }) => {
         .map(([key, value]) => {
             let name;
             if (departureMonth === 'all') {
-                name = format(new Date(key), 'MMM', { locale: pl });
+                name = format(new Date(key), 'MMM', { locale });
             } else {
                 const date = new Date(Number(departureYear), Number(departureMonth), Number(key));
-                name = format(date, 'dd MMM', { locale: pl });
+                name = format(date, 'dd MMM', { locale });
             }
             return { name, value };
         })
@@ -261,12 +272,12 @@ const DeparturesChart = ({ employees }: { employees: Employee[] }) => {
             }
             return new Date(a.name).getTime() - new Date(b.name).getTime();
         });
-    }, [employees, departureYear, departureMonth]);
+    }, [employees, departureYear, departureMonth, locale]);
 
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Statystyka wyjazdów</CardTitle>
+                <CardTitle>{t('departuresChartTitle')}</CardTitle>
                 <div className="flex gap-2 pt-2">
                     <Select value={departureYear} onValueChange={setDepartureYear}>
                         <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
@@ -277,16 +288,16 @@ const DeparturesChart = ({ employees }: { employees: Employee[] }) => {
                     <Select value={departureMonth} onValueChange={setDepartureMonth}>
                         <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="all">Wszystkie miesiące</SelectItem>
+                            <SelectItem value="all">{t('allMonths')}</SelectItem>
                             {Array.from({length: 12}).map((_, i) => (
-                                <SelectItem key={i} value={String(i)}>{format(new Date(2000, i), 'LLLL', {locale: pl})}</SelectItem>
+                                <SelectItem key={i} value={String(i)}>{format(new Date(2000, i), 'LLLL', {locale})}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
                 </div>
             </CardHeader>
             <CardContent className="pr-0 sm:pr-2 pl-4">
-               <ChartContainer config={{value: {label: "Wyjazdy"}}} className="h-[400px] w-full">
+               <ChartContainer config={{value: {label: t('departuresTooltipLabel')}}} className="h-[400px] w-full">
                 <ResponsiveContainer>
                     <BarChart data={departuresByMonth} margin={{ top: 20, right: 20, left: 0, bottom: 20 }}>
                     <defs>
@@ -316,7 +327,7 @@ const DeparturesChart = ({ employees }: { employees: Employee[] }) => {
                         content={({ active, payload, label }) => active && payload && payload.length && (
                             <div className="bg-background/95 p-3 rounded-lg border shadow-lg">
                                 <p className="font-bold text-foreground">{label}</p>
-                                <p className="text-sm text-primary">{`${payload[0].value} wyjazdów`}</p>
+                                <p className="text-sm text-primary">{`${payload[0].value} ${t('departuresTooltipLabel')}`}</p>
                             </div>
                         )}
                     />
@@ -331,7 +342,10 @@ const DeparturesChart = ({ employees }: { employees: Employee[] }) => {
     );
 }
 
-const DeductionsChart = ({ employees }: { employees: Employee[] }) => {
+const DeductionsChart = ({ employees, currentLocale }: { employees: Employee[], currentLocale: string }) => {
+    const t = useTranslations('Dashboard');
+    const locale = localesMap[currentLocale] || pl;
+
     const [deductionYear, setDeductionYear] = useState<string>(String(new Date().getFullYear()));
     const [deductionMonth, setDeductionMonth] = useState<string>(String(new Date().getMonth()));
 
@@ -379,10 +393,10 @@ const DeductionsChart = ({ employees }: { employees: Employee[] }) => {
             .map(([key, value]) => {
                 let name;
                 if (deductionMonth === 'all') {
-                    name = format(new Date(key), 'MMM', { locale: pl });
+                    name = format(new Date(key), 'MMM', { locale });
                 } else {
                     const date = new Date(Number(deductionYear), Number(deductionMonth), Number(key));
-                    name = format(date, 'dd MMM', { locale: pl });
+                    name = format(date, 'dd MMM', { locale });
                 }
                 return { name, value: parseFloat(value.toFixed(2)) };
             })
@@ -392,12 +406,12 @@ const DeductionsChart = ({ employees }: { employees: Employee[] }) => {
                 }
                 return new Date(a.name).getTime() - new Date(b.name).getTime();
             });
-    }, [employees, deductionYear, deductionMonth]);
+    }, [employees, deductionYear, deductionMonth, locale]);
 
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Statystyka potrąceń</CardTitle>
+                <CardTitle>{t('deductionsChartTitle')}</CardTitle>
                 <div className="flex gap-2 pt-2">
                     <Select value={deductionYear} onValueChange={setDeductionYear}>
                         <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
@@ -408,16 +422,16 @@ const DeductionsChart = ({ employees }: { employees: Employee[] }) => {
                     <Select value={deductionMonth} onValueChange={setDeductionMonth}>
                         <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="all">Wszystkie miesiące</SelectItem>
+                            <SelectItem value="all">{t('allMonths')}</SelectItem>
                             {Array.from({length: 12}).map((_, i) => (
-                                <SelectItem key={i} value={String(i)}>{format(new Date(2000, i), 'LLLL', {locale: pl})}</SelectItem>
+                                <SelectItem key={i} value={String(i)}>{format(new Date(2000, i), 'LLLL', {locale})}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
                 </div>
             </CardHeader>
             <CardContent className="pr-0 sm:pr-2 pl-4">
-               <ChartContainer config={{value: {label: "Suma (zł)"}}} className="h-[400px] w-full">
+               <ChartContainer config={{value: {label: t('sumLabel')}}} className="h-[400px] w-full">
                 <ResponsiveContainer>
                     <BarChart data={deductionsByTime} margin={{ top: 20, right: 20, left: 0, bottom: 20 }}>
                     <defs>
@@ -441,19 +455,19 @@ const DeductionsChart = ({ employees }: { employees: Employee[] }) => {
                         tickMargin={10} 
                         tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
                         allowDecimals={false}
-                        tickFormatter={(value) => `${value} zł`}
+                        tickFormatter={(value) => `${value} ${t('deductionsTooltipLabel')}`}
                     />
                     <Tooltip 
                         cursor={{ fill: 'hsl(var(--destructive) / 0.1)' }} 
                         content={({ active, payload, label }) => active && payload && payload.length && (
                             <div className="bg-background/95 p-3 rounded-lg border shadow-lg">
                                 <p className="font-bold text-foreground">{label}</p>
-                                <p className="text-sm text-destructive">{`${payload[0].value} zł`}</p>
+                                <p className="text-sm text-destructive">{`${payload[0].value} ${t('deductionsTooltipLabel')}`}</p>
                             </div>
                         )}
                     />
                     <Bar dataKey="value" radius={[8, 8, 0, 0]} fill="url(#deductionGradient)" animationDuration={500}>
-                      <LabelList dataKey="value" position="top" offset={10} className="fill-foreground font-semibold" formatter={(value: number) => `${value} zł`} />
+                      <LabelList dataKey="value" position="top" offset={10} className="fill-foreground font-semibold" formatter={(value: number) => `${value} ${t('deductionsTooltipLabel')}`} />
                     </Bar>
                     </BarChart>
                 </ResponsiveContainer>
@@ -463,19 +477,26 @@ const DeductionsChart = ({ employees }: { employees: Employee[] }) => {
     );
 };
 
-export default function DashboardView({ employees, allEmployees, nonEmployees, settings, onEditEmployee, currentUser, selectedCoordinatorId, onSelectCoordinator, onDataRefresh }: DashboardViewProps) {
+export default function DashboardView({ employees, allEmployees, nonEmployees, settings, onEditEmployee, currentUser, selectedCoordinatorId, onSelectCoordinator }: DashboardViewProps) {
+  const t = useTranslations('Dashboard');
+  const { toast } = useToast();
+  const { isMobile } = useIsMobile();
+
   const [isHousingDialogOpen, setIsHousingDialogOpen] = useState(false);
   const [isCheckoutsDialogOpen, setIsCheckoutsDialogOpen] = useState(false);
   const [housingSearchTerm, setHousingSearchTerm] = useState("");
   const [selectedAddress, setSelectedAddress] = useState<HousingAddress | null>(null);
   const [isAllEmployeesDialogOpen, setIsAllEmployeesDialogOpen] = useState(false);
   const [highlightAvailableForAddressId, setHighlightAvailableForAddressId] = useState<string | null>(null);
-  
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const { toast } = useToast();
+  const [currentLocale, setCurrentLocale] = useState('pl');
 
-
-  const { isMobile } = useIsMobile();
+  useEffect(() => {
+    // A simple way to get locale from URL path
+    const localeFromPath = window.location.pathname.split('/')[1];
+    if (localeFromPath && ['pl', 'en', 'uk', 'es'].includes(localeFromPath)) {
+        setCurrentLocale(localeFromPath);
+    }
+  }, []);
   
   const activeEmployees = useMemo(() => employees.filter(e => e.status === 'active'), [employees]);
   const activeOccupants = useMemo(() => [...activeEmployees, ...nonEmployees], [activeEmployees, nonEmployees]);
@@ -522,9 +543,9 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
   const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
 
   const kpiData = [
-    { title: "Wszyscy pracownicy", value: employees.filter(e => e.status === 'active').length, icon: Users, color: "text-blue-400" },
-    { title: "Mieszkańcy (NZ)", value: nonEmployees.length, icon: UserX, color: "text-purple-400" },
-    { title: "Używane mieszkania", value: apartmentsInUse, icon: Building, color: "text-orange-400" },
+    { title: t('allEmployeesKPI'), value: employees.filter(e => e.status === 'active').length, icon: Users, color: "text-blue-400" },
+    { title: t('nonEmployeesKPI'), value: nonEmployees.length, icon: UserX, color: "text-purple-400" },
+    { title: t('usedApartmentsKPI'), value: apartmentsInUse, icon: Building, color: "text-orange-400" },
   ];
 
   const housingOverview = useMemo(() => {
@@ -591,12 +612,6 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
   const employeesByNationality = useMemo(() => aggregateData('nationality'), [employees]);
   const employeesByDepartment = useMemo(() => aggregateData('zaklad'), [employees]);
 
-  const handleRefreshClick = async () => {
-    setIsRefreshing(true);
-    await onDataRefresh();
-    setIsRefreshing(false);
-  }
-
   return (
     <div className="space-y-6">
         {currentUser.isAdmin && (
@@ -604,8 +619,8 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                 <CardHeader>
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div>
-                            <CardTitle>Filtry Główne</CardTitle>
-                            <CardDescription>Wybierz koordynatora, aby filtrować dane w całej aplikacji.</CardDescription>
+                            <CardTitle>{t('filtersTitle')}</CardTitle>
+                            <CardDescription>{t('filtersDescription')}</CardDescription>
                         </div>
                     </div>
                 </CardHeader>
@@ -614,11 +629,11 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                         <SelectTrigger className="w-full sm:w-72">
                             <div className="flex items-center gap-2">
                                 <UserCheck className="h-4 w-4 text-muted-foreground" />
-                                <SelectValue placeholder="Wybierz koordynatora" />
+                                <SelectValue placeholder={t('selectCoordinator')} />
                             </div>
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="all">Wszyscy Koordynatorzy</SelectItem>
+                            <SelectItem value="all">{t('allCoordinators')}</SelectItem>
                             {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
@@ -627,8 +642,8 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
         )}
         <Tabs defaultValue="summary" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="summary">Podsumowanie</TabsTrigger>
-                <TabsTrigger value="housing">Zakwaterowanie</TabsTrigger>
+                <TabsTrigger value="summary">{t('summaryTab')}</TabsTrigger>
+                <TabsTrigger value="housing">{t('housingTab')}</TabsTrigger>
             </TabsList>
             <TabsContent value="summary" className="mt-6">
                 <div className="space-y-6">
@@ -649,7 +664,7 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                             <DialogTrigger asChild>
                                 <Card className="cursor-pointer hover:border-primary transition-colors col-span-2 sm:col-span-1">
                                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                        <CardTitle className="text-sm font-medium">Wykwaterowania (30 dni)</CardTitle>
+                                        <CardTitle className="text-sm font-medium">{t('checkoutsKPI')}</CardTitle>
                                         <UserMinus className="h-4 w-4 text-muted-foreground text-red-400" />
                                     </CardHeader>
                                     <CardContent>
@@ -659,7 +674,7 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                             </DialogTrigger>
                             <DialogContent className="sm:max-w-[800px] max-h-[90vh]">
                                 <DialogHeader>
-                                    <DialogTitle>Pracownicy z nadchodzącym terminem wykwaterowania</DialogTitle>
+                                    <DialogTitle>{t('checkoutsDialogTitle')}</DialogTitle>
                                 </DialogHeader>
                                 <ScrollArea className="h-[60vh]">
                                 <div className="pr-4">
@@ -671,13 +686,13 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                                                     <CardDescription>{getCoordinatorName(employee.coordinatorId)}</CardDescription>
                                                 </CardHeader>
                                                 <CardContent className="text-sm space-y-1">
-                                                    <p><span className="font-semibold">Adres:</span> {employee.address}</p>
-                                                    <p><span className="font-semibold">Data wyjazdu:</span> {formatDate(employee.checkOutDate)}</p>
+                                                    <p><span className="font-semibold">{t('addressLabel')}</span> {employee.address}</p>
+                                                    <p><span className="font-semibold">{t('checkoutDateLabel')}</span> {formatDate(employee.checkOutDate)}</p>
                                                 </CardContent>
                                             </Card>
                                         ))
                                     ) : (
-                                        <p className="text-center text-muted-foreground py-8">Brak pracowników z nadchodzącym terminem wyjazdu.</p>
+                                        <p className="text-center text-muted-foreground py-8">{t('noUpcomingCheckouts')}</p>
                                     )}
                                 </div>
                                 </ScrollArea>
@@ -686,12 +701,12 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                     </div>
                     {!isMobile && (
                       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
-                          <VerticalChartComponent data={employeesByCoordinator} title="Pracownicy wg koordynatora" labelX="Pracownicy"/>
-                          <VerticalChartComponent data={employeesByNationality} title="Pracownicy wg narodowości" labelX="Pracownicy" />
-                          <VerticalChartComponent data={employeesByDepartment} title="Pracownicy wg zakładu" labelX="Pracownicy" />
-                          <VerticalChartComponent data={nonEmployeesByAddress} title="Mieszkańcy (NZ) wg adresu" labelX="Mieszkańcy"/>
-                          <DeparturesChart employees={employees} />
-                          <DeductionsChart employees={employees} />
+                          <VerticalChartComponent data={employeesByCoordinator} title={t('employeesByCoordinatorChart')} labelX={t('employeeLabel')}/>
+                          <VerticalChartComponent data={employeesByNationality} title={t('employeesByNationalityChart')} labelX={t('employeeLabel')} />
+                          <VerticalChartComponent data={employeesByDepartment} title={t('employeesByDepartmentChart')} labelX={t('employeeLabel')} />
+                          <VerticalChartComponent data={nonEmployeesByAddress} title={t('nonEmployeesByAddressChart')} labelX={t('nonEmployeeLabelShort')}/>
+                          <DeparturesChart employees={employees} currentLocale={currentLocale} />
+                          <DeductionsChart employees={employees} currentLocale={currentLocale} />
                           </div>
                       )}
                 </div>
@@ -699,13 +714,13 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
             <TabsContent value="housing" className="mt-6">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Przegląd zakwaterowania</CardTitle>
-                        <CardDescription>Poniżej znajduje się lista wszystkich mieszkań i ich obłożenie.</CardDescription>
+                        <CardTitle>{t('housingOverviewTitle')}</CardTitle>
+                        <CardDescription>{t('housingOverviewDescription')}</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="p-1 mb-4">
                             <Input
-                                placeholder="Szukaj po adresie..."
+                                placeholder={t('searchByAddress')}
                                 value={housingSearchTerm}
                                 onChange={(e) => setHousingSearchTerm(e.target.value)}
                                 className="w-full max-w-sm"
@@ -730,15 +745,15 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                                             <span className="text-base font-medium text-muted-foreground shrink-0">{Math.round(house.occupancy)}%</span>
                                         </div>
                                         <div className="flex justify-between text-sm mt-3 text-muted-foreground">
-                                            <span className="text-blue-500">Pojemność: <span className="font-bold text-foreground">{house.capacity}</span></span>
-                                            <span className="text-red-500">Zajęte: <span className="font-bold text-foreground">{house.occupied}</span></span>
-                                            <span onClick={(e) => handleAvailableClick(e, house)} className="text-green-500 cursor-pointer hover:underline">Wolne: <span className="font-bold text-foreground">{house.available}</span></span>
+                                            <span className="text-blue-500">{t('capacityLabel')} <span className="font-bold text-foreground">{house.capacity}</span></span>
+                                            <span className="text-red-500">{t('occupiedLabel')} <span className="font-bold text-foreground">{house.occupied}</span></span>
+                                            <span onClick={(e) => handleAvailableClick(e, house)} className="text-green-500 cursor-pointer hover:underline">{t('availableLabel')} <span className="font-bold text-foreground">{house.available}</span></span>
                                         </div>
                                     </CardContent>
                                     </Card>
                                 ))
                             ) : (
-                                <p className="text-center text-muted-foreground py-8">Brak adresów pasujących do wyszukiwania.</p>
+                                <p className="text-center text-muted-foreground py-8">{t('noMatchingAddresses')}</p>
                             )}
                             </div>
                         </ScrollArea>
@@ -773,7 +788,7 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
             {selectedAddress && (
                 <>
                     <DialogHeader>
-                        <DialogTitle>Wszyscy mieszkańcy</DialogTitle>
+                        <DialogTitle>{t('allResidents')}</DialogTitle>
                         <DialogDescription>{selectedAddress.name}</DialogDescription>
                     </DialogHeader>
                     <ScrollArea className="h-[60vh] mt-4">
@@ -785,8 +800,8 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                                    <CardTitle className="text-base">{occupant.fullName}</CardTitle>
                                    <CardDescription>
                                     {isEmployee(occupant)
-                                        ? `Pracownik / Pokój: ${occupant.roomNumber} / ${occupant.nationality}`
-                                        : `NZ / Pokój: ${occupant.roomNumber}`
+                                        ? `${t('employeeLabel')} / ${t('roomLabel')}: ${occupant.roomNumber} / ${occupant.nationality}`
+                                        : `${t('nonEmployeeLabelShort')} / ${t('roomLabel')}: ${occupant.roomNumber}`
                                     }
                                    </CardDescription>
                                  </CardHeader>
@@ -801,3 +816,5 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
     </div>
   );
 }
+
+    

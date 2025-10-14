@@ -25,7 +25,7 @@ import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, Di
 import { Label } from './ui/label';
 import { getEmployees } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
-
+import { useTranslations } from 'next-intl';
 
 interface EmployeesViewProps {
   employees: Employee[];
@@ -66,26 +66,30 @@ const EmployeeActions = ({
   onDismiss: (employeeId: string) => void;
   onRestore: (employeeId: string) => void;
   isDismissedTab: boolean;
-}) => (
-  <DropdownMenu>
-    <DropdownMenuTrigger asChild>
-      <Button variant="ghost" className="h-8 w-8 p-0">
-        <span className="sr-only">Otwórz menu</span>
-        <MoreHorizontal className="h-4 w-4" />
-      </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent align="end">
-      <DropdownMenuItem onClick={() => onEdit(employee)}>Edytuj</DropdownMenuItem>
-      {isDismissedTab ? (
-        <DropdownMenuItem onClick={() => onRestore(employee.id)}>Przywróć</DropdownMenuItem>
-      ) : (
-        <DropdownMenuItem onClick={() => onDismiss(employee.id)}>Zwolnij</DropdownMenuItem>
-      )}
-    </DropdownMenuContent>
-  </DropdownMenu>
-);
+}) => {
+  const t = useTranslations('EmployeesView');
+  return (
+    <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="h-8 w-8 p-0">
+            <span className="sr-only">{t('openMenu')}</span>
+            <MoreHorizontal className="h-4 w-4" />
+        </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => onEdit(employee)}>{t('edit')}</DropdownMenuItem>
+        {isDismissedTab ? (
+            <DropdownMenuItem onClick={() => onRestore(employee.id)}>{t('restore')}</DropdownMenuItem>
+        ) : (
+            <DropdownMenuItem onClick={() => onDismiss(employee.id)}>{t('dismiss')}</DropdownMenuItem>
+        )}
+        </DropdownMenuContent>
+    </DropdownMenu>
+  )
+};
 
 const PaginationControls = ({ currentPage, totalPages, onPageChange }: { currentPage: number, totalPages: number, onPageChange: (page: number) => void }) => {
+    const t = useTranslations('EmployeesView');
     if (totalPages <= 1) return null;
 
     return (
@@ -97,7 +101,7 @@ const PaginationControls = ({ currentPage, totalPages, onPageChange }: { current
                 <ChevronLeft className="h-4 w-4" />
             </Button>
             <span className="text-sm font-medium">
-                Strona {currentPage} z {totalPages}
+                {t('page', {current: currentPage, total: totalPages})}
             </span>
             <Button variant="outline" size="icon" onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages}>
                 <ChevronRight className="h-4 w-4" />
@@ -126,24 +130,24 @@ const EmployeeTable = ({
   isDismissedTab: boolean;
 }) => {
   const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
-  
+  const t = useTranslations('EmployeesView.columns');
   return (
     <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Imię i nazwisko</TableHead>
-              <TableHead>Narodowość</TableHead>
-              <TableHead>Płeć</TableHead>
-              <TableHead>Koordynator</TableHead>
-              <TableHead>Adres</TableHead>
-              <TableHead>Stara adresa</TableHead>
-              <TableHead>Data zameldowania</TableHead>
-              <TableHead>Data wymeldowania</TableHead>
-              <TableHead>Data zgłoszenia wyjazdu</TableHead>
-              <TableHead>Umowa od</TableHead>
-              <TableHead>Umowa do</TableHead>
-              <TableHead><span className="sr-only">Akcje</span></TableHead>
+              <TableHead>{t('fullName')}</TableHead>
+              <TableHead>{t('nationality')}</TableHead>
+              <TableHead>{t('gender')}</TableHead>
+              <TableHead>{t('coordinator')}</TableHead>
+              <TableHead>{t('address')}</TableHead>
+              <TableHead>{t('oldAddress')}</TableHead>
+              <TableHead>{t('checkInDate')}</TableHead>
+              <TableHead>{t('checkOutDate')}</TableHead>
+              <TableHead>{t('departureReportDate')}</TableHead>
+              <TableHead>{t('contractFrom')}</TableHead>
+              <TableHead>{t('contractTo')}</TableHead>
+              <TableHead><span className="sr-only">{t('actions')}</span></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -168,7 +172,7 @@ const EmployeeTable = ({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={12} className="text-center">Brak pracowników do wyświetlenia.</TableCell>
+                <TableCell colSpan={12} className="text-center">{useTranslations('EmployeesView')('noEmployees')}</TableCell>
               </TableRow>
             )}
           </TableBody>
@@ -194,6 +198,7 @@ const EmployeeCardList = ({
     isDismissedTab: boolean;
   }) => {
     const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
+    const t = useTranslations('EmployeesView');
     
     return (
         <div className="space-y-4">
@@ -210,15 +215,15 @@ const EmployeeCardList = ({
                            </div>
                         </CardHeader>
                         <CardContent className="text-base space-y-2">
-                            <p><span className="font-semibold text-muted-foreground">Adres:</span> {employee.address}</p>
-                            <p><span className="font-semibold text-muted-foreground">Pokój:</span> {employee.roomNumber}</p>
-                            <p><span className="font-semibold text-muted-foreground">Narodowość:</span> {employee.nationality}</p>
-                            <p><span className="font-semibold text-muted-foreground">Umowa do:</span> {formatDate(employee.contractEndDate)}</p>
+                            <p><span className="font-semibold text-muted-foreground">{t('card.address')}</span> {employee.address}</p>
+                            <p><span className="font-semibold text-muted-foreground">{t('card.room')}</span> {employee.roomNumber}</p>
+                            <p><span className="font-semibold text-muted-foreground">{t('card.nationality')}</span> {employee.nationality}</p>
+                            <p><span className="font-semibold text-muted-foreground">{t('card.contractTo')}</span> {formatDate(employee.contractEndDate)}</p>
                         </CardContent>
                     </Card>
                 ))
              ) : (
-                <div className="text-center text-muted-foreground py-8">Brak pracowników do wyświetlenia.</div>
+                <div className="text-center text-muted-foreground py-8">{t('noEmployees')}</div>
              )}
         </div>
     )
@@ -233,17 +238,19 @@ const NonEmployeeTable = ({
   onEdit: (nonEmployee: NonEmployee) => void;
   onDelete: (id: string) => void;
 }) => {
+  const t = useTranslations('EmployeesView');
+  const tCol = useTranslations('EmployeesView.columns');
   return (
     <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Imię i nazwisko</TableHead>
-              <TableHead>Adres</TableHead>
-              <TableHead>Numer pokoju</TableHead>
-              <TableHead>Data zameldowania</TableHead>
-              <TableHead>Data wymeldowania</TableHead>
-              <TableHead><span className="sr-only">Akcje</span></TableHead>
+              <TableHead>{tCol('fullName')}</TableHead>
+              <TableHead>{tCol('address')}</TableHead>
+              <TableHead>{t('card.room')}</TableHead>
+              <TableHead>{tCol('checkInDate')}</TableHead>
+              <TableHead>{tCol('checkOutDate')}</TableHead>
+              <TableHead><span className="sr-only">{tCol('actions')}</span></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -259,13 +266,13 @@ const NonEmployeeTable = ({
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Otwórz menu</span>
+                          <span className="sr-only">{t('openMenu')}</span>
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onEdit(person)}>Edytuj</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onDelete(person.id)} className="text-destructive">Usuń</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onEdit(person)}>{t('edit')}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onDelete(person.id)} className="text-destructive">{t('delete')}</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -273,7 +280,7 @@ const NonEmployeeTable = ({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="text-center">Brak mieszkańców (NZ) do wyświetlenia.</TableCell>
+                <TableCell colSpan={6} className="text-center">{t('noNonEmployees')}</TableCell>
               </TableRow>
             )}
           </TableBody>
@@ -291,6 +298,7 @@ const NonEmployeeCardList = ({
     onEdit: (nonEmployee: NonEmployee) => void;
     onDelete: (id: string) => void;
   }) => {
+    const t = useTranslations('EmployeesView');
     return (
         <div className="space-y-4">
              {nonEmployees.length > 0 ? (
@@ -299,31 +307,31 @@ const NonEmployeeCardList = ({
                         <CardHeader className="flex flex-row items-start justify-between pb-4">
                            <div>
                              <CardTitle className="text-lg">{person.fullName}</CardTitle>
-                             <CardDescription>{person.address}, pokój {person.roomNumber}</CardDescription>
+                             <CardDescription>{person.address}, {t('card.room')} {person.roomNumber}</CardDescription>
                            </div>
                            <div onClick={(e) => e.stopPropagation()}>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button variant="ghost" className="h-8 w-8 p-0">
-                                            <span className="sr-only">Otwórz menu</span>
+                                            <span className="sr-only">{t('openMenu')}</span>
                                             <MoreHorizontal className="h-4 w-4" />
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => onEdit(person)}>Edytuj</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => onDelete(person.id)} className="text-destructive">Usuń</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => onEdit(person)}>{t('edit')}</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => onDelete(person.id)} className="text-destructive">{t('delete')}</DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                            </div>
                         </CardHeader>
                         <CardContent className="text-base space-y-2">
-                           <p><span className="font-semibold text-muted-foreground">Zameldowanie:</span> {formatDate(person.checkInDate)}</p>
-                           <p><span className="font-semibold text-muted-foreground">Wymeldowanie:</span> {formatDate(person.checkOutDate)}</p>
+                           <p><span className="font-semibold text-muted-foreground">{t('card.checkIn')}</span> {formatDate(person.checkInDate)}</p>
+                           <p><span className="font-semibold text-muted-foreground">{t('card.checkOut')}</span> {formatDate(person.checkOutDate)}</p>
                         </CardContent>
                     </Card>
                 ))
              ) : (
-                <div className="text-center text-muted-foreground py-8">Brak mieszkańców (NZ) do wyświetlenia.</div>
+                <div className="text-center text-muted-foreground py-8">{t('noNonEmployees')}</div>
              )}
         </div>
     )
@@ -345,53 +353,54 @@ const FilterDialog = ({
     onFilterChange: (key: string, value: string) => void;
     onReset: () => void;
 }) => {
+    const t = useTranslations('EmployeesView.filterDialog');
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
                 <DialogHeader>
-                    <DialogTitle>Filtruj</DialogTitle>
+                    <DialogTitle>{t('title')}</DialogTitle>
                     <DialogDescription>
-                        Zawęź listę, aby znaleźć to, czego szukasz.
+                        {t('description')}
                     </DialogDescription>
                 </DialogHeader>
                 <ScrollArea className="max-h-[60vh]">
                   <div className="grid gap-4 p-4">
                       <div className="space-y-2">
-                        <Label>Koordynator</Label>
+                        <Label>{t('coordinator')}</Label>
                         <Select value={filters.coordinatorFilter} onValueChange={(v) => onFilterChange('coordinatorFilter', v)}>
-                        <SelectTrigger><SelectValue placeholder="Filtruj wg koordynatora" /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder={t('coordinatorPlaceholder')} /></SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
+                            <SelectItem value="all">{t('allCoordinators')}</SelectItem>
                             {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                         </SelectContent>
                         </Select>
                       </div>
                        <div className="space-y-2">
-                        <Label>Adres</Label>
+                        <Label>{t('address')}</Label>
                         <Select value={filters.addressFilter} onValueChange={(v) => onFilterChange('addressFilter', v)}>
-                        <SelectTrigger><SelectValue placeholder="Filtruj wg adresu" /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder={t('addressPlaceholder')} /></SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="all">Wszystkie adresy</SelectItem>
+                            <SelectItem value="all">{t('allAddresses')}</SelectItem>
                             {settings.addresses.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
                         </SelectContent>
                         </Select>
                       </div>
                        <div className="space-y-2">
-                        <Label>Zakład</Label>
+                        <Label>{t('department')}</Label>
                         <Select value={filters.departmentFilter} onValueChange={(v) => onFilterChange('departmentFilter', v)}>
-                        <SelectTrigger><SelectValue placeholder="Filtruj wg zakładu" /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder={t('departmentPlaceholder')} /></SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="all">Wszystkie zakłady</SelectItem>
+                            <SelectItem value="all">{t('allDepartments')}</SelectItem>
                             {settings.departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
                         </SelectContent>
                         </Select>
                       </div>
                        <div className="space-y-2">
-                        <Label>Narodowość</Label>
+                        <Label>{t('nationality')}</Label>
                         <Select value={filters.nationalityFilter} onValueChange={(v) => onFilterChange('nationalityFilter', v)}>
-                        <SelectTrigger><SelectValue placeholder="Filtruj wg narodowości" /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder={t('nationalityPlaceholder')} /></SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="all">Wszystkie narodowości</SelectItem>
+                            <SelectItem value="all">{t('allNationalities')}</SelectItem>
                             {settings.nationalities.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
                         </SelectContent>
                         </Select>
@@ -399,8 +408,8 @@ const FilterDialog = ({
                   </div>
                 </ScrollArea>
                 <DialogFooter className="flex-row !justify-between">
-                     <Button variant="ghost" onClick={onReset}>Wyczyść wszystko</Button>
-                    <Button onClick={() => onOpenChange(false)}>Zastosuj</Button>
+                     <Button variant="ghost" onClick={onReset}>{useTranslations('EmployeesView')('clearFilters')}</Button>
+                    <Button onClick={() => onOpenChange(false)}>{t('apply')}</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -421,6 +430,7 @@ export default function EmployeesView({
   onEditNonEmployee,
   onDeleteNonEmployee,
 }: EmployeesViewProps) {
+  const t = useTranslations('EmployeesView');
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
       coordinatorFilter: 'all',
@@ -550,20 +560,20 @@ export default function EmployeesView({
                         <AlertDialogTrigger asChild>
                             <Button variant="destructive" size="sm" >
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                Usuń wszystkich ({safeList.length})
+                                {t('deleteAll', {count: safeList.length})}
                             </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                             <AlertDialogHeader>
-                                <AlertDialogTitle>Czy na pewno chcesz usunąć wszystkich {isDismissedTab ? 'zwolnionych' : 'aktywnych'} pracowników?</AlertDialogTitle>
+                                <AlertDialogTitle>{t('confirmDeleteAllTitle', {status: isDismissedTab ? 'zwolnionych' : 'aktywnych'})}</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                    Tej operacji nie można cofnąć. Spowoduje to trwałe usunięcie {safeList.length} rekordów pracowników z arkusza Google.
+                                    {t('confirmDeleteAllDescription', {count: safeList.length})}
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                                <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                                <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
                                 <AlertDialogAction onClick={() => handleBulkAction(isDismissedTab ? 'dismissed' : 'active')} className="bg-destructive hover:bg-destructive/90">
-                                    Tak, usuń wszystkich
+                                    {t('yesDeleteAll')}
                                 </AlertDialogAction>
                             </AlertDialogFooter>
                         </AlertDialogContent>
@@ -608,24 +618,24 @@ export default function EmployeesView({
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between gap-4">
-            <CardTitle>Zarządzanie mieszkańcami</CardTitle>
+            <CardTitle>{t('title')}</CardTitle>
              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button size={isMobile ? "icon" : "default"}>
                         <PlusCircle className={isMobile ? "h-5 w-5" : "mr-2 h-4 w-4"} />
-                        <span className="hidden sm:inline">Dodaj</span>
+                        <span className="hidden sm:inline">{t('add')}</span>
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                    <DropdownMenuItem onClick={onAddEmployee}>Dodaj pracownika</DropdownMenuItem>
-                    <DropdownMenuItem onClick={onAddNonEmployee}>Dodaj mieszkańca (NZ)</DropdownMenuItem>
+                    <DropdownMenuItem onClick={onAddEmployee}>{t('addEmployee')}</DropdownMenuItem>
+                    <DropdownMenuItem onClick={onAddNonEmployee}>{t('addNonEmployee')}</DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>
         <div className="mt-4">
             <div className="flex items-center gap-2">
                  <Input
-                    placeholder="Szukaj po nazwisku..."
+                    placeholder={t('searchPlaceholder')}
                     value={searchTerm}
                     onChange={(e) => {
                         setSearchTerm(e.target.value);
@@ -647,9 +657,9 @@ export default function EmployeesView({
       <CardContent>
         <Tabs defaultValue="active" onValueChange={(v) => setActiveTab(v)}>
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="active">Aktywni ({activeEmployees.length})</TabsTrigger>
-            <TabsTrigger value="dismissed">Zwolnieni ({dismissedEmployees.length})</TabsTrigger>
-            <TabsTrigger value="non-employees">NZ ({filteredNonEmployees.length})</TabsTrigger>
+            <TabsTrigger value="active">{t('activeTab', {count: activeEmployees.length})}</TabsTrigger>
+            <TabsTrigger value="dismissed">{t('dismissedTab', {count: dismissedEmployees.length})}</TabsTrigger>
+            <TabsTrigger value="non-employees">{t('nonEmployeesTab', {count: filteredNonEmployees.length})}</TabsTrigger>
           </TabsList>
           <TabsContent value="active" className="mt-4 data-[state=active]:animate-in data-[state=active]:fade-in-0">
                 {renderEmployeeContent(activeEmployees, false)}
@@ -673,3 +683,5 @@ export default function EmployeesView({
     </Card>
   );
 }
+
+    
