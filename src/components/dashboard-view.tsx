@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { AreaChart, Area, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList, Cell, Label, Bar, BarChart } from "recharts";
 import { ChartContainer } from "@/components/ui/chart";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Building, UserMinus, Users, Home, BedDouble, ChevronRight, ChevronDown, UserCheck, RefreshCw, UserX } from "lucide-react";
 import { isWithinInterval, format, getYear, getMonth, parseISO } from "date-fns";
 import { pl, uk, enUS, es } from 'date-fns/locale';
