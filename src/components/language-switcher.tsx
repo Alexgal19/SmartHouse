@@ -1,33 +1,22 @@
 
 "use client";
 
-import { useTranslations } from 'next-intl';
-import { usePathname, useSearchParams, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from './ui/dropdown-menu';
 import { Button } from './ui/button';
 import { Globe } from 'lucide-react';
 import { locales } from '@/navigation';
+import { useTranslations } from 'next-intl';
 
-export default function LanguageSwitcher() {
+interface LanguageSwitcherProps {
+    onLocaleChange: (locale: string) => void;
+}
+
+export default function LanguageSwitcher({ onLocaleChange }: LanguageSwitcherProps) {
     const t = useTranslations('LanguageSwitcher');
     const pathname = usePathname();
-    const searchParams = useSearchParams();
-    const router = useRouter();
-
-    const pathSegments = pathname.split('/');
-    const currentLocale = pathSegments[1];
-
-    const handleLocaleChange = (locale: string) => {
-        const pathWithoutLocale = pathSegments.slice(2).join('/');
-        
-        const newPath = `/${locale}/${pathWithoutLocale}`;
-        
-        const currentSearchParams = new URLSearchParams(searchParams.toString());
-        const queryString = currentSearchParams.toString();
-
-        const finalPath = queryString ? `${newPath}?${queryString}` : newPath;
-        window.location.href = finalPath;
-    };
+    
+    const currentLocale = pathname.split('/')[1];
 
     return (
         <DropdownMenu>
@@ -41,8 +30,8 @@ export default function LanguageSwitcher() {
                 {locales.map((locale) => (
                     <DropdownMenuItem 
                         key={locale} 
+                        onClick={() => onLocaleChange(locale)}
                         className={currentLocale === locale ? 'font-bold' : ''}
-                        onSelect={() => handleLocaleChange(locale)}
                     >
                        {
                         {
@@ -58,3 +47,5 @@ export default function LanguageSwitcher() {
         </DropdownMenu>
     );
 };
+
+    

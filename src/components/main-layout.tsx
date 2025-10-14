@@ -20,8 +20,6 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { clearAllNotifications, markNotificationAsRead, getNotifications, getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getInspections, addInspection, updateInspection, deleteInspection, transferEmployees, bulkDeleteEmployees, bulkImportEmployees, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee, checkAndUpdateEmployeeStatuses } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useTranslations } from 'next-intl';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from './ui/dropdown-menu';
-import { Button } from './ui/button';
 import Link from 'next/link';
 import { AddEmployeeForm, type EmployeeFormData } from '@/components/add-employee-form';
 import { AddNonEmployeeForm } from '@/components/add-non-employee-form';
@@ -478,6 +476,22 @@ export default function MainLayout({
       }
     };
 
+    const handleLocaleChange = (locale: string) => {
+        const pathSegments = pathname.split('/').filter(Boolean);
+        
+        if (locales.includes(pathSegments[0] as any)) {
+            pathSegments.shift();
+        }
+
+        const newPath = `/${locale}/${pathSegments.join('/')}`;
+        
+        const currentSearchParams = new URLSearchParams(searchParams.toString());
+        const queryString = currentSearchParams.toString();
+
+        const finalUrl = queryString ? `${newPath}?${queryString}` : newPath;
+        window.location.href = finalUrl;
+    };
+
     if (isAuthenticating || isLoadingData) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -556,7 +570,7 @@ export default function MainLayout({
                         onNotificationClick={(n) => handleNotificationClick(n, n.employeeId)} 
                         onLogout={handleLogout} 
                         onClearNotifications={handleClearNotifications}
-                        languageSwitcher={<LanguageSwitcher />}
+                        onLocaleChange={handleLocaleChange}
                     />}
                     <main className="flex-1 overflow-y-auto px-2 sm:px-6 pb-6 pt-4">
                         {children}
@@ -588,3 +602,5 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
+
+    

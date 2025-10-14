@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 import React from "react";
+import LanguageSwitcher from "./language-switcher";
 
 interface HeaderProps {
   user: User | Coordinator;
@@ -38,7 +39,7 @@ interface HeaderProps {
   onNotificationClick: (notification: Notification) => void;
   onLogout: () => void;
   onClearNotifications: () => void;
-  languageSwitcher: React.ReactNode;
+  onLocaleChange: (locale: string) => void;
 }
 
 const viewTitles: Record<View, string> = {
@@ -55,7 +56,7 @@ const localesMap: Record<string, Locale> = {
     es
 }
 
-export default function Header({ user, activeView, notifications, onNotificationClick, onLogout, onClearNotifications, languageSwitcher }: HeaderProps) {
+export default function Header({ user, activeView, notifications, onNotificationClick, onLogout, onClearNotifications, onLocaleChange }: HeaderProps) {
     const { isMobile, open } = useSidebar();
     const t = useTranslations('Header');
     const navT = useTranslations('Navigation');
@@ -77,7 +78,7 @@ export default function Header({ user, activeView, notifications, onNotification
       </div>
 
       <div className="flex items-center justify-end gap-2">
-         {languageSwitcher}
+         <LanguageSwitcher onLocaleChange={onLocaleChange} />
          <Popover>
             <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative">
@@ -160,3 +161,5 @@ export default function Header({ user, activeView, notifications, onNotification
     </header>
   );
 }
+
+    

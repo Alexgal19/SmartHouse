@@ -6,14 +6,16 @@ import { LoginView } from "@/components/login-view";
 import { getSettings } from "@/lib/actions";
 import type { Coordinator, Settings } from "@/types";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useTranslations } from 'next-intl';
 import LanguageSwitcher from '@/components/language-switcher';
+import { locales } from '@/navigation';
 
 export default function LoginPage() {
     const t = useTranslations('LoginPage');
     const { toast } = useToast();
     const router = useRouter();
+    const pathname = usePathname();
     const [settings, setSettings] = useState<Settings | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [loginError, setLoginError] = useState('');
@@ -99,12 +101,25 @@ export default function LoginPage() {
         }
     };
     
+    const handleLocaleChange = (locale: string) => {
+        const pathSegments = pathname.split('/').filter(Boolean);
+        
+        if (locales.includes(pathSegments[0] as any)) {
+            pathSegments.shift();
+        }
+
+        const newPath = `/${locale}/${pathSegments.join('/')}`;
+        window.location.href = newPath;
+    };
+
     return (
       <div className="relative h-screen w-full">
         <div className="absolute top-4 right-4 z-10">
-          <LanguageSwitcher />
+          <LanguageSwitcher onLocaleChange={handleLocaleChange} />
         </div>
         <LoginView onLogin={handleLogin} isLoading={isLoading} loginError={loginError} setLoginError={setLoginError} />
       </div>
     );
 }
+
+    
