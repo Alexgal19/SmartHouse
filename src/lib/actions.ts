@@ -62,7 +62,6 @@ const serializeNonEmployee = (nonEmployee: Partial<NonEmployee>): Record<string,
             serialized[key] = '';
         }
     }
-    return serialized;
 };
 
 const serializeNotification = (notification: Omit<Notification, 'changes'> & { changes?: NotificationChange[] }): Record<string, string> => {
@@ -825,7 +824,10 @@ export async function generateMonthlyReport(year: number, month: number): Promis
         const allEmployees = await getEmployeesFromSheet();
         const allNonEmployees = await getNonEmployeesFromSheet();
         const allInspections = await getInspectionsFromSheet();
+        const settings = await getSettingsFromSheet();
         
+        const coordinatorMap = new Map(settings.coordinators.map(c => [c.uid, c.name]));
+
         // Filter data for the selected month
         const employeesInMonth = allEmployees.filter(e => {
             const checkIn = new Date(e.checkInDate);
@@ -847,7 +849,7 @@ export async function generateMonthlyReport(year: number, month: number): Promis
             const deductionReasonTotal = e.deductionReason?.reduce((sum, r) => sum + (r.checked && r.amount ? r.amount : 0), 0) || 0;
             const totalDeductions = (e.deductionRegulation || 0) + (e.deductionNo4Months || 0) + (e.deductionNo30Days || 0) + deductionReasonTotal;
             return [
-                e.id, e.fullName, e.coordinatorId, e.address, e.roomNumber, e.checkInDate, e.checkOutDate || '', e.status, totalDeductions
+                e.id, e.fullName, coordinatorMap.get(e.coordinatorId) || e.coordinatorId, e.address, e.roomNumber, e.checkInDate, e.checkOutDate || '', e.status, totalDeductions
             ];
         });
         const ws_employees = XLSX.utils.aoa_to_sheet([employeesHeaders, ...employeesData]);
@@ -890,3 +892,6 @@ export async function generateMonthlyReport(year: number, month: number): Promis
     
 
 
+
+
+    
