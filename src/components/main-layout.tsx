@@ -224,6 +224,14 @@ export default function MainLayout({
         if (!currentUser) return;
         try {
             const coordinatorIdToFetch = currentUser.isAdmin ? undefined : currentUser.uid;
+            
+            const { updated } = await checkAndUpdateEmployeeStatuses(currentUser);
+            if (updated > 0) {
+                 if (showToast) {
+                    toast({ title: t_dashboard('toast.statusUpdateSuccessTitle'), description: t_dashboard('toast.statusUpdateSuccessDescription', {count: updated})});
+                 }
+            }
+
             const [employeesData, settingsData, inspectionsData, nonEmployeesData] = await Promise.all([
                 getEmployees(coordinatorIdToFetch),
                 getSettings(),
@@ -274,6 +282,11 @@ export default function MainLayout({
             
             setLoadingMessage(t_dashboard('loadingData'));
             const coordinatorIdToFetch = currentUser.isAdmin ? undefined : currentUser.uid;
+            
+            const { updated } = await checkAndUpdateEmployeeStatuses(currentUser);
+            if (updated > 0) {
+                toast({ title: t_dashboard('toast.statusUpdateSuccessTitle'), description: t_dashboard('toast.statusUpdateSuccessDescription', {count: updated})});
+            }
 
             const [employeesData, inspectionsData, nonEmployeesData, notificationsData] = await Promise.all([
                 getEmployees(coordinatorIdToFetch),
@@ -303,11 +316,9 @@ export default function MainLayout({
 
     useEffect(() => {
         if (!isAuthenticating && currentUser) {
-            fetchAllData().then(() => {
-                handleRefreshStatuses(false);
-            });
+            fetchAllData();
         }
-    }, [isAuthenticating, currentUser, fetchAllData, handleRefreshStatuses]);
+    }, [isAuthenticating, currentUser, fetchAllData]);
 
     useEffect(() => {
         if (editEmployeeId && allEmployees) {
@@ -611,7 +622,7 @@ export default function MainLayout({
                     </main>
                 </div>
                 
-                {currentUser && <MobileNav activeView={activeView} setActiveView={(v) => router.push(`/dashboard?view=${v}`)} navItems={visibleNavItems} currentUser={currentUser}/>}
+                {currentUser && <MobileNav activeView={activeView} setActiveView={(v) => router.push(`?view=${v}`)} navItems={visibleNavItems} currentUser={currentUser}/>}
             </div>
             
             {settings && (

@@ -17,7 +17,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ScrollArea } from "./ui/scroll-area";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { useToast } from "@/hooks/use-toast";
@@ -606,11 +606,11 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div>
                             <CardTitle>Filtry Główne</CardTitle>
-                            <CardDescription>Wybierz koordynatora i odśwież statusy umów.</CardDescription>
+                            <CardDescription>Wybierz koordynatora, aby filtrować dane w całej aplikacji.</CardDescription>
                         </div>
                         <Button onClick={handleRefreshClick} disabled={isRefreshing}>
                             <RefreshCw className={cn("mr-2 h-4 w-4", isRefreshing && "animate-spin")} />
-                           {isRefreshing ? 'Odświeżanie...' : 'Odśwież statusy'}
+                           {isRefreshing ? 'Odświeżanie...' : 'Odśwież dane'}
                         </Button>
                     </div>
                 </CardHeader>
