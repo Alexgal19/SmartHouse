@@ -105,7 +105,7 @@ const LanguageSwitcher = () => {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
                 {locales.map((locale) => (
-                    <Link href={getLocalizedPath(locale.code)} key={locale.code}>
+                    <Link href={getLocalizedPath(locale.code)} key={locale.code} passHref>
                         <DropdownMenuItem className={currentLocale === locale.code ? 'font-bold' : ''}>
                            {locale.name}
                         </DropdownMenuItem>
@@ -124,6 +124,7 @@ export default function MainLayout({
 }) {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const pathname = usePathname();
     const { toast } = useToast();
     const t = useTranslations('Navigation');
     const t_dashboard = useTranslations('Dashboard');
@@ -177,7 +178,10 @@ export default function MainLayout({
 
     const handleNotificationClick = async (notification: Notification, employeeId?: string) => {
         if (employeeId) {
-             router.push(`/dashboard?view=employees&edit=${employeeId}`);
+             const currentSearchParams = new URLSearchParams(searchParams.toString());
+             currentSearchParams.set('view', 'employees');
+             currentSearchParams.set('edit', employeeId);
+             router.push(`${pathname}?${currentSearchParams.toString()}`);
         }
         
         if (!notification.isRead) {
@@ -311,10 +315,14 @@ export default function MainLayout({
             if (employeeToEdit) {
                 setEditingEmployee(employeeToEdit);
                 setIsFormOpen(true);
-                router.replace('/dashboard?view=employees', { scroll: false });
+                
+                const currentSearchParams = new URLSearchParams(searchParams.toString());
+                currentSearchParams.delete('edit');
+                router.replace(`${pathname}?${currentSearchParams.toString()}`, { scroll: false });
+
             }
         }
-    }, [editEmployeeId, allEmployees, router]);
+    }, [editEmployeeId, allEmployees, router, searchParams, pathname]);
 
     const handleSaveEmployee = async (data: EmployeeFormData) => {
         if (!currentUser) return;
@@ -568,18 +576,19 @@ export default function MainLayout({
                         <SidebarMenu>
                             {visibleNavItems.map(item => (
                                 <SidebarMenuItem key={item.view}>
-                                    <SidebarMenuButton 
-                                        onClick={() => {
-                                            if (item.view === 'settings' && !currentUser?.isAdmin) return;
-                                            router.push(`/dashboard?view=${item.view}`)
-                                        }} 
-                                        isActive={activeView === item.view}
-                                        tooltip={t(item.label)}
-                                        disabled={item.view === 'settings' && !currentUser?.isAdmin}
-                                    >
-                                        <item.icon />
-                                        <span>{t(item.label)}</span>
-                                    </SidebarMenuButton>
+                                    <Link href={`?view=${item.view}`} passHref>
+                                        <SidebarMenuButton 
+                                            isActive={activeView === item.view}
+                                            tooltip={t(item.label)}
+                                            disabled={item.view === 'settings' && !currentUser?.isAdmin}
+                                            asChild
+                                        >
+                                            <div>
+                                                <item.icon />
+                                                <span>{t(item.label)}</span>
+                                            </div>
+                                        </SidebarMenuButton>
+                                    </Link>
                                 </SidebarMenuItem>
                             ))}
                         </SidebarMenu>
@@ -627,6 +636,3 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
-
-    
-    
