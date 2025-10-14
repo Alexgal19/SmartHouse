@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { format } from 'date-fns';
+import { format, isPast, parseISO } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ScrollArea } from './ui/scroll-area';
@@ -458,8 +458,19 @@ export default function EmployeesView({
     });
   }, [employees, searchTerm, filters]);
   
-  const activeEmployees = useMemo(() => filteredEmployees.filter(e => e.status === 'active'), [filteredEmployees]);
-  const dismissedEmployees = useMemo(() => filteredEmployees.filter(e => e.status === 'dismissed'), [filteredEmployees]);
+  const activeEmployees = useMemo(() => 
+    filteredEmployees.filter(e => {
+        const isCheckedOut = e.checkOutDate ? isPast(parseISO(e.checkOutDate)) : false;
+        return e.status === 'active' && !isCheckedOut;
+    }), 
+  [filteredEmployees]);
+
+  const dismissedEmployees = useMemo(() => 
+      filteredEmployees.filter(e => {
+          const isCheckedOut = e.checkOutDate ? isPast(parseISO(e.checkOutDate)) : false;
+          return e.status === 'dismissed' || isCheckedOut;
+      }), 
+  [filteredEmployees]);
 
   const filteredNonEmployees = useMemo(() => {
     if (!nonEmployees) return [];
@@ -662,5 +673,3 @@ export default function EmployeesView({
     </Card>
   );
 }
-
-    
