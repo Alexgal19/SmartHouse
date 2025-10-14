@@ -77,11 +77,12 @@ export const useMainLayout = () => {
 
 const LanguageSwitcher = () => {
     const t = useTranslations('LanguageSwitcher');
+    const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const currentLocale = pathname.split('/')[1];
 
-    const getLocalizedPath = (locale: string) => {
+    const handleLocaleChange = (locale: string) => {
         const pathWithoutLocale = pathname.startsWith(`/${currentLocale}`)
             ? pathname.substring(`/${currentLocale}`.length)
             : pathname;
@@ -91,8 +92,9 @@ const LanguageSwitcher = () => {
         const currentSearchParams = new URLSearchParams(searchParams.toString());
         const queryString = currentSearchParams.toString();
 
-        return queryString ? `${newPath}?${queryString}` : newPath;
-    }
+        const finalPath = queryString ? `${newPath}?${queryString}` : newPath;
+        router.push(finalPath);
+    };
 
     return (
         <DropdownMenu>
@@ -104,11 +106,13 @@ const LanguageSwitcher = () => {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
                 {locales.map((locale) => (
-                    <Link href={getLocalizedPath(locale.code)} key={locale.code} passHref>
-                        <DropdownMenuItem className={currentLocale === locale.code ? 'font-bold' : ''}>
-                           {locale.name}
-                        </DropdownMenuItem>
-                    </Link>
+                    <DropdownMenuItem 
+                        key={locale.code} 
+                        className={currentLocale === locale.code ? 'font-bold' : ''}
+                        onSelect={() => handleLocaleChange(locale.code)}
+                    >
+                       {locale.name}
+                    </DropdownMenuItem>
                 ))}
             </DropdownMenuContent>
         </DropdownMenu>
@@ -631,3 +635,5 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
+
+    
