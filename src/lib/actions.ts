@@ -91,6 +91,8 @@ const NON_EMPLOYEE_HEADERS = [
 ];
 
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
+const ADDRESS_HEADERS = ['id', 'name', 'coordinatorId'];
+
 
 export async function getEmployees(coordinatorId?: string): Promise<Employee[]> {
     try {
@@ -425,7 +427,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
             await updateSimpleList(SHEET_NAME_GENDERS, newSettings.genders);
         }
         if (newSettings.addresses) {
-            const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ['id', 'name']);
+            const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ADDRESS_HEADERS);
             const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity']);
             
             await addressesSheet.clearRows();
@@ -436,7 +438,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
                 addr.rooms.forEach(room => {
                     allRooms.push({ ...room, addressId: addr.id });
                 });
-                return { id: addr.id, name: addr.name };
+                return { id: addr.id, name: addr.name, coordinatorId: addr.coordinatorId || '' };
             });
 
             if (addressesData.length > 0) {

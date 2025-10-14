@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, PlusCircle, Trash2, ShieldCheck, KeyRound, Upload, FileWarning } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Trash2, ShieldCheck, KeyRound, Upload, FileWarning, UserCheck } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -174,12 +174,13 @@ const ListManager = ({ title, items, onUpdate }: { title: string; items: string[
 
 
 // Specific Manager for Addresses (HousingAddress[])
-const AddressManager = ({ items, onUpdate }: { items: HousingAddress[]; onUpdate: (newItems: HousingAddress[]) => void }) => {
+const AddressManager = ({ items, coordinators, onUpdate }: { items: HousingAddress[]; coordinators: Coordinator[]; onUpdate: (newItems: HousingAddress[]) => void }) => {
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [newAddressName, setNewAddressName] = useState('');
     const [currentAddress, setCurrentAddress] = useState<HousingAddress | null>(null);
     const [roomsText, setRoomsText] = useState('');
+    const [selectedCoordinatorId, setSelectedCoordinatorId] = useState<string>('all');
     const { toast } = useToast();
 
     const openEditDialog = (address: HousingAddress) => {
@@ -189,12 +190,17 @@ const AddressManager = ({ items, onUpdate }: { items: HousingAddress[]; onUpdate
     };
 
     const handleAdd = () => {
+        if (selectedCoordinatorId === 'all') {
+            toast({ variant: 'destructive', title: 'Błąd', description: 'Proszę wybrać koordynatora, aby dodać adres.' });
+            return;
+        }
         const names = newAddressName.split('\n').map(name => name.trim()).filter(Boolean);
         if (names.length > 0) {
             const addressesToAdd: HousingAddress[] = names.map(name => ({
                 id: `addr-${Date.now()}-${Math.random()}`,
                 name,
                 rooms: [],
+                coordinatorId: selectedCoordinatorId,
             }));
             onUpdate([...items, ...addressesToAdd]);
             setNewAddressName('');
@@ -252,15 +258,39 @@ const AddressManager = ({ items, onUpdate }: { items: HousingAddress[]; onUpdate
         onUpdate(items.filter(item => item.id !== id));
     };
 
+    const filteredAddresses = selectedCoordinatorId === 'all' 
+        ? items 
+        : items.filter(addr => addr.coordinatorId === selectedCoordinatorId);
+
     return (
         <Card>
-            <CardHeader className="flex-row items-center justify-between">
-                <CardTitle className="text-lg">Adresy</CardTitle>
-                <Button size="sm" onClick={() => setIsAddDialogOpen(true)}><PlusCircle className="mr-2 h-4 w-4" />Dodaj Adresy</Button>
+            <CardHeader className="flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex-1">
+                    <CardTitle className="text-lg">Adresy</CardTitle>
+                    <CardDescription>Zarządzaj adresami przypisanymi do koordynatorów.</CardDescription>
+                </div>
+                <div className="flex w-full md:w-auto items-center gap-2">
+                    <Select value={selectedCoordinatorId} onValueChange={setSelectedCoordinatorId}>
+                        <SelectTrigger className="w-full md:w-56">
+                            <div className="flex items-center gap-2">
+                                <UserCheck className="h-4 w-4 text-muted-foreground" />
+                                <SelectValue placeholder="Wybierz koordynatora" />
+                            </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Wszyscy Koordynatorzy</SelectItem>
+                            {coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                     <Button size="sm" onClick={() => setIsAddDialogOpen(true)} disabled={selectedCoordinatorId === 'all'}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Dodaj
+                    </Button>
+                </div>
             </CardHeader>
             <CardContent>
                 <div className="space-y-3">
-                    {items.map(address => {
+                    {filteredAddresses.map(address => {
                         const totalCapacity = address.rooms.reduce((acc, room) => acc + room.capacity, 0);
                         return (
                             <Card key={address.id} className="bg-muted/50">
@@ -282,6 +312,9 @@ const AddressManager = ({ items, onUpdate }: { items: HousingAddress[]; onUpdate
                             </Card>
                         )
                     })}
+                     {filteredAddresses.length === 0 && selectedCoordinatorId !== 'all' && (
+                        <p className="text-center text-muted-foreground p-4">Brak adresów dla tego koordynatora. Dodaj nowy.</p>
+                    )}
                 </div>
             </CardContent>
              <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -313,7 +346,7 @@ const AddressManager = ({ items, onUpdate }: { items: HousingAddress[]; onUpdate
                                 id="rooms"
                                 value={roomsText}
                                 onChange={(e) => setRoomsText(e.target.value)}
-                                placeholder="1A: 4&#10;1B: 2&#10;Pokój 3: 3"
+                                placeholder="1A: 4\n1B: 2\nPokój 3: 3"
                                 className="h-64 font-mono text-sm"
                             />
                             <DialogDescription className="text-xs">
@@ -572,7 +605,7 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
           </TabsList>
           <div className={cn("data-[orientation=horizontal]:mt-6", isMobile ? "mt-4 ml-4" : "data-[orientation=vertical]:ml-6")}>
             <TabsContent value="addresses" className="mt-0 data-[state=active]:animate-in data-[state=active]:fade-in-0">
-              <AddressManager items={settings.addresses} onUpdate={(newAddresses) => onUpdateSettings({ addresses: newAddresses })} />
+              <AddressManager items={settings.addresses} coordinators={settings.coordinators} onUpdate={(newAddresses) => onUpdateSettings({ addresses: newAddresses })} />
             </TabsContent>
             <TabsContent value="nationalities" className="mt-0 data-[state=active]:animate-in data-[state=active]:fade-in-0">
                <ListManager title="Narodowości" items={settings.nationalities} onUpdate={(newNationalities) => onUpdateSettings({ nationalities: newNationalities })} />

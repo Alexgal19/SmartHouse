@@ -255,6 +255,7 @@ export async function getSettingsFromSheet(): Promise<Settings> {
         const addresses: HousingAddress[] = addressRows.map(row => ({
             id: row.get('id'),
             name: row.get('name'),
+            coordinatorId: row.get('coordinatorId') || null,
             rooms: roomsByAddressId.get(row.get('id')) || [],
         }));
 

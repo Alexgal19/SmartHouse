@@ -1,4 +1,5 @@
 
+
 export type User = {
   uid: string;
   name: string;
@@ -59,6 +60,7 @@ export type HousingAddress = {
   id: string;
   name: string;
   rooms: Room[];
+  coordinatorId: string | null;
 };
 
 export type InspectionCategoryItem = {
