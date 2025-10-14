@@ -78,7 +78,6 @@ export const useMainLayout = () => {
 
 const LanguageSwitcher = () => {
     const t = useTranslations('LanguageSwitcher');
-    const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const currentLocale = pathname.split('/')[1];
@@ -94,7 +93,7 @@ const LanguageSwitcher = () => {
         const queryString = currentSearchParams.toString();
 
         const finalPath = queryString ? `${newPath}?${queryString}` : newPath;
-        router.push(finalPath);
+        window.location.href = finalPath;
     };
 
     return (
@@ -587,12 +586,9 @@ export default function MainLayout({
                                             isActive={activeView === item.view}
                                             tooltip={t(item.label)}
                                             disabled={item.view === 'settings' && !currentUser?.isAdmin}
-                                            asChild
                                         >
-                                            <div>
-                                                <item.icon />
-                                                <span>{t(item.label)}</span>
-                                            </div>
+                                            <item.icon />
+                                            <span>{t(item.label)}</span>
                                         </SidebarMenuButton>
                                     </Link>
                                 </SidebarMenuItem>
