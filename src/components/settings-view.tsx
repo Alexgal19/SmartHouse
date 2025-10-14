@@ -9,17 +9,19 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, PlusCircle, Trash2, ShieldCheck, KeyRound, Upload, FileWarning, UserCheck } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Trash2, ShieldCheck, KeyRound, Upload, FileWarning, UserCheck, Download } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Input } from "./ui/input";
 import { Switch } from "./ui/switch";
-import { transferEmployees } from "@/lib/actions";
+import { transferEmployees, generateMonthlyReport } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
 import { Alert, AlertTitle, AlertDescription } from "./ui/alert";
+import { format, subMonths } from 'date-fns';
+import { pl } from 'date-fns/locale';
 
 
 interface SettingsViewProps {
@@ -576,6 +578,58 @@ const CoordinatorManager = ({ items, onUpdate, allEmployees, currentUser, onData
     );
 };
 
+const ReportGenerator = () => {
+    const { toast } = useToast();
+    const [isGenerating, setIsGenerating] = useState(false);
+    const defaultMonth = format(subMonths(new Date(), 1), 'yyyy-MM');
+    const [month, setMonth] = useState(defaultMonth);
+
+    const handleGenerateReport = async () => {
+        setIsGenerating(true);
+        try {
+            const [year, monthNum] = month.split('-').map(Number);
+            const result = await generateMonthlyReport(year, monthNum);
+            
+            if (result.success && result.fileContent) {
+                const link = document.createElement('a');
+                link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${result.fileContent}`;
+                link.download = result.fileName || `raport_${month}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                toast({ title: "Sukces", description: "Raport został wygenerowany i pobrany." });
+            } else {
+                throw new Error(result.message || "Nie udało się wygenerować raportu.");
+            }
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Wystąpił nieznany błąd.";
+            toast({ variant: 'destructive', title: "Błąd generowania raportu", description: message });
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+    
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-lg">Generowanie Raportów</CardTitle>
+                <CardDescription>Generuj miesięczne raporty w formacie Excel.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col sm:flex-row items-center gap-4">
+                 <Input 
+                    type="month" 
+                    value={month} 
+                    onChange={(e) => setMonth(e.target.value)}
+                    className="w-full sm:w-auto"
+                />
+                <Button onClick={handleGenerateReport} disabled={isGenerating || !month} className="w-full sm:w-auto">
+                    {isGenerating ? "Generowanie..." : <><Download className="mr-2 h-4 w-4"/> Generuj raport</>}
+                </Button>
+            </CardContent>
+        </Card>
+    );
+};
+
 
 export default function SettingsView({ settings, onUpdateSettings, allEmployees, currentUser, onDataRefresh, onBulkImport }: SettingsViewProps) {
   const { isMobile } = useIsMobile();
@@ -596,12 +650,13 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="addresses" className="w-full" orientation={isMobile ? "vertical" : "horizontal"}>
-          <TabsList className={cn("flex-wrap h-auto sm:h-10",isMobile ? "flex-col items-stretch" : "grid w-full grid-cols-5")}>
+          <TabsList className={cn("flex-wrap h-auto sm:h-10",isMobile ? "flex-col items-stretch" : "grid w-full grid-cols-6")}>
             <TabsTrigger value="addresses">Adresy</TabsTrigger>
             <TabsTrigger value="nationalities">Narodowości</TabsTrigger>
             <TabsTrigger value="genders">Płeć</TabsTrigger>
             <TabsTrigger value="departments">Zakłady</TabsTrigger>
             <TabsTrigger value="coordinators">Koordynatorzy</TabsTrigger>
+            <TabsTrigger value="reports">Raporty</TabsTrigger>
           </TabsList>
           <div className={cn("data-[orientation=horizontal]:mt-6", isMobile ? "mt-4 ml-4" : "data-[orientation=vertical]:ml-6")}>
             <TabsContent value="addresses" className="mt-0 data-[state=active]:animate-in data-[state=active]:fade-in-0">
@@ -619,6 +674,9 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
             <TabsContent value="coordinators" className="mt-0 data-[state=active]:animate-in data-[state=active]:fade-in-0">
                <CoordinatorManager items={settings.coordinators} onUpdate={(newCoordinators) => onUpdateSettings({ coordinators: newCoordinators })} allEmployees={allEmployees} currentUser={currentUser} onDataRefresh={onDataRefresh} />
             </TabsContent>
+            <TabsContent value="reports" className="mt-0 data-[state=active]:animate-in data-[state=active]:fade-in-0">
+               <ReportGenerator />
+            </TabsContent>
           </div>
         </Tabs>
       </CardContent>
@@ -630,5 +688,3 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
     </Card>
   );
 }
-
-    

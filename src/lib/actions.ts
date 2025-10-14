@@ -3,7 +3,7 @@
 
 import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, NonEmployee, DeductionReason } from '@/types';
 import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getInspectionsFromSheet, getNonEmployeesFromSheet } from '@/lib/sheets';
-import { format, isEqual, isPast, isValid, parse } from 'date-fns';
+import { format, isEqual, isPast, isValid, parse, startOfMonth, endOfMonth } from 'date-fns';
 import * as XLSX from 'xlsx';
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
@@ -817,10 +817,76 @@ function deserializeEmployee(row: any): Employee | null {
 }
 
 
+export async function generateMonthlyReport(year: number, month: number): Promise<{ success: boolean; message?: string; fileContent?: string; fileName?: string }> {
+    try {
+        const startDate = startOfMonth(new Date(year, month - 1));
+        const endDate = endOfMonth(new Date(year, month - 1));
 
+        const allEmployees = await getEmployeesFromSheet();
+        const allNonEmployees = await getNonEmployeesFromSheet();
+        const allInspections = await getInspectionsFromSheet();
+        
+        // Filter data for the selected month
+        const employeesInMonth = allEmployees.filter(e => {
+            const checkIn = new Date(e.checkInDate);
+            const checkOut = e.checkOutDate ? new Date(e.checkOutDate) : null;
+            return checkIn <= endDate && (!checkOut || checkOut >= startDate);
+        });
+
+        const inspectionsInMonth = allInspections.filter(i => {
+            const inspectionDate = new Date(i.date);
+            return inspectionDate >= startDate && inspectionDate <= endDate;
+        });
+        
+        // Create workbook and worksheets
+        const wb = XLSX.utils.book_new();
+
+        // 1. Pracownicy Sheet
+        const employeesHeaders = ["ID", "Imię i nazwisko", "Koordynator", "Adres", "Pokój", "Data zameldowania", "Data wymeldowania", "Status", "Potrącenia (zł)"];
+        const employeesData = employeesInMonth.map(e => {
+            const deductionReasonTotal = e.deductionReason?.reduce((sum, r) => sum + (r.checked && r.amount ? r.amount : 0), 0) || 0;
+            const totalDeductions = (e.deductionRegulation || 0) + (e.deductionNo4Months || 0) + (e.deductionNo30Days || 0) + deductionReasonTotal;
+            return [
+                e.id, e.fullName, e.coordinatorId, e.address, e.roomNumber, e.checkInDate, e.checkOutDate || '', e.status, totalDeductions
+            ];
+        });
+        const ws_employees = XLSX.utils.aoa_to_sheet([employeesHeaders, ...employeesData]);
+        XLSX.utils.book_append_sheet(wb, ws_employees, "Pracownicy");
+
+        // 2. Inspekcje Sheet
+        const inspectionsHeaders = ["ID Inspekcji", "Adres", "Data", "Koordynator", "Standard"];
+        const inspectionsData = inspectionsInMonth.map(i => [i.id, i.addressName, format(new Date(i.date), 'yyyy-MM-dd'), i.coordinatorName, i.standard || '']);
+        const ws_inspections = XLSX.utils.aoa_to_sheet([inspectionsHeaders, ...inspectionsData]);
+        XLSX.utils.book_append_sheet(wb, ws_inspections, "Inspekcje");
+        
+        // 3. Finanse Sheet
+        const financeHeaders = ["Pracownik", "Zwrot kaucji", "Kwota zwrotu", "Potrącenie (regulamin)", "Potrącenie (4 msc)", "Potrącenie (30 dni)", "Potrącenia (inne)", "Suma potrąceń"];
+        const financeData = employeesInMonth.filter(e => e.depositReturnAmount || e.deductionRegulation || e.deductionNo4Months || e.deductionNo30Days || e.deductionReason?.some(r => r.checked)).map(e => {
+            const deductionReasonTotal = e.deductionReason?.reduce((sum, r) => sum + (r.checked && r.amount ? r.amount : 0), 0) || 0;
+            const totalDeductions = (e.deductionRegulation || 0) + (e.deductionNo4Months || 0) + (e.deductionNo30Days || 0) + deductionReasonTotal;
+            return [
+                e.fullName, e.depositReturned || 'Nie dotyczy', e.depositReturnAmount || 0, e.deductionRegulation || 0, e.deductionNo4Months || 0, e.deductionNo30Days || 0, deductionReasonTotal, totalDeductions
+            ];
+        });
+        const ws_finance = XLSX.utils.aoa_to_sheet([financeHeaders, ...financeData]);
+        XLSX.utils.book_append_sheet(wb, ws_finance, "Finanse");
+
+        // Generate file
+        const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+        const fileContent = buf.toString('base64');
+        const fileName = `raport_miesieczny_${year}_${String(month).padStart(2, '0')}.xlsx`;
+
+        return { success: true, fileContent, fileName };
+
+    } catch (error) {
+        console.error("Error generating monthly report:", error);
+        return { success: false, message: error instanceof Error ? error.message : "An unknown error occurred" };
+    }
+}
     
 
     
 
     
+
 
