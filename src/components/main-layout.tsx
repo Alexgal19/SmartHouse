@@ -25,6 +25,7 @@ import { AddEmployeeForm, type EmployeeFormData } from '@/components/add-employe
 import { AddNonEmployeeForm } from '@/components/add-non-employee-form';
 import LanguageSwitcher from './language-switcher';
 import { locales } from '@/navigation';
+import { findNonSerializable } from '@/lib/utils';
 
 
 const navItems: { view: View; icon: React.ElementType; label: string }[] = [
@@ -224,10 +225,19 @@ export default function MainLayout({
         try {
             setLoadingMessage(t_loading('loadingSettings'));
             const settingsData = await getSettings();
-            setSettings(settingsData);
+            
+            try {
+                const problem = findNonSerializable(settingsData, 'settingsData');
+                if (problem) {
+                    console.error('DIAGNOSTIC: Non-serializable object found in settingsData!', problem);
+                }
+                setSettings(settingsData);
+            } catch (e) {
+                 console.error('DIAGNOSTIC: Error while setting settingsData', e);
+            }
             
             setLoadingMessage(t_loading('loadingData'));
-            await handleRefreshStatuses(false); // Run status check on initial load
+            await handleRefreshStatuses(false);
 
             const coordinatorIdToFetch = currentUser.isAdmin ? undefined : currentUser.uid;
             
@@ -238,11 +248,46 @@ export default function MainLayout({
                 getNotifications()
             ]);
 
-            setAllEmployees(employeesData);
-            setAllInspections(inspectionsData);
-            setAllNonEmployees(nonEmployeesData);
-            setAllNotifications(notificationsData);
+            try {
+                const problem = findNonSerializable(employeesData, 'employeesData');
+                if (problem) {
+                    console.error('DIAGNOSTIC: Non-serializable object found in employeesData!', problem);
+                }
+                setAllEmployees(employeesData);
+            } catch (e) {
+                 console.error('DIAGNOSTIC: Error while setting employeesData', e);
+            }
+
+            try {
+                const problem = findNonSerializable(inspectionsData, 'inspectionsData');
+                if (problem) {
+                    console.error('DIAGNOSTIC: Non-serializable object found in inspectionsData!', problem);
+                }
+                setAllInspections(inspectionsData);
+            } catch (e) {
+                 console.error('DIAGNOSTIC: Error while setting inspectionsData', e);
+            }
+
+            try {
+                const problem = findNonSerializable(nonEmployeesData, 'nonEmployeesData');
+                if (problem) {
+                    console.error('DIAGNOSTIC: Non-serializable object found in nonEmployeesData!', problem);
+                }
+                setAllNonEmployees(nonEmployeesData);
+            } catch (e) {
+                 console.error('DIAGNOSTIC: Error while setting nonEmployeesData', e);
+            }
             
+            try {
+                const problem = findNonSerializable(notificationsData, 'notificationsData');
+                if (problem) {
+                    console.error('DIAGNOSTIC: Non-serializable object found in notificationsData!', problem);
+                }
+                setAllNotifications(notificationsData);
+            } catch(e) {
+                console.error('DIAGNOSTIC: Error while setting notificationsData', e);
+            }
+
         } catch (error) {
              console.error("Critical data loading error:", error);
             toast({
@@ -603,5 +648,3 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
-
-    
