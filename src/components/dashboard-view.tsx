@@ -12,7 +12,6 @@ import { isWithinInterval, format, getYear, getMonth, parseISO } from "date-fns"
 import { type Locale, pl, uk, enUS, es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "./ui/button";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { ScrollArea } from "./ui/scroll-area";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
@@ -481,7 +480,6 @@ const DeductionsChart = ({ employees, currentLocale }: { employees: Employee[], 
 export default function DashboardView({ employees, allEmployees, nonEmployees, settings, onEditEmployee, currentUser, selectedCoordinatorId, onSelectCoordinator, onDataRefresh }: DashboardViewProps) {
   const t = useTranslations('Dashboard');
   const { toast } = useToast();
-  const { isMobile } = useIsMobile();
 
   const [isHousingDialogOpen, setIsHousingDialogOpen] = useState(false);
   const [isCheckoutsDialogOpen, setIsCheckoutsDialogOpen] = useState(false);
@@ -700,7 +698,6 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                             </DialogContent>
                         </Dialog>
                     </div>
-                    {!isMobile && (
                       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
                           <VerticalChartComponent data={employeesByCoordinator} title={t('employeesByCoordinatorChart')} labelX={t('employeeLabel')}/>
                           <VerticalChartComponent data={employeesByNationality} title={t('employeesByNationalityChart')} labelX={t('employeeLabel')} />
@@ -708,8 +705,7 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                           <VerticalChartComponent data={nonEmployeesByAddress} title={t('nonEmployeesByAddressChart')} labelX={t('nonEmployeeLabelShort')}/>
                           <DeparturesChart employees={employees} currentLocale={currentLocale} />
                           <DeductionsChart employees={employees} currentLocale={currentLocale} />
-                          </div>
-                      )}
+                      </div>
                 </div>
             </TabsContent>
             <TabsContent value="housing" className="mt-6">
@@ -817,5 +813,7 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
     </div>
   );
 }
+
+    
 
     

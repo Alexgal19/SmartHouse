@@ -199,7 +199,7 @@ export default function MainLayout({
                 description: `${t_dashboard('toast.criticalErrorDescription')} ${error instanceof Error ? error.message : ''}`,
             });
         }
-    }, [currentUser, t_dashboard, toast]);
+    }, [currentUser]);
 
     const handleRefreshStatuses = useCallback(async (showNoChangesToast = false) => {
         if (!currentUser) return;
@@ -214,7 +214,7 @@ export default function MainLayout({
         } catch (e: any) {
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.statusUpdateError') });
         }
-    }, [currentUser, refreshData, t_dashboard, toast]);
+    }, [currentUser, refreshData]);
 
     const fetchAllData = useCallback(async () => {
         if (!currentUser) return;
@@ -253,7 +253,7 @@ export default function MainLayout({
         } finally {
              setIsLoadingData(false);
         }
-    }, [currentUser, handleRefreshStatuses, t_dashboard, t_loading, toast]);
+    }, [currentUser, handleRefreshStatuses]);
 
     useEffect(() => {
         if (!isAuthenticating && currentUser) {
@@ -299,7 +299,7 @@ export default function MainLayout({
         } catch (e: any) {
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.employeeSaveError') });
         }
-    }, [currentUser, editingEmployee, allEmployees, refreshData, t_dashboard, toast]);
+    }, [currentUser, editingEmployee, allEmployees, refreshData, toast, t_dashboard]);
 
     const handleSaveNonEmployee = useCallback(async (data: Omit<NonEmployee, 'id'>) => {
         if (editingNonEmployee) {
@@ -466,24 +466,23 @@ export default function MainLayout({
     }, [currentUser, refreshData, t_dashboard, toast]);
     
     const handleBulkImport = useCallback(async (fileData: ArrayBuffer): Promise<{ success: boolean; message: string; }> => {
-        // Read directly from session storage to prevent stale state issues.
         const loggedInUserStr = sessionStorage.getItem('currentUser');
         if (!loggedInUserStr) {
-            return { success: false, message: "Brak uprawnień do importu." };
+            return { success: false, message: t_dashboard('toast.permissionError') };
         }
         const user = JSON.parse(loggedInUserStr);
 
         if (!user?.isAdmin) {
-            return { success: false, message: "Brak uprawnień do importu." };
+            return { success: false, message: t_dashboard('toast.permissionError') };
         }
         try {
             const result = await bulkImportEmployees(fileData, user.uid);
             await refreshData(false);
             return result;
         } catch (e: any) {
-            return { success: false, message: e.message || "Wystąpił nieznany błąd." };
+            return { success: false, message: e.message || t_dashboard('toast.unknownError') };
         }
-    }, [refreshData]);
+    }, [refreshData, t_dashboard]);
     
     const contextValue: MainLayoutContextType = useMemo(() => ({
         allEmployees,
@@ -619,5 +618,7 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
+
+    
 
     
