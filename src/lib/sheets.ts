@@ -19,15 +19,7 @@ const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_INSPECTIONS = 'Inspections';
 const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 
-
-let docInstance: GoogleSpreadsheet | null = null;
-let authInstance: JWT | null = null;
-
 function getAuth(): JWT {
-    if (authInstance) {
-        return authInstance;
-    }
-
     const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
     const key = process.env.GOOGLE_PRIVATE_KEY;
 
@@ -38,45 +30,44 @@ function getAuth(): JWT {
         throw new Error('Missing GOOGLE_PRIVATE_KEY. Please add it to your .env.local file.');
     }
 
-    authInstance = new JWT({
+    return new JWT({
       email: email,
       key: key.replace(/\\n/g, '\n'),
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
-    
-    return authInstance;
 }
 
 async function getDoc(): Promise<GoogleSpreadsheet> {
-    if (docInstance) {
-        return docInstance;
-    }
     const auth = getAuth();
     const doc = new GoogleSpreadsheet(SPREADSHEET_ID, auth);
     try {
         await doc.loadInfo();
-        docInstance = doc;
-        return docInstance;
-    } catch (error) {
+        return doc;
+    } catch (error: any) {
         console.error("Failed to load Google Sheet document:", error);
-        throw new Error("Could not connect to Google Sheets. Please check credentials and sheet ID.");
+        throw new Error(`Could not connect to Google Sheets. Original error: ${error.message}`);
     }
 }
 
 export async function getSheet(title: string, headers: string[]): Promise<GoogleSpreadsheetWorksheet> {
-    const doc = await getDoc();
-    let sheet = doc.sheetsByTitle[title];
-    if (!sheet) {
-        sheet = await doc.addSheet({ title, headerValues: headers });
-    } else {
-        await sheet.loadHeaderRow();
-        const currentHeaders = sheet.headerValues;
-        const missingHeaders = headers.filter(h => !currentHeaders.includes(h));
-        if(missingHeaders.length > 0) {
-            await sheet.setHeaderRow([...currentHeaders, ...missingHeaders]);
+    try {
+        const doc = await getDoc();
+        let sheet = doc.sheetsByTitle[title];
+        if (!sheet) {
+            sheet = await doc.addSheet({ title, headerValues: headers });
+        } else {
+            await sheet.loadHeaderRow();
+            const currentHeaders = sheet.headerValues;
+            const missingHeaders = headers.filter(h => !currentHeaders.includes(h));
+            if(missingHeaders.length > 0) {
+                await sheet.setHeaderRow([...currentHeaders, ...missingHeaders]);
+            }
         }
+        return sheet;
+    } catch(error: any) {
+        console.error(`Failed to get or create sheet "${title}":`, error);
+        throw new Error(`Failed to access sheet "${title}". Original error: ${error.message}`);
     }
-    return sheet;
 }
 
 const safeFormat = (dateValue: any): string | null => {
