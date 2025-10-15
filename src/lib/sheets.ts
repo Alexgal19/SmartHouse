@@ -386,7 +386,7 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
                 coordinatorId: row.get('coordinatorId'),
                 coordinatorName: row.get('coordinatorName'),
                 standard: row.get('standard') || null,
-                categories: Array.from(categoriesMap.values()),
+                categories: [...categoriesMap.values()],
             };
         }).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -397,3 +397,5 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
         throw new Error(`Could not fetch inspections. Original error: ${error.message}`);
     }
 }
+
+    
