@@ -687,7 +687,7 @@ export async function deleteInspection(id: string): Promise<void> {
 }
 
 const parseAndFormatDate = (dateValue: any): string | null => {
-    if (dateValue === null || dateValue === undefined) {
+    if (dateValue === null || dateValue === undefined || dateValue === '') {
         return null;
     }
     if (typeof dateValue === 'number') { // Excel date serial number
@@ -699,11 +699,14 @@ const parseAndFormatDate = (dateValue: any): string | null => {
         if (isValid(parsedDate)) {
             return format(parsedDate, 'yyyy-MM-dd');
         }
-        // Try parsing as ISO date
         const isoDate = new Date(dateValue);
         if(isValid(isoDate)) {
             return format(isoDate, 'yyyy-MM-dd');
         }
+    }
+    // If it's already a Date object from cellDates: true
+    if (dateValue instanceof Date && isValid(dateValue)) {
+         return format(dateValue, 'yyyy-MM-dd');
     }
     return null;
 };
@@ -734,13 +737,13 @@ export async function bulkImportEmployees(fileData: ArrayBuffer, coordinators: C
             const coordinator = coordinators.find(c => c.name.toLowerCase() === String(row.coordinatorName).toLowerCase());
             if (!coordinator) {
                 console.warn(`Koordynator "${row.coordinatorName}" nie znaleziony, pomijanie pracownika ${row.fullName}.`);
-                continue; // Skip if coordinator not found
+                continue;
             }
 
             const checkInDate = parseAndFormatDate(row.checkInDate);
             
              if (!checkInDate) {
-                console.warn(`Nieprawidłowa data zameldowania dla ${row.fullName}, pomijanie.`);
+                console.warn(`Nieprawidłowa lub pusta data zameldowania dla ${row.fullName}, pomijanie.`);
                 continue;
             }
 
@@ -761,10 +764,11 @@ export async function bulkImportEmployees(fileData: ArrayBuffer, coordinators: C
             employeesToAdd.push(employee);
         }
         
-        // Add employees to sheet
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const newRows = employeesToAdd.map(emp => serializeEmployee({ ...emp, id: `emp-${Date.now()}-${Math.random()}`, status: 'active' }));
-        await sheet.addRows(newRows, { raw: false, insert: true });
+        if (newRows.length > 0) {
+            await sheet.addRows(newRows, { raw: false, insert: true });
+        }
 
         return { success: true, message: `Pomyślnie zaimportowano ${employeesToAdd.length} pracowników.` };
 
@@ -786,7 +790,7 @@ function deserializeEmployee(row: any): Employee | null {
     }
 
     const checkInDate = safeFormat(row.get('checkInDate'));
-    if (!checkInDate) return null; // checkInDate is required
+    if (!checkInDate) return null;
 
     const deductionReasonRaw = row.get('deductionReason');
     let deductionReason: DeductionReason[] | undefined = undefined;
@@ -911,6 +915,8 @@ export async function generateMonthlyReport(year: number, month: number): Promis
 
 
 
+
+    
 
     
 
