@@ -686,13 +686,36 @@ export async function deleteInspection(id: string): Promise<void> {
     }
 }
 
+const parseAndFormatDate = (dateValue: any): string | null => {
+    if (dateValue === null || dateValue === undefined) {
+        return null;
+    }
+    if (typeof dateValue === 'number') { // Excel date serial number
+        const date = XLSX.SSF.parse_date_code(dateValue);
+        return format(new Date(date.y, date.m - 1, date.d), 'yyyy-MM-dd');
+    }
+    if (typeof dateValue === 'string') {
+        const parsedDate = parse(dateValue, 'dd-MM-yyyy', new Date());
+        if (isValid(parsedDate)) {
+            return format(parsedDate, 'yyyy-MM-dd');
+        }
+        // Try parsing as ISO date
+        const isoDate = new Date(dateValue);
+        if(isValid(isoDate)) {
+            return format(isoDate, 'yyyy-MM-dd');
+        }
+    }
+    return null;
+};
+
+
 export async function bulkImportEmployees(fileData: ArrayBuffer, coordinators: Coordinator[], actor: Coordinator): Promise<{success: boolean, message: string}> {
     if (!actor.isAdmin) {
         return { success: false, message: "Brak uprawnień do importu." };
     }
     
     try {
-        const workbook = XLSX.read(fileData, { type: 'buffer' });
+        const workbook = XLSX.read(fileData, { type: 'buffer', cellDates: true });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         const json: any[] = XLSX.utils.sheet_to_json(worksheet);
@@ -714,18 +737,9 @@ export async function bulkImportEmployees(fileData: ArrayBuffer, coordinators: C
                 continue; // Skip if coordinator not found
             }
 
-            let checkInDate;
-            if (typeof row.checkInDate === 'number') {
-                checkInDate = format(XLSX.SSF.parse_date_code(row.checkInDate), 'yyyy-MM-dd');
-            } else if (typeof row.checkInDate === 'string') {
-                 const parsedDate = parse(row.checkInDate, 'dd-MM-yyyy', new Date());
-                if (isValid(parsedDate)) {
-                    checkInDate = format(parsedDate, 'yyyy-MM-dd');
-                } else {
-                     checkInDate = row.checkInDate; // assume it's yyyy-mm-dd
-                }
-            }
-             if (!checkInDate || !isValid(new Date(checkInDate))) {
+            const checkInDate = parseAndFormatDate(row.checkInDate);
+            
+             if (!checkInDate) {
                 console.warn(`Nieprawidłowa data zameldowania dla ${row.fullName}, pomijanie.`);
                 continue;
             }
@@ -739,6 +753,10 @@ export async function bulkImportEmployees(fileData: ArrayBuffer, coordinators: C
                 roomNumber: String(row.roomNumber),
                 zaklad: String(row.zaklad),
                 checkInDate,
+                contractStartDate: parseAndFormatDate(row.contractStartDate),
+                contractEndDate: parseAndFormatDate(row.contractEndDate),
+                departureReportDate: parseAndFormatDate(row.departureReportDate),
+                comments: row.comments ? String(row.comments) : undefined,
             };
             employeesToAdd.push(employee);
         }
@@ -893,5 +911,7 @@ export async function generateMonthlyReport(year: number, month: number): Promis
 
 
 
+
+    
 
     
