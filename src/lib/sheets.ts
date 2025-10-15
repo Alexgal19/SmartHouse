@@ -105,7 +105,7 @@ const safeFormat = (dateValue: any): string | null => {
 
 
 const deserializeEmployee = (row: any): Employee | null => {
-    const plainObject = row.toObject(); // Get a plain JS object from the row
+    const plainObject = row.toObject();
     
     const id = plainObject.id;
     if (!id) return null;
@@ -126,7 +126,7 @@ const deserializeEmployee = (row: any): Employee | null => {
     const validDepositValues = ['Tak', 'Nie', 'Nie dotyczy'];
     const depositReturned = validDepositValues.includes(plainObject.depositReturned) ? plainObject.depositReturned as Employee['depositReturned'] : null;
 
-    return {
+    const newEmployee: Employee = {
         id: id,
         fullName: plainObject.fullName || '',
         coordinatorId: plainObject.coordinatorId || '',
@@ -150,10 +150,12 @@ const deserializeEmployee = (row: any): Employee | null => {
         deductionNo30Days: plainObject.deductionNo30Days ? parseFloat(plainObject.deductionNo30Days) : null,
         deductionReason: deductionReason,
     };
+    
+    return newEmployee;
 };
 
 const deserializeNonEmployee = (row: any): NonEmployee | null => {
-    const plainObject = row.toObject(); // Get a plain JS object from the row
+    const plainObject = row.toObject();
 
     const id = plainObject.id;
     const fullName = plainObject.fullName;
@@ -162,8 +164,8 @@ const deserializeNonEmployee = (row: any): NonEmployee | null => {
     
     const checkInDate = safeFormat(plainObject.checkInDate);
     if (!checkInDate) return null;
-
-    return {
+    
+    const newNonEmployee: NonEmployee = {
         id: id,
         fullName: fullName,
         address: plainObject.address || '',
@@ -172,10 +174,11 @@ const deserializeNonEmployee = (row: any): NonEmployee | null => {
         checkOutDate: safeFormat(plainObject.checkOutDate),
         comments: plainObject.comments || '',
     };
+    return newNonEmployee;
 };
 
 const deserializeNotification = (row: any): Notification | null => {
-    const plainObject = row.toObject(); // Get a plain JS object from the row
+    const plainObject = row.toObject();
 
     const id = plainObject.id;
     if (!id) return null;
@@ -193,7 +196,7 @@ const deserializeNotification = (row: any): Notification | null => {
         }
     }
     
-    return {
+    const newNotification: Notification = {
         id: id,
         message: plainObject.message || '',
         employeeId: plainObject.employeeId || '',
@@ -204,6 +207,7 @@ const deserializeNotification = (row: any): Notification | null => {
         isRead: plainObject.isRead === 'TRUE',
         changes: changes,
     };
+    return newNotification;
 };
 
 
@@ -241,7 +245,8 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             const sheet = doc.sheetsByTitle[title];
             if (!sheet) return [];
             try {
-                return await sheet.getRows();
+                const rows = await sheet.getRows();
+                return rows.map(r => r.toObject());
             } catch (e) {
                  console.warn(`Could not get rows from sheet: ${title}. It might be empty or missing.`);
                 return [];
@@ -265,8 +270,7 @@ export async function getSettingsFromSheet(): Promise<Settings> {
         ]);
         
         const roomsByAddressId = new Map<string, Room[]>();
-        roomRows.forEach(row => {
-            const rowObj = row.toObject();
+        roomRows.forEach(rowObj => {
             const addressId = rowObj.addressId;
             if (addressId) {
                 if (!roomsByAddressId.has(addressId)) {
@@ -280,8 +284,7 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             }
         });
 
-        const addresses: HousingAddress[] = addressRows.map(row => {
-            const rowObj = row.toObject();
+        const addresses: HousingAddress[] = addressRows.map(rowObj => {
             return {
                 id: rowObj.id,
                 name: rowObj.name,
@@ -290,8 +293,7 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             }
         });
 
-        const coordinators: Coordinator[] = coordinatorRows.map(row => {
-             const rowObj = row.toObject();
+        const coordinators: Coordinator[] = coordinatorRows.map(rowObj => {
              return {
                 uid: rowObj.uid,
                 name: rowObj.name,
@@ -303,10 +305,10 @@ export async function getSettingsFromSheet(): Promise<Settings> {
         return {
             id: 'global-settings',
             addresses,
-            nationalities: nationalityRows.map(row => row.get('name')).filter(Boolean),
-            departments: departmentRows.map(row => row.get('name')).filter(Boolean),
+            nationalities: nationalityRows.map(row => row.name).filter(Boolean),
+            departments: departmentRows.map(row => row.name).filter(Boolean),
             coordinators,
-            genders: genderRows.map(row => row.get('name')).filter(Boolean),
+            genders: genderRows.map(row => row.name).filter(Boolean),
         };
     } catch (error: any) {
         console.error("Error fetching settings from sheet:", error.message, error.stack);
@@ -334,16 +336,17 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
         const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, ['id']);
         const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, ['id']);
         
-        let inspectionRows = await inspectionsSheet.getRows();
+        let inspectionRowsRaw = await inspectionsSheet.getRows();
         if (coordinatorId) {
-            inspectionRows = inspectionRows.filter(row => row.get('coordinatorId') === coordinatorId);
+            inspectionRowsRaw = inspectionRowsRaw.filter(row => row.get('coordinatorId') === coordinatorId);
         }
-
-        const detailRows = await detailsSheet.getRows();
+        
+        const inspectionRows = inspectionRowsRaw.map(r => r.toObject());
+        const detailRows = (await detailsSheet.getRows()).map(r => r.toObject());
 
         const detailsByInspectionId = new Map<string, any[]>();
         detailRows.forEach(row => {
-            const inspectionId = row.get('inspectionId');
+            const inspectionId = row.inspectionId;
             if (inspectionId) {
                 if (!detailsByInspectionId.has(inspectionId)) {
                     detailsByInspectionId.set(inspectionId, []);
@@ -353,13 +356,12 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
         });
 
         const inspections = inspectionRows.map(row => {
-            const inspectionId = row.get('id');
+            const inspectionId = row.id;
             const details = detailsByInspectionId.get(inspectionId) || [];
             
             const categoriesMap = new Map<string, InspectionCategory>();
 
-            details.forEach(detailRow => {
-                const detail = detailRow.toObject();
+            details.forEach(detail => {
                 const categoryName = detail.category;
                 if (!categoriesMap.has(categoryName)) {
                     categoriesMap.set(categoryName, { name: categoryName, items: [], uwagi: '', photos: [] });
@@ -409,15 +411,15 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
                 }
             });
 
-            const inspectionDate = row.get('date');
+            const inspectionDate = row.date;
             return {
                 id: inspectionId,
-                addressId: row.get('addressId'),
-                addressName: row.get('addressName'),
+                addressId: row.addressId,
+                addressName: row.addressName,
                 date: inspectionDate ? new Date(inspectionDate).toISOString() : new Date().toISOString(),
-                coordinatorId: row.get('coordinatorId'),
-                coordinatorName: row.get('coordinatorName'),
-                standard: row.get('standard') || null,
+                coordinatorId: row.coordinatorId,
+                coordinatorName: row.coordinatorName,
+                standard: row.standard || null,
                 categories: [...categoriesMap.values()],
             };
         }).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());

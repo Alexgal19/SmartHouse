@@ -69,49 +69,6 @@ export const useMainLayout = () => {
     return context;
 };
 
-// --- START DIAGNOSTIC CODE ---
-function isPlainObject(obj: any): boolean {
-    if (typeof obj !== 'object' || obj === null) {
-      return true;
-    }
-    if (obj instanceof Date) {
-        return false;
-    }
-    let proto = Object.getPrototypeOf(obj);
-    if (proto === null) {
-      return true;
-    }
-    let baseProto = proto;
-    while (Object.getPrototypeOf(baseProto) !== null) {
-      baseProto = Object.getPrototypeOf(baseProto);
-    }
-    return proto === baseProto;
-}
-
-function findNonPlainObject(obj: any, path: string = 'root'): string | null {
-    if (!isPlainObject(obj)) {
-        const constructorName = obj.constructor ? obj.constructor.name : 'Unknown';
-        return `Path: ${path}, Constructor: ${constructorName}`;
-    }
-
-    if (Array.isArray(obj)) {
-        for (let i = 0; i < obj.length; i++) {
-            const result = findNonPlainObject(obj[i], `${path}[${i}]`);
-            if (result) return result;
-        }
-    } else if (typeof obj === 'object' && obj !== null) {
-        for (const key in obj) {
-            if (Object.prototype.hasOwnProperty.call(obj, key)) {
-                const result = findNonPlainObject(obj[key], `${path}.${key}`);
-                if (result) return result;
-            }
-        }
-    }
-    return null;
-}
-// --- END DIAGNOSTIC CODE ---
-
-
 export default function MainLayout({
   children
 }: {
@@ -267,12 +224,6 @@ export default function MainLayout({
         try {
             setLoadingMessage(t_loading('loadingSettings'));
             const settingsData = await getSettings();
-            
-            const settingsError = findNonPlainObject(settingsData, 'settingsData');
-            if (settingsError) {
-              console.error("!!! SERIALIZATION ERROR FOUND !!!");
-              console.error(settingsError);
-            }
             setSettings(settingsData);
             
             setLoadingMessage(t_loading('loadingData'));
@@ -287,32 +238,9 @@ export default function MainLayout({
                 getNotifications()
             ]);
 
-            const employeesError = findNonPlainObject(employeesData, 'employeesData');
-            if (employeesError) {
-                console.error("!!! SERIALIZATION ERROR FOUND !!!");
-                console.error(employeesError);
-            }
             setAllEmployees(employeesData);
-
-            const inspectionsError = findNonPlainObject(inspectionsData, 'inspectionsData');
-            if (inspectionsError) {
-                console.error("!!! SERIALIZATION ERROR FOUND !!!");
-                console.error(inspectionsError);
-            }
             setAllInspections(inspectionsData);
-
-            const nonEmployeesError = findNonPlainObject(nonEmployeesData, 'nonEmployeesData');
-            if (nonEmployeesError) {
-                console.error("!!! SERIALIZATION ERROR FOUND !!!");
-                console.error(nonEmployeesError);
-            }
             setAllNonEmployees(nonEmployeesData);
-            
-            const notificationsError = findNonPlainObject(notificationsData, 'notificationsData');
-            if (notificationsError) {
-                console.error("!!! SERIALIZATION ERROR FOUND !!!");
-                console.error(notificationsError);
-            }
             setAllNotifications(notificationsData);
             
         } catch (error) {
@@ -675,3 +603,5 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
+
+    
