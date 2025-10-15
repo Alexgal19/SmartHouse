@@ -221,7 +221,7 @@ const createNotification = async (
     }
 };
 
-export async function addEmployee(employeeData: Partial<Employee>, actorUid: string): Promise<Employee> {
+export async function addEmployee(employeeData: Partial<Employee>, actorUid: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const newEmployee: Employee = {
@@ -241,8 +241,6 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
         await sheet.addRow(serialized, { raw: false, insert: true });
         
         await createNotification(actorUid, 'dodał', newEmployee);
-        
-        return newEmployee;
     } catch (e) {
         if (e instanceof Error) {
             console.error("Error adding employee:", e.stack);
@@ -310,7 +308,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
     }
 }
 
-export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>): Promise<NonEmployee> {
+export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
         const newNonEmployee: NonEmployee = {
@@ -325,8 +323,6 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>): 
 
         const serialized = serializeNonEmployee(newNonEmployee);
         await sheet.addRow(serialized, { raw: false, insert: true });
-        
-        return newNonEmployee;
     } catch (e) {
         if (e instanceof Error) {
             console.error("Error adding non-employee:", e.stack);
@@ -382,12 +378,13 @@ export async function deleteNonEmployee(id: string): Promise<void> {
 
 
 export async function bulkDeleteEmployees(status: 'active' | 'dismissed', actorUid: string): Promise<void> {
-    const { coordinators } = await getSettings();
-    const actor = coordinators.find(c => c.uid === actorUid);
-     if (!actor?.isAdmin) {
-        throw new Error("Only admins can bulk delete employees.");
-    }
     try {
+        const { coordinators } = await getSettings();
+        const actor = coordinators.find(c => c.uid === actorUid);
+        if (!actor?.isAdmin) {
+            throw new Error("Only admins can bulk delete employees.");
+        }
+    
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows({ limit: 2000 });
         const rowsToDelete = rows.filter(row => row.get('status') === status);
@@ -408,10 +405,11 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', actorU
 }
 
 export async function transferEmployees(fromCoordinatorId: string, toCoordinatorId: string, actor: Coordinator): Promise<void> {
-     if (!actor?.isAdmin) {
-        throw new Error("Only admins can transfer employees.");
-    }
     try {
+        if (!actor?.isAdmin) {
+            throw new Error("Only admins can transfer employees.");
+        }
+    
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows({ limit: 2000 });
         const rowsToTransfer = rows.filter(row => row.get('coordinatorId') === fromCoordinatorId);
@@ -498,7 +496,8 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
         if (newSettings.addresses) {
             const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ADDRESS_HEADERS);
             const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity']);
-             const coordinatorsSheet = await getSheet(SHEET_NAME_COORDINATORS, ['uid', 'name']);
+            
+            const coordinatorsSheet = await getSheet(SHEET_NAME_COORDINATORS, ['uid', 'name']);
             const coordinatorRows = await coordinatorsSheet.getRows({ limit: 100 });
             const coordinator = coordinatorRows.find(row => row.get('name') === 'Holiadynets Oleksandr');
             const coordinatorId = coordinator ? coordinator.get('uid') : null;
@@ -568,6 +567,7 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
         }
     } catch (e) {
         console.error("Could not mark notification as read:", e);
+        // We don't throw here to not break the UI for a non-critical action
     }
 }
 
@@ -594,162 +594,181 @@ export async function getInspections(coordinatorId?: string): Promise<Inspection
     }
 }
 
-export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Promise<string> {
-    const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, ['id', 'addressId', 'addressName', 'date', 'coordinatorId', 'coordinatorName', 'standard']);
-    const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, ['id', 'inspectionId', 'addressName', 'date', 'coordinatorName', 'category', 'itemLabel', 'itemValue', 'uwagi', 'photoData']);
-    
-    const inspectionId = `insp-${Date.now()}`;
-    const dateString = inspectionData.date;
-
-    await inspectionsSheet.addRow({
-        id: inspectionId,
-        addressId: inspectionData.addressId,
-        addressName: inspectionData.addressName,
-        date: dateString,
-        coordinatorId: inspectionData.coordinatorId,
-        coordinatorName: inspectionData.coordinatorName,
-        standard: inspectionData.standard || '',
-    }, { raw: false, insert: true });
-
-    const detailRows: any[] = [];
-    inspectionData.categories.forEach(category => {
-        category.items.forEach(item => {
-             detailRows.push({
-                id: `insp-det-${Date.now()}-${Math.random()}`,
-                inspectionId,
-                addressName: inspectionData.addressName,
-                date: dateString,
-                coordinatorName: inspectionData.coordinatorName,
-                category: category.name,
-                itemLabel: item.label,
-                itemValue: Array.isArray(item.value) ? JSON.stringify(item.value) : (item.value?.toString() ?? ''),
-                uwagi: '',
-                photoData: '',
-            });
-        });
-
-        if (category.uwagi) {
-             detailRows.push({
-                id: `insp-det-${Date.now()}-${Math.random()}`,
-                inspectionId,
-                addressName: inspectionData.addressName,
-                date: dateString,
-                coordinatorName: inspectionData.coordinatorName,
-                category: category.name,
-                itemLabel: 'Uwagi', itemValue: '',
-                uwagi: category.uwagi,
-                photoData: '',
-             });
-        }
+export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Promise<void> {
+    try {
+        const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, ['id', 'addressId', 'addressName', 'date', 'coordinatorId', 'coordinatorName', 'standard']);
+        const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, ['id', 'inspectionId', 'addressName', 'date', 'coordinatorName', 'category', 'itemLabel', 'itemValue', 'uwagi', 'photoData']);
         
-        (category.photos || []).forEach(photo => {
-             detailRows.push({
-                id: `insp-det-${Date.now()}-${Math.random()}`,
-                inspectionId,
-                addressName: inspectionData.addressName,
-                date: dateString,
-                coordinatorName: inspectionData.coordinatorName,
-                category: category.name,
-                itemLabel: 'Photo', itemValue: '', uwagi: '',
-                photoData: photo,
-             });
-        })
-    });
-    
-    if (detailRows.length > 0) {
-        await detailsSheet.addRows(detailRows, { raw: false, insert: true });
+        const inspectionId = `insp-${Date.now()}`;
+        const dateString = inspectionData.date;
+
+        await inspectionsSheet.addRow({
+            id: inspectionId,
+            addressId: inspectionData.addressId,
+            addressName: inspectionData.addressName,
+            date: dateString,
+            coordinatorId: inspectionData.coordinatorId,
+            coordinatorName: inspectionData.coordinatorName,
+            standard: inspectionData.standard || '',
+        }, { raw: false, insert: true });
+
+        const detailRows: any[] = [];
+        inspectionData.categories.forEach(category => {
+            category.items.forEach(item => {
+                detailRows.push({
+                    id: `insp-det-${Date.now()}-${Math.random()}`,
+                    inspectionId,
+                    addressName: inspectionData.addressName,
+                    date: dateString,
+                    coordinatorName: inspectionData.coordinatorName,
+                    category: category.name,
+                    itemLabel: item.label,
+                    itemValue: Array.isArray(item.value) ? JSON.stringify(item.value) : (item.value?.toString() ?? ''),
+                    uwagi: '',
+                    photoData: '',
+                });
+            });
+
+            if (category.uwagi) {
+                detailRows.push({
+                    id: `insp-det-${Date.now()}-${Math.random()}`,
+                    inspectionId,
+                    addressName: inspectionData.addressName,
+                    date: dateString,
+                    coordinatorName: inspectionData.coordinatorName,
+                    category: category.name,
+                    itemLabel: 'Uwagi', itemValue: '',
+                    uwagi: category.uwagi,
+                    photoData: '',
+                });
+            }
+            
+            (category.photos || []).forEach(photo => {
+                detailRows.push({
+                    id: `insp-det-${Date.now()}-${Math.random()}`,
+                    inspectionId,
+                    addressName: inspectionData.addressName,
+                    date: dateString,
+                    coordinatorName: inspectionData.coordinatorName,
+                    category: category.name,
+                    itemLabel: 'Photo', itemValue: '', uwagi: '',
+                    photoData: photo,
+                });
+            })
+        });
+        
+        if (detailRows.length > 0) {
+            await detailsSheet.addRows(detailRows, { raw: false, insert: true });
+        }
+    } catch (e) {
+        if (e instanceof Error) {
+            throw new Error(`Could not add inspection: ${e.message}`);
+        }
+        throw new Error('Could not add inspection.');
     }
-    
-    return inspectionId;
 }
 
 export async function updateInspection(id: string, inspectionData: Omit<Inspection, 'id'>): Promise<void> {
-    const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, ['id', 'addressId', 'addressName', 'date', 'coordinatorId', 'coordinatorName', 'standard']);
-    const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, ['id', 'inspectionId', 'addressName', 'date', 'coordinatorName', 'category', 'itemLabel', 'itemValue', 'uwagi', 'photoData']);
-    
-    const inspectionRows = await inspectionsSheet.getRows({ limit: 1000 });
-    const inspectionRow = inspectionRows.find(r => r.get('id') === id);
-    if (!inspectionRow) throw new Error("Inspection not found");
-    
-    const dateString = inspectionData.date;
-    inspectionRow.set('addressId', inspectionData.addressId);
-    inspectionRow.set('addressName', inspectionData.addressName);
-    inspectionRow.set('date', dateString);
-    inspectionRow.set('coordinatorId', inspectionData.coordinatorId);
-    inspectionRow.set('coordinatorName', inspectionData.coordinatorName);
-    inspectionRow.set('standard', inspectionData.standard || '');
-    await inspectionRow.save();
+    try {
+        const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, ['id', 'addressId', 'addressName', 'date', 'coordinatorId', 'coordinatorName', 'standard']);
+        const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, ['id', 'inspectionId', 'addressName', 'date', 'coordinatorName', 'category', 'itemLabel', 'itemValue', 'uwagi', 'photoData']);
+        
+        const inspectionRows = await inspectionsSheet.getRows({ limit: 1000 });
+        const inspectionRow = inspectionRows.find(r => r.get('id') === id);
+        if (!inspectionRow) throw new Error("Inspection not found");
+        
+        const dateString = inspectionData.date;
+        inspectionRow.set('addressId', inspectionData.addressId);
+        inspectionRow.set('addressName', inspectionData.addressName);
+        inspectionRow.set('date', dateString);
+        inspectionRow.set('coordinatorId', inspectionData.coordinatorId);
+        inspectionRow.set('coordinatorName', inspectionData.coordinatorName);
+        inspectionRow.set('standard', inspectionData.standard || '');
+        await inspectionRow.save();
 
-    const detailRows = await detailsSheet.getRows({ limit: 5000 });
-    const oldDetailRows = detailRows.filter(r => r.get('inspectionId') === id);
-    for (let i = oldDetailRows.length - 1; i >= 0; i--) {
-        await oldDetailRows[i].delete();
-    }
+        const detailRows = await detailsSheet.getRows({ limit: 5000 });
+        const oldDetailRows = detailRows.filter(r => r.get('inspectionId') === id);
+        for (let i = oldDetailRows.length - 1; i >= 0; i--) {
+            await oldDetailRows[i].delete();
+        }
 
-    const newDetailRows: any[] = [];
-    inspectionData.categories.forEach(category => {
-        category.items.forEach(item => {
-             newDetailRows.push({
-                id: `insp-det-${Date.now()}-${Math.random()}`,
-                inspectionId: id,
-                addressName: inspectionData.addressName,
-                date: dateString,
-                coordinatorName: inspectionData.coordinatorName,
-                category: category.name,
-                itemLabel: item.label,
-                itemValue: Array.isArray(item.value) ? JSON.stringify(item.value) : (item.value?.toString() ?? ''),
-                uwagi: '',
-                photoData: '',
+        const newDetailRows: any[] = [];
+        inspectionData.categories.forEach(category => {
+            category.items.forEach(item => {
+                newDetailRows.push({
+                    id: `insp-det-${Date.now()}-${Math.random()}`,
+                    inspectionId: id,
+                    addressName: inspectionData.addressName,
+                    date: dateString,
+                    coordinatorName: inspectionData.coordinatorName,
+                    category: category.name,
+                    itemLabel: item.label,
+                    itemValue: Array.isArray(item.value) ? JSON.stringify(item.value) : (item.value?.toString() ?? ''),
+                    uwagi: '',
+                    photoData: '',
+                });
             });
+
+            if (category.uwagi) {
+                newDetailRows.push({
+                    id: `insp-det-${Date.now()}-${Math.random()}`,
+                    inspectionId: id,
+                    addressName: inspectionData.addressName,
+                    date: dateString,
+                    coordinatorName: inspectionData.coordinatorName,
+                    category: category.name,
+                    itemLabel: 'Uwagi', itemValue: '',
+                    uwagi: category.uwagi,
+                    photoData: '',
+                });
+            }
+            
+            (category.photos || []).forEach(photo => {
+                newDetailRows.push({
+                    id: `insp-det-${Date.now()}-${Math.random()}`,
+                    inspectionId: id,
+                    addressName: inspectionData.addressName,
+                    date: dateString,
+                    coordinatorName: inspectionData.coordinatorName,
+                    category: category.name,
+                    itemLabel: 'Photo', itemValue: '', uwagi: '',
+                    photoData: photo,
+                });
+            })
         });
 
-        if (category.uwagi) {
-             newDetailRows.push({
-                id: `insp-det-${Date.now()}-${Math.random()}`,
-                inspectionId: id,
-                addressName: inspectionData.addressName,
-                date: dateString,
-                coordinatorName: inspectionData.coordinatorName,
-                category: category.name,
-                itemLabel: 'Uwagi', itemValue: '',
-                uwagi: category.uwagi,
-                photoData: '',
-             });
+        if (newDetailRows.length > 0) {
+            await detailsSheet.addRows(newDetailRows, { raw: false, insert: true });
         }
-        
-        (category.photos || []).forEach(photo => {
-             newDetailRows.push({
-                id: `insp-det-${Date.now()}-${Math.random()}`,
-                inspectionId: id,
-                addressName: inspectionData.addressName,
-                date: dateString,
-                coordinatorName: inspectionData.coordinatorName,
-                category: category.name,
-                itemLabel: 'Photo', itemValue: '', uwagi: '',
-                photoData: photo,
-             });
-        })
-    });
-
-     if (newDetailRows.length > 0) {
-        await detailsSheet.addRows(newDetailRows, { raw: false, insert: true });
+    } catch(e) {
+        if (e instanceof Error) {
+            throw new Error(`Could not update inspection: ${e.message}`);
+        }
+        throw new Error('Could not update inspection.');
     }
 }
 
 export async function deleteInspection(id: string): Promise<void> {
-    const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, ['id']);
-    const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, ['inspectionId']);
+    try {
+        const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, ['id']);
+        const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, ['inspectionId']);
 
-    const inspectionRows = await inspectionsSheet.getRows({ limit: 1000 });
-    const inspectionRow = inspectionRows.find(r => r.get('id') === id);
-    if (inspectionRow) {
-        await inspectionRow.delete();
-    }
+        const inspectionRows = await inspectionsSheet.getRows({ limit: 1000 });
+        const inspectionRow = inspectionRows.find(r => r.get('id') === id);
+        if (inspectionRow) {
+            await inspectionRow.delete();
+        }
 
-    const detailRows = await detailsSheet.getRows({ limit: 5000 });
-    const oldDetailRows = detailRows.filter(r => r.get('inspectionId') === id);
-     for (let i = oldDetailRows.length - 1; i >= 0; i--) {
-        await oldDetailRows[i].delete();
+        const detailRows = await detailsSheet.getRows({ limit: 5000 });
+        const oldDetailRows = detailRows.filter(r => r.get('inspectionId') === id);
+        for (let i = oldDetailRows.length - 1; i >= 0; i--) {
+            await oldDetailRows[i].delete();
+        }
+    } catch(e) {
+         if (e instanceof Error) {
+            throw new Error(`Could not delete inspection: ${e.message}`);
+        }
+        throw new Error('Could not delete inspection.');
     }
 }
 
@@ -780,13 +799,13 @@ const parseAndFormatDate = (dateValue: any): string | null => {
 
 
 export async function bulkImportEmployees(fileData: ArrayBuffer, actorUid: string): Promise<{success: boolean, message: string}> {
-    const settings = await getSettings();
-    const actor = settings.coordinators.find(c => c.uid === actorUid);
-    if (!actor?.isAdmin) {
-        return { success: false, message: "Brak uprawnień do importu." };
-    }
-    
     try {
+        const settings = await getSettings();
+        const actor = settings.coordinators.find(c => c.uid === actorUid);
+        if (!actor?.isAdmin) {
+            return { success: false, message: "Brak uprawnień do importu." };
+        }
+        
         const workbook = XLSX.read(fileData, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
