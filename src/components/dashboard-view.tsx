@@ -9,7 +9,7 @@ import { ChartContainer } from "@/components/ui/chart";
 import { useMemo, useState, useEffect } from "react";
 import { Building, UserMinus, Users, Home, BedDouble, ChevronRight, ChevronDown, UserCheck, RefreshCw, UserX } from "lucide-react";
 import { isWithinInterval, format, getYear, getMonth, parseISO } from "date-fns";
-import { pl, uk, enUS, es } from 'date-fns/locale';
+import { type Locale, pl, uk, enUS, es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "./ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
