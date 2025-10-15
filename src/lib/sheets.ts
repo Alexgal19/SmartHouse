@@ -83,14 +83,17 @@ const safeFormat = (dateValue: any): string | null => {
     if (dateValue === null || dateValue === undefined || dateValue === '') {
         return null;
     }
-    if (dateValue instanceof Date && isValid(dateValue)) {
-         return format(dateValue, 'yyyy-MM-dd');
+    // Handle JS Date object
+    if (dateValue instanceof Date) {
+        return isValid(dateValue) ? format(dateValue, 'yyyy-MM-dd') : null;
     }
+    // Handle Excel serial number
     if (typeof dateValue === 'number') {
         const excelEpoch = new Date(1899, 11, 30);
         const date = new Date(excelEpoch.getTime() + dateValue * 24 * 60 * 60 * 1000);
         return isValid(date) ? format(date, 'yyyy-MM-dd') : null;
     }
+    // Handle string
     if (typeof dateValue === 'string') {
         const isoDate = parseISO(dateValue);
         if (isValid(isoDate)) {
@@ -102,90 +105,104 @@ const safeFormat = (dateValue: any): string | null => {
 
 
 const deserializeEmployee = (row: any): Employee | null => {
-    const id = row.get('id');
+    const plainObject = row.toObject(); // Get a plain JS object from the row
+    
+    const id = plainObject.id;
     if (!id) return null;
 
-    const checkInDate = safeFormat(row.get('checkInDate'));
-    if (!checkInDate) return null; // checkInDate is mandatory
+    const checkInDate = safeFormat(plainObject.checkInDate);
+    if (!checkInDate) return null;
 
-    const deductionReasonRaw = row.get('deductionReason');
     let deductionReason: DeductionReason[] | undefined = undefined;
-    if (deductionReasonRaw && typeof deductionReasonRaw === 'string') {
+    if (plainObject.deductionReason && typeof plainObject.deductionReason === 'string') {
         try {
-            const parsed = JSON.parse(deductionReasonRaw);
-            if(Array.isArray(parsed)) {
-                deductionReason = parsed;
-            }
+            const parsed = JSON.parse(plainObject.deductionReason);
+            if(Array.isArray(parsed)) deductionReason = parsed;
         } catch(e) {
             console.warn(`Could not parse deductionReason for employee ${id}:`, e);
         }
     }
     
-    const depositReturnedRaw = row.get('depositReturned');
     const validDepositValues = ['Tak', 'Nie', 'Nie dotyczy'];
-    const depositReturned = validDepositValues.includes(depositReturnedRaw) ? depositReturnedRaw as Employee['depositReturned'] : null;
+    const depositReturned = validDepositValues.includes(plainObject.depositReturned) ? plainObject.depositReturned as Employee['depositReturned'] : null;
 
     return {
         id: id,
-        fullName: row.get('fullName') || '',
-        coordinatorId: row.get('coordinatorId') || '',
-        nationality: row.get('nationality') || '',
-        gender: row.get('gender') || '',
-        address: row.get('address') || '',
-        roomNumber: row.get('roomNumber') || '',
-        zaklad: row.get('zaklad') || '',
+        fullName: plainObject.fullName || '',
+        coordinatorId: plainObject.coordinatorId || '',
+        nationality: plainObject.nationality || '',
+        gender: plainObject.gender || '',
+        address: plainObject.address || '',
+        roomNumber: plainObject.roomNumber || '',
+        zaklad: plainObject.zaklad || '',
         checkInDate: checkInDate,
-        checkOutDate: safeFormat(row.get('checkOutDate')),
-        contractStartDate: safeFormat(row.get('contractStartDate')),
-        contractEndDate: safeFormat(row.get('contractEndDate')),
-        departureReportDate: safeFormat(row.get('departureReportDate')),
-        comments: row.get('comments') || '',
-        status: row.get('status') as 'active' | 'dismissed' || 'active',
-        oldAddress: row.get('oldAddress') || undefined,
+        checkOutDate: safeFormat(plainObject.checkOutDate),
+        contractStartDate: safeFormat(plainObject.contractStartDate),
+        contractEndDate: safeFormat(plainObject.contractEndDate),
+        departureReportDate: safeFormat(plainObject.departureReportDate),
+        comments: plainObject.comments || '',
+        status: plainObject.status as 'active' | 'dismissed' || 'active',
+        oldAddress: plainObject.oldAddress || undefined,
         depositReturned: depositReturned,
-        depositReturnAmount: row.get('depositReturnAmount') ? parseFloat(row.get('depositReturnAmount')) : null,
-        deductionRegulation: row.get('deductionRegulation') ? parseFloat(row.get('deductionRegulation')) : null,
-        deductionNo4Months: row.get('deductionNo4Months') ? parseFloat(row.get('deductionNo4Months')) : null,
-        deductionNo30Days: row.get('deductionNo30Days') ? parseFloat(row.get('deductionNo30Days')) : null,
+        depositReturnAmount: plainObject.depositReturnAmount ? parseFloat(plainObject.depositReturnAmount) : null,
+        deductionRegulation: plainObject.deductionRegulation ? parseFloat(plainObject.deductionRegulation) : null,
+        deductionNo4Months: plainObject.deductionNo4Months ? parseFloat(plainObject.deductionNo4Months) : null,
+        deductionNo30Days: plainObject.deductionNo30Days ? parseFloat(plainObject.deductionNo30Days) : null,
         deductionReason: deductionReason,
     };
 };
 
 const deserializeNonEmployee = (row: any): NonEmployee | null => {
-    const id = row.get('id');
-    const fullName = row.get('fullName');
+    const plainObject = row.toObject(); // Get a plain JS object from the row
+
+    const id = plainObject.id;
+    const fullName = plainObject.fullName;
     
-    if (!id && !fullName) return null;
+    if (!id || !fullName) return null;
     
-    const checkInDate = safeFormat(row.get('checkInDate'));
+    const checkInDate = safeFormat(plainObject.checkInDate);
     if (!checkInDate) return null;
 
     return {
         id: id,
         fullName: fullName,
-        address: row.get('address'),
-        roomNumber: row.get('roomNumber'),
+        address: plainObject.address || '',
+        roomNumber: plainObject.roomNumber || '',
         checkInDate: checkInDate,
-        checkOutDate: safeFormat(row.get('checkOutDate')),
-        comments: row.get('comments'),
+        checkOutDate: safeFormat(plainObject.checkOutDate),
+        comments: plainObject.comments || '',
     };
 };
 
-const deserializeNotification = (row: any): Notification => {
-    const createdAtString = row.get('createdAt');
+const deserializeNotification = (row: any): Notification | null => {
+    const plainObject = row.toObject(); // Get a plain JS object from the row
+
+    const id = plainObject.id;
+    if (!id) return null;
+    
+    const createdAtString = plainObject.createdAt;
     const createdAt = createdAtString ? new Date(createdAtString).toISOString() : new Date(0).toISOString();
     
-    const changesString = row.get('changes');
+    let changes: NotificationChange[] = [];
+    if (plainObject.changes && typeof plainObject.changes === 'string') {
+        try {
+            const parsed = JSON.parse(plainObject.changes);
+            if (Array.isArray(parsed)) changes = parsed;
+        } catch(e) {
+             console.warn(`Could not parse changes for notification ${id}:`, e);
+        }
+    }
+    
     return {
-        id: row.get('id'),
-        message: row.get('message'),
-        employeeId: row.get('employeeId'),
-        employeeName: row.get('employeeName'),
-        coordinatorId: row.get('coordinatorId'),
-        coordinatorName: row.get('coordinatorName'),
+        id: id,
+        message: plainObject.message || '',
+        employeeId: plainObject.employeeId || '',
+        employeeName: plainObject.employeeName || '',
+        coordinatorId: plainObject.coordinatorId || '',
+        coordinatorName: plainObject.coordinatorName || '',
         createdAt: createdAt,
-        isRead: row.get('isRead') === 'TRUE',
-        changes: changesString ? JSON.parse(changesString) : [],
+        isRead: plainObject.isRead === 'TRUE',
+        changes: changes,
     };
 };
 
@@ -193,7 +210,7 @@ const deserializeNotification = (row: any): Notification => {
 export async function getEmployeesFromSheet(coordinatorId?: string): Promise<Employee[]> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, ['id']);
-        const rows = await sheet.getRows({ offset: 0, limit: 5000 });
+        const rows = await sheet.getRows();
         
         const filteredRows = coordinatorId ? rows.filter(row => row.get('coordinatorId') === coordinatorId) : rows;
 
@@ -208,7 +225,7 @@ export async function getEmployeesFromSheet(coordinatorId?: string): Promise<Emp
 export async function getNonEmployeesFromSheet(): Promise<NonEmployee[]> {
   try {
     const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, ['id']);
-    const rows = await sheet.getRows({ offset: 0, limit: 5000 });
+    const rows = await sheet.getRows();
     return rows.map(deserializeNonEmployee).filter((e): e is NonEmployee => e !== null);
   } catch (error: any) {
     console.error("Error fetching non-employees from sheet:", error.message, error.stack);
@@ -249,32 +266,39 @@ export async function getSettingsFromSheet(): Promise<Settings> {
         
         const roomsByAddressId = new Map<string, Room[]>();
         roomRows.forEach(row => {
-            const addressId = row.get('addressId');
-            if (addressId && !roomsByAddressId.has(addressId)) {
-                roomsByAddressId.set(addressId, []);
-            }
+            const rowObj = row.toObject();
+            const addressId = rowObj.addressId;
             if (addressId) {
+                if (!roomsByAddressId.has(addressId)) {
+                    roomsByAddressId.set(addressId, []);
+                }
                 roomsByAddressId.get(addressId)!.push({
-                    id: row.get('id'),
-                    name: row.get('name'),
-                    capacity: Number(row.get('capacity')) || 0,
+                    id: rowObj.id,
+                    name: rowObj.name,
+                    capacity: Number(rowObj.capacity) || 0,
                 });
             }
         });
 
-        const addresses: HousingAddress[] = addressRows.map(row => ({
-            id: row.get('id'),
-            name: row.get('name'),
-            coordinatorId: row.get('coordinatorId') || null,
-            rooms: roomsByAddressId.get(row.get('id')) || [],
-        }));
+        const addresses: HousingAddress[] = addressRows.map(row => {
+            const rowObj = row.toObject();
+            return {
+                id: rowObj.id,
+                name: rowObj.name,
+                coordinatorId: rowObj.coordinatorId || null,
+                rooms: roomsByAddressId.get(rowObj.id) || [],
+            }
+        });
 
-        const coordinators: Coordinator[] = coordinatorRows.map(row => ({
-            uid: row.get('uid'),
-            name: row.get('name'),
-            isAdmin: row.get('isAdmin') === 'TRUE',
-            password: row.get('password'),
-        }));
+        const coordinators: Coordinator[] = coordinatorRows.map(row => {
+             const rowObj = row.toObject();
+             return {
+                uid: rowObj.uid,
+                name: rowObj.name,
+                isAdmin: rowObj.isAdmin === 'TRUE',
+                password: rowObj.password,
+            }
+        });
 
         return {
             id: 'global-settings',
@@ -334,20 +358,21 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
             
             const categoriesMap = new Map<string, InspectionCategory>();
 
-            details.forEach(detail => {
-                const categoryName = detail.get('category');
+            details.forEach(detailRow => {
+                const detail = detailRow.toObject();
+                const categoryName = detail.category;
                 if (!categoriesMap.has(categoryName)) {
                     categoriesMap.set(categoryName, { name: categoryName, items: [], uwagi: '', photos: [] });
                 }
                 const category = categoriesMap.get(categoryName)!;
 
-                const itemLabel = detail.get('itemLabel');
-                const uwagi = detail.get('uwagi');
-                const photoData = detail.get('photoData');
+                const itemLabel = detail.itemLabel;
+                const uwagi = detail.uwagi;
+                const photoData = detail.photoData;
 
                 if (itemLabel && itemLabel !== 'Photo' && itemLabel !== 'Uwagi') {
                     let type: InspectionCategoryItem['type'] = 'text';
-                    let rawValue = detail.get('itemValue');
+                    let rawValue = detail.itemValue;
                     let value: any = rawValue;
                     
                     if (rawValue?.toLowerCase() === 'true' || rawValue?.toLowerCase() === 'false') {
@@ -355,7 +380,7 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
                         value = rawValue.toLowerCase() === 'true';
                     } else if (['Wysoki', 'Normalny', 'Niski', 'Bardzo czysto', 'Czysto', 'Brudno', 'Bardzo brudno'].includes(rawValue)) {
                         type = 'select';
-                    } else if (!isNaN(parseFloat(rawValue)) && isFinite(rawValue)) {
+                    } else if (rawValue && !isNaN(parseFloat(rawValue)) && isFinite(rawValue)) {
                         const num = parseFloat(rawValue);
                         if (num >= 1 && num <= 5 && Number.isInteger(num)) {
                             type = 'rating';
@@ -363,6 +388,13 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
                         } else {
                             type = 'number';
                             value = num;
+                        }
+                    } else if (typeof rawValue === 'string' && rawValue.startsWith('[') && rawValue.endsWith(']')) {
+                        try {
+                            value = JSON.parse(rawValue);
+                            type = 'checkbox_group';
+                        } catch {
+                            // keep as text
                         }
                     }
 
@@ -390,7 +422,7 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
             };
         }).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-        return inspections as unknown as Inspection[];
+        return inspections;
 
     } catch (error: any) {
         console.error("Error fetching inspections from sheet:", error.message, error.stack);
