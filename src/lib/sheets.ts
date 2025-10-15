@@ -79,13 +79,23 @@ export async function getSheet(title: string, headers: string[]): Promise<Google
     return sheet;
 }
 
+const safeFormat = (dateStr: string | undefined | null): string | null => {
+    if (!dateStr) return null;
+    const date = new Date(dateStr);
+    if (!isValid(date)) return null;
+    try {
+        return format(date, 'yyyy-MM-dd');
+    } catch {
+        return null;
+    }
+};
+
 const deserializeEmployee = (row: any): Employee | null => {
     const id = row.get('id');
-    const fullName = row.get('fullName');
-    
-    if (!id && !fullName) return null;
-    
-    const checkInDate = row.get('checkInDate') ? format(new Date(row.get('checkInDate')), 'yyyy-MM-dd') : '';
+    if (!id) return null;
+
+    const checkInDate = safeFormat(row.get('checkInDate'));
+    if (!checkInDate) return null; // checkInDate is mandatory
 
     const deductionReasonRaw = row.get('deductionReason');
     let deductionReason: DeductionReason[] | undefined = undefined;
@@ -104,33 +114,22 @@ const deserializeEmployee = (row: any): Employee | null => {
     const validDepositValues = ['Tak', 'Nie', 'Nie dotyczy'];
     const depositReturned = validDepositValues.includes(depositReturnedRaw) ? depositReturnedRaw as Employee['depositReturned'] : null;
 
-    const safeFormat = (dateStr: string | undefined | null): string | null => {
-      if (!dateStr) return null;
-      const date = new Date(dateStr);
-      if (!isValid(date)) return null;
-      try {
-          return format(date, 'yyyy-MM-dd');
-      } catch {
-          return null;
-      }
-    }
-
     return {
         id: id,
-        fullName: fullName,
-        coordinatorId: row.get('coordinatorId'),
-        nationality: row.get('nationality'),
-        gender: row.get('gender') as string,
-        address: row.get('address'),
-        roomNumber: row.get('roomNumber'),
-        zaklad: row.get('zaklad'),
+        fullName: row.get('fullName') || '',
+        coordinatorId: row.get('coordinatorId') || '',
+        nationality: row.get('nationality') || '',
+        gender: row.get('gender') || '',
+        address: row.get('address') || '',
+        roomNumber: row.get('roomNumber') || '',
+        zaklad: row.get('zaklad') || '',
         checkInDate: checkInDate,
         checkOutDate: safeFormat(row.get('checkOutDate')),
         contractStartDate: safeFormat(row.get('contractStartDate')),
         contractEndDate: safeFormat(row.get('contractEndDate')),
         departureReportDate: safeFormat(row.get('departureReportDate')),
-        comments: row.get('comments'),
-        status: row.get('status') as 'active' | 'dismissed',
+        comments: row.get('comments') || '',
+        status: row.get('status') as 'active' | 'dismissed' || 'active',
         oldAddress: row.get('oldAddress') || undefined,
         depositReturned: depositReturned,
         depositReturnAmount: row.get('depositReturnAmount') ? parseFloat(row.get('depositReturnAmount')) : null,
@@ -147,7 +146,7 @@ const deserializeNonEmployee = (row: any): NonEmployee | null => {
     
     if (!id && !fullName) return null;
     
-    const checkInDate = row.get('checkInDate') ? format(new Date(row.get('checkInDate')), 'yyyy-MM-dd') : null;
+    const checkInDate = safeFormat(row.get('checkInDate'));
     if (!checkInDate) return null;
 
     return {
@@ -156,7 +155,7 @@ const deserializeNonEmployee = (row: any): NonEmployee | null => {
         address: row.get('address'),
         roomNumber: row.get('roomNumber'),
         checkInDate: checkInDate,
-        checkOutDate: row.get('checkOutDate') ? format(new Date(row.get('checkOutDate')), 'yyyy-MM-dd') : null,
+        checkOutDate: safeFormat(row.get('checkOutDate')),
         comments: row.get('comments'),
     };
 };
@@ -183,7 +182,7 @@ const deserializeNotification = (row: any): Notification => {
 export async function getEmployeesFromSheet(coordinatorId?: string): Promise<Employee[]> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, ['id']);
-        const rows = await sheet.getRows();
+        const rows = await sheet.getRows({ offset: 0, limit: 5000 });
         
         const filteredRows = coordinatorId ? rows.filter(row => row.get('coordinatorId') === coordinatorId) : rows;
 
@@ -198,7 +197,7 @@ export async function getEmployeesFromSheet(coordinatorId?: string): Promise<Emp
 export async function getNonEmployeesFromSheet(): Promise<NonEmployee[]> {
   try {
     const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, ['id']);
-    const rows = await sheet.getRows();
+    const rows = await sheet.getRows({ offset: 0, limit: 5000 });
     return rows.map(deserializeNonEmployee).filter((e): e is NonEmployee => e !== null);
   } catch (error: any) {
     console.error("Error fetching non-employees from sheet:", error.message, error.stack);
@@ -387,3 +386,5 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
         throw new Error(`Could not fetch inspections. Original error: ${error.message}`);
     }
 }
+
+    

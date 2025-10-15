@@ -93,6 +93,69 @@ const NON_EMPLOYEE_HEADERS = [
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
 const ADDRESS_HEADERS = ['id', 'name', 'coordinatorId'];
 
+const safeFormat = (dateStr: string | undefined | null): string | null => {
+    if (!dateStr) return null;
+    const date = new Date(dateStr);
+    if (!isValid(date)) return null;
+    try {
+        return format(date, 'yyyy-MM-dd');
+    } catch {
+        return null;
+    }
+};
+
+const deserializeEmployee = (row: any): Employee | null => {
+    const id = row.get('id');
+    if (!id) return null;
+
+    const checkInDate = safeFormat(row.get('checkInDate'));
+    if (!checkInDate) return null;
+
+    const deductionReasonRaw = row.get('deductionReason');
+    let deductionReason: DeductionReason[] | undefined = undefined;
+    if (deductionReasonRaw && typeof deductionReasonRaw === 'string') {
+        try {
+            const parsed = JSON.parse(deductionReasonRaw);
+            if(Array.isArray(parsed)) {
+                deductionReason = parsed;
+            }
+        } catch(e) {
+            // Ignore parse error
+        }
+    }
+    
+    const status = row.get('status');
+    const depositReturnedRaw = row.get('depositReturned');
+    const validDepositValues = ['Tak', 'Nie', 'Nie dotyczy'];
+    const depositReturned = validDepositValues.includes(depositReturnedRaw) ? depositReturnedRaw as Employee['depositReturned'] : null;
+
+
+    return {
+        id: id,
+        fullName: row.get('fullName') || '',
+        coordinatorId: row.get('coordinatorId') || '',
+        nationality: row.get('nationality') || '',
+        gender: row.get('gender') || '',
+        address: row.get('address') || '',
+        roomNumber: row.get('roomNumber') || '',
+        zaklad: row.get('zaklad') || '',
+        checkInDate: checkInDate,
+        checkOutDate: safeFormat(row.get('checkOutDate')),
+        contractStartDate: safeFormat(row.get('contractStartDate')),
+        contractEndDate: safeFormat(row.get('contractEndDate')),
+        departureReportDate: safeFormat(row.get('departureReportDate')),
+        comments: row.get('comments') || '',
+        status: status === 'active' || status === 'dismissed' ? status : 'active',
+        oldAddress: row.get('oldAddress') || null,
+        depositReturned: depositReturned,
+        depositReturnAmount: row.get('depositReturnAmount') ? parseFloat(row.get('depositReturnAmount')) : null,
+        deductionRegulation: row.get('deductionRegulation') ? parseFloat(row.get('deductionRegulation')) : null,
+        deductionNo4Months: row.get('deductionNo4Months') ? parseFloat(row.get('deductionNo4Months')) : null,
+        deductionNo30Days: row.get('deductionNo30Days') ? parseFloat(row.get('deductionNo30Days')) : null,
+        deductionReason: deductionReason,
+    };
+};
+
 
 export async function getEmployees(coordinatorId?: string): Promise<Employee[]> {
     try {
@@ -782,67 +845,6 @@ export async function bulkImportEmployees(fileData: ArrayBuffer, coordinators: C
          return { success: false, message: e.message || "Wystąpił nieznany błąd podczas przetwarzania pliku." };
     }
 }
-function deserializeEmployee(row: any): Employee | null {
-    const id = row.get('id');
-    if (!id) return null;
-
-    const safeFormat = (dateStr: string | undefined | null): string | null => {
-        if (!dateStr || !isValid(new Date(dateStr))) return null;
-        try {
-            return format(new Date(dateStr), 'yyyy-MM-dd');
-        } catch {
-            return null;
-        }
-    }
-
-    const checkInDate = safeFormat(row.get('checkInDate'));
-    if (!checkInDate) return null;
-
-    const deductionReasonRaw = row.get('deductionReason');
-    let deductionReason: DeductionReason[] | undefined = undefined;
-    if (deductionReasonRaw && typeof deductionReasonRaw === 'string') {
-        try {
-            const parsed = JSON.parse(deductionReasonRaw);
-            if(Array.isArray(parsed)) {
-                deductionReason = parsed;
-            }
-        } catch(e) {
-            // Ignore parse error
-        }
-    }
-    
-    const status = row.get('status');
-    const depositReturnedRaw = row.get('depositReturned');
-    const validDepositValues = ['Tak', 'Nie', 'Nie dotyczy'];
-    const depositReturned = validDepositValues.includes(depositReturnedRaw) ? depositReturnedRaw as Employee['depositReturned'] : null;
-
-
-    return {
-        id: id,
-        fullName: row.get('fullName') || '',
-        coordinatorId: row.get('coordinatorId') || '',
-        nationality: row.get('nationality') || '',
-        gender: row.get('gender') || '',
-        address: row.get('address') || '',
-        roomNumber: row.get('roomNumber') || '',
-        zaklad: row.get('zaklad') || '',
-        checkInDate: checkInDate,
-        checkOutDate: safeFormat(row.get('checkOutDate')),
-        contractStartDate: safeFormat(row.get('contractStartDate')),
-        contractEndDate: safeFormat(row.get('contractEndDate')),
-        departureReportDate: safeFormat(row.get('departureReportDate')),
-        comments: row.get('comments') || '',
-        status: status === 'active' || status === 'dismissed' ? status : 'active',
-        oldAddress: row.get('oldAddress') || null,
-        depositReturned: depositReturned,
-        depositReturnAmount: row.get('depositReturnAmount') ? parseFloat(row.get('depositReturnAmount')) : null,
-        deductionRegulation: row.get('deductionRegulation') ? parseFloat(row.get('deductionRegulation')) : null,
-        deductionNo4Months: row.get('deductionNo4Months') ? parseFloat(row.get('deductionNo4Months')) : null,
-        deductionNo30Days: row.get('deductionNo30Days') ? parseFloat(row.get('deductionNo30Days')) : null,
-        deductionReason: deductionReason,
-    };
-}
-
 
 export async function generateMonthlyReport(year: number, month: number): Promise<{ success: boolean; message?: string; fileContent?: string; fileName?: string }> {
     try {
@@ -858,6 +860,7 @@ export async function generateMonthlyReport(year: number, month: number): Promis
 
         // Filter data for the selected month
         const employeesInMonth = allEmployees.filter(e => {
+            if (!e.checkInDate) return false;
             const checkIn = new Date(e.checkInDate);
             const checkOut = e.checkOutDate ? new Date(e.checkOutDate) : null;
             return checkIn <= endDate && (!checkOut || checkOut >= startDate);
@@ -913,17 +916,5 @@ export async function generateMonthlyReport(year: number, month: number): Promis
         return { success: false, message: error instanceof Error ? error.message : "An unknown error occurred" };
     }
 }
-    
-
-    
-
-    
-
-
-
-
-    
-
-    
 
     
