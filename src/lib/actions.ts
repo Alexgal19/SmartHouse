@@ -408,9 +408,7 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', actorU
     }
 }
 
-export async function transferEmployees(fromCoordinatorId: string, toCoordinatorId: string, actorUid: string): Promise<void> {
-    const { coordinators } = await getSettings();
-    const actor = coordinators.find(c => c.uid === actorUid);
+export async function transferEmployees(fromCoordinatorId: string, toCoordinatorId: string, actor: Coordinator): Promise<void> {
      if (!actor?.isAdmin) {
         throw new Error("Only admins can transfer employees.");
     }
@@ -423,6 +421,7 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
             return;
         }
 
+        const { coordinators } = await getSettings();
         const toCoordinator = coordinators.find(c => c.uid === toCoordinatorId);
         if (!toCoordinator) {
             throw new Error("Target coordinator not found.");
