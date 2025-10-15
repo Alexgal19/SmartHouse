@@ -160,7 +160,7 @@ export async function getEmployees(coordinatorId?: string): Promise<Employee[]> 
         return employees;
     } catch (error) {
         console.error("Error in getEmployees (actions):", error);
-        throw new Error(`Could not fetch employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        throw error;
     }
 }
 
@@ -170,7 +170,7 @@ export async function getNonEmployees(): Promise<NonEmployee[]> {
      return nonEmployees;
   } catch (error) {
     console.error("Error in getNonEmployees (actions):", error);
-    throw new Error(`Could not fetch non-employees: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw error;
   }
 }
 
@@ -180,7 +180,7 @@ export async function getSettings(): Promise<Settings> {
         return settings;
     } catch (error) {
         console.error("Error in getSettings (actions):", error);
-        throw new Error(`Could not fetch settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        throw error;
     }
 }
 
@@ -242,11 +242,8 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
         
         await createNotification(actorUid, 'dodał', newEmployee);
     } catch (e) {
-        if (e instanceof Error) {
-            console.error("Error adding employee:", e.stack);
-            throw new Error(`Could not add employee: ${e.message}`);
-        }
-        throw new Error('Could not add employee due to an unknown error.');
+        console.error("Error adding employee:", e);
+        throw e;
     }
 }
 
@@ -300,11 +297,8 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         }
 
     } catch (e) {
-        if (e instanceof Error) {
-            console.error("Error updating employee:", e.stack);
-            throw new Error(`Could not update employee: ${e.message}`);
-        }
-        throw new Error('Could not update employee due to an unknown error.');
+        console.error("Error updating employee:", e);
+        throw e;
     }
 }
 
@@ -324,11 +318,8 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>): 
         const serialized = serializeNonEmployee(newNonEmployee);
         await sheet.addRow(serialized, { raw: false, insert: true });
     } catch (e) {
-        if (e instanceof Error) {
-            console.error("Error adding non-employee:", e.stack);
-            throw new Error(`Could not add non-employee: ${e.message}`);
-        }
-        throw new Error('Could not add non-employee due to an unknown error.');
+        console.error("Error adding non-employee:", e);
+        throw e;
     }
 }
 
@@ -350,11 +341,8 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
         await row.save();
 
     } catch (e) {
-        if (e instanceof Error) {
-            console.error("Error updating non-employee:", e.stack);
-            throw new Error(`Could not update non-employee: ${e.message}`);
-        }
-        throw new Error('Could not update non-employee due to an unknown error.');
+        console.error("Error updating non-employee:", e);
+        throw e;
     }
 }
 
@@ -369,10 +357,8 @@ export async function deleteNonEmployee(id: string): Promise<void> {
             throw new Error('Non-employee not found');
         }
     } catch (e) {
-        if (e instanceof Error) {
-            throw new Error(`Could not delete non-employee: ${e.message}`);
-        }
-        throw new Error('Could not delete non-employee.');
+        console.error("Error deleting non-employee:", e);
+        throw e;
     }
 }
 
@@ -397,10 +383,8 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', actorU
             await rowsToDelete[i].delete();
         }
     } catch (e) {
-        if (e instanceof Error) {
-            throw new Error(`Could not bulk delete employees: ${e.message}`);
-        }
-        throw new Error('Could not bulk delete employees.');
+        console.error("Error bulk deleting employees:", e);
+        throw e;
     }
 }
 
@@ -429,10 +413,8 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
             await row.save();
         }
     } catch (e) {
-        if (e instanceof Error) {
-            throw new Error(`Could not transfer employees: ${e.message}`);
-        }
-        throw new Error('Could not transfer employees.');
+        console.error("Error transferring employees:", e);
+        throw e;
     }
 }
 
@@ -467,10 +449,8 @@ export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<
         }
         return { updated: updatedCount };
     } catch (e) {
-         if (e instanceof Error) {
-            throw new Error(`Could not update statuses: ${e.message}`);
-        }
-        throw new Error('Could not update statuses.');
+        console.error("Error updating statuses:", e);
+        throw e;
     }
 }
 
@@ -538,10 +518,8 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
              }
         }
     } catch (error) {
-        if (error instanceof Error) {
-            throw new Error(`Could not update settings: ${error.message}`);
-        }
-        throw new Error('An unknown error occurred while updating settings.');
+        console.error("Error updating settings:", error);
+        throw error;
     }
 }
 
@@ -551,8 +529,8 @@ export async function getNotifications(): Promise<Notification[]> {
         const notifications = await getNotificationsFromSheet();
         return notifications;
     } catch (error) {
-         console.error("Error in getNotifications (actions):", error);
-        throw new Error(`Could not fetch notifications: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.error("Error in getNotifications (actions):", error);
+        throw error;
     }
 }
 
@@ -567,10 +545,7 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
         }
     } catch (e) {
         console.error("Could not mark notification as read:", e);
-        if (e instanceof Error) {
-            throw new Error(`Could not mark notification as read: ${e.message}`);
-        }
-        throw new Error('Could not mark notification as read.');
+        throw e;
     }
 }
 
@@ -579,10 +554,8 @@ export async function clearAllNotifications(): Promise<void> {
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
         await sheet.clearRows();
     } catch (e) {
-         if (e instanceof Error) {
-            throw new Error(`Could not clear notifications: ${e.message}`);
-        }
-        throw new Error('An unknown error occurred while clearing notifications.');
+        console.error("Could not clear notifications:", e);
+        throw e;
     }
 }
 
@@ -592,8 +565,8 @@ export async function getInspections(coordinatorId?: string): Promise<Inspection
         const inspections = await getInspectionsFromSheet(coordinatorId);
         return inspections;
     } catch (error) {
-         console.error("Error in getInspections (actions):", error);
-        throw new Error(`Could not fetch inspections: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.error("Error in getInspections (actions):", error);
+        throw error;
     }
 }
 
@@ -664,10 +637,8 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
             await detailsSheet.addRows(detailRows, { raw: false, insert: true });
         }
     } catch (e) {
-        if (e instanceof Error) {
-            throw new Error(`Could not add inspection: ${e.message}`);
-        }
-        throw new Error('Could not add inspection.');
+        console.error("Error adding inspection:", e);
+        throw e;
     }
 }
 
@@ -744,10 +715,8 @@ export async function updateInspection(id: string, inspectionData: Omit<Inspecti
             await detailsSheet.addRows(newDetailRows, { raw: false, insert: true });
         }
     } catch(e) {
-        if (e instanceof Error) {
-            throw new Error(`Could not update inspection: ${e.message}`);
-        }
-        throw new Error('Could not update inspection.');
+        console.error("Error updating inspection:", e);
+        throw e;
     }
 }
 
@@ -768,10 +737,8 @@ export async function deleteInspection(id: string): Promise<void> {
             await oldDetailRows[i].delete();
         }
     } catch(e) {
-         if (e instanceof Error) {
-            throw new Error(`Could not delete inspection: ${e.message}`);
-        }
-        throw new Error('Could not delete inspection.');
+         console.error("Error deleting inspection:", e);
+         throw e;
     }
 }
 
@@ -929,6 +896,9 @@ export async function generateMonthlyReport(year: number, month: number): Promis
 
     } catch (error) {
         console.error("Error generating monthly report:", error);
-        return { success: false, message: error instanceof Error ? error.message : "An unknown error occurred" };
+        if (error instanceof Error) {
+            return { success: false, message: error.message };
+        }
+        return { success: false, message: "An unknown error occurred" };
     }
 }
