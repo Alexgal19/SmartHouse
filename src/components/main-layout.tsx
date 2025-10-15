@@ -118,15 +118,13 @@ export default function MainLayout({
         } finally {
             setIsAuthenticating(false);
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [router]);
 
     const handleLogout = useCallback(() => {
         sessionStorage.removeItem('currentUser');
         setCurrentUser(null);
         router.push('/');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [router]);
 
     const handleNotificationClick = useCallback(async (notification: Notification, employeeId?: string) => {
         if (employeeId) {
@@ -140,8 +138,7 @@ export default function MainLayout({
             setAllNotifications(prev => prev.map(n => n.id === notification.id ? {...n, isRead: true} : n));
             await markNotificationAsRead(notification.id);
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [pathname]);
+    }, [pathname, router]);
 
      const handleClearNotifications = useCallback(async () => {
         if (!currentUser?.isAdmin) {
@@ -155,7 +152,6 @@ export default function MainLayout({
         } catch (e: any) {
              toast({ variant: "destructive", title: t('toast.error'), description: e.message || t('toast.clearNotificationsError') });
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentUser, toast, t]);
 
 
@@ -210,7 +206,7 @@ export default function MainLayout({
             const { updated } = await checkAndUpdateEmployeeStatuses(currentUser.uid);
             if (updated > 0) {
                 toast({ title: t_dashboard('toast.statusUpdateSuccessTitle'), description: t_dashboard('toast.statusUpdateSuccessDescription', { count: updated }) });
-                await refreshData(false); // Refresh data if statuses were updated
+                await refreshData(false);
             } else if (showNoChangesToast) {
                  toast({ title: t_dashboard('toast.statusUpdateNoChangesTitle'), description: t_dashboard('toast.statusUpdateNoChangesDescription')});
             }
@@ -256,7 +252,7 @@ export default function MainLayout({
         } finally {
              setIsLoadingData(false);
         }
-    }, [currentUser, handleRefreshStatuses, t_loading, t_dashboard]);
+    }, [currentUser, handleRefreshStatuses, t_dashboard, t_loading]);
 
     useEffect(() => {
         if (!isAuthenticating && currentUser) {
@@ -471,16 +467,16 @@ export default function MainLayout({
     
     const handleBulkImport = useCallback(async (fileData: ArrayBuffer) => {
       if (!currentUser?.isAdmin) {
-          return { success: false, message: t_dashboard('toast.permissionError') };
+          return { success: false, message: "Brak uprawnień do importu." };
       }
       try {
           const result = await bulkImportEmployees(fileData, currentUser.uid);
           await refreshData(false);
           return result;
       } catch (e: any) {
-          return { success: false, message: e.message || t_dashboard('toast.unknownError') };
+          return { success: false, message: e.message || "Wystąpił nieznany błąd." };
       }
-  }, [currentUser, refreshData, t_dashboard]);
+  }, [currentUser, refreshData]);
 
     if (isAuthenticating || isLoadingData) {
         return (
@@ -594,3 +590,5 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
+
+    
