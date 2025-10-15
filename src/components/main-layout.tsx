@@ -198,7 +198,7 @@ export default function MainLayout({
                 description: `${t_dashboard('toast.criticalErrorDescription')} ${error instanceof Error ? error.message : ''}`,
             });
         }
-    }, [toast, currentUser, t_dashboard]);
+    }, [currentUser]);
 
     const handleRefreshStatuses = useCallback(async (showNoChangesToast = false) => {
         if (!currentUser) return;
@@ -252,7 +252,7 @@ export default function MainLayout({
         } finally {
              setIsLoadingData(false);
         }
-    }, [toast, currentUser, t_dashboard, t_loading, handleRefreshStatuses]);
+    }, [currentUser, handleRefreshStatuses]);
 
     useEffect(() => {
         if (!isAuthenticating && currentUser) {
