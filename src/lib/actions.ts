@@ -62,6 +62,7 @@ const serializeNonEmployee = (nonEmployee: Partial<NonEmployee>): Record<string,
             serialized[key] = '';
         }
     }
+    return serialized;
 };
 
 const serializeNotification = (notification: Omit<Notification, 'changes'> & { changes?: NotificationChange[] }): Record<string, string> => {
@@ -690,9 +691,18 @@ const parseAndFormatDate = (dateValue: any): string | null => {
     if (dateValue === null || dateValue === undefined || dateValue === '') {
         return null;
     }
+    // If it's already a Date object from cellDates: true
+    if (dateValue instanceof Date && isValid(dateValue)) {
+         return format(dateValue, 'yyyy-MM-dd');
+    }
     if (typeof dateValue === 'number') { // Excel date serial number
-        const date = XLSX.SSF.parse_date_code(dateValue);
-        return format(new Date(date.y, date.m - 1, date.d), 'yyyy-MM-dd');
+        // The default epoch for Excel is 1899-12-30, not 1900-01-01.
+        // The number represents days since epoch. 
+        // JavaScript's epoch is 1970-01-01.
+        // There is also a leap year bug in Excel for 1900.
+        const excelEpoch = new Date(1899, 11, 30);
+        const date = new Date(excelEpoch.getTime() + dateValue * 24 * 60 * 60 * 1000);
+        return format(date, 'yyyy-MM-dd');
     }
     if (typeof dateValue === 'string') {
         const parsedDate = parse(dateValue, 'dd-MM-yyyy', new Date());
@@ -703,10 +713,6 @@ const parseAndFormatDate = (dateValue: any): string | null => {
         if(isValid(isoDate)) {
             return format(isoDate, 'yyyy-MM-dd');
         }
-    }
-    // If it's already a Date object from cellDates: true
-    if (dateValue instanceof Date && isValid(dateValue)) {
-         return format(dateValue, 'yyyy-MM-dd');
     }
     return null;
 };
@@ -721,7 +727,7 @@ export async function bulkImportEmployees(fileData: ArrayBuffer, coordinators: C
         const workbook = XLSX.read(fileData, { type: 'buffer', cellDates: true });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const json: any[] = XLSX.utils.sheet_to_json(worksheet);
+        const json: any[] = XLSX.utils.sheet_to_json(worksheet, { raw: false }); // Use raw:false to get formatted text
 
         const requiredHeaders = ['fullName', 'coordinatorName', 'nationality', 'gender', 'address', 'roomNumber', 'zaklad', 'checkInDate'];
         const headers = Object.keys(json[0] || {});
