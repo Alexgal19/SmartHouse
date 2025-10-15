@@ -4,7 +4,7 @@
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
 import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, NonEmployee, DeductionReason, InspectionCategory, InspectionCategoryItem } from '@/types';
-import { format, isValid } from 'date-fns';
+import { format, isValid, parseISO } from 'date-fns';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
 const SHEET_NAME_EMPLOYEES = 'Employees';
@@ -79,16 +79,27 @@ export async function getSheet(title: string, headers: string[]): Promise<Google
     return sheet;
 }
 
-const safeFormat = (dateStr: string | undefined | null): string | null => {
-    if (!dateStr) return null;
-    const date = new Date(dateStr);
-    if (!isValid(date)) return null;
-    try {
-        return format(date, 'yyyy-MM-dd');
-    } catch {
+const safeFormat = (dateValue: any): string | null => {
+    if (dateValue === null || dateValue === undefined || dateValue === '') {
         return null;
     }
+    if (dateValue instanceof Date && isValid(dateValue)) {
+         return format(dateValue, 'yyyy-MM-dd');
+    }
+    if (typeof dateValue === 'number') {
+        const excelEpoch = new Date(1899, 11, 30);
+        const date = new Date(excelEpoch.getTime() + dateValue * 24 * 60 * 60 * 1000);
+        return isValid(date) ? format(date, 'yyyy-MM-dd') : null;
+    }
+    if (typeof dateValue === 'string') {
+        const isoDate = parseISO(dateValue);
+        if (isValid(isoDate)) {
+            return format(isoDate, 'yyyy-MM-dd');
+        }
+    }
+    return null;
 };
+
 
 const deserializeEmployee = (row: any): Employee | null => {
     const id = row.get('id');
@@ -162,7 +173,7 @@ const deserializeNonEmployee = (row: any): NonEmployee | null => {
 
 const deserializeNotification = (row: any): Notification => {
     const createdAtString = row.get('createdAt');
-    const createdAt = createdAtString ? new Date(createdAtString) : new Date(0);
+    const createdAt = createdAtString ? new Date(createdAtString).toISOString() : new Date(0).toISOString();
     
     const changesString = row.get('changes');
     return {
@@ -172,7 +183,7 @@ const deserializeNotification = (row: any): Notification => {
         employeeName: row.get('employeeName'),
         coordinatorId: row.get('coordinatorId'),
         coordinatorName: row.get('coordinatorName'),
-        createdAt: createdAt.toISOString(),
+        createdAt: createdAt,
         isRead: row.get('isRead') === 'TRUE',
         changes: changesString ? JSON.parse(changesString) : [],
     };
@@ -366,12 +377,12 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
                 }
             });
 
-            const inspectionDate = new Date(row.get('date'));
+            const inspectionDate = row.get('date');
             return {
                 id: inspectionId,
                 addressId: row.get('addressId'),
                 addressName: row.get('addressName'),
-                date: isValid(inspectionDate) ? inspectionDate.toISOString() : new Date().toISOString(),
+                date: inspectionDate ? new Date(inspectionDate).toISOString() : new Date().toISOString(),
                 coordinatorId: row.get('coordinatorId'),
                 coordinatorName: row.get('coordinatorName'),
                 standard: row.get('standard') || null,

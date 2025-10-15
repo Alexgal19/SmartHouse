@@ -73,7 +73,7 @@ const serializeNotification = (notification: Omit<Notification, 'changes'> & { c
         employeeName: notification.employeeName,
         coordinatorId: notification.coordinatorId,
         coordinatorName: notification.coordinatorName,
-        createdAt: notification.createdAt.toISOString(),
+        createdAt: notification.createdAt,
         isRead: String(notification.isRead).toUpperCase(),
         changes: JSON.stringify(notification.changes || []),
     };
@@ -205,7 +205,7 @@ const createNotification = async (
             employeeName: employee.fullName,
             coordinatorId: actor.uid,
             coordinatorName: actor.name,
-            createdAt: new Date(),
+            createdAt: new Date().toISOString(),
             isRead: false,
             changes
         };
@@ -593,7 +593,7 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
     const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, ['id', 'inspectionId', 'addressName', 'date', 'coordinatorName', 'category', 'itemLabel', 'itemValue', 'uwagi', 'photoData']);
     
     const inspectionId = `insp-${Date.now()}`;
-    const dateString = inspectionData.date.toISOString();
+    const dateString = inspectionData.date;
 
     await inspectionsSheet.addRow({
         id: inspectionId,
@@ -666,7 +666,7 @@ export async function updateInspection(id: string, inspectionData: Omit<Inspecti
     const inspectionRow = inspectionRows.find(r => r.get('id') === id);
     if (!inspectionRow) throw new Error("Inspection not found");
     
-    const dateString = inspectionData.date.toISOString();
+    const dateString = inspectionData.date;
     inspectionRow.set('addressId', inspectionData.addressId);
     inspectionRow.set('addressName', inspectionData.addressName);
     inspectionRow.set('date', dateString);
@@ -787,7 +787,7 @@ export async function bulkImportEmployees(fileData: ArrayBuffer, coordinators: C
     }
     
     try {
-        const workbook = XLSX.read(fileData, { type: 'buffer', cellDates: true });
+        const workbook = XLSX.read(fileData, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         const json: any[] = XLSX.utils.sheet_to_json(worksheet, { raw: false }); // Use raw:false to get formatted text
@@ -916,5 +916,3 @@ export async function generateMonthlyReport(year: number, month: number): Promis
         return { success: false, message: error instanceof Error ? error.message : "An unknown error occurred" };
     }
 }
-
-    

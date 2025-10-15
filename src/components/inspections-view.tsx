@@ -41,7 +41,7 @@ interface InspectionsViewProps {
 
 const inspectionSchema = z.object({
     addressId: z.string().min(1, "Adres jest wymagany."),
-    date: z.date({ required_error: "Data jest wymagana." }),
+    date: z.string({ required_error: "Data jest wymagana." }),
     coordinatorId: z.string(),
     standard: z.enum(['Wysoki', 'Normalny', 'Niski']).nullable(),
     categories: z.array(z.object({
@@ -377,7 +377,7 @@ const InspectionDialog = ({
             } else {
                  form.reset({
                     addressId: '',
-                    date: new Date(),
+                    date: new Date().toISOString(),
                     coordinatorId: currentUser.uid,
                     standard: null,
                     categories: getInitialChecklist(),
@@ -491,7 +491,7 @@ const InspectionDialog = ({
                                     <FormField control={form.control} name="date" render={({ field }) => (
                                         <FormItem className="flex flex-col">
                                             <FormLabel className="mb-1.5">Data wypełnienia</FormLabel>
-                                            <DatePicker value={field.value.toISOString()} onChange={(val) => field.onChange(val ? new Date(val) : new Date())} />
+                                            <DatePicker value={field.value} onChange={(val) => field.onChange(val || new Date().toISOString())} />
                                             <FormMessage />
                                         </FormItem>
                                     )} />
@@ -654,7 +654,7 @@ const InspectionDetailDialog = ({ inspection, isOpen, onOpenChange }: { inspecti
                 <DialogHeader>
                     <DialogTitle>{inspection.addressName}</DialogTitle>
                     <DialogDescription>
-                        Inspekcja z dnia {format(inspection.date, 'dd-MM-yyyy, HH:mm')} przez {inspection.coordinatorName}
+                        Inspekcja z dnia {format(new Date(inspection.date), 'dd-MM-yyyy, HH:mm')} przez {inspection.coordinatorName}
                     </DialogDescription>
                     {inspection.standard && <Badge className="w-fit">{inspection.standard}</Badge>}
                 </DialogHeader>
@@ -777,7 +777,7 @@ export default function InspectionsView({ inspections, settings, currentUser, on
                                     <div className="cursor-pointer flex-1" onClick={() => setSelectedInspection(inspection)}>
                                         <CardTitle className="text-lg">{inspection.addressName}</CardTitle>
                                         <CardDescription>
-                                            {format(inspection.date, 'dd-MM-yyyy')} przez {inspection.coordinatorName}
+                                            {format(new Date(inspection.date), 'dd-MM-yyyy')} przez {inspection.coordinatorName}
                                         </CardDescription>
                                     </div>
                                     <DropdownMenu>
