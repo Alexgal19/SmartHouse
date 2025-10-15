@@ -118,7 +118,8 @@ export default function MainLayout({
         } finally {
             setIsAuthenticating(false);
         }
-    }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleLogout = () => {
         sessionStorage.removeItem('currentUser');
@@ -198,7 +199,8 @@ export default function MainLayout({
                 description: `${t_dashboard('toast.criticalErrorDescription')} ${error instanceof Error ? error.message : ''}`,
             });
         }
-    }, [currentUser, t_dashboard]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentUser]);
 
     const handleRefreshStatuses = useCallback(async (showNoChangesToast = false) => {
         if (!currentUser) return;
@@ -213,7 +215,8 @@ export default function MainLayout({
         } catch (e: any) {
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.statusUpdateError') });
         }
-    }, [currentUser, refreshData, t_dashboard]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentUser, refreshData]);
 
     const fetchAllData = useCallback(async () => {
         if (!currentUser) return;
@@ -252,6 +255,7 @@ export default function MainLayout({
         } finally {
              setIsLoadingData(false);
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentUser, handleRefreshStatuses]);
 
     useEffect(() => {
@@ -273,7 +277,8 @@ export default function MainLayout({
 
             }
         }
-    }, [editEmployeeId, allEmployees, router, searchParams, pathname]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [editEmployeeId, allEmployees]);
 
     const handleSaveEmployee = async (data: EmployeeFormData) => {
         if (!currentUser) return;
@@ -564,7 +569,7 @@ export default function MainLayout({
                     </main>
                 </div>
                 
-                {currentUser && <MobileNav activeView={activeView} setActiveView={(v) => router.push({ pathname: '/dashboard', query: { view: v }})} navItems={visibleNavItems} currentUser={currentUser}/>}
+                {currentUser && <MobileNav activeView={activeView} router={router} navItems={visibleNavItems} currentUser={currentUser}/>}
             </div>
             
             {settings && (

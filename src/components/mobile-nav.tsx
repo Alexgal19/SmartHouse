@@ -4,16 +4,21 @@
 import { Home, Users, Settings, ClipboardList } from "lucide-react";
 import { Button } from "./ui/button";
 import type { View, Coordinator } from "@/types";
+import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
 interface MobileNavProps {
   activeView: View;
-  setActiveView: (view: View) => void;
+  router: AppRouterInstance;
   navItems: { view: View; icon: React.ElementType; label: string }[];
   currentUser: Coordinator;
 }
 
 
-export function MobileNav({ activeView, setActiveView, navItems, currentUser }: MobileNavProps) {
+export function MobileNav({ activeView, router, navItems, currentUser }: MobileNavProps) {
+    const setActiveView = (view: View) => {
+        router.push({ pathname: '/dashboard', query: { view } });
+    }
+
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] border bg-card/80 backdrop-blur-xl p-2 rounded-2xl shadow-lg shadow-black/10 md:hidden">
       <div className="grid h-full max-w-lg grid-cols-4 mx-auto">
