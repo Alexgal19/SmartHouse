@@ -121,15 +121,16 @@ export default function MainLayout({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const handleLogout = () => {
+    const handleLogout = useCallback(() => {
         sessionStorage.removeItem('currentUser');
         setCurrentUser(null);
         router.push('/');
-    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
-    const handleNotificationClick = async (notification: Notification, employeeId?: string) => {
+    const handleNotificationClick = useCallback(async (notification: Notification, employeeId?: string) => {
         if (employeeId) {
-             const currentSearchParams = new URLSearchParams(searchParams.toString());
+             const currentSearchParams = new URLSearchParams(window.location.search);
              currentSearchParams.set('view', 'employees');
              currentSearchParams.set('edit', employeeId);
              router.push(`${pathname}?${currentSearchParams.toString()}`);
@@ -139,9 +140,10 @@ export default function MainLayout({
             setAllNotifications(prev => prev.map(n => n.id === notification.id ? {...n, isRead: true} : n));
             await markNotificationAsRead(notification.id);
         }
-    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pathname]);
 
-     const handleClearNotifications = async () => {
+     const handleClearNotifications = useCallback(async () => {
         if (!currentUser?.isAdmin) {
              toast({ variant: "destructive", title: t('toast.permissionErrorTitle'), description: t('toast.permissionErrorDescription') });
              return;
@@ -153,7 +155,8 @@ export default function MainLayout({
         } catch (e: any) {
              toast({ variant: "destructive", title: t('toast.error'), description: e.message || t('toast.clearNotificationsError') });
         }
-    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentUser]);
 
 
     const filteredNotifications = useMemo(() => {
@@ -271,7 +274,7 @@ export default function MainLayout({
                 setEditingEmployee(employeeToEdit);
                 setIsFormOpen(true);
                 
-                const currentSearchParams = new URLSearchParams(searchParams.toString());
+                const currentSearchParams = new URLSearchParams(window.location.search);
                 currentSearchParams.delete('edit');
                 router.replace(`${pathname}?${currentSearchParams.toString()}`, { scroll: false });
 
@@ -404,15 +407,15 @@ export default function MainLayout({
       setIsNonEmployeeFormOpen(true);
     }
 
-    const handleEditEmployeeClick = (employee: Employee) => {
+    const handleEditEmployeeClick = useCallback((employee: Employee) => {
         setEditingEmployee(employee);
         setIsFormOpen(true);
-    };
+    }, []);
 
-    const handleEditNonEmployeeClick = (nonEmployee: NonEmployee) => {
+    const handleEditNonEmployeeClick = useCallback((nonEmployee: NonEmployee) => {
       setEditingNonEmployee(nonEmployee);
       setIsNonEmployeeFormOpen(true);
-    }
+    }, []);
 
     const handleDismissEmployee = async (employeeId: string) => {
         if (!currentUser) return false;
@@ -469,8 +472,8 @@ export default function MainLayout({
         }
     }
     
-    const handleBulkImport = async (fileData: ArrayBuffer) => {
-      if (!currentUser) {
+    const handleBulkImport = useCallback(async (fileData: ArrayBuffer) => {
+      if (!currentUser?.isAdmin) {
           return { success: false, message: t_dashboard('toast.permissionErrorTitle') };
       }
       try {
@@ -480,7 +483,7 @@ export default function MainLayout({
       } catch (e: any) {
           return { success: false, message: e.message || t_dashboard('toast.unknownError') };
       }
-    };
+  }, [currentUser, refreshData, t_dashboard]);
 
     if (isAuthenticating || isLoadingData) {
         return (
@@ -569,7 +572,7 @@ export default function MainLayout({
                     </main>
                 </div>
                 
-                {currentUser && <MobileNav activeView={activeView} router={router} navItems={visibleNavItems} currentUser={currentUser}/>}
+                {currentUser && <MobileNav activeView={activeView} navItems={visibleNavItems} currentUser={currentUser}/>}
             </div>
             
             {settings && (
