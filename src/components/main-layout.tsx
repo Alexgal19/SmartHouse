@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback, createContext, useContext } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, createContext, useContext, useRef } from 'react';
 import {
   Sidebar,
   SidebarHeader,
@@ -72,6 +72,7 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
     const router = useRouter();
+    const routerRef = useRef(router);
     const searchParams = useSearchParams();
     const pathname = usePathname();
     const { toast } = useToast();
@@ -111,34 +112,34 @@ export default function MainLayout({
                     setSelectedCoordinatorId(user.uid);
                 }
             } else {
-                router.push('/');
+                routerRef.current.push('/');
             }
         } catch (error) {
-            router.push('/');
+            routerRef.current.push('/');
         } finally {
             setIsAuthenticating(false);
         }
-    }, [router]);
+    }, []);
 
     const handleLogout = useCallback(() => {
         sessionStorage.removeItem('currentUser');
         setCurrentUser(null);
-        router.push('/');
-    }, [router]);
+        routerRef.current.push('/');
+    }, []);
 
     const handleNotificationClick = useCallback(async (notification: Notification, employeeId?: string) => {
         if (employeeId) {
              const currentSearchParams = new URLSearchParams(window.location.search);
              currentSearchParams.set('view', 'employees');
              currentSearchParams.set('edit', employeeId);
-             router.push(`${pathname}?${currentSearchParams.toString()}`);
+             routerRef.current.push(`${pathname}?${currentSearchParams.toString()}`);
         }
         
         if (!notification.isRead) {
             setAllNotifications(prev => prev.map(n => n.id === notification.id ? {...n, isRead: true} : n));
             await markNotificationAsRead(notification.id);
         }
-    }, [pathname, router]);
+    }, [pathname]);
 
      const handleClearNotifications = useCallback(async () => {
         if (!currentUser?.isAdmin) {
@@ -152,7 +153,7 @@ export default function MainLayout({
         } catch (e: any) {
              toast({ variant: "destructive", title: t('toast.error'), description: e.message || t('toast.clearNotificationsError') });
         }
-    }, [currentUser, toast, t]);
+    }, [currentUser, t, toast]);
 
 
     const filteredNotifications = useMemo(() => {
@@ -198,7 +199,7 @@ export default function MainLayout({
                 description: `${t_dashboard('toast.criticalErrorDescription')} ${error instanceof Error ? error.message : ''}`,
             });
         }
-    }, [currentUser, t_dashboard]);
+    }, [currentUser, t_dashboard, toast]);
 
     const handleRefreshStatuses = useCallback(async (showNoChangesToast = false) => {
         if (!currentUser) return;
@@ -213,7 +214,7 @@ export default function MainLayout({
         } catch (e: any) {
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.statusUpdateError') });
         }
-    }, [currentUser, refreshData, t_dashboard]);
+    }, [currentUser, refreshData, t_dashboard, toast]);
 
     const fetchAllData = useCallback(async () => {
         if (!currentUser) return;
@@ -252,7 +253,7 @@ export default function MainLayout({
         } finally {
              setIsLoadingData(false);
         }
-    }, [currentUser, handleRefreshStatuses, t_dashboard, t_loading]);
+    }, [currentUser, handleRefreshStatuses, t_dashboard, t_loading, toast]);
 
     useEffect(() => {
         if (!isAuthenticating && currentUser) {
@@ -269,14 +270,13 @@ export default function MainLayout({
                 
                 const currentSearchParams = new URLSearchParams(window.location.search);
                 currentSearchParams.delete('edit');
-                router.replace(`${pathname}?${currentSearchParams.toString()}`, { scroll: false });
+                routerRef.current.replace(`${pathname}?${currentSearchParams.toString()}`, { scroll: false });
 
             }
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [editEmployeeId, allEmployees]);
+    }, [editEmployeeId, allEmployees, pathname]);
 
-    const handleSaveEmployee = async (data: EmployeeFormData) => {
+    const handleSaveEmployee = useCallback(async (data: EmployeeFormData) => {
         if (!currentUser) return;
         
         try {
@@ -299,9 +299,9 @@ export default function MainLayout({
         } catch (e: any) {
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.employeeSaveError') });
         }
-    };
+    }, [currentUser, editingEmployee, allEmployees, refreshData, t_dashboard, toast]);
 
-    const handleSaveNonEmployee = async (data: Omit<NonEmployee, 'id'>) => {
+    const handleSaveNonEmployee = useCallback(async (data: Omit<NonEmployee, 'id'>) => {
         if (editingNonEmployee) {
             try {
                 await updateNonEmployee(editingNonEmployee.id, data);
@@ -318,9 +318,9 @@ export default function MainLayout({
             }
         }
         await refreshData(false);
-    }
+    }, [editingNonEmployee, refreshData, t_dashboard, toast]);
     
-    const handleDeleteNonEmployee = async (id: string) => {
+    const handleDeleteNonEmployee = useCallback(async (id: string) => {
         const originalNonEmployees = allNonEmployees;
         
         setAllNonEmployees(prev => prev!.filter(ne => ne.id !== id));
@@ -332,9 +332,9 @@ export default function MainLayout({
             setAllNonEmployees(originalNonEmployees); // Revert
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.nonEmployeeDeleteError') });
         }
-    }
+    }, [allNonEmployees, t_dashboard, toast]);
     
-    const handleUpdateSettings = async (newSettings: Partial<Settings>) => {
+    const handleUpdateSettings = useCallback(async (newSettings: Partial<Settings>) => {
         if (!settings || !currentUser?.isAdmin) {
              toast({ variant: "destructive", title: t_dashboard('toast.permissionErrorTitle'), description: t_dashboard('toast.permissionErrorDescription') });
             return;
@@ -350,9 +350,9 @@ export default function MainLayout({
             setSettings(originalSettings); // Revert on error
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.settingsUpdateError') });
         }
-    };
+    }, [settings, currentUser, t_dashboard, toast]);
     
-    const handleAddInspection = async (inspectionData: Omit<Inspection, 'id'>) => {
+    const handleAddInspection = useCallback(async (inspectionData: Omit<Inspection, 'id'>) => {
         try {
             await addInspection(inspectionData);
             toast({ title: t_dashboard('toast.success'), description: t_dashboard('toast.inspectionAdded') });
@@ -360,9 +360,9 @@ export default function MainLayout({
         } catch(e: any) {
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.inspectionAddError') });
         }
-    };
+    }, [refreshData, t_dashboard, toast]);
 
-    const handleUpdateInspection = async (id: string, inspectionData: Omit<Inspection, 'id'>) => {
+    const handleUpdateInspection = useCallback(async (id: string, inspectionData: Omit<Inspection, 'id'>) => {
         const originalInspections = allInspections;
         const updatedInspection = { ...inspectionData, id };
         setAllInspections(prev => prev!.map(i => i.id === id ? updatedInspection as Inspection : i));
@@ -375,9 +375,9 @@ export default function MainLayout({
             setAllInspections(originalInspections);
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.inspectionUpdateError') });
         }
-    };
+    }, [allInspections, refreshData, t_dashboard, toast]);
 
-    const handleDeleteInspection = async (id: string) => {
+    const handleDeleteInspection = useCallback(async (id: string) => {
         const originalInspections = allInspections;
         setAllInspections(prev => prev!.filter(i => i.id !== id));
 
@@ -388,17 +388,17 @@ export default function MainLayout({
             setAllInspections(originalInspections);
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.inspectionDeleteError') });
         }
-    };
+    }, [allInspections, t_dashboard, toast]);
 
-    const handleAddEmployeeClick = () => {
+    const handleAddEmployeeClick = useCallback(() => {
         setEditingEmployee(null);
         setIsFormOpen(true);
-    };
+    }, []);
 
-    const handleAddNonEmployeeClick = () => {
+    const handleAddNonEmployeeClick = useCallback(() => {
       setEditingNonEmployee(null);
       setIsNonEmployeeFormOpen(true);
-    }
+    }, []);
 
     const handleEditEmployeeClick = useCallback((employee: Employee) => {
         setEditingEmployee(employee);
@@ -410,7 +410,7 @@ export default function MainLayout({
       setIsNonEmployeeFormOpen(true);
     }, []);
 
-    const handleDismissEmployee = async (employeeId: string) => {
+    const handleDismissEmployee = useCallback(async (employeeId: string) => {
         if (!currentUser) return false;
         
         const originalEmployees = allEmployees;
@@ -427,9 +427,9 @@ export default function MainLayout({
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.employeeDismissError') });
             return false;
         }
-    };
+    }, [currentUser, allEmployees, t_dashboard, toast]);
 
-    const handleRestoreEmployee = async (employeeId: string) => {
+    const handleRestoreEmployee = useCallback(async (employeeId: string) => {
         if (!currentUser) return false;
         
         const originalEmployees = allEmployees;
@@ -446,9 +446,9 @@ export default function MainLayout({
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.employeeRestoreError') });
             return false;
         }
-    };
+    }, [currentUser, allEmployees, t_dashboard, toast]);
     
-    const handleBulkDeleteEmployees = async (status: 'active' | 'dismissed') => {
+    const handleBulkDeleteEmployees = useCallback(async (status: 'active' | 'dismissed') => {
         if (!currentUser || !currentUser.isAdmin) {
              toast({ variant: "destructive", title: t_dashboard('toast.permissionErrorTitle'), description: t_dashboard('toast.permissionErrorDescription') });
             return false;
@@ -463,7 +463,7 @@ export default function MainLayout({
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.bulkDeleteError') });
              return false;
         }
-    }
+    }, [currentUser, refreshData, t_dashboard, toast]);
     
     const handleBulkImport = useCallback(async (fileData: ArrayBuffer) => {
       if (!currentUser?.isAdmin) {
@@ -476,7 +476,7 @@ export default function MainLayout({
       } catch (e: any) {
           return { success: false, message: e.message || "Wystąpił nieznany błąd." };
       }
-  }, [currentUser, refreshData]);
+    }, [currentUser, refreshData]);
 
     if (isAuthenticating || isLoadingData) {
         return (
@@ -491,7 +491,7 @@ export default function MainLayout({
         );
     }
     
-    const contextValue: MainLayoutContextType = {
+    const contextValue: MainLayoutContextType = useMemo(() => ({
         allEmployees,
         allNonEmployees,
         allInspections,
@@ -514,7 +514,29 @@ export default function MainLayout({
         handleUpdateInspection,
         handleDeleteInspection,
         handleRefreshStatuses
-    };
+    }), [
+        allEmployees,
+        allNonEmployees,
+        allInspections,
+        settings,
+        currentUser,
+        selectedCoordinatorId,
+        handleEditEmployeeClick,
+        handleDismissEmployee,
+        handleRestoreEmployee,
+        handleBulkDeleteEmployees,
+        handleAddEmployeeClick,
+        handleUpdateSettings,
+        refreshData,
+        handleBulkImport,
+        handleAddNonEmployeeClick,
+        handleEditNonEmployeeClick,
+        handleDeleteNonEmployee,
+        handleAddInspection,
+        handleUpdateInspection,
+        handleDeleteInspection,
+        handleRefreshStatuses
+    ]);
 
     return (
        <SidebarProvider>
@@ -590,5 +612,3 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
-
-    

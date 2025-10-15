@@ -40,7 +40,7 @@ export function MobileNav({ activeView, navItems, currentUser }: MobileNavProps)
                 onClick={() => setActiveView(item.view)}
               >
                 <item.icon className="h-6 w-6 mb-1" />
-                <span className="font-medium">{item.label}</span>
+                <span>{item.label}</span>
               </Button>
             )
         })}
@@ -48,5 +48,3 @@ export function MobileNav({ activeView, navItems, currentUser }: MobileNavProps)
     </div>
   );
 }
-
-    
