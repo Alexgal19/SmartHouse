@@ -567,7 +567,10 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
         }
     } catch (e) {
         console.error("Could not mark notification as read:", e);
-        // We don't throw here to not break the UI for a non-critical action
+        if (e instanceof Error) {
+            throw new Error(`Could not mark notification as read: ${e.message}`);
+        }
+        throw new Error('Could not mark notification as read.');
     }
 }
 
