@@ -1,27 +1,31 @@
 
 "use client";
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from '@/navigation';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from './ui/dropdown-menu';
 import { Button } from './ui/button';
 import { Globe } from 'lucide-react';
 import { locales } from '@/navigation';
 import { useTranslations } from 'next-intl';
+import { useTransition } from 'react';
 
-interface LanguageSwitcherProps {
-    onLocaleChange: (locale: string) => void;
-}
 
-export default function LanguageSwitcher({ onLocaleChange }: LanguageSwitcherProps) {
+export default function LanguageSwitcher() {
     const t = useTranslations('LanguageSwitcher');
+    const router = useRouter();
     const pathname = usePathname();
-    
-    const currentLocale = pathname.split('/')[1];
+    const [isPending, startTransition] = useTransition();
+
+    const onLocaleChange = (locale: string) => {
+        startTransition(() => {
+            router.replace(pathname, {locale});
+        });
+    }
 
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" disabled={isPending}>
                     <Globe className="h-5 w-5" />
                     <span className="sr-only">{t('title')}</span>
                 </Button>
@@ -31,7 +35,6 @@ export default function LanguageSwitcher({ onLocaleChange }: LanguageSwitcherPro
                     <DropdownMenuItem 
                         key={locale} 
                         onClick={() => onLocaleChange(locale)}
-                        className={currentLocale === locale ? 'font-bold' : ''}
                     >
                        {
                         {
@@ -47,5 +50,3 @@ export default function LanguageSwitcher({ onLocaleChange }: LanguageSwitcherPro
         </DropdownMenu>
     );
 };
-
-    

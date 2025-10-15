@@ -1,9 +1,14 @@
-import React from 'react';
+import MainLayout from '@/components/main-layout';
+import { ReactNode } from 'react';
 
 export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return <>{children}</>;
-}
+    children,
+  }: {
+    children: ReactNode;
+  }) {
+    return (
+      <MainLayout>
+        {children}
+      </MainLayout>
+    );
+  }

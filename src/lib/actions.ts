@@ -105,7 +105,7 @@ const safeFormat = (dateStr: string | undefined | null): string | null => {
 };
 
 const deserializeEmployee = (row: any): Employee => {
-    const plainObject = row.toObject ? row.toObject() : row;
+    const plainObject = row;
     
     const id = plainObject.id;
     if (!id) return null;
@@ -193,7 +193,7 @@ const createNotification = async (
     try {
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
         const coordSheet = await getSheet(SHEET_NAME_COORDINATORS, ['uid', 'name']);
-        const coordRows = await coordSheet.getRows();
+        const coordRows = await coordSheet.getRows({ limit: 100 });
         const actor = coordRows.find(r => r.get('uid') === actorUid)?.toObject();
         
         if (!actor) {
@@ -256,7 +256,7 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
 export async function updateEmployee(employeeId: string, updates: Partial<Employee>, actorUid: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows();
+        const rows = await sheet.getRows({ limit: 2000 });
         const rowIndex = rows.findIndex(row => row.get('id') === employeeId);
 
         if (rowIndex === -1) {
@@ -264,7 +264,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         }
 
         const row = rows[rowIndex];
-        const originalEmployee = deserializeEmployee(row);
+        const originalEmployee = deserializeEmployee(row.toObject());
 
         if (!originalEmployee) {
             throw new Error('Could not deserialize original employee data.');
@@ -339,7 +339,7 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>): 
 export async function updateNonEmployee(id: string, updates: Partial<NonEmployee>): Promise<void> {
      try {
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows();
+        const rows = await sheet.getRows({ limit: 1000 });
         const rowIndex = rows.findIndex(row => row.get('id') === id);
 
         if (rowIndex === -1) {
@@ -365,7 +365,7 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
 export async function deleteNonEmployee(id: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows();
+        const rows = await sheet.getRows({ limit: 1000 });
         const row = rows.find(row => row.get('id') === id);
         if (row) {
             await row.delete();
@@ -389,14 +389,13 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', actorU
     }
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows();
+        const rows = await sheet.getRows({ limit: 2000 });
         const rowsToDelete = rows.filter(row => row.get('status') === status);
         
         if (rowsToDelete.length === 0) {
             return;
         }
 
-        // Deleting rows one by one from the end to avoid shifting indices
         for (let i = rowsToDelete.length - 1; i >= 0; i--) {
             await rowsToDelete[i].delete();
         }
@@ -414,7 +413,7 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
     }
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows();
+        const rows = await sheet.getRows({ limit: 2000 });
         const rowsToTransfer = rows.filter(row => row.get('coordinatorId') === fromCoordinatorId);
 
         if (rowsToTransfer.length === 0) {
@@ -442,7 +441,7 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
 export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<{ updated: number }> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows();
+        const rows = await sheet.getRows({ limit: 2000 });
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
@@ -459,7 +458,7 @@ export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<
                     await row.save();
                     updatedCount++;
 
-                    const originalEmployee = deserializeEmployee(row);
+                    const originalEmployee = deserializeEmployee(row.toObject());
                     if (originalEmployee) {
                        await createNotification(actorUid, 'automatycznie zwolnił', originalEmployee, [
                            { field: 'status', oldValue: 'active', newValue: 'dismissed' }
@@ -500,7 +499,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
             const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ADDRESS_HEADERS);
             const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity']);
              const coordinatorsSheet = await getSheet(SHEET_NAME_COORDINATORS, ['uid', 'name']);
-            const coordinatorRows = await coordinatorsSheet.getRows();
+            const coordinatorRows = await coordinatorsSheet.getRows({ limit: 100 });
             const coordinator = coordinatorRows.find(row => row.get('name') === 'Holiadynets Oleksandr');
             const coordinatorId = coordinator ? coordinator.get('uid') : null;
 
@@ -561,7 +560,7 @@ export async function getNotifications(): Promise<Notification[]> {
 export async function markNotificationAsRead(notificationId: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
-        const rows = await sheet.getRows();
+        const rows = await sheet.getRows({ limit: 200 });
         const row = rows.find(r => r.get('id') === notificationId);
         if (row) {
             row.set('isRead', 'TRUE');
@@ -668,8 +667,7 @@ export async function updateInspection(id: string, inspectionData: Omit<Inspecti
     const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, ['id', 'addressId', 'addressName', 'date', 'coordinatorId', 'coordinatorName', 'standard']);
     const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, ['id', 'inspectionId', 'addressName', 'date', 'coordinatorName', 'category', 'itemLabel', 'itemValue', 'uwagi', 'photoData']);
     
-    // Update main inspection row
-    const inspectionRows = await inspectionsSheet.getRows();
+    const inspectionRows = await inspectionsSheet.getRows({ limit: 1000 });
     const inspectionRow = inspectionRows.find(r => r.get('id') === id);
     if (!inspectionRow) throw new Error("Inspection not found");
     
@@ -682,14 +680,12 @@ export async function updateInspection(id: string, inspectionData: Omit<Inspecti
     inspectionRow.set('standard', inspectionData.standard || '');
     await inspectionRow.save();
 
-    // Delete old details
-    const detailRows = await detailsSheet.getRows();
+    const detailRows = await detailsSheet.getRows({ limit: 5000 });
     const oldDetailRows = detailRows.filter(r => r.get('inspectionId') === id);
     for (let i = oldDetailRows.length - 1; i >= 0; i--) {
         await oldDetailRows[i].delete();
     }
 
-    // Add new details
     const newDetailRows: any[] = [];
     inspectionData.categories.forEach(category => {
         category.items.forEach(item => {
@@ -744,13 +740,13 @@ export async function deleteInspection(id: string): Promise<void> {
     const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, ['id']);
     const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, ['inspectionId']);
 
-    const inspectionRows = await inspectionsSheet.getRows();
+    const inspectionRows = await inspectionsSheet.getRows({ limit: 1000 });
     const inspectionRow = inspectionRows.find(r => r.get('id') === id);
     if (inspectionRow) {
         await inspectionRow.delete();
     }
 
-    const detailRows = await detailsSheet.getRows();
+    const detailRows = await detailsSheet.getRows({ limit: 5000 });
     const oldDetailRows = detailRows.filter(r => r.get('inspectionId') === id);
      for (let i = oldDetailRows.length - 1; i >= 0; i--) {
         await oldDetailRows[i].delete();
@@ -761,15 +757,10 @@ const parseAndFormatDate = (dateValue: any): string | null => {
     if (dateValue === null || dateValue === undefined || dateValue === '') {
         return null;
     }
-    // If it's already a Date object from cellDates: true
     if (dateValue instanceof Date && isValid(dateValue)) {
          return format(dateValue, 'yyyy-MM-dd');
     }
-    if (typeof dateValue === 'number') { // Excel date serial number
-        // The default epoch for Excel is 1899-12-30, not 1900-01-01.
-        // The number represents days since epoch. 
-        // JavaScript's epoch is 1970-01-01.
-        // There is also a leap year bug in Excel for 1900.
+    if (typeof dateValue === 'number') { 
         const excelEpoch = new Date(1899, 11, 30);
         const date = new Date(excelEpoch.getTime() + dateValue * 24 * 60 * 60 * 1000);
         return format(date, 'yyyy-MM-dd');
@@ -789,8 +780,8 @@ const parseAndFormatDate = (dateValue: any): string | null => {
 
 
 export async function bulkImportEmployees(fileData: ArrayBuffer, actorUid: string): Promise<{success: boolean, message: string}> {
-    const { coordinators } = await getSettings();
-    const actor = coordinators.find(c => c.uid === actorUid);
+    const settings = await getSettings();
+    const actor = settings.coordinators.find(c => c.uid === actorUid);
     if (!actor?.isAdmin) {
         return { success: false, message: "Brak uprawnień do importu." };
     }
@@ -799,7 +790,7 @@ export async function bulkImportEmployees(fileData: ArrayBuffer, actorUid: strin
         const workbook = XLSX.read(fileData, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const json: any[] = XLSX.utils.sheet_to_json(worksheet, { raw: false }); // Use raw:false to get formatted text
+        const json: any[] = XLSX.utils.sheet_to_json(worksheet, { raw: false });
 
         const requiredHeaders = ['fullName', 'coordinatorName', 'nationality', 'gender', 'address', 'roomNumber', 'zaklad', 'checkInDate'];
         const headers = Object.keys(json[0] || {});
@@ -812,7 +803,7 @@ export async function bulkImportEmployees(fileData: ArrayBuffer, actorUid: strin
         const employeesToAdd: (Partial<Employee>)[] = [];
         
         for (const row of json) {
-            const coordinator = coordinators.find(c => c.name.toLowerCase() === String(row.coordinatorName).toLowerCase());
+            const coordinator = settings.coordinators.find(c => c.name.toLowerCase() === String(row.coordinatorName).toLowerCase());
             if (!coordinator) {
                 console.warn(`Koordynator "${row.coordinatorName}" nie znaleziony, pomijanie pracownika ${row.fullName}.`);
                 continue;
@@ -867,7 +858,6 @@ export async function generateMonthlyReport(year: number, month: number): Promis
         
         const coordinatorMap = new Map(settings.coordinators.map(c => [c.uid, c.name]));
 
-        // Filter data for the selected month
         const employeesInMonth = allEmployees.filter(e => {
             if (!e.checkInDate) return false;
             const checkIn = new Date(e.checkInDate);
@@ -880,10 +870,8 @@ export async function generateMonthlyReport(year: number, month: number): Promis
             return inspectionDate >= startDate && inspectionDate <= endDate;
         });
         
-        // Create workbook and worksheets
         const wb = XLSX.utils.book_new();
 
-        // 1. Pracownicy Sheet
         const employeesHeaders = ["ID", "Imię i nazwisko", "Koordynator", "Adres", "Pokój", "Data zameldowania", "Data wymeldowania", "Status", "Potrącenia (zł)"];
         const employeesData = employeesInMonth.map(e => {
             const deductionReasonTotal = e.deductionReason?.reduce((sum, r) => sum + (r.checked && r.amount ? r.amount : 0), 0) || 0;
@@ -895,13 +883,11 @@ export async function generateMonthlyReport(year: number, month: number): Promis
         const ws_employees = XLSX.utils.aoa_to_sheet([employeesHeaders, ...employeesData]);
         XLSX.utils.book_append_sheet(wb, ws_employees, "Pracownicy");
 
-        // 2. Inspekcje Sheet
         const inspectionsHeaders = ["ID Inspekcji", "Adres", "Data", "Koordynator", "Standard"];
         const inspectionsData = inspectionsInMonth.map(i => [i.id, i.addressName, format(new Date(i.date), 'yyyy-MM-dd'), i.coordinatorName, i.standard || '']);
         const ws_inspections = XLSX.utils.aoa_to_sheet([inspectionsHeaders, ...inspectionsData]);
         XLSX.utils.book_append_sheet(wb, ws_inspections, "Inspekcje");
         
-        // 3. Finanse Sheet
         const financeHeaders = ["Pracownik", "Zwrot kaucji", "Kwota zwrotu", "Potrącenie (regulamin)", "Potrącenie (4 msc)", "Potrącenie (30 dni)", "Potrącenia (inne)", "Suma potrąceń"];
         const financeData = employeesInMonth.filter(e => e.depositReturnAmount || e.deductionRegulation || e.deductionNo4Months || e.deductionNo30Days || e.deductionReason?.some(r => r.checked)).map(e => {
             const deductionReasonTotal = e.deductionReason?.reduce((sum, r) => sum + (r.checked && r.amount ? r.amount : 0), 0) || 0;
@@ -913,7 +899,6 @@ export async function generateMonthlyReport(year: number, month: number): Promis
         const ws_finance = XLSX.utils.aoa_to_sheet([financeHeaders, ...financeData]);
         XLSX.utils.book_append_sheet(wb, ws_finance, "Finanse");
 
-        // Generate file
         const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
         const fileContent = buf.toString('base64');
         const fileName = `raport_miesieczny_${year}_${String(month).padStart(2, '0')}.xlsx`;

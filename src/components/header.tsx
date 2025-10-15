@@ -28,7 +28,7 @@ import { type Locale, pl, uk, enUS, es } from 'date-fns/locale';
 import { ScrollArea } from "./ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
-import { usePathname } from "next/navigation";
+import { usePathname } from "@/navigation";
 import React from "react";
 import LanguageSwitcher from "./language-switcher";
 
@@ -39,7 +39,6 @@ interface HeaderProps {
   onNotificationClick: (notification: Notification) => void;
   onLogout: () => void;
   onClearNotifications: () => void;
-  onLocaleChange: (locale: string) => void;
 }
 
 const viewTitles: Record<View, string> = {
@@ -56,12 +55,12 @@ const localesMap: Record<string, Locale> = {
     es
 }
 
-export default function Header({ user, activeView, notifications, onNotificationClick, onLogout, onClearNotifications, onLocaleChange }: HeaderProps) {
+export default function Header({ user, activeView, notifications, onNotificationClick, onLogout, onClearNotifications }: HeaderProps) {
     const { isMobile, open } = useSidebar();
     const t = useTranslations('Header');
     const navT = useTranslations('Navigation');
     const pathname = usePathname();
-    const currentLocale = pathname.split('/')[1] as keyof typeof localesMap;
+    const currentLocale = usePathname().split('/')[1] as keyof typeof localesMap;
     const locale = localesMap[currentLocale] || pl;
 
     const unreadCount = notifications.filter(n => !n.isRead).length;
@@ -78,7 +77,7 @@ export default function Header({ user, activeView, notifications, onNotification
       </div>
 
       <div className="flex items-center justify-end gap-2">
-         <LanguageSwitcher onLocaleChange={onLocaleChange} />
+         <LanguageSwitcher />
          <Popover>
             <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative">
@@ -161,5 +160,3 @@ export default function Header({ user, activeView, notifications, onNotification
     </header>
   );
 }
-
-    

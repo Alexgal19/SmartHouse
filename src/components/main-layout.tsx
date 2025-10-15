@@ -16,16 +16,14 @@ import Header from './header';
 import { MobileNav } from './mobile-nav';
 import type { View, Notification, Coordinator, Employee, Settings, NonEmployee, Inspection } from '@/types';
 import { Building, ClipboardList, Home, Settings as SettingsIcon, Users, Globe, Loader2 } from 'lucide-react';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { useRouter, usePathname, Link } from '@/navigation';
+import { useSearchParams } from 'next/navigation';
 import { clearAllNotifications, markNotificationAsRead, getNotifications, getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getInspections, addInspection, updateInspection, deleteInspection, transferEmployees, bulkDeleteEmployees, bulkImportEmployees, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee, checkAndUpdateEmployeeStatuses } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useTranslations } from 'next-intl';
-import Link from 'next/link';
 import { AddEmployeeForm, type EmployeeFormData } from '@/components/add-employee-form';
 import { AddNonEmployeeForm } from '@/components/add-non-employee-form';
-import LanguageSwitcher from './language-switcher';
-import { locales } from '@/navigation';
-import { findNonSerializable } from '@/lib/utils';
+import { isPlainObject, findNonSerializable } from '@/lib/utils';
 
 
 const navItems: { view: View; icon: React.ElementType; label: string }[] = [
@@ -481,22 +479,6 @@ export default function MainLayout({
       }
     };
 
-    const handleLocaleChange = (locale: string) => {
-        const pathSegments = pathname.split('/').filter(Boolean);
-        
-        if (locales.includes(pathSegments[0] as any)) {
-            pathSegments.shift();
-        }
-
-        const newPath = `/${locale}/${pathSegments.join('/')}`;
-        
-        const currentSearchParams = new URLSearchParams(searchParams.toString());
-        const queryString = currentSearchParams.toString();
-
-        const finalUrl = queryString ? `${newPath}?${queryString}` : newPath;
-        window.location.href = finalUrl;
-    };
-
     if (isAuthenticating || isLoadingData) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -550,7 +532,10 @@ export default function MainLayout({
                         <SidebarMenu>
                             {visibleNavItems.map(item => (
                                 <SidebarMenuItem key={item.view}>
-                                    <Link href={`?view=${item.view}`} passHref>
+                                    <Link href={{
+                                        pathname: '/dashboard',
+                                        query: { view: item.view }
+                                    }} passHref>
                                         <SidebarMenuButton 
                                             isActive={activeView === item.view}
                                             tooltip={t(item.label)}
@@ -575,14 +560,13 @@ export default function MainLayout({
                         onNotificationClick={(n) => handleNotificationClick(n, n.employeeId)} 
                         onLogout={handleLogout} 
                         onClearNotifications={handleClearNotifications}
-                        onLocaleChange={handleLocaleChange}
                     />}
                     <main className="flex-1 overflow-y-auto px-2 sm:px-6 pb-6 pt-4">
                         {children}
                     </main>
                 </div>
                 
-                {currentUser && <MobileNav activeView={activeView} setActiveView={(v) => router.push(`?view=${v}`)} navItems={visibleNavItems} currentUser={currentUser}/>}
+                {currentUser && <MobileNav activeView={activeView} setActiveView={(v) => router.push({ pathname: '/dashboard', query: { view: v }})} navItems={visibleNavItems} currentUser={currentUser}/>}
             </div>
             
             {settings && (
