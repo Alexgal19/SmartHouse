@@ -198,7 +198,7 @@ export default function MainLayout({
                 description: `${t_dashboard('toast.criticalErrorDescription')} ${error instanceof Error ? error.message : ''}`,
             });
         }
-    }, [currentUser]);
+    }, [currentUser, t_dashboard]);
 
     const handleRefreshStatuses = useCallback(async (showNoChangesToast = false) => {
         if (!currentUser) return;
@@ -213,7 +213,7 @@ export default function MainLayout({
         } catch (e: any) {
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.statusUpdateError') });
         }
-    }, [currentUser, refreshData, toast, t_dashboard]);
+    }, [currentUser, refreshData, t_dashboard]);
 
     const fetchAllData = useCallback(async () => {
         if (!currentUser) return;
