@@ -172,7 +172,7 @@ const deserializeNotification = (row: any): Notification => {
         employeeName: row.get('employeeName'),
         coordinatorId: row.get('coordinatorId'),
         coordinatorName: row.get('coordinatorName'),
-        createdAt: createdAt,
+        createdAt: createdAt.toISOString(),
         isRead: row.get('isRead') === 'TRUE',
         changes: changesString ? JSON.parse(changesString) : [],
     };
@@ -286,7 +286,7 @@ export async function getNotificationsFromSheet(): Promise<Notification[]> {
         const rows = await sheet.getRows();
         return rows.map(deserializeNotification)
             .filter((n): n is Notification => n !== null)
-            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } catch (error: any) {
         console.error("Error fetching notifications from sheet:", error.message, error.stack);
         throw new Error(`Could not fetch notifications. Original error: ${error.message}`);
@@ -371,20 +371,18 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
                 id: inspectionId,
                 addressId: row.get('addressId'),
                 addressName: row.get('addressName'),
-                date: isValid(inspectionDate) ? inspectionDate : new Date(),
+                date: isValid(inspectionDate) ? inspectionDate.toISOString() : new Date().toISOString(),
                 coordinatorId: row.get('coordinatorId'),
                 coordinatorName: row.get('coordinatorName'),
                 standard: row.get('standard') || null,
                 categories: Array.from(categoriesMap.values()),
             };
-        }).sort((a,b) => b.date.getTime() - a.date.getTime());
+        }).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-        return inspections;
+        return inspections as unknown as Inspection[];
 
     } catch (error: any) {
         console.error("Error fetching inspections from sheet:", error.message, error.stack);
         throw new Error(`Could not fetch inspections. Original error: ${error.message}`);
     }
 }
-
-    

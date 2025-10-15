@@ -241,7 +241,7 @@ export default function MainLayout({
             setAllEmployees(employeesData);
             setAllInspections(inspectionsData);
             setAllNonEmployees(nonEmployeesData);
-            setAllNotifications(notificationsData.map((n:any) => ({...n, createdAt: new Date(n.createdAt)})));
+            setAllNotifications(notificationsData);
             
         } catch (error) {
              console.error("Critical data loading error:", error);
@@ -367,7 +367,7 @@ export default function MainLayout({
     const handleUpdateInspection = async (id: string, inspectionData: Omit<Inspection, 'id'>) => {
         const originalInspections = allInspections;
         const updatedInspection = { ...inspectionData, id };
-        setAllInspections(prev => prev!.map(i => i.id === id ? updatedInspection : i));
+        setAllInspections(prev => prev!.map(i => i.id === id ? updatedInspection as Inspection : i));
 
         try {
             await updateInspection(id, inspectionData);

@@ -81,7 +81,7 @@ export type Inspection = {
   id: string;
   addressId: string;
   addressName: string;
-  date: Date;
+  date: string; // ISO string
   coordinatorId: string;
   coordinatorName: string;
   standard: 'Wysoki' | 'Normalny' | 'Niski' | null;
@@ -146,7 +146,7 @@ export type Notification = {
   employeeName: string;
   coordinatorId: string;
   coordinatorName: string;
-  createdAt: Date;
+  createdAt: string; // ISO string
   isRead: boolean;
   changes?: NotificationChange[];
 };
