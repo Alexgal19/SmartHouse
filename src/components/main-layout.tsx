@@ -71,14 +71,18 @@ export default function MainLayout({
 }: {
   children: React.ReactNode;
 }) {
-    const router = useRouter();
-    const routerRef = useRef(router);
+    const routerRef = useRef(useRouter());
     const searchParams = useSearchParams();
     const pathname = usePathname();
     const { toast } = useToast();
     const t = useTranslations('Navigation');
     const t_dashboard = useTranslations('Dashboard');
     const t_loading = useTranslations('LoadingScreen');
+
+    const activeView = useMemo(() => {
+        return (searchParams.get('view') as View) || 'dashboard';
+    }, [searchParams]);
+
     const editEmployeeId = searchParams.get('edit');
 
     const [currentUser, setCurrentUser] = useState<Coordinator | null>(null);
@@ -98,9 +102,12 @@ export default function MainLayout({
     const [isLoadingData, setIsLoadingData] = useState(true);
     const [loadingMessage, setLoadingMessage] = useState(t_loading('authenticating'));
     
-    const activeView = useMemo(() => {
-        return (searchParams.get('view') as View) || 'dashboard';
-    }, [searchParams]);
+    const visibleNavItems = useMemo(() => {
+        if (currentUser?.isAdmin) {
+            return navItems;
+        }
+        return navItems.filter(item => item.view !== 'settings');
+    }, [currentUser]);
 
     useEffect(() => {
         try {
@@ -164,13 +171,6 @@ export default function MainLayout({
         return allNotifications.filter(n => n.coordinatorId === currentUser.uid);
     }, [currentUser, allNotifications]);
 
-    const visibleNavItems = useMemo(() => {
-        if (currentUser?.isAdmin) {
-            return navItems;
-        }
-        return navItems.filter(item => item.view !== 'settings');
-    }, [currentUser]);
-
     const refreshData = useCallback(async (showToast = true) => {
         if (!currentUser) return;
         try {
@@ -199,7 +199,7 @@ export default function MainLayout({
                 description: `${t_dashboard('toast.criticalErrorDescription')} ${error instanceof Error ? error.message : ''}`,
             });
         }
-    }, [currentUser, t_dashboard, toast]);
+    }, [currentUser]);
 
     const handleRefreshStatuses = useCallback(async (showNoChangesToast = false) => {
         if (!currentUser) return;
@@ -214,7 +214,7 @@ export default function MainLayout({
         } catch (e: any) {
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.statusUpdateError') });
         }
-    }, [currentUser, refreshData, t_dashboard, toast]);
+    }, [currentUser, refreshData]);
 
     const fetchAllData = useCallback(async () => {
         if (!currentUser) return;
@@ -253,7 +253,7 @@ export default function MainLayout({
         } finally {
              setIsLoadingData(false);
         }
-    }, [currentUser, handleRefreshStatuses, t_dashboard, t_loading, toast]);
+    }, [currentUser, handleRefreshStatuses]);
 
     useEffect(() => {
         if (!isAuthenticating && currentUser) {
@@ -299,7 +299,7 @@ export default function MainLayout({
         } catch (e: any) {
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.employeeSaveError') });
         }
-    }, [currentUser, editingEmployee, allEmployees, refreshData, t_dashboard, toast]);
+    }, [currentUser, editingEmployee, allEmployees, refreshData]);
 
     const handleSaveNonEmployee = useCallback(async (data: Omit<NonEmployee, 'id'>) => {
         if (editingNonEmployee) {
@@ -318,7 +318,7 @@ export default function MainLayout({
             }
         }
         await refreshData(false);
-    }, [editingNonEmployee, refreshData, t_dashboard, toast]);
+    }, [editingNonEmployee, refreshData]);
     
     const handleDeleteNonEmployee = useCallback(async (id: string) => {
         const originalNonEmployees = allNonEmployees;
@@ -332,7 +332,7 @@ export default function MainLayout({
             setAllNonEmployees(originalNonEmployees); // Revert
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.nonEmployeeDeleteError') });
         }
-    }, [allNonEmployees, t_dashboard, toast]);
+    }, [allNonEmployees]);
     
     const handleUpdateSettings = useCallback(async (newSettings: Partial<Settings>) => {
         if (!settings || !currentUser?.isAdmin) {
@@ -350,7 +350,7 @@ export default function MainLayout({
             setSettings(originalSettings); // Revert on error
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.settingsUpdateError') });
         }
-    }, [settings, currentUser, t_dashboard, toast]);
+    }, [settings, currentUser]);
     
     const handleAddInspection = useCallback(async (inspectionData: Omit<Inspection, 'id'>) => {
         try {
@@ -360,7 +360,7 @@ export default function MainLayout({
         } catch(e: any) {
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.inspectionAddError') });
         }
-    }, [refreshData, t_dashboard, toast]);
+    }, [refreshData]);
 
     const handleUpdateInspection = useCallback(async (id: string, inspectionData: Omit<Inspection, 'id'>) => {
         const originalInspections = allInspections;
@@ -375,7 +375,7 @@ export default function MainLayout({
             setAllInspections(originalInspections);
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.inspectionUpdateError') });
         }
-    }, [allInspections, refreshData, t_dashboard, toast]);
+    }, [allInspections, refreshData]);
 
     const handleDeleteInspection = useCallback(async (id: string) => {
         const originalInspections = allInspections;
@@ -388,7 +388,7 @@ export default function MainLayout({
             setAllInspections(originalInspections);
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.inspectionDeleteError') });
         }
-    }, [allInspections, t_dashboard, toast]);
+    }, [allInspections]);
 
     const handleAddEmployeeClick = useCallback(() => {
         setEditingEmployee(null);
@@ -427,7 +427,7 @@ export default function MainLayout({
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.employeeDismissError') });
             return false;
         }
-    }, [currentUser, allEmployees, t_dashboard, toast]);
+    }, [currentUser, allEmployees]);
 
     const handleRestoreEmployee = useCallback(async (employeeId: string) => {
         if (!currentUser) return false;
@@ -446,7 +446,7 @@ export default function MainLayout({
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.employeeRestoreError') });
             return false;
         }
-    }, [currentUser, allEmployees, t_dashboard, toast]);
+    }, [currentUser, allEmployees]);
     
     const handleBulkDeleteEmployees = useCallback(async (status: 'active' | 'dismissed') => {
         if (!currentUser || !currentUser.isAdmin) {
@@ -463,7 +463,7 @@ export default function MainLayout({
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.bulkDeleteError') });
              return false;
         }
-    }, [currentUser, refreshData, t_dashboard, toast]);
+    }, [currentUser, refreshData]);
     
     const handleBulkImport = useCallback(async (fileData: ArrayBuffer) => {
       if (!currentUser?.isAdmin) {
@@ -477,19 +477,6 @@ export default function MainLayout({
           return { success: false, message: e.message || "Wystąpił nieznany błąd." };
       }
     }, [currentUser, refreshData]);
-
-    if (isAuthenticating || isLoadingData) {
-        return (
-            <div className="flex h-screen w-full items-center justify-center bg-background">
-                <div className="flex animate-fade-in flex-col items-center gap-6">
-                     <h1 className="text-4xl sm:text-5xl md:text-7xl font-semibold tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm">
-                        SmartHouse
-                    </h1>
-                     <p className="text-muted-foreground">{loadingMessage}</p>
-                </div>
-            </div>
-        );
-    }
     
     const contextValue: MainLayoutContextType = useMemo(() => ({
         allEmployees,
@@ -537,6 +524,19 @@ export default function MainLayout({
         handleDeleteInspection,
         handleRefreshStatuses
     ]);
+
+    if (isAuthenticating || isLoadingData) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center bg-background">
+                <div className="flex animate-fade-in flex-col items-center gap-6">
+                     <h1 className="text-4xl sm:text-5xl md:text-7xl font-semibold tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm">
+                        SmartHouse
+                    </h1>
+                     <p className="text-muted-foreground">{loadingMessage}</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
        <SidebarProvider>
