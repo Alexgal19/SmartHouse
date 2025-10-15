@@ -31,6 +31,7 @@ interface DashboardViewProps {
   currentUser: Coordinator;
   selectedCoordinatorId: string;
   onSelectCoordinator: (id: string) => void;
+  onDataRefresh: () => void;
 }
 
 const localesMap: Record<string, Locale> = {
@@ -477,7 +478,7 @@ const DeductionsChart = ({ employees, currentLocale }: { employees: Employee[], 
     );
 };
 
-export default function DashboardView({ employees, allEmployees, nonEmployees, settings, onEditEmployee, currentUser, selectedCoordinatorId, onSelectCoordinator }: DashboardViewProps) {
+export default function DashboardView({ employees, allEmployees, nonEmployees, settings, onEditEmployee, currentUser, selectedCoordinatorId, onSelectCoordinator, onDataRefresh }: DashboardViewProps) {
   const t = useTranslations('Dashboard');
   const { toast } = useToast();
   const { isMobile } = useIsMobile();
