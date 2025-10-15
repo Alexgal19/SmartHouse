@@ -104,58 +104,55 @@ const safeFormat = (dateStr: string | undefined | null): string | null => {
     }
 };
 
-const deserializeEmployee = (row: any): Employee | null => {
-    const id = row.get('id');
+const deserializeEmployee = (row: any): Employee => {
+    const plainObject = row.toObject ? row.toObject() : row;
+    
+    const id = plainObject.id;
     if (!id) return null;
 
-    const checkInDate = safeFormat(row.get('checkInDate'));
+    const checkInDate = safeFormat(plainObject.checkInDate);
     if (!checkInDate) return null;
 
-    const deductionReasonRaw = row.get('deductionReason');
     let deductionReason: DeductionReason[] | undefined = undefined;
-    if (deductionReasonRaw && typeof deductionReasonRaw === 'string') {
+    if (plainObject.deductionReason && typeof plainObject.deductionReason === 'string') {
         try {
-            const parsed = JSON.parse(deductionReasonRaw);
-            if(Array.isArray(parsed)) {
-                deductionReason = parsed;
-            }
+            const parsed = JSON.parse(plainObject.deductionReason);
+            if(Array.isArray(parsed)) deductionReason = parsed;
         } catch(e) {
-            // Ignore parse error
+            console.warn(`Could not parse deductionReason for employee ${id}:`, e);
         }
     }
     
-    const status = row.get('status');
-    const depositReturnedRaw = row.get('depositReturned');
     const validDepositValues = ['Tak', 'Nie', 'Nie dotyczy'];
-    const depositReturned = validDepositValues.includes(depositReturnedRaw) ? depositReturnedRaw as Employee['depositReturned'] : null;
+    const depositReturned = validDepositValues.includes(plainObject.depositReturned) ? plainObject.depositReturned as Employee['depositReturned'] : null;
 
-
-    return {
+    const newEmployee: Employee = {
         id: id,
-        fullName: row.get('fullName') || '',
-        coordinatorId: row.get('coordinatorId') || '',
-        nationality: row.get('nationality') || '',
-        gender: row.get('gender') || '',
-        address: row.get('address') || '',
-        roomNumber: row.get('roomNumber') || '',
-        zaklad: row.get('zaklad') || '',
+        fullName: plainObject.fullName || '',
+        coordinatorId: plainObject.coordinatorId || '',
+        nationality: plainObject.nationality || '',
+        gender: plainObject.gender || '',
+        address: plainObject.address || '',
+        roomNumber: plainObject.roomNumber || '',
+        zaklad: plainObject.zaklad || '',
         checkInDate: checkInDate,
-        checkOutDate: safeFormat(row.get('checkOutDate')),
-        contractStartDate: safeFormat(row.get('contractStartDate')),
-        contractEndDate: safeFormat(row.get('contractEndDate')),
-        departureReportDate: safeFormat(row.get('departureReportDate')),
-        comments: row.get('comments') || '',
-        status: status === 'active' || status === 'dismissed' ? status : 'active',
-        oldAddress: row.get('oldAddress') || null,
+        checkOutDate: safeFormat(plainObject.checkOutDate),
+        contractStartDate: safeFormat(plainObject.contractStartDate),
+        contractEndDate: safeFormat(plainObject.contractEndDate),
+        departureReportDate: safeFormat(plainObject.departureReportDate),
+        comments: plainObject.comments || '',
+        status: plainObject.status as 'active' | 'dismissed' || 'active',
+        oldAddress: plainObject.oldAddress || undefined,
         depositReturned: depositReturned,
-        depositReturnAmount: row.get('depositReturnAmount') ? parseFloat(row.get('depositReturnAmount')) : null,
-        deductionRegulation: row.get('deductionRegulation') ? parseFloat(row.get('deductionRegulation')) : null,
-        deductionNo4Months: row.get('deductionNo4Months') ? parseFloat(row.get('deductionNo4Months')) : null,
-        deductionNo30Days: row.get('deductionNo30Days') ? parseFloat(row.get('deductionNo30Days')) : null,
+        depositReturnAmount: plainObject.depositReturnAmount ? parseFloat(plainObject.depositReturnAmount) : null,
+        deductionRegulation: plainObject.deductionRegulation ? parseFloat(plainObject.deductionRegulation) : null,
+        deductionNo4Months: plainObject.deductionNo4Months ? parseFloat(plainObject.deductionNo4Months) : null,
+        deductionNo30Days: plainObject.deductionNo30Days ? parseFloat(plainObject.deductionNo30Days) : null,
         deductionReason: deductionReason,
     };
+    
+    return newEmployee;
 };
-
 
 export async function getEmployees(coordinatorId?: string): Promise<Employee[]> {
     try {
@@ -188,14 +185,22 @@ export async function getSettings(): Promise<Settings> {
 }
 
 const createNotification = async (
-    actor: Coordinator,
+    actorUid: string,
     action: string,
     employee: { id: string, fullName: string },
     changes: NotificationChange[] = []
 ) => {
     try {
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
+        const coordSheet = await getSheet(SHEET_NAME_COORDINATORS, ['uid', 'name']);
+        const coordRows = await coordSheet.getRows();
+        const actor = coordRows.find(r => r.get('uid') === actorUid)?.toObject();
         
+        if (!actor) {
+            console.error(`Could not find actor with uid ${actorUid} to create notification.`);
+            return;
+        }
+
         const message = `${actor.name} ${action} pracownika ${employee.fullName}.`;
         
         const newNotification: Notification = {
@@ -216,7 +221,7 @@ const createNotification = async (
     }
 };
 
-export async function addEmployee(employeeData: Partial<Employee>, actor: Coordinator): Promise<Employee> {
+export async function addEmployee(employeeData: Partial<Employee>, actorUid: string): Promise<Employee> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const newEmployee: Employee = {
@@ -235,7 +240,7 @@ export async function addEmployee(employeeData: Partial<Employee>, actor: Coordi
         const serialized = serializeEmployee(newEmployee);
         await sheet.addRow(serialized, { raw: false, insert: true });
         
-        await createNotification(actor, 'dodał', newEmployee);
+        await createNotification(actorUid, 'dodał', newEmployee);
         
         return newEmployee;
     } catch (e) {
@@ -248,7 +253,7 @@ export async function addEmployee(employeeData: Partial<Employee>, actor: Coordi
 }
 
 
-export async function updateEmployee(employeeId: string, updates: Partial<Employee>, actor: Coordinator): Promise<void> {
+export async function updateEmployee(employeeId: string, updates: Partial<Employee>, actorUid: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows();
@@ -293,7 +298,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         await row.save();
         
         if (changes.length > 0) {
-            await createNotification(actor, 'zaktualizował', originalEmployee, changes);
+            await createNotification(actorUid, 'zaktualizował', originalEmployee, changes);
         }
 
     } catch (e) {
@@ -376,8 +381,10 @@ export async function deleteNonEmployee(id: string): Promise<void> {
 }
 
 
-export async function bulkDeleteEmployees(status: 'active' | 'dismissed', actor: Coordinator): Promise<void> {
-     if (!actor.isAdmin) {
+export async function bulkDeleteEmployees(status: 'active' | 'dismissed', actorUid: string): Promise<void> {
+    const { coordinators } = await getSettings();
+    const actor = coordinators.find(c => c.uid === actorUid);
+     if (!actor?.isAdmin) {
         throw new Error("Only admins can bulk delete employees.");
     }
     try {
@@ -401,8 +408,10 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', actor:
     }
 }
 
-export async function transferEmployees(fromCoordinatorId: string, toCoordinatorId: string, actor: Coordinator): Promise<void> {
-    if (!actor.isAdmin) {
+export async function transferEmployees(fromCoordinatorId: string, toCoordinatorId: string, actorUid: string): Promise<void> {
+    const { coordinators } = await getSettings();
+    const actor = coordinators.find(c => c.uid === actorUid);
+     if (!actor?.isAdmin) {
         throw new Error("Only admins can transfer employees.");
     }
     try {
@@ -414,7 +423,6 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
             return;
         }
 
-        const { coordinators } = await getSettingsFromSheet();
         const toCoordinator = coordinators.find(c => c.uid === toCoordinatorId);
         if (!toCoordinator) {
             throw new Error("Target coordinator not found.");
@@ -432,7 +440,7 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
     }
 }
 
-export async function checkAndUpdateEmployeeStatuses(actor: Coordinator): Promise<{ updated: number }> {
+export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<{ updated: number }> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows();
@@ -454,7 +462,7 @@ export async function checkAndUpdateEmployeeStatuses(actor: Coordinator): Promis
 
                     const originalEmployee = deserializeEmployee(row);
                     if (originalEmployee) {
-                       await createNotification(actor, 'automatycznie zwolnił', originalEmployee, [
+                       await createNotification(actorUid, 'automatycznie zwolnił', originalEmployee, [
                            { field: 'status', oldValue: 'active', newValue: 'dismissed' }
                        ]);
                     }
@@ -781,8 +789,10 @@ const parseAndFormatDate = (dateValue: any): string | null => {
 };
 
 
-export async function bulkImportEmployees(fileData: ArrayBuffer, coordinators: Coordinator[], actor: Coordinator): Promise<{success: boolean, message: string}> {
-    if (!actor.isAdmin) {
+export async function bulkImportEmployees(fileData: ArrayBuffer, actorUid: string): Promise<{success: boolean, message: string}> {
+    const { coordinators } = await getSettings();
+    const actor = coordinators.find(c => c.uid === actorUid);
+    if (!actor?.isAdmin) {
         return { success: false, message: "Brak uprawnień do importu." };
     }
     

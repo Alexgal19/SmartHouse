@@ -207,7 +207,7 @@ export default function MainLayout({
     const handleRefreshStatuses = useCallback(async (showNoChangesToast = false) => {
         if (!currentUser) return;
         try {
-            const { updated } = await checkAndUpdateEmployeeStatuses(currentUser);
+            const { updated } = await checkAndUpdateEmployeeStatuses(currentUser.uid);
             if (updated > 0) {
                 toast({ title: t_dashboard('toast.statusUpdateSuccessTitle'), description: t_dashboard('toast.statusUpdateSuccessDescription', { count: updated }) });
                 await refreshData(false); // Refresh data if statuses were updated
@@ -225,16 +225,7 @@ export default function MainLayout({
         try {
             setLoadingMessage(t_loading('loadingSettings'));
             const settingsData = await getSettings();
-            
-            try {
-                const problem = findNonSerializable(settingsData, 'settingsData');
-                if (problem) {
-                    console.error('DIAGNOSTIC: Non-serializable object found in settingsData!', problem);
-                }
-                setSettings(settingsData);
-            } catch (e) {
-                 console.error('DIAGNOSTIC: Error while setting settingsData', e);
-            }
+            setSettings(settingsData);
             
             setLoadingMessage(t_loading('loadingData'));
             await handleRefreshStatuses(false);
@@ -248,45 +239,10 @@ export default function MainLayout({
                 getNotifications()
             ]);
 
-            try {
-                const problem = findNonSerializable(employeesData, 'employeesData');
-                if (problem) {
-                    console.error('DIAGNOSTIC: Non-serializable object found in employeesData!', problem);
-                }
-                setAllEmployees(employeesData);
-            } catch (e) {
-                 console.error('DIAGNOSTIC: Error while setting employeesData', e);
-            }
-
-            try {
-                const problem = findNonSerializable(inspectionsData, 'inspectionsData');
-                if (problem) {
-                    console.error('DIAGNOSTIC: Non-serializable object found in inspectionsData!', problem);
-                }
-                setAllInspections(inspectionsData);
-            } catch (e) {
-                 console.error('DIAGNOSTIC: Error while setting inspectionsData', e);
-            }
-
-            try {
-                const problem = findNonSerializable(nonEmployeesData, 'nonEmployeesData');
-                if (problem) {
-                    console.error('DIAGNOSTIC: Non-serializable object found in nonEmployeesData!', problem);
-                }
-                setAllNonEmployees(nonEmployeesData);
-            } catch (e) {
-                 console.error('DIAGNOSTIC: Error while setting nonEmployeesData', e);
-            }
-            
-            try {
-                const problem = findNonSerializable(notificationsData, 'notificationsData');
-                if (problem) {
-                    console.error('DIAGNOSTIC: Non-serializable object found in notificationsData!', problem);
-                }
-                setAllNotifications(notificationsData);
-            } catch(e) {
-                console.error('DIAGNOSTIC: Error while setting notificationsData', e);
-            }
+            setAllEmployees(employeesData);
+            setAllInspections(inspectionsData);
+            setAllNonEmployees(nonEmployeesData);
+            setAllNotifications(notificationsData);
 
         } catch (error) {
              console.error("Critical data loading error:", error);
@@ -336,10 +292,10 @@ export default function MainLayout({
                   updatedData.oldAddress = editingEmployee.oldAddress;
                 }
                 
-                await updateEmployee(editingEmployee.id, updatedData, currentUser)
+                await updateEmployee(editingEmployee.id, updatedData, currentUser.uid)
                 toast({ title: t_dashboard('toast.success'), description: t_dashboard('toast.employeeUpdated') });
             } else {
-                await addEmployee(data, currentUser);
+                await addEmployee(data, currentUser.uid);
                 toast({ title: t_dashboard('toast.success'), description: t_dashboard('toast.employeeAdded') });
             }
             await refreshData(false);
@@ -466,7 +422,7 @@ export default function MainLayout({
         setAllEmployees(prev => prev!.map(e => e.id === employeeId ? Object.assign({}, e, updatedData) : e));
 
         try {
-            await updateEmployee(employeeId, updatedData, currentUser);
+            await updateEmployee(employeeId, updatedData, currentUser.uid);
             toast({ title: t_dashboard('toast.success'), description: t_dashboard('toast.employeeDismissed') });
             return true;
         } catch(e: any) {
@@ -485,7 +441,7 @@ export default function MainLayout({
         setAllEmployees(prev => prev!.map(e => e.id === employeeId ? Object.assign({}, e, updatedData) : e));
         
         try {
-            await updateEmployee(employeeId, updatedData, currentUser);
+            await updateEmployee(employeeId, updatedData, currentUser.uid);
             toast({ title: t_dashboard('toast.success'), description: t_dashboard('toast.employeeRestored') });
             return true;
         } catch(e: any) {
@@ -502,7 +458,7 @@ export default function MainLayout({
         }
         
          try {
-            await bulkDeleteEmployees(status, currentUser);
+            await bulkDeleteEmployees(status, currentUser.uid);
             toast({ title: t_dashboard('toast.success'), description: t_dashboard('toast.bulkDeleteSuccess', {status: status === 'active' ? t_dashboard('active') : t_dashboard('dismissed')}) });
             await refreshData(false);
              return true;
@@ -513,8 +469,11 @@ export default function MainLayout({
     }
     
     const handleBulkImport = async (fileData: ArrayBuffer) => {
+      if (!currentUser) {
+          return { success: false, message: t_dashboard('toast.permissionErrorTitle') };
+      }
       try {
-          const result = await bulkImportEmployees(fileData, settings?.coordinators || [], currentUser as Coordinator);
+          const result = await bulkImportEmployees(fileData, currentUser.uid);
           await refreshData(false);
           return result;
       } catch (e: any) {
