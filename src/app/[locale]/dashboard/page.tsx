@@ -34,7 +34,6 @@ export default function DashboardPage() {
         handleAddEmployeeClick,
         handleUpdateSettings,
         refreshData,
-        handleBulkImport,
         handleAddNonEmployeeClick,
         handleEditNonEmployeeClick,
         handleDeleteNonEmployee,
@@ -91,7 +90,7 @@ export default function DashboardPage() {
                 if (!currentUser.isAdmin) {
                     return <div className="p-4 text-center text-red-500">{t('noPermission')}</div>;
                 }
-                return <SettingsView settings={settings} onUpdateSettings={handleUpdateSettings} allEmployees={allEmployees || []} currentUser={currentUser} onDataRefresh={() => refreshData(false)} onBulkImport={handleBulkImport}/>;
+                return <SettingsView settings={settings} onUpdateSettings={handleUpdateSettings} allEmployees={allEmployees || []} currentUser={currentUser} onDataRefresh={() => refreshData(false)} />;
             case 'inspections':
                  return <InspectionsView 
                     inspections={filteredInspections || []} 

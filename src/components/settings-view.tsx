@@ -22,6 +22,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Alert, AlertTitle, AlertDescription } from "./ui/alert";
 import { format, subMonths } from 'date-fns';
 import { pl } from 'date-fns/locale';
+import { useMainLayout } from "./main-layout";
 
 
 interface SettingsViewProps {
@@ -30,7 +31,6 @@ interface SettingsViewProps {
   allEmployees: Employee[];
   currentUser: Coordinator;
   onDataRefresh: () => void;
-  onBulkImport: (fileData: ArrayBuffer) => Promise<{success: boolean, message: string}>;
 }
 
 const EmployeeImportDialog = ({ isOpen, onOpenChange, onImport }: { isOpen: boolean, onOpenChange: (isOpen: boolean) => void, onImport: (fileData: ArrayBuffer) => Promise<{success: boolean, message: string}> }) => {
@@ -631,9 +631,10 @@ const ReportGenerator = () => {
 };
 
 
-export default function SettingsView({ settings, onUpdateSettings, allEmployees, currentUser, onDataRefresh, onBulkImport }: SettingsViewProps) {
+export default function SettingsView({ settings, onUpdateSettings, allEmployees, currentUser, onDataRefresh }: SettingsViewProps) {
   const { isMobile } = useIsMobile();
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const { handleBulkImport } = useMainLayout();
   
   return (
     <Card>
@@ -683,7 +684,7 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
       <EmployeeImportDialog 
         isOpen={isImportOpen} 
         onOpenChange={setIsImportOpen} 
-        onImport={onBulkImport}
+        onImport={handleBulkImport}
       />
     </Card>
   );
