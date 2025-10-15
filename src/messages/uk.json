@@ -70,7 +70,6 @@
         "employeeLabel": "Працівник",
         "nonEmployeeLabelShort": "НП",
         "residentLabel": "Мешканець (НП)",
-        "selectRoom": "Виберіть кімнату, щоб побачити мешканців",
         "roomLabel": "Кімната",
         "toast": {
             "refreshSuccessTitle": "Успіх",
@@ -111,7 +110,8 @@
             "employeeRestoreError": "Не вдалося відновити працівника.",
             "bulkDeleteSuccess": "Усіх {status} працівників було видалено.",
             "bulkDeleteError": "Не вдалося видалити працівників.",
-            "unknownError": "Сталася невідома помилка."
+            "unknownError": "Сталася невідома помилка.",
+            "permissionError": "Немає дозволу на імпорт."
         }
     },
     "Navigation": {
@@ -378,5 +378,3 @@
         }
     }
 }
-
-    

@@ -1,3 +1,4 @@
+
 {
     "LoginPage": {
         "title": "Welcome to SmartHouse",
@@ -69,7 +70,6 @@
         "employeeLabel": "Employee",
         "nonEmployeeLabelShort": "NE",
         "residentLabel": "Resident (NE)",
-        "selectRoom": "Select a room to see residents",
         "roomLabel": "Room",
         "toast": {
             "refreshSuccessTitle": "Success",
@@ -110,7 +110,8 @@
             "employeeRestoreError": "Failed to restore employee.",
             "bulkDeleteSuccess": "All {status} employees have been deleted.",
             "bulkDeleteError": "Failed to delete employees.",
-            "unknownError": "An unknown error occurred."
+            "unknownError": "An unknown error occurred.",
+            "permissionError": "No permission to import."
         }
     },
     "Navigation": {
@@ -322,20 +323,20 @@
         "edit": "Edit",
         "delete": "Delete",
         "addAddressesTitle": "Add new addresses",
-        "addressesPlaceholder": "Street 1, City\\nStreet 2, City",
+        "addressesPlaceholder": "Street 1, City\nStreet 2, City",
         "editAddressTitle": "Edit address",
         "addressName": "Address",
         "roomsLabel": "Rooms",
-        "roomsPlaceholder": "1A: 4\\n1B: 2\\nRoom 3: 3",
+        "roomsPlaceholder": "1A: 4\n1B: 2\nRoom 3: 3",
         "roomsDescription": "Enter each room on a new line in the format 'Name: Capacity'.",
         "save": "Save",
         "addListItemsTitle": "Add new items to: {title}",
         "listItemsLabel": "Names (each on a new line)",
-        "listItemsPlaceholder": "Item 1\\nItem 2\\nItem 3",
+        "listItemsPlaceholder": "Item 1\nItem 2\nItem 3",
         "cancel": "Cancel",
         "coordinatorsDescription": "Manage application users and their roles.",
         "addCoordinatorsTitle": "Add new coordinators",
-        "coordinatorsPlaceholder": "John Smith\\nJane Doe",
+        "coordinatorsPlaceholder": "John Smith\nJane Doe",
         "editCoordinatorTitle": "Edit coordinator",
         "nameLabel": "Name and Surname",
         "adminLabel": "Administrator",

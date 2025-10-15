@@ -156,7 +156,7 @@ export default function MainLayout({
              toast({ variant: "destructive", title: t('toast.error'), description: e.message || t('toast.clearNotificationsError') });
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentUser]);
+    }, [currentUser, toast, t]);
 
 
     const filteredNotifications = useMemo(() => {
@@ -202,8 +202,7 @@ export default function MainLayout({
                 description: `${t_dashboard('toast.criticalErrorDescription')} ${error instanceof Error ? error.message : ''}`,
             });
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentUser]);
+    }, [currentUser, t_dashboard]);
 
     const handleRefreshStatuses = useCallback(async (showNoChangesToast = false) => {
         if (!currentUser) return;
@@ -218,8 +217,7 @@ export default function MainLayout({
         } catch (e: any) {
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.statusUpdateError') });
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentUser, refreshData]);
+    }, [currentUser, refreshData, t_dashboard]);
 
     const fetchAllData = useCallback(async () => {
         if (!currentUser) return;
@@ -258,8 +256,7 @@ export default function MainLayout({
         } finally {
              setIsLoadingData(false);
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentUser, handleRefreshStatuses]);
+    }, [currentUser, handleRefreshStatuses, t_loading, t_dashboard]);
 
     useEffect(() => {
         if (!isAuthenticating && currentUser) {
@@ -474,7 +471,7 @@ export default function MainLayout({
     
     const handleBulkImport = useCallback(async (fileData: ArrayBuffer) => {
       if (!currentUser?.isAdmin) {
-          return { success: false, message: t_dashboard('toast.permissionErrorTitle') };
+          return { success: false, message: t_dashboard('toast.permissionError') };
       }
       try {
           const result = await bulkImportEmployees(fileData, currentUser.uid);

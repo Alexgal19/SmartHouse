@@ -70,7 +70,6 @@
         "employeeLabel": "Pracownik",
         "nonEmployeeLabelShort": "NZ",
         "residentLabel": "Mieszkaniec (NZ)",
-        "selectRoom": "Wybierz pokój, aby zobaczyć mieszkańców",
         "roomLabel": "Pokój",
         "toast": {
             "refreshSuccessTitle": "Sukces",
@@ -111,7 +110,8 @@
             "employeeRestoreError": "Nie udało się przywrócić pracownika.",
             "bulkDeleteSuccess": "Wszyscy {status} pracownicy zostali usunięci.",
             "bulkDeleteError": "Nie udało się usunąć pracowników.",
-            "unknownError": "Wystąpił nieznany błąd."
+            "unknownError": "Wystąpił nieznany błąd.",
+            "permissionError": "Brak uprawnień do importu."
         }
     },
     "Navigation": {
@@ -378,5 +378,3 @@
         }
     }
 }
-
-    

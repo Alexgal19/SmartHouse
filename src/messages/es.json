@@ -70,7 +70,6 @@
         "employeeLabel": "Empleado",
         "nonEmployeeLabelShort": "NE",
         "residentLabel": "Residente (NE)",
-        "selectRoom": "Selecciona una habitación para ver a los residentes",
         "roomLabel": "Habitación",
         "toast": {
             "refreshSuccessTitle": "Éxito",
@@ -111,7 +110,8 @@
             "employeeRestoreError": "No se pudo restaurar al empleado.",
             "bulkDeleteSuccess": "Todos los empleados {status} han sido eliminados.",
             "bulkDeleteError": "No se pudieron eliminar los empleados.",
-            "unknownError": "Ocurrió un error desconocido."
+            "unknownError": "Ocurrió un error desconocido.",
+            "permissionError": "No permission to import."
         }
     },
     "Navigation": {
@@ -378,5 +378,3 @@
         }
     }
 }
-
-    
