@@ -199,7 +199,7 @@ export default function MainLayout({
                 description: `${t_dashboard('toast.criticalErrorDescription')} ${error instanceof Error ? error.message : ''}`,
             });
         }
-    }, [currentUser]);
+    }, [currentUser, t_dashboard, toast]);
 
     const handleRefreshStatuses = useCallback(async (showNoChangesToast = false) => {
         if (!currentUser) return;
@@ -214,7 +214,7 @@ export default function MainLayout({
         } catch (e: any) {
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.statusUpdateError') });
         }
-    }, [currentUser, refreshData]);
+    }, [currentUser, refreshData, t_dashboard, toast]);
 
     const fetchAllData = useCallback(async () => {
         if (!currentUser) return;
@@ -253,7 +253,7 @@ export default function MainLayout({
         } finally {
              setIsLoadingData(false);
         }
-    }, [currentUser, handleRefreshStatuses]);
+    }, [currentUser, handleRefreshStatuses, t_dashboard, t_loading, toast]);
 
     useEffect(() => {
         if (!isAuthenticating && currentUser) {
@@ -299,7 +299,7 @@ export default function MainLayout({
         } catch (e: any) {
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.employeeSaveError') });
         }
-    }, [currentUser, editingEmployee, allEmployees, refreshData]);
+    }, [currentUser, editingEmployee, allEmployees, refreshData, t_dashboard, toast]);
 
     const handleSaveNonEmployee = useCallback(async (data: Omit<NonEmployee, 'id'>) => {
         if (editingNonEmployee) {
@@ -318,7 +318,7 @@ export default function MainLayout({
             }
         }
         await refreshData(false);
-    }, [editingNonEmployee, refreshData]);
+    }, [editingNonEmployee, refreshData, t_dashboard, toast]);
     
     const handleDeleteNonEmployee = useCallback(async (id: string) => {
         const originalNonEmployees = allNonEmployees;
@@ -332,7 +332,7 @@ export default function MainLayout({
             setAllNonEmployees(originalNonEmployees); // Revert
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.nonEmployeeDeleteError') });
         }
-    }, [allNonEmployees]);
+    }, [allNonEmployees, t_dashboard, toast]);
     
     const handleUpdateSettings = useCallback(async (newSettings: Partial<Settings>) => {
         if (!settings || !currentUser?.isAdmin) {
@@ -350,7 +350,7 @@ export default function MainLayout({
             setSettings(originalSettings); // Revert on error
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.settingsUpdateError') });
         }
-    }, [settings, currentUser]);
+    }, [settings, currentUser, t_dashboard, toast]);
     
     const handleAddInspection = useCallback(async (inspectionData: Omit<Inspection, 'id'>) => {
         try {
@@ -360,7 +360,7 @@ export default function MainLayout({
         } catch(e: any) {
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.inspectionAddError') });
         }
-    }, [refreshData]);
+    }, [refreshData, t_dashboard, toast]);
 
     const handleUpdateInspection = useCallback(async (id: string, inspectionData: Omit<Inspection, 'id'>) => {
         const originalInspections = allInspections;
@@ -375,7 +375,7 @@ export default function MainLayout({
             setAllInspections(originalInspections);
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.inspectionUpdateError') });
         }
-    }, [allInspections, refreshData]);
+    }, [allInspections, refreshData, t_dashboard, toast]);
 
     const handleDeleteInspection = useCallback(async (id: string) => {
         const originalInspections = allInspections;
@@ -388,7 +388,7 @@ export default function MainLayout({
             setAllInspections(originalInspections);
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.inspectionDeleteError') });
         }
-    }, [allInspections]);
+    }, [allInspections, t_dashboard, toast]);
 
     const handleAddEmployeeClick = useCallback(() => {
         setEditingEmployee(null);
@@ -427,7 +427,7 @@ export default function MainLayout({
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.employeeDismissError') });
             return false;
         }
-    }, [currentUser, allEmployees]);
+    }, [currentUser, allEmployees, t_dashboard, toast]);
 
     const handleRestoreEmployee = useCallback(async (employeeId: string) => {
         if (!currentUser) return false;
@@ -446,7 +446,7 @@ export default function MainLayout({
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.employeeRestoreError') });
             return false;
         }
-    }, [currentUser, allEmployees]);
+    }, [currentUser, allEmployees, t_dashboard, toast]);
     
     const handleBulkDeleteEmployees = useCallback(async (status: 'active' | 'dismissed') => {
         if (!currentUser || !currentUser.isAdmin) {
@@ -463,20 +463,27 @@ export default function MainLayout({
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.bulkDeleteError') });
              return false;
         }
-    }, [currentUser, refreshData]);
+    }, [currentUser, refreshData, t_dashboard, toast]);
     
-    const handleBulkImport = useCallback(async (fileData: ArrayBuffer) => {
-      if (!currentUser?.isAdmin) {
-          return { success: false, message: "Brak uprawnień do importu." };
-      }
-      try {
-          const result = await bulkImportEmployees(fileData, currentUser.uid);
-          await refreshData(false);
-          return result;
-      } catch (e: any) {
-          return { success: false, message: e.message || "Wystąpił nieznany błąd." };
-      }
-    }, [currentUser, refreshData]);
+    const handleBulkImport = useCallback(async (fileData: ArrayBuffer): Promise<{ success: boolean; message: string; }> => {
+        // Read directly from session storage to prevent stale state issues.
+        const loggedInUserStr = sessionStorage.getItem('currentUser');
+        if (!loggedInUserStr) {
+            return { success: false, message: "Brak uprawnień do importu." };
+        }
+        const user = JSON.parse(loggedInUserStr);
+
+        if (!user?.isAdmin) {
+            return { success: false, message: "Brak uprawnień do importu." };
+        }
+        try {
+            const result = await bulkImportEmployees(fileData, user.uid);
+            await refreshData(false);
+            return result;
+        } catch (e: any) {
+            return { success: false, message: e.message || "Wystąpił nieznany błąd." };
+        }
+    }, [refreshData]);
     
     const contextValue: MainLayoutContextType = useMemo(() => ({
         allEmployees,
@@ -612,3 +619,5 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
+
+    
