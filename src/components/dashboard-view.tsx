@@ -349,7 +349,7 @@ const DeparturesChart = ({ employees }: { employees: Employee[] }) => {
                         axisLine={false} 
                         tickMargin={10} 
                         tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} 
-                        interval={isMobile ? 0 : 0}
+                        interval={0}
                     />
                     <YAxis 
                         tickLine={false} 
@@ -483,7 +483,7 @@ const DeductionsChart = ({ employees }: { employees: Employee[] }) => {
                         axisLine={false} 
                         tickMargin={10} 
                         tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} 
-                        interval={isMobile ? 0 : 0}
+                        interval={0}
                     />
                     <YAxis 
                         tickLine={false} 
@@ -657,6 +657,10 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                             <CardTitle>Filtry Główne</CardTitle>
                             <CardDescription>Wybierz koordynatora, aby filtrować dane w całej aplikacji.</CardDescription>
                         </div>
+                         <Button onClick={() => onDataRefresh()} variant="outline" size="icon">
+                            <RefreshCw className="h-4 w-4" />
+                            <span className="sr-only">Odśwież statusy</span>
+                        </Button>
                     </div>
                 </CardHeader>
                 <CardContent>

@@ -8,7 +8,9 @@ import type { SessionData } from '@/types';
 import { getSettings } from './actions';
 
 if (!process.env.SECRET_COOKIE_PASSWORD) {
-    console.warn("SECRET_COOKIE_PASSWORD is not set. Using a default value. This is not secure for production.");
+    // This warning is helpful in development but can be noisy in production logs.
+    // The default password logic below handles the case where it's not set.
+    // console.warn("SECRET_COOKIE_PASSWORD is not set. Using a default value. This is not secure for production.");
 }
 
 const sessionOptions = {

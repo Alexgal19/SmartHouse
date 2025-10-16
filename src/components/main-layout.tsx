@@ -174,6 +174,7 @@ export default function MainLayout({
     const refreshData = useCallback(async (showToast = true) => {
         if (!currentUser) return;
         try {
+            await handleRefreshStatuses(false);
             const coordinatorIdToFetch = currentUser.isAdmin ? undefined : currentUser.uid;
             
             const [employeesData, settingsData, inspectionsData, nonEmployeesData, equipmentData] = await Promise.all([
@@ -227,8 +228,7 @@ export default function MainLayout({
             setSettings(settingsData);
             
             setLoadingMessage("Wczytywanie danych...");
-            await handleRefreshStatuses(false);
-
+            
             const coordinatorIdToFetch = currentUser.isAdmin ? undefined : currentUser.uid;
             
             const [employeesData, inspectionsData, nonEmployeesData, equipmentData, notificationsData] = await Promise.all([
@@ -257,7 +257,7 @@ export default function MainLayout({
         } finally {
              setIsLoadingData(false);
         }
-    }, [currentUser, handleRefreshStatuses, toast]);
+    }, [currentUser, toast]);
 
     useEffect(() => {
         if (currentUser) {
@@ -515,7 +515,7 @@ export default function MainLayout({
             await refreshData(false);
             return result;
         } catch (e: any) {
-            return { success: false, message: e.message || "Wystąpił nieznany błąd." };
+            return { success: false, message: e.message || "Wystąpił nieznany błąd podczas przetwarzania pliku." };
         }
     }, [currentUser, refreshData]);
     
