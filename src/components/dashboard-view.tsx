@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface DashboardViewProps {
   employees: Employee[];
@@ -162,6 +163,51 @@ const HousingDetailView = ({
 };
 
 const VerticalChartComponent = ({ data, title, labelX }: { data: {name: string, value: number}[], title: string, labelX?: string }) => {
+    const { isMobile } = useIsMobile();
+
+    if (isMobile) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>{title}</CardTitle>
+                </CardHeader>
+                <CardContent className="pl-2 pr-4">
+                    <ChartContainer config={{value: {label: labelX || "Pracownik"}}} className="h-[400px] w-full">
+                        <ResponsiveContainer>
+                            <BarChart data={data} margin={{ top: 20, right: 20, left: -20, bottom: 50 }}>
+                                <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border) / 0.5)" />
+                                <XAxis 
+                                    dataKey="name"
+                                    tickLine={false}
+                                    axisLine={false}
+                                    tickMargin={10}
+                                    angle={-45}
+                                    textAnchor="end"
+                                    minTickGap={-10}
+                                    height={80}
+                                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} 
+                                />
+                                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
+                                <Tooltip 
+                                    cursor={{ fill: 'hsl(var(--accent) / 0.1)' }} 
+                                    content={({ active, payload, label }) => active && payload && payload.length && (
+                                        <div className="bg-background/95 p-3 rounded-lg border shadow-lg">
+                                            <p className="font-bold text-foreground">{label}</p>
+                                            <p className="text-sm text-primary">{`${payload[0].value} ${labelX || "Pracownik"}`}</p>
+                                        </div>
+                                    )}
+                                />
+                                <Bar dataKey="value" radius={[8, 8, 0, 0]} fill="hsl(var(--primary))">
+                                    <LabelList dataKey="value" position="top" offset={8} className="fill-foreground text-xs font-semibold" />
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </ChartContainer>
+                </CardContent>
+            </Card>
+        )
+    }
+
     return(
     <Card>
       <CardHeader>
@@ -216,6 +262,7 @@ const VerticalChartComponent = ({ data, title, labelX }: { data: {name: string, 
 )};
 
 const DeparturesChart = ({ employees }: { employees: Employee[] }) => {
+    const { isMobile } = useIsMobile();
     const locale = pl;
     const [departureYear, setDepartureYear] = useState<string>(String(new Date().getFullYear()));
     const [departureMonth, setDepartureMonth] = useState<string>(String(new Date().getMonth()));
@@ -267,15 +314,15 @@ const DeparturesChart = ({ employees }: { employees: Employee[] }) => {
         <Card>
             <CardHeader>
                 <CardTitle>Statystyka wyjazdów</CardTitle>
-                <div className="flex gap-2 pt-2">
+                <div className="flex flex-col sm:flex-row gap-2 pt-2">
                     <Select value={departureYear} onValueChange={setDepartureYear}>
-                        <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="w-full sm:w-[120px]"><SelectValue /></SelectTrigger>
                         <SelectContent>
                             {departureYears.map(year => <SelectItem key={year} value={year}>{year}</SelectItem>)}
                         </SelectContent>
                     </Select>
                     <Select value={departureMonth} onValueChange={setDepartureMonth}>
-                        <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="w-full sm:w-[150px]"><SelectValue /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Wszystkie miesiące</SelectItem>
                             {Array.from({length: 12}).map((_, i) => (
@@ -285,10 +332,10 @@ const DeparturesChart = ({ employees }: { employees: Employee[] }) => {
                     </Select>
                 </div>
             </CardHeader>
-            <CardContent className="pr-0 sm:pr-2 pl-4 pt-0 md:pt-0">
+            <CardContent className="pr-0 sm:pr-2 pl-2 sm:pl-4 pt-0 md:pt-0">
                <ChartContainer config={{value: {label: "wyjazdów"}}} className="h-[400px] w-full">
                 <ResponsiveContainer>
-                    <BarChart data={departuresByMonth} margin={{ top: 20, right: 20, left: 0, bottom: 20 }}>
+                    <BarChart data={departuresByMonth} margin={{ top: 20, right: isMobile ? 0 : 20, left: isMobile ? -20 : 0, bottom: isMobile ? 20 : 0 }}>
                     <defs>
                         <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0%" stopColor="hsl(var(--primary) / 0.7)" />
@@ -302,7 +349,7 @@ const DeparturesChart = ({ employees }: { employees: Employee[] }) => {
                         axisLine={false} 
                         tickMargin={10} 
                         tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} 
-                        interval={0}
+                        interval={isMobile ? 'auto' : 0}
                     />
                     <YAxis 
                         tickLine={false} 
@@ -332,6 +379,7 @@ const DeparturesChart = ({ employees }: { employees: Employee[] }) => {
 }
 
 const DeductionsChart = ({ employees }: { employees: Employee[] }) => {
+    const { isMobile } = useIsMobile();
     const locale = pl;
 
     const [deductionYear, setDeductionYear] = useState<string>(String(new Date().getFullYear()));
@@ -400,15 +448,15 @@ const DeductionsChart = ({ employees }: { employees: Employee[] }) => {
         <Card>
             <CardHeader>
                 <CardTitle>Statystyka potrąceń</CardTitle>
-                <div className="flex gap-2 pt-2">
+                <div className="flex flex-col sm:flex-row gap-2 pt-2">
                     <Select value={deductionYear} onValueChange={setDeductionYear}>
-                        <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="w-full sm:w-[120px]"><SelectValue /></SelectTrigger>
                         <SelectContent>
                             {deductionYears.map(year => <SelectItem key={year} value={year}>{year}</SelectItem>)}
                         </SelectContent>
                     </Select>
                     <Select value={deductionMonth} onValueChange={setDeductionMonth}>
-                        <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="w-full sm:w-[150px]"><SelectValue /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Wszystkie miesiące</SelectItem>
                             {Array.from({length: 12}).map((_, i) => (
@@ -418,10 +466,10 @@ const DeductionsChart = ({ employees }: { employees: Employee[] }) => {
                     </Select>
                 </div>
             </CardHeader>
-            <CardContent className="pr-0 sm:pr-2 pl-4 pt-0 md:pt-0">
+            <CardContent className="pr-0 sm:pr-2 pl-2 sm:pl-4 pt-0 md:pt-0">
                <ChartContainer config={{value: {label: "Suma (zł)"}}} className="h-[400px] w-full">
                 <ResponsiveContainer>
-                    <BarChart data={deductionsByTime} margin={{ top: 20, right: 20, left: 0, bottom: 20 }}>
+                    <BarChart data={deductionsByTime} margin={{ top: 20, right: isMobile ? 0 : 20, left: isMobile ? -20 : 0, bottom: isMobile ? 20 : 0 }}>
                     <defs>
                         <linearGradient id="deductionGradient" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0%" stopColor="hsl(var(--destructive) / 0.7)" />
@@ -435,7 +483,7 @@ const DeductionsChart = ({ employees }: { employees: Employee[] }) => {
                         axisLine={false} 
                         tickMargin={10} 
                         tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} 
-                        interval={0}
+                        interval={isMobile ? 'auto' : 0}
                     />
                     <YAxis 
                         tickLine={false} 
@@ -575,13 +623,23 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
   };
 
   const nonEmployeesByAddress = useMemo(() => {
-    const counts = nonEmployees.reduce((acc, person) => {
+    let nonEmployeesToCount = nonEmployees;
+    if (currentUser.isAdmin && selectedCoordinatorId !== 'all' && allEmployees) {
+        const coordinatorAddresses = new Set(
+            allEmployees
+                .filter(e => e.coordinatorId === selectedCoordinatorId)
+                .map(e => e.address)
+        );
+        nonEmployeesToCount = nonEmployees.filter(ne => ne.address && coordinatorAddresses.has(ne.address));
+    }
+    
+    const counts = nonEmployeesToCount.reduce((acc, person) => {
       const addressName = person.address || "Nieznany";
       acc[addressName] = (acc[addressName] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
     return Object.entries(counts).map(([name, value]) => ({ name, value }));
-  }, [nonEmployees]);
+  }, [nonEmployees, allEmployees, currentUser.isAdmin, selectedCoordinatorId]);
 
 
   const employeesByCoordinator = useMemo(() => aggregateData('coordinatorId'), [employees, settings.coordinators]);
