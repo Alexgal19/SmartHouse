@@ -71,14 +71,14 @@ const EmployeeImportDialog = ({ isOpen, onOpenChange, onImport }: { isOpen: bool
                 }
             }
         };
-        reader.onerror = (error) => {
+        reader.onerror = (errorEvent) => {
             setIsProcessing(false);
+            console.error("FileReader error:", errorEvent);
             toast({
                 variant: 'destructive',
                 title: "Błąd odczytu pliku",
                 description: "Nie udało się odczytać wybranego pliku. Spróbuj ponownie.",
             });
-            console.error("FileReader error:", error);
         };
         reader.readAsArrayBuffer(file);
     };
@@ -361,7 +361,7 @@ const AddressManager = ({ items, coordinators, onUpdate }: { items: HousingAddre
                                 className="h-64 font-mono text-sm"
                             />
                             <DialogDescription className="text-xs">
-                                Wprowadź każdą кімнату w nowym wierszu w formacie "Nazwa: Ilość miejsc".
+                                Wprowadź każdą кімнату в новому рядку в форматі "Назва: Кількість місць".
                             </DialogDescription>
                         </div>
                     </div>
@@ -552,7 +552,8 @@ const CoordinatorManager = ({ items, onUpdate, allEmployees, currentUser, onData
                                 </SelectTrigger>
                                 <SelectContent>
                                     {items.filter(c => c.uid !== currentCoordinator?.uid).map(c => (
-                                        <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                                        <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -697,5 +698,3 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
     </Card>
   );
 }
-
-    

@@ -210,32 +210,39 @@ const CameraCapture = ({ isOpen, onOpenChange, onCapture }: { isOpen: boolean, o
     },[]);
     
     useEffect(() => {
+        let isCancelled = false;
+
         const getCameraPermission = async () => {
           try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-            setHasCameraPermission(true);
-            streamRef.current = stream;
-            if (videoRef.current) {
-              videoRef.current.srcObject = stream;
+            if (!isCancelled) {
+              setHasCameraPermission(true);
+              streamRef.current = stream;
+              if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+              }
+            } else {
+                stream.getTracks().forEach(track => track.stop());
             }
-          } catch (error) {
-            console.error('Error accessing camera:', error);
-            setHasCameraPermission(false);
-            toast({
-              variant: 'destructive',
-              title: 'Brak dostępu do kamery',
-              description: 'Proszę zezwolić na dostęp do kamery w ustawieniach przeglądarki.',
-            });
+          } catch (error: any) {
+            if (!isCancelled) {
+                console.error('Error accessing camera:', error);
+                setHasCameraPermission(false);
+                toast({
+                  variant: 'destructive',
+                  title: 'Brak dostępu do kamery',
+                  description: error.message || 'Proszę zezwolić na dostęp do kamery w ustawieniach przeglądarki.',
+                });
+            }
           }
         };
     
         if (isOpen) {
           getCameraPermission();
-        } else {
-            stopCamera();
         }
     
         return () => {
+          isCancelled = true;
           stopCamera();
         };
       }, [isOpen, toast, stopCamera]);
