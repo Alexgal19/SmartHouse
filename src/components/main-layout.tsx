@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback, createContext, useContext, useRef } from 'react';
@@ -15,9 +16,8 @@ import Header from './header';
 import { MobileNav } from './mobile-nav';
 import type { View, Notification, Coordinator, Employee, Settings, NonEmployee, Inspection, EquipmentItem } from '@/types';
 import { Building, ClipboardList, Home, Settings as SettingsIcon, Users, Globe, Loader2, Archive } from 'lucide-react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import { clearAllNotifications, markNotificationAsRead, getNotifications, getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getInspections, addInspection, updateInspection, deleteInspection, transferEmployees, bulkDeleteEmployees, bulkImportEmployees, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee, checkAndUpdateEmployeeStatuses, getEquipment, addEquipment, updateEquipment, deleteEquipment } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 import { AddEmployeeForm, type EmployeeFormData } from '@/components/add-employee-form';
@@ -77,8 +77,6 @@ export default function MainLayout({
 }) {
     const routerRef = useRef(useRouter());
     const searchParams = useSearchParams();
-    const pathname = usePathname();
-    const { toast } = useToast();
 
     const activeView = useMemo(() => {
         return (searchParams.get('view') as View) || 'dashboard';
@@ -103,6 +101,7 @@ export default function MainLayout({
     const [isAuthenticating, setIsAuthenticating] = useState(true);
     const [isLoadingData, setIsLoadingData] = useState(true);
     const [loadingMessage, setLoadingMessage] = useState("Uwierzytelnianie...");
+    const { toast } = useToast();
 
     const setSelectedCoordinatorId = useCallback((value: React.SetStateAction<string>) => {
         _setSelectedCoordinatorId(value);
@@ -142,6 +141,7 @@ export default function MainLayout({
     }, []);
 
     const handleNotificationClick = useCallback(async (notification: Notification, employeeId?: string) => {
+        const pathname = window.location.pathname;
         if (employeeId) {
              const currentSearchParams = new URLSearchParams(window.location.search);
              currentSearchParams.set('view', 'employees');
@@ -153,7 +153,7 @@ export default function MainLayout({
             setAllNotifications(prev => prev.map(n => n.id === notification.id ? {...n, isRead: true} : n));
             await markNotificationAsRead(notification.id);
         }
-    }, [pathname]);
+    }, []);
 
      const handleClearNotifications = useCallback(async () => {
         if (!currentUser?.isAdmin) {
@@ -273,6 +273,7 @@ export default function MainLayout({
     }, [isAuthenticating, currentUser, fetchAllData]);
 
     useEffect(() => {
+        const pathname = window.location.pathname;
         if (editEmployeeId && allEmployees) {
             const employeeToEdit = allEmployees.find(e => e.id === editEmployeeId);
             if (employeeToEdit) {
@@ -285,7 +286,7 @@ export default function MainLayout({
 
             }
         }
-    }, [editEmployeeId, allEmployees, pathname]);
+    }, [editEmployeeId, allEmployees]);
 
     const handleSaveEmployee = useCallback(async (data: EmployeeFormData) => {
         if (!currentUser) return;
@@ -609,10 +610,7 @@ export default function MainLayout({
                         <SidebarMenu>
                             {visibleNavItems.map(item => (
                                 <SidebarMenuItem key={item.view}>
-                                    <Link href={{
-                                        pathname: '/dashboard',
-                                        query: { view: item.view }
-                                    }} passHref>
+                                    <Link href={`/dashboard?view=${item.view}`} passHref>
                                         <SidebarMenuButton 
                                             isActive={activeView === item.view}
                                             tooltip={item.label}
