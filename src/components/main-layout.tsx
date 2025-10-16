@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback, createContext, useContext, useRef } from 'react';
@@ -19,7 +18,7 @@ import { Building, ClipboardList, Home, Settings as SettingsIcon, Users, Globe, 
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { clearAllNotifications, markNotificationAsRead, getNotifications, getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getInspections, addInspection, updateInspection, deleteInspection, transferEmployees, bulkDeleteEmployees, bulkImportEmployees, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee, checkAndUpdateEmployeeStatuses, getEquipment, addEquipment, updateEquipment, deleteEquipment } from '@/lib/actions';
-import { getSession, logout } from '@/lib/session';
+import { logout } from '@/lib/session';
 import { useToast } from '@/hooks/use-toast';
 import { AddEmployeeForm, type EmployeeFormData } from '@/components/add-employee-form';
 import { AddNonEmployeeForm } from '@/components/add-non-employee-form';
@@ -72,8 +71,10 @@ export const useMainLayout = () => {
 };
 
 export default function MainLayout({
+  initialSession,
   children
 }: {
+  initialSession: SessionData;
   children: React.ReactNode;
 }) {
     const router = useRouter();
@@ -86,7 +87,7 @@ export default function MainLayout({
 
     const editEmployeeId = searchParams.get('edit');
 
-    const [currentUser, setCurrentUser] = useState<SessionData | null>(null);
+    const [currentUser, setCurrentUser] = useState<SessionData | null>(initialSession);
     const [allNotifications, setAllNotifications] = useState<Notification[]>([]);
     
     const [allEmployees, setAllEmployees] = useState<Employee[] | null>(null);
@@ -100,10 +101,19 @@ export default function MainLayout({
     const [editingNonEmployee, setEditingNonEmployee] = useState<NonEmployee | null>(null);
     const [selectedCoordinatorId, _setSelectedCoordinatorId] = useState('all');
     
-    const [isAuthenticating, setIsAuthenticating] = useState(true);
     const [isLoadingData, setIsLoadingData] = useState(true);
-    const [loadingMessage, setLoadingMessage] = useState("Uwierzytelnianie...");
+    const [loadingMessage, setLoadingMessage] = useState("Wczytywanie danych...");
     const { toast } = useToast();
+
+    useEffect(() => {
+      if (!currentUser?.isLoggedIn) {
+        router.push('/');
+      } else {
+        if(!currentUser.isAdmin) {
+          _setSelectedCoordinatorId(currentUser.uid);
+        }
+      }
+    }, [currentUser, router]);
 
     const setSelectedCoordinatorId = useCallback((value: React.SetStateAction<string>) => {
         _setSelectedCoordinatorId(value);
@@ -115,23 +125,6 @@ export default function MainLayout({
         }
         return navItems.filter(item => item.view !== 'settings');
     }, [currentUser]);
-
-     useEffect(() => {
-        const checkSession = async () => {
-            const session = await getSession();
-            if (session.isLoggedIn) {
-                // Convert session to a plain object before setting state
-                setCurrentUser({ ...session });
-                if (!session.isAdmin) {
-                    setSelectedCoordinatorId(session.uid);
-                }
-            } else {
-                routerRef.current.push('/');
-            }
-            setIsAuthenticating(false);
-        };
-        checkSession();
-    }, [setSelectedCoordinatorId]);
 
     const handleLogout = useCallback(async () => {
         await logout();
@@ -266,10 +259,10 @@ export default function MainLayout({
     }, [currentUser, handleRefreshStatuses, toast]);
 
     useEffect(() => {
-        if (!isAuthenticating && currentUser) {
+        if (currentUser) {
             fetchAllData();
         }
-    }, [isAuthenticating, currentUser, fetchAllData]);
+    }, [currentUser, fetchAllData]);
 
     useEffect(() => {
         const pathname = window.location.pathname;
@@ -575,7 +568,7 @@ export default function MainLayout({
         handleRefreshStatuses
     ]);
 
-    if (isAuthenticating || isLoadingData) {
+    if (isLoadingData) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
                 <div className="flex animate-fade-in flex-col items-center gap-6">
