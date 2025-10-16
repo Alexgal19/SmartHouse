@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -36,7 +35,7 @@ export default function LoginPage() {
         };
 
         fetchSettings();
-    }, [toast]);
+    }, [toast, t]);
 
     const handleLogin = async (user: {name: string}, password?: string) => {
         if (!settings) {
