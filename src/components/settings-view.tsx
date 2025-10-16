@@ -146,23 +146,21 @@ const ListManager = ({ title, items, onUpdate }: { title: string; items: string[
 
     return (
         <Card>
-            <CardHeader className="flex-row items-center justify-between">
-                <CardTitle className="text-lg">{title}</CardTitle>
+            <CardHeader className="flex-row items-center justify-between p-4 md:p-6">
+                <CardTitle>{title}</CardTitle>
                 <Button size="sm" onClick={() => setIsDialogOpen(true)}><PlusCircle className="mr-2 h-4 w-4" />Dodaj</Button>
             </CardHeader>
-            <CardContent>
-                <div className="space-y-2">
-                    {items.map(item => (
-                        <Card key={item} className="bg-muted/50">
-                            <div className="flex items-center justify-between p-3">
-                                <span className="text-sm font-medium">{item}</span>
-                                <Button variant="ghost" size="icon" onClick={() => handleDelete(item)}>
-                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
-                            </div>
-                        </Card>
-                    ))}
-                </div>
+            <CardContent className="space-y-2 p-4 pt-0 md:p-6 md:pt-0">
+                {items.map(item => (
+                    <Card key={item} className="bg-muted/50">
+                        <div className="flex items-center justify-between p-3">
+                            <span className="text-sm font-medium">{item}</span>
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(item)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                        </div>
+                    </Card>
+                ))}
             </CardContent>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
@@ -275,9 +273,9 @@ const AddressManager = ({ items, coordinators, onUpdate }: { items: HousingAddre
 
     return (
         <Card>
-            <CardHeader className="flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <CardHeader className="flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 md:p-6">
                 <div className="flex-1">
-                    <CardTitle className="text-lg">Adresy</CardTitle>
+                    <CardTitle>Adresy</CardTitle>
                     <CardDescription>Zarządzaj adresami przypisanymi do koordynatorów.</CardDescription>
                 </div>
                 <div className="flex w-full md:w-auto items-center gap-2">
@@ -299,34 +297,32 @@ const AddressManager = ({ items, coordinators, onUpdate }: { items: HousingAddre
                     </Button>
                 </div>
             </CardHeader>
-            <CardContent>
-                <div className="space-y-3">
-                    {filteredAddresses.map(address => {
-                        const totalCapacity = address.rooms.reduce((acc, room) => acc + room.capacity, 0);
-                        return (
-                            <Card key={address.id} className="bg-muted/50">
-                                <CardHeader className="flex-row items-center justify-between p-4">
-                                    <div>
-                                        <p className="font-semibold">{address.name}</p>
-                                        <p className="text-sm text-muted-foreground">
-                                            Pojemność: {totalCapacity} | Pokoje: {address.rooms.length}
-                                        </p>
-                                    </div>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                        <DropdownMenuContent>
-                                            <DropdownMenuItem onClick={() => openEditDialog(address)}>Edytuj</DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleDelete(address.id)} className="text-destructive">Usuń</DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </CardHeader>
-                            </Card>
-                        )
-                    })}
-                     {filteredAddresses.length === 0 && selectedCoordinatorId !== 'all' && (
-                        <p className="text-center text-muted-foreground p-4">Brak adresów dla tego koordynatora. Dodaj nowy.</p>
-                    )}
-                </div>
+            <CardContent className="space-y-3 p-4 pt-0 md:p-6 md:pt-0">
+                {filteredAddresses.map(address => {
+                    const totalCapacity = address.rooms.reduce((acc, room) => acc + room.capacity, 0);
+                    return (
+                        <Card key={address.id} className="bg-muted/50">
+                            <CardHeader className="flex-row items-center justify-between p-4">
+                                <div>
+                                    <p className="font-semibold">{address.name}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        Pojemność: {totalCapacity} | Pokoje: {address.rooms.length}
+                                    </p>
+                                </div>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                    <DropdownMenuContent>
+                                        <DropdownMenuItem onClick={() => openEditDialog(address)}>Edytuj</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleDelete(address.id)} className="text-destructive">Usuń</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </CardHeader>
+                        </Card>
+                    )
+                })}
+                 {filteredAddresses.length === 0 && selectedCoordinatorId !== 'all' && (
+                    <p className="text-center text-muted-foreground p-4">Brak adresów dla tego koordynatora. Dodaj nowy.</p>
+                )}
             </CardContent>
              <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                 <DialogContent className="data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
@@ -457,39 +453,37 @@ const CoordinatorManager = ({ items, onUpdate, allEmployees, currentUser, onData
 
     return (
         <Card>
-            <CardHeader className="flex-row items-center justify-between">
-                <CardTitle className="text-lg">Koordynatorzy</CardTitle>
+            <CardHeader className="flex-row items-center justify-between p-4 md:p-6">
+                <CardTitle>Koordynatorzy</CardTitle>
                 <Button size="sm" onClick={() => setIsAddDialogOpen(true)}><PlusCircle className="mr-2 h-4 w-4" />Dodaj</Button>
             </CardHeader>
-            <CardContent>
-                <div className="space-y-3">
-                    {items.map(coordinator => (
-                        <Card key={coordinator.uid} className="bg-muted/50">
-                             <CardHeader className="flex-row items-center justify-between p-4">
-                                <div className="flex items-center gap-3">
-                                    {coordinator.isAdmin && <ShieldCheck className="h-5 w-5 text-primary" />}
-                                    <div>
-                                        <p className="font-semibold">{coordinator.name}</p>
-                                        <p className="text-sm text-muted-foreground font-mono text-xs">{coordinator.uid}</p>
-                                        <div className="flex items-center text-xs text-muted-foreground gap-1 mt-1">
-                                            <KeyRound className="h-3 w-3" />
-                                            <span>{coordinator.password ? 'Hasło ustawione' : 'Brak hasła'}</span>
-                                        </div>
+            <CardContent className="space-y-3 p-4 pt-0 md:p-6 md:pt-0">
+                {items.map(coordinator => (
+                    <Card key={coordinator.uid} className="bg-muted/50">
+                         <CardHeader className="flex-row items-center justify-between p-4">
+                            <div className="flex items-center gap-3">
+                                {coordinator.isAdmin && <ShieldCheck className="h-5 w-5 text-primary" />}
+                                <div>
+                                    <p className="font-semibold">{coordinator.name}</p>
+                                    <p className="text-sm text-muted-foreground font-mono text-xs">{coordinator.uid}</p>
+                                    <div className="flex items-center text-xs text-muted-foreground gap-1 mt-1">
+                                        <KeyRound className="h-3 w-3" />
+                                        <span>{coordinator.password ? 'Hasło ustawione' : 'Brak hasła'}</span>
                                     </div>
                                 </div>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                    <DropdownMenuContent>
-                                        <DropdownMenuItem onClick={() => openEditDialog(coordinator)}>Edytuj</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleResetPassword(coordinator.uid)}>Resetuj hasło</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => openTransferDialog(coordinator)}>Przenieś pracowników</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleDelete(coordinator.uid)} className="text-destructive">Usuń</DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </CardHeader>
-                        </Card>
-                    ))}
-                </div>
+                            </div>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                <DropdownMenuContent>
+                                    <DropdownMenuItem onClick={() => openEditDialog(coordinator)}>Edytuj</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleResetPassword(coordinator.uid)}>Resetuj hasło</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => openTransferDialog(coordinator)}>Przenieś pracowników</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleDelete(coordinator.uid)} className="text-destructive">Usuń</DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </CardHeader>
+                    </Card>
+                ))}
             </CardContent>
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                 <DialogContent className="data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
@@ -620,11 +614,11 @@ const ReportGenerator = () => {
     
     return (
         <Card>
-            <CardHeader>
-                <CardTitle className="text-lg">Generowanie Raportów</CardTitle>
+            <CardHeader className="p-4 md:p-6">
+                <CardTitle>Generowanie Raportów</CardTitle>
                 <CardDescription>Generuj miesięczne raporty w formacie Excel.</CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col sm:flex-row items-center gap-4">
+            <CardContent className="flex flex-col sm:flex-row items-center gap-4 p-4 pt-0 md:p-6 md:pt-0">
                  <Input 
                     type="month" 
                     value={month} 
@@ -647,7 +641,7 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
   
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="p-4 md:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <CardTitle>Ustawienia Aplikacji</CardTitle>
             <div className="flex gap-2">
@@ -658,7 +652,7 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
             </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
         <Tabs defaultValue="addresses" className="w-full" orientation={isMobile ? "vertical" : "horizontal"}>
           <TabsList className={cn("flex-wrap h-auto sm:h-10",isMobile ? "flex-col items-stretch" : "grid w-full grid-cols-6")}>
             <TabsTrigger value="addresses">Adresy</TabsTrigger>

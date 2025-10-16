@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -199,16 +200,16 @@ const EmployeeCardList = ({
              {employees.length > 0 ? (
                 employees.map((employee) => (
                     <Card key={employee.id} onClick={() => onEdit(employee)} className="cursor-pointer animate-in fade-in-0 duration-300">
-                        <CardHeader className="flex flex-row items-start justify-between pb-4">
+                        <CardHeader className="flex flex-row items-start justify-between pb-4 p-4">
                            <div>
-                             <CardTitle className="text-lg">{employee.fullName}</CardTitle>
+                             <CardTitle>{employee.fullName}</CardTitle>
                              <CardDescription>{getCoordinatorName(employee.coordinatorId)}</CardDescription>
                            </div>
                            <div onClick={(e) => e.stopPropagation()}>
                                 <EmployeeActions {...{ employee, onEdit, onDismiss, onRestore, isDismissedTab }} />
                            </div>
                         </CardHeader>
-                        <CardContent className="text-base space-y-2">
+                        <CardContent className="text-base space-y-2 p-4 pt-0">
                             <p><span className="font-semibold text-muted-foreground">Adres:</span> {employee.address}</p>
                             <p><span className="font-semibold text-muted-foreground">Pokój:</span> {employee.roomNumber}</p>
                             <p><span className="font-semibold text-muted-foreground">Narodowość:</span> {employee.nationality}</p>
@@ -295,9 +296,9 @@ const NonEmployeeCardList = ({
              {nonEmployees.length > 0 ? (
                 nonEmployees.map((person) => (
                     <Card key={person.id} onClick={() => onEdit(person)} className="cursor-pointer animate-in fade-in-0 duration-300">
-                        <CardHeader className="flex flex-row items-start justify-between pb-4">
+                        <CardHeader className="flex flex-row items-start justify-between pb-4 p-4">
                            <div>
-                             <CardTitle className="text-lg">{person.fullName}</CardTitle>
+                             <CardTitle>{person.fullName}</CardTitle>
                              <CardDescription>{person.address}, Pokój {person.roomNumber}</CardDescription>
                            </div>
                            <div onClick={(e) => e.stopPropagation()}>
@@ -315,7 +316,7 @@ const NonEmployeeCardList = ({
                                 </DropdownMenu>
                            </div>
                         </CardHeader>
-                        <CardContent className="text-base space-y-2">
+                        <CardContent className="text-base space-y-2 p-4 pt-0">
                            <p><span className="font-semibold text-muted-foreground">Zameldowanie:</span> {formatDate(person.checkInDate)}</p>
                            <p><span className="font-semibold text-muted-foreground">Wymeldowanie:</span> {formatDate(person.checkOutDate)}</p>
                         </CardContent>
@@ -397,7 +398,7 @@ const FilterDialog = ({
                       </div>
                   </div>
                 </ScrollArea>
-                <DialogFooter className="flex-row !justify-between">
+                <DialogFooter className="flex-row !justify-between p-6 pt-0">
                      <Button variant="ghost" onClick={onReset}>Wyczyść wszystko</Button>
                     <Button onClick={() => onOpenChange(false)}>Zastosuj</Button>
                 </DialogFooter>
@@ -605,7 +606,7 @@ export default function EmployeesView({
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="p-4 md:p-6">
         <div className="flex items-center justify-between gap-4">
             <CardTitle>Zarządzanie mieszkańcami</CardTitle>
              <DropdownMenu>
@@ -643,7 +644,7 @@ export default function EmployeesView({
             </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
         <Tabs defaultValue="active" onValueChange={(v) => setActiveTab(v)}>
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="active">Aktywni ({activeEmployees.length})</TabsTrigger>

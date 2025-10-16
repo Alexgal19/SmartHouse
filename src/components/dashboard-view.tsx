@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Employee, Settings, HousingAddress, Coordinator, Room, NonEmployee } from "@/types";
@@ -112,7 +113,7 @@ const HousingDetailView = ({
                         onClick={() => canClick && onEmployeeClick(occupant)} 
                         className={cn("mb-3", canClick && "cursor-pointer hover:bg-muted/50")}
                     >
-                      <CardHeader>
+                      <CardHeader className="p-4">
                         <CardTitle className="text-base">{occupant.fullName}</CardTitle>
                         <CardDescription>
                           {isEmployee(occupant) ? `Pracownik / ${occupant.nationality}` : "Mieszkaniec (NZ)"}
@@ -141,7 +142,7 @@ const HousingDetailView = ({
             const hasAvailability = available > 0;
             return (
                 <Card key={roomNumber} onClick={() => setSelectedRoom(roomNumber)} className={cn("cursor-pointer hover:bg-muted/50 transition-colors", highlightAvailable && hasAvailability && "bg-green-100 dark:bg-green-900/30 border-green-500")}>
-                <CardHeader className="flex-row items-center justify-between">
+                <CardHeader className="flex-row items-center justify-between p-4">
                     <div className="flex items-center gap-3">
                         <BedDouble className="h-5 w-5 text-primary" />
                         <CardTitle className="text-base">Pokój {roomNumber}</CardTitle>
@@ -163,10 +164,10 @@ const HousingDetailView = ({
 const VerticalChartComponent = ({ data, title, labelX }: { data: {name: string, value: number}[], title: string, labelX?: string }) => {
     return(
     <Card>
-      <CardHeader>
+      <CardHeader className="p-4 md:p-6">
         <CardTitle>{title}</CardTitle>
       </CardHeader>
-      <CardContent className="pr-0 sm:pr-2 pl-4">
+      <CardContent className="pr-0 sm:pr-2 pl-4 pt-0 md:pt-0">
         <ChartContainer config={{value: {label: labelX || "Pracownik"}}} className="h-[400px] w-full">
           <ResponsiveContainer>
             <BarChart data={data} layout="vertical" margin={{ top: 20, right: 40, left: 20, bottom: 20 }}>
@@ -264,7 +265,7 @@ const DeparturesChart = ({ employees }: { employees: Employee[] }) => {
 
     return (
         <Card>
-            <CardHeader>
+            <CardHeader className="p-4 md:p-6">
                 <CardTitle>Statystyka wyjazdów</CardTitle>
                 <div className="flex gap-2 pt-2">
                     <Select value={departureYear} onValueChange={setDepartureYear}>
@@ -284,7 +285,7 @@ const DeparturesChart = ({ employees }: { employees: Employee[] }) => {
                     </Select>
                 </div>
             </CardHeader>
-            <CardContent className="pr-0 sm:pr-2 pl-4">
+            <CardContent className="pr-0 sm:pr-2 pl-4 pt-0 md:pt-0">
                <ChartContainer config={{value: {label: "wyjazdów"}}} className="h-[400px] w-full">
                 <ResponsiveContainer>
                     <BarChart data={departuresByMonth} margin={{ top: 20, right: 20, left: 0, bottom: 20 }}>
@@ -397,7 +398,7 @@ const DeductionsChart = ({ employees }: { employees: Employee[] }) => {
 
     return (
         <Card>
-            <CardHeader>
+            <CardHeader className="p-4 md:p-6">
                 <CardTitle>Statystyka potrąceń</CardTitle>
                 <div className="flex gap-2 pt-2">
                     <Select value={deductionYear} onValueChange={setDeductionYear}>
@@ -417,7 +418,7 @@ const DeductionsChart = ({ employees }: { employees: Employee[] }) => {
                     </Select>
                 </div>
             </CardHeader>
-            <CardContent className="pr-0 sm:pr-2 pl-4">
+            <CardContent className="pr-0 sm:pr-2 pl-4 pt-0 md:pt-0">
                <ChartContainer config={{value: {label: "Suma (zł)"}}} className="h-[400px] w-full">
                 <ResponsiveContainer>
                     <BarChart data={deductionsByTime} margin={{ top: 20, right: 20, left: 0, bottom: 20 }}>
@@ -592,7 +593,7 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
     <div className="space-y-6">
         {currentUser.isAdmin && (
             <Card>
-                <CardHeader>
+                <CardHeader className="p-4 md:p-6">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div>
                             <CardTitle>Filtry Główne</CardTitle>
@@ -600,7 +601,7 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
                      <Select value={selectedCoordinatorId} onValueChange={onSelectCoordinator}>
                         <SelectTrigger className="w-full sm:w-72">
                             <div className="flex items-center gap-2">
@@ -626,11 +627,11 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                     <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         {kpiData.map(kpi => (
                         <Card key={kpi.title} className="col-span-1">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
                             <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
                             <kpi.icon className={`h-4 w-4 text-muted-foreground ${kpi.color}`} />
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="p-4 pt-0">
                             <div className="text-2xl font-bold">{kpi.value}</div>
                             </CardContent>
                         </Card>
@@ -639,11 +640,11 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                         <Dialog open={isCheckoutsDialogOpen} onOpenChange={setIsCheckoutsDialogOpen}>
                             <DialogTrigger asChild>
                                 <Card className="cursor-pointer hover:border-primary transition-colors col-span-2 sm:col-span-1">
-                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
                                         <CardTitle className="text-sm font-medium">Wykwaterowania (30 dni)</CardTitle>
                                         <UserMinus className="h-4 w-4 text-muted-foreground text-red-400" />
                                     </CardHeader>
-                                    <CardContent>
+                                    <CardContent className="p-4 pt-0">
                                         <div className="text-2xl font-bold">{upcomingCheckoutsCount}</div>
                                     </CardContent>
                                 </Card>
@@ -657,11 +658,11 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                                     {upcomingCheckoutsList.length > 0 ? (
                                         upcomingCheckoutsList.map(employee => (
                                             <Card key={employee.id} onClick={() => handleEmployeeClick(employee)} className="mb-3 cursor-pointer">
-                                                <CardHeader>
+                                                <CardHeader className="p-4">
                                                     <CardTitle className="text-base">{employee.fullName}</CardTitle>
                                                     <CardDescription>{getCoordinatorName(employee.coordinatorId)}</CardDescription>
                                                 </CardHeader>
-                                                <CardContent className="text-sm space-y-1">
+                                                <CardContent className="text-sm space-y-1 p-4 pt-0">
                                                     <p><span className="font-semibold">Adres:</span> {employee.address}</p>
                                                     <p><span className="font-semibold">Data wyjazdu:</span> {formatDate(employee.checkOutDate)}</p>
                                                 </CardContent>
@@ -687,11 +688,11 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
             </TabsContent>
             <TabsContent value="housing" className="mt-6">
                 <Card>
-                    <CardHeader>
-                        <CardTitle>Przegląd zakwaterowania</CardTitle>
+                    <CardHeader className="p-4 md:p-6">
+                        <CardTitle className="text-xl">Przegląd zakwaterowania</CardTitle>
                         <CardDescription>Poniżej znajduje się lista wszystkich mieszkań i ich obłożenie.</CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
                         <div className="p-1 mb-4">
                             <Input
                                 placeholder="Szukaj po adresie..."
@@ -705,7 +706,7 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                             {housingOverview.length > 0 ? (
                                 housingOverview.map(house => (
                                     <Card key={house.id} onClick={() => handleAddressCardClick(house)} className="cursor-pointer hover:bg-muted/50 transition-colors">
-                                    <CardHeader className="pb-4">
+                                    <CardHeader className="pb-4 p-4">
                                         <CardTitle 
                                             className="text-lg md:text-xl truncate hover:underline"
                                             onClick={(e) => handleAllEmployeesForAddressClick(e, house)}
@@ -713,7 +714,7 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                                             {house.name}
                                         </CardTitle>
                                     </CardHeader>
-                                    <CardContent>
+                                    <CardContent className="p-4 pt-0">
                                         <div className="flex items-center gap-4">
                                             <Progress value={house.occupancy} className="w-full h-3" />
                                             <span className="text-base font-medium text-muted-foreground shrink-0">{Math.round(house.occupancy)}%</span>
@@ -770,7 +771,7 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                            const canClick = isEmployee(occupant);
                            return (
                                <Card key={occupant.id} onClick={() => canClick && handleEmployeeClick(occupant)} className={cn("mb-3", canClick && "cursor-pointer hover:bg-muted/50")}>
-                                 <CardHeader>
+                                 <CardHeader className="p-4">
                                    <CardTitle className="text-base">{occupant.fullName}</CardTitle>
                                    <CardDescription>
                                     {isEmployee(occupant)
