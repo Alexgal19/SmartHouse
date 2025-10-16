@@ -204,14 +204,14 @@ const EmployeeCardList = ({
                     <Card key={employee.id} onClick={() => onEdit(employee)} className="cursor-pointer animate-in fade-in-0 duration-300">
                         <CardHeader className="flex flex-row items-start justify-between pb-4">
                            <div>
-                             <CardTitle>{employee.fullName}</CardTitle>
+                             <CardTitle className="text-base">{employee.fullName}</CardTitle>
                              <CardDescription>{getCoordinatorName(employee.coordinatorId)}</CardDescription>
                            </div>
                            <div onClick={(e) => e.stopPropagation()}>
                                 <EmployeeActions {...{ employee, onEdit, onDismiss, onRestore, isDismissedTab }} />
                            </div>
                         </CardHeader>
-                        <CardContent className="text-base space-y-2">
+                        <CardContent className="text-sm space-y-2">
                             <p><span className="font-semibold text-muted-foreground">Adres:</span> {employee.address}</p>
                             <p><span className="font-semibold text-muted-foreground">Pokój:</span> {employee.roomNumber}</p>
                             <p><span className="font-semibold text-muted-foreground">Narodowość:</span> {employee.nationality}</p>
@@ -300,7 +300,7 @@ const NonEmployeeCardList = ({
                     <Card key={person.id} onClick={() => onEdit(person)} className="cursor-pointer animate-in fade-in-0 duration-300">
                         <CardHeader className="flex flex-row items-start justify-between pb-4">
                            <div>
-                             <CardTitle>{person.fullName}</CardTitle>
+                             <CardTitle className="text-base">{person.fullName}</CardTitle>
                              <CardDescription>{person.address}, Pokój {person.roomNumber}</CardDescription>
                            </div>
                            <div onClick={(e) => e.stopPropagation()}>
@@ -318,7 +318,7 @@ const NonEmployeeCardList = ({
                                 </DropdownMenu>
                            </div>
                         </CardHeader>
-                        <CardContent className="text-base space-y-2">
+                        <CardContent className="text-sm space-y-2">
                            <p><span className="font-semibold text-muted-foreground">Zameldowanie:</span> {formatDate(person.checkInDate)}</p>
                            <p><span className="font-semibold text-muted-foreground">Wymeldowanie:</span> {formatDate(person.checkOutDate)}</p>
                         </CardContent>
@@ -609,7 +609,7 @@ export default function EmployeesView({
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <CardTitle>Zarządzanie mieszkańcami</CardTitle>
              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
