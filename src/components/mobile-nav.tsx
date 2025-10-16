@@ -1,12 +1,10 @@
-
 "use client";
 
 import { Home, Users, Settings, ClipboardList, Archive } from "lucide-react";
 import { Button } from "./ui/button";
 import type { View, Coordinator } from "@/types";
-import { useRouter } from "@/navigation";
+import { useRouter } from "next/navigation";
 import { useCallback } from "react";
-import { useTranslations } from "next-intl";
 
 interface MobileNavProps {
   activeView: View;
@@ -17,7 +15,6 @@ interface MobileNavProps {
 
 export function MobileNav({ activeView, navItems, currentUser }: MobileNavProps) {
     const router = useRouter();
-    const t = useTranslations('Navigation');
 
     const setActiveView = useCallback((view: View) => {
         router.push(`/dashboard?view=${view}`);
@@ -42,7 +39,7 @@ export function MobileNav({ activeView, navItems, currentUser }: MobileNavProps)
                 onClick={() => setActiveView(item.view)}
               >
                 <item.icon className="h-6 w-6 mb-1" />
-                <span>{t(item.label)}</span>
+                <span>{item.label}</span>
               </Button>
             )
         })}

@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { User, View, Notification, Coordinator } from "@/types";
@@ -24,12 +23,10 @@ import { Settings, UserCircle, Building, Bell, ArrowRight, LogOut, Trash2 } from
 import { SidebarTrigger } from "./ui/sidebar";
 import { useSidebar } from "./ui/sidebar";
 import { formatDistanceToNow } from 'date-fns';
-import { type Locale, pl, uk, enUS, es } from 'date-fns/locale';
+import { pl } from 'date-fns/locale';
 import { ScrollArea } from "./ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { useTranslations, useLocale } from "next-intl";
 import React from "react";
-import LanguageSwitcher from "./language-switcher";
 
 interface HeaderProps {
   user: User | Coordinator;
@@ -41,26 +38,16 @@ interface HeaderProps {
 }
 
 const viewTitles: Record<View, string> = {
-  dashboard: 'pulpit',
-  employees: 'employees',
-  settings: 'settings',
-  inspections: 'inspections',
-  equipment: 'equipment'
-}
-
-const localesMap: Record<string, Locale> = {
-    pl,
-    uk,
-    en: enUS,
-    es
+  dashboard: 'Pulpit',
+  employees: 'Pracownicy',
+  settings: 'Ustawienia',
+  inspections: 'Inspekcje',
+  equipment: 'Wyposażenie'
 }
 
 export default function Header({ user, activeView, notifications, onNotificationClick, onLogout, onClearNotifications }: HeaderProps) {
     const { isMobile, open } = useSidebar();
-    const t = useTranslations('Header');
-    const navT = useTranslations('Navigation');
-    const currentLocale = useLocale();
-    const locale = localesMap[currentLocale] || pl;
+    const locale = pl;
 
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
@@ -72,11 +59,10 @@ export default function Header({ user, activeView, notifications, onNotification
       </div>
       <div className="flex items-center gap-4 flex-1">
         {isMobile && <SidebarTrigger />}
-        <h1 className="text-xl font-semibold hidden md:block">{navT(viewTitles[activeView])}</h1>
+        <h1 className="text-xl font-semibold hidden md:block">{viewTitles[activeView]}</h1>
       </div>
 
       <div className="flex items-center justify-end gap-2">
-         <LanguageSwitcher />
          <Popover>
             <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative">
@@ -86,30 +72,30 @@ export default function Header({ user, activeView, notifications, onNotification
                            {unreadCount > 9 ? '9+' : unreadCount}
                         </span>
                     )}
-                    <span className="sr-only">{t('notifications.open')}</span>
+                    <span className="sr-only">Otwórz powiadomienia</span>
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-96 p-0">
                 <div className="p-4 flex items-center justify-between">
-                  <h4 className="font-medium text-sm">{t('notifications.title')}</h4>
+                  <h4 className="font-medium text-sm">Powiadomienia</h4>
                   {user.isAdmin && notifications.length > 0 && (
                      <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="outline" size="sm">
                           <Trash2 className="mr-2 h-4 w-4" />
-                          {t('notifications.clearAll')}
+                          Wyczyść wszystko
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>{t('notifications.confirmClear.title')}</AlertDialogTitle>
+                          <AlertDialogTitle>Czy na pewno chcesz wyczyścić wszystkie powiadomienia?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            {t('notifications.confirmClear.description')}
+                            Tej operacji nie można cofnąć.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>{t('notifications.confirmClear.cancel')}</AlertDialogCancel>
-                          <AlertDialogAction onClick={onClearNotifications}>{t('notifications.confirmClear.confirm')}</AlertDialogAction>
+                          <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                          <AlertDialogAction onClick={onClearNotifications}>Potwierdź</AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
@@ -145,7 +131,7 @@ export default function Header({ user, activeView, notifications, onNotification
                     ))
                   ) : (
                     <div className="text-center text-sm text-muted-foreground p-8">
-                      {t('notifications.noNew')}
+                      Brak nowych powiadomień.
                     </div>
                   )}
                 </ScrollArea>
@@ -153,7 +139,7 @@ export default function Header({ user, activeView, notifications, onNotification
         </Popover>
          <Button variant="ghost" size="icon" onClick={onLogout}>
             <LogOut className="h-5 w-5" />
-            <span className="sr-only">{t('logout')}</span>
+            <span className="sr-only">Wyloguj się</span>
         </Button>
       </div>
     </header>

@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback, createContext, useContext, useRef } from 'react';
@@ -16,20 +15,20 @@ import Header from './header';
 import { MobileNav } from './mobile-nav';
 import type { View, Notification, Coordinator, Employee, Settings, NonEmployee, Inspection, EquipmentItem } from '@/types';
 import { Building, ClipboardList, Home, Settings as SettingsIcon, Users, Globe, Loader2, Archive } from 'lucide-react';
-import { useRouter, usePathname, Link } from '@/navigation';
+import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { clearAllNotifications, markNotificationAsRead, getNotifications, getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getInspections, addInspection, updateInspection, deleteInspection, transferEmployees, bulkDeleteEmployees, bulkImportEmployees, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee, checkAndUpdateEmployeeStatuses, getEquipment, addEquipment, updateEquipment, deleteEquipment } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
-import { useTranslations } from 'next-intl';
 import { AddEmployeeForm, type EmployeeFormData } from '@/components/add-employee-form';
 import { AddNonEmployeeForm } from '@/components/add-non-employee-form';
 
 const navItems: { view: View; icon: React.ElementType; label: string }[] = [
-    { view: 'dashboard', icon: Home, label: 'pulpit' },
-    { view: 'employees', icon: Users, label: 'employees' },
-    { view: 'inspections', icon: ClipboardList, label: 'inspections' },
-    { view: 'equipment', icon: Archive, label: 'equipment' },
-    { view: 'settings', icon: SettingsIcon, label: 'settings' },
+    { view: 'dashboard', icon: Home, label: 'Pulpit' },
+    { view: 'employees', icon: Users, label: 'Pracownicy' },
+    { view: 'inspections', icon: ClipboardList, label: 'Inspekcje' },
+    { view: 'equipment', icon: Archive, label: 'Wyposażenie' },
+    { view: 'settings', icon: SettingsIcon, label: 'Ustawienia' },
 ];
 
 type MainLayoutContextType = {
@@ -80,9 +79,6 @@ export default function MainLayout({
     const searchParams = useSearchParams();
     const pathname = usePathname();
     const { toast } = useToast();
-    const t = useTranslations('Navigation');
-    const t_dashboard = useTranslations('Dashboard');
-    const t_loading = useTranslations('LoadingScreen');
 
     const activeView = useMemo(() => {
         return (searchParams.get('view') as View) || 'dashboard';
@@ -106,7 +102,7 @@ export default function MainLayout({
     
     const [isAuthenticating, setIsAuthenticating] = useState(true);
     const [isLoadingData, setIsLoadingData] = useState(true);
-    const [loadingMessage, setLoadingMessage] = useState(t_loading('authenticating'));
+    const [loadingMessage, setLoadingMessage] = useState("Uwierzytelnianie...");
 
     const setSelectedCoordinatorId = useCallback((value: React.SetStateAction<string>) => {
         _setSelectedCoordinatorId(value);
@@ -161,17 +157,17 @@ export default function MainLayout({
 
      const handleClearNotifications = useCallback(async () => {
         if (!currentUser?.isAdmin) {
-             toast({ variant: "destructive", title: t('toast.permissionErrorTitle'), description: t('toast.permissionErrorDescription') });
+             toast({ variant: "destructive", title: "Błąd uprawnień", description: "Tylko administratorzy mogą wykonać tę akcję." });
              return;
         }
         try {
             await clearAllNotifications();
             setAllNotifications([]);
-            toast({ title: t('toast.success'), description: t('toast.clearNotificationsSuccess') });
+            toast({ title: "Sukces", description: "Wszystkie powiadomienia zostały wyczyszczone." });
         } catch (e: any) {
-             toast({ variant: "destructive", title: t('toast.error'), description: e.message || t('toast.clearNotificationsError') });
+             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się wyczyścić powiadomień." });
         }
-    }, [currentUser, t, toast]);
+    }, [currentUser, toast]);
 
 
     const filteredNotifications = useMemo(() => {
@@ -202,42 +198,42 @@ export default function MainLayout({
             setSettings(settingsData);
             
             if(showToast) {
-                toast({ title: t_dashboard('toast.refreshSuccessTitle'), description: t_dashboard('toast.refreshSuccessDescription') });
+                toast({ title: "Sukces", description: "Dane zostały odświeżone." });
             }
         } catch (error) {
             console.error(error);
             toast({
                 variant: "destructive",
-                title: t_dashboard('toast.criticalErrorTitle'),
-                description: `${t_dashboard('toast.criticalErrorDescription')} ${error instanceof Error ? error.message : ''}`,
+                title: "Błąd krytyczny ładowania danych",
+                description: `Nie udało się pobrać podstawowych danych z serwera. ${error instanceof Error ? error.message : ''}`,
             });
         }
-    }, [currentUser]);
+    }, [currentUser, toast]);
 
     const handleRefreshStatuses = useCallback(async (showNoChangesToast = false) => {
         if (!currentUser) return;
         try {
             const { updated } = await checkAndUpdateEmployeeStatuses(currentUser.uid);
             if (updated > 0) {
-                toast({ title: t_dashboard('toast.statusUpdateSuccessTitle'), description: t_dashboard('toast.statusUpdateSuccessDescription', { count: updated }) });
+                toast({ title: "Sukces", description: `Zaktualizowano statusy dla ${updated} pracowników.` });
                 await refreshData(false);
             } else if (showNoChangesToast) {
-                 toast({ title: t_dashboard('toast.statusUpdateNoChangesTitle'), description: t_dashboard('toast.statusUpdateNoChangesDescription')});
+                 toast({ title: "Brak zmian", description: "Wszyscy pracownicy mają aktualne statusy."});
             }
         } catch (e: any) {
-            toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.statusUpdateError') });
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się odświeżyć statusów." });
         }
-    }, [currentUser, refreshData, toast, t_dashboard]);
+    }, [currentUser, refreshData, toast]);
 
     const fetchAllData = useCallback(async () => {
         if (!currentUser) return;
         setIsLoadingData(true);
         try {
-            setLoadingMessage(t_loading('loadingSettings'));
+            setLoadingMessage("Wczytywanie ustawień...");
             const settingsData = await getSettings();
             setSettings(settingsData);
             
-            setLoadingMessage(t_loading('loadingData'));
+            setLoadingMessage("Wczytywanie danych...");
             await handleRefreshStatuses(false);
 
             const coordinatorIdToFetch = currentUser.isAdmin ? undefined : currentUser.uid;
@@ -260,15 +256,15 @@ export default function MainLayout({
              console.error("Critical data loading error:", error);
             toast({
                 variant: "destructive",
-                title: t_dashboard('toast.criticalErrorTitle'),
-                description: `${t_dashboard('toast.criticalErrorDescription')} ${error instanceof Error ? error.message : ''}`,
+                title: "Błąd krytyczny ładowania danych",
+                description: `Nie udało się pobrać podstawowych danych z serwera. ${error instanceof Error ? error.message : ''}`,
                 duration: 10000,
             });
              return;
         } finally {
              setIsLoadingData(false);
         }
-    }, [currentUser, handleRefreshStatuses, toast, t_dashboard, t_loading]);
+    }, [currentUser, handleRefreshStatuses, toast]);
 
     useEffect(() => {
         if (!isAuthenticating && currentUser) {
@@ -305,35 +301,35 @@ export default function MainLayout({
                 }
                 
                 await updateEmployee(editingEmployee.id, updatedData, currentUser.uid)
-                toast({ title: t_dashboard('toast.success'), description: t_dashboard('toast.employeeUpdated') });
+                toast({ title: "Sukces", description: "Dane pracownika zostały zaktualizowane." });
             } else {
                 await addEmployee(data, currentUser.uid);
-                toast({ title: t_dashboard('toast.success'), description: t_dashboard('toast.employeeAdded') });
+                toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
             }
             await refreshData(false);
         } catch (e: any) {
-            toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.employeeSaveError') });
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać pracownika." });
         }
-    }, [currentUser, editingEmployee, allEmployees, refreshData, toast, t_dashboard]);
+    }, [currentUser, editingEmployee, allEmployees, refreshData, toast]);
 
     const handleSaveNonEmployee = useCallback(async (data: Omit<NonEmployee, 'id'>) => {
         if (editingNonEmployee) {
             try {
                 await updateNonEmployee(editingNonEmployee.id, data);
-                toast({ title: t_dashboard('toast.success'), description: t_dashboard('toast.nonEmployeeUpdated') });
+                toast({ title: "Sukces", description: "Dane mieszkańca zostały zaktualizowane." });
             } catch(e: any) {
-                toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.nonEmployeeSaveError') });
+                toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać mieszkańca." });
             }
         } else {
              try {
                 await addNonEmployee(data);
-                toast({ title: t_dashboard('toast.success'), description: t_dashboard('toast.nonEmployeeAdded') });
+                toast({ title: "Sukces", description: "Nowy mieszkaniec został dodany." });
             } catch (e: any) {
-                toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.nonEmployeeAddError') });
+                toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać mieszkańca." });
             }
         }
         await refreshData(false);
-    }, [editingNonEmployee, refreshData, t_dashboard, toast]);
+    }, [editingNonEmployee, refreshData, toast]);
     
     const handleDeleteNonEmployee = useCallback(async (id: string) => {
         const originalNonEmployees = allNonEmployees;
@@ -342,16 +338,16 @@ export default function MainLayout({
         
         try {
             await deleteNonEmployee(id);
-            toast({ title: t_dashboard('toast.success'), description: t_dashboard('toast.nonEmployeeDeleted') });
+            toast({ title: "Sukces", description: "Mieszkaniec został usunięty." });
         } catch(e: any) {
             setAllNonEmployees(originalNonEmployees); // Revert
-            toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.nonEmployeeDeleteError') });
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć mieszkańca." });
         }
-    }, [allNonEmployees, t_dashboard, toast]);
+    }, [allNonEmployees, toast]);
     
     const handleUpdateSettings = useCallback(async (newSettings: Partial<Settings>) => {
         if (!settings || !currentUser?.isAdmin) {
-             toast({ variant: "destructive", title: t_dashboard('toast.permissionErrorTitle'), description: t_dashboard('toast.permissionErrorDescription') });
+             toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administrator może zmieniać ustawienia." });
             return;
         }
 
@@ -360,22 +356,22 @@ export default function MainLayout({
 
         try {
             await updateSettings(newSettings);
-            toast({ title: t_dashboard('toast.success'), description: t_dashboard('toast.settingsUpdated') });
+            toast({ title: "Sukces", description: "Ustawienia zostały zaktualizowane." });
         } catch(e: any) {
             setSettings(originalSettings); // Revert on error
-            toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.settingsUpdateError') });
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać ustawień." });
         }
-    }, [settings, currentUser, t_dashboard, toast]);
+    }, [settings, currentUser, toast]);
     
     const handleAddInspection = useCallback(async (inspectionData: Omit<Inspection, 'id'>) => {
         try {
             await addInspection(inspectionData);
-            toast({ title: t_dashboard('toast.success'), description: t_dashboard('toast.inspectionAdded') });
+            toast({ title: "Sukces", description: "Nowa inspekcja została dodana." });
             await refreshData(false);
         } catch(e: any) {
-            toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.inspectionAddError') });
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać inspekcji." });
         }
-    }, [refreshData, t_dashboard, toast]);
+    }, [refreshData, toast]);
 
     const handleUpdateInspection = useCallback(async (id: string, inspectionData: Omit<Inspection, 'id'>) => {
         const originalInspections = allInspections;
@@ -384,13 +380,13 @@ export default function MainLayout({
 
         try {
             await updateInspection(id, inspectionData);
-            toast({ title: t_dashboard('toast.success'), description: t_dashboard('toast.inspectionUpdated') });
+            toast({ title: "Sukces", description: "Inspekcja została zaktualizowana." });
             await refreshData(false);
         } catch (e: any) {
             setAllInspections(originalInspections);
-            toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.inspectionUpdateError') });
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zaktualizować inspekcji." });
         }
-    }, [allInspections, refreshData, t_dashboard, toast]);
+    }, [allInspections, refreshData, toast]);
 
     const handleDeleteInspection = useCallback(async (id: string) => {
         const originalInspections = allInspections;
@@ -398,42 +394,42 @@ export default function MainLayout({
 
         try {
             await deleteInspection(id);
-            toast({ title: t_dashboard('toast.success'), description: t_dashboard('toast.inspectionDeleted') });
+            toast({ title: "Sukces", description: "Inspekcja została usunięta." });
         } catch(e: any) {
             setAllInspections(originalInspections);
-            toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.inspectionDeleteError') });
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć inspekcji." });
         }
-    }, [allInspections, t_dashboard, toast]);
+    }, [allInspections, toast]);
 
     const handleAddEquipment = useCallback(async (itemData: Omit<EquipmentItem, 'id'>) => {
         try {
             await addEquipment(itemData);
-            toast({ title: t_dashboard('toast.success'), description: "Dodano nowy sprzęt." });
+            toast({ title: "Sukces", description: "Dodano nowy sprzęt." });
             await refreshData(false);
         } catch (e: any) {
-            toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || "Nie udało się dodać sprzętu." });
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać sprzętu." });
         }
-    }, [refreshData, toast, t_dashboard]);
+    }, [refreshData, toast]);
 
     const handleUpdateEquipment = useCallback(async (id: string, itemData: Partial<EquipmentItem>) => {
         try {
             await updateEquipment(id, itemData);
-            toast({ title: t_dashboard('toast.success'), description: "Zaktualizowano sprzęt." });
+            toast({ title: "Sukces", description: "Zaktualizowano sprzęt." });
             await refreshData(false);
         } catch (e: any) {
-            toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || "Nie udało się zaktualizować sprzętu." });
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zaktualizować sprzętu." });
         }
-    }, [refreshData, toast, t_dashboard]);
+    }, [refreshData, toast]);
 
     const handleDeleteEquipment = useCallback(async (id: string) => {
         try {
             await deleteEquipment(id);
-            toast({ title: t_dashboard('toast.success'), description: "Usunięto sprzęt." });
+            toast({ title: "Sukces", description: "Usunięto sprzęt." });
             await refreshData(false);
         } catch (e: any) {
-            toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || "Nie udało się usunąć sprzętu." });
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć sprzętu." });
         }
-    }, [refreshData, toast, t_dashboard]);
+    }, [refreshData, toast]);
 
     const handleAddEmployeeClick = useCallback(() => {
         setEditingEmployee(null);
@@ -465,14 +461,14 @@ export default function MainLayout({
 
         try {
             await updateEmployee(employeeId, updatedData, currentUser.uid);
-            toast({ title: t_dashboard('toast.success'), description: t_dashboard('toast.employeeDismissed') });
+            toast({ title: "Sukces", description: "Pracownik został zwolniony." });
             return true;
         } catch(e: any) {
             setAllEmployees(originalEmployees);
-            toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.employeeDismissError') });
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zwolnić pracownika." });
             return false;
         }
-    }, [currentUser, allEmployees, toast, t_dashboard]);
+    }, [currentUser, allEmployees, toast]);
 
     const handleRestoreEmployee = useCallback(async (employeeId: string) => {
         if (!currentUser) return false;
@@ -484,50 +480,50 @@ export default function MainLayout({
         
         try {
             await updateEmployee(employeeId, updatedData, currentUser.uid);
-            toast({ title: t_dashboard('toast.success'), description: t_dashboard('toast.employeeRestored') });
+            toast({ title: "Sukces", description: "Pracownik został przywrócony." });
             return true;
         } catch(e: any) {
             setAllEmployees(originalEmployees);
-            toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.employeeRestoreError') });
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się przywrócić pracownika." });
             return false;
         }
-    }, [currentUser, allEmployees, toast, t_dashboard]);
+    }, [currentUser, allEmployees, toast]);
     
     const handleBulkDeleteEmployees = useCallback(async (status: 'active' | 'dismissed') => {
         if (!currentUser || !currentUser.isAdmin) {
-             toast({ variant: "destructive", title: t_dashboard('toast.permissionErrorTitle'), description: t_dashboard('toast.permissionErrorDescription') });
+             toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administratorzy mogą wykonać tę akcję." });
             return false;
         }
         
          try {
             await bulkDeleteEmployees(status, currentUser.uid);
-            toast({ title: t_dashboard('toast.success'), description: t_dashboard('toast.bulkDeleteSuccess', {status: status === 'active' ? t_dashboard('active') : t_dashboard('dismissed')}) });
+            toast({ title: "Sukces", description: `Wszyscy ${status === 'active' ? 'aktywni' : 'zwolnieni'} pracownicy zostali usunięci.` });
             await refreshData(false);
              return true;
         } catch(e: any) {
-            toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.bulkDeleteError') });
+            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć pracowników." });
              return false;
         }
-    }, [currentUser, refreshData, toast, t_dashboard]);
+    }, [currentUser, refreshData, toast]);
     
      const handleBulkImport = useCallback(async (fileData: ArrayBuffer) => {
         const loggedInUserStr = sessionStorage.getItem('currentUser');
         if (!loggedInUserStr) {
-            return { success: false, message: t_dashboard('toast.permissionError') };
+            return { success: false, message: "Brak uprawnień." };
         }
         const user = JSON.parse(loggedInUserStr);
 
         if (!user?.isAdmin) {
-            return { success: false, message: t_dashboard('toast.permissionError') };
+            return { success: false, message: "Brak uprawnień." };
         }
         try {
             const result = await bulkImportEmployees(fileData, user.uid);
             await refreshData(false);
             return result;
         } catch (e: any) {
-            return { success: false, message: e.message || t_dashboard('toast.unknownError') };
+            return { success: false, message: e.message || "Wystąpił nieznany błąd." };
         }
-    }, [refreshData, t_dashboard]);
+    }, [refreshData]);
     
     const contextValue: MainLayoutContextType = useMemo(() => ({
         allEmployees,
@@ -619,11 +615,11 @@ export default function MainLayout({
                                     }} passHref>
                                         <SidebarMenuButton 
                                             isActive={activeView === item.view}
-                                            tooltip={t(item.label)}
+                                            tooltip={item.label}
                                             disabled={item.view === 'settings' && !currentUser?.isAdmin}
                                         >
                                             <item.icon />
-                                            <span>{t(item.label)}</span>
+                                            <span>{item.label}</span>
                                         </SidebarMenuButton>
                                     </Link>
                                 </SidebarMenuItem>
@@ -672,4 +668,3 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
-
