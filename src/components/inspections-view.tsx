@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Inspection, Settings, Coordinator, InspectionCategory, InspectionCategoryItem } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,9 +15,9 @@ import { Label } from "@/components/ui/label";
 import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { format } from 'date-fns';
+import { format, getYear } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { PlusCircle, Star, FileImage, Trash2, Camera, MoreVertical, Pencil, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { PlusCircle, Star, FileImage, Trash2, Camera, MoreVertical, Pencil, ChevronLeft, ChevronRight, UserCheck } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { Input } from './ui/input';
 import Image from 'next/image';
@@ -27,6 +27,8 @@ import { Alert, AlertTitle, AlertDescription } from './ui/alert';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { Checkbox } from './ui/checkbox';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
+import { useMainLayout } from './main-layout';
 
 
 interface InspectionsViewProps {
@@ -747,6 +749,7 @@ export default function InspectionsView({ inspections, settings, currentUser, on
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingInspection, setEditingInspection] = useState<Inspection | null>(null);
     const [selectedInspection, setSelectedInspection] = useState<Inspection | null>(null);
+    const { selectedCoordinatorId, setSelectedCoordinatorId } = useMainLayout();
 
     const handleOpenForm = (inspection: Inspection | null) => {
         setEditingInspection(inspection);
@@ -765,70 +768,113 @@ export default function InspectionsView({ inspections, settings, currentUser, on
         await onDeleteInspection(inspectionId);
     };
 
+    const groupedInspections = useMemo(() => {
+        return inspections.reduce((acc, inspection) => {
+            const year = getYear(new Date(inspection.date));
+            if (!acc[year]) {
+                acc[year] = [];
+            }
+            acc[year].push(inspection);
+            return acc;
+        }, {} as Record<string, Inspection[]>);
+    }, [inspections]);
+
+    const sortedYears = useMemo(() => Object.keys(groupedInspections).sort((a, b) => Number(b) - Number(a)), [groupedInspections]);
+
     return (
         <Card>
             <CardHeader>
-                <div className="flex items-center justify-between">
-                    <CardTitle>Inspekcje</CardTitle>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <CardTitle>Inspekcje</CardTitle>
+                        <CardDescription>Historia przeprowadzonych kontroli mieszkań.</CardDescription>
+                    </div>
                     <Button onClick={() => handleOpenForm(null)}><PlusCircle className="mr-2 h-4 w-4" /> Dodaj inspekcję</Button>
                 </div>
-                <CardDescription>Historia przeprowadzonych kontroli mieszkań.</CardDescription>
+                 {currentUser.isAdmin && (
+                    <div className="pt-4">
+                        <Label>Filtruj wg koordynatora</Label>
+                        <Select value={selectedCoordinatorId} onValueChange={setSelectedCoordinatorId}>
+                            <SelectTrigger className="w-full sm:w-72 mt-1">
+                                <div className="flex items-center gap-2">
+                                    <UserCheck className="h-4 w-4 text-muted-foreground" />
+                                    <SelectValue placeholder="Wybierz koordynatora" />
+                                </div>
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Wszyscy Koordynatorzy</SelectItem>
+                                {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                )}
             </CardHeader>
             <CardContent>
                 {inspections.length > 0 ? (
-                    <div className="space-y-4">
-                        {inspections.map(inspection => (
-                             <Card key={inspection.id} className="animate-in fade-in-0 duration-300">
-                                <CardHeader className="flex-row items-center justify-between">
-                                    <div className="cursor-pointer flex-1" onClick={() => setSelectedInspection(inspection)}>
-                                        <CardTitle className="text-lg">{inspection.addressName}</CardTitle>
-                                        <CardDescription>
-                                            {format(new Date(inspection.date), 'dd-MM-yyyy')} przez {inspection.coordinatorName}
-                                        </CardDescription>
-                                    </div>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="flex-shrink-0">
-                                                <MoreVertical className="h-4 w-4"/>
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent>
-                                            <DropdownMenuItem onClick={() => handleOpenForm(inspection)}>
-                                                <Pencil className="mr-2 h-4 w-4" /> Edytuj
-                                            </DropdownMenuItem>
-                                             <AlertDialog>
-                                                <AlertDialogTrigger asChild>
-                                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
-                                                        <Trash2 className="mr-2 h-4 w-4" /> Usuń
-                                                    </DropdownMenuItem>
-                                                </AlertDialogTrigger>
-                                                <AlertDialogContent>
-                                                    <AlertDialogHeader>
-                                                        <AlertDialogTitle>Czy na pewno chcesz usunąć?</AlertDialogTitle>
-                                                        <AlertDialogDescription>
-                                                            Tej operacji nie można cofnąć. Spowoduje to trwałe usunięcie inspekcji.
-                                                        </AlertDialogDescription>
-                                                    </AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                        <AlertDialogCancel>Anuluj</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={() => handleDelete(inspection.id)} className="bg-destructive hover:bg-destructive/90">
-                                                            Usuń
-                                                        </AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                            </AlertDialog>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </CardHeader>
-                                <CardContent className="cursor-pointer" onClick={() => setSelectedInspection(inspection)}>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm">Ocena:</span>
-                                        <RatingInput value={calculateRating(inspection.categories)} readOnly/>
-                                    </div>
-                                </CardContent>
-                             </Card>
+                     <Accordion type="multiple" defaultValue={sortedYears} className="w-full">
+                        {sortedYears.map(year => (
+                             <AccordionItem key={year} value={year}>
+                                 <AccordionTrigger className="text-xl font-bold">
+                                     Rok {year} ({groupedInspections[year].length})
+                                 </AccordionTrigger>
+                                 <AccordionContent>
+                                     <div className="space-y-4 pt-4">
+                                        {groupedInspections[year].map(inspection => (
+                                            <Card key={inspection.id} className="animate-in fade-in-0 duration-300">
+                                                <CardHeader className="flex-row items-center justify-between">
+                                                    <div className="cursor-pointer flex-1" onClick={() => setSelectedInspection(inspection)}>
+                                                        <CardTitle className="text-lg">{inspection.addressName}</CardTitle>
+                                                        <CardDescription>
+                                                            {format(new Date(inspection.date), 'dd-MM-yyyy')} przez {inspection.coordinatorName}
+                                                        </CardDescription>
+                                                    </div>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="flex-shrink-0">
+                                                                <MoreVertical className="h-4 w-4"/>
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent>
+                                                            <DropdownMenuItem onClick={() => handleOpenForm(inspection)}>
+                                                                <Pencil className="mr-2 h-4 w-4" /> Edytuj
+                                                            </DropdownMenuItem>
+                                                            <AlertDialog>
+                                                                <AlertDialogTrigger asChild>
+                                                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
+                                                                        <Trash2 className="mr-2 h-4 w-4" /> Usuń
+                                                                    </DropdownMenuItem>
+                                                                </AlertDialogTrigger>
+                                                                <AlertDialogContent>
+                                                                    <AlertDialogHeader>
+                                                                        <AlertDialogTitle>Czy na pewno chcesz usunąć?</AlertDialogTitle>
+                                                                        <AlertDialogDescription>
+                                                                            Tej operacji nie można cofnąć. Spowoduje to trwałe usunięcie inspekcji.
+                                                                        </AlertDialogDescription>
+                                                                    </AlertDialogHeader>
+                                                                    <AlertDialogFooter>
+                                                                        <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                                                                        <AlertDialogAction onClick={() => handleDelete(inspection.id)} className="bg-destructive hover:bg-destructive/90">
+                                                                            Usuń
+                                                                        </AlertDialogAction>
+                                                                    </AlertDialogFooter>
+                                                                </AlertDialogContent>
+                                                            </AlertDialog>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </CardHeader>
+                                                <CardContent className="cursor-pointer" onClick={() => setSelectedInspection(inspection)}>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-sm">Ocena:</span>
+                                                        <RatingInput value={calculateRating(inspection.categories)} readOnly/>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        ))}
+                                     </div>
+                                 </AccordionContent>
+                             </AccordionItem>
                         ))}
-                    </div>
+                    </Accordion>
                 ) : (
                     <div className="text-center py-12">
                         <p className="text-muted-foreground">Brak zarejestrowanych inspekcji.</p>
