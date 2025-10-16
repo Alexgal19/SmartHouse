@@ -53,7 +53,7 @@ export const employeeSchema = z.object({
   address: z.string().min(1, "Adres jest wymagany."),
   roomNumber: z.string().min(1, "Numer pokoju jest wymagany."),
   zaklad: z.string().min(1, "Zakład jest wymagany."),
-  checkInDate: z.string({ required_error: "Data zameldowania jest wymagana." }),
+  checkInDate: z.string({ required_error: "Data zameldowania jest wymagana." }).min(1, "Data zameldowania jest wymagana."),
   contractStartDate: z.string().nullable().optional(),
   contractEndDate: z.string().nullable().optional(),
   checkOutDate: z.string().nullable().optional(),

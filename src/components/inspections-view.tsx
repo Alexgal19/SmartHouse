@@ -43,7 +43,7 @@ const inspectionSchema = z.object({
     addressId: z.string().min(1, "Adres jest wymagany."),
     date: z.string({ required_error: "Data jest wymagana." }),
     coordinatorId: z.string(),
-    standard: z.enum(['Wysoki', 'Normalny', 'Niski']).nullable(),
+    standard: z.enum(['Wysoki', 'Normalny', 'Niski']).nullable().optional(),
     categories: z.array(z.object({
         name: z.string(),
         items: z.array(z.object({
@@ -463,7 +463,7 @@ const InspectionDialog = ({
             date: data.date,
             coordinatorId: data.coordinatorId,
             coordinatorName: coordinator.name,
-            standard: data.standard,
+            standard: data.standard || null,
             categories: data.categories as InspectionCategory[],
         };
         
