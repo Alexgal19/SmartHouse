@@ -17,6 +17,8 @@ import { PlusCircle, MoreHorizontal, Pencil, Trash2, SlidersHorizontal, X } from
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Skeleton } from './ui/skeleton';
 
 interface EquipmentViewProps {
     equipment: EquipmentItem[];
@@ -86,7 +88,7 @@ const EquipmentForm = ({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent>
+            <DialogContent className="data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
                 <DialogHeader>
                     <DialogTitle>{editingItem ? "Edytuj wyposażenie" : "Dodaj nowe wyposażenie"}</DialogTitle>
                 </DialogHeader>
@@ -127,11 +129,111 @@ const EquipmentForm = ({
     );
 };
 
+const EquipmentActions = ({ item, onEdit, onDelete }: { item: EquipmentItem, onEdit: (item: EquipmentItem) => void, onDelete: (id: string) => void }) => {
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => onEdit(item)}>
+                    <Pencil className="mr-2 h-4 w-4" /> Edytuj
+                </DropdownMenuItem>
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" /> Usuń
+                        </DropdownMenuItem>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Czy na pewno chcesz usunąć?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Tej operacji nie można cofnąć.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => onDelete(item.id)} className="bg-destructive hover:bg-destructive/90">
+                                Usuń
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
+}
+
+const EquipmentTable = ({ items, onEdit, onDelete }: { items: EquipmentItem[], onEdit: (item: EquipmentItem) => void, onDelete: (id: string) => void }) => (
+    <div className="border rounded-md overflow-x-auto">
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHead>Adres</TableHead>
+                    <TableHead>Nr inwentarzowy</TableHead>
+                    <TableHead>Wyposażenie</TableHead>
+                    <TableHead>Ilość</TableHead>
+                    <TableHead>Opis</TableHead>
+                    <TableHead><span className="sr-only">Akcje</span></TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {items.length > 0 ? (
+                    items.map(item => (
+                        <TableRow key={item.id}>
+                            <TableCell className="font-medium">{item.addressName}</TableCell>
+                            <TableCell>{item.inventoryNumber}</TableCell>
+                            <TableCell>{item.name}</TableCell>
+                            <TableCell>{item.quantity}</TableCell>
+                            <TableCell className="max-w-xs truncate">{item.description}</TableCell>
+                            <TableCell>
+                                <EquipmentActions item={item} onEdit={onEdit} onDelete={onDelete} />
+                            </TableCell>
+                        </TableRow>
+                    ))
+                ) : (
+                    <TableRow>
+                        <TableCell colSpan={6} className="text-center h-24">Brak wyposażenia do wyświetlenia.</TableCell>
+                    </TableRow>
+                )}
+            </TableBody>
+        </Table>
+    </div>
+);
+
+const EquipmentCardList = ({ items, onEdit, onDelete }: { items: EquipmentItem[], onEdit: (item: EquipmentItem) => void, onDelete: (id: string) => void }) => (
+    <div className="space-y-4">
+        {items.length > 0 ? (
+            items.map(item => (
+                <Card key={item.id} className="animate-in fade-in-0 duration-300">
+                    <CardHeader className="flex-row items-start justify-between pb-4">
+                        <div>
+                            <CardTitle className="text-base">{item.name}</CardTitle>
+                            <CardDescription>{item.addressName}</CardDescription>
+                        </div>
+                        <EquipmentActions item={item} onEdit={onEdit} onDelete={onDelete} />
+                    </CardHeader>
+                    <CardContent className="text-sm space-y-2">
+                        <p><span className="font-semibold text-muted-foreground">Nr inwentarzowy:</span> {item.inventoryNumber}</p>
+                        <p><span className="font-semibold text-muted-foreground">Ilość:</span> {item.quantity}</p>
+                        {item.description && <p><span className="font-semibold text-muted-foreground">Opis:</span> {item.description}</p>}
+                    </CardContent>
+                </Card>
+            ))
+        ) : (
+            <div className="text-center text-muted-foreground py-8">Brak wyposażenia do wyświetlenia.</div>
+        )}
+    </div>
+);
+
+
 export default function EquipmentView({ equipment, settings, onAddEquipment, onUpdateEquipment, onDeleteEquipment }: EquipmentViewProps) {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<EquipmentItem | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [addressFilter, setAddressFilter] = useState('all');
+    const { isMobile, isMounted } = useIsMobile();
 
     const handleOpenForm = (item: EquipmentItem | null) => {
         setEditingItem(item);
@@ -167,23 +269,33 @@ export default function EquipmentView({ equipment, settings, onAddEquipment, onU
         });
     }, [equipment, searchTerm, addressFilter]);
     
+    const renderContent = () => {
+        if (!isMounted) {
+            return <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>;
+        }
+        if (isMobile) {
+            return <EquipmentCardList items={filteredEquipment} onEdit={handleOpenForm} onDelete={onDeleteEquipment} />;
+        }
+        return <EquipmentTable items={filteredEquipment} onEdit={handleOpenForm} onDelete={onDeleteEquipment} />;
+    };
+
     return (
         <Card>
             <CardHeader>
                 <div className="flex items-center justify-between">
                     <CardTitle>Wyposażenie</CardTitle>
-                    <Button onClick={() => handleOpenForm(null)}><PlusCircle className="mr-2 h-4 w-4" /> Dodaj wyposażenie</Button>
+                    <Button onClick={() => handleOpenForm(null)}><PlusCircle className="mr-2 h-4 w-4" /> Dodaj</Button>
                 </div>
                 <CardDescription>Zarządzaj wyposażeniem przypisanym do mieszkań.</CardDescription>
-                <div className="flex items-center gap-2 pt-4">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-4">
                      <Input
                         placeholder="Szukaj po nazwie lub numerze..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full max-w-sm"
+                        className="w-full sm:max-w-xs"
                     />
                      <Select value={addressFilter} onValueChange={setAddressFilter}>
-                        <SelectTrigger className="w-full max-w-xs">
+                        <SelectTrigger className="w-full sm:max-w-xs">
                             <SelectValue placeholder="Filtruj po adresie" />
                         </SelectTrigger>
                         <SelectContent>
@@ -192,77 +304,14 @@ export default function EquipmentView({ equipment, settings, onAddEquipment, onU
                         </SelectContent>
                     </Select>
                     {(searchTerm || addressFilter !== 'all') && (
-                         <Button variant="ghost" size="icon" onClick={() => { setSearchTerm(''); setAddressFilter('all'); }} className="text-muted-foreground">
+                         <Button variant="ghost" size="icon" onClick={() => { setSearchTerm(''); setAddressFilter('all'); }} className="text-muted-foreground self-end sm:self-center">
                             <X className="h-4 w-4" />
                         </Button>
                     )}
                 </div>
             </CardHeader>
             <CardContent>
-                <div className="border rounded-md">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Adres</TableHead>
-                                <TableHead>Nr inwentarzowy</TableHead>
-                                <TableHead>Wyposażenie</TableHead>
-                                <TableHead>Ilość</TableHead>
-                                <TableHead>Opis</TableHead>
-                                <TableHead><span className="sr-only">Akcje</span></TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredEquipment.length > 0 ? (
-                                filteredEquipment.map(item => (
-                                    <TableRow key={item.id}>
-                                        <TableCell className="font-medium">{item.addressName}</TableCell>
-                                        <TableCell>{item.inventoryNumber}</TableCell>
-                                        <TableCell>{item.name}</TableCell>
-                                        <TableCell>{item.quantity}</TableCell>
-                                        <TableCell className="max-w-xs truncate">{item.description}</TableCell>
-                                        <TableCell>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent>
-                                                    <DropdownMenuItem onClick={() => handleOpenForm(item)}>
-                                                        <Pencil className="mr-2 h-4 w-4" /> Edytuj
-                                                    </DropdownMenuItem>
-                                                    <AlertDialog>
-                                                        <AlertDialogTrigger asChild>
-                                                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
-                                                                <Trash2 className="mr-2 h-4 w-4" /> Usuń
-                                                            </DropdownMenuItem>
-                                                        </AlertDialogTrigger>
-                                                        <AlertDialogContent>
-                                                            <AlertDialogHeader>
-                                                                <AlertDialogTitle>Czy na pewno chcesz usunąć?</AlertDialogTitle>
-                                                                <AlertDialogDescription>
-                                                                    Tej operacji nie można cofnąć.
-                                                                </AlertDialogDescription>
-                                                            </AlertDialogHeader>
-                                                            <AlertDialogFooter>
-                                                                <AlertDialogCancel>Anuluj</AlertDialogCancel>
-                                                                <AlertDialogAction onClick={() => onDeleteEquipment(item.id)} className="bg-destructive hover:bg-destructive/90">
-                                                                    Usuń
-                                                                </AlertDialogAction>
-                                                            </AlertDialogFooter>
-                                                        </AlertDialogContent>
-                                                    </AlertDialog>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            ) : (
-                                <TableRow>
-                                    <TableCell colSpan={6} className="text-center h-24">Brak wyposażenia do wyświetlenia.</TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
+                {renderContent()}
             </CardContent>
             <EquipmentForm 
                 isOpen={isFormOpen}
