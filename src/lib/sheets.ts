@@ -4,7 +4,7 @@
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet, GoogleSpreadsheetRow } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
 import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, NonEmployee, DeductionReason, InspectionCategory, InspectionCategoryItem, EquipmentItem } from '@/types';
-import { format, isValid, parseISO } from 'date-fns';
+import { format, isValid, parse, parseISO } from 'date-fns';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
 const SHEET_NAME_EMPLOYEES = 'Employees';
@@ -75,20 +75,41 @@ const safeFormat = (dateValue: any): string | null => {
     if (dateValue === null || dateValue === undefined || dateValue === '') {
         return null;
     }
-    if (dateValue instanceof Date) {
-        return isValid(dateValue) ? format(dateValue, 'yyyy-MM-dd') : null;
+
+    // Attempt to parse ISO string first (most reliable)
+    let date = parseISO(String(dateValue));
+    if (isValid(date)) {
+        return format(date, 'yyyy-MM-dd');
     }
-    if (typeof dateValue === 'number') {
+
+    // Attempt to parse a specific format like dd-MM-yyyy or dd.MM.yyyy
+    date = parse(String(dateValue), 'dd-MM-yyyy', new Date());
+     if (isValid(date)) {
+        return format(date, 'yyyy-MM-dd');
+    }
+    date = parse(String(dateValue), 'dd.MM.yyyy', new Date());
+     if (isValid(date)) {
+        return format(date, 'yyyy-MM-dd');
+    }
+
+    // Try a more general Date constructor for other formats
+    date = new Date(dateValue);
+    if (isValid(date)) {
+        return format(date, 'yyyy-MM-dd');
+    }
+
+    // Handle Excel's numeric date format
+    if (typeof dateValue === 'number' && dateValue > 0) {
+        // Excel's epoch starts on 1900-01-01, but it has a bug treating 1900 as a leap year.
+        // The common workaround is to start from 1899-12-30.
         const excelEpoch = new Date(1899, 11, 30);
-        const date = new Date(excelEpoch.getTime() + dateValue * 24 * 60 * 60 * 1000);
-        return isValid(date) ? format(date, 'yyyy-MM-dd') : null;
-    }
-    if (typeof dateValue === 'string') {
-        const isoDate = parseISO(dateValue);
-        if (isValid(isoDate)) {
-            return format(isoDate, 'yyyy-MM-dd');
+        date = new Date(excelEpoch.getTime() + dateValue * 24 * 60 * 60 * 1000);
+        if (isValid(date)) {
+            return format(date, 'yyyy-MM-dd');
         }
     }
+
+    // If all else fails, return null
     return null;
 };
 
@@ -100,6 +121,7 @@ const deserializeEmployee = (row: GoogleSpreadsheetRow<any>): Employee | null =>
     if (!id) return null;
 
     const checkInDate = safeFormat(plainObject.checkInDate);
+    // Critical check: if checkInDate is null, the employee record is considered invalid for most operations.
     if (!checkInDate) return null;
 
     let deductionReason: DeductionReason[] | undefined = undefined;
@@ -447,5 +469,3 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
         throw new Error(`Could not fetch inspections. Original error: ${error.message}`);
     }
 }
-
-    

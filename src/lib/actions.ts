@@ -1032,8 +1032,9 @@ export async function generateAccommodationReport(year: number, month: number, c
         const reportData: { employeeName: string; address: string; days: number; month: string, coordinatorName: string }[] = [];
 
         for (const employee of allEmployees) {
+            // **CRITICAL CHECK**: Skip employee if checkInDate is invalid or missing
             if (!employee.checkInDate || !isValid(new Date(employee.checkInDate))) {
-                continue; // Skip employee if checkInDate is invalid or missing
+                continue; 
             }
             
             const checkInDate = new Date(employee.checkInDate);
@@ -1129,4 +1130,3 @@ export async function generateAccommodationReport(year: number, month: number, c
         throw new Error(error.message || "An unknown error occurred during accommodation report generation.");
     }
 }
-
