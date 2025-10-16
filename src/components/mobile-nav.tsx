@@ -1,11 +1,12 @@
 
 "use client";
 
-import { Home, Users, Settings, ClipboardList } from "lucide-react";
+import { Home, Users, Settings, ClipboardList, Archive } from "lucide-react";
 import { Button } from "./ui/button";
 import type { View, Coordinator } from "@/types";
 import { useRouter } from "@/navigation";
 import { useCallback } from "react";
+import { useTranslations } from "next-intl";
 
 interface MobileNavProps {
   activeView: View;
@@ -16,14 +17,15 @@ interface MobileNavProps {
 
 export function MobileNav({ activeView, navItems, currentUser }: MobileNavProps) {
     const router = useRouter();
+    const t = useTranslations('Navigation');
 
     const setActiveView = useCallback((view: View) => {
-        router.push({ pathname: '/dashboard', query: { view } });
+        router.push(`/dashboard?view=${view}`);
     }, [router]);
 
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] border bg-card/80 backdrop-blur-xl p-2 rounded-2xl shadow-lg shadow-black/10 md:hidden">
-      <div className="grid h-full max-w-lg grid-cols-4 mx-auto">
+      <div className="grid h-full max-w-lg grid-cols-5 mx-auto">
         {navItems.map((item) => {
             const isDisabled = item.view === 'settings' && !currentUser.isAdmin;
             return (
@@ -40,7 +42,7 @@ export function MobileNav({ activeView, navItems, currentUser }: MobileNavProps)
                 onClick={() => setActiveView(item.view)}
               >
                 <item.icon className="h-6 w-6 mb-1" />
-                <span>{item.label}</span>
+                <span>{t(item.label)}</span>
               </Button>
             )
         })}
