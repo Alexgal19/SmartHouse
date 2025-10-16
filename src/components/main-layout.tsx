@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback, createContext, useContext, useRef } from 'react';
@@ -357,11 +358,17 @@ export default function MainLayout({
     }, [settings, currentUser, toast]);
     
     const handleAddInspection = useCallback(async (inspectionData: Omit<Inspection, 'id'>) => {
+        const tempId = `temp-insp-${Date.now()}`;
+        const newInspection: Inspection = { ...inspectionData, id: tempId };
+
+        setAllInspections(prev => [newInspection, ...(prev || [])]);
+
         try {
             await addInspection(inspectionData);
             toast({ title: "Sukces", description: "Nowa inspekcja została dodana." });
             await refreshData(false);
         } catch(e: any) {
+            setAllInspections(prev => prev!.filter(i => i.id !== tempId));
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać inspekcji." });
         }
     }, [refreshData, toast]);
@@ -369,17 +376,17 @@ export default function MainLayout({
     const handleUpdateInspection = useCallback(async (id: string, inspectionData: Omit<Inspection, 'id'>) => {
         const originalInspections = allInspections;
         const updatedInspection = { ...inspectionData, id };
-        setAllInspections(prev => prev!.map(i => i.id === id ? updatedInspection as Inspection : i));
+
+        setAllInspections(prev => prev!.map(i => i.id === id ? updatedInspection : i));
 
         try {
             await updateInspection(id, inspectionData);
             toast({ title: "Sukces", description: "Inspekcja została zaktualizowana." });
-            await refreshData(false);
         } catch (e: any) {
             setAllInspections(originalInspections);
             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zaktualizować inspekcji." });
         }
-    }, [allInspections, refreshData, toast]);
+    }, [allInspections, toast]);
 
     const handleDeleteInspection = useCallback(async (id: string) => {
         const originalInspections = allInspections;
@@ -652,3 +659,5 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
+
+    
