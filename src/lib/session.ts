@@ -6,8 +6,12 @@ import { cookies } from 'next/headers';
 import type { SessionData } from '@/types';
 import { getSettings } from './actions';
 
+if (!process.env.SECRET_COOKIE_PASSWORD) {
+    console.warn("SECRET_COOKIE_PASSWORD is not set. Using a default value. This is not secure for production.");
+}
+
 const sessionOptions = {
-    password: process.env.SECRET_COOKIE_PASSWORD as string,
+    password: process.env.SECRET_COOKIE_PASSWORD || 'default_password_for_smarthouse_app_dev_only',
     cookieName: 'smarthouse-session',
     cookieOptions: {
         secure: process.env.NODE_ENV === 'production',
