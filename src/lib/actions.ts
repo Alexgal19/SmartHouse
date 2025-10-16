@@ -1032,17 +1032,17 @@ export async function generateAccommodationReport(year: number, month: number, c
         const reportData: { employeeName: string; address: string; days: number; month: string, coordinatorName: string }[] = [];
 
         for (const employee of allEmployees) {
+            if (!employee.checkInDate || !isValid(new Date(employee.checkInDate))) {
+                continue; // Skip employee if checkInDate is invalid or missing
+            }
+            
             const checkInDate = new Date(employee.checkInDate);
-            const checkOutDate = employee.checkOutDate ? new Date(employee.checkOutDate) : null;
-            const addressChangeDate = employee.addressChangeDate ? new Date(employee.addressChangeDate) : null;
+            const checkOutDate = employee.checkOutDate && isValid(new Date(employee.checkOutDate)) ? new Date(employee.checkOutDate) : null;
+            const addressChangeDate = employee.addressChangeDate && isValid(new Date(employee.addressChangeDate)) ? new Date(employee.addressChangeDate) : null;
             const employeeCoordinatorName = coordinatorMap.get(employee.coordinatorId) || 'Nieznany';
 
-            // Overall stay interval for the employee
-            const stayStartDate = checkInDate;
-            const stayEndDate = checkOutDate;
-
             // Skip employee if their entire stay is outside the report month
-            if (stayStartDate > monthEndDate || (stayEndDate && stayEndDate < monthStartDate)) {
+            if (checkInDate > monthEndDate || (checkOutDate && checkOutDate < monthStartDate)) {
                 continue;
             }
 
@@ -1052,8 +1052,8 @@ export async function generateAccommodationReport(year: number, month: number, c
                 // Case 1: Address changed within the report month.
                 
                 // Days at OLD address
-                const oldAddressStartDate = max(monthStartDate, stayStartDate);
-                const oldAddressEndDate = min(addressChangeDate, stayEndDate || monthEndDate, monthEndDate);
+                const oldAddressStartDate = max(monthStartDate, checkInDate);
+                const oldAddressEndDate = min(addressChangeDate, checkOutDate || monthEndDate, monthEndDate);
                 if (oldAddressStartDate < oldAddressEndDate) {
                     const daysAtOldAddress = differenceInDays(oldAddressEndDate, oldAddressStartDate);
                     if (daysAtOldAddress > 0) {
@@ -1068,8 +1068,8 @@ export async function generateAccommodationReport(year: number, month: number, c
                 }
                 
                 // Days at NEW address
-                const newAddressStartDate = max(addressChangeDate, stayStartDate);
-                const newAddressEndDate = min(monthEndDate, stayEndDate || monthEndDate);
+                const newAddressStartDate = addressChangeDate;
+                const newAddressEndDate = min(monthEndDate, checkOutDate || monthEndDate);
                  if (newAddressStartDate <= newAddressEndDate) {
                     const daysAtNewAddress = differenceInDays(newAddressEndDate, newAddressStartDate) + 1;
                     if (daysAtNewAddress > 0) {
@@ -1092,8 +1092,8 @@ export async function generateAccommodationReport(year: number, month: number, c
                     currentAddress = employee.oldAddress;
                 }
 
-                const effectiveStartDate = max(monthStartDate, stayStartDate);
-                const effectiveEndDate = min(monthEndDate, stayEndDate || monthEndDate);
+                const effectiveStartDate = max(monthStartDate, checkInDate);
+                const effectiveEndDate = min(monthEndDate, checkOutDate || monthEndDate);
 
                 if (effectiveStartDate <= effectiveEndDate) {
                     const days = differenceInDays(effectiveEndDate, effectiveStartDate) + 1;
@@ -1129,3 +1129,4 @@ export async function generateAccommodationReport(year: number, month: number, c
         throw new Error(error.message || "An unknown error occurred during accommodation report generation.");
     }
 }
+
