@@ -4,7 +4,7 @@
 
 import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, NonEmployee, DeductionReason, EquipmentItem } from '@/types';
 import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getInspectionsFromSheet, getNonEmployeesFromSheet, getEquipmentFromSheet } from '@/lib/sheets';
-import { format, isEqual, isPast, isValid, parse, startOfMonth, endOfMonth } from 'date-fns';
+import { format, isEqual, isPast, isValid, parse, startOfMonth, endOfMonth, differenceInDays, min, max } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { getSession } from './session';
 
@@ -1008,3 +1008,120 @@ export async function generateMonthlyReport(year: number, month: number, coordin
     }
 }
 
+
+export async function generateAccommodationReport(year: number, month: number, coordinatorId?: string): Promise<{ success: boolean; message?: string; fileContent?: string; fileName?: string }> {
+    try {
+        const monthStartDate = startOfMonth(new Date(year, month - 1));
+        const monthEndDate = endOfMonth(new Date(year, month - 1));
+
+        let allEmployees = await getEmployeesFromSheet();
+        const settings = await getSettingsFromSheet();
+        const coordinatorMap = new Map(settings.coordinators.map(c => [c.uid, c.name]));
+
+        if (coordinatorId && coordinatorId !== 'all') {
+            allEmployees = allEmployees.filter(e => e.coordinatorId === coordinatorId);
+        }
+
+        const reportData: { employeeName: string; address: string; days: number; month: string, coordinatorName: string }[] = [];
+
+        for (const employee of allEmployees) {
+            const checkInDate = new Date(employee.checkInDate);
+            const checkOutDate = employee.checkOutDate ? new Date(employee.checkOutDate) : null;
+            const addressChangeDate = employee.addressChangeDate ? new Date(employee.addressChangeDate) : null;
+            const employeeCoordinatorName = coordinatorMap.get(employee.coordinatorId) || 'Nieznany';
+
+            // Interval for the entire employee stay
+            const stayStartDate = checkInDate;
+            const stayEndDate = checkOutDate;
+
+            // Check if employee's stay overlaps with the reporting month at all
+            if (stayStartDate > monthEndDate || (stayEndDate && stayEndDate < monthStartDate)) {
+                continue;
+            }
+
+            const reportMonthStr = format(monthStartDate, 'yyyy-MM');
+
+            if (addressChangeDate && addressChangeDate > monthStartDate && addressChangeDate <= monthEndDate && employee.oldAddress) {
+                // Case 1: Address change happened within the report month
+                // Calculate days at old address
+                const oldAddressStartDate = max(monthStartDate, stayStartDate);
+                const oldAddressEndDate = min(addressChangeDate, stayEndDate || monthEndDate);
+                if (oldAddressStartDate < oldAddressEndDate) {
+                    const daysAtOldAddress = differenceInDays(oldAddressEndDate, oldAddressStartDate);
+                    if (daysAtOldAddress > 0) {
+                        reportData.push({
+                            employeeName: employee.fullName,
+                            address: `${employee.oldAddress} (стара)`,
+                            days: daysAtOldAddress,
+                            month: reportMonthStr,
+                            coordinatorName: employeeCoordinatorName
+                        });
+                    }
+                }
+                
+                // Calculate days at new address
+                const newAddressStartDate = max(addressChangeDate, stayStartDate);
+                const newAddressEndDate = min(monthEndDate, stayEndDate || monthEndDate);
+                 if (newAddressStartDate <= newAddressEndDate) {
+                    const daysAtNewAddress = differenceInDays(newAddressEndDate, newAddressStartDate) + 1;
+                    if (daysAtNewAddress > 0) {
+                         reportData.push({
+                            employeeName: employee.fullName,
+                            address: employee.address,
+                            days: daysAtNewAddress,
+                            month: reportMonthStr,
+                            coordinatorName: employeeCoordinatorName
+                        });
+                    }
+                }
+
+            } else {
+                // Case 2: No address change in the report month
+                let currentAddress = employee.address;
+                let residenceStartDate = checkInDate;
+
+                // If change happened before this month, the current address is the one for the whole month
+                if(addressChangeDate && addressChangeDate <= monthStartDate) {
+                    residenceStartDate = addressChangeDate;
+                } else if(addressChangeDate && addressChangeDate > monthEndDate && employee.oldAddress){
+                     // If change happens after this month, they were at the old address
+                    currentAddress = employee.oldAddress;
+                }
+
+                const effectiveStartDate = max(monthStartDate, residenceStartDate);
+                const effectiveEndDate = min(monthEndDate, checkOutDate || monthEndDate);
+
+                if (effectiveStartDate <= effectiveEndDate) {
+                    const days = differenceInDays(effectiveEndDate, effectiveStartDate) + 1;
+                    if (days > 0) {
+                        reportData.push({
+                            employeeName: employee.fullName,
+                            address: currentAddress,
+                            days: days,
+                            month: reportMonthStr,
+                            coordinatorName: employeeCoordinatorName
+                        });
+                    }
+                }
+            }
+        }
+        
+        const wb = XLSX.utils.book_new();
+        const headers = ["Employee Name", "Address", "Days Lived", "Month", "Coordinator Name"];
+        const data = reportData.map(row => [row.employeeName, row.address, row.days, row.month, row.coordinatorName]);
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+        
+        const reportCoordinatorName = coordinatorId && coordinatorId !== 'all' ? coordinatorMap.get(coordinatorId) : 'Wszyscy';
+        XLSX.utils.book_append_sheet(wb, ws, `Dni Pobytu (${reportCoordinatorName})`);
+
+        const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+        const fileContent = buf.toString('base64');
+        const fileName = `raport_zakwaterowania_${reportCoordinatorName?.replace(/\s/g, '_')}_${year}_${String(month).padStart(2, '0')}.xlsx`;
+
+        return { success: true, fileContent, fileName };
+
+    } catch (error: any) {
+        console.error("Error generating accommodation report:", error);
+        throw new Error(error.message || "An unknown error occurred during accommodation report generation.");
+    }
+}

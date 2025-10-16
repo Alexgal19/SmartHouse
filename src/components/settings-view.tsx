@@ -16,7 +16,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Input } from "./ui/input";
 import { Switch } from "./ui/switch";
-import { transferEmployees, generateMonthlyReport } from "@/lib/actions";
+import { transferEmployees, generateMonthlyReport, generateAccommodationReport } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
@@ -617,7 +617,7 @@ const ReportGenerator = ({ coordinators }: { coordinators: Coordinator[] }) => {
     return (
         <Card>
             <CardHeader className="p-4 md:p-6">
-                <CardTitle>Generowanie Raportów</CardTitle>
+                <CardTitle>Generowanie Raportów Miesięcznych</CardTitle>
                 <CardDescription>Generuj szczegółowe raporty w formacie Excel.</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end p-4 pt-0 md:p-6 md:pt-0">
@@ -638,6 +638,74 @@ const ReportGenerator = ({ coordinators }: { coordinators: Coordinator[] }) => {
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
+                            {coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <Button onClick={handleGenerateReport} disabled={isGenerating || !month} className="w-full sm:w-auto">
+                    {isGenerating ? "Generowanie..." : <><Download className="mr-2 h-4 w-4"/> Generuj raport</>}
+                </Button>
+            </CardContent>
+        </Card>
+    );
+};
+
+const AccommodationReportGenerator = ({ coordinators }: { coordinators: Coordinator[] }) => {
+    const { toast } = useToast();
+    const [isGenerating, setIsGenerating] = useState(false);
+    const defaultMonth = format(new Date(), 'yyyy-MM');
+    const [month, setMonth] = useState(defaultMonth);
+    const [coordinatorId, setCoordinatorId] = useState('all');
+
+    const handleGenerateReport = async () => {
+        setIsGenerating(true);
+        try {
+            const [year, monthNum] = month.split('-').map(Number);
+            const result = await generateAccommodationReport(year, monthNum, coordinatorId);
+            
+            if (result.success && result.fileContent) {
+                const link = document.createElement('a');
+                link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${result.fileContent}`;
+                link.download = result.fileName || `raport_zakwaterowania_${month}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                toast({ title: "Sukces", description: "Raport zakwaterowania został wygenerowany i pobrany." });
+            } else {
+                throw new Error(result.message || "Nie udało się wygenerować raportu.");
+            }
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Wystąpił nieznany błąd.";
+            toast({ variant: 'destructive', title: "Błąd generowania raportu", description: message });
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+    
+    return (
+        <Card>
+            <CardHeader className="p-4 md:p-6">
+                <CardTitle>Raport po Dniach Prożywania</CardTitle>
+                <CardDescription>Oblicz, ile dni każdy pracownik mieszkał pod danym adresem w wybranym miesiącu.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end p-4 pt-0 md:p-6 md:pt-0">
+                <div className="space-y-2">
+                    <Label htmlFor="accom-report-month">Miesiąc raportu</Label>
+                    <Input 
+                        id="accom-report-month"
+                        type="month" 
+                        value={month} 
+                        onChange={(e) => setMonth(e.target.value)}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="accom-report-coordinator">Koordynator</Label>
+                     <Select value={coordinatorId} onValueChange={setCoordinatorId}>
+                        <SelectTrigger id="accom-report-coordinator">
+                            <SelectValue placeholder="Wybierz koordynatora" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Wszyscy pracownicy</SelectItem>
                             {coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
@@ -695,8 +763,9 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
             <TabsContent value="coordinators" className="mt-0 data-[state=active]:animate-in data-[state=active]:fade-in-0">
                <CoordinatorManager items={settings.coordinators} onUpdate={(newCoordinators) => onUpdateSettings({ coordinators: newCoordinators })} allEmployees={allEmployees} currentUser={currentUser} onDataRefresh={onDataRefresh} />
             </TabsContent>
-            <TabsContent value="reports" className="mt-0 data-[state=active]:animate-in data-[state=active]:fade-in-0">
+            <TabsContent value="reports" className="mt-0 space-y-6 data-[state=active]:animate-in data-[state=active]:fade-in-0">
                <ReportGenerator coordinators={settings.coordinators} />
+               <AccommodationReportGenerator coordinators={settings.coordinators} />
             </TabsContent>
           </div>
         </Tabs>
@@ -709,4 +778,5 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
     </Card>
   );
 }
+
 
