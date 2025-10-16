@@ -120,7 +120,8 @@ export default function MainLayout({
         const checkSession = async () => {
             const session = await getSession();
             if (session.isLoggedIn) {
-                setCurrentUser(session);
+                // Convert session to a plain object before setting state
+                setCurrentUser({ ...session });
                 if (!session.isAdmin) {
                     setSelectedCoordinatorId(session.uid);
                 }
