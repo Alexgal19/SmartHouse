@@ -71,7 +71,7 @@ export function LoginView({ onLogin, isLoading, loginError, setLoginError, name,
                  {loginError && <p className="text-sm font-medium text-destructive">{loginError}</p>}
             </CardContent>
             <CardFooter className="flex-col gap-4 p-6 pt-0">
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button type="submit" className="w-full" disabled={isLoading || !name || !password}>
                     {isLoading ? (
                         <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
