@@ -121,7 +121,7 @@ const safeFormat = (dateStr: string | undefined | null): string | null => {
     }
 };
 
-const deserializeEmployee = (row: any): Employee => {
+const deserializeEmployee = (row: any): Employee | null => {
     const plainObject = row;
     
     const id = plainObject.id;
