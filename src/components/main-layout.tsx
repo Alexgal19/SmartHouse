@@ -501,10 +501,10 @@ export default function MainLayout({
     
      const handleBulkImport = useCallback(async (fileData: ArrayBuffer) => {
         if (!currentUser?.isAdmin) {
-            return { success: false, message: "Brak uprawnień." };
+            return { success: false, message: "Brak uprawnień do importu." };
         }
         try {
-            const result = await bulkImportEmployees(fileData, currentUser.uid);
+            const result = await bulkImportEmployees(fileData);
             await refreshData(false);
             return result;
         } catch (e: any) {

@@ -5,6 +5,7 @@ import type { Employee, Settings, Notification, Coordinator, NotificationChange,
 import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getInspectionsFromSheet, getNonEmployeesFromSheet, getEquipmentFromSheet } from '@/lib/sheets';
 import { format, isEqual, isPast, isValid, parse, startOfMonth, endOfMonth } from 'date-fns';
 import * as XLSX from 'xlsx';
+import { getSession } from './session';
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
 const SHEET_NAME_NON_EMPLOYEES = 'NonEmployees';
@@ -843,13 +844,14 @@ const parseAndFormatDate = (dateValue: any): string | null => {
 };
 
 
-export async function bulkImportEmployees(fileData: ArrayBuffer, actorUid: string): Promise<{success: boolean, message: string}> {
+export async function bulkImportEmployees(fileData: ArrayBuffer): Promise<{success: boolean, message: string}> {
     try {
-        const settings = await getSettings();
-        const actor = settings.coordinators.find(c => c.uid === actorUid);
-        if (!actor?.isAdmin) {
+        const session = await getSession();
+        if (!session.isLoggedIn || !session.isAdmin) {
             return { success: false, message: "Brak uprawnień do importu." };
         }
+        
+        const settings = await getSettings();
         
         const workbook = XLSX.read(fileData, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
