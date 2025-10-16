@@ -1,5 +1,5 @@
 import { Inter } from 'next/font/google';
-import './globals.css';
+import '../globals.css';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, unstable_setRequestLocale } from 'next-intl/server';
 import { Toaster } from '@/components/ui/toaster';
@@ -19,7 +19,7 @@ export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
 }
 
-export default async function RootLayout({ 
+export default async function LocaleLayout({ 
   children,
   params: {locale}
 }: Props) {
