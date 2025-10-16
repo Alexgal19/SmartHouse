@@ -132,6 +132,7 @@ const deserializeEmployee = (row: GoogleSpreadsheetRow<any>): Employee | null =>
         comments: plainObject.comments || '',
         status: plainObject.status as 'active' | 'dismissed' || 'active',
         oldAddress: plainObject.oldAddress || undefined,
+        addressChangeDate: safeFormat(plainObject.addressChangeDate),
         depositReturned: depositReturned,
         depositReturnAmount: plainObject.depositReturnAmount ? parseFloat(plainObject.depositReturnAmount) : null,
         deductionRegulation: plainObject.deductionRegulation ? parseFloat(plainObject.deductionRegulation) : null,

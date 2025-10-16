@@ -37,6 +37,7 @@ export type Employee = {
   comments?: string;
   status: 'active' | 'dismissed';
   oldAddress?: string | null;
+  addressChangeDate?: string | null; // YYYY-MM-DD
   // Financial fields
   depositReturned?: 'Tak' | 'Nie' | 'Nie dotyczy' | null;
   depositReturnAmount?: number | null;

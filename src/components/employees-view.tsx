@@ -138,6 +138,7 @@ const EmployeeTable = ({
               <TableHead>Koordynator</TableHead>
               <TableHead>Adres</TableHead>
               <TableHead>Stara adresa</TableHead>
+              <TableHead>Data zmiany adresu</TableHead>
               <TableHead>Data zameldowania</TableHead>
               <TableHead>Data wymeldowania</TableHead>
               <TableHead>Data zgłoszenia wyjazdu</TableHead>
@@ -156,6 +157,7 @@ const EmployeeTable = ({
                   <TableCell>{getCoordinatorName(employee.coordinatorId)}</TableCell>
                   <TableCell>{employee.address}</TableCell>
                   <TableCell>{employee.oldAddress || 'N/A'}</TableCell>
+                  <TableCell>{formatDate(employee.addressChangeDate)}</TableCell>
                   <TableCell>{formatDate(employee.checkInDate)}</TableCell>
                   <TableCell>{formatDate(employee.checkOutDate)}</TableCell>
                   <TableCell>{formatDate(employee.departureReportDate)}</TableCell>
@@ -168,7 +170,7 @@ const EmployeeTable = ({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={12} className="text-center">Brak pracowników do wyświetlenia.</TableCell>
+                <TableCell colSpan={13} className="text-center">Brak pracowników do wyświetlenia.</TableCell>
               </TableRow>
             )}
           </TableBody>

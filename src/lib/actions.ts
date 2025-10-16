@@ -37,7 +37,7 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
     const dataToSerialize = { ...employee };
 
     for (const [key, value] of Object.entries(dataToSerialize)) {
-        if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate'].includes(key)) {
+        if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'addressChangeDate'].includes(key)) {
             serialized[key] = serializeDate(value as string);
         } else if (Array.isArray(value)) {
             serialized[key] = JSON.stringify(value);
@@ -96,7 +96,7 @@ const serializeEquipment = (item: Partial<EquipmentItem>): Record<string, string
 const EMPLOYEE_HEADERS = [
     'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 
     'zaklad', 'checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 
-    'departureReportDate', 'comments', 'status', 'oldAddress',
+    'departureReportDate', 'comments', 'status', 'oldAddress', 'addressChangeDate',
     'depositReturned', 'depositReturnAmount', 'deductionRegulation', 'deductionNo4Months', 'deductionNo30Days', 'deductionReason'
 ];
 
@@ -161,6 +161,7 @@ const deserializeEmployee = (row: any): Employee | null => {
         comments: plainObject.comments || '',
         status: plainObject.status as 'active' | 'dismissed' || 'active',
         oldAddress: plainObject.oldAddress || undefined,
+        addressChangeDate: safeFormat(plainObject.addressChangeDate),
         depositReturned: depositReturned,
         depositReturnAmount: plainObject.depositReturnAmount ? parseFloat(plainObject.depositReturnAmount) : null,
         deductionRegulation: plainObject.deductionRegulation ? parseFloat(plainObject.deductionRegulation) : null,
@@ -300,7 +301,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
             const oldValue = originalEmployee[typedKey];
             const newValue = updates[typedKey];
             
-            const areDates = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate'].includes(key);
+            const areDates = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'addressChangeDate'].includes(key);
 
             let oldValStr: string = 'Brak';
             let newValStr: string = 'Brak';

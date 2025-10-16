@@ -60,6 +60,7 @@ export const employeeSchema = z.object({
   departureReportDate: z.string().nullable().optional(),
   comments: z.string().optional(),
   oldAddress: z.string().optional().nullable(),
+  addressChangeDate: z.string().optional().nullable(),
   // Financial fields
   depositReturned: z.enum(['Tak', 'Nie', 'Nie dotyczy']).optional().nullable(),
   depositReturnAmount: z.number().optional().nullable(),
@@ -156,8 +157,10 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
     const dataToSave: EmployeeFormData = { ...values };
     if (employee && watchedAddress !== initialAddress) {
       dataToSave.oldAddress = initialAddress;
+      dataToSave.addressChangeDate = format(new Date(), 'yyyy-MM-dd');
     } else if (employee) {
       dataToSave.oldAddress = employee.oldAddress;
+      dataToSave.addressChangeDate = employee.addressChangeDate;
     }
     
     await onSave(dataToSave);
@@ -293,12 +296,25 @@ export function AddEmployeeForm({ isOpen, onOpenChange, onSave, settings, employ
                         )}
                     />
                     {showOldAddress && (
-                    <FormItem>
-                        <FormLabel>Stara adresa</FormLabel>
-                        <FormControl>
-                        <Input value={employee?.oldAddress || initialAddress || ''} readOnly disabled className="bg-muted/50"/>
-                        </FormControl>
-                    </FormItem>
+                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <FormItem>
+                            <FormLabel>Stara adresa</FormLabel>
+                            <FormControl>
+                            <Input value={employee?.oldAddress || initialAddress || ''} readOnly disabled className="bg-muted/50"/>
+                            </FormControl>
+                        </FormItem>
+                         <FormField
+                            control={form.control}
+                            name="addressChangeDate"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-col">
+                                <FormLabel className="mb-1.5">Data zmiany adresu</FormLabel>
+                                <DatePicker value={field.value} onChange={(val) => field.onChange(val || undefined)} />
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                            />
+                     </div>
                     )}
                 </div>
 
