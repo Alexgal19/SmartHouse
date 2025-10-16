@@ -44,10 +44,7 @@ export function LoginView({ onLogin, isLoading, loginError, setLoginError, name,
                     <Input
                     id="name"
                     value={name}
-                    onChange={(e) => {
-                        setName(e.target.value);
-                        setLoginError('');
-                    }}
+                    onChange={(e) => setName(e.target.value)}
                     placeholder="np. admin lub Jan Kowalski"
                     required
                     disabled={isLoading}
@@ -59,10 +56,7 @@ export function LoginView({ onLogin, isLoading, loginError, setLoginError, name,
                     id="password"
                     type="password"
                     value={password}
-                    onChange={(e) => {
-                        setPassword(e.target.value);
-                        setLoginError('');
-                    }}
+                    onChange={(e) => setPassword(e.target.value)}
                     placeholder="Wprowadź swoje hasło"
                     required
                     disabled={isLoading}

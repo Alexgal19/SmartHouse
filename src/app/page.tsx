@@ -20,20 +20,14 @@ export default function LoginPage() {
         setIsLoading(true);
         setLoginError('');
         
-        // The try...catch block is removed to allow Next.js to handle the redirect.
-        // The login server action will handle errors and redirects internally.
         const result = await login(userName, userPassword || '');
         
-        // This code will only run if the login fails AND doesn't redirect.
         if (result && !result.success) {
             setLoginError(result.error || "Wystąpił nieznany błąd.");
         } else if (result && result.success && !result.redirecting) {
-            // Fallback in case redirect doesn't happen, though it should.
              router.push('/dashboard');
         }
 
-        // If the login is unsuccessful, we need to turn off the loading state.
-        // If it's successful, the page will redirect, so this won't matter.
         setIsLoading(false);
     };
     
