@@ -144,6 +144,7 @@ export default function EquipmentView({ equipment, settings, onAddEquipment, onU
 
         const itemData = {
             ...data,
+            description: data.description || '',
             addressName: address.name,
         };
 
