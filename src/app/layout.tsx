@@ -29,7 +29,7 @@ export default async function RootLayout({
   return (
     <html lang={locale}>
       <body className={inter.className}>
-        <NextIntlClientProvider locale={locale} messages={messages}>
+        <NextIntlClientProvider messages={messages}>
           {children}
           <Toaster />
         </NextIntlClientProvider>
