@@ -349,7 +349,7 @@ const DeparturesChart = ({ employees }: { employees: Employee[] }) => {
                         axisLine={false} 
                         tickMargin={10} 
                         tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} 
-                        interval={isMobile ? 'auto' : 0}
+                        interval={isMobile ? 0 : 0}
                     />
                     <YAxis 
                         tickLine={false} 
@@ -483,7 +483,7 @@ const DeductionsChart = ({ employees }: { employees: Employee[] }) => {
                         axisLine={false} 
                         tickMargin={10} 
                         tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} 
-                        interval={isMobile ? 'auto' : 0}
+                        interval={isMobile ? 0 : 0}
                     />
                     <YAxis 
                         tickLine={false} 
@@ -648,7 +648,7 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
   const employeesByDepartment = useMemo(() => aggregateData('zaklad'), [employees]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in-0 duration-500">
         {currentUser.isAdmin && (
             <Card>
                 <CardHeader>
@@ -765,7 +765,7 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                             <div className="space-y-4 pr-4">
                             {housingOverview.length > 0 ? (
                                 housingOverview.map(house => (
-                                    <Card key={house.id} onClick={() => handleAddressCardClick(house)} className="cursor-pointer hover:bg-muted/50 transition-colors">
+                                    <Card key={house.id} onClick={() => handleAddressCardClick(house)} className="cursor-pointer hover:bg-muted/50 transition-colors animate-in fade-in-0 duration-300">
                                     <CardHeader className="pb-4">
                                         <CardTitle 
                                             className="text-lg md:text-xl truncate hover:underline"
@@ -805,7 +805,7 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
             setHighlightAvailableForAddressId(null);
           }
       }}>
-          <DialogContent className="sm:max-w-[600px] max-h-[90vh]">
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
               {selectedAddress && (
                   <HousingDetailView 
                       address={selectedAddress}
@@ -819,7 +819,7 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
       
       {/* Dialog for showing all employees for an address */}
       <Dialog open={isAllEmployeesDialogOpen} onOpenChange={setIsAllEmployeesDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
             {selectedAddress && (
                 <>
                     <DialogHeader>
@@ -851,3 +851,5 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
     </div>
   );
 }
+
+    
