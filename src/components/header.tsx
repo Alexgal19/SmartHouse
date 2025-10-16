@@ -45,7 +45,8 @@ const viewTitles: Record<View, string> = {
   dashboard: 'pulpit',
   employees: 'employees',
   settings: 'settings',
-  inspections: 'inspections'
+  inspections: 'inspections',
+  equipment: 'equipment'
 }
 
 const localesMap: Record<string, Locale> = {

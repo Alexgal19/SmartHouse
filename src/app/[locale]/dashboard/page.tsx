@@ -7,6 +7,7 @@ import DashboardView from '@/components/dashboard-view';
 import EmployeesView from '@/components/employees-view';
 import SettingsView from '@/components/settings-view';
 import InspectionsView from '@/components/inspections-view';
+import EquipmentView from '@/components/equipment-view';
 import type { Employee, Settings, View, Coordinator, Inspection, NonEmployee } from '@/types';
 import { cn } from '@/lib/utils';
 import { useMainLayout } from '@/components/main-layout';
@@ -22,6 +23,7 @@ export default function DashboardPage() {
         allEmployees,
         allNonEmployees,
         allInspections,
+        allEquipment,
         settings,
         currentUser,
         selectedCoordinatorId,
@@ -40,6 +42,9 @@ export default function DashboardPage() {
         handleAddInspection,
         handleUpdateInspection,
         handleDeleteInspection,
+        handleAddEquipment,
+        handleUpdateEquipment,
+        handleDeleteEquipment,
     } = useMainLayout();
 
     const filteredEmployees = useMemo(() => {
@@ -100,6 +105,14 @@ export default function DashboardPage() {
                     onUpdateInspection={handleUpdateInspection}
                     onDeleteInspection={handleDeleteInspection}
                 />;
+            case 'equipment':
+                return <EquipmentView
+                    equipment={allEquipment || []}
+                    settings={settings}
+                    onAddEquipment={handleAddEquipment}
+                    onUpdateEquipment={handleUpdateEquipment}
+                    onDeleteEquipment={handleDeleteEquipment}
+                    />;
             default:
                 return <DashboardView employees={filteredEmployees} allEmployees={allEmployees || []} nonEmployees={filteredNonEmployees || []} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={() => handleRefreshStatuses(true)} />;
         }

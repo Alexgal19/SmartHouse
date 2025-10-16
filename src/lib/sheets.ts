@@ -3,7 +3,7 @@
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet, GoogleSpreadsheetRow } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
-import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, NonEmployee, DeductionReason, InspectionCategory, InspectionCategoryItem } from '@/types';
+import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, NonEmployee, DeductionReason, InspectionCategory, InspectionCategoryItem, EquipmentItem } from '@/types';
 import { format, isValid, parseISO } from 'date-fns';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
@@ -18,6 +18,7 @@ const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_INSPECTIONS = 'Inspections';
 const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
+const SHEET_NAME_EQUIPMENT = 'Equipment';
 
 function getAuth(): JWT {
     const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
@@ -198,6 +199,21 @@ const deserializeNotification = (row: GoogleSpreadsheetRow<any>): Notification |
     return newNotification;
 };
 
+const deserializeEquipmentItem = (row: GoogleSpreadsheetRow<any>): EquipmentItem | null => {
+    const plainObject = row.toObject();
+    const id = plainObject.id;
+    if (!id) return null;
+
+    return {
+        id,
+        inventoryNumber: plainObject.inventoryNumber || '',
+        name: plainObject.name || '',
+        quantity: Number(plainObject.quantity) || 0,
+        description: plainObject.description || '',
+        addressId: plainObject.addressId || '',
+        addressName: plainObject.addressName || '',
+    };
+};
 
 export async function getEmployeesFromSheet(coordinatorId?: string): Promise<Employee[]> {
     try {
@@ -222,6 +238,17 @@ export async function getNonEmployeesFromSheet(): Promise<NonEmployee[]> {
   } catch (error: any) {
     console.error("Error fetching non-employees from sheet:", error.message, error.stack);
     throw new Error(`Could not fetch non-employees from sheet. Original error: ${error.message}`);
+  }
+}
+
+export async function getEquipmentFromSheet(): Promise<EquipmentItem[]> {
+  try {
+    const sheet = await getSheet(SHEET_NAME_EQUIPMENT, ['id']);
+    const rows = await sheet.getRows({ limit: 2000 });
+    return rows.map(deserializeEquipmentItem).filter((item): item is EquipmentItem => item !== null);
+  } catch (error: any) {
+    console.error("Error fetching equipment from sheet:", error.message, error.stack);
+    throw new Error(`Could not fetch equipment from sheet. Original error: ${error.message}`);
   }
 }
 

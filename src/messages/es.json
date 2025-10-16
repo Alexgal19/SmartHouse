@@ -118,6 +118,7 @@
         "pulpit": "Panel",
         "employees": "Empleados",
         "inspections": "Inspecciones",
+        "equipment": "Equipamiento",
         "settings": "Configuración",
         "toast": {
             "error": "Error",

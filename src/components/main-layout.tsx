@@ -14,11 +14,11 @@ import {
 } from '@/components/ui/sidebar';
 import Header from './header';
 import { MobileNav } from './mobile-nav';
-import type { View, Notification, Coordinator, Employee, Settings, NonEmployee, Inspection } from '@/types';
-import { Building, ClipboardList, Home, Settings as SettingsIcon, Users, Globe, Loader2 } from 'lucide-react';
+import type { View, Notification, Coordinator, Employee, Settings, NonEmployee, Inspection, EquipmentItem } from '@/types';
+import { Building, ClipboardList, Home, Settings as SettingsIcon, Users, Globe, Loader2, Archive } from 'lucide-react';
 import { useRouter, usePathname, Link } from '@/navigation';
 import { useSearchParams } from 'next/navigation';
-import { clearAllNotifications, markNotificationAsRead, getNotifications, getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getInspections, addInspection, updateInspection, deleteInspection, transferEmployees, bulkDeleteEmployees, bulkImportEmployees, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee, checkAndUpdateEmployeeStatuses } from '@/lib/actions';
+import { clearAllNotifications, markNotificationAsRead, getNotifications, getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getInspections, addInspection, updateInspection, deleteInspection, transferEmployees, bulkDeleteEmployees, bulkImportEmployees, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee, checkAndUpdateEmployeeStatuses, getEquipment, addEquipment, updateEquipment, deleteEquipment } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useTranslations } from 'next-intl';
 import { AddEmployeeForm, type EmployeeFormData } from '@/components/add-employee-form';
@@ -28,6 +28,7 @@ const navItems: { view: View; icon: React.ElementType; label: string }[] = [
     { view: 'dashboard', icon: Home, label: 'pulpit' },
     { view: 'employees', icon: Users, label: 'employees' },
     { view: 'inspections', icon: ClipboardList, label: 'inspections' },
+    { view: 'equipment', icon: Archive, label: 'equipment' },
     { view: 'settings', icon: SettingsIcon, label: 'settings' },
 ];
 
@@ -35,6 +36,7 @@ type MainLayoutContextType = {
     allEmployees: Employee[] | null;
     allNonEmployees: NonEmployee[] | null;
     allInspections: Inspection[] | null;
+    allEquipment: EquipmentItem[] | null;
     settings: Settings | null;
     currentUser: Coordinator | null;
     selectedCoordinatorId: string;
@@ -53,6 +55,9 @@ type MainLayoutContextType = {
     handleAddInspection: (inspectionData: Omit<Inspection, 'id'>) => Promise<void>;
     handleUpdateInspection: (id: string, inspectionData: Omit<Inspection, 'id'>) => Promise<void>;
     handleDeleteInspection: (id: string) => Promise<void>;
+    handleAddEquipment: (itemData: Omit<EquipmentItem, 'id'>) => Promise<void>;
+    handleUpdateEquipment: (id: string, itemData: Partial<EquipmentItem>) => Promise<void>;
+    handleDeleteEquipment: (id: string) => Promise<void>;
     handleRefreshStatuses: (showNoChangesToast?: boolean) => Promise<void>;
 };
 
@@ -91,6 +96,7 @@ export default function MainLayout({
     const [allEmployees, setAllEmployees] = useState<Employee[] | null>(null);
     const [allNonEmployees, setAllNonEmployees] = useState<NonEmployee[] | null>(null);
     const [allInspections, setAllInspections] = useState<Inspection[] | null>(null);
+    const [allEquipment, setAllEquipment] = useState<EquipmentItem[] | null>(null);
     const [settings, setSettings] = useState<Settings | null>(null);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isNonEmployeeFormOpen, setIsNonEmployeeFormOpen] = useState(false);
@@ -176,16 +182,18 @@ export default function MainLayout({
         try {
             const coordinatorIdToFetch = currentUser.isAdmin ? undefined : currentUser.uid;
             
-            const [employeesData, settingsData, inspectionsData, nonEmployeesData] = await Promise.all([
+            const [employeesData, settingsData, inspectionsData, nonEmployeesData, equipmentData] = await Promise.all([
                 getEmployees(coordinatorIdToFetch),
                 getSettings(),
                 getInspections(coordinatorIdToFetch),
                 getNonEmployees(),
+                getEquipment(),
             ]);
 
             setAllEmployees(employeesData);
             setAllInspections(inspectionsData);
             setAllNonEmployees(nonEmployeesData);
+            setAllEquipment(equipmentData);
             setSettings(settingsData);
             
             if(showToast) {
@@ -199,7 +207,7 @@ export default function MainLayout({
                 description: `${t_dashboard('toast.criticalErrorDescription')} ${error instanceof Error ? error.message : ''}`,
             });
         }
-    }, [currentUser]);
+    }, [currentUser, t_dashboard]);
 
     const handleRefreshStatuses = useCallback(async (showNoChangesToast = false) => {
         if (!currentUser) return;
@@ -214,7 +222,7 @@ export default function MainLayout({
         } catch (e: any) {
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.statusUpdateError') });
         }
-    }, [currentUser, refreshData]);
+    }, [currentUser, refreshData, t_dashboard]);
 
     const fetchAllData = useCallback(async () => {
         if (!currentUser) return;
@@ -229,16 +237,18 @@ export default function MainLayout({
 
             const coordinatorIdToFetch = currentUser.isAdmin ? undefined : currentUser.uid;
             
-            const [employeesData, inspectionsData, nonEmployeesData, notificationsData] = await Promise.all([
+            const [employeesData, inspectionsData, nonEmployeesData, equipmentData, notificationsData] = await Promise.all([
                 getEmployees(coordinatorIdToFetch),
                 getInspections(coordinatorIdToFetch),
                 getNonEmployees(),
+                getEquipment(),
                 getNotifications()
             ]);
 
             setAllEmployees(employeesData);
             setAllInspections(inspectionsData);
             setAllNonEmployees(nonEmployeesData);
+            setAllEquipment(equipmentData);
             setAllNotifications(notificationsData);
 
         } catch (error) {
@@ -253,7 +263,7 @@ export default function MainLayout({
         } finally {
              setIsLoadingData(false);
         }
-    }, [currentUser, handleRefreshStatuses]);
+    }, [currentUser, handleRefreshStatuses, t_loading, toast, t_dashboard]);
 
     useEffect(() => {
         if (!isAuthenticating && currentUser) {
@@ -390,6 +400,36 @@ export default function MainLayout({
         }
     }, [allInspections, t_dashboard, toast]);
 
+    const handleAddEquipment = useCallback(async (itemData: Omit<EquipmentItem, 'id'>) => {
+        try {
+            await addEquipment(itemData);
+            toast({ title: t_dashboard('toast.success'), description: "Dodano nowy sprzęt." });
+            await refreshData(false);
+        } catch (e: any) {
+            toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || "Nie udało się dodać sprzętu." });
+        }
+    }, [refreshData, toast, t_dashboard]);
+
+    const handleUpdateEquipment = useCallback(async (id: string, itemData: Partial<EquipmentItem>) => {
+        try {
+            await updateEquipment(id, itemData);
+            toast({ title: t_dashboard('toast.success'), description: "Zaktualizowano sprzęt." });
+            await refreshData(false);
+        } catch (e: any) {
+            toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || "Nie udało się zaktualizować sprzętu." });
+        }
+    }, [refreshData, toast, t_dashboard]);
+
+    const handleDeleteEquipment = useCallback(async (id: string) => {
+        try {
+            await deleteEquipment(id);
+            toast({ title: t_dashboard('toast.success'), description: "Usunięto sprzęt." });
+            await refreshData(false);
+        } catch (e: any) {
+            toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || "Nie udało się usunąć sprzętu." });
+        }
+    }, [refreshData, toast, t_dashboard]);
+
     const handleAddEmployeeClick = useCallback(() => {
         setEditingEmployee(null);
         setIsFormOpen(true);
@@ -488,6 +528,7 @@ export default function MainLayout({
         allEmployees,
         allNonEmployees,
         allInspections,
+        allEquipment,
         settings,
         currentUser,
         selectedCoordinatorId,
@@ -506,11 +547,15 @@ export default function MainLayout({
         handleAddInspection,
         handleUpdateInspection,
         handleDeleteInspection,
+        handleAddEquipment,
+        handleUpdateEquipment,
+        handleDeleteEquipment,
         handleRefreshStatuses
     }), [
         allEmployees,
         allNonEmployees,
         allInspections,
+        allEquipment,
         settings,
         currentUser,
         selectedCoordinatorId,
@@ -528,6 +573,9 @@ export default function MainLayout({
         handleAddInspection,
         handleUpdateInspection,
         handleDeleteInspection,
+        handleAddEquipment,
+        handleUpdateEquipment,
+        handleDeleteEquipment,
         handleRefreshStatuses
     ]);
 
@@ -618,7 +666,3 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
-
-    
-
-    

@@ -25,8 +25,8 @@
         }
     },
     "Dashboard": {
-        "loadingSettings": "Ładowanie ustawień...",
-        "loadingData": "Ładowanie danych...",
+        "loadingSettings": "Wczytywanie ustawień...",
+        "loadingData": "Wczytywanie danych...",
         "loadingComponents": "Ładowanie komponentów...",
         "noPermission": "Brak uprawnień do przeglądania tej strony.",
         "active": "Aktywni",
@@ -118,6 +118,7 @@
         "pulpit": "Pulpit",
         "employees": "Pracownicy",
         "inspections": "Inspekcje",
+        "equipment": "Wyposażenie",
         "settings": "Ustawienia",
         "toast": {
             "error": "Błąd",

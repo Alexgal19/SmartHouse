@@ -118,6 +118,7 @@
         "pulpit": "Dashboard",
         "employees": "Employees",
         "inspections": "Inspections",
+        "equipment": "Equipment",
         "settings": "Settings",
         "toast": {
             "error": "Error",

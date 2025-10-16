@@ -63,6 +63,16 @@ export type HousingAddress = {
   coordinatorId: string | null;
 };
 
+export type EquipmentItem = {
+  id: string;
+  inventoryNumber: string;
+  name: string;
+  quantity: number;
+  description: string;
+  addressId: string;
+  addressName: string;
+};
+
 export type InspectionCategoryItem = {
     label: string;
     type: 'rating' | 'yes_no' | 'text' | 'info' | 'select' | 'checkbox_group' | 'number';
@@ -108,15 +118,6 @@ export type InspectionDetail = {
     photoData?: string | null;
 }
 
-export type EquipmentItem = {
-  id: string;
-  name: string;
-  quantity: number;
-  address: string;
-  roomNumber: string;
-  condition: 'new' | 'used' | 'damaged';
-};
-
 export type Settings = {
   id: 'global-settings';
   addresses: HousingAddress[];
@@ -151,4 +152,4 @@ export type Notification = {
   changes?: NotificationChange[];
 };
 
-export type View = 'dashboard' | 'employees' | 'settings' | 'inspections';
+export type View = 'dashboard' | 'employees' | 'settings' | 'inspections' | 'equipment';

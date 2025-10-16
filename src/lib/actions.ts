@@ -1,8 +1,8 @@
 
 "use server";
 
-import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, NonEmployee, DeductionReason } from '@/types';
-import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getInspectionsFromSheet, getNonEmployeesFromSheet } from '@/lib/sheets';
+import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, NonEmployee, DeductionReason, EquipmentItem } from '@/types';
+import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getInspectionsFromSheet, getNonEmployeesFromSheet, getEquipmentFromSheet } from '@/lib/sheets';
 import { format, isEqual, isPast, isValid, parse, startOfMonth, endOfMonth } from 'date-fns';
 import * as XLSX from 'xlsx';
 
@@ -17,6 +17,7 @@ const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_INSPECTIONS = 'Inspections';
 const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
+const SHEET_NAME_EQUIPMENT = 'Equipment';
 
 
 const serializeDate = (date?: string | null): string => {
@@ -79,6 +80,18 @@ const serializeNotification = (notification: Omit<Notification, 'changes'> & { c
     };
 };
 
+const serializeEquipment = (item: Partial<EquipmentItem>): Record<string, string | number> => {
+    return {
+        id: item.id || '',
+        inventoryNumber: item.inventoryNumber || '',
+        name: item.name || '',
+        quantity: item.quantity || 0,
+        description: item.description || '',
+        addressId: item.addressId || '',
+        addressName: item.addressName || '',
+    };
+};
+
 const EMPLOYEE_HEADERS = [
     'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 
     'zaklad', 'checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 
@@ -88,6 +101,10 @@ const EMPLOYEE_HEADERS = [
 
 const NON_EMPLOYEE_HEADERS = [
     'id', 'fullName', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'comments'
+];
+
+const EQUIPMENT_HEADERS = [
+    'id', 'inventoryNumber', 'name', 'quantity', 'description', 'addressId', 'addressName'
 ];
 
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
@@ -173,6 +190,17 @@ export async function getNonEmployees(): Promise<NonEmployee[]> {
     throw new Error(error.message || "Failed to get non-employees.");
   }
 }
+
+export async function getEquipment(): Promise<EquipmentItem[]> {
+  try {
+     const equipment = await getEquipmentFromSheet();
+     return equipment;
+  } catch (error: any) {
+    console.error("Error in getEquipment (actions):", error);
+    throw new Error(error.message || "Failed to get equipment.");
+  }
+}
+
 
 export async function getSettings(): Promise<Settings> {
     try {
@@ -359,6 +387,54 @@ export async function deleteNonEmployee(id: string): Promise<void> {
     } catch (e: any) {
         console.error("Error deleting non-employee:", e);
         throw new Error(e.message || "Failed to delete non-employee.");
+    }
+}
+
+export async function addEquipment(itemData: Omit<EquipmentItem, 'id'>): Promise<void> {
+    try {
+        const sheet = await getSheet(SHEET_NAME_EQUIPMENT, EQUIPMENT_HEADERS);
+        const newItem: EquipmentItem = {
+            id: `equip-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            ...itemData,
+        };
+        const serialized = serializeEquipment(newItem);
+        await sheet.addRow(serialized, { raw: false, insert: true });
+    } catch (e: any) {
+        console.error("Error adding equipment:", e);
+        throw new Error(e.message || "Failed to add equipment.");
+    }
+}
+
+export async function updateEquipment(id: string, updates: Partial<EquipmentItem>): Promise<void> {
+    try {
+        const sheet = await getSheet(SHEET_NAME_EQUIPMENT, EQUIPMENT_HEADERS);
+        const rows = await sheet.getRows({ limit: 2000 });
+        const row = rows.find(r => r.get('id') === id);
+        if (!row) throw new Error("Equipment not found");
+        
+        for (const key in updates) {
+            row.set(key, (updates as any)[key]);
+        }
+        await row.save();
+    } catch (e: any) {
+        console.error("Error updating equipment:", e);
+        throw new Error(e.message || "Failed to update equipment.");
+    }
+}
+
+export async function deleteEquipment(id: string): Promise<void> {
+    try {
+        const sheet = await getSheet(SHEET_NAME_EQUIPMENT, EQUIPMENT_HEADERS);
+        const rows = await sheet.getRows({ limit: 2000 });
+        const row = rows.find(r => r.get('id') === id);
+        if (row) {
+            await row.delete();
+        } else {
+            throw new Error("Equipment not found");
+        }
+    } catch (e: any) {
+        console.error("Error deleting equipment:", e);
+        throw new Error(e.message || "Failed to delete equipment.");
     }
 }
 
