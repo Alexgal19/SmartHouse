@@ -32,7 +32,7 @@ export async function getSession() {
     return session;
 }
 
-export async function login(name: string, password?: string): Promise<{ success: boolean; error?: string }> {
+export async function login(name: string, password?: string): Promise<{ success: boolean; error?: string; redirecting?: boolean }> {
     const session = await getSession();
     
     if (!password) {
@@ -82,10 +82,12 @@ export async function login(name: string, password?: string): Promise<{ success:
         await session.save();
         // Redirect on the server-side after successful login
         redirect('/dashboard');
+        // The redirect function throws a NEXT_REDIRECT error, so this part of the code is unreachable.
+        // We can return a value here for type safety, though it won't be used.
+        return { success: true, redirecting: true };
     }
 
     // This part will only be reached if the login fails for some unknown reason.
-    // The successful login case redirects and never returns.
     return { success: false, error: "Nieznany błąd logowania." };
 }
 
