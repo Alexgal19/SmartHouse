@@ -515,6 +515,7 @@ const DeductionsChart = ({ employees }: { employees: Employee[] }) => {
 
 export default function DashboardView({ employees, allEmployees, nonEmployees, settings, onEditEmployee, currentUser, selectedCoordinatorId, onSelectCoordinator, onDataRefresh }: DashboardViewProps) {
   const { toast } = useToast();
+  const { isMobile } = useIsMobile();
 
   const [isHousingDialogOpen, setIsHousingDialogOpen] = useState(false);
   const [isCheckoutsDialogOpen, setIsCheckoutsDialogOpen] = useState(false);
@@ -733,14 +734,16 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                             </DialogContent>
                         </Dialog>
                     </div>
-                      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
-                          <VerticalChartComponent data={employeesByCoordinator} title="Pracownicy wg koordynatora" labelX="Pracownik"/>
-                          <VerticalChartComponent data={employeesByNationality} title="Pracownicy wg narodowości" labelX="Pracownik" />
-                          <VerticalChartComponent data={employeesByDepartment} title="Pracownicy wg zakładu" labelX="Pracownik" />
-                          <VerticalChartComponent data={nonEmployeesByAddress} title="Mieszkańcy (NZ) wg adresu" labelX="NZ"/>
-                          <DeparturesChart employees={employees} />
-                          <DeductionsChart employees={employees} />
-                      </div>
+                      {!isMobile && (
+                        <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
+                            <VerticalChartComponent data={employeesByCoordinator} title="Pracownicy wg koordynatora" labelX="Pracownik"/>
+                            <VerticalChartComponent data={employeesByNationality} title="Pracownicy wg narodowości" labelX="Pracownik" />
+                            <VerticalChartComponent data={employeesByDepartment} title="Pracownicy wg zakładu" labelX="Pracownik" />
+                            <VerticalChartComponent data={nonEmployeesByAddress} title="Mieszkańcy (NZ) wg adresu" labelX="NZ"/>
+                            <DeparturesChart employees={employees} />
+                            <DeductionsChart employees={employees} />
+                        </div>
+                      )}
                 </div>
             </TabsContent>
             <TabsContent value="housing" className="mt-6">
@@ -848,7 +851,3 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
     </div>
   );
 }
-
-    
-
-    
