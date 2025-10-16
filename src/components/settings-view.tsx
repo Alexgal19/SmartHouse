@@ -71,6 +71,15 @@ const EmployeeImportDialog = ({ isOpen, onOpenChange, onImport }: { isOpen: bool
                 }
             }
         };
+        reader.onerror = (error) => {
+            setIsProcessing(false);
+            toast({
+                variant: 'destructive',
+                title: "Błąd odczytu pliku",
+                description: "Nie udało się odczytać wybranego pliku. Spróbuj ponownie.",
+            });
+            console.error("FileReader error:", error);
+        };
         reader.readAsArrayBuffer(file);
     };
 
@@ -543,8 +552,7 @@ const CoordinatorManager = ({ items, onUpdate, allEmployees, currentUser, onData
                                 </SelectTrigger>
                                 <SelectContent>
                                     {items.filter(c => c.uid !== currentCoordinator?.uid).map(c => (
-                                        <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>
-                                    ))}
+                                        <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -689,3 +697,5 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
     </Card>
   );
 }
+
+    
