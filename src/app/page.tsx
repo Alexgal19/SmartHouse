@@ -21,11 +21,10 @@ export default function LoginPage() {
         setLoginError('');
         try {
             const result = await login(userName, userPassword || '');
-            if (result.success) {
-                router.push('/dashboard');
-            } else {
+            if (!result.success) {
                 setLoginError(result.error || "Wystąpił nieznany błąd.");
             }
+            // Redirection is now handled on the server side in the login action
         } catch (err: any) {
              toast({
                 variant: "destructive",

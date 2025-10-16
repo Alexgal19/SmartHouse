@@ -3,6 +3,7 @@
 
 import { getIronSession } from 'iron-session';
 import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import type { SessionData } from '@/types';
 import { getSettings } from './actions';
 
@@ -79,13 +80,17 @@ export async function login(name: string, password?: string): Promise<{ success:
         session.isAdmin = userToLogin.isAdmin;
         session.isLoggedIn = true;
         await session.save();
-        return { success: true };
+        // Redirect on the server-side after successful login
+        redirect('/dashboard');
     }
 
+    // This part will only be reached if the login fails for some unknown reason.
+    // The successful login case redirects and never returns.
     return { success: false, error: "Nieznany błąd logowania." };
 }
 
 export async function logout() {
     const session = await getSession();
     session.destroy();
+    redirect('/');
 }
