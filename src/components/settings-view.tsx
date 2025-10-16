@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import type { Settings, HousingAddress, Coordinator, Room, Employee } from "@/types";
@@ -778,5 +777,3 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
     </Card>
   );
 }
-
-
