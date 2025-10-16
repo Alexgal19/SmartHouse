@@ -1,8 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
-  experimental: {
-    allowedDevOrigins: ["*.cloudworkstations.dev"],
+  experimental: {},
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+    ],
   },
 };
 
