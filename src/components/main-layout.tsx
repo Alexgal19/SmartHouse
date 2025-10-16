@@ -102,11 +102,15 @@ export default function MainLayout({
     const [isNonEmployeeFormOpen, setIsNonEmployeeFormOpen] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
     const [editingNonEmployee, setEditingNonEmployee] = useState<NonEmployee | null>(null);
-    const [selectedCoordinatorId, setSelectedCoordinatorId] = useState('all');
+    const [selectedCoordinatorId, _setSelectedCoordinatorId] = useState('all');
     
     const [isAuthenticating, setIsAuthenticating] = useState(true);
     const [isLoadingData, setIsLoadingData] = useState(true);
     const [loadingMessage, setLoadingMessage] = useState(t_loading('authenticating'));
+
+    const setSelectedCoordinatorId = useCallback((value: React.SetStateAction<string>) => {
+        _setSelectedCoordinatorId(value);
+    }, []);
     
     const visibleNavItems = useMemo(() => {
         if (currentUser?.isAdmin) {
@@ -115,7 +119,8 @@ export default function MainLayout({
         return navItems.filter(item => item.view !== 'settings');
     }, [currentUser]);
 
-    useEffect(() => {
+     useEffect(() => {
+        if(!isAuthenticating) return;
         try {
             const loggedInUser = sessionStorage.getItem('currentUser');
             if (loggedInUser) {
@@ -132,7 +137,7 @@ export default function MainLayout({
         } finally {
             setIsAuthenticating(false);
         }
-    }, []);
+    }, [isAuthenticating, setSelectedCoordinatorId]);
 
     const handleLogout = useCallback(() => {
         sessionStorage.removeItem('currentUser');
@@ -207,7 +212,7 @@ export default function MainLayout({
                 description: `${t_dashboard('toast.criticalErrorDescription')} ${error instanceof Error ? error.message : ''}`,
             });
         }
-    }, [currentUser, t_dashboard, toast]);
+    }, [currentUser]);
 
     const handleRefreshStatuses = useCallback(async (showNoChangesToast = false) => {
         if (!currentUser) return;
@@ -505,7 +510,7 @@ export default function MainLayout({
         }
     }, [currentUser, refreshData, toast, t_dashboard]);
     
-    const handleBulkImport = useCallback(async (fileData: ArrayBuffer): Promise<{ success: boolean; message: string; }> => {
+     const handleBulkImport = useCallback(async (fileData: ArrayBuffer) => {
         const loggedInUserStr = sessionStorage.getItem('currentUser');
         if (!loggedInUserStr) {
             return { success: false, message: t_dashboard('toast.permissionError') };
@@ -559,6 +564,7 @@ export default function MainLayout({
         settings,
         currentUser,
         selectedCoordinatorId,
+        setSelectedCoordinatorId,
         handleEditEmployeeClick,
         handleDismissEmployee,
         handleRestoreEmployee,
@@ -666,3 +672,4 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
+
