@@ -63,6 +63,7 @@
         "occupiedLabel": "Ocupado:",
         "availableLabel": "Disponible:",
         "allResidents": "Todos los Residentes",
+        "selectRoom": "Selecciona una habitación para ver detalles",
         "housingDetailViewTitle": "Residentes en la habitación {roomNumber}",
         "housingDetailViewDescription": "{addressName}",
         "backToRooms": "Volver a las habitaciones",

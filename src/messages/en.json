@@ -63,6 +63,7 @@
         "occupiedLabel": "Occupied:",
         "availableLabel": "Available:",
         "allResidents": "All Residents",
+        "selectRoom": "Select a room to see details",
         "housingDetailViewTitle": "Residents in room {roomNumber}",
         "housingDetailViewDescription": "{addressName}",
         "backToRooms": "Back to rooms",

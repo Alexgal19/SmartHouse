@@ -1,12 +1,11 @@
 
 "use client";
 
-import { usePathname, useRouter } from '@/navigation';
+import { usePathname, useRouter, locales } from '@/navigation';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from './ui/dropdown-menu';
 import { Button } from './ui/button';
 import { Globe } from 'lucide-react';
-import { locales } from '@/navigation';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { useTransition } from 'react';
 
 
@@ -14,11 +13,12 @@ export default function LanguageSwitcher() {
     const t = useTranslations('LanguageSwitcher');
     const router = useRouter();
     const pathname = usePathname();
+    const locale = useLocale();
     const [isPending, startTransition] = useTransition();
 
-    const onLocaleChange = (locale: string) => {
+    const onLocaleChange = (newLocale: string) => {
         startTransition(() => {
-            router.replace(pathname, {locale});
+            router.replace(pathname, {locale: newLocale});
         });
     }
 
@@ -31,10 +31,11 @@ export default function LanguageSwitcher() {
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-                {locales.map((locale) => (
+                {locales.map((loc) => (
                     <DropdownMenuItem 
-                        key={locale} 
-                        onClick={() => onLocaleChange(locale)}
+                        key={loc} 
+                        onClick={() => onLocaleChange(loc)}
+                        disabled={locale === loc}
                     >
                        {
                         {
@@ -42,7 +43,7 @@ export default function LanguageSwitcher() {
                             'en': 'English',
                             'uk': 'Українська',
                             'es': 'Español'
-                        }[locale]
+                        }[loc]
                        }
                     </DropdownMenuItem>
                 ))}

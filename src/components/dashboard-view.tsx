@@ -19,7 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 
 interface DashboardViewProps {
   employees: Employee[];
@@ -480,6 +480,7 @@ const DeductionsChart = ({ employees, currentLocale }: { employees: Employee[], 
 export default function DashboardView({ employees, allEmployees, nonEmployees, settings, onEditEmployee, currentUser, selectedCoordinatorId, onSelectCoordinator, onDataRefresh }: DashboardViewProps) {
   const t = useTranslations('Dashboard');
   const { toast } = useToast();
+  const locale = useLocale();
 
   const [isHousingDialogOpen, setIsHousingDialogOpen] = useState(false);
   const [isCheckoutsDialogOpen, setIsCheckoutsDialogOpen] = useState(false);
@@ -487,15 +488,6 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
   const [selectedAddress, setSelectedAddress] = useState<HousingAddress | null>(null);
   const [isAllEmployeesDialogOpen, setIsAllEmployeesDialogOpen] = useState(false);
   const [highlightAvailableForAddressId, setHighlightAvailableForAddressId] = useState<string | null>(null);
-  const [currentLocale, setCurrentLocale] = useState('pl');
-
-  useEffect(() => {
-    // A simple way to get locale from URL path
-    const localeFromPath = window.location.pathname.split('/')[1];
-    if (localeFromPath && ['pl', 'en', 'uk', 'es'].includes(localeFromPath)) {
-        setCurrentLocale(localeFromPath);
-    }
-  }, []);
   
   const activeEmployees = useMemo(() => employees.filter(e => e.status === 'active'), [employees]);
   const activeOccupants = useMemo(() => [...activeEmployees, ...nonEmployees], [activeEmployees, nonEmployees]);
@@ -703,8 +695,8 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
                           <VerticalChartComponent data={employeesByNationality} title={t('employeesByNationalityChart')} labelX={t('employeeLabel')} />
                           <VerticalChartComponent data={employeesByDepartment} title={t('employeesByDepartmentChart')} labelX={t('employeeLabel')} />
                           <VerticalChartComponent data={nonEmployeesByAddress} title={t('nonEmployeesByAddressChart')} labelX={t('nonEmployeeLabelShort')}/>
-                          <DeparturesChart employees={employees} currentLocale={currentLocale} />
-                          <DeductionsChart employees={employees} currentLocale={currentLocale} />
+                          <DeparturesChart employees={employees} currentLocale={locale} />
+                          <DeductionsChart employees={employees} currentLocale={locale} />
                       </div>
                 </div>
             </TabsContent>

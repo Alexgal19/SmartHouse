@@ -63,6 +63,7 @@
         "occupiedLabel": "Зайнято:",
         "availableLabel": "Вільно:",
         "allResidents": "Усі мешканці",
+        "selectRoom": "Виберіть кімнату, щоб переглянути деталі",
         "housingDetailViewTitle": "Мешканці в кімнаті {roomNumber}",
         "housingDetailViewDescription": "{addressName}",
         "backToRooms": "Повернутися до кімнат",

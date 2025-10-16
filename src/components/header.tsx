@@ -27,8 +27,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { type Locale, pl, uk, enUS, es } from 'date-fns/locale';
 import { ScrollArea } from "./ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { useTranslations } from "next-intl";
-import { usePathname } from "@/navigation";
+import { useTranslations, useLocale } from "next-intl";
 import React from "react";
 import LanguageSwitcher from "./language-switcher";
 
@@ -60,8 +59,7 @@ export default function Header({ user, activeView, notifications, onNotification
     const { isMobile, open } = useSidebar();
     const t = useTranslations('Header');
     const navT = useTranslations('Navigation');
-    const pathname = usePathname();
-    const currentLocale = usePathname().split('/')[1] as keyof typeof localesMap;
+    const currentLocale = useLocale() as keyof typeof localesMap;
     const locale = localesMap[currentLocale] || pl;
 
     const unreadCount = notifications.filter(n => !n.isRead).length;
