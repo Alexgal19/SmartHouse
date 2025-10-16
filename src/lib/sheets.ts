@@ -243,7 +243,7 @@ export async function getNonEmployeesFromSheet(): Promise<NonEmployee[]> {
 
 export async function getEquipmentFromSheet(): Promise<EquipmentItem[]> {
   try {
-    const sheet = await getSheet(SHEET_NAME_EQUIPMENT, ['id']);
+    const sheet = await getSheet(SHEET_NAME_EQUIPMENT, ['id', 'inventoryNumber', 'name', 'quantity', 'description', 'addressId', 'addressName']);
     const rows = await sheet.getRows({ limit: 2000 });
     return rows.map(deserializeEquipmentItem).filter((item): item is EquipmentItem => item !== null);
   } catch (error: any) {
@@ -446,3 +446,5 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
         throw new Error(`Could not fetch inspections. Original error: ${error.message}`);
     }
 }
+
+    
