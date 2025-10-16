@@ -1,4 +1,5 @@
 
+
 "use server";
 
 import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, NonEmployee, DeductionReason, EquipmentItem } from '@/types';
@@ -913,17 +914,23 @@ export async function bulkImportEmployees(fileData: ArrayBuffer): Promise<{succe
     }
 }
 
-export async function generateMonthlyReport(year: number, month: number): Promise<{ success: boolean; message?: string; fileContent?: string; fileName?: string }> {
+export async function generateMonthlyReport(year: number, month: number, coordinatorId?: string): Promise<{ success: boolean; message?: string; fileContent?: string; fileName?: string }> {
     try {
         const startDate = startOfMonth(new Date(year, month - 1));
         const endDate = endOfMonth(new Date(year, month - 1));
 
-        const allEmployees = await getEmployeesFromSheet();
-        const allNonEmployees = await getNonEmployeesFromSheet();
-        const allInspections = await getInspectionsFromSheet();
+        let allEmployees = await getEmployeesFromSheet();
+        let allInspections = await getInspectionsFromSheet();
         const settings = await getSettingsFromSheet();
         
         const coordinatorMap = new Map(settings.coordinators.map(c => [c.uid, c.name]));
+        let reportCoordinatorName = 'Wszyscy';
+
+        if(coordinatorId && coordinatorId !== 'all') {
+            allEmployees = allEmployees.filter(e => e.coordinatorId === coordinatorId);
+            allInspections = allInspections.filter(i => i.coordinatorId === coordinatorId);
+            reportCoordinatorName = coordinatorMap.get(coordinatorId) || 'Nieznany';
+        }
 
         const employeesInMonth = allEmployees.filter(e => {
             if (!e.checkInDate) return false;
@@ -939,6 +946,7 @@ export async function generateMonthlyReport(year: number, month: number): Promis
         
         const wb = XLSX.utils.book_new();
 
+        // Employees Sheet
         const employeesHeaders = ["ID", "Imię i nazwisko", "Koordynator", "Adres", "Pokój", "Data zameldowania", "Data wymeldowania", "Status", "Potrącenia (zł)"];
         const employeesData = employeesInMonth.map(e => {
             const deductionReasonTotal = e.deductionReason?.reduce((sum, r) => sum + (r.checked && r.amount ? r.amount : 0), 0) || 0;
@@ -948,13 +956,15 @@ export async function generateMonthlyReport(year: number, month: number): Promis
             ];
         });
         const ws_employees = XLSX.utils.aoa_to_sheet([employeesHeaders, ...employeesData]);
-        XLSX.utils.book_append_sheet(wb, ws_employees, "Pracownicy");
+        XLSX.utils.book_append_sheet(wb, ws_employees, `Pracownicy (${reportCoordinatorName})`);
 
+        // Inspections Sheet
         const inspectionsHeaders = ["ID Inspekcji", "Adres", "Data", "Koordynator", "Standard"];
         const inspectionsData = inspectionsInMonth.map(i => [i.id, i.addressName, format(new Date(i.date), 'yyyy-MM-dd'), i.coordinatorName, i.standard || '']);
         const ws_inspections = XLSX.utils.aoa_to_sheet([inspectionsHeaders, ...inspectionsData]);
-        XLSX.utils.book_append_sheet(wb, ws_inspections, "Inspekcje");
+        XLSX.utils.book_append_sheet(wb, ws_inspections, `Inspekcje (${reportCoordinatorName})`);
         
+        // Finance Sheet
         const financeHeaders = ["Pracownik", "Zwrot kaucji", "Kwota zwrotu", "Potrącenie (regulamin)", "Potrącenie (4 msc)", "Potrącenie (30 dni)", "Potrącenia (inne)", "Suma potrąceń"];
         const financeData = employeesInMonth.filter(e => e.depositReturnAmount || e.deductionRegulation || e.deductionNo4Months || e.deductionNo30Days || e.deductionReason?.some(r => r.checked)).map(e => {
             const deductionReasonTotal = e.deductionReason?.reduce((sum, r) => sum + (r.checked && r.amount ? r.amount : 0), 0) || 0;
@@ -964,11 +974,31 @@ export async function generateMonthlyReport(year: number, month: number): Promis
             ];
         });
         const ws_finance = XLSX.utils.aoa_to_sheet([financeHeaders, ...financeData]);
-        XLSX.utils.book_append_sheet(wb, ws_finance, "Finanse");
+        XLSX.utils.book_append_sheet(wb, ws_finance, `Finanse (${reportCoordinatorName})`);
+
+        // Housing Sheet (new)
+        if (coordinatorId && coordinatorId !== 'all') {
+            const coordinatorAddresses = settings.addresses.filter(a => a.coordinatorId === coordinatorId);
+            const housingHeaders = ["Adres", "Liczba pokoi", "Całkowita pojemność", "Zajęte miejsca", "Wolne miejsca"];
+            const housingData = coordinatorAddresses.map(addr => {
+                const totalCapacity = addr.rooms.reduce((sum, room) => sum + room.capacity, 0);
+                const occupiedCount = allEmployees.filter(e => e.address === addr.name && e.status === 'active').length;
+                return [
+                    addr.name,
+                    addr.rooms.length,
+                    totalCapacity,
+                    occupiedCount,
+                    totalCapacity - occupiedCount
+                ];
+            });
+             const ws_housing = XLSX.utils.aoa_to_sheet([housingHeaders, ...housingData]);
+             XLSX.utils.book_append_sheet(wb, ws_housing, `Mieszkania (${reportCoordinatorName})`);
+        }
+
 
         const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
         const fileContent = buf.toString('base64');
-        const fileName = `raport_miesieczny_${year}_${String(month).padStart(2, '0')}.xlsx`;
+        const fileName = `raport_${reportCoordinatorName.replace(/\s/g, '_')}_${year}_${String(month).padStart(2, '0')}.xlsx`;
 
         return { success: true, fileContent, fileName };
 
@@ -977,3 +1007,4 @@ export async function generateMonthlyReport(year: number, month: number): Promis
         throw new Error(error.message || "An unknown error occurred during report generation.");
     }
 }
+

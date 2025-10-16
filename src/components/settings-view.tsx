@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { Settings, HousingAddress, Coordinator, Room, Employee } from "@/types";
@@ -581,17 +582,18 @@ const CoordinatorManager = ({ items, onUpdate, allEmployees, currentUser, onData
     );
 };
 
-const ReportGenerator = () => {
+const ReportGenerator = ({ coordinators }: { coordinators: Coordinator[] }) => {
     const { toast } = useToast();
     const [isGenerating, setIsGenerating] = useState(false);
     const defaultMonth = format(subMonths(new Date(), 1), 'yyyy-MM');
     const [month, setMonth] = useState(defaultMonth);
+    const [coordinatorId, setCoordinatorId] = useState('all');
 
     const handleGenerateReport = async () => {
         setIsGenerating(true);
         try {
             const [year, monthNum] = month.split('-').map(Number);
-            const result = await generateMonthlyReport(year, monthNum);
+            const result = await generateMonthlyReport(year, monthNum, coordinatorId);
             
             if (result.success && result.fileContent) {
                 const link = document.createElement('a');
@@ -616,15 +618,30 @@ const ReportGenerator = () => {
         <Card>
             <CardHeader className="p-4 md:p-6">
                 <CardTitle>Generowanie Raportów</CardTitle>
-                <CardDescription>Generuj miesięczne raporty w formacie Excel.</CardDescription>
+                <CardDescription>Generuj szczegółowe raporty w formacie Excel.</CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col sm:flex-row items-center gap-4 p-4 pt-0 md:p-6 md:pt-0">
-                 <Input 
-                    type="month" 
-                    value={month} 
-                    onChange={(e) => setMonth(e.target.value)}
-                    className="w-full sm:w-auto"
-                />
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end p-4 pt-0 md:p-6 md:pt-0">
+                <div className="space-y-2">
+                    <Label htmlFor="report-month">Miesiąc raportu</Label>
+                    <Input 
+                        id="report-month"
+                        type="month" 
+                        value={month} 
+                        onChange={(e) => setMonth(e.target.value)}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="report-coordinator">Koordynator</Label>
+                     <Select value={coordinatorId} onValueChange={setCoordinatorId}>
+                        <SelectTrigger id="report-coordinator">
+                            <SelectValue placeholder="Wybierz koordynatora" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
+                            {coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
                 <Button onClick={handleGenerateReport} disabled={isGenerating || !month} className="w-full sm:w-auto">
                     {isGenerating ? "Generowanie..." : <><Download className="mr-2 h-4 w-4"/> Generuj raport</>}
                 </Button>
@@ -679,7 +696,7 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
                <CoordinatorManager items={settings.coordinators} onUpdate={(newCoordinators) => onUpdateSettings({ coordinators: newCoordinators })} allEmployees={allEmployees} currentUser={currentUser} onDataRefresh={onDataRefresh} />
             </TabsContent>
             <TabsContent value="reports" className="mt-0 data-[state=active]:animate-in data-[state=active]:fade-in-0">
-               <ReportGenerator />
+               <ReportGenerator coordinators={settings.coordinators} />
             </TabsContent>
           </div>
         </Tabs>
@@ -692,3 +709,4 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
     </Card>
   );
 }
+
