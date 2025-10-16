@@ -13,12 +13,14 @@ export default function LoginPage() {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [loginError, setLoginError] = useState('');
+    const [name, setName] = useState('');
+    const [password, setPassword] = useState('');
 
-    const handleLogin = async (user: { name: string }, password?: string) => {
+    const handleLogin = async (userName: string, userPassword?: string) => {
         setIsLoading(true);
         setLoginError('');
         try {
-            const result = await login(user.name, password || '');
+            const result = await login(userName, userPassword || '');
             if (result.success) {
                 router.push('/dashboard');
             } else {
@@ -38,7 +40,16 @@ export default function LoginPage() {
     
     return (
       <div className="relative h-screen w-full">
-        <LoginView onLogin={handleLogin} isLoading={isLoading} loginError={loginError} setLoginError={setLoginError} />
+        <LoginView 
+          onLogin={handleLogin} 
+          isLoading={isLoading} 
+          loginError={loginError} 
+          setLoginError={setLoginError}
+          name={name}
+          setName={setName}
+          password={password}
+          setPassword={setPassword}
+        />
       </div>
     );
 }

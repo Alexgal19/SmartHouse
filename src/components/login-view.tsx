@@ -9,26 +9,22 @@ import { Label } from '@/components/ui/label';
 import { Building, Loader2 } from 'lucide-react';
 
 interface LoginViewProps {
-  onLogin: (user: { name: string }, password?: string) => Promise<void>;
+  onLogin: (name: string, password?: string) => Promise<void>;
   isLoading: boolean;
   loginError: string;
   setLoginError: (error: string) => void;
+  name: string;
+  setName: (name: string) => void;
+  password: string;
+  setPassword: (password: string) => void;
 }
 
-export function LoginView({ onLogin, isLoading, loginError, setLoginError }: LoginViewProps) {
-  const [name, setName] = React.useState('');
-  const [password, setPassword] = React.useState('');
-  const [isLoggingIn, setIsLoggingIn] = React.useState(false);
-
+export function LoginView({ onLogin, isLoading, loginError, setLoginError, name, setName, password, setPassword }: LoginViewProps) {
+  
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
-    setIsLoggingIn(true);
-    try {
-        await onLogin({ name: name.trim() }, password);
-    } finally {
-        setIsLoggingIn(false);
-    }
+    await onLogin(name.trim(), password);
   };
 
   return (
@@ -54,7 +50,7 @@ export function LoginView({ onLogin, isLoading, loginError, setLoginError }: Log
                     }}
                     placeholder="np. admin lub Jan Kowalski"
                     required
-                    disabled={isLoggingIn || isLoading}
+                    disabled={isLoading}
                     />
                 </div>
                  <div className="space-y-2">
@@ -69,15 +65,14 @@ export function LoginView({ onLogin, isLoading, loginError, setLoginError }: Log
                     }}
                     placeholder="Wprowadź swoje hasło"
                     required
-                    disabled={isLoggingIn || isLoading}
+                    disabled={isLoading}
                     />
                 </div>
                  {loginError && <p className="text-sm font-medium text-destructive">{loginError}</p>}
-                 {isLoading && <p className="text-sm font-medium text-muted-foreground text-center">Ładowanie konfiguracji...</p>}
             </CardContent>
             <CardFooter className="flex-col gap-4 p-6 pt-0">
-                <Button type="submit" className="w-full" disabled={isLoggingIn || isLoading}>
-                    {isLoggingIn || isLoading ? (
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? (
                         <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                             Logowanie...
