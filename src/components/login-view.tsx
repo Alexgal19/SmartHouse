@@ -52,7 +52,7 @@ export function LoginView({ onLogin, isLoading, loginError, setLoginError }: Log
                         setName(e.target.value);
                         setLoginError('');
                     }}
-                    placeholder="Jan Kowalski lub admin"
+                    placeholder="np. admin lub Jan Kowalski"
                     required
                     disabled={isLoggingIn || isLoading}
                     />
@@ -67,7 +67,7 @@ export function LoginView({ onLogin, isLoading, loginError, setLoginError }: Log
                         setPassword(e.target.value);
                         setLoginError('');
                     }}
-                    placeholder="Wprowadź hasło"
+                    placeholder="Wprowadź swoje hasło"
                     required
                     disabled={isLoggingIn || isLoading}
                     />
