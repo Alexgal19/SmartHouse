@@ -1,5 +1,4 @@
 
-
 export type User = {
   uid: string;
   name: string;
@@ -7,6 +6,13 @@ export type User = {
   avatarUrl?: string;
   isAdmin?: boolean;
 };
+
+export type SessionData = {
+  uid: string;
+  name: string;
+  isAdmin: boolean;
+  isLoggedIn: boolean;
+}
 
 export type DeductionReason = {
   name: string;

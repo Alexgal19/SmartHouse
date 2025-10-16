@@ -14,11 +14,12 @@ import {
 } from '@/components/ui/sidebar';
 import Header from './header';
 import { MobileNav } from './mobile-nav';
-import type { View, Notification, Coordinator, Employee, Settings, NonEmployee, Inspection, EquipmentItem } from '@/types';
+import type { View, Notification, Coordinator, Employee, Settings, NonEmployee, Inspection, EquipmentItem, SessionData } from '@/types';
 import { Building, ClipboardList, Home, Settings as SettingsIcon, Users, Globe, Loader2, Archive } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { clearAllNotifications, markNotificationAsRead, getNotifications, getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getInspections, addInspection, updateInspection, deleteInspection, transferEmployees, bulkDeleteEmployees, bulkImportEmployees, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee, checkAndUpdateEmployeeStatuses, getEquipment, addEquipment, updateEquipment, deleteEquipment } from '@/lib/actions';
+import { getSession, logout } from '@/lib/session';
 import { useToast } from '@/hooks/use-toast';
 import { AddEmployeeForm, type EmployeeFormData } from '@/components/add-employee-form';
 import { AddNonEmployeeForm } from '@/components/add-non-employee-form';
@@ -37,7 +38,7 @@ type MainLayoutContextType = {
     allInspections: Inspection[] | null;
     allEquipment: EquipmentItem[] | null;
     settings: Settings | null;
-    currentUser: Coordinator | null;
+    currentUser: SessionData | null;
     selectedCoordinatorId: string;
     setSelectedCoordinatorId: React.Dispatch<React.SetStateAction<string>>;
     handleEditEmployeeClick: (employee: Employee) => void;
@@ -75,7 +76,8 @@ export default function MainLayout({
 }: {
   children: React.ReactNode;
 }) {
-    const routerRef = useRef(useRouter());
+    const router = useRouter();
+    const routerRef = useRef(router);
     const searchParams = useSearchParams();
 
     const activeView = useMemo(() => {
@@ -84,7 +86,7 @@ export default function MainLayout({
 
     const editEmployeeId = searchParams.get('edit');
 
-    const [currentUser, setCurrentUser] = useState<Coordinator | null>(null);
+    const [currentUser, setCurrentUser] = useState<SessionData | null>(null);
     const [allNotifications, setAllNotifications] = useState<Notification[]>([]);
     
     const [allEmployees, setAllEmployees] = useState<Employee[] | null>(null);
@@ -115,27 +117,23 @@ export default function MainLayout({
     }, [currentUser]);
 
      useEffect(() => {
-        if(!isAuthenticating) return;
-        try {
-            const loggedInUser = sessionStorage.getItem('currentUser');
-            if (loggedInUser) {
-                const user = JSON.parse(loggedInUser);
-                setCurrentUser(user);
-                if (!user.isAdmin) {
-                    setSelectedCoordinatorId(user.uid);
+        const checkSession = async () => {
+            const session = await getSession();
+            if (session.isLoggedIn) {
+                setCurrentUser(session);
+                if (!session.isAdmin) {
+                    setSelectedCoordinatorId(session.uid);
                 }
             } else {
                 routerRef.current.push('/');
             }
-        } catch (error) {
-            routerRef.current.push('/');
-        } finally {
             setIsAuthenticating(false);
-        }
-    }, [isAuthenticating, setSelectedCoordinatorId]);
+        };
+        checkSession();
+    }, [setSelectedCoordinatorId]);
 
-    const handleLogout = useCallback(() => {
-        sessionStorage.removeItem('currentUser');
+    const handleLogout = useCallback(async () => {
+        await logout();
         setCurrentUser(null);
         routerRef.current.push('/');
     }, []);
@@ -508,23 +506,17 @@ export default function MainLayout({
     }, [currentUser, refreshData, toast]);
     
      const handleBulkImport = useCallback(async (fileData: ArrayBuffer) => {
-        const loggedInUserStr = sessionStorage.getItem('currentUser');
-        if (!loggedInUserStr) {
-            return { success: false, message: "Brak uprawnień." };
-        }
-        const user = JSON.parse(loggedInUserStr);
-
-        if (!user?.isAdmin) {
+        if (!currentUser?.isAdmin) {
             return { success: false, message: "Brak uprawnień." };
         }
         try {
-            const result = await bulkImportEmployees(fileData, user.uid);
+            const result = await bulkImportEmployees(fileData, currentUser.uid);
             await refreshData(false);
             return result;
         } catch (e: any) {
             return { success: false, message: e.message || "Wystąpił nieznany błąd." };
         }
-    }, [refreshData]);
+    }, [currentUser, refreshData]);
     
     const contextValue: MainLayoutContextType = useMemo(() => ({
         allEmployees,

@@ -1,6 +1,7 @@
+
 "use client";
 
-import type { User, View, Notification, Coordinator } from "@/types";
+import type { User, View, Notification, Coordinator, SessionData } from "@/types";
 import {
   Popover,
   PopoverContent,
@@ -29,7 +30,7 @@ import { cn } from "@/lib/utils";
 import React from "react";
 
 interface HeaderProps {
-  user: User | Coordinator;
+  user: SessionData;
   activeView: View;
   notifications: Notification[];
   onNotificationClick: (notification: Notification) => void;

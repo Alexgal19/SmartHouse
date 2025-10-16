@@ -3,14 +3,14 @@
 
 import { Home, Users, Settings, ClipboardList, Archive } from "lucide-react";
 import { Button } from "./ui/button";
-import type { View, Coordinator } from "@/types";
+import type { View, Coordinator, SessionData } from "@/types";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
 
 interface MobileNavProps {
   activeView: View;
   navItems: { view: View; icon: React.ElementType; label: string }[];
-  currentUser: Coordinator;
+  currentUser: SessionData;
 }
 
 
