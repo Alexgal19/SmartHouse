@@ -1,11 +1,13 @@
+
 import MainLayout from '@/components/main-layout';
 import { ReactNode } from 'react';
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
     children,
   }: {
     children: ReactNode;
   }) {
+    
     return (
       <MainLayout>
         {children}
