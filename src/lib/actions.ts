@@ -266,6 +266,13 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
             roomNumber: employeeData.roomNumber || '',
             zaklad: employeeData.zaklad || '',
             checkInDate: employeeData.checkInDate || '',
+            checkOutDate: employeeData.checkOutDate,
+            contractStartDate: employeeData.contractStartDate,
+            contractEndDate: employeeData.contractEndDate,
+            departureReportDate: employeeData.departureReportDate,
+            comments: employeeData.comments,
+            oldAddress: employeeData.oldAddress,
+            addressChangeDate: employeeData.addressChangeDate,
         };
 
         const serialized = serializeEmployee(newEmployee);
