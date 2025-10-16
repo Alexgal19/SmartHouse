@@ -1030,11 +1030,11 @@ export async function generateAccommodationReport(year: number, month: number, c
             const addressChangeDate = employee.addressChangeDate ? new Date(employee.addressChangeDate) : null;
             const employeeCoordinatorName = coordinatorMap.get(employee.coordinatorId) || 'Nieznany';
 
-            // Interval for the entire employee stay
+            // Overall stay interval for the employee
             const stayStartDate = checkInDate;
             const stayEndDate = checkOutDate;
 
-            // Check if employee's stay overlaps with the reporting month at all
+            // Skip employee if their entire stay is outside the report month
             if (stayStartDate > monthEndDate || (stayEndDate && stayEndDate < monthStartDate)) {
                 continue;
             }
@@ -1042,10 +1042,11 @@ export async function generateAccommodationReport(year: number, month: number, c
             const reportMonthStr = format(monthStartDate, 'yyyy-MM');
 
             if (addressChangeDate && addressChangeDate > monthStartDate && addressChangeDate <= monthEndDate && employee.oldAddress) {
-                // Case 1: Address change happened within the report month
-                // Calculate days at old address
+                // Case 1: Address changed within the report month.
+                
+                // Days at OLD address
                 const oldAddressStartDate = max(monthStartDate, stayStartDate);
-                const oldAddressEndDate = min(addressChangeDate, stayEndDate || monthEndDate);
+                const oldAddressEndDate = min(addressChangeDate, stayEndDate || monthEndDate, monthEndDate);
                 if (oldAddressStartDate < oldAddressEndDate) {
                     const daysAtOldAddress = differenceInDays(oldAddressEndDate, oldAddressStartDate);
                     if (daysAtOldAddress > 0) {
@@ -1059,7 +1060,7 @@ export async function generateAccommodationReport(year: number, month: number, c
                     }
                 }
                 
-                // Calculate days at new address
+                // Days at NEW address
                 const newAddressStartDate = max(addressChangeDate, stayStartDate);
                 const newAddressEndDate = min(monthEndDate, stayEndDate || monthEndDate);
                  if (newAddressStartDate <= newAddressEndDate) {
@@ -1076,20 +1077,16 @@ export async function generateAccommodationReport(year: number, month: number, c
                 }
 
             } else {
-                // Case 2: No address change in the report month
+                // Case 2: No address change within the report month.
                 let currentAddress = employee.address;
-                let residenceStartDate = checkInDate;
-
-                // If change happened before this month, the current address is the one for the whole month
-                if(addressChangeDate && addressChangeDate <= monthStartDate) {
-                    residenceStartDate = addressChangeDate;
-                } else if(addressChangeDate && addressChangeDate > monthEndDate && employee.oldAddress){
-                     // If change happens after this month, they were at the old address
+                
+                // Determine which address was active during the month
+                if(addressChangeDate && addressChangeDate > monthEndDate && employee.oldAddress){
                     currentAddress = employee.oldAddress;
                 }
 
-                const effectiveStartDate = max(monthStartDate, residenceStartDate);
-                const effectiveEndDate = min(monthEndDate, checkOutDate || monthEndDate);
+                const effectiveStartDate = max(monthStartDate, stayStartDate);
+                const effectiveEndDate = min(monthEndDate, stayEndDate || monthEndDate);
 
                 if (effectiveStartDate <= effectiveEndDate) {
                     const days = differenceInDays(effectiveEndDate, effectiveStartDate) + 1;
