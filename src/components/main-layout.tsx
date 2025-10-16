@@ -207,7 +207,7 @@ export default function MainLayout({
                 description: `${t_dashboard('toast.criticalErrorDescription')} ${error instanceof Error ? error.message : ''}`,
             });
         }
-    }, [currentUser, t_dashboard]);
+    }, [currentUser, t_dashboard, toast]);
 
     const handleRefreshStatuses = useCallback(async (showNoChangesToast = false) => {
         if (!currentUser) return;
@@ -222,7 +222,7 @@ export default function MainLayout({
         } catch (e: any) {
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.statusUpdateError') });
         }
-    }, [currentUser, refreshData, t_dashboard]);
+    }, [currentUser, refreshData, toast, t_dashboard]);
 
     const fetchAllData = useCallback(async () => {
         if (!currentUser) return;
@@ -263,7 +263,7 @@ export default function MainLayout({
         } finally {
              setIsLoadingData(false);
         }
-    }, [currentUser, handleRefreshStatuses, t_loading, toast, t_dashboard]);
+    }, [currentUser, handleRefreshStatuses, toast, t_dashboard, t_loading]);
 
     useEffect(() => {
         if (!isAuthenticating && currentUser) {
@@ -467,7 +467,7 @@ export default function MainLayout({
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.employeeDismissError') });
             return false;
         }
-    }, [currentUser, allEmployees, t_dashboard, toast]);
+    }, [currentUser, allEmployees, toast, t_dashboard]);
 
     const handleRestoreEmployee = useCallback(async (employeeId: string) => {
         if (!currentUser) return false;
@@ -486,7 +486,7 @@ export default function MainLayout({
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.employeeRestoreError') });
             return false;
         }
-    }, [currentUser, allEmployees, t_dashboard, toast]);
+    }, [currentUser, allEmployees, toast, t_dashboard]);
     
     const handleBulkDeleteEmployees = useCallback(async (status: 'active' | 'dismissed') => {
         if (!currentUser || !currentUser.isAdmin) {
@@ -503,7 +503,7 @@ export default function MainLayout({
             toast({ variant: "destructive", title: t_dashboard('toast.error'), description: e.message || t_dashboard('toast.bulkDeleteError') });
              return false;
         }
-    }, [currentUser, refreshData, t_dashboard, toast]);
+    }, [currentUser, refreshData, toast, t_dashboard]);
     
     const handleBulkImport = useCallback(async (fileData: ArrayBuffer): Promise<{ success: boolean; message: string; }> => {
         const loggedInUserStr = sessionStorage.getItem('currentUser');

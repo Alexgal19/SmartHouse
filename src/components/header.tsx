@@ -59,7 +59,7 @@ export default function Header({ user, activeView, notifications, onNotification
     const { isMobile, open } = useSidebar();
     const t = useTranslations('Header');
     const navT = useTranslations('Navigation');
-    const currentLocale = useLocale() as keyof typeof localesMap;
+    const currentLocale = useLocale();
     const locale = localesMap[currentLocale] || pl;
 
     const unreadCount = notifications.filter(n => !n.isRead).length;

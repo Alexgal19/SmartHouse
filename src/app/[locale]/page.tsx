@@ -36,7 +36,7 @@ export default function LoginPage() {
         };
 
         fetchSettings();
-    }, [toast, t]);
+    }, [toast]);
 
     const handleLogin = async (user: {name: string}, password?: string) => {
         if (!settings) {

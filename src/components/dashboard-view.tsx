@@ -805,7 +805,3 @@ export default function DashboardView({ employees, allEmployees, nonEmployees, s
     </div>
   );
 }
-
-    
-
-    
