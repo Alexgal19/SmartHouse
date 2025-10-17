@@ -781,6 +781,12 @@ export default function InspectionsView({ inspections, settings, currentUser, on
 
     const sortedYears = useMemo(() => Object.keys(groupedInspections).sort((a, b) => Number(b) - Number(a)), [groupedInspections]);
 
+    const defaultAccordionValue = useMemo(() => {
+        const currentYear = String(new Date().getFullYear());
+        return sortedYears.includes(currentYear) ? [currentYear] : [];
+    }, [sortedYears]);
+
+
     return (
         <Card>
             <CardHeader>
@@ -811,7 +817,7 @@ export default function InspectionsView({ inspections, settings, currentUser, on
             </CardHeader>
             <CardContent>
                 {inspections.length > 0 ? (
-                     <Accordion type="multiple" defaultValue={sortedYears} className="w-full">
+                     <Accordion type="multiple" defaultValue={defaultAccordionValue} className="w-full">
                         {sortedYears.map(year => (
                              <AccordionItem key={year} value={year}>
                                  <AccordionTrigger className="text-xl font-bold">
