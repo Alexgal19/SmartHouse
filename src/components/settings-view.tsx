@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { Settings, HousingAddress, Coordinator, Room, Employee } from "@/types";
@@ -183,7 +184,7 @@ const ListManager = ({ title, items, onUpdate }: { title: string; items: string[
 
 
 // Specific Manager for Addresses (HousingAddress[])
-const AddressManager = ({ items, coordinators, onUpdate }: { items: HousingAddress[]; coordinators: Coordinator[]; onUpdate: (newItems: HousingAddress[]) => void }) => {
+const AddressManager = ({ items, coordinators, allEmployees, onUpdate }: { items: HousingAddress[]; coordinators: Coordinator[]; allEmployees: Employee[]; onUpdate: (newItems: HousingAddress[]) => void }) => {
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [newAddressName, setNewAddressName] = useState('');
@@ -263,8 +264,17 @@ const AddressManager = ({ items, coordinators, onUpdate }: { items: HousingAddre
         setIsEditDialogOpen(false);
     };
 
-    const handleDelete = (id: string) => {
-        onUpdate(items.filter(item => item.id !== id));
+    const handleDelete = (addressToDelete: HousingAddress) => {
+        const employeesCount = allEmployees.filter(e => e.address === addressToDelete.name).length;
+        if (employeesCount > 0) {
+            toast({
+                variant: 'destructive',
+                title: 'Nie można usunąć adresu',
+                description: `Ten adres jest przypisany do ${employeesCount} pracowników. Najpierw zmień ich adresy.`
+            });
+            return;
+        }
+        onUpdate(items.filter(item => item.id !== addressToDelete.id));
     };
 
     const filteredAddresses = selectedCoordinatorId === 'all' 
@@ -313,7 +323,7 @@ const AddressManager = ({ items, coordinators, onUpdate }: { items: HousingAddre
                                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                     <DropdownMenuContent>
                                         <DropdownMenuItem onClick={() => openEditDialog(address)}>Edytuj</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleDelete(address.id)} className="text-destructive">Usuń</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleDelete(address)} className="text-destructive">Usuń</DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </CardHeader>
@@ -748,7 +758,7 @@ export default function SettingsView({ settings, onUpdateSettings, allEmployees,
           </TabsList>
           <div className={cn("data-[orientation=horizontal]:mt-6", isMobile ? "mt-4 ml-4" : "data-[orientation=vertical]:ml-6")}>
             <TabsContent value="addresses" className="mt-0 data-[state=active]:animate-in data-[state=active]:fade-in-0">
-              <AddressManager items={settings.addresses} coordinators={settings.coordinators} onUpdate={(newAddresses) => onUpdateSettings({ addresses: newAddresses })} />
+              <AddressManager items={settings.addresses} coordinators={settings.coordinators} allEmployees={allEmployees} onUpdate={(newAddresses) => onUpdateSettings({ addresses: newAddresses })} />
             </TabsContent>
             <TabsContent value="nationalities" className="mt-0 data-[state=active]:animate-in data-[state=active]:fade-in-0">
                <ListManager title="Narodowości" items={settings.nationalities} onUpdate={(newNationalities) => onUpdateSettings({ nationalities: newNationalities })} />
