@@ -107,14 +107,10 @@ export default function MainLayout({
     const { toast } = useToast();
 
     useEffect(() => {
-      if (!currentUser?.isLoggedIn) {
-        router.push('/');
-      } else {
-        if(!currentUser.isAdmin) {
+      if (currentUser?.isLoggedIn && !currentUser.isAdmin) {
           _setSelectedCoordinatorId(currentUser.uid);
-        }
       }
-    }, [currentUser, router]);
+    }, [currentUser]);
 
     const setSelectedCoordinatorId = useCallback((value: React.SetStateAction<string>) => {
         _setSelectedCoordinatorId(value);
