@@ -46,51 +46,36 @@ export async function login(name: string, password?: string): Promise<{ success:
     const adminPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'password';
     const lowerCaseName = name.toLowerCase();
 
-    let userToLogin: { uid: string; name: string; isAdmin: boolean; } | null = null;
-
     if (lowerCaseName === adminLogin.toLowerCase()) {
         if (password === adminPassword) {
-            userToLogin = {
-                uid: 'admin-super-user',
-                name: 'Admin',
-                isAdmin: true,
-            };
+            session.uid = 'admin-super-user';
+            session.name = 'Admin';
+            session.isLoggedIn = true;
+            session.isAdmin = true;
+            await session.save();
+            return { success: true };
         } else {
             return { success: false, error: "Nieprawidłowe hasło administratora." };
         }
-    } else {
-        const coordinator = coordinators.find(c => c.name.toLowerCase() === lowerCaseName);
+    } 
+    
+    const coordinator = coordinators.find(c => c.name.toLowerCase() === lowerCaseName);
 
-        if (!coordinator) {
-            return { success: false, error: "Brak dostępu. Sprawdź, czy Twoje imię i nazwisko są poprawne." };
-        }
-        if (coordinator.password !== password) {
-            return { success: false, error: "Nieprawidłowe hasło." };
-        }
-        
-        userToLogin = {
-            uid: coordinator.uid,
-            name: coordinator.name,
-            isAdmin: coordinator.isAdmin,
-        };
+    if (!coordinator) {
+        return { success: false, error: "Brak dostępu. Sprawdź, czy Twoje imię i nazwisko są poprawne." };
     }
-
-    if (userToLogin) {
-        session.uid = userToLogin.uid;
-        session.name = userToLogin.name;
-        session.isLoggedIn = true;
-        
-        // Special check for the super admin
-        if(userToLogin.uid === 'admin-super-user') {
-            session.isAdmin = true;
-        }
-
-        await session.save();
-        
-        return { success: true };
+    if (coordinator.password !== password) {
+        return { success: false, error: "Nieprawidłowe hasło." };
     }
-
-    return { success: false, error: "Nieznany błąd logowania." };
+    
+    session.uid = coordinator.uid;
+    session.name = coordinator.name;
+    session.isLoggedIn = true;
+    session.isAdmin = coordinator.isAdmin;
+    
+    await session.save();
+    
+    return { success: true };
 }
 
 export async function logout() {
