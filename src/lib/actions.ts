@@ -315,7 +315,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         }
         
         const changes: NotificationChange[] = [];
-        const updatedRowData = { ...originalEmployee, ...updates };
+        const updatedEmployeeData = { ...originalEmployee, ...updates };
 
         for (const key in updates) {
             const typedKey = key as keyof Employee;
@@ -339,7 +339,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
             }
         }
         
-        const serialized = serializeEmployee(updatedRowData);
+        const serialized = serializeEmployee(updatedEmployeeData);
         for(const header of EMPLOYEE_HEADERS) {
             row.set(header, serialized[header]);
         }
@@ -903,7 +903,7 @@ export async function bulkImportEmployees(fileData: ArrayBuffer): Promise<{succe
             const checkInDate = parseAndFormatDate(row.checkInDate);
             
              if (!checkInDate) {
-                console.warn(`Nieprawidłowa lub pusta data zameldowania dla ${row.fullName}, pomijanie.`);
+                console.warn(`Nieprawidłowa або pusta data zameldowania dla ${row.fullName}, pomijanie.`);
                 continue;
             }
 
@@ -930,10 +930,10 @@ export async function bulkImportEmployees(fileData: ArrayBuffer): Promise<{succe
             await sheet.addRows(newRows, { raw: false, insert: true });
         }
 
-        return { success: true, message: `Pomyślnie zaimportowano ${employeesToAdd.length} pracowników.` };
+        return { success: true, message: `Pomyślnie заimportowano ${employeesToAdd.length} pracowników.` };
 
     } catch (e: any) {
-         return { success: false, message: e.message || "Wystąpił nieznany błąd podczas przetwarzania pliku." };
+         return { success: false, message: e.message || "Wystąpił неznany błąd podczas przetwarzania pliku." };
     }
 }
 
@@ -970,7 +970,7 @@ export async function generateMonthlyReport(year: number, month: number, coordin
         const wb = XLSX.utils.book_new();
 
         // Employees Sheet
-        const employeesHeaders = ["ID", "Imię i nazwisko", "Koordynator", "Adres", "Pokój", "Data zameldowania", "Data wymeldowania", "Status", "Potrącenia (zł)"];
+        const employeesHeaders = ["ID", "Imię і nazwisko", "Koordynator", "Adres", "Pokój", "Data zameldowania", "Data wymeldowania", "Status", "Potrącenia (zł)"];
         const employeesData = employeesInMonth.map(e => {
             const deductionReasonTotal = e.deductionReason?.reduce((sum, r) => sum + (r.checked && r.amount ? r.amount : 0), 0) || 0;
             const totalDeductions = (e.deductionRegulation || 0) + (e.deductionNo4Months || 0) + (e.deductionNo30Days || 0) + deductionReasonTotal;
@@ -982,10 +982,10 @@ export async function generateMonthlyReport(year: number, month: number, coordin
         XLSX.utils.book_append_sheet(wb, ws_employees, `Pracownicy (${reportCoordinatorName})`);
 
         // Inspections Sheet
-        const inspectionsHeaders = ["ID Inspekcji", "Adres", "Data", "Koordynator", "Standard"];
+        const inspectionsHeaders = ["ID Інспекції", "Adres", "Data", "Koordynator", "Standard"];
         const inspectionsData = inspectionsInMonth.map(i => [i.id, i.addressName, format(new Date(i.date), 'yyyy-MM-dd'), i.coordinatorName, i.standard || '']);
         const ws_inspections = XLSX.utils.aoa_to_sheet([inspectionsHeaders, ...inspectionsData]);
-        XLSX.utils.book_append_sheet(wb, ws_inspections, `Inspekcje (${reportCoordinatorName})`);
+        XLSX.utils.book_append_sheet(wb, ws_inspections, `Інспекції (${reportCoordinatorName})`);
         
         // Finance Sheet
         const financeHeaders = ["Pracownik", "Zwrot kaucji", "Kwota zwrotu", "Potrącenie (regulamin)", "Potrącenie (4 msc)", "Potrącenie (30 dni)", "Potrącenia (inne)", "Suma potrąceń"];
