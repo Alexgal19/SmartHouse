@@ -1,4 +1,5 @@
 
+
 "use server";
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet, GoogleSpreadsheetRow } from 'google-spreadsheet';
@@ -281,7 +282,10 @@ export async function getSettingsFromSheet(): Promise<Settings> {
 
         const getSheetData = async (title: string) => {
             const sheet = doc.sheetsByTitle[title];
-            if (!sheet) return [];
+            if (!sheet) {
+                console.warn(`Sheet "${title}" not found. Returning empty array.`);
+                return [];
+            }
             try {
                 const rows = await sheet.getRows({ limit: 500 });
                 return rows.map(r => r.toObject());
