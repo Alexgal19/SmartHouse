@@ -78,7 +78,6 @@ export async function login(name: string, password?: string): Promise<{ success:
     if (userToLogin) {
         session.uid = userToLogin.uid;
         session.name = userToLogin.name;
-        session.isAdmin = userToLogin.isAdmin;
         session.isLoggedIn = true;
         
         // Special check for the super admin
