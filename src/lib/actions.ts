@@ -273,6 +273,12 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
             comments: employeeData.comments,
             oldAddress: employeeData.oldAddress,
             addressChangeDate: employeeData.addressChangeDate,
+            depositReturned: employeeData.depositReturned,
+            depositReturnAmount: employeeData.depositReturnAmount,
+            deductionRegulation: employeeData.deductionRegulation,
+            deductionNo4Months: employeeData.deductionNo4Months,
+            deductionNo30Days: employeeData.deductionNo30Days,
+            deductionReason: employeeData.deductionReason,
         };
 
         const serialized = serializeEmployee(newEmployee);
@@ -1130,3 +1136,6 @@ export async function generateAccommodationReport(year: number, month: number, c
         throw new Error(error.message || "An unknown error occurred during accommodation report generation.");
     }
 }
+
+
+    
