@@ -276,24 +276,24 @@ export async function getEquipmentFromSheet(): Promise<EquipmentItem[]> {
   }
 }
 
+const getSheetData = async (doc: GoogleSpreadsheet, title: string) => {
+    const sheet = doc.sheetsByTitle[title];
+    if (!sheet) {
+        console.warn(`Sheet "${title}" not found. Returning empty array.`);
+        return [];
+    }
+    try {
+        const rows = await sheet.getRows({ limit: 500 });
+        return rows.map(r => r.toObject());
+    } catch (e) {
+         console.warn(`Could not get rows from sheet: ${title}. It might be empty or missing.`);
+        return [];
+    }
+};
+
 export async function getSettingsFromSheet(): Promise<Settings> {
      try {
         const doc = await getDoc();
-
-        const getSheetData = async (title: string) => {
-            const sheet = doc.sheetsByTitle[title];
-            if (!sheet) {
-                console.warn(`Sheet "${title}" not found. Returning empty array.`);
-                return [];
-            }
-            try {
-                const rows = await sheet.getRows({ limit: 500 });
-                return rows.map(r => r.toObject());
-            } catch (e) {
-                 console.warn(`Could not get rows from sheet: ${title}. It might be empty or missing.`);
-                return [];
-            }
-        };
 
         const [
             addressRows,
@@ -303,12 +303,12 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             coordinatorRows,
             genderRows,
         ] = await Promise.all([
-            getSheetData(SHEET_NAME_ADDRESSES),
-            getSheetData(SHEET_NAME_ROOMS),
-            getSheetData(SHEET_NAME_NATIONALITIES),
-            getSheetData(SHEET_NAME_DEPARTMENTS),
-            getSheetData(SHEET_NAME_COORDINATORS),
-            getSheetData(SHEET_NAME_GENDERS),
+            getSheetData(doc, SHEET_NAME_ADDRESSES),
+            getSheetData(doc, SHEET_NAME_ROOMS),
+            getSheetData(doc, SHEET_NAME_NATIONALITIES),
+            getSheetData(doc, SHEET_NAME_DEPARTMENTS),
+            getSheetData(doc, SHEET_NAME_COORDINATORS),
+            getSheetData(doc, SHEET_NAME_GENDERS),
         ]);
         
         const roomsByAddressId = new Map<string, Room[]>();

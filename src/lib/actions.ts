@@ -33,11 +33,20 @@ const serializeDate = (date?: string | null): string => {
     return date; 
 };
 
+const EMPLOYEE_HEADERS = [
+    'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 
+    'zaklad', 'checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 
+    'departureReportDate', 'comments', 'status', 'oldAddress', 'addressChangeDate',
+    'depositReturned', 'depositReturnAmount', 'deductionRegulation', 'deductionNo4Months', 'deductionNo30Days', 'deductionReason'
+];
+
 const serializeEmployee = (employee: Partial<Employee>): Record<string, string | number | boolean> => {
     const serialized: Record<string, any> = {};
-    const dataToSerialize = { ...employee };
 
-    for (const [key, value] of Object.entries(dataToSerialize)) {
+    EMPLOYEE_HEADERS.forEach(key => {
+        const typedKey = key as keyof Employee;
+        const value = employee[typedKey];
+
         if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'addressChangeDate'].includes(key)) {
             serialized[key] = serializeDate(value as string);
         } else if (Array.isArray(value)) {
@@ -47,9 +56,10 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
         } else if (value !== null && value !== undefined) {
             serialized[key] = value.toString();
         } else {
-            serialized[key] = '';
+            serialized[key] = ''; // Ensure all headers have a value, even if it's an empty string
         }
-    }
+    });
+
     return serialized;
 };
 
@@ -94,12 +104,7 @@ const serializeEquipment = (item: Partial<EquipmentItem>): Record<string, string
     };
 };
 
-const EMPLOYEE_HEADERS = [
-    'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 
-    'zaklad', 'checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 
-    'departureReportDate', 'comments', 'status', 'oldAddress', 'addressChangeDate',
-    'depositReturned', 'depositReturnAmount', 'deductionRegulation', 'deductionNo4Months', 'deductionNo30Days', 'deductionReason'
-];
+
 
 const NON_EMPLOYEE_HEADERS = [
     'id', 'fullName', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'comments'
@@ -310,6 +315,8 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         }
         
         const changes: NotificationChange[] = [];
+        const updatedRowData = { ...originalEmployee, ...updates };
+
         for (const key in updates) {
             const typedKey = key as keyof Employee;
             const oldValue = originalEmployee[typedKey];
@@ -320,18 +327,21 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
             let oldValStr: string = 'Brak';
             let newValStr: string = 'Brak';
 
-            if (oldValue) {
+            if (oldValue !== null && oldValue !== undefined) {
                 oldValStr = areDates && isValid(new Date(oldValue as string)) ? format(new Date(oldValue as string), 'dd-MM-yyyy') : String(oldValue);
             }
-            if (newValue) {
+            if (newValue !== null && newValue !== undefined) {
                 newValStr = areDates && isValid(new Date(newValue as string)) ? format(new Date(newValue as string), 'dd-MM-yyyy') : String(newValue);
             }
            
             if (oldValStr !== newValStr) {
                 changes.push({ field: typedKey, oldValue: oldValStr, newValue: newValStr });
             }
-
-            row.set(key, serializeEmployee({ [key]: newValue })[key]);
+        }
+        
+        const serialized = serializeEmployee(updatedRowData);
+        for(const header of EMPLOYEE_HEADERS) {
+            row.set(header, serialized[header]);
         }
 
         await row.save();

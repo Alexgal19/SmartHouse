@@ -170,7 +170,6 @@ export default function MainLayout({
     const refreshData = useCallback(async (showToast = true) => {
         if (!currentUser) return;
         try {
-            await handleRefreshStatuses(false);
             const coordinatorIdToFetch = currentUser.isAdmin ? undefined : currentUser.uid;
             
             const [employeesData, settingsData, inspectionsData, nonEmployeesData, equipmentData] = await Promise.all([
@@ -258,6 +257,8 @@ export default function MainLayout({
     useEffect(() => {
         if (currentUser) {
             fetchAllData();
+            // This is an expensive operation, so we only run it once on initial load.
+            handleRefreshStatuses(false);
         }
     }, [currentUser, fetchAllData]);
 
