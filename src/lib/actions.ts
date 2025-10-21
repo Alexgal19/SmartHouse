@@ -451,10 +451,9 @@ export async function deleteEquipment(id: string): Promise<void> {
 
 export async function bulkDeleteEmployees(status: 'active' | 'dismissed', actorUid: string): Promise<void> {
     try {
-        const { coordinators } = await getSettings();
-        const actor = coordinators.find(c => c.uid === actorUid);
-        if (!actor?.isAdmin) {
-            throw new Error("Only admins can bulk delete employees.");
+        const session = await getSession();
+        if (!session.isAdmin) {
+             throw new Error("Only admins can bulk delete employees.");
         }
     
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
@@ -465,6 +464,7 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', actorU
             return;
         }
 
+        // Deleting rows in reverse order to avoid issues with sheet indices
         for (let i = rowsToDelete.length - 1; i >= 0; i--) {
             await rowsToDelete[i].delete();
         }

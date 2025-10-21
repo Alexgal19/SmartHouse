@@ -82,6 +82,12 @@ export async function login(name: string, password?: string): Promise<{ success:
         session.isAdmin = userToLogin.isAdmin;
         session.isLoggedIn = true;
         await session.save();
+        
+        // Special check for the super admin
+        if(userToLogin.uid === 'admin-super-user') {
+            session.isAdmin = true;
+        }
+        
         // Redirect on the server-side after successful login
         redirect('/dashboard');
         // The redirect function throws a NEXT_REDIRECT error, so this part of the code is unreachable.
