@@ -22,13 +22,12 @@ export default function LoginPage() {
         
         const result = await login(userName, userPassword || '');
         
-        if (result && !result.success) {
+        if (result.success) {
+            router.push('/dashboard');
+        } else {
             setLoginError(result.error || "Wystąpił nieznany błąd.");
-        } else if (result && result.success && !result.redirecting) {
-             router.push('/dashboard');
+            setIsLoading(false);
         }
-
-        setIsLoading(false);
     };
     
     return (

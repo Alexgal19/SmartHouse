@@ -10,7 +10,6 @@ import { getSettings } from './actions';
 if (!process.env.SECRET_COOKIE_PASSWORD) {
     // This warning is helpful in development but can be noisy in production logs.
     // The default password logic below handles the case where it's not set.
-    // console.warn("SECRET_COOKIE_PASSWORD is not set. Using a default value. This is not secure for production.");
 }
 
 const sessionOptions = {
@@ -34,7 +33,7 @@ export async function getSession() {
     return session;
 }
 
-export async function login(name: string, password?: string): Promise<{ success: boolean; error?: string; redirecting?: boolean }> {
+export async function login(name: string, password?: string): Promise<{ success: boolean; error?: string; }> {
     const session = await getSession();
     
     if (!password) {
@@ -81,21 +80,17 @@ export async function login(name: string, password?: string): Promise<{ success:
         session.name = userToLogin.name;
         session.isAdmin = userToLogin.isAdmin;
         session.isLoggedIn = true;
-        await session.save();
         
         // Special check for the super admin
         if(userToLogin.uid === 'admin-super-user') {
             session.isAdmin = true;
         }
+
+        await session.save();
         
-        // Redirect on the server-side after successful login
-        redirect('/dashboard');
-        // The redirect function throws a NEXT_REDIRECT error, so this part of the code is unreachable.
-        // We can return a value here for type safety, though it won't be used.
-        return { success: true, redirecting: true };
+        return { success: true };
     }
 
-    // This part will only be reached if the login fails for some unknown reason.
     return { success: false, error: "Nieznany błąd logowania." };
 }
 
