@@ -45,18 +45,19 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
 
     EMPLOYEE_HEADERS.forEach(key => {
         const typedKey = key as keyof Employee;
-        const value = employee[typedKey];
+        let value = employee[typedKey];
 
         if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'addressChangeDate'].includes(key)) {
             serialized[key] = serializeDate(value as string);
-        } else if (Array.isArray(value)) {
-            serialized[key] = JSON.stringify(value);
-        } else if (typeof value === 'boolean') {
+        } else if (key === 'deductionReason') {
+            serialized[key] = Array.isArray(value) ? JSON.stringify(value) : '';
+        }
+         else if (typeof value === 'boolean') {
             serialized[key] = String(value).toUpperCase();
         } else if (value !== null && value !== undefined) {
-            serialized[key] = value.toString();
+            serialized[key] = value;
         } else {
-            serialized[key] = ''; // Ensure all headers have a value, even if it's an empty string
+            serialized[key] = '';
         }
     });
 
@@ -324,18 +325,30 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
             
             const areDates = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'addressChangeDate'].includes(key);
 
-            let oldValStr: string = 'Brak';
-            let newValStr: string = 'Brak';
-
+            let oldValStr: string | null = null;
             if (oldValue !== null && oldValue !== undefined) {
-                oldValStr = areDates && isValid(new Date(oldValue as string)) ? format(new Date(oldValue as string), 'dd-MM-yyyy') : String(oldValue);
+                if (areDates && isValid(new Date(oldValue as string))) {
+                    oldValStr = format(new Date(oldValue as string), 'dd-MM-yyyy');
+                } else if (Array.isArray(oldValue)) {
+                    oldValStr = JSON.stringify(oldValue);
+                } else {
+                    oldValStr = String(oldValue);
+                }
             }
+
+            let newValStr: string | null = null;
             if (newValue !== null && newValue !== undefined) {
-                newValStr = areDates && isValid(new Date(newValue as string)) ? format(new Date(newValue as string), 'dd-MM-yyyy') : String(newValue);
+                if (areDates && isValid(new Date(newValue as string))) {
+                    newValStr = format(new Date(newValue as string), 'dd-MM-yyyy');
+                } else if (Array.isArray(newValue)) {
+                    newValStr = JSON.stringify(newValue);
+                } else {
+                    newValStr = String(newValue);
+                }
             }
            
             if (oldValStr !== newValStr) {
-                changes.push({ field: typedKey, oldValue: oldValStr, newValue: newValStr });
+                changes.push({ field: typedKey, oldValue: oldValStr || 'Brak', newValue: newValStr || 'Brak' });
             }
         }
         
