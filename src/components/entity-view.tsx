@@ -497,11 +497,11 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         }
     }
 
-    const EntityListComponent = viewMode === 'grid' ? EntityCardList : EntityTable;
+    const EntityListComponent = viewMode === 'grid' || isMobile ? EntityCardList : EntityTable;
 
     const renderContent = () => (
         <>
-            <ScrollArea className="h-[65vh] overflow-x-auto" style={{ opacity: isPending ? 0.6 : 1 }}>
+            <ScrollArea className="h-[calc(100vh-22rem)] sm:h-[65vh] overflow-x-auto" style={{ opacity: isPending ? 0.6 : 1 }}>
                 {isMounted ? <EntityListComponent 
                     entities={paginatedData}
                     settings={settings}
@@ -558,5 +558,3 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         </Card>
     )
 }
-
-    
