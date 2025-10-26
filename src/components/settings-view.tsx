@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useMainLayout } from '@/components/main-layout';
@@ -140,9 +140,51 @@ const CoordinatorManager = ({ form, fields, append, remove }: { form: any, field
   </div>
 );
 
+const AddressRoomsManager = ({ addressIndex, control, register }: { addressIndex: number; control: any; register: any }) => {
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: `addresses.${addressIndex}.rooms`,
+    });
+
+    return (
+        <div className="pl-4 mt-2 space-y-2">
+            <div className="flex justify-between items-center">
+                <h4 className="text-sm font-medium">Pokoje</h4>
+                <Button type="button" size="sm" variant="outline" onClick={() => append({ id: `room-${Date.now()}`, name: '', capacity: 1 })}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Dodaj pokój
+                </Button>
+            </div>
+            {fields.map((room, roomIndex) => (
+                <div key={room.id} className="flex items-center gap-2">
+                    <FormField
+                        control={control}
+                        name={`addresses.${addressIndex}.rooms.${roomIndex}.name`}
+                        render={({ field }) => (
+                            <FormItem className="flex-1">
+                                <FormControl><Input placeholder="Nazwa pokoju" {...field} /></FormControl>
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={control}
+                        name={`addresses.${addressIndex}.rooms.${roomIndex}.capacity`}
+                        render={({ field }) => (
+                            <FormItem className="w-28">
+                                <FormControl><Input type="number" placeholder="Pojemność" {...field} /></FormControl>
+                            </FormItem>
+                        )}
+                    />
+                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(roomIndex)}>
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
+                </div>
+            ))}
+            {fields.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Brak pokoi dla tego adresu.</p>}
+        </div>
+    );
+};
+
 const AddressManager = ({ form, fields, append, remove, coordinators }: { form: any; fields: any[]; append: any; remove: any; coordinators: any[] }) => {
-  const { fields: roomFields, append: appendRoom, remove: removeRoom } = useFieldArray({ control: form.control, name: `addresses.${fields.length -1}.rooms` });
-  
   return (
     <div className="space-y-4 rounded-md border p-4">
       <div className="flex justify-between items-center mb-4">
@@ -186,49 +228,7 @@ const AddressManager = ({ form, fields, append, remove, coordinators }: { form: 
             )}
             />
           
-            <div className="pl-4 mt-2 space-y-2">
-                <div className="flex justify-between items-center">
-                    <h4 className="text-sm font-medium">Pokoje</h4>
-                    <Button type="button" size="sm" variant="outline" onClick={() => {
-                        const currentRooms = form.getValues(`addresses.${addressIndex}.rooms`);
-                        const newRooms = [...currentRooms, { id: `room-${Date.now()}`, name: '', capacity: 1 }];
-                        form.setValue(`addresses.${addressIndex}.rooms`, newRooms);
-                    }}>
-                        <PlusCircle className="mr-2 h-4 w-4" /> Dodaj pokój
-                    </Button>
-                </div>
-                 {form.getValues(`addresses.${addressIndex}.rooms`).map((room: any, roomIndex: number) => (
-                    <div key={room.id} className="flex items-center gap-2">
-                         <FormField
-                            control={form.control}
-                            name={`addresses.${addressIndex}.rooms.${roomIndex}.name`}
-                            render={({ field: roomNameField }) => (
-                                <FormItem className="flex-1">
-                                    <FormControl><Input placeholder="Nazwa pokoju" {...roomNameField} /></FormControl>
-                                </FormItem>
-                            )}
-                        />
-                         <FormField
-                            control={form.control}
-                            name={`addresses.${addressIndex}.rooms.${roomIndex}.capacity`}
-                            render={({ field: capacityField }) => (
-                                <FormItem className="w-28">
-                                    <FormControl><Input type="number" placeholder="Pojemność" {...capacityField} /></FormControl>
-                                </FormItem>
-                            )}
-                        />
-                        <Button type="button" variant="ghost" size="icon" onClick={() => {
-                            const currentRooms = form.getValues(`addresses.${addressIndex}.rooms`);
-                            const newRooms = currentRooms.filter((_: any, i: number) => i !== roomIndex);
-                            form.setValue(`addresses.${addressIndex}.rooms`, newRooms);
-                        }}>
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
-                    </div>
-                ))}
-                 {form.getValues(`addresses.${addressIndex}.rooms`).length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Brak pokoi dla tego adresu.</p>}
-
-            </div>
+            <AddressRoomsManager addressIndex={addressIndex} control={form.control} register={form.register} />
         </div>
       ))}
        {fields.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Brak zdefiniowanych adresów.</p>}
