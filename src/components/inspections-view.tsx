@@ -285,7 +285,7 @@ export const InspectionForm = ({
                         )}
                       />
                      
-                    <Accordion type="multiple" className="w-full" defaultValue={categoryFields.map(c => c.name)}>
+                    <Accordion type="multiple" className="w-full">
                         {categoryFields.map((category, categoryIndex) => (
                             <AccordionItem key={category.id} value={category.name}>
                                 <AccordionTrigger>{category.name}</AccordionTrigger>
