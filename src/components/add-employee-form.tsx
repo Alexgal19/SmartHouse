@@ -44,6 +44,7 @@ import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const formSchema = z.object({
   fullName: z.string().min(3, "Imię i nazwisko musi mieć co najmniej 3 znaki."),
@@ -226,400 +227,409 @@ export function AddEmployeeForm({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
-            <ScrollArea className="h-[65vh] p-1">
-                <div className="space-y-4 px-4">
-                  <FormField
-                    control={form.control}
-                    name="fullName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Imię i nazwisko</FormLabel>
-                        <FormControl><Input placeholder="Jan Kowalski" {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+            <Tabs defaultValue="basic" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="basic">Dane podstawowe</TabsTrigger>
+                    <TabsTrigger value="finance">Finanse i potrącenia</TabsTrigger>
+                </TabsList>
+                <ScrollArea className="h-[60vh] mt-4">
+                    <TabsContent value="basic">
+                        <div className="space-y-4 px-4">
+                        <FormField
+                            control={form.control}
+                            name="fullName"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Imię i nazwisko</FormLabel>
+                                <FormControl><Input placeholder="Jan Kowalski" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                     <FormField
-                        control={form.control}
-                        name="coordinatorId"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Koordynator</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz koordynatora" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                                {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
-                            </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="nationality"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Narodowość</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz narodowość" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                                {settings.nationalities.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
-                            </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="gender"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Płeć</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz płeć" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                                {settings.genders.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-                            </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                </div>
-                
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="address"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Adres</FormLabel>
-                            <Select onValueChange={handleAddressChange} value={field.value}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz adres" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                                {settings.addresses.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
-                            </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="roomNumber"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Pokój</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value} disabled={!selectedAddress}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz pokój" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                                {availableRooms.map(r => <SelectItem key={r.id} value={r.name}>{r.name} (Pojemność: {r.capacity})</SelectItem>)}
-                            </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                     <FormField
-                        control={form.control}
-                        name="zaklad"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Zakład</FormLabel>
-                             <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz zakład" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                                {settings.departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                            </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <FormField
+                                control={form.control}
+                                name="coordinatorId"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Koordynator</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="Wybierz koordynatora" /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                        {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                                    </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="nationality"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Narodowość</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="Wybierz narodowość" /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                        {settings.nationalities.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                                    </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="gender"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Płeć</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="Wybierz płeć" /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                        {settings.genders.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                                    </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <FormField
+                                control={form.control}
+                                name="address"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Adres</FormLabel>
+                                    <Select onValueChange={handleAddressChange} value={field.value}>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="Wybierz adres" /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                        {settings.addresses.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
+                                    </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="roomNumber"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Pokój</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value} disabled={!selectedAddress}>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="Wybierz pokój" /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                        {availableRooms.map(r => <SelectItem key={r.id} value={r.name}>{r.name} (Pojemność: {r.capacity})</SelectItem>)}
+                                    </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="zaklad"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Zakład</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="Wybierz zakład" /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                        {settings.departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                                    </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                        </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                     <FormField
-                        control={form.control}
-                        name="checkInDate"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-col pt-2">
-                                <FormLabel>Data zameldowania</FormLabel>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                    <FormControl>
-                                        <Button
-                                        variant={"outline"}
-                                        className={cn(
-                                            "w-full pl-3 text-left font-normal",
-                                            !field.value && "text-muted-foreground"
-                                        )}
-                                        >
-                                        {field.value ? (
-                                            format(field.value, "PPP", { locale: pl })
-                                        ) : (
-                                            <span>Wybierz datę</span>
-                                        )}
-                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                        </Button>
-                                    </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar
-                                        mode="single"
-                                        selected={field.value}
-                                        onSelect={field.onChange}
-                                        disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-                                        initialFocus
-                                    />
-                                    </PopoverContent>
-                                </Popover>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                     <FormField
-                        control={form.control}
-                        name="checkOutDate"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-col pt-2">
-                                <FormLabel>Data wymeldowania</FormLabel>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                    <FormControl>
-                                        <Button
-                                        variant={"outline"}
-                                        className={cn(
-                                            "w-full pl-3 text-left font-normal",
-                                            !field.value && "text-muted-foreground"
-                                        )}
-                                        >
-                                        {field.value ? (
-                                            format(field.value, "PPP", { locale: pl })
-                                        ) : (
-                                            <span>Wybierz datę</span>
-                                        )}
-                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                        </Button>
-                                    </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar
-                                        mode="single"
-                                        selected={field.value}
-                                        onSelect={field.onChange}
-                                        initialFocus
-                                    />
-                                    </PopoverContent>
-                                </Popover>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                     <FormField
-                        control={form.control}
-                        name="contractStartDate"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-col pt-2">
-                                <FormLabel>Data rozpoczęcia umowy</FormLabel>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                    <FormControl>
-                                        <Button
-                                        variant={"outline"}
-                                        className={cn(
-                                            "w-full pl-3 text-left font-normal",
-                                            !field.value && "text-muted-foreground"
-                                        )}
-                                        >
-                                        {field.value ? (
-                                            format(field.value, "PPP", { locale: pl })
-                                        ) : (
-                                            <span>Wybierz datę</span>
-                                        )}
-                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                        </Button>
-                                    </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar
-                                        mode="single"
-                                        selected={field.value}
-                                        onSelect={field.onChange}
-                                        initialFocus
-                                    />
-                                    </PopoverContent>
-                                </Popover>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                </div>
-                
-                 <FormField
-                    control={form.control}
-                    name="comments"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Komentarze</FormLabel>
-                        <FormControl><Input placeholder="Dodatkowe informacje..." {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                <div className="space-y-4 rounded-md border p-4">
-                     <h3 className="text-lg font-medium">Finanse i potrącenia</h3>
-                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <FormField
-                            control={form.control}
-                            name="depositReturned"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Zwrot kaucji</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value || ''}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Status zwrotu kaucji" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                    <SelectItem value="Tak">Tak</SelectItem>
-                                    <SelectItem value="Nie">Nie</SelectItem>
-                                    <SelectItem value="Nie dotyczy">Nie dotyczy</SelectItem>
-                                </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                         <FormField
-                            control={form.control}
-                            name="depositReturnAmount"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Kwota zwrotu kaucji (PLN)</FormLabel>
-                                <FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))} value={field.value ?? ''} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                     </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <FormField
-                            control={form.control}
-                            name="deductionRegulation"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="flex items-center">
-                                    Potrącenie (Regulamin)
-                                    <TooltipProvider>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild><Info className="h-3 w-3 ml-1 cursor-help" /></TooltipTrigger>
-                                            <TooltipContent><p>Potrącenie za nieprzestrzeganie regulaminu.</p></TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
-                                </FormLabel>
-                                <FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))} value={field.value ?? ''} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="deductionNo4Months"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="flex items-center">
-                                    Potrącenie (4 msc)
-                                     <TooltipProvider>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild><Info className="h-3 w-3 ml-1 cursor-help" /></TooltipTrigger>
-                                            <TooltipContent><p>Potrącenie za okres krótszy niż 4 miesiące.</p></TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
-                                </FormLabel>
-                                <FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))} value={field.value ?? ''} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="deductionNo30Days"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="flex items-center">
-                                    Potrącenie (30 dni)
-                                     <TooltipProvider>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild><Info className="h-3 w-3 ml-1 cursor-help" /></TooltipTrigger>
-                                            <TooltipContent><p>Potrącenie za wypowiedzenie krótsze niż 30 dni.</p></TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
-                                </FormLabel>
-                                <FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))} value={field.value ?? ''} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                     </div>
-                     <FormField
-                        control={form.control}
-                        name="deductionReason"
-                        render={() => (
-                            <FormItem>
-                                <div className="mb-4">
-                                    <FormLabel className="text-base">Inne potrącenia</FormLabel>
-                                    <p className="text-sm text-muted-foreground">
-                                        Wybierz powody dodatkowych potrąceń.
-                                    </p>
-                                </div>
-                                {form.getValues('deductionReason')?.map((reason, index) => (
-                                <FormField
-                                    key={reason.id}
-                                    control={form.control}
-                                    name={`deductionReason.${index}.checked`}
-                                    render={({ field }) => (
-                                    <FormItem
-                                        key={reason.id}
-                                        className="flex flex-row items-start space-x-3 space-y-0"
-                                    >
-                                        <FormControl>
-                                            <Checkbox
-                                                checked={field.value}
-                                                onCheckedChange={field.onChange}
-                                            />
-                                        </FormControl>
-                                        <div className="space-y-1 leading-none w-full grid grid-cols-2 gap-x-4 items-center">
-                                            <Label htmlFor={reason.id} className="font-normal">
-                                                {reason.label}
-                                            </Label>
-                                             <FormField
-                                                control={form.control}
-                                                name={`deductionReason.${index}.amount`}
-                                                render={({ field: amountField }) => (
-                                                    <Input 
-                                                        type="number" 
-                                                        className="h-8"
-                                                        {...amountField}
-                                                        onChange={e => amountField.onChange(parseFloat(e.target.value))}
-                                                    />
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <FormField
+                                control={form.control}
+                                name="checkInDate"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-col pt-2">
+                                        <FormLabel>Data zameldowania</FormLabel>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                            <FormControl>
+                                                <Button
+                                                variant={"outline"}
+                                                className={cn(
+                                                    "w-full pl-3 text-left font-normal",
+                                                    !field.value && "text-muted-foreground"
                                                 )}
-                                             />
-                                        </div>
+                                                >
+                                                {field.value ? (
+                                                    format(field.value, "PPP", { locale: pl })
+                                                ) : (
+                                                    <span>Wybierz datę</span>
+                                                )}
+                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                </Button>
+                                            </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar
+                                                mode="single"
+                                                selected={field.value}
+                                                onSelect={field.onChange}
+                                                disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                                                initialFocus
+                                            />
+                                            </PopoverContent>
+                                        </Popover>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                                />
+                            <FormField
+                                control={form.control}
+                                name="checkOutDate"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-col pt-2">
+                                        <FormLabel>Data wymeldowania</FormLabel>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                            <FormControl>
+                                                <Button
+                                                variant={"outline"}
+                                                className={cn(
+                                                    "w-full pl-3 text-left font-normal",
+                                                    !field.value && "text-muted-foreground"
+                                                )}
+                                                >
+                                                {field.value ? (
+                                                    format(field.value, "PPP", { locale: pl })
+                                                ) : (
+                                                    <span>Wybierz datę</span>
+                                                )}
+                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                </Button>
+                                            </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar
+                                                mode="single"
+                                                selected={field.value}
+                                                onSelect={field.onChange}
+                                                initialFocus
+                                            />
+                                            </PopoverContent>
+                                        </Popover>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                                />
+                            <FormField
+                                control={form.control}
+                                name="contractStartDate"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-col pt-2">
+                                        <FormLabel>Data rozpoczęcia umowy</FormLabel>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                            <FormControl>
+                                                <Button
+                                                variant={"outline"}
+                                                className={cn(
+                                                    "w-full pl-3 text-left font-normal",
+                                                    !field.value && "text-muted-foreground"
+                                                )}
+                                                >
+                                                {field.value ? (
+                                                    format(field.value, "PPP", { locale: pl })
+                                                ) : (
+                                                    <span>Wybierz datę</span>
+                                                )}
+                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                </Button>
+                                            </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar
+                                                mode="single"
+                                                selected={field.value}
+                                                onSelect={field.onChange}
+                                                initialFocus
+                                            />
+                                            </PopoverContent>
+                                        </Popover>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                                />
+                        </div>
+                        
+                        <FormField
+                            control={form.control}
+                            name="comments"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Komentarze</FormLabel>
+                                <FormControl><Input placeholder="Dodatkowe informacje..." {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        </div>
+                    </TabsContent>
+                    <TabsContent value="finance">
+                        <div className="space-y-4 px-4">
+                            <h3 className="text-lg font-medium">Finanse i potrącenia</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name="depositReturned"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Zwrot kaucji</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value || ''}>
+                                        <FormControl><SelectTrigger><SelectValue placeholder="Status zwrotu kaucji" /></SelectTrigger></FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="Tak">Tak</SelectItem>
+                                            <SelectItem value="Nie">Nie</SelectItem>
+                                            <SelectItem value="Nie dotyczy">Nie dotyczy</SelectItem>
+                                        </SelectContent>
+                                        </Select>
+                                        <FormMessage />
                                     </FormItem>
                                     )}
                                 />
-                                ))}
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                </div>
+                                <FormField
+                                    control={form.control}
+                                    name="depositReturnAmount"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Kwota zwrotu kaucji (PLN)</FormLabel>
+                                        <FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))} value={field.value ?? ''} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name="deductionRegulation"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="flex items-center">
+                                            Potrącenie (Regulamin)
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild><Info className="h-3 w-3 ml-1 cursor-help" /></TooltipTrigger>
+                                                    <TooltipContent><p>Potrącenie za nieprzestrzeganie regulaminu.</p></TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        </FormLabel>
+                                        <FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))} value={field.value ?? ''} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="deductionNo4Months"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="flex items-center">
+                                            Potrącenie (4 msc)
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild><Info className="h-3 w-3 ml-1 cursor-help" /></TooltipTrigger>
+                                                    <TooltipContent><p>Potrącenie za okres krótszy niż 4 miesiące.</p></TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        </FormLabel>
+                                        <FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))} value={field.value ?? ''} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="deductionNo30Days"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="flex items-center">
+                                            Potrącenie (30 dni)
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild><Info className="h-3 w-3 ml-1 cursor-help" /></TooltipTrigger>
+                                                    <TooltipContent><p>Potrącenie za wypowiedzenie krótsze niż 30 dni.</p></TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        </FormLabel>
+                                        <FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))} value={field.value ?? ''} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                            </div>
+                            <FormField
+                                control={form.control}
+                                name="deductionReason"
+                                render={() => (
+                                    <FormItem>
+                                        <div className="mb-4">
+                                            <FormLabel className="text-base">Inne potrącenia</FormLabel>
+                                            <p className="text-sm text-muted-foreground">
+                                                Wybierz powody dodatkowych potrąceń.
+                                            </p>
+                                        </div>
+                                        {form.getValues('deductionReason')?.map((reason, index) => (
+                                        <FormField
+                                            key={reason.id}
+                                            control={form.control}
+                                            name={`deductionReason.${index}.checked`}
+                                            render={({ field }) => (
+                                            <FormItem
+                                                key={reason.id}
+                                                className="flex flex-row items-start space-x-3 space-y-0"
+                                            >
+                                                <FormControl>
+                                                    <Checkbox
+                                                        checked={field.value}
+                                                        onCheckedChange={field.onChange}
+                                                    />
+                                                </FormControl>
+                                                <div className="space-y-1 leading-none w-full grid grid-cols-2 gap-x-4 items-center">
+                                                    <Label htmlFor={reason.id} className="font-normal">
+                                                        {reason.label}
+                                                    </Label>
+                                                    <FormField
+                                                        control={form.control}
+                                                        name={`deductionReason.${index}.amount`}
+                                                        render={({ field: amountField }) => (
+                                                            <Input 
+                                                                type="number" 
+                                                                className="h-8"
+                                                                {...amountField}
+                                                                onChange={e => amountField.onChange(parseFloat(e.target.value))}
+                                                            />
+                                                        )}
+                                                    />
+                                                </div>
+                                            </FormItem>
+                                            )}
+                                        />
+                                        ))}
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                                />
+                        </div>
+                    </TabsContent>
+                </ScrollArea>
+            </Tabs>
 
-              </div>
-            </ScrollArea>
             <DialogFooter className="p-6 pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Anuluj
@@ -632,5 +642,3 @@ export function AddEmployeeForm({
     </Dialog>
   );
 }
-
-
