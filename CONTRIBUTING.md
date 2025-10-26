@@ -36,3 +36,11 @@ Dziękujemy za zainteresowanie rozwojem tego projektu. Aby zapewnić najwyższą
 *   **DOSTĘPNOŚĆ (ACCESSIBILITY – A11y):** Buduj interfejsy z myślą o dostępności. Zawsze używaj poprawnej semantyki HTML5 (np. tagi `<header>`, `<main>`, `<nav>`) i prawidłowych atrybutów ARIA tam, gdzie jest to wymagane.
 *   **RESPONSYWNOŚĆ I STYLOWANIE:** Stosuj metodę Mobile-First w stylach CSS. Wykorzystuj nowoczesne mechanizmy layoutu, takie jak CSS Grid i Flexbox, a nie starsze metody pozycjonowania.
 *   **CZYSZCZENIE KODU:** Utrzymuj komponenty jako czyste i jednozadaniowe (Single Responsibility Principle). Używaj nowoczesnego JavaScriptu (ESM/ES2022+), unikając przestarzałych wzorców.
+
+## C. ARCHITEKTURA, UX I STYLISTYKA (Wymagania Seniora) 👨‍💻
+*   **ARCHITEKTURA KOMPONENTÓW:** Wszelkie nowe funkcje muszą być budowane przy użyciu wzorców kompozycji i zasady odpowiedzialności pojedynczej (SRP). Komponenty muszą być łatwe do ponownego użycia i utrzymania.
+*   **TECHNICZNA BUDOWA UI:** Budowa kluczowych elementów interaktywnych (okna dialogowe, formularze, modalne) musi być zgodna z wytycznymi WAI-ARIA (dla dostępności) oraz stosować natywne mechanizmy przeglądarki tam, gdzie to możliwe.
+*   **WIZUALNA JAKOŚĆ (UI/Stylistyka):**
+    *   **Stylizacja:** Używaj nowoczesnych metod zarządzania stylami (np. CSS Modules, CSS-in-JS, lub Tailwind CSS, jeśli jest w projekcie) dla izolacji stylów.
+    *   **Animacje:** Animacje muszą być wydajne (hardware-accelerated), używając właściwości `transform` i `opacity`. Animacje interaktywne powinny być płynne i wspierać koncepcję Micro-Interactions, by poprawić UX.
+    *   **Kolory/Design System:** Stylizacja powinna być spójna z istniejącym designem/paletą kolorów projektu.
