@@ -150,7 +150,7 @@ const AddressRoomsManager = ({ addressIndex, control }: { addressIndex: number; 
         <div className="pl-4 mt-2 space-y-2">
             <div className="flex justify-between items-center">
                 <h4 className="text-sm font-medium">Pokoje</h4>
-                <Button type="button" size="sm" variant="outline" onClick={() => append({ id: `room-${Date.now()}-${Math.random()}`, name: '', capacity: 1 })}>
+                <Button type="button" size="sm" variant="outline" onClick={() => append({ id: `room-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`, name: '', capacity: 1 })}>
                     <PlusCircle className="mr-2 h-4 w-4" /> Dodaj pokój
                 </Button>
             </div>
@@ -444,6 +444,7 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
+    mode: 'onChange',
   });
 
   const { fields: natFields, append: appendNat, remove: removeNat } = useFieldArray({ control: form.control, name: 'nationalities' });
@@ -473,6 +474,7 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
         coordinators: data.coordinators,
     };
     await handleUpdateSettings(newSettings);
+    form.reset(form.getValues()); // Resets the dirty state
   };
   
   if (!currentUser.isAdmin) {
