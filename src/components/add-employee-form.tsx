@@ -68,7 +68,7 @@ const formSchema = z.object({
   deductionReason: z.array(z.object({
       id: z.string(),
       label: z.string(),
-      amount: z.number(),
+      amount: z.number().nullable(),
       checked: z.boolean(),
   })).optional(),
 });
@@ -81,11 +81,11 @@ export type EmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 
   departureReportDate?: string | null;
 };
 
-const defaultDeductionReasons: Omit<DeductionReason, 'id'>[] = [
-    { label: 'Zgubienie kluczy', amount: 50 },
-    { label: 'Zniszczenie mienia', amount: 100 },
-    { label: 'Palenie w pokoju', amount: 200 },
-    { label: 'Niestosowanie się do regulaminu', amount: 150 },
+const defaultDeductionReasons: { label: string }[] = [
+    { label: 'Zgubienie kluczy' },
+    { label: 'Zniszczenie mienia' },
+    { label: 'Palenie w pokoju' },
+    { label: 'Niestosowanie się do regulaminu' },
 ];
 
 const parseDate = (dateString: string | null | undefined): Date | undefined => {
@@ -132,6 +132,7 @@ export function AddEmployeeForm({
       deductionReason: defaultDeductionReasons.map((reason, index) => ({
           ...reason,
           id: `reason-${index}`,
+          amount: null,
           checked: false
       }))
     },
@@ -148,7 +149,7 @@ export function AddEmployeeForm({
             return {
                 id: `reason-${index}`,
                 label: defaultReason.label,
-                amount: existing?.amount ?? defaultReason.amount,
+                amount: existing?.amount ?? null,
                 checked: existing?.checked ?? false,
             }
         });
@@ -186,6 +187,7 @@ export function AddEmployeeForm({
           deductionReason: defaultDeductionReasons.map((reason, index) => ({
               ...reason,
               id: `reason-${index}`,
+              amount: null,
               checked: false
           }))
         });
@@ -610,9 +612,11 @@ export function AddEmployeeForm({
                                                         render={({ field: amountField }) => (
                                                             <Input 
                                                                 type="number" 
+                                                                placeholder="PLN"
                                                                 className="h-8"
                                                                 {...amountField}
-                                                                onChange={e => amountField.onChange(parseFloat(e.target.value))}
+                                                                onChange={e => amountField.onChange(e.target.value === '' ? null : parseFloat(e.target.value))}
+                                                                value={amountField.value ?? ''}
                                                             />
                                                         )}
                                                     />
@@ -642,3 +646,5 @@ export function AddEmployeeForm({
     </Dialog>
   );
 }
+
+    

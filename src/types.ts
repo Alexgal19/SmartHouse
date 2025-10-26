@@ -42,7 +42,7 @@ export type Settings = {
 export type DeductionReason = {
     id: string;
     label: string;
-    amount: number;
+    amount: number | null;
     checked: boolean;
 }
 
@@ -142,3 +142,5 @@ export type EquipmentItem = {
     addressId: string;
     addressName: string;
 }
+
+    
