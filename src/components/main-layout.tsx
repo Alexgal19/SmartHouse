@@ -25,6 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 import { AddEmployeeForm, type EmployeeFormData } from '@/components/add-employee-form';
 import { AddNonEmployeeForm } from '@/components/add-non-employee-form';
 import { InspectionForm } from './inspections-view';
+import { cn } from '@/lib/utils';
 
 const navItems: { view: View; icon: React.ElementType; label: string }[] = [
     { view: 'dashboard', icon: Home, label: 'Pulpit' },
@@ -623,7 +624,7 @@ export default function MainLayout({
                     <SidebarHeader>
                         <div className="flex items-center gap-2">
                             <Building className="h-8 w-8 text-primary" />
-                            <span className="font-semibold text-xl group-data-[collapsible=icon]:hidden">SmartHouse</span>
+                            <span className={cn("font-semibold text-xl whitespace-nowrap transition-all duration-300", "group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0")}>SmartHouse</span>
                         </div>
                     </SidebarHeader>
                     <SidebarContent>
