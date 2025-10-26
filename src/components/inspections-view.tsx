@@ -220,7 +220,7 @@ export const InspectionForm = ({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
-            <ScrollArea className="max-h-[70vh] p-1">
+            <ScrollArea className="h-[70vh] p-1">
                  <div className="space-y-4 px-4">
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                          <FormField
@@ -288,50 +288,52 @@ export const InspectionForm = ({
                             <AccordionItem key={category.id} value={category.name}>
                                 <AccordionTrigger>{category.name}</AccordionTrigger>
                                 <AccordionContent>
-                                    <div className="space-y-6 pl-2">
-                                        {(form.getValues(`categories.${categoryIndex}.items`) || []).map((item, itemIndex) => (
+                                    <ScrollArea className="max-h-64">
+                                        <div className="space-y-6 p-4">
+                                            {(form.getValues(`categories.${categoryIndex}.items`) || []).map((item, itemIndex) => (
+                                                <FormField
+                                                    key={`${category.id}-${item.label}`}
+                                                    control={form.control}
+                                                    name={`categories.${categoryIndex}.items.${itemIndex}.value`}
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>{item.label}</FormLabel>
+                                                            <FormControl>{renderFormControl(item, field)}</FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            ))}
                                             <FormField
-                                                key={`${category.id}-${item.label}`}
                                                 control={form.control}
-                                                name={`categories.${categoryIndex}.items.${itemIndex}.value`}
+                                                name={`categories.${categoryIndex}.uwagi`}
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>{item.label}</FormLabel>
-                                                        <FormControl>{renderFormControl(item, field)}</FormControl>
-                                                        <FormMessage />
+                                                        <FormLabel>Uwagi</FormLabel>
+                                                        <FormControl><Textarea {...field} /></FormControl>
                                                     </FormItem>
                                                 )}
                                             />
-                                        ))}
-                                         <FormField
-                                            control={form.control}
-                                            name={`categories.${categoryIndex}.uwagi`}
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Uwagi</FormLabel>
-                                                    <FormControl><Textarea {...field} /></FormControl>
-                                                </FormItem>
-                                            )}
-                                        />
-                                         <FormItem>
-                                            <FormLabel>Zdjęcia</FormLabel>
-                                            <div className="flex items-center gap-2">
-                                                <Button type="button" variant="outline" onClick={() => { setActiveCategoryIndex(categoryIndex); fileInputRef.current?.click(); }}>
-                                                    <Camera className="mr-2 h-4 w-4" /> Dodaj zdjęcia
-                                                </Button>
-                                            </div>
-                                            <div className="mt-2 flex flex-wrap gap-2">
-                                                {(form.watch(`categories.${categoryIndex}.photos`) || []).map((photoSrc, photoIndex) => (
-                                                    <div key={photoIndex} className="relative">
-                                                        <Image src={photoSrc} alt={`Zdjęcie ${photoIndex + 1}`} width={80} height={80} className="rounded-md object-cover h-20 w-20" />
-                                                        <Button type="button" variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full" onClick={() => removePhoto(categoryIndex, photoIndex)}>
-                                                            <X className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </FormItem>
-                                    </div>
+                                            <FormItem>
+                                                <FormLabel>Zdjęcia</FormLabel>
+                                                <div className="flex items-center gap-2">
+                                                    <Button type="button" variant="outline" onClick={() => { setActiveCategoryIndex(categoryIndex); fileInputRef.current?.click(); }}>
+                                                        <Camera className="mr-2 h-4 w-4" /> Dodaj zdjęcia
+                                                    </Button>
+                                                </div>
+                                                <div className="mt-2 flex flex-wrap gap-2">
+                                                    {(form.watch(`categories.${categoryIndex}.photos`) || []).map((photoSrc, photoIndex) => (
+                                                        <div key={photoIndex} className="relative">
+                                                            <Image src={photoSrc} alt={`Zdjęcie ${photoIndex + 1}`} width={80} height={80} className="rounded-md object-cover h-20 w-20" />
+                                                            <Button type="button" variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full" onClick={() => removePhoto(categoryIndex, photoIndex)}>
+                                                                <X className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </FormItem>
+                                        </div>
+                                    </ScrollArea>
                                 </AccordionContent>
                             </AccordionItem>
                         ))}
@@ -359,7 +361,35 @@ export const InspectionForm = ({
 
 
 export default function InspectionsView({ currentUser }: { currentUser: SessionData }) {
-    const { allInspections, settings, handleAddInspectionClick, handleEditInspectionClick, handleDeleteInspection } = useMainLayout();
+    const { allInspections, settings, handleAddInspection, handleUpdateInspection, handleDeleteInspection } = useMainLayout();
+    const [isFormOpen, setIsFormOpen] = useState(false);
+    const [editingItem, setEditingItem] = useState<Inspection | null>(null);
+
+    const handleSave = (data: Omit<Inspection, 'id' | 'addressName' | 'coordinatorName'>, id?: string) => {
+        if (!currentUser || !settings) return;
+        const addressName = settings.addresses.find(a => a.id === data.addressId)?.name || 'Nieznany';
+        const coordinatorName = settings.coordinators.find(c => c.uid === data.coordinatorId)?.name || 'Nieznany';
+        const inspectionData = { ...data, addressName, coordinatorName };
+
+        if (id) {
+            handleUpdateInspection(id, inspectionData);
+        } else {
+            handleAddInspection(inspectionData);
+        }
+        setIsFormOpen(false);
+        setEditingItem(null);
+    };
+
+    const handleAddNew = () => {
+        setEditingItem(null);
+        setIsFormOpen(true);
+    };
+
+    const handleEdit = (item: Inspection) => {
+        setEditingItem(item);
+        setIsFormOpen(true);
+    };
+
 
     if (!allInspections || !settings) {
          return (
@@ -379,13 +409,14 @@ export default function InspectionsView({ currentUser }: { currentUser: SessionD
     }
 
     return (
+        <>
         <Card>
             <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                     <CardTitle>Inspekcje</CardTitle>
                     <CardDescription>Przeglądaj, dodawaj i edytuj raporty z inspekcji.</CardDescription>
                 </div>
-                <Button onClick={handleAddInspectionClick}>
+                <Button onClick={handleAddNew}>
                     <PlusCircle className="mr-2 h-4 w-4" /> Nowa inspekcja
                 </Button>
             </CardHeader>
@@ -403,7 +434,7 @@ export default function InspectionsView({ currentUser }: { currentUser: SessionD
                     <TableBody>
                         {allInspections.length > 0 ? (
                             allInspections.map(item => (
-                                <TableRow key={item.id} onClick={() => handleEditInspectionClick(item)} className="cursor-pointer">
+                                <TableRow key={item.id} onClick={() => handleEdit(item)} className="cursor-pointer">
                                     <TableCell>{item.addressName}</TableCell>
                                     <TableCell>{format(new Date(item.date), 'dd-MM-yyyy')}</TableCell>
                                     <TableCell>{item.coordinatorName}</TableCell>
@@ -442,5 +473,16 @@ export default function InspectionsView({ currentUser }: { currentUser: SessionD
                 </Table>
             </CardContent>
         </Card>
+         {settings && currentUser && (
+            <InspectionForm
+                isOpen={isFormOpen}
+                onOpenChange={setIsFormOpen}
+                onSave={handleSave}
+                settings={settings}
+                currentUser={currentUser}
+                item={editingItem}
+            />
+        )}
+        </>
     );
 }
