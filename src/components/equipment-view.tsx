@@ -5,169 +5,123 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import { useMainLayout } from '@/components/main-layout';
 import type { EquipmentItem, Settings, SessionData } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, MoreHorizontal } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { EquipmentForm } from './equipment-form';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
-const formSchema = z.object({
-  inventoryNumber: z.string().min(1, 'Numer inwentarzowy jest wymagany.'),
-  name: z.string().min(1, 'Nazwa jest wymagana.'),
-  quantity: z.coerce.number().min(1, 'Ilość musi być większa od zera.'),
-  description: z.string().optional(),
-  addressId: z.string().min(1, 'Adres jest wymagany.'),
-});
-
-const EquipmentForm = ({
-  isOpen,
-  onOpenChange,
-  onSave,
-  settings,
-  item,
-}: {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSave: (data: Omit<EquipmentItem, 'id' | 'addressName'>, id?: string) => void;
-  settings: Settings;
-  item: EquipmentItem | null;
-}) => {
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      inventoryNumber: '',
-      name: '',
-      quantity: 1,
-      description: '',
-      addressId: '',
-    },
-  });
-
-  React.useEffect(() => {
-    if (item) {
-      form.reset(item);
-    } else {
-      form.reset({
-        inventoryNumber: '',
-        name: '',
-        quantity: 1,
-        description: '',
-        addressId: '',
-      });
-    }
-  }, [item, isOpen, form]);
-
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    onSave(values, item?.id);
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{item ? 'Edytuj sprzęt' : 'Dodaj nowy sprzęt'}</DialogTitle>
-          <DialogDescription>Wypełnij formularz, aby dodać lub zaktualizować sprzęt.</DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="inventoryNumber"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Numer inwentarzowy</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nazwa sprzętu</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <FormField
-              control={form.control}
-              name="quantity"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Ilość</FormLabel>
-                  <FormControl>
-                    <Input type="number" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <FormField
-              control={form.control}
-              name="addressId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Adres</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Wybierz adres" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {settings.addresses.map((address) => (
-                        <SelectItem key={address.id} value={address.id}>
-                          {address.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Opis (opcjonalnie)</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Anuluj
-              </Button>
-              <Button type="submit">Zapisz</Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-  );
+const EquipmentActions = ({ item, onEdit, onDelete }: { item: EquipmentItem, onEdit: (item: EquipmentItem) => void; onDelete: (id: string) => void; }) => {
+    return (
+        <AlertDialog>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-8 w-8 p-0">
+                        <span className="sr-only">Otwórz menu</span>
+                        <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => onEdit(item)}>Edytuj</DropdownMenuItem>
+                    <AlertDialogTrigger asChild>
+                        <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Usuń
+                        </DropdownMenuItem>
+                    </AlertDialogTrigger>
+                </DropdownMenuContent>
+            </DropdownMenu>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Czy na pewno chcesz usunąć ten sprzęt?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Tej operacji не można cofnąć. Spowoduje to trwałe usunięcie <span className="font-bold">{item.name}</span>.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                    <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => onDelete(item.id)}>Usuń</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    );
 };
+
+const EquipmentTable = ({ items, onEdit, onDelete }: { items: EquipmentItem[], onEdit: (item: EquipmentItem) => void; onDelete: (id: string) => void; }) => {
+    return (
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHead>Nr inw.</TableHead>
+                    <TableHead>Nazwa</TableHead>
+                    <TableHead>Ilość</TableHead>
+                    <TableHead>Adres</TableHead>
+                    <TableHead>Opis</TableHead>
+                    <TableHead><span className="sr-only">Akcje</span></TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {items.length > 0 ? (
+                    items.map(item => (
+                        <TableRow key={item.id} onClick={() => onEdit(item)} className="cursor-pointer">
+                            <TableCell>{item.inventoryNumber}</TableCell>
+                            <TableCell>{item.name}</TableCell>
+                            <TableCell>{item.quantity}</TableCell>
+                            <TableCell>{item.addressName}</TableCell>
+                            <TableCell>{item.description}</TableCell>
+                            <TableCell onClick={(e) => e.stopPropagation()}>
+                                <EquipmentActions item={item} onEdit={onEdit} onDelete={onDelete} />
+                            </TableCell>
+                        </TableRow>
+                    ))
+                ) : (
+                    <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center">
+                            Brak sprzętu do wyświetlenia.
+                        </TableCell>
+                    </TableRow>
+                )}
+            </TableBody>
+        </Table>
+    );
+};
+
+const EquipmentCardList = ({ items, onEdit, onDelete }: { items: EquipmentItem[], onEdit: (item: EquipmentItem) => void; onDelete: (id: string) => void; }) => {
+    return (
+        <div className="space-y-4">
+            {items.length > 0 ? (
+                items.map(item => (
+                    <Card key={item.id} onClick={() => onEdit(item)} className="cursor-pointer">
+                         <CardHeader className="flex flex-row items-start justify-between pb-4">
+                           <div>
+                             <CardTitle className="text-base">{item.name} <span className="text-muted-foreground">({item.quantity} szt.)</span></CardTitle>
+                             <CardDescription>
+                                {item.addressName}
+                             </CardDescription>
+                           </div>
+                           <div onClick={(e) => e.stopPropagation()}>
+                                <EquipmentActions item={item} onEdit={onEdit} onDelete={onDelete} />
+                           </div>
+                        </CardHeader>
+                        <CardContent className="text-sm space-y-2">
+                             <p><span className="font-semibold text-muted-foreground">Nr inw.:</span> {item.inventoryNumber}</p>
+                             {item.description && <p><span className="font-semibold text-muted-foreground">Opis:</span> {item.description}</p>}
+                        </CardContent>
+                    </Card>
+                ))
+            ) : (
+                <div className="text-center text-muted-foreground py-8">Brak sprzętu do wyświetlenia.</div>
+            )}
+        </div>
+    )
+}
 
 
 export default function EquipmentView({ currentUser }: { currentUser: SessionData }) {
@@ -175,6 +129,7 @@ export default function EquipmentView({ currentUser }: { currentUser: SessionDat
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<EquipmentItem | null>(null);
     const [filterAddress, setFilterAddress] = useState('all');
+    const { isMobile, isMounted } = useIsMobile();
 
     const handleSave = (data: Omit<EquipmentItem, 'id' | 'addressName'>, id?: string) => {
         const addressName = settings?.addresses.find(a => a.id === data.addressId)?.name || 'Nieznany';
@@ -221,6 +176,8 @@ export default function EquipmentView({ currentUser }: { currentUser: SessionDat
             </Card>
         );
     }
+    
+    const EquipmentListComponent = isMobile ? EquipmentCardList : EquipmentTable;
 
     return (
         <Card>
@@ -247,58 +204,15 @@ export default function EquipmentView({ currentUser }: { currentUser: SessionDat
                  </div>
             </CardHeader>
             <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Nr inw.</TableHead>
-                            <TableHead>Nazwa</TableHead>
-                            <TableHead>Ilość</TableHead>
-                            <TableHead>Adres</TableHead>
-                            <TableHead>Opis</TableHead>
-                            <TableHead><span className="sr-only">Akcje</span></TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {filteredEquipment.length > 0 ? (
-                            filteredEquipment.map(item => (
-                                <TableRow key={item.id} onClick={() => handleEdit(item)} className="cursor-pointer">
-                                    <TableCell>{item.inventoryNumber}</TableCell>
-                                    <TableCell>{item.name}</TableCell>
-                                    <TableCell>{item.quantity}</TableCell>
-                                    <TableCell>{item.addressName}</TableCell>
-                                    <TableCell>{item.description}</TableCell>
-                                    <TableCell onClick={(e) => e.stopPropagation()}>
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="text-destructive">
-                                                     <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Czy na pewno chcesz usunąć ten sprzęt?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        Tej operacji nie można cofnąć. Spowoduje to trwałe usunięcie <span className="font-bold">{item.name}</span>.
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>Anuluj</AlertDialogCancel>
-                                                    <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => handleDeleteEquipment(item.id)}>Usuń</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        ) : (
-                            <TableRow>
-                                <TableCell colSpan={6} className="h-24 text-center">
-                                    Brak sprzętu do wyświetlenia.
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
+                {isMounted ? (
+                    <EquipmentListComponent items={filteredEquipment} onEdit={handleEdit} onDelete={handleDeleteEquipment} />
+                ) : (
+                     <div className="space-y-4">
+                        <Skeleton className="h-16 w-full" />
+                        <Skeleton className="h-16 w-full" />
+                        <Skeleton className="h-16 w-full" />
+                    </div>
+                )}
             </CardContent>
              <EquipmentForm
                 isOpen={isFormOpen}
