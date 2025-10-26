@@ -265,26 +265,26 @@ const BulkActions = ({ currentUser, settings }: { currentUser: SessionData; sett
                 <CardDescription>Zarządzaj danymi pracowników hurtowo.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                 <div className="flex items-center justify-between rounded-lg border p-4">
-                    <div>
+                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-lg border p-4 gap-4">
+                    <div className="flex-1">
                         <h3 className="font-medium">Importuj pracowników z pliku</h3>
                         <p className="text-sm text-muted-foreground">Dodaj wielu pracowników naraz używając pliku XLSX.</p>
                     </div>
-                    <Button onClick={() => fileInputRef.current?.click()} disabled={isImporting}>
+                    <Button onClick={() => fileInputRef.current?.click()} disabled={isImporting} className="w-full sm:w-auto">
                         {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
                         Importuj
                     </Button>
                      <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx" onChange={onFileSelect} />
                  </div>
-                  <div className="flex items-center justify-between rounded-lg border border-destructive/50 bg-destructive/10 p-4">
-                    <div>
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-lg border border-destructive/50 bg-destructive/10 p-4 gap-4">
+                    <div className="flex-1">
                         <h3 className="font-medium text-destructive">Masowe usuwanie</h3>
                         <p className="text-sm text-destructive/80">Te akcje są nieodwracalne.</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                          <AlertDialog>
                             <AlertDialogTrigger asChild>
-                                <Button variant="destructive" disabled={isDeletingActive}>
+                                <Button variant="destructive" disabled={isDeletingActive} className="w-full">
                                     {isDeletingActive ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Trash2 className="mr-2 h-4 w-4" />}
                                     Usuń aktywnych
                                 </Button>
@@ -302,7 +302,7 @@ const BulkActions = ({ currentUser, settings }: { currentUser: SessionData; sett
                         </AlertDialog>
                          <AlertDialog>
                             <AlertDialogTrigger asChild>
-                                <Button variant="destructive" disabled={isDeletingDismissed}>
+                                <Button variant="destructive" disabled={isDeletingDismissed} className="w-full">
                                      {isDeletingDismissed ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Trash2 className="mr-2 h-4 w-4" />}
                                     Usuń zwolnionych
                                 </Button>
@@ -367,8 +367,8 @@ const ReportsGenerator = ({ settings, currentUser }: { settings: Settings; curre
                 <CardTitle>Generowanie raportów</CardTitle>
                 <CardDescription>Wygeneruj raporty w formacie XLSX.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                     <Select value={reportType} onValueChange={(v: 'monthly' | 'accommodation') => setReportType(v)}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -397,7 +397,7 @@ const ReportsGenerator = ({ settings, currentUser }: { settings: Settings; curre
                             </SelectContent>
                         </Select>
                     )}
-                    <Button onClick={handleGenerate} disabled={isLoading} className="w-full">
+                    <Button onClick={handleGenerate} disabled={isLoading} className="w-full xl:col-span-1">
                         {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                         <span className="ml-2">Generuj</span>
                     </Button>
@@ -524,3 +524,4 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
   );
 }
 
+    
