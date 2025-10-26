@@ -82,7 +82,7 @@ const ListManager = ({ name, title, fields, append, remove }: { name: string; ti
     </div>
 );
 
-const CoordinatorManager = ({ control, fields, append, remove, coordinators }: { control: any, fields: any[], append: any, remove: any, coordinators: any[] }) => (
+const CoordinatorManager = ({ form, fields, append, remove }: { form: any, fields: any[], append: any, remove: any }) => (
   <div className="space-y-4 rounded-md border p-4">
     <div className="flex justify-between items-center mb-4">
         <h3 className="font-medium">Koordynatorzy</h3>
@@ -94,13 +94,13 @@ const CoordinatorManager = ({ control, fields, append, remove, coordinators }: {
     {fields.map((field, index) => (
       <div key={field.id} className="space-y-2 rounded-lg border p-3">
         <div className="flex items-center justify-between">
-            <p className="font-semibold">{control.getValues(`coordinators.${index}.name`) || `Nowy koordynator`}</p>
+            <p className="font-semibold">{form.getValues(`coordinators.${index}.name`) || `Nowy koordynator`}</p>
             <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
                 <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
         </div>
         <FormField
-          control={control}
+          control={form.control}
           name={`coordinators.${index}.name`}
           render={({ field: nameField }) => (
             <FormItem>
@@ -110,7 +110,7 @@ const CoordinatorManager = ({ control, fields, append, remove, coordinators }: {
           )}
         />
         <FormField
-          control={control}
+          control={form.control}
           name={`coordinators.${index}.password`}
           render={({ field: passField }) => (
             <FormItem>
@@ -120,7 +120,7 @@ const CoordinatorManager = ({ control, fields, append, remove, coordinators }: {
           )}
         />
         <FormField
-          control={control}
+          control={form.control}
           name={`coordinators.${index}.isAdmin`}
           render={({ field: adminField }) => (
             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
@@ -140,8 +140,8 @@ const CoordinatorManager = ({ control, fields, append, remove, coordinators }: {
   </div>
 );
 
-const AddressManager = ({ control, fields, append, remove, coordinators }: { control: any; fields: any[]; append: any; remove: any; coordinators: any[] }) => {
-  const { fields: roomFields, append: appendRoom, remove: removeRoom } = useFieldArray({ control, name: `addresses.${fields.length -1}.rooms` });
+const AddressManager = ({ form, fields, append, remove, coordinators }: { form: any; fields: any[]; append: any; remove: any; coordinators: any[] }) => {
+  const { fields: roomFields, append: appendRoom, remove: removeRoom } = useFieldArray({ control: form.control, name: `addresses.${fields.length -1}.rooms` });
   
   return (
     <div className="space-y-4 rounded-md border p-4">
@@ -154,14 +154,14 @@ const AddressManager = ({ control, fields, append, remove, coordinators }: { con
       {fields.map((field, addressIndex) => (
         <div key={field.id} className="space-y-3 rounded-lg border p-4">
             <div className="flex items-center justify-between">
-                 <p className="font-semibold">{control.getValues(`addresses.${addressIndex}.name`) || `Nowy adres`}</p>
+                 <p className="font-semibold">{form.getValues(`addresses.${addressIndex}.name`) || `Nowy adres`}</p>
                 <Button type="button" variant="ghost" size="icon" onClick={() => remove(addressIndex)}>
                     <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
             </div>
 
           <FormField
-            control={control}
+            control={form.control}
             name={`addresses.${addressIndex}.name`}
             render={({ field: nameField }) => (
               <FormItem>
@@ -171,7 +171,7 @@ const AddressManager = ({ control, fields, append, remove, coordinators }: { con
             )}
           />
            <FormField
-            control={control}
+            control={form.control}
             name={`addresses.${addressIndex}.coordinatorId`}
             render={({ field: coordField }) => (
                  <FormItem>
@@ -190,17 +190,17 @@ const AddressManager = ({ control, fields, append, remove, coordinators }: { con
                 <div className="flex justify-between items-center">
                     <h4 className="text-sm font-medium">Pokoje</h4>
                     <Button type="button" size="sm" variant="outline" onClick={() => {
-                        const currentRooms = control.getValues(`addresses.${addressIndex}.rooms`);
+                        const currentRooms = form.getValues(`addresses.${addressIndex}.rooms`);
                         const newRooms = [...currentRooms, { id: `room-${Date.now()}`, name: '', capacity: 1 }];
-                        control.setValue(`addresses.${addressIndex}.rooms`, newRooms);
+                        form.setValue(`addresses.${addressIndex}.rooms`, newRooms);
                     }}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Dodaj pokój
                     </Button>
                 </div>
-                 {control.getValues(`addresses.${addressIndex}.rooms`).map((room: any, roomIndex: number) => (
+                 {form.getValues(`addresses.${addressIndex}.rooms`).map((room: any, roomIndex: number) => (
                     <div key={room.id} className="flex items-center gap-2">
                          <FormField
-                            control={control}
+                            control={form.control}
                             name={`addresses.${addressIndex}.rooms.${roomIndex}.name`}
                             render={({ field: roomNameField }) => (
                                 <FormItem className="flex-1">
@@ -209,7 +209,7 @@ const AddressManager = ({ control, fields, append, remove, coordinators }: { con
                             )}
                         />
                          <FormField
-                            control={control}
+                            control={form.control}
                             name={`addresses.${addressIndex}.rooms.${roomIndex}.capacity`}
                             render={({ field: capacityField }) => (
                                 <FormItem className="w-28">
@@ -218,15 +218,15 @@ const AddressManager = ({ control, fields, append, remove, coordinators }: { con
                             )}
                         />
                         <Button type="button" variant="ghost" size="icon" onClick={() => {
-                            const currentRooms = control.getValues(`addresses.${addressIndex}.rooms`);
+                            const currentRooms = form.getValues(`addresses.${addressIndex}.rooms`);
                             const newRooms = currentRooms.filter((_: any, i: number) => i !== roomIndex);
-                            control.setValue(`addresses.${addressIndex}.rooms`, newRooms);
+                            form.setValue(`addresses.${addressIndex}.rooms`, newRooms);
                         }}>
                             <Trash2 className="h-4 w-4" />
                         </Button>
                     </div>
                 ))}
-                 {control.getValues(`addresses.${addressIndex}.rooms`).length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Brak pokoi dla tego adresu.</p>}
+                 {form.getValues(`addresses.${addressIndex}.rooms`).length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Brak pokoi dla tego adresu.</p>}
 
             </div>
         </div>
@@ -533,13 +533,13 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
                         <AccordionItem value="coordinators">
                              <AccordionTrigger>Zarządzanie koordynatorami</AccordionTrigger>
                              <AccordionContent className="p-2">
-                                <CoordinatorManager control={form.control} fields={coordFields} append={appendCoord} remove={removeCoord} coordinators={form.watch('coordinators')} />
+                                <CoordinatorManager form={form} fields={coordFields} append={appendCoord} remove={removeCoord} />
                              </AccordionContent>
                         </AccordionItem>
                         <AccordionItem value="addresses">
                              <AccordionTrigger>Zarządzanie adresami</AccordionTrigger>
                              <AccordionContent className="p-2">
-                                <AddressManager control={form.control} fields={addrFields} append={appendAddr} remove={removeAddr} coordinators={form.watch('coordinators')} />
+                                <AddressManager form={form} fields={addrFields} append={appendAddr} remove={removeAddr} coordinators={form.watch('coordinators')} />
                              </AccordionContent>
                         </AccordionItem>
                     </Accordion>
@@ -562,3 +562,5 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     </div>
   );
 }
+
+    
