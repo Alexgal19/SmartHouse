@@ -14,7 +14,7 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { useMainLayout } from '@/components/main-layout';
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Occupant = Employee | NonEmployee;
 
@@ -248,7 +248,7 @@ export function HousingView({
             <Dialog open={isRoomDetailOpen} onOpenChange={setIsRoomDetailOpen}>
                 <DialogContent className="max-w-md flex flex-col h-screen sm:h-[80vh]">
                 {selectedRoom && (
-                    <>
+                    <TooltipProvider>
                     <DialogHeader>
                         <div className="flex justify-between items-center">
                             <div>
@@ -274,7 +274,7 @@ export function HousingView({
                         )) : <p className='text-center text-muted-foreground p-4'>Brak mieszkańców</p>}
                         </div>
                     </ScrollArea>
-                    </>
+                    </TooltipProvider>
                 )}
                 </DialogContent>
             </Dialog>

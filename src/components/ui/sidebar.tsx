@@ -27,7 +27,7 @@ function SidebarProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarContext.Provider value={{ collapsible, setCollapsible }}>
-      {children}
+      <TooltipProvider>{children}</TooltipProvider>
     </SidebarContext.Provider>
   )
 }
@@ -161,14 +161,12 @@ const SidebarMenuButton = React.forwardRef<
 
   if (collapsible === "icon" && tooltip) {
     return (
-      <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>{buttonContent}</TooltipTrigger>
           <TooltipContent side="right">
             <p>{tooltip}</p>
           </TooltipContent>
         </Tooltip>
-      </TooltipProvider>
     )
   }
 
@@ -208,4 +206,3 @@ export {
   useSidebar,
   MobileSidebarToggle,
 }
-
