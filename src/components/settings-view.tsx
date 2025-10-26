@@ -48,14 +48,19 @@ const coordinatorSchema = z.object({
 const formSchema = z.object({
   nationalities: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
   departments: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
-  genders: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
+  genders: z.array(z.object({ value: z.string().min(1_i 'Wartość nie może być pusta.') })),
   addresses: z.array(addressSchema),
   coordinators: z.array(coordinatorSchema),
 });
 
 const ListManager = ({ name, title, fields, append, remove }: { name: string; title: string; fields: any[]; append: any; remove: any; }) => (
     <div className="space-y-2 rounded-md border p-4">
-        <h3 className="font-medium">{title}</h3>
+        <div className="flex justify-between items-center mb-4">
+            <h3 className="font-medium">{title}</h3>
+            <Button type="button" variant="outline" size="sm" onClick={() => append({ value: '' })}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Dodaj
+            </Button>
+        </div>
         {fields.map((field, index) => (
             <FormField
                 key={field.id}
@@ -72,19 +77,23 @@ const ListManager = ({ name, title, fields, append, remove }: { name: string; ti
                 )}
             />
         ))}
-        <Button type="button" variant="outline" size="sm" onClick={() => append({ value: '' })}>
-            <PlusCircle className="mr-2 h-4 w-4" /> Dodaj
-        </Button>
+        {fields.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Brak pozycji na liście.</p>}
     </div>
 );
 
 const CoordinatorManager = ({ control, fields, append, remove, coordinators }: { control: any, fields: any[], append: any, remove: any, coordinators: any[] }) => (
   <div className="space-y-4 rounded-md border p-4">
-    <h3 className="font-medium">Koordynatorzy</h3>
+    <div className="flex justify-between items-center mb-4">
+        <h3 className="font-medium">Koordynatorzy</h3>
+        <Button type="button" variant="outline" size="sm" onClick={() => append({ uid: `coord-${Date.now()}`, name: '', password: '', isAdmin: false })}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Dodaj koordynatora
+        </Button>
+    </div>
+
     {fields.map((field, index) => (
       <div key={field.id} className="space-y-2 rounded-lg border p-3">
         <div className="flex items-center justify-between">
-            <p className="font-semibold">{`Koordynator ${index + 1}`}</p>
+            <p className="font-semibold">{control.getValues(`coordinators.${index}.name`) || `Nowy koordynator`}</p>
             <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
                 <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
@@ -126,9 +135,7 @@ const CoordinatorManager = ({ control, fields, append, remove, coordinators }: {
         />
       </div>
     ))}
-    <Button type="button" variant="outline" size="sm" onClick={() => append({ uid: `coord-${Date.now()}`, name: '', password: '', isAdmin: false })}>
-      <PlusCircle className="mr-2 h-4 w-4" /> Dodaj koordynatora
-    </Button>
+    {fields.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Brak zdefiniowanych koordynatorów.</p>}
   </div>
 );
 
@@ -137,7 +144,12 @@ const AddressManager = ({ control, fields, append, remove, coordinators }: { con
   
   return (
     <div className="space-y-4 rounded-md border p-4">
-      <h3 className="font-medium">Adresy i pokoje</h3>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="font-medium">Adresy i pokoje</h3>
+        <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `addr-${Date.now()}`, name: '', coordinatorId: '', rooms: [] })}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Dodaj adres
+        </Button>
+      </div>
       {fields.map((field, addressIndex) => (
         <div key={field.id} className="space-y-3 rounded-lg border p-4">
             <div className="flex items-center justify-between">
@@ -174,7 +186,16 @@ const AddressManager = ({ control, fields, append, remove, coordinators }: { con
             />
           
             <div className="pl-4 mt-2 space-y-2">
-                <h4 className="text-sm font-medium">Pokoje</h4>
+                <div className="flex justify-between items-center">
+                    <h4 className="text-sm font-medium">Pokoje</h4>
+                    <Button type="button" size="sm" variant="outline" onClick={() => {
+                        const currentRooms = control.getValues(`addresses.${addressIndex}.rooms`);
+                        const newRooms = [...currentRooms, { id: `room-${Date.now()}`, name: '', capacity: 1 }];
+                        control.setValue(`addresses.${addressIndex}.rooms`, newRooms);
+                    }}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Dodaj pokój
+                    </Button>
+                </div>
                  {control.getValues(`addresses.${addressIndex}.rooms`).map((room: any, roomIndex: number) => (
                     <div key={room.id} className="flex items-center gap-2">
                          <FormField
@@ -204,20 +225,12 @@ const AddressManager = ({ control, fields, append, remove, coordinators }: { con
                         </Button>
                     </div>
                 ))}
+                 {control.getValues(`addresses.${addressIndex}.rooms`).length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Brak pokoi dla tego adresu.</p>}
 
-                <Button type="button" size="sm" variant="outline" onClick={() => {
-                    const currentRooms = control.getValues(`addresses.${addressIndex}.rooms`);
-                    const newRooms = [...currentRooms, { id: `room-${Date.now()}`, name: '', capacity: 1 }];
-                    control.setValue(`addresses.${addressIndex}.rooms`, newRooms);
-                }}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Dodaj pokój
-                </Button>
             </div>
         </div>
       ))}
-       <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `addr-${Date.now()}`, name: '', coordinatorId: '', rooms: [] })}>
-            <PlusCircle className="mr-2 h-4 w-4" /> Dodaj adres
-        </Button>
+       {fields.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Brak zdefiniowanych adresów.</p>}
     </div>
   );
 };
@@ -368,36 +381,48 @@ const ReportsGenerator = ({ settings, currentUser }: { settings: Settings; curre
                 <CardDescription>Wygeneruj raporty w formacie XLSX.</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-                    <Select value={reportType} onValueChange={(v: 'monthly' | 'accommodation') => setReportType(v)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="monthly">Raport miesięczny</SelectItem>
-                            <SelectItem value="accommodation">Raport zakwaterowania</SelectItem>
-                        </SelectContent>
-                    </Select>
-                     <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            {years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                     <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            {months.map(m => <SelectItem key={m} value={String(m)}>{m}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    {currentUser.isAdmin && (
-                         <Select value={coordinatorId} onValueChange={setCoordinatorId}>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-end">
+                    <div className="space-y-2">
+                        <Label>Typ raportu</Label>
+                        <Select value={reportType} onValueChange={(v: 'monthly' | 'accommodation') => setReportType(v)}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
-                                {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                                <SelectItem value="monthly">Raport miesięczny</SelectItem>
+                                <SelectItem value="accommodation">Raport zakwaterowania</SelectItem>
                             </SelectContent>
                         </Select>
+                    </div>
+                     <div className="space-y-2">
+                         <Label>Rok</Label>
+                        <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                {years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                     </div>
+                     <div className="space-y-2">
+                         <Label>Miesiąc</Label>
+                        <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                {months.map(m => <SelectItem key={m} value={String(m)}>{m}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                     </div>
+                    {currentUser.isAdmin && (
+                        <div className="space-y-2">
+                            <Label>Koordynator</Label>
+                            <Select value={coordinatorId} onValueChange={setCoordinatorId}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
+                                    {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     )}
-                    <Button onClick={handleGenerate} disabled={isLoading} className="w-full xl:col-span-1">
+                    <Button onClick={handleGenerate} disabled={isLoading} className="w-full">
                         {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                         <span className="ml-2">Generuj</span>
                     </Button>
@@ -460,18 +485,28 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
 
   if (!settings) {
        return (
-            <Card>
-                <CardHeader>
-                     <Skeleton className="h-8 w-1/3" />
-                </CardHeader>
-                <CardContent>
-                     <div className="space-y-4">
-                        <Skeleton className="h-24 w-full" />
-                        <Skeleton className="h-24 w-full" />
-                        <Skeleton className="h-24 w-full" />
-                    </div>
-                </CardContent>
-            </Card>
+            <div className="space-y-6">
+                <Card>
+                    <CardHeader>
+                        <Skeleton className="h-8 w-1/3" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            <Skeleton className="h-24 w-full" />
+                            <Skeleton className="h-24 w-full" />
+                            <Skeleton className="h-24 w-full" />
+                        </div>
+                    </CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader>
+                        <Skeleton className="h-8 w-1/3" />
+                    </CardHeader>
+                    <CardContent>
+                        <Skeleton className="h-32 w-full" />
+                    </CardContent>
+                </Card>
+            </div>
         );
   }
 
@@ -509,7 +544,10 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
                     </Accordion>
                     
                     <div className="flex justify-end">
-                        <Button type="submit" disabled={!form.formState.isDirty}>Zapisz zmiany</Button>
+                        <Button type="submit" disabled={!form.formState.isDirty || form.formState.isSubmitting}>
+                            {form.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                            Zapisz zmiany
+                        </Button>
                     </div>
                 </form>
             </Form>
@@ -524,4 +562,3 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
   );
 }
 
-    
