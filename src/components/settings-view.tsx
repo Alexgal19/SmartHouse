@@ -6,12 +6,12 @@ import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useMainLayout } from '@/components/main-layout';
-import type { Settings, SessionData } from '@/types';
+import type { Settings, SessionData, Address } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Input } from '@/components/ui/input';
-import { Trash2, PlusCircle, Download, Upload, Loader2, FileWarning } from 'lucide-react';
+import { Trash2, PlusCircle, Download, Upload, Loader2, FileWarning, Edit } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
@@ -25,20 +25,6 @@ import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 
-
-const roomSchema = z.object({
-  id: z.string().min(1, 'ID pokoju jest wymagane.'),
-  name: z.string().min(1, 'Nazwa pokoju jest wymagana.'),
-  capacity: z.coerce.number().min(1, 'Pojemność musi być większa od 0.'),
-});
-
-const addressSchema = z.object({
-  id: z.string(),
-  name: z.string().min(1, 'Nazwa adresu jest wymagana.'),
-  coordinatorId: z.string().min(1, 'Koordynator jest wymagany.'),
-  rooms: z.array(roomSchema),
-});
-
 const coordinatorSchema = z.object({
     uid: z.string(),
     name: z.string().min(1, 'Imię jest wymagane.'),
@@ -50,7 +36,7 @@ const formSchema = z.object({
   nationalities: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
   departments: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
   genders: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
-  addresses: z.array(addressSchema),
+  addresses: z.array(z.any()), // Simplified for top-level form, validation will be in the dialog
   coordinators: z.array(coordinatorSchema),
 });
 
@@ -140,105 +126,47 @@ const CoordinatorManager = ({ form, fields, append, remove }: { form: any, field
   </div>
 );
 
-const AddressRoomsManager = ({ addressIndex, control }: { addressIndex: number; control: any; }) => {
-    const { fields, append, remove } = useFieldArray({
-        control,
-        name: `addresses.${addressIndex}.rooms`,
-    });
+const AddressManager = ({ form, onEdit, onRemove, onAdd }: { form: any; onEdit: (address: Address) => void; onRemove: (addressId: string) => void; onAdd: () => void; }) => {
+    const addresses: Address[] = useWatch({ control: form.control, name: 'addresses' });
+    const coordinators: {uid: string, name: string}[] = useWatch({ control: form.control, name: 'coordinators' });
+    const coordinatorMap = useMemo(() => new Map(coordinators.map(c => [c.uid, c.name])), [coordinators]);
 
     return (
-        <div className="pl-4 mt-2 space-y-2">
-            <div className="flex justify-between items-center">
-                <h4 className="text-sm font-medium">Pokoje</h4>
-                <Button type="button" size="sm" variant="outline" onClick={() => append({ id: `room-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`, name: '', capacity: 1 })}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Dodaj pokój
+        <div className="space-y-4 rounded-md border p-4">
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="font-medium">Adresy i pokoje</h3>
+                <Button type="button" variant="outline" size="sm" onClick={onAdd}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Dodaj adres
                 </Button>
             </div>
-            {fields.map((room, roomIndex) => (
-                <div key={room.id} className="flex items-center gap-2">
-                    <FormField
-                        control={control}
-                        name={`addresses.${addressIndex}.rooms.${roomIndex}.name`}
-                        render={({ field }) => (
-                            <FormItem className="flex-1">
-                                <FormControl><Input placeholder="Nazwa pokoju" {...field} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={control}
-                        name={`addresses.${addressIndex}.rooms.${roomIndex}.capacity`}
-                        render={({ field }) => (
-                            <FormItem className="w-28">
-                                <FormControl><Input type="number" placeholder="Pojemność" {...field} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(roomIndex)}>
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
+            {addresses && addresses.length > 0 ? (
+                <div className="space-y-2">
+                    {addresses.map((address) => (
+                        <div key={address.id} className="flex items-center justify-between rounded-lg border p-3">
+                            <div>
+                                <p className="font-semibold">{address.name}</p>
+                                <p className="text-sm text-muted-foreground">
+                                    {coordinatorMap.get(address.coordinatorId) || 'Brak koordynatora'}, {address.rooms.length} pokoi
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Button type="button" variant="ghost" size="icon" onClick={() => onEdit(address)}>
+                                    <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button type="button" variant="ghost" size="icon" onClick={() => onRemove(address.id)}>
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                            </div>
+                        </div>
+                    ))}
                 </div>
-            ))}
-            {fields.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Brak pokoi dla tego adresu.</p>}
+            ) : (
+                <p className="text-sm text-muted-foreground text-center py-2">Brak zdefiniowanych adresów.</p>
+            )}
         </div>
     );
 };
 
-const AddressManager = ({ form, fields, append, remove, coordinators }: { form: any; fields: any[]; append: any; remove: any; coordinators: any[] }) => {
-  return (
-    <div className="space-y-4 rounded-md border p-4">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="font-medium">Adresy i pokoje</h3>
-        <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `addr-${Date.now()}`, name: '', coordinatorId: '', rooms: [] })}>
-            <PlusCircle className="mr-2 h-4 w-4" /> Dodaj adres
-        </Button>
-      </div>
-      {fields.map((field, addressIndex) => (
-        <div key={field.id} className="space-y-3 rounded-lg border p-4">
-            <div className="flex items-center justify-between">
-                 <p className="font-semibold">{form.getValues(`addresses.${addressIndex}.name`) || `Nowy adres`}</p>
-                <Button type="button" variant="ghost" size="icon" onClick={() => remove(addressIndex)}>
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-            </div>
-
-          <FormField
-            control={form.control}
-            name={`addresses.${addressIndex}.name`}
-            render={({ field: nameField }) => (
-              <FormItem>
-                <FormLabel>Nazwa adresu</FormLabel>
-                <FormControl><Input {...nameField} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-           <FormField
-            control={form.control}
-            name={`addresses.${addressIndex}.coordinatorId`}
-            render={({ field: coordField }) => (
-                 <FormItem>
-                    <FormLabel>Przypisany koordynator</FormLabel>
-                    <Select onValueChange={coordField.onChange} defaultValue={coordField.value}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Wybierz koordynatora" /></SelectTrigger></FormControl>
-                    <SelectContent>
-                        {coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
-                    </SelectContent>
-                    </Select>
-                    <FormMessage />
-                </FormItem>
-            )}
-            />
-          
-            <AddressRoomsManager addressIndex={addressIndex} control={form.control} />
-        </div>
-      ))}
-       {fields.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Brak zdefiniowanych adresów.</p>}
-    </div>
-  );
-};
 
 const BulkActions = ({ currentUser, settings }: { currentUser: SessionData; settings: Settings }) => {
     const { handleBulkDeleteEmployees, handleBulkImport } = useMainLayout();
@@ -439,8 +367,7 @@ const ReportsGenerator = ({ settings, currentUser }: { settings: Settings; curre
 
 
 export default function SettingsView({ currentUser }: { currentUser: SessionData }) {
-  const { settings, handleUpdateSettings } = useMainLayout();
-  const { toast } = useToast();
+  const { settings, handleUpdateSettings, handleAddressFormOpen } = useMainLayout();
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -450,8 +377,8 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
   const { fields: natFields, append: appendNat, remove: removeNat } = useFieldArray({ control: form.control, name: 'nationalities' });
   const { fields: depFields, append: appendDep, remove: removeDep } = useFieldArray({ control: form.control, name: 'departments' });
   const { fields: genFields, append: appendGen, remove: removeGen } = useFieldArray({ control: form.control, name: 'genders' });
-  const { fields: addrFields, append: appendAddr, remove: removeAddr } = useFieldArray({ control: form.control, name: 'addresses' });
   const { fields: coordFields, append: appendCoord, remove: removeCoord } = useFieldArray({ control: form.control, name: 'coordinators' });
+  const { remove: removeAddr } = useFieldArray({ control: form.control, name: 'addresses' });
 
   React.useEffect(() => {
     if (settings) {
@@ -466,16 +393,27 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
   }, [settings, form]);
   
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
+    // The handleUpdateSettings function in main-layout now gets its data from the form's state directly
+    // This onSubmit only needs to trigger the update.
+    const currentValues = form.getValues();
     const newSettings: Partial<Settings> = {
-        nationalities: data.nationalities.map(n => n.value),
-        departments: data.departments.map(d => d.value),
-        genders: data.genders.map(d => d.value),
-        addresses: data.addresses,
-        coordinators: data.coordinators,
+        nationalities: currentValues.nationalities.map(n => n.value),
+        departments: currentValues.departments.map(d => d.value),
+        genders: currentValues.genders.map(d => d.value),
+        addresses: currentValues.addresses,
+        coordinators: currentValues.coordinators,
     };
     await handleUpdateSettings(newSettings);
-    form.reset(form.getValues()); // Resets the dirty state
+    form.reset(currentValues); // Resets the dirty state
   };
+
+  const handleRemoveAddress = (addressId: string) => {
+    const addresses = form.getValues('addresses');
+    const addressIndex = addresses.findIndex((a: Address) => a.id === addressId);
+    if (addressIndex > -1) {
+        removeAddr(addressIndex);
+    }
+  }
   
   if (!currentUser.isAdmin) {
       return (
@@ -527,7 +465,7 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
         <CardContent>
              <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                     <Accordion type="multiple" className="w-full">
+                     <Accordion type="single" collapsible className="w-full">
                         <AccordionItem value="lists">
                             <AccordionTrigger>Zarządzanie listami</AccordionTrigger>
                             <AccordionContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-2">
@@ -545,7 +483,12 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
                         <AccordionItem value="addresses">
                              <AccordionTrigger>Zarządzanie adresami</AccordionTrigger>
                              <AccordionContent className="p-2">
-                                <AddressManager form={form} fields={addrFields} append={appendAddr} remove={removeAddr} coordinators={form.watch('coordinators')} />
+                                <AddressManager 
+                                    form={form} 
+                                    onEdit={(address) => handleAddressFormOpen(address)} 
+                                    onAdd={() => handleAddressFormOpen(null)}
+                                    onRemove={handleRemoveAddress}
+                                />
                              </AccordionContent>
                         </AccordionItem>
                     </Accordion>

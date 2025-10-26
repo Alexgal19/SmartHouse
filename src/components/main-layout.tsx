@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/sidebar';
 import Header from '@/components/header';
 import { MobileNav } from '@/components/mobile-nav';
-import type { View, Notification, Employee, Settings, NonEmployee, Inspection, EquipmentItem, SessionData } from '@/types';
+import type { View, Notification, Employee, Settings, NonEmployee, Inspection, EquipmentItem, SessionData, Address } from '@/types';
 import { Building, ClipboardList, Home, Settings as SettingsIcon, Users, Archive } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { clearAllNotifications, markNotificationAsRead, getNotifications, getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getInspections, addInspection, updateInspection, deleteInspection, bulkDeleteEmployees, bulkImportEmployees, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee, deleteEmployee, checkAndUpdateEmployeeStatuses, getEquipment, addEquipment, updateEquipment, deleteEquipment, getAllData } from '@/lib/actions';
@@ -26,6 +26,7 @@ import { AddEmployeeForm, type EmployeeFormData } from '@/components/add-employe
 import { AddNonEmployeeForm } from '@/components/add-non-employee-form';
 import { InspectionForm } from './inspections-view';
 import { cn } from '@/lib/utils';
+import { AddressForm } from './address-form';
 
 const navItems: { view: View; icon: React.ElementType; label: string }[] = [
     { view: 'dashboard', icon: Home, label: 'Pulpit' },
@@ -65,6 +66,7 @@ type MainLayoutContextType = {
     handleRefreshStatuses: (showNoChangesToast?: boolean) => Promise<void>;
     handleEditInspectionClick: (inspection: Inspection) => void;
     handleAddInspectionClick: () => void;
+    handleAddressFormOpen: (address: Address | null) => void;
 };
 
 const MainLayoutContext = createContext<MainLayoutContextType | null>(null);
@@ -107,10 +109,12 @@ export default function MainLayout({
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isNonEmployeeFormOpen, setIsNonEmployeeFormOpen] = useState(false);
     const [isInspectionFormOpen, setIsInspectionFormOpen] = useState(false);
+    const [isAddressFormOpen, setIsAddressFormOpen] = useState(false);
 
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
     const [editingNonEmployee, setEditingNonEmployee] = useState<NonEmployee | null>(null);
     const [editingInspection, setEditingInspection] = useState<Inspection | null>(null);
+    const [editingAddress, setEditingAddress] = useState<Address | null>(null);
     
     const [selectedCoordinatorId, _setSelectedCoordinatorId] = useState(initialSession.isAdmin ? 'all' : initialSession.uid);
     
@@ -343,11 +347,12 @@ export default function MainLayout({
         try {
             await updateSettings(newSettings);
             toast({ title: "Sukces", description: "Ustawienia zostały zaktualizowane." });
+            await refreshData(false);
         } catch(e) {
             setSettings(originalSettings); // Revert on error
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać ustawień." });
         }
-    }, [settings, currentUser, toast]);
+    }, [settings, currentUser, toast, refreshData]);
     
     const handleAddInspection = useCallback(async (inspectionData: Omit<Inspection, 'id'>) => {
         try {
@@ -438,6 +443,24 @@ export default function MainLayout({
       setEditingNonEmployee(nonEmployee);
       setIsNonEmployeeFormOpen(true);
     }, []);
+
+    const handleAddressFormOpen = useCallback((address: Address | null) => {
+        setEditingAddress(address);
+        setIsAddressFormOpen(true);
+    }, []);
+
+    const handleSaveAddress = useCallback((addressData: Address) => {
+        if (!settings) return;
+        const newAddresses = [...settings.addresses];
+        const addressIndex = newAddresses.findIndex(a => a.id === addressData.id);
+
+        if (addressIndex > -1) {
+            newAddresses[addressIndex] = addressData;
+        } else {
+            newAddresses.push(addressData);
+        }
+        handleUpdateSettings({ addresses: newAddresses });
+    }, [settings, handleUpdateSettings]);
 
     const handleDismissEmployee = useCallback(async (employeeId: string) => {
         if (!currentUser) return false;
@@ -571,6 +594,7 @@ export default function MainLayout({
         handleRefreshStatuses,
         handleEditInspectionClick,
         handleAddInspectionClick,
+        handleAddressFormOpen,
     }), [
         allEmployees,
         allNonEmployees,
@@ -601,6 +625,7 @@ export default function MainLayout({
         handleRefreshStatuses,
         handleEditInspectionClick,
         handleAddInspectionClick,
+        handleAddressFormOpen,
     ]);
 
     if (isLoadingData) {
@@ -691,6 +716,15 @@ export default function MainLayout({
                     settings={settings}
                     currentUser={currentUser}
                     item={editingInspection}
+                />
+            )}
+            {settings && currentUser && (
+                <AddressForm
+                    isOpen={isAddressFormOpen}
+                    onOpenChange={setIsAddressFormOpen}
+                    onSave={handleSaveAddress}
+                    coordinators={settings.coordinators}
+                    address={editingAddress}
                 />
             )}
         </MainLayoutContext.Provider>
