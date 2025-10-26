@@ -1,148 +1,149 @@
 
+
+// This component represents the main header of the application.
+// It includes user information, notifications, and logout functionality.
+
 "use client";
 
-import type { User, View, Notification, Coordinator, SessionData } from "@/types";
+import React from 'react';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-
-import { Button } from "@/components/ui/button";
-import { Settings, UserCircle, Building, Bell, ArrowRight, LogOut, Trash2 } from "lucide-react";
-import { SidebarTrigger } from "./ui/sidebar";
-import { useSidebar } from "./ui/sidebar";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { Bell, CircleUser, Home, Settings, Users, ClipboardList, Archive, LogOut, Trash2 } from 'lucide-react';
+import type { SessionData, View, Notification } from '@/types';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatDistanceToNow } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { ScrollArea } from "./ui/scroll-area";
-import { cn } from "@/lib/utils";
-import React from "react";
+import { useMainLayout } from './main-layout';
+import { MobileSidebarToggle } from '@/components/ui/sidebar';
+import { Building } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-interface HeaderProps {
-  user: SessionData;
-  activeView: View;
-  notifications: Notification[];
-  onNotificationClick: (notification: Notification) => void;
-  onLogout: () => void;
-  onClearNotifications: () => void;
-}
 
 const viewTitles: Record<View, string> = {
   dashboard: 'Pulpit',
   employees: 'Pracownicy',
   settings: 'Ustawienia',
   inspections: 'Inspekcje',
-  equipment: 'Wyposażenie'
+  equipment: 'Wyposażenie',
+};
+
+const viewIcons: Record<View, React.ElementType> = {
+    dashboard: Home,
+    employees: Users,
+    settings: Settings,
+    inspections: ClipboardList,
+    equipment: Archive
 }
 
-export default function Header({ user, activeView, notifications, onNotificationClick, onLogout, onClearNotifications }: HeaderProps) {
-    const { isMobile, open } = useSidebar();
-    const locale = pl;
+const NotificationItem = ({ n, onClick }: {n: Notification, onClick: (n: Notification) => void}) => (
+    <div 
+        className={cn(
+            "p-3 rounded-lg -mx-2 flex items-start gap-4 transition-colors",
+            n.isRead ? 'opacity-70' : 'bg-primary/5',
+            n.employeeId && 'cursor-pointer hover:bg-primary/10'
+        )}
+        onClick={() => n.employeeId && onClick(n)}
+        role={n.employeeId ? "button" : "status"}
+    >
+        <div className="flex-shrink-0">
+             <div className={cn('h-2.5 w-2.5 rounded-full mt-1.5', n.isRead ? 'bg-muted-foreground' : 'bg-primary animate-pulse' )}></div>
+        </div>
+        <div>
+            <p className="text-sm font-medium leading-tight">{n.message}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+                 {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true, locale: pl })}
+            </p>
+        </div>
+    </div>
+)
 
+export default function Header({
+  user,
+  activeView,
+  notifications,
+  onNotificationClick,
+  onLogout,
+  onClearNotifications
+}: {
+  user: SessionData;
+  activeView: View;
+  notifications: Notification[];
+  onNotificationClick: (notification: Notification) => void;
+  onLogout: () => Promise<void>;
+  onClearNotifications: () => void;
+}) {
+    const { refreshData, handleRefreshStatuses } = useMainLayout();
+    const ActiveViewIcon = viewIcons[activeView] || Home;
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/95 px-4 backdrop-blur sm:px-6">
-      <div className="flex items-center gap-2 md:hidden">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/95 px-4 backdrop-blur-sm sm:px-6">
+        <MobileSidebarToggle />
+       <div className="flex items-center gap-2 text-foreground">
         <Building className="h-6 w-6 text-primary" />
-        <span className="font-semibold text-lg">SmartHouse</span>
+        <h1 className="text-xl font-semibold">SmartHouse</h1>
       </div>
-      <div className="flex items-center gap-4 flex-1">
-        {isMobile && <SidebarTrigger />}
-        <h1 className="text-xl font-semibold hidden md:block">{viewTitles[activeView]}</h1>
-      </div>
-
-      <div className="flex items-center justify-end gap-2">
-         <Popover>
-            <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative">
+      <div className="ml-auto flex items-center gap-2">
+        
+        <Sheet>
+            <SheetTrigger asChild>
+                 <Button variant="ghost" size="icon" className="relative text-foreground hover:bg-accent hover:text-accent-foreground">
                     <Bell className="h-5 w-5" />
-                    {unreadCount > 0 && (
-                        <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
-                           {unreadCount > 9 ? '9+' : unreadCount}
-                        </span>
-                    )}
-                    <span className="sr-only">Otwórz powiadomienia</span>
+                    {unreadCount > 0 && <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">{unreadCount}</span>}
                 </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-96 p-0">
-                <div className="p-4 flex items-center justify-between">
-                  <h4 className="font-medium text-sm">Powiadomienia</h4>
-                  {user.isAdmin && notifications.length > 0 && (
-                     <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Wyczyść wszystko
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Czy na pewno chcesz wyczyścić wszystkie powiadomienia?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Tej operacji nie można cofnąć.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Anuluj</AlertDialogCancel>
-                          <AlertDialogAction onClick={onClearNotifications}>Potwierdź</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  )}
-                </div>
-                <ScrollArea className="h-96">
-                  {notifications.length > 0 ? (
-                    notifications.map(notification => (
-                       <div key={notification.id} 
-                            onClick={() => onNotificationClick(notification)} 
-                            className={cn(
-                              "border-l-4 p-4 hover:bg-muted/50 cursor-pointer",
-                              notification.isRead ? 'border-transparent' : 'border-primary'
-                            )}
-                       >
-                           <p className="text-sm font-medium">{notification.message}</p>
-                           {notification.changes && notification.changes.length > 0 && (
-                             <div className="mt-2 space-y-1 text-xs">
-                                {notification.changes.map((change, index) => (
-                                  <div key={index} className="flex items-center gap-2">
-                                     <span className="font-semibold">{change.field}:</span>
-                                     <span className="text-muted-foreground line-through">{change.oldValue}</span>
-                                     <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                                     <span className="text-foreground">{change.newValue}</span>
-                                  </div>
-                                ))}
-                             </div>
-                           )}
-                           <p className="text-xs text-muted-foreground mt-2">
-                               {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true, locale })}
-                           </p>
-                       </div>
-                    ))
-                  ) : (
-                    <div className="text-center text-sm text-muted-foreground p-8">
-                      Brak nowych powiadomień.
+            </SheetTrigger>
+            <SheetContent className="w-full sm:max-w-md" side="right">
+                <SheetHeader className="flex-row justify-between items-center pr-6">
+                    <div>
+                        <SheetTitle>Powiadomienia</SheetTitle>
+                        <SheetDescription>Ostatnie zmiany w systemie.</SheetDescription>
                     </div>
-                  )}
+                     {notifications.length > 0 && user.isAdmin && (
+                        <Button variant="ghost" size="icon" onClick={onClearNotifications}>
+                            <Trash2 className="h-5 w-5 text-destructive" />
+                        </Button>
+                     )}
+                </SheetHeader>
+                <ScrollArea className="h-[calc(100vh-8rem)] pr-6">
+                    <div className="space-y-4 py-4">
+                    {notifications.length > 0 ? (
+                        notifications.map(n => <NotificationItem key={n.id} n={n} onClick={onNotificationClick} />)
+                    ) : (
+                        <div className="text-center text-muted-foreground py-12">Brak nowych powiadomień.</div>
+                    )}
+                    </div>
                 </ScrollArea>
-            </PopoverContent>
-        </Popover>
-         <Button variant="ghost" size="icon" onClick={onLogout}>
-            <LogOut className="h-5 w-5" />
-            <span className="sr-only">Wyloguj się</span>
-        </Button>
+            </SheetContent>
+        </Sheet>
+        
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="overflow-hidden rounded-full text-foreground hover:bg-accent hover:text-accent-foreground">
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>{user.name} ({user.isAdmin ? 'Admin' : 'Koordynator'})</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem disabled>Profil</DropdownMenuItem>
+            <DropdownMenuItem disabled>Wsparcie</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onLogout} className="text-destructive">
+                <LogOut className="mr-2 h-4 w-4" />
+                Wyloguj się
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );
 }
+

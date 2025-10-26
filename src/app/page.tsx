@@ -1,47 +1,14 @@
 
-"use client";
+import { redirect } from 'next/navigation';
+import LoginPage from './login/page';
+import { getSession } from '@/lib/auth';
 
-import React, { useState, useEffect } from 'react';
-import { LoginView } from "@/components/login-view";
-import type { Settings } from "@/types";
-import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
-import { login } from '@/lib/session';
+export default async function Home() {
+  const session = await getSession();
 
-export default function LoginPage() {
-    const { toast } = useToast();
-    const router = useRouter();
-    const [isLoading, setIsLoading] = useState(false);
-    const [loginError, setLoginError] = useState('');
-    const [name, setName] = useState('');
-    const [password, setPassword] = useState('');
-
-    const handleLogin = async (userName: string, userPassword?: string) => {
-        setIsLoading(true);
-        setLoginError('');
-        
-        const result = await login(userName, userPassword || '');
-        
-        if (result.success) {
-            router.push('/dashboard');
-        } else {
-            setLoginError(result.error || "Wystąpił nieznany błąd.");
-            setIsLoading(false);
-        }
-    };
-    
-    return (
-      <div className="relative h-screen w-full">
-        <LoginView 
-          onLogin={handleLogin} 
-          isLoading={isLoading} 
-          loginError={loginError} 
-          setLoginError={setLoginError}
-          name={name}
-          setName={setName}
-          password={password}
-          setPassword={setPassword}
-        />
-      </div>
-    );
+  if (session.isLoggedIn) {
+    redirect('/dashboard?view=employees');
+  } 
+  
+  return <LoginPage />;
 }

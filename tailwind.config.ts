@@ -1,4 +1,3 @@
-
 import type {Config} from 'tailwindcss';
 
 export default {
@@ -123,8 +122,8 @@ export default {
           '100%': { opacity: '1', transform: 'scale(1)' },
         },
          'pulse-text': {
-          '0%, 100%': { color: 'hsl(var(--primary) / 0.8)' },
-          '50%': { color: 'hsl(var(--primary))' },
+          '0%, 100%': { opacity: '0.1' },
+          '50%': { opacity: '0.3' },
         },
          "slide-in-from-bottom": {
           "0%": { transform: "translateY(100%)" },
@@ -135,8 +134,9 @@ export default {
           "100%": { transform: "translateY(100%)" },
         },
         'stroke-draw': {
-          '0%': { strokeDashoffset: '500' },
-          '100%': { strokeDashoffset: '0' },
+          to: {
+            strokeDashoffset: '0',
+          },
         },
       },
       animation: {
@@ -144,12 +144,12 @@ export default {
         'accordion-up': 'accordion-up 0.2s ease-out',
         'fade-in': 'fade-in 0.3s ease-in-out',
         'fade-out': 'fade-out 0.2s ease-out',
-        'fade-in-up': 'fade-in-up 0.5s ease-out forwards',
+        'fade-in-up': 'fade-in-up 1s ease-out forwards',
         'scale-in': 'scale-in 0.2s ease-out',
-        'pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'pulse-text': 'pulse-text 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         "slide-in-from-bottom": "slide-in-from-bottom 0.3s ease-out",
         "slide-out-to-bottom": "slide-out-to-bottom 0.3s ease-out",
-        'stroke-draw': 'stroke-draw 1.5s ease-out forwards',
+        'stroke-draw': 'stroke-draw 1s ease-out forwards',
       },
     },
   },

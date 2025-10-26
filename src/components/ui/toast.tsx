@@ -1,4 +1,3 @@
-"use client"
 
 import * as React from "react"
 import * as ToastPrimitives from "@radix-ui/react-toast"
@@ -124,6 +123,6 @@ export {
   Toast,
   ToastTitle,
   ToastDescription,
-  ToastClose,
   ToastAction,
+  ToastClose,
 }

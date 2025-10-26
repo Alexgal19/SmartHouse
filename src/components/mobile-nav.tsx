@@ -1,50 +1,48 @@
 
-"use client";
+// This component provides the mobile navigation bar at the bottom of the screen.
 
-import { Home, Users, Settings, ClipboardList, Archive } from "lucide-react";
-import { Button } from "./ui/button";
-import type { View, Coordinator, SessionData } from "@/types";
-import { useRouter } from "next/navigation";
-import { useCallback } from "react";
+"use client"
 
-interface MobileNavProps {
-  activeView: View;
-  navItems: { view: View; icon: React.ElementType; label: string }[];
-  currentUser: SessionData;
-}
+import Link from "next/link"
+import { Home, Users, Settings, ClipboardList, Archive } from "lucide-react"
+import type { View, SessionData } from "@/types"
+import { cn } from "@/lib/utils"
 
-
-export function MobileNav({ activeView, navItems, currentUser }: MobileNavProps) {
-    const router = useRouter();
-
-    const setActiveView = useCallback((view: View) => {
-        router.push(`/dashboard?view=${view}`);
-    }, [router]);
-
+export function MobileNav({ 
+    activeView, 
+    navItems,
+    currentUser
+}: { 
+    activeView: View; 
+    navItems: { view: View; icon: React.ElementType; label: string }[];
+    currentUser: SessionData;
+}) {
+    
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] border bg-card/80 backdrop-blur-xl p-2 rounded-2xl shadow-lg shadow-black/10 md:hidden">
-      <div className="grid h-full max-w-lg grid-cols-5 mx-auto">
-        {navItems.map((item) => {
-            const isDisabled = item.view === 'settings' && !currentUser.isAdmin;
-            return (
-              <Button
-                key={item.view}
-                variant="ghost"
-                size="sm"
-                disabled={isDisabled}
-                className={`flex flex-col h-auto p-2 rounded-xl text-xs ${
-                  activeView === item.view
-                    ? "text-primary bg-primary/10"
-                    : "text-muted-foreground"
-                } ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                onClick={() => setActiveView(item.view)}
-              >
-                <item.icon className="h-6 w-6 mb-1" />
-                <span>{item.label}</span>
-              </Button>
-            )
-        })}
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 backdrop-blur-sm sm:hidden shadow-[0_-2px_10px_-3px_rgba(0,0,0,0.1)]">
+      <div className="grid h-16 grid-cols-5 items-center justify-center text-xs">
+        {navItems.map((item) => (
+          <Link
+            key={item.view}
+            href={`/dashboard?view=${item.view}`}
+            className={cn(
+              "flex flex-col items-center gap-1 p-2",
+              activeView === item.view
+                ? "font-semibold text-primary"
+                : "text-muted-foreground",
+               (item.view === 'settings' && !currentUser?.isAdmin) ? "pointer-events-none opacity-50" : ""
+            )}
+          >
+            <div className={cn(
+                "flex items-center justify-center p-2 rounded-lg",
+                activeView === item.view && "bg-primary/10"
+            )}>
+              <item.icon className="h-5 w-5" />
+            </div>
+            {item.label}
+          </Link>
+        ))}
       </div>
     </div>
-  );
+  )
 }

@@ -2,15 +2,15 @@
 
 "use server";
 
-import type { Employee, Settings, Notification, Coordinator, NotificationChange, HousingAddress, Room, Inspection, NonEmployee, DeductionReason, EquipmentItem } from '@/types';
-import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getInspectionsFromSheet, getNonEmployeesFromSheet, getEquipmentFromSheet } from '@/lib/sheets';
-import { format, isEqual, isPast, isValid, parse, startOfMonth, endOfMonth, differenceInDays, min, max } from 'date-fns';
+import type { Employee, Settings, Notification, NotificationChange, Room, Inspection, NonEmployee, DeductionReason, EquipmentItem, TemporaryAccess } from '@/types';
+import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getInspectionsFromSheet, getNonEmployeesFromSheet, getEquipmentFromSheet, getAllSheetsData } from './sheets';
+import { format, isPast, isValid, parse, startOfMonth, endOfMonth, differenceInDays, min, max } from 'date-fns';
 import * as XLSX from 'xlsx';
-import { getSession } from './session';
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
 const SHEET_NAME_NON_EMPLOYEES = 'NonEmployees';
 const SHEET_NAME_NOTIFICATIONS = 'Powiadomienia';
+const SHEET_NAME_AUDIT_LOG = 'AuditLog';
 const SHEET_NAME_ADDRESSES = 'Addresses';
 const SHEET_NAME_ROOMS = 'Rooms';
 const SHEET_NAME_NATIONALITIES = 'Nationalities';
@@ -20,7 +20,6 @@ const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_INSPECTIONS = 'Inspections';
 const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 const SHEET_NAME_EQUIPMENT = 'Equipment';
-
 
 const serializeDate = (date?: string | null): string => {
     if (!date) {
@@ -43,23 +42,25 @@ const EMPLOYEE_HEADERS = [
 const serializeEmployee = (employee: Partial<Employee>): Record<string, string | number | boolean> => {
     const serialized: Record<string, any> = {};
 
-    EMPLOYEE_HEADERS.forEach(key => {
+    for (const key of EMPLOYEE_HEADERS) {
         const typedKey = key as keyof Employee;
-        let value = employee[typedKey];
+        const value = employee[typedKey];
+        
+        if (value === undefined || value === null) {
+            serialized[key] = '';
+            continue;
+        }
 
         if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'addressChangeDate'].includes(key)) {
             serialized[key] = serializeDate(value as string);
         } else if (key === 'deductionReason') {
             serialized[key] = Array.isArray(value) ? JSON.stringify(value) : '';
-        }
-         else if (typeof value === 'boolean') {
+        } else if (typeof value === 'boolean') {
             serialized[key] = String(value).toUpperCase();
-        } else if (value !== null && value !== undefined) {
-            serialized[key] = value;
         } else {
-            serialized[key] = '';
+            serialized[key] = value;
         }
-    });
+    }
 
     return serialized;
 };
@@ -105,8 +106,6 @@ const serializeEquipment = (item: Partial<EquipmentItem>): Record<string, string
     };
 };
 
-
-
 const NON_EMPLOYEE_HEADERS = [
     'id', 'fullName', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'comments'
 ];
@@ -117,6 +116,8 @@ const EQUIPMENT_HEADERS = [
 
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
 const ADDRESS_HEADERS = ['id', 'name', 'coordinatorId'];
+const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targetType', 'targetId', 'details'];
+
 
 const safeFormat = (dateStr: string | undefined | null): string | null => {
     if (!dateStr) return null;
@@ -180,13 +181,23 @@ const deserializeEmployee = (row: any): Employee | null => {
     return newEmployee;
 };
 
+export async function getAllData() {
+    try {
+        const allData = await getAllSheetsData();
+        return allData;
+    } catch (error: unknown) {
+        console.error("Error in getAllData (actions):", error);
+        throw new Error(error instanceof Error ? error.message : "Failed to get all data.");
+    }
+}
+
 export async function getEmployees(coordinatorId?: string): Promise<Employee[]> {
     try {
         const employees = await getEmployeesFromSheet(coordinatorId);
         return employees;
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error in getEmployees (actions):", error);
-        throw new Error(error.message || "Failed to get employees.");
+        throw new Error(error instanceof Error ? error.message : "Failed to get employees.");
     }
 }
 
@@ -194,19 +205,19 @@ export async function getNonEmployees(): Promise<NonEmployee[]> {
   try {
      const nonEmployees = await getNonEmployeesFromSheet();
      return nonEmployees;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in getNonEmployees (actions):", error);
-    throw new Error(error.message || "Failed to get non-employees.");
+    throw new Error(error instanceof Error ? error.message : "Failed to get non-employees.");
   }
 }
 
-export async function getEquipment(): Promise<EquipmentItem[]> {
+export async function getEquipment(coordinatorId?: string): Promise<EquipmentItem[]> {
   try {
-     const equipment = await getEquipmentFromSheet();
+     const equipment = await getEquipmentFromSheet(coordinatorId);
      return equipment;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in getEquipment (actions):", error);
-    throw new Error(error.message || "Failed to get equipment.");
+    throw new Error(error instanceof Error ? error.message : "Failed to get equipment.");
   }
 }
 
@@ -215,11 +226,28 @@ export async function getSettings(): Promise<Settings> {
     try {
         const settings = await getSettingsFromSheet();
         return settings;
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error in getSettings (actions):", error);
-        throw new Error(error.message || "Failed to get settings.");
+        throw new Error(error instanceof Error ? error.message : "Failed to get settings.");
     }
 }
+
+const writeToAuditLog = async (actorId: string, actorName: string, action: string, targetType: string, targetId: string, details: any) => {
+    try {
+        const sheet = await getSheet(SHEET_NAME_AUDIT_LOG, AUDIT_LOG_HEADERS);
+        await sheet.addRow({
+            timestamp: new Date().toISOString(),
+            actorId,
+            actorName,
+            action,
+            targetType,
+            targetId,
+            details: JSON.stringify(details),
+        }, { raw: false, insert: true });
+    } catch (e: unknown) {
+        console.error("Failed to write to audit log:", e instanceof Error ? e.message : "Unknown error");
+    }
+};
 
 const createNotification = async (
     actorUid: string,
@@ -231,7 +259,7 @@ const createNotification = async (
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
         const coordSheet = await getSheet(SHEET_NAME_COORDINATORS, ['uid', 'name']);
         const coordRows = await coordSheet.getRows({ limit: 100 });
-        const actor = coordRows.find(r => r.get('uid') === actorUid)?.toObject();
+        const actor = coordRows.find((r: { get: (arg0: string) => string; }) => r.get('uid') === actorUid)?.toObject();
         
         if (!actor) {
             console.error(`Could not find actor with uid ${actorUid} to create notification.`);
@@ -253,8 +281,12 @@ const createNotification = async (
         };
 
         await sheet.addRow(serializeNotification(newNotification), { raw: false, insert: true });
-    } catch (e: any) {
-        console.error("Could not create notification:", e.message);
+        
+        // Also write to the audit log
+        await writeToAuditLog(actor.uid, actor.name, action, 'employee', employee.id, changes);
+
+    } catch (e: unknown) {
+        console.error("Could not create notification:", e instanceof Error ? e.message : "Unknown error");
     }
 };
 
@@ -291,9 +323,9 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
         await sheet.addRow(serialized, { raw: false, insert: true });
         
         await createNotification(actorUid, 'dodał', newEmployee);
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error("Error adding employee:", e);
-        throw new Error(e.message || "Failed to add employee.");
+        throw new Error(e instanceof Error ? e.message : "Failed to add employee.");
     }
 }
 
@@ -302,7 +334,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows({ limit: 2000 });
-        const rowIndex = rows.findIndex(row => row.get('id') === employeeId);
+        const rowIndex = rows.findIndex((row: { get: (arg0: string) => string; }) => row.get('id') === employeeId);
 
         if (rowIndex === -1) {
             throw new Error('Employee not found');
@@ -316,7 +348,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         }
         
         const changes: NotificationChange[] = [];
-        const updatedEmployeeData = { ...originalEmployee, ...updates };
+        const updatedEmployeeData: Employee = { ...originalEmployee, ...updates };
 
         for (const key in updates) {
             const typedKey = key as keyof Employee;
@@ -327,10 +359,10 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
 
             let oldValStr: string | null = null;
             if (oldValue !== null && oldValue !== undefined) {
-                if (areDates && isValid(new Date(oldValue as string))) {
-                    oldValStr = format(new Date(oldValue as string), 'dd-MM-yyyy');
-                } else if (Array.isArray(oldValue)) {
+                 if (key === 'deductionReason') {
                     oldValStr = JSON.stringify(oldValue);
+                } else if (areDates && isValid(new Date(oldValue as string))) {
+                    oldValStr = format(new Date(oldValue as string), 'dd-MM-yyyy');
                 } else {
                     oldValStr = String(oldValue);
                 }
@@ -338,10 +370,10 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
 
             let newValStr: string | null = null;
             if (newValue !== null && newValue !== undefined) {
-                if (areDates && isValid(new Date(newValue as string))) {
-                    newValStr = format(new Date(newValue as string), 'dd-MM-yyyy');
-                } else if (Array.isArray(newValue)) {
+                 if (key === 'deductionReason') {
                     newValStr = JSON.stringify(newValue);
+                } else if (areDates && isValid(new Date(newValue as string))) {
+                    newValStr = format(new Date(newValue as string), 'dd-MM-yyyy');
                 } else {
                     newValStr = String(newValue);
                 }
@@ -363,9 +395,33 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
             await createNotification(actorUid, 'zaktualizował', originalEmployee, changes);
         }
 
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error("Error updating employee:", e);
-        throw new Error(e.message || "Failed to update employee.");
+        throw new Error(e instanceof Error ? e.message : "Failed to update employee.");
+    }
+}
+
+export async function deleteEmployee(employeeId: string, actorUid: string): Promise<void> {
+    try {
+        const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
+        const rows = await sheet.getRows({ limit: 2000 });
+        const row = rows.find((r: { get: (arg0: string) => string; }) => r.get('id') === employeeId);
+
+        if (!row) {
+            throw new Error('Employee not found for deletion.');
+        }
+
+        const employeeToDelete = deserializeEmployee(row.toObject());
+
+        await row.delete();
+
+        if (employeeToDelete) {
+             await createNotification(actorUid, 'trwale usunął', employeeToDelete);
+        }
+
+    } catch (e: unknown) {
+        console.error("Error deleting employee:", e);
+        throw new Error(e instanceof Error ? e.message : "Failed to delete employee.");
     }
 }
 
@@ -384,9 +440,9 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>): 
 
         const serialized = serializeNonEmployee(newNonEmployee);
         await sheet.addRow(serialized, { raw: false, insert: true });
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error("Error adding non-employee:", e);
-        throw new Error(e.message || "Failed to add non-employee.");
+        throw new Error(e instanceof Error ? e.message : "Failed to add non-employee.");
     }
 }
 
@@ -394,7 +450,7 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
      try {
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
         const rows = await sheet.getRows({ limit: 1000 });
-        const rowIndex = rows.findIndex(row => row.get('id') === id);
+        const rowIndex = rows.findIndex((row: { get: (arg0: string) => string; }) => row.get('id') === id);
 
         if (rowIndex === -1) {
             throw new Error('Non-employee not found');
@@ -407,9 +463,9 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
         }
         await row.save();
 
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error("Error updating non-employee:", e);
-        throw new Error(e.message || "Failed to update non-employee.");
+        throw new Error(e instanceof Error ? e.message : "Failed to update non-employee.");
     }
 }
 
@@ -417,15 +473,15 @@ export async function deleteNonEmployee(id: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
         const rows = await sheet.getRows({ limit: 1000 });
-        const row = rows.find(row => row.get('id') === id);
+        const row = rows.find((row: { get: (arg0: string) => string; }) => row.get('id') === id);
         if (row) {
             await row.delete();
         } else {
             throw new Error('Non-employee not found');
         }
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error("Error deleting non-employee:", e);
-        throw new Error(e.message || "Failed to delete non-employee.");
+        throw new Error(e instanceof Error ? e.message : "Failed to delete non-employee.");
     }
 }
 
@@ -438,9 +494,9 @@ export async function addEquipment(itemData: Omit<EquipmentItem, 'id'>): Promise
         };
         const serialized = serializeEquipment(newItem);
         await sheet.addRow(serialized, { raw: false, insert: true });
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error("Error adding equipment:", e);
-        throw new Error(e.message || "Failed to add equipment.");
+        throw new Error(e instanceof Error ? e.message : "Failed to add equipment.");
     }
 }
 
@@ -448,16 +504,16 @@ export async function updateEquipment(id: string, updates: Partial<EquipmentItem
     try {
         const sheet = await getSheet(SHEET_NAME_EQUIPMENT, EQUIPMENT_HEADERS);
         const rows = await sheet.getRows({ limit: 2000 });
-        const row = rows.find(r => r.get('id') === id);
+        const row = rows.find((r: { get: (arg0: string) => string; }) => r.get('id') === id);
         if (!row) throw new Error("Equipment not found");
         
         for (const key in updates) {
             row.set(key, (updates as any)[key]);
         }
         await row.save();
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error("Error updating equipment:", e);
-        throw new Error(e.message || "Failed to update equipment.");
+        throw new Error(e instanceof Error ? e.message : "Failed to update equipment.");
     }
 }
 
@@ -465,53 +521,45 @@ export async function deleteEquipment(id: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_EQUIPMENT, EQUIPMENT_HEADERS);
         const rows = await sheet.getRows({ limit: 2000 });
-        const row = rows.find(r => r.get('id') === id);
+        const row = rows.find((r: { get: (arg0: string) => string; }) => r.get('id') === id);
         if (row) {
             await row.delete();
         } else {
             throw new Error("Equipment not found");
         }
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error("Error deleting equipment:", e);
-        throw new Error(e.message || "Failed to delete equipment.");
+        throw new Error(e instanceof Error ? e.message : "Failed to delete equipment.");
     }
 }
 
 
-export async function bulkDeleteEmployees(status: 'active' | 'dismissed', actorUid: string): Promise<void> {
+export async function bulkDeleteEmployees(status: 'active' | 'dismissed', _actorUid: string): Promise<void> {
     try {
-        const session = await getSession();
-        if (!session.isAdmin) {
-             throw new Error("Only admins can bulk delete employees.");
-        }
-    
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows({ limit: 2000 });
-        const rowsToDelete = rows.filter(row => row.get('status') === status);
+        const rowsToDelete = rows.filter((row: { get: (arg0: string) => string; }) => row.get('status') === status);
         
         if (rowsToDelete.length === 0) {
             return;
         }
 
-        // Deleting rows in reverse order to avoid issues with sheet indices
+        // Deleting rows in reverse order is a good practice to avoid index shifting issues,
+        // although google-spreadsheet library might handle this, it's a safe bet.
         for (let i = rowsToDelete.length - 1; i >= 0; i--) {
             await rowsToDelete[i].delete();
         }
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error("Error bulk deleting employees:", e);
-        throw new Error(e.message || "Failed to bulk delete employees.");
+        throw new Error(e instanceof Error ? e.message : "Failed to bulk delete employees.");
     }
 }
 
-export async function transferEmployees(fromCoordinatorId: string, toCoordinatorId: string, actor: Coordinator): Promise<void> {
+export async function transferEmployees(fromCoordinatorId: string, toCoordinatorId: string): Promise<void> {
     try {
-        if (!actor?.isAdmin) {
-            throw new Error("Only admins can transfer employees.");
-        }
-    
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows({ limit: 2000 });
-        const rowsToTransfer = rows.filter(row => row.get('coordinatorId') === fromCoordinatorId);
+        const rowsToTransfer = rows.filter((row: { get: (arg0: string) => string; }) => row.get('coordinatorId') === fromCoordinatorId);
 
         if (rowsToTransfer.length === 0) {
             return;
@@ -527,9 +575,9 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
             row.set('coordinatorId', toCoordinatorId);
             await row.save();
         }
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error("Error transferring employees:", e);
-        throw new Error(e.message || "Failed to transfer employees.");
+        throw new Error(e instanceof Error ? e.message : "Failed to transfer employees.");
     }
 }
 
@@ -563,13 +611,13 @@ export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<
             }
         }
         return { updated: updatedCount };
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error("Error updating statuses:", e);
-        throw new Error(e.message || "Failed to update statuses.");
+        throw new Error(e instanceof Error ? e.message : "Failed to update statuses.");
     }
 }
 
-export async function updateSettings(newSettings: Partial<Settings>): Promise<void> {
+export async function updateSettings(newSettings: Partial<Omit<Settings, 'temporaryAccess'>>): Promise<void> {
     const updateSimpleList = async (sheetName: string, items: string[]) => {
         const sheet = await getSheet(sheetName, ['name']);
         await sheet.clearRows();
@@ -592,27 +640,19 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
             const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ADDRESS_HEADERS);
             const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity']);
             
-            const coordinatorsSheet = await getSheet(SHEET_NAME_COORDINATORS, ['uid', 'name']);
-            const coordinatorRows = await coordinatorsSheet.getRows({ limit: 100 });
-            const coordinator = coordinatorRows.find(row => row.get('name') === 'Holiadynets Oleksandr');
-            const coordinatorId = coordinator ? coordinator.get('uid') : null;
-
-            const addressesToUpdate = newSettings.addresses.map(addr => {
-                if (!addr.coordinatorId && coordinatorId) {
-                    addr.coordinatorId = coordinatorId;
-                }
-                return addr;
-            });
-            
             await addressesSheet.clearRows();
             await roomsSheet.clearRows();
 
             const allRooms: (Room & {addressId: string})[] = [];
-            const addressesData = addressesToUpdate.map(addr => {
+            const addressesData = newSettings.addresses.map(addr => {
                 addr.rooms.forEach(room => {
                     allRooms.push({ ...room, addressId: addr.id });
                 });
-                return { id: addr.id, name: addr.name, coordinatorId: addr.coordinatorId || '' };
+                return { 
+                    id: addr.id, 
+                    name: addr.name, 
+                    coordinatorId: addr.coordinatorId 
+                };
             });
 
             if (addressesData.length > 0) {
@@ -632,9 +672,10 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
                 })), { raw: false, insert: true });
              }
         }
-    } catch (error: any) {
+
+    } catch (error: unknown) {
         console.error("Error updating settings:", error);
-        throw new Error(error.message || "Failed to update settings.");
+        throw new Error(error instanceof Error ? error.message : "Failed to update settings.");
     }
 }
 
@@ -643,9 +684,9 @@ export async function getNotifications(): Promise<Notification[]> {
     try {
         const notifications = await getNotificationsFromSheet();
         return notifications;
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error in getNotifications (actions):", error);
-        throw new Error(error.message || "Failed to get notifications.");
+        throw new Error(error instanceof Error ? error.message : "Failed to get notifications.");
     }
 }
 
@@ -653,13 +694,13 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
     try {
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
         const rows = await sheet.getRows({ limit: 200 });
-        const row = rows.find(r => r.get('id') === notificationId);
+        const row = rows.find((r: { get: (arg0: string) => string; }) => r.get('id') === notificationId);
         if (row) {
             row.set('isRead', 'TRUE');
             await row.save();
         }
-    } catch (e: any) {
-        console.error("Could not mark notification as read:", e.message);
+    } catch (e: unknown) {
+        console.error("Could not mark notification as read:", e instanceof Error ? e.message : "Unknown error");
     }
 }
 
@@ -667,9 +708,9 @@ export async function clearAllNotifications(): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
         await sheet.clearRows();
-    } catch (e: any) {
-        console.error("Could not clear notifications:", e.message);
-        throw new Error(e.message || "Failed to clear notifications.");
+    } catch (e: unknown) {
+        console.error("Could not clear notifications:", e);
+        throw new Error(e instanceof Error ? e.message : "Failed to clear notifications.");
     }
 }
 
@@ -678,9 +719,9 @@ export async function getInspections(coordinatorId?: string): Promise<Inspection
     try {
         const inspections = await getInspectionsFromSheet(coordinatorId);
         return inspections;
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error in getInspections (actions):", error);
-        throw new Error(error.message || "Failed to get inspections.");
+        throw new Error(error instanceof Error ? error.message : "Failed to get inspections.");
     }
 }
 
@@ -750,9 +791,9 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
         if (detailRows.length > 0) {
             await detailsSheet.addRows(detailRows, { raw: false, insert: true });
         }
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error("Error adding inspection:", e);
-        throw new Error(e.message || "Failed to add inspection.");
+        throw new Error(e instanceof Error ? e.message : "Failed to add inspection.");
     }
 }
 
@@ -762,7 +803,7 @@ export async function updateInspection(id: string, inspectionData: Omit<Inspecti
         const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, ['id', 'inspectionId', 'addressName', 'date', 'coordinatorName', 'category', 'itemLabel', 'itemValue', 'uwagi', 'photoData']);
         
         const inspectionRows = await inspectionsSheet.getRows({ limit: 1000 });
-        const inspectionRow = inspectionRows.find(r => r.get('id') === id);
+        const inspectionRow = inspectionRows.find((r: { get: (arg0: string) => string; }) => r.get('id') === id);
         if (!inspectionRow) throw new Error("Inspection not found");
         
         const dateString = inspectionData.date;
@@ -775,7 +816,7 @@ export async function updateInspection(id: string, inspectionData: Omit<Inspecti
         await inspectionRow.save();
 
         const detailRows = await detailsSheet.getRows({ limit: 5000 });
-        const oldDetailRows = detailRows.filter(r => r.get('inspectionId') === id);
+        const oldDetailRows = detailRows.filter((r: { get: (arg0: string) => string; }) => r.get('inspectionId') === id);
         for (let i = oldDetailRows.length - 1; i >= 0; i--) {
             await oldDetailRows[i].delete();
         }
@@ -828,9 +869,9 @@ export async function updateInspection(id: string, inspectionData: Omit<Inspecti
         if (newDetailRows.length > 0) {
             await detailsSheet.addRows(newDetailRows, { raw: false, insert: true });
         }
-    } catch(e: any) {
+    } catch(e: unknown) {
         console.error("Error updating inspection:", e);
-        throw new Error(e.message || "Failed to update inspection.");
+        throw new Error(e instanceof Error ? e.message : "Failed to update inspection.");
     }
 }
 
@@ -840,25 +881,25 @@ export async function deleteInspection(id: string): Promise<void> {
         const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, ['inspectionId']);
 
         const inspectionRows = await inspectionsSheet.getRows({ limit: 1000 });
-        const inspectionRow = inspectionRows.find(r => r.get('id') === id);
+        const inspectionRow = inspectionRows.find((r: { get: (arg0: string) => string; }) => r.get('id') === id);
         if (inspectionRow) {
             await inspectionRow.delete();
         }
 
         const detailRows = await detailsSheet.getRows({ limit: 5000 });
-        const oldDetailRows = detailRows.filter(r => r.get('inspectionId') === id);
+        const oldDetailRows = detailRows.filter((r: { get: (arg0: string) => string; }) => r.get('inspectionId') === id);
         for (let i = oldDetailRows.length - 1; i >= 0; i--) {
             await oldDetailRows[i].delete();
         }
-    } catch(e: any) {
+    } catch(e: unknown) {
          console.error("Error deleting inspection:", e);
-         throw new Error(e.message || "Failed to delete inspection.");
+         throw new Error(e instanceof Error ? e.message : "Failed to delete inspection.");
     }
 }
 
-const parseAndFormatDate = (dateValue: any): string | null => {
+const parseAndFormatDate = (dateValue: any): string => {
     if (dateValue === null || dateValue === undefined || dateValue === '') {
-        return null;
+        return '';
     }
     if (dateValue instanceof Date && isValid(dateValue)) {
          return format(dateValue, 'yyyy-MM-dd');
@@ -878,25 +919,20 @@ const parseAndFormatDate = (dateValue: any): string | null => {
             return format(isoDate, 'yyyy-MM-dd');
         }
     }
-    return null;
+    return '';
 };
 
 
-export async function bulkImportEmployees(fileData: ArrayBuffer): Promise<{success: boolean, message: string}> {
+export async function bulkImportEmployees(fileData: ArrayBuffer, actorUid: string): Promise<{success: boolean, message: string}> {
     try {
-        const session = await getSession();
-        if (!session.isLoggedIn || !session.isAdmin) {
-            return { success: false, message: "Brak uprawnień do importu." };
-        }
-        
         const settings = await getSettings();
         
         const workbook = XLSX.read(fileData, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const json: any[] = XLSX.utils.sheet_to_json(worksheet, { raw: false });
+        const json: any[] = XLSX.utils.sheet_to_json(worksheet, { raw: false, defval: null });
 
-        const requiredHeaders = ['fullName', 'coordinatorName', 'nationality', 'gender', 'address', 'roomNumber', 'zaklad', 'checkInDate'];
+        const requiredHeaders = ['fullName', 'coordinatorName', 'nationality', 'gender', 'address', 'roomNumber', 'zaklad'];
         const headers = Object.keys(json[0] || {});
         
         const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
@@ -907,46 +943,33 @@ export async function bulkImportEmployees(fileData: ArrayBuffer): Promise<{succe
         const employeesToAdd: (Partial<Employee>)[] = [];
         
         for (const row of json) {
-            const coordinator = settings.coordinators.find(c => c.name.toLowerCase() === String(row.coordinatorName).toLowerCase());
-            if (!coordinator) {
-                console.warn(`Koordynator "${row.coordinatorName}" nie znaleziony, pomijanie pracownika ${row.fullName}.`);
-                continue;
-            }
-
-            const checkInDate = parseAndFormatDate(row.checkInDate);
+            const coordinator = row.coordinatorName ? settings.coordinators.find(c => c.name.toLowerCase() === String(row.coordinatorName).toLowerCase()) : null;
             
-             if (!checkInDate) {
-                console.warn(`Nieprawidłowa або pusta data zameldowania dla ${row.fullName}, pomijanie.`);
-                continue;
-            }
-
             const employee: Partial<Employee> = {
-                fullName: String(row.fullName),
-                coordinatorId: coordinator.uid,
-                nationality: String(row.nationality),
-                gender: String(row.gender),
-                address: String(row.address),
-                roomNumber: String(row.roomNumber),
-                zaklad: String(row.zaklad),
-                checkInDate,
-                contractStartDate: parseAndFormatDate(row.contractStartDate),
-                contractEndDate: parseAndFormatDate(row.contractEndDate),
-                departureReportDate: parseAndFormatDate(row.departureReportDate),
+                fullName: row.fullName ? String(row.fullName) : '',
+                coordinatorId: coordinator ? coordinator.uid : '',
+                nationality: row.nationality ? String(row.nationality) : '',
+                gender: row.gender ? String(row.gender) : '',
+                address: row.address ? String(row.address) : '',
+                roomNumber: row.roomNumber ? String(row.roomNumber) : '',
+                zaklad: row.zaklad ? String(row.zaklad) : '',
+                checkInDate: parseAndFormatDate(row.checkInDate),
+                contractStartDate: parseAndFormatDate(row.contractStartDate) || undefined,
+                contractEndDate: parseAndFormatDate(row.contractEndDate) || undefined,
+                departureReportDate: parseAndFormatDate(row.departureReportDate) || undefined,
                 comments: row.comments ? String(row.comments) : undefined,
             };
             employeesToAdd.push(employee);
         }
         
-        const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        const newRows = employeesToAdd.map(emp => serializeEmployee({ ...emp, id: `emp-${Date.now()}-${Math.random()}`, status: 'active' }));
-        if (newRows.length > 0) {
-            await sheet.addRows(newRows, { raw: false, insert: true });
+        for (const emp of employeesToAdd) {
+            await addEmployee(emp, actorUid);
         }
 
         return { success: true, message: `Pomyślnie заimportowano ${employeesToAdd.length} pracowników.` };
 
-    } catch (e: any) {
-         return { success: false, message: e.message || "Wystąpił неznany błąd podczas przetwarzania pliku." };
+    } catch (e: unknown) {
+         return { success: false, message: e instanceof Error ? e.message : "Wystąpił nieznany błąd podczas przetwarzania pliku." };
     }
 }
 
@@ -1014,7 +1037,8 @@ export async function generateMonthlyReport(year: number, month: number, coordin
 
         // Housing Sheet (new)
         if (coordinatorId && coordinatorId !== 'all') {
-            const coordinatorAddresses = settings.addresses.filter(a => a.coordinatorId === coordinatorId);
+            const { addresses } = await getSettingsFromSheet();
+            const coordinatorAddresses = addresses.filter(addr => addr.coordinatorId === coordinatorId);
             const housingHeaders = ["Adres", "Liczba pokoi", "Całkowita pojemność", "Zajęte miejsca", "Wolne miejsca"];
             const housingData = coordinatorAddresses.map(addr => {
                 const totalCapacity = addr.rooms.reduce((sum, room) => sum + room.capacity, 0);
@@ -1038,9 +1062,9 @@ export async function generateMonthlyReport(year: number, month: number, coordin
 
         return { success: true, fileContent, fileName };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error generating monthly report:", error);
-        throw new Error(error.message || "An unknown error occurred during report generation.");
+        throw new Error(error instanceof Error ? error.message : "An unknown error occurred during report generation.");
     }
 }
 
@@ -1061,7 +1085,6 @@ export async function generateAccommodationReport(year: number, month: number, c
         const reportData: { employeeName: string; address: string; days: number; month: string, coordinatorName: string }[] = [];
 
         for (const employee of allEmployees) {
-            // **CRITICAL CHECK**: Skip employee if checkInDate is invalid or missing
             if (!employee.checkInDate || !isValid(new Date(employee.checkInDate))) {
                 continue; 
             }
@@ -1071,7 +1094,6 @@ export async function generateAccommodationReport(year: number, month: number, c
             const addressChangeDate = employee.addressChangeDate && isValid(new Date(employee.addressChangeDate)) ? new Date(employee.addressChangeDate) : null;
             const employeeCoordinatorName = coordinatorMap.get(employee.coordinatorId) || 'Nieznany';
 
-            // Skip employee if their entire stay is outside the report month
             if (checkInDate > monthEndDate || (checkOutDate && checkOutDate < monthStartDate)) {
                 continue;
             }
@@ -1079,9 +1101,7 @@ export async function generateAccommodationReport(year: number, month: number, c
             const reportMonthStr = format(monthStartDate, 'yyyy-MM');
 
             if (addressChangeDate && addressChangeDate > monthStartDate && addressChangeDate <= monthEndDate && employee.oldAddress) {
-                // Case 1: Address changed within the report month.
                 
-                // Days at OLD address
                 const oldAddressStartDate = max([monthStartDate, checkInDate]);
                 const oldAddressEndDate = min([addressChangeDate, ...(checkOutDate ? [checkOutDate] : []), monthEndDate]);
                 if (oldAddressStartDate < oldAddressEndDate) {
@@ -1097,7 +1117,6 @@ export async function generateAccommodationReport(year: number, month: number, c
                     }
                 }
                 
-                // Days at NEW address
                 const newAddressStartDate = addressChangeDate;
                 const newAddressEndDate = min([monthEndDate, ...(checkOutDate ? [checkOutDate] : [])]);
                  if (newAddressStartDate <= newAddressEndDate) {
@@ -1114,10 +1133,8 @@ export async function generateAccommodationReport(year: number, month: number, c
                 }
 
             } else {
-                // Case 2: No address change within the report month.
                 let currentAddress = employee.address;
                 
-                // Determine which address was active during the month
                 if(addressChangeDate && addressChangeDate > monthEndDate && employee.oldAddress){
                     currentAddress = employee.oldAddress;
                 }
@@ -1154,11 +1171,10 @@ export async function generateAccommodationReport(year: number, month: number, c
 
         return { success: true, fileContent, fileName };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error generating accommodation report:", error);
-        throw new Error(error.message || "An unknown error occurred during accommodation report generation.");
+        throw new Error(error instanceof Error ? error.message : "An unknown error occurred during accommodation report generation.");
     }
 }
-
 
     

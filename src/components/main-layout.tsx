@@ -1,7 +1,9 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback, createContext, useContext, useRef } from 'react';
+import Link from 'next/link';
 import {
   Sidebar,
   SidebarHeader,
@@ -12,17 +14,17 @@ import {
   SidebarMenuButton,
   SidebarProvider
 } from '@/components/ui/sidebar';
-import Header from './header';
-import { MobileNav } from './mobile-nav';
-import type { View, Notification, Coordinator, Employee, Settings, NonEmployee, Inspection, EquipmentItem, SessionData } from '@/types';
-import { Building, ClipboardList, Home, Settings as SettingsIcon, Users, Globe, Loader2, Archive } from 'lucide-react';
+import Header from '@/components/header';
+import { MobileNav } from '@/components/mobile-nav';
+import type { View, Notification, Employee, Settings, NonEmployee, Inspection, EquipmentItem, SessionData } from '@/types';
+import { Building, ClipboardList, Home, Settings as SettingsIcon, Users, Archive } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-import { clearAllNotifications, markNotificationAsRead, getNotifications, getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getInspections, addInspection, updateInspection, deleteInspection, transferEmployees, bulkDeleteEmployees, bulkImportEmployees, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee, checkAndUpdateEmployeeStatuses, getEquipment, addEquipment, updateEquipment, deleteEquipment } from '@/lib/actions';
-import { logout } from '@/lib/session';
+import { clearAllNotifications, markNotificationAsRead, getNotifications, getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getInspections, addInspection, updateInspection, deleteInspection, bulkDeleteEmployees, bulkImportEmployees, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee, deleteEmployee, checkAndUpdateEmployeeStatuses, getEquipment, addEquipment, updateEquipment, deleteEquipment, getAllData } from '@/lib/actions';
+import { logout } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { AddEmployeeForm, type EmployeeFormData } from '@/components/add-employee-form';
 import { AddNonEmployeeForm } from '@/components/add-non-employee-form';
+import { InspectionForm } from './inspections-view';
 
 const navItems: { view: View; icon: React.ElementType; label: string }[] = [
     { view: 'dashboard', icon: Home, label: 'Pulpit' },
@@ -44,7 +46,8 @@ type MainLayoutContextType = {
     handleEditEmployeeClick: (employee: Employee) => void;
     handleDismissEmployee: (employeeId: string) => Promise<boolean>;
     handleRestoreEmployee: (employeeId: string) => Promise<boolean>;
-    handleBulkDeleteEmployees: (status: "active" | "dismissed") => Promise<boolean>;
+    handleDeleteEmployee: (employeeId: string) => Promise<void>;
+    handleBulkDeleteEmployees: (entityType: 'employee' | 'non-employee', status: 'active' | 'dismissed') => Promise<boolean>;
     handleAddEmployeeClick: () => void;
     handleUpdateSettings: (newSettings: Partial<Settings>) => Promise<void>;
     refreshData: (showToast?: boolean) => Promise<void>;
@@ -59,6 +62,8 @@ type MainLayoutContextType = {
     handleUpdateEquipment: (id: string, itemData: Partial<EquipmentItem>) => Promise<void>;
     handleDeleteEquipment: (id: string) => Promise<void>;
     handleRefreshStatuses: (showNoChangesToast?: boolean) => Promise<void>;
+    handleEditInspectionClick: (inspection: Inspection) => void;
+    handleAddInspectionClick: () => void;
 };
 
 const MainLayoutContext = createContext<MainLayoutContextType | null>(null);
@@ -87,8 +92,9 @@ export default function MainLayout({
     }, [searchParams]);
 
     const editEmployeeId = searchParams.get('edit');
+    const editInspectionId = searchParams.get('edit-inspection');
 
-    const [currentUser, setCurrentUser] = useState<SessionData | null>(initialSession);
+    const [currentUser] = useState<SessionData | null>(initialSession);
     const [allNotifications, setAllNotifications] = useState<Notification[]>([]);
     
     const [allEmployees, setAllEmployees] = useState<Employee[] | null>(null);
@@ -96,22 +102,21 @@ export default function MainLayout({
     const [allInspections, setAllInspections] = useState<Inspection[] | null>(null);
     const [allEquipment, setAllEquipment] = useState<EquipmentItem[] | null>(null);
     const [settings, setSettings] = useState<Settings | null>(null);
+    
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isNonEmployeeFormOpen, setIsNonEmployeeFormOpen] = useState(false);
+    const [isInspectionFormOpen, setIsInspectionFormOpen] = useState(false);
+
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
     const [editingNonEmployee, setEditingNonEmployee] = useState<NonEmployee | null>(null);
-    const [selectedCoordinatorId, _setSelectedCoordinatorId] = useState('all');
+    const [editingInspection, setEditingInspection] = useState<Inspection | null>(null);
+    
+    const [selectedCoordinatorId, _setSelectedCoordinatorId] = useState(initialSession.isAdmin ? 'all' : initialSession.uid);
     
     const [isLoadingData, setIsLoadingData] = useState(true);
     const [loadingMessage, setLoadingMessage] = useState("Wczytywanie danych...");
     const { toast } = useToast();
-
-    useEffect(() => {
-      if (currentUser?.isLoggedIn && !currentUser.isAdmin) {
-          _setSelectedCoordinatorId(currentUser.uid);
-      }
-    }, [currentUser]);
-
+    
     const setSelectedCoordinatorId = useCallback((value: React.SetStateAction<string>) => {
         _setSelectedCoordinatorId(value);
     }, []);
@@ -125,7 +130,6 @@ export default function MainLayout({
 
     const handleLogout = useCallback(async () => {
         await logout();
-        setCurrentUser(null);
         routerRef.current.push('/');
     }, []);
 
@@ -153,8 +157,8 @@ export default function MainLayout({
             await clearAllNotifications();
             setAllNotifications([]);
             toast({ title: "Sukces", description: "Wszystkie powiadomienia zostały wyczyszczone." });
-        } catch (e: any) {
-             toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się wyczyścić powiadomień." });
+        } catch (e) {
+             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się wyczyścić powiadomień." });
         }
     }, [currentUser, toast]);
 
@@ -170,21 +174,21 @@ export default function MainLayout({
     const refreshData = useCallback(async (showToast = true) => {
         if (!currentUser) return;
         try {
-            const coordinatorIdToFetch = currentUser.isAdmin ? undefined : currentUser.uid;
-            
-            const [employeesData, settingsData, inspectionsData, nonEmployeesData, equipmentData] = await Promise.all([
-                getEmployees(coordinatorIdToFetch),
-                getSettings(),
-                getInspections(coordinatorIdToFetch),
-                getNonEmployees(),
-                getEquipment(),
-            ]);
+            const {
+                employees,
+                settings,
+                inspections,
+                nonEmployees,
+                equipment,
+                notifications,
+            } = await getAllData();
 
-            setAllEmployees(employeesData);
-            setAllInspections(inspectionsData);
-            setAllNonEmployees(nonEmployeesData);
-            setAllEquipment(equipmentData);
-            setSettings(settingsData);
+            setAllEmployees(employees);
+            setSettings(settings);
+            setAllInspections(inspections);
+            setAllNonEmployees(nonEmployees);
+            setAllEquipment(equipment);
+            setAllNotifications(notifications);
             
             if(showToast) {
                 toast({ title: "Sukces", description: "Dane zostały odświeżone." });
@@ -209,8 +213,8 @@ export default function MainLayout({
             } else if (showNoChangesToast) {
                  toast({ title: "Brak zmian", description: "Wszyscy pracownicy mają aktualne statusy."});
             }
-        } catch (e: any) {
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się odświeżyć statusów." });
+        } catch (e) {
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się odświeżyć statusów." });
         }
     }, [currentUser, refreshData, toast]);
 
@@ -218,49 +222,40 @@ export default function MainLayout({
         if (!currentUser) return;
         setIsLoadingData(true);
         try {
-            setLoadingMessage("Wczytywanie ustawień...");
-            const settingsData = await getSettings();
-            setSettings(settingsData);
-            
             setLoadingMessage("Wczytywanie danych...");
-            
-            const coordinatorIdToFetch = currentUser.isAdmin ? undefined : currentUser.uid;
-            
-            const [employeesData, inspectionsData, nonEmployeesData, equipmentData, notificationsData] = await Promise.all([
-                getEmployees(coordinatorIdToFetch),
-                getInspections(coordinatorIdToFetch),
-                getNonEmployees(),
-                getEquipment(),
-                getNotifications()
-            ]);
-
-            setAllEmployees(employeesData);
-            setAllInspections(inspectionsData);
-            setAllNonEmployees(nonEmployeesData);
-            setAllEquipment(equipmentData);
-            setAllNotifications(notificationsData);
-
+            await refreshData(false);
         } catch (error) {
              console.error("Critical data loading error:", error);
-            toast({
-                variant: "destructive",
-                title: "Błąd krytyczny ładowania danych",
-                description: `Nie udało się pobrać podstawowych danych z serwera. ${error instanceof Error ? error.message : ''}`,
-                duration: 10000,
-            });
-             return;
         } finally {
              setIsLoadingData(false);
         }
-    }, [currentUser, toast]);
+    }, [currentUser, refreshData]);
 
     useEffect(() => {
         if (currentUser) {
             fetchAllData();
-            // This is an expensive operation, so we only run it once on initial load.
-            handleRefreshStatuses(false);
+            const intervalId = setInterval(() => {
+                 handleRefreshStatuses(false);
+            }, 5 * 60 * 1000); // every 5 minutes
+            
+            return () => clearInterval(intervalId);
         }
-    }, [currentUser, fetchAllData]);
+    }, [currentUser, fetchAllData, handleRefreshStatuses]);
+    
+    useEffect(() => {
+        const pathname = window.location.pathname;
+        if (editInspectionId && allInspections) {
+            const inspectionToEdit = allInspections.find(i => i.id === editInspectionId);
+            if(inspectionToEdit) {
+                setEditingInspection(inspectionToEdit);
+                setIsInspectionFormOpen(true);
+
+                const currentSearchParams = new URLSearchParams(window.location.search);
+                currentSearchParams.delete('edit-inspection');
+                routerRef.current.replace(`${pathname}?${currentSearchParams.toString()}`, { scroll: false });
+            }
+        }
+    }, [editInspectionId, allInspections]);
 
     useEffect(() => {
         const pathname = window.location.pathname;
@@ -273,7 +268,6 @@ export default function MainLayout({
                 const currentSearchParams = new URLSearchParams(window.location.search);
                 currentSearchParams.delete('edit');
                 routerRef.current.replace(`${pathname}?${currentSearchParams.toString()}`, { scroll: false });
-
             }
         }
     }, [editEmployeeId, allEmployees]);
@@ -298,8 +292,8 @@ export default function MainLayout({
                 toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
             }
             await refreshData(false);
-        } catch (e: any) {
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać pracownika." });
+        } catch (e: unknown) {
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać pracownika." });
         }
     }, [currentUser, editingEmployee, allEmployees, refreshData, toast]);
 
@@ -308,15 +302,15 @@ export default function MainLayout({
             try {
                 await updateNonEmployee(editingNonEmployee.id, data);
                 toast({ title: "Sukces", description: "Dane mieszkańca zostały zaktualizowane." });
-            } catch(e: any) {
-                toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać mieszkańca." });
+            } catch(e) {
+                toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać mieszkańca." });
             }
         } else {
              try {
                 await addNonEmployee(data);
                 toast({ title: "Sukces", description: "Nowy mieszkaniec został dodany." });
-            } catch (e: any) {
-                toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać mieszkańca." });
+            } catch (e) {
+                toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się dodać mieszkańca." });
             }
         }
         await refreshData(false);
@@ -330,9 +324,9 @@ export default function MainLayout({
         try {
             await deleteNonEmployee(id);
             toast({ title: "Sukces", description: "Mieszkaniec został usunięty." });
-        } catch(e: any) {
+        } catch(e) {
             setAllNonEmployees(originalNonEmployees); // Revert
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć mieszkańca." });
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć mieszkańca." });
         }
     }, [allNonEmployees, toast]);
     
@@ -348,63 +342,49 @@ export default function MainLayout({
         try {
             await updateSettings(newSettings);
             toast({ title: "Sukces", description: "Ustawienia zostały zaktualizowane." });
-        } catch(e: any) {
+        } catch(e) {
             setSettings(originalSettings); // Revert on error
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zapisać ustawień." });
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać ustawień." });
         }
     }, [settings, currentUser, toast]);
     
     const handleAddInspection = useCallback(async (inspectionData: Omit<Inspection, 'id'>) => {
-        const tempId = `temp-insp-${Date.now()}`;
-        const newInspection: Inspection = { ...inspectionData, id: tempId };
-
-        setAllInspections(prev => [newInspection, ...(prev || [])]);
-
         try {
             await addInspection(inspectionData);
             toast({ title: "Sukces", description: "Nowa inspekcja została dodana." });
             await refreshData(false);
-        } catch(e: any) {
-            setAllInspections(prev => prev!.filter(i => i.id !== tempId));
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać inspekcji." });
+        } catch(e) {
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się dodać inspekcji." });
         }
     }, [refreshData, toast]);
 
     const handleUpdateInspection = useCallback(async (id: string, inspectionData: Omit<Inspection, 'id'>) => {
-        const originalInspections = allInspections;
-        const updatedInspection = { ...inspectionData, id };
-
-        setAllInspections(prev => prev!.map(i => i.id === id ? updatedInspection : i));
-
         try {
             await updateInspection(id, inspectionData);
             toast({ title: "Sukces", description: "Inspekcja została zaktualizowana." });
-        } catch (e: any) {
-            setAllInspections(originalInspections);
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zaktualizować inspekcji." });
+             await refreshData(false);
+        } catch (e) {
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zaktualizować inspekcji." });
         }
-    }, [allInspections, toast]);
+    }, [refreshData, toast]);
 
     const handleDeleteInspection = useCallback(async (id: string) => {
-        const originalInspections = allInspections;
-        setAllInspections(prev => prev!.filter(i => i.id !== id));
-
         try {
             await deleteInspection(id);
             toast({ title: "Sukces", description: "Inspekcja została usunięta." });
-        } catch(e: any) {
-            setAllInspections(originalInspections);
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć inspekcji." });
+            await refreshData(false);
+        } catch(e) {
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć inspekcji." });
         }
-    }, [allInspections, toast]);
+    }, [refreshData, toast]);
 
     const handleAddEquipment = useCallback(async (itemData: Omit<EquipmentItem, 'id'>) => {
         try {
             await addEquipment(itemData);
             toast({ title: "Sukces", description: "Dodano nowy sprzęt." });
             await refreshData(false);
-        } catch (e: any) {
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się dodać sprzętu." });
+        } catch (e) {
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się dodać sprzętu." });
         }
     }, [refreshData, toast]);
 
@@ -413,8 +393,8 @@ export default function MainLayout({
             await updateEquipment(id, itemData);
             toast({ title: "Sukces", description: "Zaktualizowano sprzęt." });
             await refreshData(false);
-        } catch (e: any) {
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zaktualizować sprzętu." });
+        } catch (e) {
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zaktualizować sprzętu." });
         }
     }, [refreshData, toast]);
 
@@ -423,14 +403,19 @@ export default function MainLayout({
             await deleteEquipment(id);
             toast({ title: "Sukces", description: "Usunięto sprzęt." });
             await refreshData(false);
-        } catch (e: any) {
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć sprzętu." });
+        } catch (e) {
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć sprzętu." });
         }
     }, [refreshData, toast]);
 
     const handleAddEmployeeClick = useCallback(() => {
         setEditingEmployee(null);
         setIsFormOpen(true);
+    }, []);
+    
+    const handleAddInspectionClick = useCallback(() => {
+        setEditingInspection(null);
+        setIsInspectionFormOpen(true);
     }, []);
 
     const handleAddNonEmployeeClick = useCallback(() => {
@@ -441,6 +426,11 @@ export default function MainLayout({
     const handleEditEmployeeClick = useCallback((employee: Employee) => {
         setEditingEmployee(employee);
         setIsFormOpen(true);
+    }, []);
+    
+    const handleEditInspectionClick = useCallback((inspection: Inspection) => {
+        setEditingInspection(inspection);
+        setIsInspectionFormOpen(true);
     }, []);
 
     const handleEditNonEmployeeClick = useCallback((nonEmployee: NonEmployee) => {
@@ -460,9 +450,9 @@ export default function MainLayout({
             await updateEmployee(employeeId, updatedData, currentUser.uid);
             toast({ title: "Sukces", description: "Pracownik został zwolniony." });
             return true;
-        } catch(e: any) {
+        } catch(e) {
             setAllEmployees(originalEmployees);
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się zwolnić pracownika." });
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zwolnić pracownika." });
             return false;
         }
     }, [currentUser, allEmployees, toast]);
@@ -479,14 +469,27 @@ export default function MainLayout({
             await updateEmployee(employeeId, updatedData, currentUser.uid);
             toast({ title: "Sukces", description: "Pracownik został przywrócony." });
             return true;
-        } catch(e: any) {
+        } catch(e) {
             setAllEmployees(originalEmployees);
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się przywrócić pracownika." });
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się przywrócić pracownika." });
             return false;
         }
     }, [currentUser, allEmployees, toast]);
     
-    const handleBulkDeleteEmployees = useCallback(async (status: 'active' | 'dismissed') => {
+    const handleDeleteEmployee = useCallback(async (employeeId: string) => {
+        if (!currentUser) return;
+        const originalEmployees = allEmployees;
+        setAllEmployees(prev => prev!.filter(e => e.id !== employeeId));
+        try {
+            await deleteEmployee(employeeId, currentUser.uid);
+            toast({ title: "Sukces", description: "Pracownik został trwale usunięty."});
+        } catch (e) {
+            setAllEmployees(originalEmployees);
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć pracownika." });
+        }
+    }, [currentUser, allEmployees, toast]);
+
+    const handleBulkDeleteEmployees = useCallback(async (entityType: 'employee' | 'non-employee', status: 'active' | 'dismissed') => {
         if (!currentUser || !currentUser.isAdmin) {
              toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administratorzy mogą wykonać tę akcję." });
             return false;
@@ -497,8 +500,8 @@ export default function MainLayout({
             toast({ title: "Sukces", description: `Wszyscy ${status === 'active' ? 'aktywni' : 'zwolnieni'} pracownicy zostali usunięci.` });
             await refreshData(false);
              return true;
-        } catch(e: any) {
-            toast({ variant: "destructive", title: "Błąd", description: e.message || "Nie udało się usunąć pracowników." });
+        } catch(e) {
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć pracowników." });
              return false;
         }
     }, [currentUser, refreshData, toast]);
@@ -508,14 +511,35 @@ export default function MainLayout({
             return { success: false, message: "Brak uprawnień do importu." };
         }
         try {
-            const result = await bulkImportEmployees(fileData);
+            const result = await bulkImportEmployees(fileData, currentUser.uid);
             await refreshData(false);
             return result;
-        } catch (e: any) {
-            return { success: false, message: e.message || "Wystąpił nieznany błąd podczas przetwarzania pliku." };
+        } catch (e: unknown) {
+            return { success: false, message: e instanceof Error ? e.message : "Wystąpił nieznany błąd podczas przetwarzania pliku." };
         }
     }, [currentUser, refreshData]);
     
+    const handleSaveInspection = (data: Omit<Inspection, 'id' | 'addressName' | 'coordinatorName'>, id?: string) => {
+        if (!currentUser || !settings) return;
+
+        const addressName = settings.addresses.find(a => a.id === data.addressId)?.name || 'Nieznany';
+        const coordinatorName = settings.coordinators.find(c => c.uid === currentUser.uid)?.name || 'Nieznany';
+        
+        const inspectionData = {
+            ...data,
+            addressName,
+            coordinatorName,
+        };
+
+        if (id) {
+            handleUpdateInspection(id, inspectionData);
+        } else {
+            handleAddInspection(inspectionData);
+        }
+        setIsInspectionFormOpen(false);
+        setEditingInspection(null);
+    };
+
     const contextValue: MainLayoutContextType = useMemo(() => ({
         allEmployees,
         allNonEmployees,
@@ -528,6 +552,7 @@ export default function MainLayout({
         handleEditEmployeeClick,
         handleDismissEmployee,
         handleRestoreEmployee,
+        handleDeleteEmployee,
         handleBulkDeleteEmployees,
         handleAddEmployeeClick,
         handleUpdateSettings,
@@ -542,7 +567,9 @@ export default function MainLayout({
         handleAddEquipment,
         handleUpdateEquipment,
         handleDeleteEquipment,
-        handleRefreshStatuses
+        handleRefreshStatuses,
+        handleEditInspectionClick,
+        handleAddInspectionClick,
     }), [
         allEmployees,
         allNonEmployees,
@@ -555,6 +582,7 @@ export default function MainLayout({
         handleEditEmployeeClick,
         handleDismissEmployee,
         handleRestoreEmployee,
+        handleDeleteEmployee,
         handleBulkDeleteEmployees,
         handleAddEmployeeClick,
         handleUpdateSettings,
@@ -569,7 +597,9 @@ export default function MainLayout({
         handleAddEquipment,
         handleUpdateEquipment,
         handleDeleteEquipment,
-        handleRefreshStatuses
+        handleRefreshStatuses,
+        handleEditInspectionClick,
+        handleAddInspectionClick,
     ]);
 
     if (isLoadingData) {
@@ -600,7 +630,7 @@ export default function MainLayout({
                         <SidebarMenu>
                             {visibleNavItems.map(item => (
                                 <SidebarMenuItem key={item.view}>
-                                    <Link href={`/dashboard?view=${item.view}`} passHref>
+                                    <Link href={`/dashboard?view=${item.view}`}>
                                         <SidebarMenuButton 
                                             isActive={activeView === item.view}
                                             tooltip={item.label}
@@ -626,7 +656,7 @@ export default function MainLayout({
                         onLogout={handleLogout} 
                         onClearNotifications={handleClearNotifications}
                     />}
-                    <main className="flex-1 overflow-y-auto px-2 sm:px-6 pb-6 pt-4">
+                    <main className="flex-1 overflow-y-auto px-2 sm:px-6 pb-20 sm:pb-6 pt-4">
                         {children}
                     </main>
                 </div>
@@ -652,9 +682,18 @@ export default function MainLayout({
                     nonEmployee={editingNonEmployee}
                 />
             )}
+            {settings && currentUser && (
+                 <InspectionForm
+                    isOpen={isInspectionFormOpen}
+                    onOpenChange={setIsInspectionFormOpen}
+                    onSave={handleSaveInspection}
+                    settings={settings}
+                    currentUser={currentUser}
+                    item={editingInspection}
+                />
+            )}
         </MainLayoutContext.Provider>
         </SidebarProvider>
     );
 }
 
-    

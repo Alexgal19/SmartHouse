@@ -1,124 +1,75 @@
 
+// This file is the main entry point for the authenticated part of the app.
+// It uses the useMainLayout hook to get data and renders the appropriate view based on the 'view' search param.
+
 "use client";
 
-import React, { useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
 import DashboardView from '@/components/dashboard-view';
-import EmployeesView from '@/components/employees-view';
-import SettingsView from '@/components/settings-view';
-import InspectionsView from '@/components/inspections-view';
 import EquipmentView from '@/components/equipment-view';
-import type { Employee, Settings, View, Coordinator, Inspection, NonEmployee } from '@/types';
-import { cn } from '@/lib/utils';
+import InspectionsView from '@/components/inspections-view';
 import { useMainLayout } from '@/components/main-layout';
+import SettingsView from '@/components/settings-view';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { SessionData, View } from '@/types';
+import { useSearchParams } from 'next/navigation';
+import EntityView from '@/components/entity-view';
 
+
+function CurrentView({ activeView, currentUser }: { activeView: View; currentUser: SessionData }) {
+  switch (activeView) {
+    case 'dashboard':
+      return <DashboardView currentUser={currentUser} />;
+    case 'employees':
+      return <EntityView currentUser={currentUser} />;
+    case 'settings':
+      return <SettingsView currentUser={currentUser} />;
+    case 'inspections':
+        return <InspectionsView currentUser={currentUser} />;
+    case 'equipment':
+        return <EquipmentView currentUser={currentUser} />;
+    default:
+      return (
+        <EntityView currentUser={currentUser} />
+      )
+  }
+}
 
 export default function DashboardPage() {
     const searchParams = useSearchParams();
-    const view = (searchParams.get('view') as View) || 'dashboard';
+    const { currentUser, allEmployees, settings } = useMainLayout();
+    const activeView = (searchParams.get('view') as View) || 'employees';
 
-    const {
-        allEmployees,
-        allNonEmployees,
-        allInspections,
-        allEquipment,
-        settings,
-        currentUser,
-        selectedCoordinatorId,
-        setSelectedCoordinatorId,
-        handleEditEmployeeClick,
-        handleDismissEmployee,
-        handleRestoreEmployee,
-        handleBulkDeleteEmployees,
-        handleRefreshStatuses,
-        handleAddEmployeeClick,
-        handleUpdateSettings,
-        refreshData,
-        handleAddNonEmployeeClick,
-        handleEditNonEmployeeClick,
-        handleDeleteNonEmployee,
-        handleAddInspection,
-        handleUpdateInspection,
-        handleDeleteInspection,
-        handleAddEquipment,
-        handleUpdateEquipment,
-        handleDeleteEquipment,
-    } = useMainLayout();
-
-    const filteredEmployees = useMemo(() => {
-        if (!currentUser || !allEmployees) return [];
-        if (currentUser.isAdmin) {
-            if (selectedCoordinatorId === 'all') {
-                return allEmployees;
-            }
-            return allEmployees.filter(e => e.coordinatorId === selectedCoordinatorId);
-        }
-        return allEmployees.filter(e => e.coordinatorId === currentUser.uid);
-    }, [currentUser, allEmployees, selectedCoordinatorId]);
-
-    const filteredNonEmployees = useMemo(() => {
-        if (!currentUser || !allNonEmployees || !allEmployees) return [];
-        if (currentUser.isAdmin && selectedCoordinatorId !== 'all') {
-             const coordinatorAddresses = new Set(
-                allEmployees
-                    .filter(e => e.coordinatorId === selectedCoordinatorId)
-                    .map(e => e.address)
-            );
-             return allNonEmployees.filter(ne => ne.address && coordinatorAddresses.has(ne.address));
-        }
-       return allNonEmployees;
-   }, [currentUser, allNonEmployees, allEmployees, selectedCoordinatorId]);
-
-    const filteredInspections = useMemo(() => {
-        if (!currentUser || !allInspections) return [];
-        if (currentUser.isAdmin) {
-            if (selectedCoordinatorId === 'all') {
-                return allInspections;
-            }
-            return allInspections.filter(i => i.coordinatorId === selectedCoordinatorId);
-        }
-        return allInspections.filter(i => i.coordinatorId === currentUser.uid);
-    }, [currentUser, allInspections, selectedCoordinatorId]);
-
-
-    const renderView = () => {
-        if (!currentUser || !settings) return null;
-
-        switch (view) {
-            case 'dashboard':
-                return <DashboardView employees={filteredEmployees} allEmployees={allEmployees || []} nonEmployees={filteredNonEmployees || []} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={() => handleRefreshStatuses(true)} />;
-            case 'employees':
-                return <EmployeesView employees={filteredEmployees} nonEmployees={filteredNonEmployees || []} settings={settings} onAddEmployee={handleAddEmployeeClick} onEditEmployee={handleEditEmployeeClick} onDismissEmployee={handleDismissEmployee} onRestoreEmployee={handleRestoreEmployee} onBulkDelete={handleBulkDeleteEmployees} currentUser={currentUser} onAddNonEmployee={handleAddNonEmployeeClick} onEditNonEmployee={handleEditNonEmployeeClick} onDeleteNonEmployee={handleDeleteNonEmployee} />;
-            case 'settings':
-                if (!currentUser.isAdmin) {
-                    return <div className="p-4 text-center text-red-500">Brak uprawnień do przeglądania tej strony.</div>;
-                }
-                return <SettingsView settings={settings} onUpdateSettings={handleUpdateSettings} allEmployees={allEmployees || []} currentUser={currentUser} onDataRefresh={() => refreshData(false)} />;
-            case 'inspections':
-                 return <InspectionsView 
-                    inspections={filteredInspections || []} 
-                    settings={settings}
-                    currentUser={currentUser}
-                    onAddInspection={handleAddInspection}
-                    onUpdateInspection={handleUpdateInspection}
-                    onDeleteInspection={handleDeleteInspection}
-                />;
-            case 'equipment':
-                return <EquipmentView
-                    equipment={allEquipment || []}
-                    settings={settings}
-                    onAddEquipment={handleAddEquipment}
-                    onUpdateEquipment={handleUpdateEquipment}
-                    onDeleteEquipment={handleDeleteEquipment}
-                    />;
-            default:
-                return <DashboardView employees={filteredEmployees} allEmployees={allEmployees || []} nonEmployees={filteredNonEmployees || []} settings={settings} onEditEmployee={handleEditEmployeeClick} currentUser={currentUser} selectedCoordinatorId={selectedCoordinatorId} onSelectCoordinator={setSelectedCoordinatorId} onDataRefresh={() => handleRefreshStatuses(true)} />;
-        }
-    };
-
-    return (
-        <div key={view} className={cn("animate-in fade-in-0 duration-300")}>
-            {renderView()}
-        </div>
-    );
+    // While data is loading, we can show a skeleton loader.
+    // This improves user experience by providing immediate feedback.
+    if (!currentUser || !allEmployees || !settings) {
+        return (
+            <div className="space-y-6">
+                <Card>
+                    <CardHeader>
+                        <Skeleton className="h-8 w-1/3" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            <Skeleton className="h-12 w-full" />
+                            <Skeleton className="h-32 w-full" />
+                        </div>
+                    </CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader>
+                        <Skeleton className="h-8 w-1/4" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            <Skeleton className="h-24 w-full" />
+                             <Skeleton className="h-24 w-full" />
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+    
+    return <CurrentView activeView={activeView} currentUser={currentUser} />;
 }
