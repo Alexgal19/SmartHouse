@@ -1,12 +1,11 @@
 {
-  "theme_color": "#f97316",
-  "background_color": "#f97316",
-  "display": "standalone",
-  "scope": "/",
-  "start_url": "/",
   "name": "SmartHouse",
   "short_name": "SmartHouse",
-  "description": "SmartHouse Employee Management",
+  "description": "Zarządzanie pracownikami i inspekcjami",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f97316",
   "icons": [
     {
       "src": "/icon-192x192.png",

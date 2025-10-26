@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { login } from '@/lib/auth';
-import { Building } from 'lucide-react';
+import { Building, Download } from 'lucide-react';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -24,6 +24,20 @@ export default function LoginPage() {
     const [name, setName] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [installPrompt, setInstallPrompt] = useState<any>(null);
+
+    useEffect(() => {
+        const handleBeforeInstallPrompt = (e: Event) => {
+            e.preventDefault();
+            setInstallPrompt(e);
+        };
+
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+        return () => {
+            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        };
+    }, []);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -55,6 +69,19 @@ export default function LoginPage() {
         }
     };
     
+    const handleInstallClick = () => {
+        if (!installPrompt) return;
+        installPrompt.prompt();
+        installPrompt.userChoice.then((choiceResult: { outcome: string }) => {
+            if (choiceResult.outcome === 'accepted') {
+                console.log('User accepted the install prompt');
+            } else {
+                console.log('User dismissed the install prompt');
+            }
+            setInstallPrompt(null);
+        });
+    };
+
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background px-4">
             <Card className="w-full max-w-sm animate-fade-in-up shadow-xl rounded-2xl">
@@ -96,10 +123,16 @@ export default function LoginPage() {
                             />
                         </div>
                     </CardContent>
-                    <CardFooter>
+                    <CardFooter className="flex-col gap-4">
                         <Button className="w-full" type="submit" disabled={isLoading || password === ''}>
                             {isLoading ? "Logowanie..." : "Zaloguj się"}
                         </Button>
+                        {installPrompt && (
+                            <Button variant="outline" className="w-full" onClick={handleInstallClick}>
+                                <Download className="mr-2 h-4 w-4" />
+                                Zainstaluj aplikację
+                            </Button>
+                        )}
                     </CardFooter>
                 </form>
             </Card>

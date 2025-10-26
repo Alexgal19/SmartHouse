@@ -9,6 +9,7 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'SmartHouse',
   description: 'Zarządzanie pracownikami i inspekcjami',
+  manifest: '/manifest.json',
 }
 
 export default function RootLayout({
