@@ -13,7 +13,7 @@ import { useMainLayout } from '@/components/main-layout';
 import type { Inspection, Settings, SessionData, InspectionCategory, InspectionCategoryItem } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Trash2, Calendar as CalendarIcon, X, Camera } from 'lucide-react';
+import { PlusCircle, Trash2, Calendar as CalendarIcon, X, Camera, MoreHorizontal } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -31,6 +31,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const defaultCategories: Omit<InspectionCategory, 'items'> & { items: Omit<InspectionCategoryItem, 'value'>[] }[] = [
     { name: 'Kuchnia', uwagi: '', photos: [], items: [
@@ -359,11 +361,114 @@ export const InspectionForm = ({
   );
 };
 
+const InspectionActions = ({ item, onEdit, onDelete }: { item: Inspection; onEdit: (item: Inspection) => void; onDelete: (id: string) => void; }) => {
+    return (
+        <AlertDialog>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-8 w-8 p-0">
+                        <span className="sr-only">Otwórz menu</span>
+                        <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => onEdit(item)}>Edytuj</DropdownMenuItem>
+                    <AlertDialogTrigger asChild>
+                        <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Usuń
+                        </DropdownMenuItem>
+                    </AlertDialogTrigger>
+                </DropdownMenuContent>
+            </DropdownMenu>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Czy na pewno chcesz usunąć tę inspekcję?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Tej operacji nie można cofnąć. Spowoduje to trwałe usunięcie raportu z dnia <span className="font-bold">{format(new Date(item.date), 'dd-MM-yyyy')}</span> dla adresu <span className="font-bold">{item.addressName}</span>.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                    <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => onDelete(item.id)}>Usuń</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    );
+};
+
+const InspectionsTable = ({ inspections, onEdit, onDelete }: { inspections: Inspection[]; onEdit: (item: Inspection) => void; onDelete: (id: string) => void; }) => {
+    return (
+        <div className="overflow-x-auto">
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Adres</TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Koordynator</TableHead>
+                        <TableHead>Standard</TableHead>
+                        <TableHead><span className="sr-only">Akcje</span></TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {inspections.length > 0 ? (
+                        inspections.map(item => (
+                            <TableRow key={item.id} onClick={() => onEdit(item)} className="cursor-pointer">
+                                <TableCell>{item.addressName}</TableCell>
+                                <TableCell>{format(new Date(item.date), 'dd-MM-yyyy')}</TableCell>
+                                <TableCell>{item.coordinatorName}</TableCell>
+                                <TableCell>{item.standard}</TableCell>
+                                <TableCell onClick={(e) => e.stopPropagation()}>
+                                    <InspectionActions item={item} onEdit={onEdit} onDelete={onDelete} />
+                                </TableCell>
+                            </TableRow>
+                        ))
+                    ) : (
+                        <TableRow>
+                            <TableCell colSpan={5} className="h-24 text-center">
+                                Brak inspekcji do wyświetlenia.
+                            </TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+        </div>
+    );
+};
+
+const InspectionsCardList = ({ inspections, onEdit, onDelete }: { inspections: Inspection[]; onEdit: (item: Inspection) => void; onDelete: (id: string) => void; }) => {
+    return (
+        <div className="space-y-4">
+            {inspections.length > 0 ? (
+                inspections.map(item => (
+                    <Card key={item.id} onClick={() => onEdit(item)} className="cursor-pointer">
+                        <CardHeader className="flex flex-row items-start justify-between pb-4">
+                            <div>
+                                <CardTitle className="text-base">{item.addressName}</CardTitle>
+                                <CardDescription>{format(new Date(item.date), 'dd MMMM yyyy', { locale: pl })}</CardDescription>
+                            </div>
+                            <div onClick={(e) => e.stopPropagation()}>
+                                <InspectionActions item={item} onEdit={onEdit} onDelete={onDelete} />
+                            </div>
+                        </CardHeader>
+                        <CardContent className="text-sm space-y-2">
+                             <p><span className="font-semibold text-muted-foreground">Koordynator:</span> {item.coordinatorName}</p>
+                             <p><span className="font-semibold text-muted-foreground">Standard:</span> {item.standard || 'Nieoceniony'}</p>
+                        </CardContent>
+                    </Card>
+                ))
+            ) : (
+                 <div className="text-center text-muted-foreground py-8">Brak inspekcji do wyświetlenia.</div>
+            )}
+        </div>
+    );
+}
 
 export default function InspectionsView({ currentUser }: { currentUser: SessionData }) {
     const { allInspections, settings, handleAddInspection, handleUpdateInspection, handleDeleteInspection } = useMainLayout();
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<Inspection | null>(null);
+    const { isMobile, isMounted } = useIsMobile();
 
     const handleSave = (data: Omit<Inspection, 'id' | 'addressName' | 'coordinatorName'>, id?: string) => {
         if (!currentUser || !settings) return;
@@ -407,6 +512,8 @@ export default function InspectionsView({ currentUser }: { currentUser: SessionD
             </Card>
         );
     }
+    
+    const InspectionsListComponent = isMobile ? InspectionsCardList : InspectionsTable;
 
     return (
         <>
@@ -421,56 +528,15 @@ export default function InspectionsView({ currentUser }: { currentUser: SessionD
                 </Button>
             </CardHeader>
             <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Adres</TableHead>
-                            <TableHead>Data</TableHead>
-                            <TableHead>Koordynator</TableHead>
-                            <TableHead>Standard</TableHead>
-                            <TableHead><span className="sr-only">Akcje</span></TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {allInspections.length > 0 ? (
-                            allInspections.map(item => (
-                                <TableRow key={item.id} onClick={() => handleEdit(item)} className="cursor-pointer">
-                                    <TableCell>{item.addressName}</TableCell>
-                                    <TableCell>{format(new Date(item.date), 'dd-MM-yyyy')}</TableCell>
-                                    <TableCell>{item.coordinatorName}</TableCell>
-                                    <TableCell>{item.standard}</TableCell>
-                                    <TableCell onClick={(e) => e.stopPropagation()}>
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="text-destructive">
-                                                     <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Czy na pewno chcesz usunąć tę inspekcję?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        Tej operacji nie można cofnąć. Spowoduje to trwałe usunięcie raportu z dnia <span className="font-bold">{format(new Date(item.date), 'dd-MM-yyyy')}</span> dla adresu <span className="font-bold">{item.addressName}</span>.
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>Anuluj</AlertDialogCancel>
-                                                    <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => handleDeleteInspection(item.id)}>Usuń</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        ) : (
-                            <TableRow>
-                                <TableCell colSpan={5} className="h-24 text-center">
-                                    Brak inspekcji do wyświetlenia.
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
+                {isMounted ? (
+                     <InspectionsListComponent inspections={allInspections} onEdit={handleEdit} onDelete={handleDeleteInspection} />
+                ) : (
+                    <div className="space-y-4">
+                        <Skeleton className="h-24 w-full" />
+                        <Skeleton className="h-24 w-full" />
+                        <Skeleton className="h-24 w-full" />
+                    </div>
+                )}
             </CardContent>
         </Card>
          {settings && currentUser && (
