@@ -27,7 +27,7 @@ import { Label } from '@/components/ui/label';
 
 
 const roomSchema = z.object({
-  id: z.string(),
+  id: z.string().min(1, 'ID pokoju jest wymagane.'),
   name: z.string().min(1, 'Nazwa pokoju jest wymagana.'),
   capacity: z.coerce.number().min(1, 'Pojemność musi być większa od 0.'),
 });
@@ -140,7 +140,7 @@ const CoordinatorManager = ({ form, fields, append, remove }: { form: any, field
   </div>
 );
 
-const AddressRoomsManager = ({ addressIndex, control, register }: { addressIndex: number; control: any; register: any }) => {
+const AddressRoomsManager = ({ addressIndex, control }: { addressIndex: number; control: any; }) => {
     const { fields, append, remove } = useFieldArray({
         control,
         name: `addresses.${addressIndex}.rooms`,
@@ -150,7 +150,7 @@ const AddressRoomsManager = ({ addressIndex, control, register }: { addressIndex
         <div className="pl-4 mt-2 space-y-2">
             <div className="flex justify-between items-center">
                 <h4 className="text-sm font-medium">Pokoje</h4>
-                <Button type="button" size="sm" variant="outline" onClick={() => append({ id: `room-${Date.now()}`, name: '', capacity: 1 })}>
+                <Button type="button" size="sm" variant="outline" onClick={() => append({ id: `room-${Date.now()}-${Math.random()}`, name: '', capacity: 1 })}>
                     <PlusCircle className="mr-2 h-4 w-4" /> Dodaj pokój
                 </Button>
             </div>
@@ -162,6 +162,7 @@ const AddressRoomsManager = ({ addressIndex, control, register }: { addressIndex
                         render={({ field }) => (
                             <FormItem className="flex-1">
                                 <FormControl><Input placeholder="Nazwa pokoju" {...field} /></FormControl>
+                                <FormMessage />
                             </FormItem>
                         )}
                     />
@@ -171,6 +172,7 @@ const AddressRoomsManager = ({ addressIndex, control, register }: { addressIndex
                         render={({ field }) => (
                             <FormItem className="w-28">
                                 <FormControl><Input type="number" placeholder="Pojemność" {...field} /></FormControl>
+                                <FormMessage />
                             </FormItem>
                         )}
                     />
@@ -209,6 +211,7 @@ const AddressManager = ({ form, fields, append, remove, coordinators }: { form: 
               <FormItem>
                 <FormLabel>Nazwa adresu</FormLabel>
                 <FormControl><Input {...nameField} /></FormControl>
+                <FormMessage />
               </FormItem>
             )}
           />
@@ -224,11 +227,12 @@ const AddressManager = ({ form, fields, append, remove, coordinators }: { form: 
                         {coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                     </SelectContent>
                     </Select>
+                    <FormMessage />
                 </FormItem>
             )}
             />
           
-            <AddressRoomsManager addressIndex={addressIndex} control={form.control} register={form.register} />
+            <AddressRoomsManager addressIndex={addressIndex} control={form.control} />
         </div>
       ))}
        {fields.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Brak zdefiniowanych adresów.</p>}
@@ -562,5 +566,3 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     </div>
   );
 }
-
-    
