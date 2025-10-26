@@ -9,8 +9,9 @@ Dziękujemy za zainteresowanie rozwojem tego projektu. Aby zapewnić najwyższą
 *   Modyfikuj tylko te pliki, które są absolutnie niezbędne do wykonania zadania.
 *   Nie zmieniaj żadnych innych komponentów, konfiguracji ani zależności, chyba że jest to bezpośrednio i logicznie wymagane przez zleconą funkcję.
 
-## 3. BEZPIECZEŃSTWO KONTROLI WERSJI:
-*   Zawsze wprowadzaj zmiany w sposób, który umożliwi łatwe cofnięcie. Wyświetl całe Git Diff dla wprowadzonych zmian, aby ułatwić mi inspekcję i ewentualne cofnięcie.
+## 3. BEZPIECZEŃSTWO KONTROLI WERSJI I WERYFIKACJA TYPÓW:
+*   **KONTROLA WERSJI:** Zawsze wprowadzaj zmiany w sposób, który umożliwi łatwe cofnięcie. Wyświetl całe Git Diff dla wprowadzonych zmian, aby ułatwić mi inspekcję i ewentualne cofnięcie.
+*   **WERYFIKACJA TYPÓW (TypeScript Safety):** Po każdej modyfikacji kodu bezwzględnie i wewnętrznie zweryfikuj, czy nie zostały wprowadzone żadne błędy kompilacji TypeScript. Kod musi przejść bezbłędnie komendę `npm run build` lub `npm run typecheck` (jeśli taka istnieje w projekcie). Wszelkie nowe funkcje muszą używać jawnych i ścisłych typów (strict mode).
 
 ## 4. STRUKTURA PROJEKTU:
 *   **Logika biznesowa** jest oddzielona od interfejsu użytkownika. Znajduje się głównie w `src/lib/actions.ts` (akcje serwerowe) oraz `src/lib/sheets.ts` (interakcja z Google Sheets).
