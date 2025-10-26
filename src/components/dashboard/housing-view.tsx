@@ -148,10 +148,16 @@ export function HousingView({
         if (!selectedAddress) return {};
         return selectedAddress.rooms.reduce((acc, room) => {
           const roomPrefix = room.roomNumber.split('.')[0];
-          if (!acc[roomPrefix]) acc[roomPrefix] = [];
-          acc[roomPrefix].push(room);
+          if (!acc[roomPrefix]) {
+            acc[roomPrefix] = {
+              capacity: 0,
+              rooms: []
+            };
+          }
+          acc[roomPrefix].rooms.push(room);
+          acc[roomPrefix].capacity += room.capacity;
           return acc;
-        }, {} as Record<string, RoomStat[]>);
+        }, {} as Record<string, { capacity: number; rooms: RoomStat[] }>);
     }, [selectedAddress]);
 
     return (
@@ -221,11 +227,14 @@ export function HousingView({
                         <h4 className="font-medium text-sm text-primary">Pokoje</h4>
                         <ScrollArea className="flex-1 -mr-6 pr-6">
                             <div className="space-y-4">
-                                {Object.entries(groupedRooms).map(([groupNumber, roomsInGroup]) => (
+                                {Object.entries(groupedRooms).map(([groupNumber, groupData]) => (
                                 <Card key={groupNumber} className="shadow-sm">
-                                    <CardHeader className="p-3"><CardTitle className="text-base">Pokój {groupNumber}</CardTitle></CardHeader>
+                                    <CardHeader className="p-3">
+                                        <CardTitle className="text-base">Pokój {groupNumber}</CardTitle>
+                                        <CardDescription>Miejsca: {groupData.capacity}</CardDescription>
+                                    </CardHeader>
                                     <CardContent className="p-3 pt-0 space-y-2">
-                                    {roomsInGroup.map((room) => (
+                                    {groupData.rooms.map((room) => (
                                         <div key={room.roomNumber} onClick={() => {setSelectedRoom(room); setIsRoomDetailOpen(true);}} className="flex justify-between items-center cursor-pointer hover:bg-muted/50 p-2 rounded-md">
                                             <span className="font-medium">{room.roomNumber}</span>
                                             <div className={cn("flex items-center gap-2 font-bold", room.available > 0 ? 'text-green-600' : 'text-red-600')}>
