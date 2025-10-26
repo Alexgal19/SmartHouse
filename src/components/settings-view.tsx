@@ -48,7 +48,7 @@ const coordinatorSchema = z.object({
 const formSchema = z.object({
   nationalities: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
   departments: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
-  genders: z.array(z.object({ value: z.string().min(1_i 'Wartość nie może być pusta.') })),
+  genders: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
   addresses: z.array(addressSchema),
   coordinators: z.array(coordinatorSchema),
 });
@@ -562,3 +562,4 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
   );
 }
 
+    
