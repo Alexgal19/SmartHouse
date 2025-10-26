@@ -521,7 +521,7 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
         <CardContent>
              <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                     <Accordion type="multiple" className="w-full" defaultValue={['lists']}>
+                     <Accordion type="multiple" className="w-full">
                         <AccordionItem value="lists">
                             <AccordionTrigger>Zarządzanie listami</AccordionTrigger>
                             <AccordionContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-2">
@@ -562,7 +562,3 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     </div>
   );
 }
-
-    
-
-    
