@@ -444,4 +444,3 @@ export default function InspectionsView({ currentUser }: { currentUser: SessionD
         </Card>
     );
 }
-
