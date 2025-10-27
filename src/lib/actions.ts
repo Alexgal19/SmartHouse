@@ -1,8 +1,9 @@
+
 "use server";
 
 import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, TemporaryAccess, Inspection, InspectionCategoryItem, InspectionCategory } from '@/types';
 import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getNonEmployeesFromSheet, getEquipmentFromSheet, getAllSheetsData, getInspectionsFromSheet } from './sheets';
-import { format, isPast, isValid, parse, startOfMonth, endOfMonth, differenceInDays, min, max } from 'date-fns';
+import { format, isPast, isValid, parse, startOfMonth, endOfMonth, differenceInDays, min, max, getDaysInMonth } from 'date-fns';
 import * as XLSX from 'xlsx';
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
@@ -796,5 +797,124 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id' | 'coo
     } catch (e: unknown) {
         console.error("Error adding inspection:", e);
         throw new Error(e instanceof Error ? e.message : "Failed to add inspection.");
+    }
+}
+
+export async function generateMonthlyReport(year: number, month: number, coordinatorId: string) {
+    try {
+        const { employees, settings } = await getAllData();
+        const coordinatorMap = new Map(settings.coordinators.map(c => [c.uid, c.name]));
+
+        const reportStart = startOfMonth(new Date(year, month - 1));
+        const reportEnd = endOfMonth(new Date(year, month - 1));
+        
+        let filteredEmployees = employees;
+        if (coordinatorId !== 'all') {
+            filteredEmployees = employees.filter(e => e.coordinatorId === coordinatorId);
+        }
+
+        const reportData = filteredEmployees
+            .filter(e => {
+                const checkIn = e.checkInDate ? parse(e.checkInDate, 'yyyy-MM-dd', new Date()) : null;
+                const checkOut = e.checkOutDate ? parse(e.checkOutDate, 'yyyy-MM-dd', new Date()) : null;
+
+                if (!checkIn) return false;
+
+                const startsBeforeReportEnd = checkIn <= reportEnd;
+                const endsAfterReportStart = !checkOut || checkOut >= reportStart;
+                
+                return startsBeforeReportEnd && endsAfterReportStart;
+            })
+            .map(e => {
+                const checkIn = parse(e.checkInDate!, 'yyyy-MM-dd', new Date());
+                const checkOut = e.checkOutDate ? parse(e.checkOutDate, 'yyyy-MM-dd', new Date()) : null;
+
+                const startDateInMonth = max([checkIn, reportStart]);
+                const endDateInMonth = checkOut ? min([checkOut, reportEnd]) : reportEnd;
+
+                const daysInMonth = differenceInDays(endDateInMonth, startDateInMonth) + 1;
+                
+                return {
+                    "Imię i nazwisko": e.fullName,
+                    "Koordynator": coordinatorMap.get(e.coordinatorId) || 'N/A',
+                    "Adres": e.address,
+                    "Pokój": e.roomNumber,
+                    "Zakład": e.zaklad,
+                    "Data zameldowania": e.checkInDate,
+                    "Data wymeldowania": e.checkOutDate,
+                    "Dni w miesiącu": daysInMonth > 0 ? daysInMonth : 0,
+                }
+            });
+
+        const worksheet = XLSX.utils.json_to_sheet(reportData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Raport Miesięczny");
+        
+        // Auto-size columns
+        const cols = Object.keys(reportData[0] || {}).map(key => ({
+            wch: Math.max(key.length, ...reportData.map(row => (row[key as keyof typeof row] || '').toString().length))
+        }));
+        worksheet["!cols"] = cols;
+
+        const fileContent = XLSX.write(workbook, { type: 'base64', bookType: 'xlsx' });
+        const fileName = `Raport_Miesieczny_${year}_${month}.xlsx`;
+
+        return { success: true, fileContent, fileName };
+
+    } catch (e) {
+        console.error("Error generating monthly report:", e);
+        return { success: false, message: e instanceof Error ? e.message : "Unknown error" };
+    }
+}
+
+export async function generateAccommodationReport(year: number, month: number, coordinatorId: string) {
+    try {
+        const { employees, settings } = await getAllData();
+        
+        const daysInMonth = getDaysInMonth(new Date(year, month - 1));
+        const coordinatorMap = new Map(settings.coordinators.map(c => [c.uid, c.name]));
+        
+        let filteredAddresses = settings.addresses;
+        if (coordinatorId !== 'all') {
+            filteredAddresses = settings.addresses.filter(a => a.coordinatorId === coordinatorId);
+        }
+
+        const reportData: any[] = [];
+
+        filteredAddresses.forEach(address => {
+            const addressRow: any = { "Adres": address.name };
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                const currentDate = new Date(year, month - 1, day);
+                const occupantsOnDate = employees.filter(e => {
+                    const checkIn = e.checkInDate ? parse(e.checkInDate, 'yyyy-MM-dd', new Date()) : null;
+                    const checkOut = e.checkOutDate ? parse(e.checkOutDate, 'yyyy-MM-dd', new Date()) : null;
+
+                    return e.address === address.name &&
+                           checkIn && checkIn <= currentDate &&
+                           (!checkOut || checkOut >= currentDate);
+                }).length;
+                addressRow[day] = occupantsOnDate;
+            }
+
+            const totalCapacity = address.rooms.reduce((sum, room) => sum + room.capacity, 0);
+            addressRow["Pojemność"] = totalCapacity;
+            addressRow["Koordynator"] = coordinatorMap.get(address.coordinatorId) || 'N/A';
+            
+            reportData.push(addressRow);
+        });
+        
+        const worksheet = XLSX.utils.json_to_sheet(reportData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Raport Zakwaterowania");
+
+        const fileContent = XLSX.write(workbook, { type: 'base64', bookType: 'xlsx' });
+        const fileName = `Raport_Zakwaterowania_${year}_${month}.xlsx`;
+
+        return { success: true, fileContent, fileName };
+
+    } catch (e) {
+        console.error("Error generating accommodation report:", e);
+        return { success: false, message: e instanceof Error ? e.message : "Unknown error" };
     }
 }
