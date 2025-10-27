@@ -3,7 +3,7 @@
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, TemporaryAccess, Address, Coordinator, Inspection, InspectionCategory, InspectionCategoryItem, InspectionTemplateCategory } from '@/types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Address, Coordinator, Inspection, InspectionCategory, InspectionCategoryItem, InspectionTemplateCategory } from '@/types';
 import { format, isValid, parse, parseISO } from 'date-fns';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
@@ -86,7 +86,7 @@ export async function getSheet(title: string, headers: string[]): Promise<Google
     }
 }
 
-const safeFormat = (dateValue: any): string | null => {
+const safeFormat = (dateValue: unknown): string | null => {
     if (dateValue === null || dateValue === undefined || dateValue === '') {
         return null;
     }
@@ -105,7 +105,7 @@ const safeFormat = (dateValue: any): string | null => {
         return format(date, 'yyyy-MM-dd');
     }
 
-    date = new Date(dateValue);
+    date = new Date(dateValue as string | number);
     if (isValid(date)) {
         return format(date, 'yyyy-MM-dd');
     }
@@ -122,7 +122,7 @@ const safeFormat = (dateValue: any): string | null => {
 };
 
 
-const deserializeEmployee = (row: Record<string, any>): Employee | null => {
+const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     const plainObject = row;
     
     const id = plainObject.id;
@@ -141,38 +141,38 @@ const deserializeEmployee = (row: Record<string, any>): Employee | null => {
     }
     
     const validDepositValues = ['Tak', 'Nie', 'Nie dotyczy'];
-    const depositReturned = validDepositValues.includes(plainObject.depositReturned) ? plainObject.depositReturned as Employee['depositReturned'] : null;
+    const depositReturned = validDepositValues.includes(plainObject.depositReturned as string) ? plainObject.depositReturned as Employee['depositReturned'] : null;
 
     const newEmployee: Employee = {
-        id: id,
-        fullName: plainObject.fullName || '',
-        coordinatorId: plainObject.coordinatorId || '',
-        nationality: plainObject.nationality || '',
-        gender: plainObject.gender || '',
-        address: plainObject.address || '',
-        roomNumber: plainObject.roomNumber || '',
-        zaklad: plainObject.zaklad || '',
+        id: id as string,
+        fullName: (plainObject.fullName || '') as string,
+        coordinatorId: (plainObject.coordinatorId || '') as string,
+        nationality: (plainObject.nationality || '') as string,
+        gender: (plainObject.gender || '') as string,
+        address: (plainObject.address || '') as string,
+        roomNumber: (plainObject.roomNumber || '') as string,
+        zaklad: (plainObject.zaklad || '') as string,
         checkInDate: checkInDate || '',
         checkOutDate: safeFormat(plainObject.checkOutDate),
         contractStartDate: safeFormat(plainObject.contractStartDate),
         contractEndDate: safeFormat(plainObject.contractEndDate),
         departureReportDate: safeFormat(plainObject.departureReportDate),
-        comments: plainObject.comments || '',
+        comments: (plainObject.comments || '') as string,
         status: plainObject.status as 'active' | 'dismissed' || 'active',
-        oldAddress: plainObject.oldAddress || undefined,
+        oldAddress: (plainObject.oldAddress || undefined) as string | undefined,
         addressChangeDate: safeFormat(plainObject.addressChangeDate),
         depositReturned: depositReturned,
-        depositReturnAmount: plainObject.depositReturnAmount ? parseFloat(plainObject.depositReturnAmount) : null,
-        deductionRegulation: plainObject.deductionRegulation ? parseFloat(plainObject.deductionRegulation) : null,
-        deductionNo4Months: plainObject.deductionNo4Months ? parseFloat(plainObject.deductionNo4Months) : null,
-        deductionNo30Days: plainObject.deductionNo30Days ? parseFloat(plainObject.deductionNo30Days) : null,
+        depositReturnAmount: plainObject.depositReturnAmount ? parseFloat(plainObject.depositReturnAmount as string) : null,
+        deductionRegulation: plainObject.deductionRegulation ? parseFloat(plainObject.deductionRegulation as string) : null,
+        deductionNo4Months: plainObject.deductionNo4Months ? parseFloat(plainObject.deductionNo4Months as string) : null,
+        deductionNo30Days: plainObject.deductionNo30Days ? parseFloat(plainObject.deductionNo30Days as string) : null,
         deductionReason: deductionReason,
     };
     
     return newEmployee;
 };
 
-const deserializeNonEmployee = (row: Record<string, any>): NonEmployee | null => {
+const deserializeNonEmployee = (row: Record<string, unknown>): NonEmployee | null => {
     const plainObject = row;
 
     const id = plainObject.id;
@@ -184,24 +184,24 @@ const deserializeNonEmployee = (row: Record<string, any>): NonEmployee | null =>
     if (!checkInDate) return null;
     
     const newNonEmployee: NonEmployee = {
-        id: id,
-        fullName: fullName,
-        address: plainObject.address || '',
-        roomNumber: plainObject.roomNumber || '',
+        id: id as string,
+        fullName: fullName as string,
+        address: (plainObject.address || '') as string,
+        roomNumber: (plainObject.roomNumber || '') as string,
         checkInDate: checkInDate,
         checkOutDate: safeFormat(plainObject.checkOutDate),
-        comments: plainObject.comments || '',
+        comments: (plainObject.comments || '') as string,
     };
     return newNonEmployee;
 };
 
-const deserializeNotification = (row: Record<string, any>): Notification | null => {
+const deserializeNotification = (row: Record<string, unknown>): Notification | null => {
     const plainObject = row;
 
     const id = plainObject.id;
     if (!id) return null;
     
-    const createdAtString = plainObject.createdAt;
+    const createdAtString = plainObject.createdAt as string;
     const createdAt = createdAtString ? new Date(createdAtString).toISOString() : new Date(0).toISOString();
     
     let changes: NotificationChange[] = [];
@@ -215,12 +215,12 @@ const deserializeNotification = (row: Record<string, any>): Notification | null 
     }
     
     const newNotification: Notification = {
-        id: id,
-        message: plainObject.message || '',
-        employeeId: plainObject.employeeId || '',
-        employeeName: plainObject.employeeName || '',
-        coordinatorId: plainObject.coordinatorId || '',
-        coordinatorName: plainObject.coordinatorName || '',
+        id: id as string,
+        message: (plainObject.message || '') as string,
+        employeeId: (plainObject.employeeId || '') as string,
+        employeeName: (plainObject.employeeName || '') as string,
+        coordinatorId: (plainObject.coordinatorId || '') as string,
+        coordinatorName: (plainObject.coordinatorName || '') as string,
         createdAt: createdAt,
         isRead: plainObject.isRead === 'TRUE',
         changes: changes,
@@ -228,19 +228,19 @@ const deserializeNotification = (row: Record<string, any>): Notification | null 
     return newNotification;
 };
 
-const deserializeEquipmentItem = (row: Record<string, any>): EquipmentItem | null => {
+const deserializeEquipmentItem = (row: Record<string, unknown>): EquipmentItem | null => {
     const plainObject = row;
     const id = plainObject.id;
     if (!id) return null;
 
     return {
-        id,
-        inventoryNumber: plainObject.inventoryNumber || '',
-        name: plainObject.name || '',
+        id: id as string,
+        inventoryNumber: (plainObject.inventoryNumber || '') as string,
+        name: (plainObject.name || '') as string,
         quantity: Number(plainObject.quantity) || 0,
-        description: plainObject.description || '',
-        addressId: plainObject.addressId || '',
-        addressName: plainObject.addressName || '',
+        description: (plainObject.description || '') as string,
+        addressId: (plainObject.addressId || '') as string,
+        addressName: (plainObject.addressName || '') as string,
     };
 };
 
@@ -380,8 +380,6 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             return acc;
         }, []);
 
-        const temporaryAccess: TemporaryAccess[] = [];
-
         return {
             id: 'global-settings',
             addresses,
@@ -389,7 +387,7 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             departments: departmentRows.map(row => row.name).filter(Boolean),
             coordinators,
             genders: genderRows.map(row => row.name).filter(Boolean),
-            temporaryAccess,
+            temporaryAccess: [],
             inspectionTemplate,
         };
     } catch (error: unknown) {
@@ -489,12 +487,12 @@ export async function getAllSheetsData() {
             inspectionTemplate,
         };
 
-        const employees = employeesSheet.map(deserializeEmployee).filter((e): e is Employee => e !== null);
-        const nonEmployees = nonEmployeesSheet.map(deserializeNonEmployee).filter((e): e is NonEmployee => e !== null);
-        const equipment = equipmentSheet.map(deserializeEquipmentItem).filter((item): item is EquipmentItem => item !== null);
+        const employees = employeesSheet.map(row => deserializeEmployee(row as Record<string, unknown>)).filter((e): e is Employee => e !== null);
+        const nonEmployees = nonEmployeesSheet.map(row => deserializeNonEmployee(row as Record<string, unknown>)).filter((e): e is NonEmployee => e !== null);
+        const equipment = equipmentSheet.map(row => deserializeEquipmentItem(row as Record<string, unknown>)).filter((item): item is EquipmentItem => item !== null);
 
         const notifications = notificationsSheet
-            .map(deserializeNotification)
+            .map(row => deserializeNotification(row as Record<string, unknown>))
             .filter((n): n is Notification => n !== null)
             .sort((a: Notification, b: Notification) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         
@@ -526,12 +524,12 @@ export async function getAllSheetsData() {
                 if (itemLabel && !itemLabel.startsWith('Photo') && itemLabel !== 'Uwagi') {
                     let type: InspectionCategoryItem['type'] = 'text';
                     const rawValue = detail.itemValue;
-                    let value: any = rawValue;
+                    let value: unknown = rawValue;
                     
                     if (rawValue?.toLowerCase() === 'true' || rawValue?.toLowerCase() === 'false') {
                         type = 'yes_no';
                         value = rawValue.toLowerCase() === 'true';
-                    } else if (['Wysoki', 'Normalny', 'Niski', 'Bardzo czysto', 'Czysto', 'Brudno', 'Bardzo brudno'].includes(rawValue)) {
+                    } else if (['Wysoki', 'Normalny', 'Niski', 'Bardzo czysto', 'Czysto', 'Brudno', 'Bardzo brudno', 'Do poprawy'].includes(rawValue)) {
                         type = 'select';
                     } else if (rawValue && !isNaN(parseFloat(rawValue)) && isFinite(rawValue as any)) {
                         const num = parseFloat(rawValue);
@@ -547,11 +545,11 @@ export async function getAllSheetsData() {
                             value = JSON.parse(rawValue);
                             type = 'checkbox_group';
                         } catch {
-                            // eslint-disable-next-line no-empty
+                             // eslint-disable-next-line no-empty
                         }
                     }
 
-                    category.items.push({ label: itemLabel, value, type, options: [] });
+                    category.items.push({ label: itemLabel, value: value as string | number | boolean | string[], type, options: [] });
                 }
                 if (detail.uwagi) {
                     category.uwagi = detail.uwagi;
@@ -627,7 +625,7 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
                 if (itemLabel && !itemLabel.startsWith('Photo') && itemLabel !== 'Uwagi') {
                     let type: InspectionCategoryItem['type'] = 'text';
                     const rawValue = detail.itemValue;
-                    let value: any = rawValue;
+                    let value: unknown = rawValue;
                     
                     if (rawValue?.toLowerCase() === 'true' || rawValue?.toLowerCase() === 'false') {
                         type = 'yes_no';
@@ -652,7 +650,7 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
                         }
                     }
 
-                    category.items.push({ label: itemLabel, value, type, options: [] });
+                    category.items.push({ label: itemLabel, value: value as string | number | boolean | string[], type, options: [] });
                 }
                 if (uwagi) {
                     category.uwagi = uwagi;
@@ -684,4 +682,4 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
     }
 }
 
-  
+    

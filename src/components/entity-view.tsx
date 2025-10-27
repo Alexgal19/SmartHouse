@@ -494,7 +494,7 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
     const renderContent = () => {
         const isEmployeeTab = tab === 'active' || tab === 'dismissed';
 
-        const listProps: any = {
+        const listProps: Record<string, unknown> = {
             entities: paginatedData,
             settings: settings,
             onEdit: handleEdit,
@@ -560,4 +560,4 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
     )
 }
 
-  
+    

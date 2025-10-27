@@ -1,6 +1,8 @@
 
+import { ReactNode } from "react";
+
 declare module 'recharts' {
-  type ContentType = React.ReactNode | ((props: any) => React.ReactNode);
+  type ContentType = ReactNode | ((props: any) => ReactNode);
 
   interface LegendPayloadItem {
     value: string;
@@ -11,7 +13,7 @@ declare module 'recharts' {
     inactive?: boolean;
     dataKey?: string;
     name?: string;
-    payload?: any;
+    payload?: unknown;
   }
 
   interface LegendProps {
@@ -39,7 +41,7 @@ declare module 'recharts' {
   }
 
   interface PieProps {
-    data?: Array<any>;
+    data?: unknown[];
     nameKey?: string;
     dataKey?: string;
     value?: string | number;
@@ -52,14 +54,14 @@ declare module 'recharts' {
     cx?: string | number;
     cy?: string | number;
     activeIndex?: number;
-    activeShape?: any;
-    label?: boolean | any | React.ReactElement | ((props: any) => React.ReactNode);
-    labelLine?: boolean | any | React.ReactElement | ((props: any) => React.ReactNode);
-    onClick?: (data: any, index: number) => void;
-    onMouseEnter?: (data: any, index: number) => void;
-    onMouseLeave?: (data: any, index: number) => void;
+    activeShape?: unknown | React.ReactElement | ((props: unknown) => ReactNode);
+    label?: boolean | unknown | React.ReactElement | ((props: unknown) => ReactNode);
+    labelLine?: boolean | unknown | React.ReactElement | ((props: unknown) => ReactNode);
+    onClick?: (data: unknown, index: number) => void;
+    onMouseEnter?: (data: unknown, index: number) => void;
+    onMouseLeave?: (data: unknown, index: number) => void;
     activeRadius?: number;
-    children?: React.ReactNode;
+    children?: ReactNode;
     strokeWidth?: number;
     active?: boolean;
   }
@@ -73,7 +75,7 @@ declare module 'recharts' {
     viewBox?: { x?: number; y?: number; width?: number; height?: number };
     active?: boolean;
     coordinate?: { x: number; y: number };
-    payload?: Array<any>;
+    payload?: unknown[];
     label?: string | number;
   }
 
@@ -105,4 +107,4 @@ declare module 'recharts' {
   class RadialBarChart extends React.Component<any> {}
 }
 
-  
+    

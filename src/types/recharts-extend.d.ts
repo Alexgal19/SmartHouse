@@ -1,8 +1,8 @@
 
 declare module "recharts-extend" {
-  export type ChartConfig = Record<string, any>;
-  export type ChartContainerProps = Record<string, any>;
-  export type ChartStyleConfig = Record<string, any>;
+  export type ChartConfig = Record<string, unknown>;
+  export type ChartContainerProps = Record<string, unknown>;
+  export type ChartStyleConfig = Record<string, unknown>;
 }
 
-  
+    

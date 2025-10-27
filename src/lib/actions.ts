@@ -3,7 +3,7 @@
 
 import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Inspection, InspectionCategory } from '@/types';
 import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getNonEmployeesFromSheet, getEquipmentFromSheet, getAllSheetsData, getInspectionsFromSheet } from './sheets';
-import { format, isPast, isValid, parse, startOfMonth, endOfMonth, differenceInDays, min, max, getDaysInMonth } from 'date-fns';
+import { format, isPast, isValid, getDaysInMonth, parseISO } from 'date-fns';
 import * as XLSX from 'xlsx';
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
@@ -129,13 +129,13 @@ const safeFormat = (dateStr: string | undefined | null): string | null => {
     }
 };
 
-const deserializeEmployee = (row: Record<string, any>): Employee | null => {
+const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     const plainObject = row;
     
     const id = String(plainObject.id || '');
     if (!id) return null;
 
-    const checkInDate = safeFormat(plainObject.checkInDate);
+    const checkInDate = safeFormat(plainObject.checkInDate as string);
     if (!checkInDate) return null;
 
     let deductionReason: DeductionReason[] | undefined;
@@ -162,19 +162,19 @@ const deserializeEmployee = (row: Record<string, any>): Employee | null => {
         roomNumber: String(plainObject.roomNumber || ''),
         zaklad: String(plainObject.zaklad || ''),
         checkInDate: checkInDate,
-        checkOutDate: safeFormat(plainObject.checkOutDate),
-        contractStartDate: safeFormat(plainObject.contractStartDate),
-        contractEndDate: safeFormat(plainObject.contractEndDate),
-        departureReportDate: safeFormat(plainObject.departureReportDate),
+        checkOutDate: safeFormat(plainObject.checkOutDate as string),
+        contractStartDate: safeFormat(plainObject.contractStartDate as string),
+        contractEndDate: safeFormat(plainObject.contractEndDate as string),
+        departureReportDate: safeFormat(plainObject.departureReportDate as string),
         comments: String(plainObject.comments || ''),
         status: String(plainObject.status) === 'dismissed' ? 'dismissed' : 'active',
         oldAddress: plainObject.oldAddress ? String(plainObject.oldAddress) : undefined,
-        addressChangeDate: safeFormat(plainObject.addressChangeDate),
+        addressChangeDate: safeFormat(plainObject.addressChangeDate as string),
         depositReturned: depositReturned,
-        depositReturnAmount: plainObject.depositReturnAmount ? parseFloat(plainObject.depositReturnAmount) : null,
-        deductionRegulation: plainObject.deductionRegulation ? parseFloat(plainObject.deductionRegulation) : null,
-        deductionNo4Months: plainObject.deductionNo4Months ? parseFloat(plainObject.deductionNo4Months) : null,
-        deductionNo30Days: plainObject.deductionNo30Days ? parseFloat(plainObject.deductionNo30Days) : null,
+        depositReturnAmount: plainObject.depositReturnAmount ? parseFloat(plainObject.depositReturnAmount as string) : null,
+        deductionRegulation: plainObject.deductionRegulation ? parseFloat(plainObject.deductionRegulation as string) : null,
+        deductionNo4Months: plainObject.deductionNo4Months ? parseFloat(plainObject.deductionNo4Months as string) : null,
+        deductionNo30Days: plainObject.deductionNo30Days ? parseFloat(plainObject.deductionNo30Days as string) : null,
         deductionReason: deductionReason,
     };
     
@@ -232,7 +232,7 @@ export async function getSettings(): Promise<Settings> {
     }
 }
 
-const writeToAuditLog = async (actorId: string, actorName: string, action: string, targetType: string, targetId: string, details: Record<string, any>) => {
+const writeToAuditLog = async (actorId: string, actorName: string, action: string, targetType: string, targetId: string, details: Record<string, unknown>) => {
     try {
         const sheet = await getSheet(SHEET_NAME_AUDIT_LOG, AUDIT_LOG_HEADERS);
         await sheet.addRow({
@@ -507,7 +507,7 @@ export async function updateEquipment(id: string, updates: Partial<EquipmentItem
         if (!row) throw new Error("Equipment not found");
         
         for (const key in updates) {
-            row.set(key, (updates as Record<string,any>)[key]);
+            row.set(key, (updates as Record<string,unknown>)[key]);
         }
         await row.save();
     } catch (e: unknown) {
@@ -796,13 +796,13 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
     }
 }
 
-export async function generateMonthlyReport(year: number, month: number, coordinatorId: string) {
+export async function generateMonthlyReport(year: number, month: number, coordinatorId: string): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
     try {
         const { employees, settings } = await getAllData();
         const coordinatorMap = new Map(settings.coordinators.map(c => [c.uid, c.name]));
 
-        const reportStart = startOfMonth(new Date(year, month - 1));
-        const reportEnd = endOfMonth(new Date(year, month - 1));
+        const reportStart = new Date(year, month - 1, 1);
+        const reportEnd = new Date(year, month, 0);
         
         let filteredEmployees = employees;
         if (coordinatorId !== 'all') {
@@ -811,8 +811,8 @@ export async function generateMonthlyReport(year: number, month: number, coordin
 
         const reportData = filteredEmployees
             .filter(e => {
-                const checkIn = e.checkInDate ? parse(e.checkInDate, 'yyyy-MM-dd', new Date()) : null;
-                const checkOut = e.checkOutDate ? parse(e.checkOutDate, 'yyyy-MM-dd', new Date()) : null;
+                const checkIn = e.checkInDate ? parseISO(e.checkInDate) : null;
+                const checkOut = e.checkOutDate ? parseISO(e.checkOutDate) : null;
 
                 if (!checkIn) return false;
 
@@ -822,13 +822,13 @@ export async function generateMonthlyReport(year: number, month: number, coordin
                 return startsBeforeReportEnd && endsAfterReportStart;
             })
             .map(e => {
-                const checkIn = parse(e.checkInDate!, 'yyyy-MM-dd', new Date());
-                const checkOut = e.checkOutDate ? parse(e.checkOutDate, 'yyyy-MM-dd', new Date()) : null;
+                const checkIn = parseISO(e.checkInDate!);
+                const checkOut = e.checkOutDate ? parseISO(e.checkOutDate) : null;
 
-                const startDateInMonth = max([checkIn, reportStart]);
-                const endDateInMonth = checkOut ? min([checkOut, reportEnd]) : reportEnd;
+                const startDateInMonth = checkIn > reportStart ? checkIn : reportStart;
+                const endDateInMonth = checkOut && checkOut < reportEnd ? checkOut : reportEnd;
 
-                const daysInMonth = differenceInDays(endDateInMonth, startDateInMonth) + 1;
+                const daysInMonth = (endDateInMonth.getTime() - startDateInMonth.getTime()) / (1000 * 3600 * 24) + 1;
                 
                 return {
                     "Imię i nazwisko": e.fullName,
@@ -838,7 +838,7 @@ export async function generateMonthlyReport(year: number, month: number, coordin
                     "Zakład": e.zaklad,
                     "Data zameldowania": e.checkInDate,
                     "Data wymeldowania": e.checkOutDate,
-                    "Dni w miesiącu": daysInMonth > 0 ? daysInMonth : 0,
+                    "Dni w miesiącu": daysInMonth > 0 ? Math.round(daysInMonth) : 0,
                 }
             });
 
@@ -846,10 +846,12 @@ export async function generateMonthlyReport(year: number, month: number, coordin
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Raport Miesięczny");
         
-        const cols = Object.keys(reportData[0] || {}).map(key => ({
-            wch: Math.max(key.length, ...reportData.map(row => (row[key as keyof typeof row] || '').toString().length))
-        }));
-        worksheet["!cols"] = cols;
+        if (reportData.length > 0) {
+            const cols = Object.keys(reportData[0] || {}).map(key => ({
+                wch: Math.max(key.length, ...reportData.map(row => (row[key as keyof typeof row] || '').toString().length))
+            }));
+            worksheet["!cols"] = cols;
+        }
 
         const fileContent = XLSX.write(workbook, { type: 'base64', bookType: 'xlsx' });
         const fileName = `Raport_Miesieczny_${year}_${month}.xlsx`;
@@ -862,7 +864,7 @@ export async function generateMonthlyReport(year: number, month: number, coordin
     }
 }
 
-export async function generateAccommodationReport(year: number, month: number, coordinatorId: string) {
+export async function generateAccommodationReport(year: number, month: number, coordinatorId: string): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
     try {
         const { employees, settings } = await getAllData();
         
@@ -882,8 +884,8 @@ export async function generateAccommodationReport(year: number, month: number, c
             for (let day = 1; day <= daysInMonth; day++) {
                 const currentDate = new Date(year, month - 1, day);
                 const occupantsOnDate = employees.filter(e => {
-                    const checkIn = e.checkInDate ? parse(e.checkInDate, 'yyyy-MM-dd', new Date()) : null;
-                    const checkOut = e.checkOutDate ? parse(e.checkOutDate, 'yyyy-MM-dd', new Date()) : null;
+                    const checkIn = e.checkInDate ? parseISO(e.checkInDate) : null;
+                    const checkOut = e.checkOutDate ? parseISO(e.checkOutDate) : null;
 
                     return e.address === address.name &&
                            checkIn && checkIn <= currentDate &&
@@ -914,4 +916,4 @@ export async function generateAccommodationReport(year: number, month: number, c
     }
 }
 
-  
+    
