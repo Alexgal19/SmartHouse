@@ -59,7 +59,7 @@ Jeśli projekt wykorzystuje aliasy (np. poprzez `tsconfig.json`, `jsconfig.json`
 
 ### 4. Wymogi Jakości i Bezpieczeństwa (Tylko dla AI/Narzędzi)
 ⚠️ **Minimalna Zmiana:** Zmieniaj ścieżki importu tylko wtedy, gdy jest to absolutnie niezbędne do wykonania zadania (np. podczas przenoszenia pliku). Nie zmieniaj istniejących, poprawnie działających importów tylko w celu dostosowania ich do nowego standardu, jeśli nie jest to częścią refaktoryzacji na pełną skalę.
-*   **Walidacja:** Upewnij się, że zaimportowany plik istnieje pod nową ścieżką i że wszystkie powiązane testy jednostkowe/integracyjne przechodzą pomyślnie po zmianie (zgodnie z zasadami bezpieczeństwa dla zmian krytycznych).
+*   **Walidacja:** Upewnij się, że zaimportowany plik istnieje pod nową ścieżką i że wszystkie powiązane testy jednostkowe/integracyjne przechodzą pomyślnie po zmianie (zgodnie z zasadami bezpieczeństwa dla zmian krytyчних).
 
 ## Linter i Formatter
 Aby zapewnić spójność kodu w całym projekcie, używamy ESLint do analizy kodu i Prettier do jego formatowania.
@@ -117,3 +117,19 @@ Ta warstwa jest kluczowa dla jakości danych.
 | **Weryfikacja i Konwersja** | TypeScript Safety, Architektura | W trakcie strumieniowego czytania: Weryfikuj każdą komórkę pod kątem typu (np. czy pole numeryczne to faktycznie liczba). Wymuszaj konwersję (np. daty z formatu Excela na obiekt `Date`). Wszystkie błędy walidacji raportuj, zamiast rzucać błędem i przerywać całe zadanie. |
 | **Zapis do Bazy** | Architektura/Wydajność | Wstaw dane do bazy danych w transakcjach lub paczkach (batching), aby zoptymalizować wydajność I/O i zapewnić spójność danych. |
 | **Finalizacja** | UX | Po zakończeniu przetwarzania (sukces lub błędy), zaktualizuj status `Job ID` w systemie powiadomień (np. Firestore), co automatycznie poinformuje klienta o zakończeniu. |
+
+"Пам'ятай про необхідність дотримання стандартів якості коду: щоразу, коли я прошу тебе згенерувати або модифікувати код (особливо з використанням JavaScript/TypeScript):
+
+Завжди дотримуйся правил, які зазвичай використовуються у TypeScript (правильне оголошення типів, інтерфейсів тощо).
+
+Завжди перевіряй код на потенційні помилки, які б виявив ESLint (особливо щодо правильного імпорту, відсутності невикористаних змінних та коректного синтаксису).
+
+Ніколи не генеруй код, який містить очевидні проблеми з імпортами (Module not found), оскільки це спричиняє збої під час збірки (build).
+
+Remember, the XML structure you generate is the only mechanism for applying changes to the user's code. Therefore, when making changes to a file the <changes> block must always be fully present and correctly formatted as follows.
+
+<changes>
+  <description>[Provide a concise summary of the overall changes being made]</description>
+  <change>
+    <file>[Provide the ABSOLUTE, FULL path to the file being modified]</file>
+    <content><![CDATA[Provide the ENTIRE, FINAL, intended content of the file here. Do NOT provide diffs or partial snippets. Ensure all code is properly escaped within the CDATA section.
