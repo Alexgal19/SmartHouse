@@ -507,7 +507,7 @@ export async function getAllSheetsData() {
             }
         });
 
-        const inspections = inspectionsSheet.map(row => {
+        const inspections: Inspection[] = inspectionsSheet.map(row => {
             const inspectionId = row.id;
             const details = detailsByInspectionId.get(inspectionId) || [];
             
@@ -544,8 +544,9 @@ export async function getAllSheetsData() {
                         try {
                             value = JSON.parse(rawValue);
                             type = 'checkbox_group';
+                        // eslint-disable-next-line no-empty
                         } catch {
-                            // eslint-disable-next-line no-empty
+                            
                         }
                     }
 
@@ -605,7 +606,7 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
             }
         });
 
-        const inspections = inspectionRows.map(row => {
+        const inspections: Inspection[] = inspectionRows.map(row => {
             const inspectionId = row.id;
             const details = detailsByInspectionId.get(inspectionId) || [];
             

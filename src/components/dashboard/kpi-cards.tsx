@@ -86,5 +86,3 @@ export function DashboardKPIs({
         </div>
     );
 }
-
-  

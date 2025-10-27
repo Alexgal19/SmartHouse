@@ -332,7 +332,7 @@ const ReportsGenerator = ({ settings, currentUser }: { settings: Settings; curre
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
-                                    {settings.coordinators.map(c => <SelectItem key={c.uid} value={String(c.uid)}>{c.name}</SelectItem>)}
+                                    {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -507,5 +507,3 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     </div>
   );
 }
-
-    

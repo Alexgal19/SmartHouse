@@ -45,11 +45,10 @@ const NotificationItem = ({ n, onClick }: {n: Notification, onClick: (n: Notific
 
 export default function Header({
   user,
-  _activeView,
+  onLogout,
   notifications,
   onNotificationClick,
-  onLogout,
-  onClearNotifications
+  onClearNotifications,
 }: {
   user: SessionData;
   activeView: View;

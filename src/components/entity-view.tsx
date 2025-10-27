@@ -158,7 +158,7 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
                 <TableRow key={entity.id} onClick={() => onEdit(entity)} className="cursor-pointer">
                   <TableCell className="font-medium">{entity.fullName}</TableCell>
                   <TableCell>{isEmployee(entity) ? "Pracownik" : "Mieszkaniec (NZ)"}</TableCell>
-                  <TableCell>{isEmployee(entity) ? getCoordinatorName(entity.coordinatorId) : "N/A"}</TableCell>
+                  <TableCell>{isEmployee(entity) ? getCoordinatorName((entity as Employee).coordinatorId) : "N/A"}</TableCell>
                   <TableCell>{entity.address}</TableCell>
                   <TableCell>{entity.roomNumber}</TableCell>
                   <TableCell>{formatDate(entity.checkInDate)}</TableCell>
@@ -191,7 +191,7 @@ const EntityCardList = ({ entities, onEdit, onDismiss, onRestore, isDismissed, s
                            <div>
                              <CardTitle className="text-base">{entity.fullName}</CardTitle>
                              <CardDescription>
-                                {isEmployee(entity) ? getCoordinatorName(entity.coordinatorId) : "Mieszkaniec (NZ)"}
+                                {isEmployee(entity) ? getCoordinatorName((entity as Employee).coordinatorId) : "Mieszkaniec (NZ)"}
                              </CardDescription>
                            </div>
                            <div onClick={(e) => e.stopPropagation()}>
@@ -200,7 +200,7 @@ const EntityCardList = ({ entities, onEdit, onDismiss, onRestore, isDismissed, s
                         </CardHeader>
                         <CardContent className="text-sm space-y-2">
                             <p><span className="font-semibold text-muted-foreground">Adres:</span> {entity.address}, pok. {entity.roomNumber}</p>
-                            {isEmployee(entity) && <p><span className="font-semibold text-muted-foreground">Narodowość:</span> {entity.nationality}</p>}
+                            {isEmployee(entity) && <p><span className="font-semibold text-muted-foreground">Narodowość:</span> {(entity as Employee).nationality}</p>}
                             <p><span className="font-semibold text-muted-foreground">Zameldowanie:</span> {formatDate(entity.checkInDate)}</p>
                         </CardContent>
                     </Card>
@@ -514,8 +514,8 @@ export default function EntityView({ _currentUser }: { currentUser: SessionData 
                         entities={paginatedData}
                         settings={settings} 
                         isDismissed={tab === 'dismissed'}
-                        onEdit={(_e: Entity) => { throw new Error('Function not implemented.'); } } 
-                        onPermanentDelete={(_id: string, _type: 'employee' | 'non-employee') => { throw new Error('Function not implemented.'); } } {...listProps} /> : <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
+                        onEdit={handleEdit} 
+                        onPermanentDelete={handlePermanentDelete} {...listProps} /> : <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
                 </ScrollArea>
                  <PaginationControls currentPage={page} totalPages={totalPages} onPageChange={(p) => updateSearchParams({ page: p })} isDisabled={isPending} />
             </>

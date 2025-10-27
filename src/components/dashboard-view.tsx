@@ -133,4 +133,3 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
     </>
   );
 }
-
