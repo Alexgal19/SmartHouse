@@ -1,9 +1,8 @@
 
-
 "use server";
 
 import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Inspection, InspectionCategory } from '../types';
-import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getNonEmployeesFromSheet, getEquipmentFromSheet, getAllSheetsData, getInspectionsFromSheet } from './sheets';
+import { getSheet, getAllSheetsData, getInspectionsFromSheet } from './sheets';
 import { format, isPast, isValid, getDaysInMonth, parseISO } from 'date-fns';
 import * as XLSX from 'xlsx';
 
@@ -119,9 +118,9 @@ const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
 const ADDRESS_HEADERS = ['id', 'name', 'coordinatorId'];
 const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targetType', 'targetId', 'details'];
 
-const safeFormat = (dateStr: string | undefined | null): string | null => {
+const safeFormat = (dateStr: unknown): string | null => {
     if (!dateStr) return null;
-    const date = new Date(dateStr);
+    const date = new Date(dateStr as string);
     if (!isValid(date)) return null;
     try {
         return format(date, 'yyyy-MM-dd');
@@ -136,7 +135,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     const id = String(plainObject.id || '');
     if (!id) return null;
 
-    const checkInDate = safeFormat(plainObject.checkInDate as string);
+    const checkInDate = safeFormat(plainObject.checkInDate);
     if (!checkInDate) return null;
 
     let deductionReason: DeductionReason[] | undefined;
@@ -163,14 +162,14 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         roomNumber: String(plainObject.roomNumber || ''),
         zaklad: String(plainObject.zaklad || ''),
         checkInDate: checkInDate,
-        checkOutDate: safeFormat(plainObject.checkOutDate as string),
-        contractStartDate: safeFormat(plainObject.contractStartDate as string),
-        contractEndDate: safeFormat(plainObject.contractEndDate as string),
-        departureReportDate: safeFormat(plainObject.departureReportDate as string),
+        checkOutDate: safeFormat(plainObject.checkOutDate),
+        contractStartDate: safeFormat(plainObject.contractStartDate),
+        contractEndDate: safeFormat(plainObject.contractEndDate),
+        departureReportDate: safeFormat(plainObject.departureReportDate),
         comments: String(plainObject.comments || ''),
         status: String(plainObject.status) === 'dismissed' ? 'dismissed' : 'active',
         oldAddress: plainObject.oldAddress ? String(plainObject.oldAddress) : undefined,
-        addressChangeDate: safeFormat(plainObject.addressChangeDate as string),
+        addressChangeDate: safeFormat(plainObject.addressChangeDate),
         depositReturned: depositReturned,
         depositReturnAmount: plainObject.depositReturnAmount ? parseFloat(plainObject.depositReturnAmount as string) : null,
         deductionRegulation: plainObject.deductionRegulation ? parseFloat(plainObject.deductionRegulation as string) : null,
@@ -189,47 +188,6 @@ export async function getAllData() {
     } catch (error: unknown) {
         console.error("Error in getAllData (actions):", error);
         throw new Error(error instanceof Error ? error.message : "Failed to get all data.");
-    }
-}
-
-export async function getEmployees(coordinatorId?: string): Promise<Employee[]> {
-    try {
-        const employees = await getEmployeesFromSheet(coordinatorId);
-        return employees;
-    } catch (error: unknown) {
-        console.error("Error in getEmployees (actions):", error);
-        throw new Error(error instanceof Error ? error.message : "Failed to get employees.");
-    }
-}
-
-export async function getNonEmployees(): Promise<NonEmployee[]> {
-  try {
-     const nonEmployees = await getNonEmployeesFromSheet();
-     return nonEmployees;
-  } catch (error: unknown) {
-    console.error("Error in getNonEmployees (actions):", error);
-    throw new Error(error instanceof Error ? error.message : "Failed to get non-employees.");
-  }
-}
-
-export async function getEquipment(coordinatorId?: string): Promise<EquipmentItem[]> {
-  try {
-     const equipment = await getEquipmentFromSheet(coordinatorId);
-     return equipment;
-  } catch (error: unknown) {
-    console.error("Error in getEquipment (actions):", error);
-    throw new Error(error instanceof Error ? error.message : "Failed to get equipment.");
-  }
-}
-
-
-export async function getSettings(): Promise<Settings> {
-    try {
-        const settings = await getSettingsFromSheet();
-        return settings;
-    } catch (error: unknown) {
-        console.error("Error in getSettings (actions):", error);
-        throw new Error(error instanceof Error ? error.message : "Failed to get settings.");
     }
 }
 
@@ -485,12 +443,16 @@ export async function deleteNonEmployee(id: string): Promise<void> {
     }
 }
 
-export async function addEquipment(itemData: Omit<EquipmentItem, 'id'>): Promise<void> {
+export async function addEquipment(itemData: Omit<EquipmentItem, 'id' | 'addressName'>): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_EQUIPMENT, EQUIPMENT_HEADERS);
+        const { settings } = await getAllData();
+        const addressName = settings.addresses.find(a => a.id === itemData.addressId)?.name || 'Nieznany';
+        
         const newItem: EquipmentItem = {
             id: `equip-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
             ...itemData,
+            addressName
         };
         const serialized = serializeEquipment(newItem);
         await sheet.addRow(serialized, { raw: false, insert: true });
@@ -563,8 +525,8 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
             return;
         }
 
-        const { coordinators } = await getSettings();
-        const toCoordinator = coordinators.find((c) => c.uid === toCoordinatorId);
+        const { settings } = await getAllData();
+        const toCoordinator = settings.coordinators.find((c) => c.uid === toCoordinatorId);
         if (!toCoordinator) {
             throw new Error("Target coordinator not found.");
         }
@@ -680,7 +642,7 @@ export async function updateSettings(newSettings: Partial<Omit<Settings, 'tempor
 
 export async function getNotifications(): Promise<Notification[]> {
     try {
-        const notifications = await getNotificationsFromSheet();
+        const { notifications } = await getAllData();
         return notifications;
     } catch (error: unknown) {
         console.error("Error in getNotifications (actions):", error);
@@ -709,16 +671,6 @@ export async function clearAllNotifications(): Promise<void> {
     } catch (e: unknown) {
         console.error("Could not clear notifications:", e);
         throw new Error(e instanceof Error ? e.message : "Failed to clear notifications.");
-    }
-}
-
-export async function getInspections(coordinatorId?: string): Promise<Inspection[]> {
-    try {
-        const inspections = await getInspectionsFromSheet(coordinatorId);
-        return inspections;
-    } catch (error: unknown) {
-        console.error("Error in getInspections (actions):", error);
-        throw new Error(error instanceof Error ? error.message : "Failed to get inspections.");
     }
 }
 
@@ -849,7 +801,7 @@ export async function generateMonthlyReport(year: number, month: number, coordin
         
         if (reportData.length > 0) {
             const cols = Object.keys(reportData[0] || {}).map(key => ({
-                wch: Math.max(key.length, ...reportData.map(row => (row[key as keyof typeof row] || '').toString().length))
+                wch: Math.max(key.length, ...reportData.map(row => String(row[key as keyof typeof row] ?? '').length))
             }));
             worksheet["!cols"] = cols;
         }
