@@ -933,6 +933,11 @@ export async function bulkImportEmployees(fileData: ArrayBuffer, actorUid: strin
         const json: any[] = XLSX.utils.sheet_to_json(worksheet, { raw: false, defval: null });
 
         const requiredHeaders = ['fullName', 'coordinatorName', 'nationality', 'gender', 'address', 'roomNumber', 'zaklad'];
+        
+        if (json.length === 0) {
+             return { success: false, message: `Plik jest pusty.` };
+        }
+        
         const headers = Object.keys(json[0] || {});
         
         const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
@@ -943,10 +948,15 @@ export async function bulkImportEmployees(fileData: ArrayBuffer, actorUid: strin
         const employeesToAdd: (Partial<Employee>)[] = [];
         
         for (const row of json) {
+            // Ignore empty rows
+            if (!row.fullName) {
+                continue;
+            }
+
             const coordinator = row.coordinatorName ? settings.coordinators.find(c => c.name.toLowerCase() === String(row.coordinatorName).toLowerCase()) : null;
             
             const employee: Partial<Employee> = {
-                fullName: row.fullName ? String(row.fullName) : '',
+                fullName: String(row.fullName),
                 coordinatorId: coordinator ? coordinator.uid : '',
                 nationality: row.nationality ? String(row.nationality) : '',
                 gender: row.gender ? String(row.gender) : '',
@@ -966,7 +976,7 @@ export async function bulkImportEmployees(fileData: ArrayBuffer, actorUid: strin
             await addEmployee(emp, actorUid);
         }
 
-        return { success: true, message: `Pomyślnie заimportowano ${employeesToAdd.length} pracowników.` };
+        return { success: true, message: `Pomyślnie zaimportowano ${employeesToAdd.length} pracowników.` };
 
     } catch (e: unknown) {
          return { success: false, message: e instanceof Error ? e.message : "Wystąpił nieznany błąd podczas przetwarzania pliku." };
