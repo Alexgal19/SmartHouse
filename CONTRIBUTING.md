@@ -44,3 +44,37 @@ Dziękujemy za zainteresowanie rozwojem tego projektu. Aby zapewnić najwyższą
     *   **Stylizacja:** Używaj nowoczesnych metod zarządzania stylami (np. CSS Modules, CSS-in-JS, lub Tailwind CSS, jeśli jest w projekcie) dla izolacji stylów.
     *   **Animacje:** Animacje muszą być wydajne (hardware-accelerated), używając właściwości `transform` i `opacity`. Animacje interaktywne powinny być płynne i wspierać koncepcję Micro-Interactions, by poprawić UX.
     *   **Kolory/Design System:** Stylizacja powinna być spójna z istniejącym designem/paletą kolorów projektu.
+
+## Potok Importu Danych Excel (Architektura Seniora)
+Podzielimy zadanie na trzy warstwy, z których każda musi spełniać Twoje wymagania.
+
+### Warstwa 1: Frontend (Interfejs Użytkownika i UX)
+Ta warstwa odpowiada za płynność działania i interakcję z użytkownikiem.
+
+| Krok | Wymagania Seniora/Zasady | Opis Implementacji |
+|---|---|---|
+| **Komponent Uploadu** | SRP (Single Responsibility Principle), Mobile-First | Stwórz dedykowany, czysty komponent (np. `ExcelUploadForm.tsx`). Używaj semantyki i atrybutów ARIA dla przycisku wyboru pliku (A11y). |
+| **Walidacja Wstępna** | TypeScript Safety | Sprawdź typ pliku (np. `file.type` lub rozszerzenie) po stronie klienta. Zapewnij natychmiastową informację zwrotną, jeśli plik nie jest Excelem (poprawia UX). |
+| **Obsługa > 1 MB** | Performance (CWV), UX | Po wybraniu pliku: zablokuj interfejs (np. za pomocą modalnego okna dialogowego - UX) i natychmiast wyślij plik do serwera. |
+| **Śledzenie Postępu**| UX, Architektura Komponentów | Zamiast czekać na odpowiedź serwera, po wysłaniu pliku, klient powinien otrzymać `Job ID` (ID zadania w tle). Następnie użyj WebSockets lub Polling (co 5-10 sekund) do serwera, aby śledzić status przetwarzania. Pokaż płynny progress bar lub status oczekiwania (Animacje/Stylistyka). |
+
+### Warstwa 2: Serwer/API (Brama wejściowa i Bezpieczeństwo)
+Ta warstwa zajmuje się przyjęciem pliku i delegowaniem pracy.
+
+| Krok | Wymagania Seniora/Zasady | Opis Implementacji |
+|---|---|---|
+| **Ustalenie Limitu** | Bezpieczeństwo/Limity | Potwierdź, że limit wielkości ciała żądania (np. w `next.config.js` dla Server Actions) jest podniesiony do bezpiecznej, akceptowalnej wartości (np. 10MB), aby w ogóle przyjąć plik. |
+| **Zapis Pliku** | Performance, Architektura | Natychmiast zapisz otrzymany plik do usługi przechowywania obiektów (np. Firebase Storage / Google Cloud Storage). To chroni pamięć serwera API przed przepełnieniem. |
+| **Uruchomienie Asynchroniczne** | Architektura Komponentów (SRP) | Zamiast przetwarzać dane w handlerze API, uruchom dedykowane, długotrwałe zadanie w tle (np. Firebase Cloud Function dedykowaną tylko do przetwarzania Excela). Zwróć klientowi `Job ID` i kod statusu `202 Accepted`. |
+| **Bezpieczeństwo Danych** | Zabezpieczenia | Zawsze filtruj i czyść nazwę pliku, ścieżkę i inne metadane przed użyciem ich w systemie plików (ochrona przed atakami typu Path Traversal). |
+
+### Warstwa 3: Przetwarzanie Danych (Senior Logic i TypeScript Safety)
+Ta warstwa jest kluczowa dla jakości danych.
+
+| Krok | Wymagania Seniora/Zasady | Opis Implementacji |
+|---|---|---|
+| **Strumieniowe Czytanie** | Performance (> 10 MB) | Użyj biblioteki, która obsługuje strumieniowe czytanie plików Excel (np. SheetJS/xlsx w trybie strumieniowym). Pozwala to na przetwarzanie dużych plików w małych kawałkach, oszczędzając pamięć serwera/funkcji w tle. |
+| **Jawne Typowanie** | TypeScript Safety | Zdefiniuj ścisłe interfejsy TypeScript dla każdej przetwarzanej kolumny danych (np. `interface ImportedUser { name: string; age: number; startDate: Date; }`). |
+| **Weryfikacja i Konwersja** | TypeScript Safety, Architektura | W trakcie strumieniowego czytania: Weryfikuj każdą komórkę pod kątem typu (np. czy pole numeryczne to faktycznie liczba). Wymuszaj konwersję (np. daty z formatu Excela na obiekt `Date`). Wszystkie błędy walidacji raportuj, zamiast rzucać błędem i przerywać całe zadanie. |
+| **Zapis do Bazy** | Architektura/Wydajność | Wstaw dane do bazy danych w transakcjach lub paczkach (batching), aby zoptymalizować wydajność I/O i zapewnić spójność danych. |
+| **Finalizacja** | UX | Po zakończeniu przetwarzania (sukces lub błędy), zaktualizuj status `Job ID` w systemie powiadomień (np. Firestore), co automatycznie poinformuje klienta o zakończeniu. |
