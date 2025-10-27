@@ -6,9 +6,6 @@ import type { Employee, Settings, Notification, NotificationChange, Room, Inspec
 import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getInspectionsFromSheet, getNonEmployeesFromSheet, getEquipmentFromSheet, getAllSheetsData } from './sheets';
 import { format, isPast, isValid, parse, startOfMonth, endOfMonth, differenceInDays, min, max } from 'date-fns';
 import * as XLSX from 'xlsx';
-import { Storage } from '@google-cloud/storage';
-
-const BUCKET_NAME = 'studio-6821761262-fdf39.firebasestorage.app';
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
 const SHEET_NAME_NON_EMPLOYEES = 'NonEmployees';
@@ -924,104 +921,6 @@ const parseAndFormatDate = (dateValue: any): string | null => {
     }
     return null;
 };
-
-export async function getSignedUploadUrl(fileName: string, contentType: string): Promise<{ success: boolean; message: string; url?: string, filePath?: string }> {
-    try {
-        const storage = new Storage({
-             credentials: {
-                client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-                private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-            },
-            projectId: process.env.GOOGLE_PROJECT_ID,
-        });
-        
-        const bucket = storage.bucket(BUCKET_NAME);
-        const filePath = `imports/${Date.now()}-${fileName}`;
-        const file = bucket.file(filePath);
-
-        const [url] = await file.getSignedUrl({
-            version: 'v4',
-            action: 'write',
-            expires: Date.now() + 15 * 60 * 1000, // 15 minutes
-            contentType,
-        });
-
-        return { success: true, url, filePath, message: "URL generated." };
-    } catch (error: unknown) {
-        console.error('Error getting signed URL:', error);
-        return { success: false, message: error instanceof Error ? error.message : 'An unknown error occurred while generating the upload URL.' };
-    }
-}
-
-export async function bulkImportEmployees(filePath: string, actorUid: string): Promise<{success: boolean, message: string}> {
-    try {
-        const storage = new Storage({
-            credentials: {
-                client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-                private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-            },
-            projectId: process.env.GOOGLE_PROJECT_ID,
-        });
-        const bucket = storage.bucket(BUCKET_NAME);
-        const file = bucket.file(filePath);
-
-        const [fileBuffer] = await file.download();
-        
-        const settings = await getSettings();
-        
-        const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const json: any[] = XLSX.utils.sheet_to_json(worksheet, { raw: false, defval: null });
-
-        if (json.length === 0) {
-            return { success: false, message: 'Plik jest pusty.' };
-        }
-
-        const requiredHeaders = ['fullName', 'coordinatorName', 'nationality', 'gender', 'address', 'roomNumber', 'zaklad'];
-        const headers = Object.keys(json[0] || {});
-        
-        const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
-        if (missingHeaders.length > 0) {
-            return { success: false, message: `Brakujące kolumny w pliku: ${missingHeaders.join(', ')}` };
-        }
-        
-        const employeesToAdd: (Partial<Employee>)[] = [];
-        
-        for (const row of json) {
-             if (!row.fullName) {
-                continue; // Skip empty rows
-            }
-            const coordinator = row.coordinatorName ? settings.coordinators.find(c => c.name.toLowerCase() === String(row.coordinatorName).toLowerCase()) : null;
-            
-            const employee: Partial<Employee> = {
-                fullName: row.fullName ? String(row.fullName) : '',
-                coordinatorId: coordinator ? coordinator.uid : '',
-                nationality: row.nationality ? String(row.nationality) : '',
-                gender: row.gender ? String(row.gender) : '',
-                address: row.address ? String(row.address) : '',
-                roomNumber: row.roomNumber ? String(row.roomNumber) : '',
-                zaklad: row.zaklad ? String(row.zaklad) : '',
-                checkInDate: parseAndFormatDate(row.checkInDate) ?? undefined,
-                contractStartDate: parseAndFormatDate(row.contractStartDate) || undefined,
-                contractEndDate: parseAndFormatDate(row.contractEndDate) || undefined,
-                departureReportDate: parseAndFormatDate(row.departureReportDate) || undefined,
-                comments: row.comments ? String(row.comments) : undefined,
-            };
-            employeesToAdd.push(employee);
-        }
-        
-        for (const emp of employeesToAdd) {
-            await addEmployee(emp, actorUid);
-        }
-
-        return { success: true, message: `Pomyślnie zaimportowano ${employeesToAdd.length} pracowników.` };
-
-    } catch (e: unknown) {
-         return { success: false, message: e instanceof Error ? e.message : "Wystąpił nieznany błąd podczas przetwarzania pliku." };
-    }
-}
-
 
 export async function generateMonthlyReport(year: number, month: number, coordinatorId?: string): Promise<{ success: boolean; message?: string; fileContent?: string; fileName?: string }> {
     try {

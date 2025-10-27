@@ -18,10 +18,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { generateMonthlyReport, generateAccommodationReport, bulkImportEmployees, getSignedUploadUrl } from '@/lib/actions';
+import { generateMonthlyReport, generateAccommodationReport } from '@/lib/actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
-import axios from 'axios';
 import { useRouter } from 'next/navigation';
 
 const coordinatorSchema = z.object({
@@ -127,6 +126,7 @@ const CoordinatorManager = ({ form, fields, append, remove }: { form: any, field
 
 const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { addresses: Address[]; coordinators: any[], onEdit: (address: Address) => void; onRemove: (addressId: string) => void; onAdd: (coordinatorId: string) => void; }) => {
     const [filterCoordinatorId, setFilterCoordinatorId] = useState('all');
+    
     const coordinatorMap = useMemo(() => new Map(coordinators.map((c: { uid: any; name: any; }) => [c.uid, c.name])), [coordinators]);
 
     const filteredAddresses = useMemo(() => {
@@ -146,7 +146,7 @@ const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { 
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
-                            {coordinators.map((c: { uid: string; name: string; }) => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                            {coordinators.map((c: { uid: React.Key | null | undefined; name: string; }) => <SelectItem key={c.uid} value={c.name}>{c.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
                     <Button type="button" variant="outline" size="sm" onClick={() => onAdd(filterCoordinatorId)}>
@@ -156,7 +156,7 @@ const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { 
             </div>
             {filteredAddresses && filteredAddresses.length > 0 ? (
                 <div className="space-y-2">
-                    {filteredAddresses.map((address: { id: any; name: any; coordinatorId: any; rooms: any; }) => (
+                    {filteredAddresses.map((address: Address) => (
                         <div key={address.id} className="flex items-center justify-between rounded-lg border p-3">
                             <div>
                                 <p className="font-semibold">{address.name}</p>
@@ -184,57 +184,6 @@ const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { 
 
 
 const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
-    const { toast } = useToast();
-    const { refreshData } = useMainLayout();
-    const router = useRouter();
-    const [isImporting, setIsImporting] = useState(false);
-    const fileInputRef = React.useRef<HTMLInputElement>(null);
-    
-    const onFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        if (!file.name.endsWith('.xlsx')) {
-            toast({
-                variant: 'destructive',
-                title: 'Nieprawidłowy format pliku',
-                description: 'Proszę wybrać plik w formacie .xlsx.',
-            });
-            return;
-        }
-
-        setIsImporting(true);
-        toast({ title: 'Rozpoczynanie importu...', description: 'Plik jest przesyłany na serwer. To może zająć chwilę.' });
-
-        try {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = async (event) => {
-                const base64 = (event.target?.result as string).split(',')[1];
-                const result = await bulkImportEmployees(base64, currentUser.uid);
-
-                if (result.success) {
-                    toast({ title: 'Import zakończony', description: result.message });
-                    await refreshData(false);
-                } else {
-                    throw new Error(result.message);
-                }
-                setIsImporting(false);
-            };
-            reader.onerror = () => {
-                throw new Error("Nie udało się odczytać pliku.");
-            }
-
-        } catch (error: unknown) {
-            console.error("Import error:", error);
-            const errorMessage = (error as any)?.response?.data || (error instanceof Error ? error.message : "Wystąpił nieoczekiwany błąd podczas importu.");
-            toast({ variant: 'destructive', title: 'Błąd importu', description: String(errorMessage), duration: 10000 });
-            setIsImporting(false);
-        } finally {
-             if(fileInputRef.current) fileInputRef.current.value = '';
-        }
-    };
-    
     const { handleBulkDeleteEmployees } = useMainLayout();
     const [isDeletingActive, setIsDeletingActive] = useState(false);
     const [isDeletingDismissed, setIsDeletingDismissed] = useState(false);
@@ -256,17 +205,6 @@ const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
                 <CardDescription>Zarządzaj danymi pracowników hurtowo.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-lg border p-4 gap-4">
-                    <div className="flex-1">
-                        <h3 className="font-medium">Importuj pracowników z pliku</h3>
-                        <p className="text-sm text-muted-foreground">Dodaj wielu pracowników naraz używając pliku XLSX.</p>
-                    </div>
-                    <Button onClick={() => fileInputRef.current?.click()} disabled={isImporting} className="w-full sm:w-auto">
-                        {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                        Importuj
-                    </Button>
-                     <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx" onChange={onFileSelect} />
-                 </div>
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-lg border border-destructive/50 bg-destructive/10 p-4 gap-4">
                     <div className="flex-1">
                         <h3 className="font-medium text-destructive">Masowe usuwanie</h3>
@@ -570,4 +508,5 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     </div>
   );
 }
+
 
