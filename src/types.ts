@@ -57,8 +57,8 @@ export type Employee = {
     zaklad: string; // department
     checkInDate: string; // YYYY-MM-DD
     checkOutDate?: string | null; // YYYY-MM-DD
-    contractStartDate?: string | null; // YYYY-MM-DD
-    contractEndDate?: string | null; // YYYY-MM-DD
+    contractStartDate: string | null;
+    contractEndDate: string | null;
     departureReportDate?: string | null; // YYYY-MM-DD
     comments?: string | null;
     status: 'active' | 'dismissed';
@@ -142,5 +142,3 @@ export type EquipmentItem = {
     addressId: string;
     addressName: string;
 }
-
-    
