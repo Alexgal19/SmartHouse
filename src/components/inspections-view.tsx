@@ -120,7 +120,7 @@ const DateInput = ({
 };
 
 
-const renderFormControl = (item: InspectionCategoryItem, field: any) => {
+const renderFormControl = (item: Partial<InspectionCategoryItem>, field: any) => {
     switch (item.type) {
         case 'yes_no':
             return (
@@ -215,8 +215,8 @@ export const InspectionForm = ({
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, categoryIndex: number) => {
     const files = event.target.files;
     if (files) {
-        const categoryPath = `categories.${categoryIndex}.photos`;
-        const existingPhotos = form.getValues(categoryPath) || [];
+        const values = form.getValues();
+        const existingPhotos = (values.categories?.[categoryIndex]?.photos as string[]) || [];
         const newPhotos: string[] = [];
         
         Array.from(files).forEach(file => {
@@ -225,7 +225,7 @@ export const InspectionForm = ({
                 if (typeof e.target?.result === 'string') {
                     newPhotos.push(e.target.result);
                     if (newPhotos.length === files.length) {
-                        form.setValue(categoryPath, [...existingPhotos, ...newPhotos]);
+                        form.setValue(`categories.${categoryIndex}.photos` as any, [...existingPhotos, ...newPhotos]);
                     }
                 }
             };
@@ -235,19 +235,40 @@ export const InspectionForm = ({
   };
 
   const removePhoto = (categoryIndex: number, photoIndex: number) => {
-    const categoryPath = `categories.${categoryIndex}.photos`;
-    const existingPhotos = form.getValues(categoryPath) || [];
+    const values = form.getValues();
+    const existingPhotos = (values.categories?.[categoryIndex]?.photos as string[]) || [];
     const updatedPhotos = existingPhotos.filter((_, i) => i !== photoIndex);
-    form.setValue(categoryPath, updatedPhotos);
+    form.setValue(`categories.${categoryIndex}.photos` as any, updatedPhotos);
   };
   
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     const formattedDate = format(values.date, 'yyyy-MM-dd');
-    const inspectionData = {
-        ...values,
-        date: formattedDate,
-        coordinatorId: currentUser.uid,
+
+    // normalize standard to the exact union expected by Inspection (or null)
+    const standardValue =
+      values.standard === 'Wysoki' || values.standard === 'Normalny' || values.standard === 'Niski'
+        ? (values.standard as 'Wysoki' | 'Normalny' | 'Niski')
+        : null;
+
+    // Ensure every item has a defined `value` (fallback to null) and match the InspectionCategory type
+    const categories = (values.categories || []).map((cat) => ({
+      name: cat.name,
+      uwagi: cat.uwagi,
+      photos: cat.photos,
+      items: (cat.items || []).map((it) => ({
+        ...it,
+        value: typeof (it as any).value === 'undefined' ? null : (it as any).value,
+      })),
+    })) as InspectionCategory[];
+
+    const inspectionData: Omit<Inspection, 'id' | 'addressName' | 'coordinatorName'> = {
+      addressId: values.addressId,
+      date: formattedDate,
+      standard: standardValue,
+      categories,
+      coordinatorId: currentUser.uid,
     };
+
     onSave(inspectionData, item?.id);
   };
 
@@ -358,7 +379,7 @@ export const InspectionForm = ({
                                                     </Button>
                                                 </div>
                                                 <div className="mt-2 flex flex-wrap gap-2">
-                                                    {(form.watch(`categories.${categoryIndex}.photos`) || []).map((photoSrc, photoIndex) => (
+                                                    {(form.watch(`categories.${categoryIndex}.photos` as any) || []).map((photoSrc: string, photoIndex: number) => (
                                                         <div key={photoIndex} className="relative">
                                                             <Image src={photoSrc} alt={`Zdjęcie ${photoIndex + 1}`} width={80} height={80} className="rounded-md object-cover h-20 w-20" />
                                                             <Button type="button" variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full" onClick={() => removePhoto(categoryIndex, photoIndex)}>
