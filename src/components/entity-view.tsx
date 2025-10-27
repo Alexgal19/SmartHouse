@@ -509,8 +509,10 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
             onEdit: handleEdit,
             onPermanentDelete: handlePermanentDelete,
             isDismissed: tab === 'dismissed',
-            onDismiss: isEmployeeTab ? (id: string) => handleAction('dismiss', id) : undefined,
-            onRestore: isEmployeeTab ? (id: string) => handleAction('restore', id) : undefined,
+            ...(isEmployeeTab && {
+                onDismiss: (id: string) => handleAction('dismiss', id),
+                onRestore: (id: string) => handleAction('restore', id),
+            })
         };
 
         return (
