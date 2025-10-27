@@ -5,18 +5,18 @@
 import React, { useState, useEffect, useMemo, useCallback, createContext, useContext, useRef } from 'react';
 import Link from 'next/link';
 import {
-  Sidebar,
-  SidebarHeader,
-  SidebarContent,
-  SidebarFooter,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarProvider
-} from '@/components/ui/sidebar';
-import Header from '@/components/header';
-import { MobileNav } from '@/components/mobile-nav';
-import type { View, Notification, Employee, Settings, NonEmployee, Inspection, EquipmentItem, SessionData, Address } from '@/types';
+    Sidebar,
+    SidebarHeader,
+    SidebarContent,
+    SidebarFooter,
+    SidebarMenu,
+    SidebarMenuItem,
+    SidebarMenuButton,
+    SidebarProvider
+} from './ui/sidebar';
+import Header from './header';
+import { MobileNav } from './mobile-nav';
+import type { View, Notification, Employee, Settings, NonEmployee, Inspection, EquipmentItem, SessionData, Address } from '../types';
 import { Building, ClipboardList, Home, Settings as SettingsIcon, Users, Archive, Loader2 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -44,13 +44,13 @@ import {
     updateEquipment,
     deleteEquipment,
     getAllData
-} from '@/lib/actions';
-import { logout } from '@/lib/auth';
-import { useToast } from '@/hooks/use-toast';
-import { AddEmployeeForm, type EmployeeFormData } from '@/components/add-employee-form';
-import { AddNonEmployeeForm } from '@/components/add-non-employee-form';
+} from '../lib/actions';
+import { logout } from '../lib/auth';
+import { useToast } from '../hooks/use-toast';
+import { AddEmployeeForm, type EmployeeFormData } from './add-employee-form';
+import { AddNonEmployeeForm } from './add-non-employee-form';
 import { InspectionForm } from './inspections-view';
-import { cn } from '@/lib/utils';
+import { cn } from '../lib/utils';
 import { AddressForm } from './address-form';
 
 const navItems: { view: View; icon: React.ElementType; label: string }[] = [
@@ -74,10 +74,11 @@ type MainLayoutContextType = {
     handleDismissEmployee: (employeeId: string) => Promise<boolean>;
     handleRestoreEmployee: (employeeId: string) => Promise<boolean>;
     handleDeleteEmployee: (employeeId: string) => Promise<void>;
-    handleBulkDeleteEmployees: (status: 'active' | 'dismissed') => Promise<boolean>;
+    handleBulkDeleteEmployees: (entityType: 'employee' | 'non-employee', status: 'active' | 'dismissed') => Promise<boolean>;
     handleAddEmployeeClick: () => void;
     handleUpdateSettings: (newSettings: Partial<Settings>) => Promise<void>;
     refreshData: (showToast?: boolean) => Promise<void>;
+    handleBulkImport: (fileData: number[]) => Promise<{ success: boolean; message: string; }>;
     handleAddNonEmployeeClick: () => void;
     handleEditNonEmployeeClick: (nonEmployee: NonEmployee) => void;
     handleDeleteNonEmployee: (id: string) => Promise<void>;
@@ -214,7 +215,18 @@ export default function MainLayout({
 
             setAllEmployees(employees);
             setSettings(settings);
-            setAllInspections(inspections);
+            const normalizedInspections = inspections.map(i => ({
+                ...i,
+                // Ensure `standard` matches the expected union type or is null
+                standard:
+                    i.standard === "Wysoki" || i.standard === "Normalny" || i.standard === "Niski"
+                        ? (i.standard as import('../types').Inspection['standard'])
+                        : null,
+                // Ensure categories is at least an empty array if undefined
+                categories: i.categories ?? [],
+            })) as import('../types').Inspection[];
+
+            setAllInspections(normalizedInspections);
             setAllNonEmployees(nonEmployees);
             setAllEquipment(equipment);
             setAllNotifications(notifications);
@@ -346,7 +358,6 @@ export default function MainLayout({
     }, [editingNonEmployee, refreshData, toast]);
     
     const handleDeleteNonEmployee = useCallback(async (id: string) => {
-        if (!allNonEmployees) return;
         const originalNonEmployees = allNonEmployees;
         
         setAllNonEmployees(prev => prev!.filter(ne => ne.id !== id));
@@ -367,7 +378,7 @@ export default function MainLayout({
         }
 
         const originalSettings = settings;
-        setSettings(prev => ({ ...prev!, ...newSettings } as Settings));
+        setSettings(prev => ({ ...prev!, ...newSettings }));
 
         try {
             await updateSettings(newSettings);
@@ -400,17 +411,14 @@ export default function MainLayout({
     }, [refreshData, toast]);
 
     const handleDeleteInspection = useCallback(async (id: string) => {
-        if (!allInspections) return;
-        const originalInspections = allInspections;
-        setAllInspections(prev => prev!.filter(i => i.id !== id));
         try {
             await deleteInspection(id);
             toast({ title: "Sukces", description: "Inspekcja została usunięta." });
+            await refreshData(false);
         } catch(e) {
-            setAllInspections(originalInspections);
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć inspekcji." });
         }
-    }, [allInspections, toast]);
+    }, [refreshData, toast]);
 
     const handleAddEquipment = useCallback(async (itemData: Omit<EquipmentItem, 'id'>) => {
         try {
@@ -433,17 +441,14 @@ export default function MainLayout({
     }, [refreshData, toast]);
 
     const handleDeleteEquipment = useCallback(async (id: string) => {
-        if (!allEquipment) return;
-        const originalEquipment = allEquipment;
-        setAllEquipment(prev => prev!.filter(item => item.id !== id));
         try {
             await deleteEquipment(id);
             toast({ title: "Sukces", description: "Usunięto sprzęt." });
+            await refreshData(false);
         } catch (e) {
-            setAllEquipment(originalEquipment);
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć sprzętu." });
         }
-    }, [allEquipment, toast]);
+    }, [refreshData, toast]);
 
     const handleAddEmployeeClick = useCallback(() => {
         setEditingEmployee(null);
@@ -494,7 +499,7 @@ export default function MainLayout({
     }, [settings, handleUpdateSettings]);
 
     const handleDismissEmployee = useCallback(async (employeeId: string) => {
-        if (!currentUser || !allEmployees) return false;
+        if (!currentUser) return false;
         
         const originalEmployees = allEmployees;
         const updatedData: Partial<Employee> = { status: 'dismissed', checkOutDate: new Date().toISOString().split('T')[0] };
@@ -513,7 +518,7 @@ export default function MainLayout({
     }, [currentUser, allEmployees, toast]);
 
     const handleRestoreEmployee = useCallback(async (employeeId: string) => {
-        if (!currentUser || !allEmployees) return false;
+        if (!currentUser) return false;
         
         const originalEmployees = allEmployees;
         const updatedData: Partial<Employee> = { status: 'active', checkOutDate: null };
@@ -532,7 +537,7 @@ export default function MainLayout({
     }, [currentUser, allEmployees, toast]);
     
     const handleDeleteEmployee = useCallback(async (employeeId: string) => {
-        if (!currentUser || !allEmployees) return;
+        if (!currentUser) return;
         const originalEmployees = allEmployees;
         setAllEmployees(prev => prev!.filter(e => e.id !== employeeId));
         try {
@@ -544,7 +549,7 @@ export default function MainLayout({
         }
     }, [currentUser, allEmployees, toast]);
 
-    const handleBulkDeleteEmployees = useCallback(async (status: 'active' | 'dismissed') => {
+    const handleBulkDeleteEmployees = useCallback(async (entityType: 'employee' | 'non-employee', status: 'active' | 'dismissed') => {
         if (!currentUser || !currentUser.isAdmin) {
              toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administratorzy mogą wykonać tę akcję." });
             return false;
@@ -560,6 +565,19 @@ export default function MainLayout({
              return false;
         }
     }, [currentUser, refreshData, toast]);
+    
+     const handleBulkImport = useCallback(async (fileData: number[]) => {
+        if (!currentUser?.isAdmin) {
+            return { success: false, message: "Brak uprawnień do importu." };
+        }
+        try {
+            const result = await bulkImportEmployees(fileData, currentUser.uid);
+            await refreshData(false);
+            return result;
+        } catch (e: unknown) {
+            return { success: false, message: e instanceof Error ? e.message : "Wystąpił nieznany błąd podczas przetwarzania pliku." };
+        }
+    }, [currentUser, refreshData]);
     
     const handleSaveInspection = (data: Omit<Inspection, 'id' | 'addressName' | 'coordinatorName'>, id?: string) => {
         if (!currentUser || !settings) return;
@@ -599,6 +617,7 @@ export default function MainLayout({
         handleAddEmployeeClick,
         handleUpdateSettings,
         refreshData,
+        handleBulkImport,
         handleAddNonEmployeeClick,
         handleEditNonEmployeeClick,
         handleDeleteNonEmployee,
@@ -629,6 +648,7 @@ export default function MainLayout({
         handleAddEmployeeClick,
         handleUpdateSettings,
         refreshData,
+        handleBulkImport,
         handleAddNonEmployeeClick,
         handleEditNonEmployeeClick,
         handleDeleteNonEmployee,
@@ -673,15 +693,16 @@ export default function MainLayout({
                             {visibleNavItems.map(item => (
                                 <SidebarMenuItem key={item.view}>
                                     <Link href={`/dashboard?view=${item.view}`}>
-                                        <SidebarMenuButton 
+                                        <SidebarMenuButton
                                             isActive={activeView === item.view}
                                             tooltip={item.label}
-                                            disabled={item.view === 'settings' && !currentUser?.isAdmin}
+                                            aria-disabled={item.view === 'settings' && !currentUser?.isAdmin}
+                                            tabIndex={item.view === 'settings' && !currentUser?.isAdmin ? -1 : undefined}
+                                            className={item.view === 'settings' && !currentUser?.isAdmin ? 'opacity-50 pointer-events-none' : undefined}
                                         >
                                             <item.icon />
                                             <span>{item.label}</span>
-                                        </SidebarMenuButton>
-                                    </Link>
+                                        </SidebarMenuButton>  </Link>
                                 </SidebarMenuItem>
                             ))}
                         </SidebarMenu>
@@ -716,15 +737,20 @@ export default function MainLayout({
                 />
             )}
             {settings && (
-                 <AddNonEmployeeForm
+                <AddNonEmployeeForm
                     isOpen={isNonEmployeeFormOpen}
                     onOpenChange={setIsNonEmployeeFormOpen}
-                    onSave={handleSaveNonEmployee}
+                    onSave={(data) =>
+                        handleSaveNonEmployee({
+                            ...data,
+                            // ensure comments is a string as the API expects
+                            comments: data.comments ?? '',
+                        })
+                    }
                     settings={settings}
                     nonEmployee={editingNonEmployee}
                 />
-            )}
-            {settings && currentUser && (
+            )}  {settings && currentUser && (
                  <InspectionForm
                     isOpen={isInspectionFormOpen}
                     onOpenChange={setIsInspectionFormOpen}
@@ -747,3 +773,10 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
+async function bulkImportEmployees(fileData: number[], uid: string): Promise<{ success: boolean; message: string; }> {
+    // TODO: implement actual import logic (e.g. call a server action).
+    // Throwing here preserves runtime behavior while ensuring the function
+    // has the correct Promise-based return type for TypeScript.
+    throw new Error('Function not implemented.');
+}
+
