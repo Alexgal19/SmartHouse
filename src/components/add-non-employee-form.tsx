@@ -1,6 +1,4 @@
 
-// This component provides a form for adding or editing non-employee residents.
-
 "use client";
 
 import React, { useEffect, useState } from 'react';
@@ -38,8 +36,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parse } from 'date-fns';
-import { pl } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
   fullName: z.string().min(3, "Imię i nazwisko musi mieć co najmniej 3 znaki."),
@@ -309,3 +305,5 @@ export function AddNonEmployeeForm({
     </Dialog>
   );
 }
+
+  

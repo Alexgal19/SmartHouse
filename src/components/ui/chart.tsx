@@ -32,39 +32,19 @@ import {
   LineChart as RechartsLineChart,
   AreaChart as RechartsAreaChart,
 } from "recharts"
-// Lightweight local definitions to avoid depending on a missing `recharts-extend` package.
-// Use permissive any types to avoid tight coupling with a non-existent package.
-interface ChartStyleConfig {
-  [key: string]: {
-    [key: string]: string | number
-  }
-}
+import { cn } from "@/lib/utils"
+import {
+  Card,
+} from "@/components/ui/card"
+
+// #region Chart
 
 interface ChartConfig {
   [key: string]: {
     label?: string
     color?: string
-    format?: (value: any) => string
   }
 }
-
-interface ChartContainerProps {
-  config: ChartConfig
-  indicator?: 'dot' | 'line' | 'dashed'
-  labelKey?: string
-}
-
-import { cn } from "@/lib/utils"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-
-// #region Chart
 
 const ChartContext = React.createContext<{
   config: ChartConfig
@@ -109,27 +89,6 @@ const ChartContainer = React.forwardRef<
 })
 ChartContainer.displayName = "Chart"
 
-const ChartStyle = ({
-  id,
-  config,
-}: {
-  id: string
-  config: ChartStyleConfig
-}) => {
-  const css = Object.entries(config)
-    .map(
-      ([key, value]) =>
-        `[data-chart=${id}] .${key} {
-  ${Object.entries(value)
-    .map(([k, v]) => `${k}: ${v};`)
-    .join("\n")}
-}`
-    )
-    .join("\n")
-
-  return <style>{css}</style>
-}
-
 // #endregion
 
 // #region Legend
@@ -138,11 +97,7 @@ const ChartLegendContext = React.createContext<{
   hide?: boolean
 } | null>(null)
 
-type LegendProps = {
-  verticalAlign?: 'top' | 'middle' | 'bottom'
-  height?: number
-  content?: React.ReactNode | ((props: any) => React.ReactNode)
-} & {
+type LegendProps = React.ComponentProps<typeof Legend> & {
   className?: string
   hide?: boolean
   getLabel?: (value: string) => React.ReactNode
@@ -162,13 +117,13 @@ const ChartLegend = ({
             content={
           hide 
             ? undefined 
-            : ((props: any) => (
+            : (props: any) => (
                 <ChartLegendContent
                   className={className}
                   payload={props.payload}
                   getLabel={getLabel}
                 />
-              ))
+              )
         }
         {...props}
       />
@@ -369,17 +324,7 @@ const AreaChart = RechartsAreaChart
 // #region Pie Chart
 const PieChart = RechartsPieChart
 
-interface PieProps {
-  activeIndex?: number
-  onMouseLeave?: () => void
-  onMouseEnter?: (data: any, index: number) => void
-  data?: Array<any>
-  children?: React.ReactNode
-  active?: boolean
-  [key: string]: any
-}
-
-const ChartPie = (props: PieProps) => {
+const ChartPie = (props: React.ComponentProps<typeof Pie>) => {
   const { active, ...rest } = props
   const { config } = useChart()
   const [activeIndex, setActiveIndex] = React.useState<number | null>(
@@ -463,7 +408,6 @@ const ChartRadial = RadialBar
 export {
   // Chart
   ChartContainer,
-  ChartStyle,
   // Legend
   ChartLegend,
   ChartLegendContent,
@@ -503,4 +447,6 @@ export {
   Sector,
 }
 
-export { type ChartConfig, type ChartContainerProps }
+export type { ChartConfig }
+
+  

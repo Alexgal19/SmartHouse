@@ -363,7 +363,7 @@ const ControlPanel = ({
     )
 }
 
-export default function EntityView({ currentUser }: { currentUser: SessionData }) {
+export default function EntityView({ currentUser: _currentUser }: { currentUser: SessionData }) {
     const {
         allEmployees,
         allNonEmployees,
@@ -384,7 +384,6 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     const [isPending, startTransition] = useTransition();
     const { isMobile, isMounted } = useIsMobile();
     
-    // Params from URL
     const tab = (searchParams.get('tab') as 'active' | 'dismissed' | 'non-employees') || 'active';
     const page = Number(searchParams.get('page') || '1');
     const search = searchParams.get('search') || '';
@@ -561,4 +560,4 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     )
 }
 
-    
+  

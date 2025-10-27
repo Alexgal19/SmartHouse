@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -10,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Bell, CircleUser, Home, Settings, Users, Archive, LogOut, Trash2, ClipboardList } from 'lucide-react';
+import { Bell, Home, Settings, Users, Archive, LogOut, Trash2, ClipboardList } from 'lucide-react';
 import type { SessionData, View, Notification } from '@/types';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -20,15 +21,6 @@ import { useMainLayout } from './main-layout';
 import { MobileSidebarToggle } from '@/components/ui/sidebar';
 import { Building } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-
-const viewTitles: Record<View, string> = {
-  dashboard: 'Pulpit',
-  employees: 'Pracownicy',
-  inspections: 'Inspekcje',
-  settings: 'Ustawienia',
-  equipment: 'Wyposażenie',
-};
 
 const viewIcons: Record<View, React.ElementType> = {
     dashboard: Home,
@@ -62,7 +54,7 @@ const NotificationItem = ({ n, onClick }: {n: Notification, onClick: (n: Notific
 
 export default function Header({
   user,
-  activeView,
+  activeView: _activeView,
   notifications,
   onNotificationClick,
   onLogout,
@@ -75,8 +67,7 @@ export default function Header({
   onLogout: () => Promise<void>;
   onClearNotifications: () => void;
 }) {
-    const { refreshData, handleRefreshStatuses } = useMainLayout();
-    const ActiveViewIcon = viewIcons[activeView] || Home;
+    const { handleRefreshStatuses } = useMainLayout();
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
@@ -141,3 +132,5 @@ export default function Header({
     </header>
   );
 }
+
+  

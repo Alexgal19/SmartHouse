@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { MoreVertical, ChevronLast, ChevronFirst } from "lucide-react"
+import { ChevronLast, ChevronFirst } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -206,3 +206,5 @@ export {
   useSidebar,
   MobileSidebarToggle,
 }
+
+  

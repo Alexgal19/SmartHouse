@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useState } from 'react';
@@ -84,9 +85,7 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
         />
         <DashboardCharts 
             employees={employeesForCoordinator}
-            dismissedEmployees={allEmployees.filter(e => e.status === 'dismissed')}
             settings={settings}
-            inspections={[]}
             isMobile={isMobile}
         />
       </div>
@@ -135,3 +134,5 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
     </>
   );
 }
+
+  

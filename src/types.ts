@@ -1,3 +1,4 @@
+
 // This file contains all the TypeScript type definitions for the application's data structures.
 
 export type View = 'dashboard' | 'employees' | 'inspections' | 'settings' | 'equipment';
@@ -151,3 +152,5 @@ export type Inspection = {
     standard: 'Wysoki' | 'Normalny' | 'Niski' | null;
     categories: InspectionCategory[];
 };
+
+  

@@ -1,7 +1,7 @@
 
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, TemporaryAccess, Inspection, InspectionCategoryItem, InspectionCategory } from '@/types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Inspection, InspectionCategory } from '@/types';
 import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getNonEmployeesFromSheet, getEquipmentFromSheet, getAllSheetsData, getInspectionsFromSheet } from './sheets';
 import { format, isPast, isValid, parse, startOfMonth, endOfMonth, differenceInDays, min, max, getDaysInMonth } from 'date-fns';
 import * as XLSX from 'xlsx';
@@ -40,7 +40,7 @@ const EMPLOYEE_HEADERS = [
 ];
 
 const serializeEmployee = (employee: Partial<Employee>): Record<string, string | number | boolean> => {
-    const serialized: Record<string, any> = {};
+    const serialized: Record<string, string | number | boolean> = {};
 
     for (const key of EMPLOYEE_HEADERS) {
         const typedKey = key as keyof Employee;
@@ -58,7 +58,7 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
         } else if (typeof value === 'boolean') {
             serialized[key] = String(value).toUpperCase();
         } else {
-            serialized[key] = value;
+            serialized[key] = String(value);
         }
     }
 
@@ -67,12 +67,12 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
 
 
 const serializeNonEmployee = (nonEmployee: Partial<NonEmployee>): Record<string, string | number | boolean> => {
-    const serialized: Record<string, any> = {};
+    const serialized: Record<string, string> = {};
     for (const [key, value] of Object.entries(nonEmployee)) {
         if (['checkInDate', 'checkOutDate'].includes(key)) {
             serialized[key] = serializeDate(value as string);
         } else if (value !== null && value !== undefined) {
-            serialized[key] = value.toString();
+            serialized[key] = String(value);
         } else {
             serialized[key] = '';
         }
@@ -129,7 +129,7 @@ const safeFormat = (dateStr: string | undefined | null): string | null => {
     }
 };
 
-const deserializeEmployee = (row: any): Employee | null => {
+const deserializeEmployee = (row: Record<string, any>): Employee | null => {
     const plainObject = row;
     
     const id = String(plainObject.id || '');
@@ -232,7 +232,7 @@ export async function getSettings(): Promise<Settings> {
     }
 }
 
-const writeToAuditLog = async (actorId: string, actorName: string, action: string, targetType: string, targetId: string, details: any) => {
+const writeToAuditLog = async (actorId: string, actorName: string, action: string, targetType: string, targetId: string, details: Record<string, any>) => {
     try {
         const sheet = await getSheet(SHEET_NAME_AUDIT_LOG, AUDIT_LOG_HEADERS);
         await sheet.addRow({
@@ -282,7 +282,6 @@ const createNotification = async (
 
         await sheet.addRow(serializeNotification(newNotification), { raw: false, insert: true });
         
-        // Also write to the audit log
         await writeToAuditLog(String(actor.uid), String(actor.name), action, 'employee', employee.id, changes);
 
     } catch (e: unknown) {
@@ -508,7 +507,7 @@ export async function updateEquipment(id: string, updates: Partial<EquipmentItem
         if (!row) throw new Error("Equipment not found");
         
         for (const key in updates) {
-            row.set(key, (updates as any)[key]);
+            row.set(key, (updates as Record<string,any>)[key]);
         }
         await row.save();
     } catch (e: unknown) {
@@ -564,7 +563,7 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
         }
 
         const { coordinators } = await getSettings();
-        const toCoordinator = coordinators.find((c: { uid: string; }) => c.uid === toCoordinatorId);
+        const toCoordinator = coordinators.find((c) => c.uid === toCoordinatorId);
         if (!toCoordinator) {
             throw new Error("Target coordinator not found.");
         }
@@ -642,7 +641,7 @@ export async function updateSettings(newSettings: Partial<Omit<Settings, 'tempor
             await roomsSheet.clearRows();
 
             const allRooms: (Room & {addressId: string})[] = [];
-            const addressesData = newSettings.addresses.map((addr: { rooms: any[]; id: any; name: any; coordinatorId: any; }) => {
+            const addressesData = newSettings.addresses.map((addr) => {
                 addr.rooms.forEach(room => {
                     allRooms.push({ ...room, addressId: addr.id });
                 });
@@ -664,7 +663,7 @@ export async function updateSettings(newSettings: Partial<Omit<Settings, 'tempor
              const sheet = await getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS);
              await sheet.clearRows();
              if (newSettings.coordinators.length > 0) {
-                 await sheet.addRows(newSettings.coordinators.map((c: { isAdmin: any; }) => ({
+                 await sheet.addRows(newSettings.coordinators.map((c) => ({
                      ...c,
                      isAdmin: String(c.isAdmin).toUpperCase()
                  })), { raw: false, insert: true });
@@ -740,7 +739,7 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
             standard: inspectionData.standard || '',
         }, { raw: false, insert: true });
 
-        const detailRows: any[] = [];
+        const detailRows: Record<string, string>[] = [];
         inspectionData.categories.forEach((category: InspectionCategory) => {
             category.items.forEach(item => {
                 detailRows.push({
@@ -771,7 +770,7 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
                 });
             }
             
-            (category.photos || []).forEach((photo: any, index: number) => {
+            (category.photos || []).forEach((photo: string, index: number) => {
                 detailRows.push({
                     id: `insp-det-${Date.now()}-${Math.random()}`,
                     inspectionId,
@@ -847,7 +846,6 @@ export async function generateMonthlyReport(year: number, month: number, coordin
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Raport Miesięczny");
         
-        // Auto-size columns
         const cols = Object.keys(reportData[0] || {}).map(key => ({
             wch: Math.max(key.length, ...reportData.map(row => (row[key as keyof typeof row] || '').toString().length))
         }));
@@ -876,10 +874,10 @@ export async function generateAccommodationReport(year: number, month: number, c
             filteredAddresses = settings.addresses.filter(a => a.coordinatorId === coordinatorId);
         }
 
-        const reportData: any[] = [];
+        const reportData: Record<string, string | number>[] = [];
 
         filteredAddresses.forEach(address => {
-            const addressRow: any = { "Adres": address.name };
+            const addressRow: Record<string, string | number> = { "Adres": address.name };
             
             for (let day = 1; day <= daysInMonth; day++) {
                 const currentDate = new Date(year, month - 1, day);
@@ -916,4 +914,4 @@ export async function generateAccommodationReport(year: number, month: number, c
     }
 }
 
-    
+  

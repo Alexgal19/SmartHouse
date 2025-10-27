@@ -1,7 +1,4 @@
 
-// This component provides a form for adding or editing employee data.
-// It uses react-hook-form for form management and zod for validation.
-
 "use client";
 
 import React, { useEffect, useState } from 'react';
@@ -34,13 +31,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { Employee, Settings, DeductionReason } from '@/types';
+import type { Employee, Settings } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, Info } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parse } from 'date-fns';
-import { pl } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -669,3 +664,5 @@ export function AddEmployeeForm({
     </Dialog>
   );
 }
+
+  

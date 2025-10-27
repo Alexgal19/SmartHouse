@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useMemo } from 'react';
@@ -12,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Input } from '@/components/ui/input';
-import { Trash2, PlusCircle, Download, Upload, Loader2, FileWarning, Edit } from 'lucide-react';
+import { Trash2, PlusCircle, Download, Loader2, FileWarning, Edit } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
@@ -21,7 +20,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { generateMonthlyReport, generateAccommodationReport } from '@/lib/actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
-import { useRouter } from 'next/navigation';
 
 const coordinatorSchema = z.object({
     uid: z.string(),
@@ -38,7 +36,7 @@ const formSchema = z.object({
   coordinators: z.array(coordinatorSchema),
 });
 
-const ListManager = ({ name, title, fields, append, remove }: { name: string; title: string; fields: any[]; append: any; remove: any; }) => (
+const ListManager = ({ name, title, fields, append, remove }: { name: string; title: string; fields: Record<"id", string>[]; append: (obj: { value: string}) => void; remove: (index: number) => void; }) => (
     <div className="space-y-2 rounded-md border p-4">
         <div className="flex justify-between items-center mb-4">
             <h3 className="font-medium">{title}</h3>
@@ -66,7 +64,7 @@ const ListManager = ({ name, title, fields, append, remove }: { name: string; ti
     </div>
 );
 
-const CoordinatorManager = ({ form, fields, append, remove }: { form: any, fields: any[], append: any, remove: any }) => (
+const CoordinatorManager = ({ form, fields, append, remove }: { form: any, fields: Record<"id", string>[], append: (obj: Record<string,any>) => void, remove: (index: number) => void }) => (
   <div className="space-y-4 rounded-md border p-4">
     <div className="flex justify-between items-center mb-4">
         <h3 className="font-medium">Koordynatorzy</h3>
@@ -146,7 +144,7 @@ const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { 
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
-                            {coordinators.map((c: { uid: React.Key | null | undefined; name: string; }) => <SelectItem key={c.uid} value={c.name}>{c.name}</SelectItem>)}
+                            {coordinators.map((c: { uid: React.Key | null | undefined; name: string; }) => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
                     <Button type="button" variant="outline" size="sm" onClick={() => onAdd(filterCoordinatorId)}>
@@ -196,6 +194,7 @@ const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
         
         if(status === 'active') setIsDeletingActive(false);
         else setIsDeletingDismissed(false);
+        return success
     };
 
     return (
@@ -348,7 +347,7 @@ const ReportsGenerator = ({ settings, currentUser }: { settings: Settings; curre
     );
 };
 
-function SettingsManager({ settings, form, handleUpdateSettings, handleAddressFormOpen }: { settings: Settings, form: any, handleUpdateSettings: any, handleAddressFormOpen: any }) {
+function SettingsManager({ form, handleUpdateSettings, handleAddressFormOpen }: { settings: Settings, form: any, handleUpdateSettings: any, handleAddressFormOpen: any }) {
     const { fields: natFields, append: appendNat, remove: removeNat } = useFieldArray({ control: form.control, name: 'nationalities' });
     const { fields: depFields, append: appendDep, remove: removeDep } = useFieldArray({ control: form.control, name: 'departments' });
     const { fields: genFields, append: appendGen, remove: removeGen } = useFieldArray({ control: form.control, name: 'genders' });
@@ -358,7 +357,7 @@ function SettingsManager({ settings, form, handleUpdateSettings, handleAddressFo
     const watchedAddresses = useWatch({ control: form.control, name: 'addresses' });
     const watchedCoordinators = useWatch({ control: form.control, name: 'coordinators' });
 
-    const onSubmit = async (data: z.infer<typeof formSchema>) => {
+    const onSubmit = async () => {
         const currentValues = form.getValues();
         const newSettings: Partial<Settings> = {
             nationalities: currentValues.nationalities.map((n: { value: any; }) => n.value),
@@ -509,4 +508,4 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
   );
 }
 
-
+  

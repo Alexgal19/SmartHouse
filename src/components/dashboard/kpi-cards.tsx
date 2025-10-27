@@ -4,7 +4,7 @@
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, User, Building, CalendarOff } from "lucide-react";
-import type { Employee, NonEmployee, Settings } from "@/types";
+import type { Employee, NonEmployee } from "@/types";
 import { differenceInDays, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -39,12 +39,10 @@ const KpiCard = ({ title, value, icon, onClick, description }: KpiCardProps) => 
 export function DashboardKPIs({
     employees,
     nonEmployees,
-    settings,
     onUpcomingCheckoutsClick
 }: {
     employees: Employee[],
     nonEmployees: NonEmployee[],
-    settings: Settings,
     onUpcomingCheckoutsClick: () => void
 }) {
 
@@ -88,3 +86,5 @@ export function DashboardKPIs({
         </div>
     );
 }
+
+  

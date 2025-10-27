@@ -6,14 +6,13 @@ import type { Employee, NonEmployee, Settings, SessionData } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ArrowUp, ArrowDown, Copy, Bed } from "lucide-react";
+import { Copy, Bed } from "lucide-react";
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import { useMainLayout } from '@/components/main-layout';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Occupant = Employee | NonEmployee;
@@ -54,7 +53,7 @@ export function HousingView({
     selectedCoordinatorId: string,
 }) {
     const [housingSearch, setHousingSearch] = useState('');
-    const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'name', direction: 'ascending' });
+    const [sortConfig, _setSortConfig] = useState<SortConfig>({ key: 'name', direction: 'ascending' });
     const [selectedAddress, setSelectedAddress] = useState<HousingStat | null>(null);
     const [isHousingDetailOpen, setIsHousingDetailOpen] = useState(false);
     const [selectedRoom, setSelectedRoom] = useState<RoomStat | null>(null);
@@ -140,7 +139,7 @@ export function HousingView({
         return "bg-red-500";
     };
 
-    const handleCopy = (data: Occupant[], title: string) => {
+    const handleCopy = (data: Occupant[]) => {
         const textToCopy = data.map(o => o.fullName).join('\n');
         copyToClipboard(textToCopy, 'Lista skopiowana!');
     };
@@ -267,7 +266,7 @@ export function HousingView({
                             </div>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" onClick={() => handleCopy(selectedRoom.occupants, `Pokój ${selectedRoom.roomNumber}`)}>
+                                    <Button variant="ghost" size="icon" onClick={() => handleCopy(selectedRoom.occupants)}>
                                         <Copy className="h-4 w-4" />
                                     </Button>
                                 </TooltipTrigger>
@@ -291,3 +290,5 @@ export function HousingView({
         </>
     );
 }
+
+  

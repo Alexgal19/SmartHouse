@@ -1,3 +1,4 @@
+
 declare module 'recharts' {
   type ContentType = React.ReactNode | ((props: any) => React.ReactNode);
 
@@ -52,14 +53,15 @@ declare module 'recharts' {
     cy?: string | number;
     activeIndex?: number;
     activeShape?: any;
-    label?: boolean | any | React.ReactElement | Function;
-    labelLine?: boolean | any | React.ReactElement | Function;
-    onClick?: Function;
-    onMouseEnter?: Function;
-    onMouseLeave?: Function;
+    label?: boolean | any | React.ReactElement | ((props: any) => React.ReactNode);
+    labelLine?: boolean | any | React.ReactElement | ((props: any) => React.ReactNode);
+    onClick?: (data: any, index: number) => void;
+    onMouseEnter?: (data: any, index: number) => void;
+    onMouseLeave?: (data: any, index: number) => void;
     activeRadius?: number;
     children?: React.ReactNode;
     strokeWidth?: number;
+    active?: boolean;
   }
 
   interface TooltipProps {
@@ -102,3 +104,5 @@ declare module 'recharts' {
   class RadarChart extends React.Component<any> {}
   class RadialBarChart extends React.Component<any> {}
 }
+
+  

@@ -6,8 +6,6 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Toolti
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart2 } from "lucide-react";
 import type { Employee, Settings, Inspection } from "@/types";
-import { getYear, getMonth, format, startOfMonth, isValid, parseISO } from 'date-fns';
-import { pl, uk, es } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useMainLayout } from '@/components/main-layout';
 
@@ -29,19 +27,15 @@ const calculateChartHeight = (itemCount: number, isMobile: boolean) => {
 
 export function DashboardCharts({
     employees,
-    dismissedEmployees,
     settings,
-    inspections,
     isMobile
 }: {
     employees: Employee[],
-    dismissedEmployees: Employee[],
     settings: Settings,
-    inspections: Inspection[],
     isMobile: boolean
 }) {
     const { currentUser, selectedCoordinatorId } = useMainLayout();
-    const [activeBar, setActiveBar] = useState<string | null>(null);
+    const [_activeBar, setActiveBar] = useState<string | null>(null);
 
     const chartData = useMemo(() => {
         const activeEmployees = employees.filter(e => e.status === 'active');
@@ -151,3 +145,5 @@ export function DashboardCharts({
         </div>
     );
 }
+
+  

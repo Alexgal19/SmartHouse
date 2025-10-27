@@ -1,7 +1,7 @@
 
 "use server";
 
-import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet, GoogleSpreadsheetRow } from 'google-spreadsheet';
+import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
 import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, TemporaryAccess, Address, Coordinator, Inspection, InspectionCategory, InspectionCategoryItem, InspectionTemplateCategory } from '@/types';
 import { format, isValid, parse, parseISO } from 'date-fns';
@@ -343,7 +343,7 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             }
         });
 
-        const addresses: any[] = addressRows.map(rowObj => {
+        const addresses: Address[] = addressRows.map(rowObj => {
             return {
                 id: rowObj.id,
                 name: rowObj.name,
@@ -352,7 +352,7 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             }
         });
 
-        const coordinators: any[] = coordinatorRows.map(rowObj => {
+        const coordinators: Coordinator[] = coordinatorRows.map(rowObj => {
              return {
                 uid: rowObj.uid,
                 name: rowObj.name,
@@ -373,8 +373,8 @@ export async function getSettingsFromSheet(): Promise<Settings> {
 
             category.items.push({
                 label: row.label,
-                type: row.type as any,
-                options: row.options ? row.options.split(',').map(s => s.trim()) : [],
+                type: row.type as InspectionCategoryItem['type'],
+                options: row.options ? row.options.split(',').map((s: string) => s.trim()) : [],
             });
 
             return acc;
@@ -471,8 +471,8 @@ export async function getAllSheetsData() {
 
             category.items.push({
                 label: row.label,
-                type: row.type as any,
-                options: row.options ? row.options.split(',').map(s => s.trim()) : [],
+                type: row.type as InspectionCategoryItem['type'],
+                options: row.options ? row.options.split(',').map((s: string) => s.trim()) : [],
             });
 
             return acc;
@@ -498,7 +498,7 @@ export async function getAllSheetsData() {
             .filter((n): n is Notification => n !== null)
             .sort((a: Notification, b: Notification) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         
-        const detailsByInspectionId = new Map<string, any[]>();
+        const detailsByInspectionId = new Map<string, Record<string, string>[]>();
         inspectionDetailsSheet.forEach(row => {
             const inspectionId = row.inspectionId;
             if (inspectionId) {
@@ -533,7 +533,7 @@ export async function getAllSheetsData() {
                         value = rawValue.toLowerCase() === 'true';
                     } else if (['Wysoki', 'Normalny', 'Niski', 'Bardzo czysto', 'Czysto', 'Brudno', 'Bardzo brudno'].includes(rawValue)) {
                         type = 'select';
-                    } else if (rawValue && !isNaN(parseFloat(rawValue)) && isFinite(rawValue)) {
+                    } else if (rawValue && !isNaN(parseFloat(rawValue)) && isFinite(rawValue as any)) {
                         const num = parseFloat(rawValue);
                         if (num >= 1 && num <= 5 && Number.isInteger(num)) {
                             type = 'rating';
@@ -546,7 +546,9 @@ export async function getAllSheetsData() {
                         try {
                             value = JSON.parse(rawValue);
                             type = 'checkbox_group';
-                        } catch {}
+                        } catch {
+                            // eslint-disable-next-line no-empty
+                        }
                     }
 
                     category.items.push({ label: itemLabel, value, type, options: [] });
@@ -594,7 +596,7 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
         const inspectionRows = inspectionRowsRaw.map(r => r.toObject());
         const detailRows = (await detailsSheet.getRows({ limit: 5000 })).map(r => r.toObject());
 
-        const detailsByInspectionId = new Map<string, any[]>();
+        const detailsByInspectionId = new Map<string, Record<string, string>[]>();
         detailRows.forEach(row => {
             const inspectionId = row.inspectionId;
             if (inspectionId) {
@@ -632,7 +634,7 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
                         value = rawValue.toLowerCase() === 'true';
                     } else if (['Wysoki', 'Normalny', 'Niski', 'Bardzo czysto', 'Czysto', 'Do poprawy', 'Brudno', 'Bardzo brudno'].includes(rawValue)) {
                         type = 'select';
-                    } else if (rawValue && !isNaN(parseFloat(rawValue)) && isFinite(rawValue)) {
+                    } else if (rawValue && !isNaN(parseFloat(rawValue)) && isFinite(rawValue as any)) {
                         const num = parseFloat(rawValue);
                         if (num >= 1 && num <= 5 && Number.isInteger(num)) {
                             type = 'rating';
@@ -682,4 +684,4 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
     }
 }
 
-    
+  
