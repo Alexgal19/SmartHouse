@@ -64,7 +64,7 @@ const ListManager = ({ name, title, fields, append, remove }: { name: string; ti
     </div>
 );
 
-const CoordinatorManager = ({ form, fields, append, remove }: { form:  ReturnType<typeof useForm<z.infer<typeof formSchema>>>; fields: Record<"id", string>[], append: (obj: Record<string,unknown>) => void, remove: (index: number) => void }) => (
+const CoordinatorManager = ({ form, fields, append, remove }: { form:  ReturnType<typeof useForm<z.infer<typeof formSchema>>>; fields: Record<"id", string>[], append: (obj: Partial<z.infer<typeof coordinatorSchema>>) => void, remove: (index: number) => void }) => (
   <div className="space-y-4 rounded-md border p-4">
     <div className="flex justify-between items-center mb-4">
         <h3 className="font-medium">Koordynatorzy</h3>
@@ -144,7 +144,7 @@ const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { 
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
-                            {coordinators.map(c => <SelectItem key={c.uid} value={String(c.uid)}>{c.name}</SelectItem>)}
+                            {coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
                     <Button type="button" variant="outline" size="sm" onClick={() => onAdd(filterCoordinatorId)}>
@@ -181,7 +181,7 @@ const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { 
 };
 
 
-const BulkActions = ({ _currentUser }: { currentUser: SessionData }) => {
+const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
     const { handleBulkDeleteEmployees } = useMainLayout();
     const [isDeletingActive, setIsDeletingActive] = useState(false);
     const [isDeletingDismissed, setIsDeletingDismissed] = useState(false);

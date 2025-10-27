@@ -363,7 +363,7 @@ const ControlPanel = ({
     )
 }
 
-export default function EntityView({ _currentUser }: { currentUser: SessionData }) {
+export default function EntityView({ }: { currentUser: SessionData }) {
     const {
         allEmployees,
         allNonEmployees,

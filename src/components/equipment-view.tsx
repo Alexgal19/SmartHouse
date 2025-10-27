@@ -121,7 +121,7 @@ const EquipmentCardList = ({ items, onEdit, onDelete }: { items: EquipmentItem[]
 }
 
 
-export default function EquipmentView({ _currentUser }: { currentUser: SessionData }) {
+export default function EquipmentView({ }: { currentUser: SessionData }) {
     const { allEquipment, settings, handleAddEquipment, handleUpdateEquipment, handleDeleteEquipment } = useMainLayout();
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<EquipmentItem | null>(null);
