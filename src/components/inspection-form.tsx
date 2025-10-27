@@ -280,6 +280,9 @@ export default function InspectionForm({ isOpen, onOpenChange, settings, current
                                         </Select>
                                       );
                                   }
+                                   if (item.type === 'number') {
+                                    return <Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))} />;
+                                  }
                                   // Simplified for brevity, expand for other types
                                   return <Input type="text" {...field as any} />;
                                 }}
@@ -327,5 +330,3 @@ export default function InspectionForm({ isOpen, onOpenChange, settings, current
     </Dialog>
   );
 }
-
-    

@@ -722,14 +722,11 @@ export async function getInspections(coordinatorId?: string): Promise<Inspection
     }
 }
 
-export async function addInspection(inspectionData: Omit<Inspection, 'id' | 'coordinatorName'>): Promise<void> {
+export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Promise<void> {
     try {
         const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, ['id', 'addressId', 'addressName', 'date', 'coordinatorId', 'coordinatorName', 'standard']);
         const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, ['id', 'inspectionId', 'addressName', 'date', 'coordinatorName', 'category', 'itemLabel', 'itemValue', 'uwagi', 'photoData']);
         
-        const settings = await getSettings();
-        const coordinatorName = settings.coordinators.find(c => c.uid === inspectionData.coordinatorId)?.name || 'Unknown';
-
         const inspectionId = `insp-${Date.now()}`;
         const dateString = inspectionData.date;
 
@@ -739,19 +736,19 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id' | 'coo
             addressName: inspectionData.addressName,
             date: dateString,
             coordinatorId: inspectionData.coordinatorId,
-            coordinatorName: coordinatorName,
+            coordinatorName: inspectionData.coordinatorName,
             standard: inspectionData.standard || '',
         }, { raw: false, insert: true });
 
         const detailRows: any[] = [];
-        inspectionData.categories.forEach((category: { items: any[]; name: any; uwagi?: any; photos?: any; }) => {
+        inspectionData.categories.forEach((category: InspectionCategory) => {
             category.items.forEach(item => {
                 detailRows.push({
                     id: `insp-det-${Date.now()}-${Math.random()}`,
                     inspectionId,
                     addressName: inspectionData.addressName,
                     date: dateString,
-                    coordinatorName: coordinatorName,
+                    coordinatorName: inspectionData.coordinatorName,
                     category: category.name,
                     itemLabel: item.label,
                     itemValue: Array.isArray(item.value) ? JSON.stringify(item.value) : (String(item.value) ?? ''),
@@ -766,7 +763,7 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id' | 'coo
                     inspectionId,
                     addressName: inspectionData.addressName,
                     date: dateString,
-                    coordinatorName: coordinatorName,
+                    coordinatorName: inspectionData.coordinatorName,
                     category: category.name,
                     itemLabel: 'Uwagi', itemValue: '',
                     uwagi: category.uwagi,
@@ -780,7 +777,7 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id' | 'coo
                     inspectionId,
                     addressName: inspectionData.addressName,
                     date: dateString,
-                    coordinatorName: coordinatorName,
+                    coordinatorName: inspectionData.coordinatorName,
                     category: category.name,
                     itemLabel: `Photo ${index + 1}`,
                     itemValue: '',
