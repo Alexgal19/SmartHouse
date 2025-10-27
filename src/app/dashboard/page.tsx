@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { SessionData, View } from '@/types';
 import { useSearchParams } from 'next/navigation';
 import EntityView from '@/components/entity-view';
+import ImportStatusView from '@/components/import-status-view';
 
 
 function CurrentView({ activeView, currentUser }: { activeView: View; currentUser: SessionData }) {
@@ -28,6 +29,8 @@ function CurrentView({ activeView, currentUser }: { activeView: View; currentUse
         return <InspectionsView currentUser={currentUser} />;
     case 'equipment':
         return <EquipmentView currentUser={currentUser} />;
+    case 'import-status':
+        return <ImportStatusView currentUser={currentUser} />;
     default:
       return (
         <EntityView currentUser={currentUser} />

@@ -1,6 +1,5 @@
 
 
-
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback, createContext, useContext, useRef } from 'react';
@@ -17,8 +16,8 @@ import {
 } from '@/components/ui/sidebar';
 import Header from '@/components/header';
 import { MobileNav } from '@/components/mobile-nav';
-import type { View, Notification, Employee, Settings, NonEmployee, Inspection, EquipmentItem, SessionData, Address } from '@/types';
-import { Building, ClipboardList, Home, Settings as SettingsIcon, Users, Archive } from 'lucide-react';
+import type { View, Notification, Employee, Settings, NonEmployee, Inspection, EquipmentItem, SessionData, Address, ImportStatus } from '@/types';
+import { Building, ClipboardList, Home, Settings as SettingsIcon, Users, Archive, Import } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { clearAllNotifications, markNotificationAsRead, getNotifications, getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getInspections, addInspection, updateInspection, deleteInspection, bulkDeleteEmployees, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee, deleteEmployee, checkAndUpdateEmployeeStatuses, getEquipment, addEquipment, updateEquipment, deleteEquipment, getAllData } from '@/lib/actions';
 import { logout } from '@/lib/auth';
@@ -34,6 +33,7 @@ const navItems: { view: View; icon: React.ElementType; label: string }[] = [
     { view: 'employees', icon: Users, label: 'Pracownicy' },
     { view: 'inspections', icon: ClipboardList, label: 'Inspekcje' },
     { view: 'equipment', icon: Archive, label: 'Wyposażenie' },
+    { view: 'import-status', icon: Import, label: 'Status importu' },
     { view: 'settings', icon: SettingsIcon, label: 'Ustawienia' },
 ];
 
@@ -43,6 +43,7 @@ type MainLayoutContextType = {
     allInspections: Inspection[] | null;
     allEquipment: EquipmentItem[] | null;
     settings: Settings | null;
+    allImportStatuses: ImportStatus[] | null;
     currentUser: SessionData | null;
     selectedCoordinatorId: string;
     setSelectedCoordinatorId: React.Dispatch<React.SetStateAction<string>>;
@@ -105,6 +106,7 @@ export default function MainLayout({
     const [allInspections, setAllInspections] = useState<Inspection[] | null>(null);
     const [allEquipment, setAllEquipment] = useState<EquipmentItem[] | null>(null);
     const [settings, setSettings] = useState<Settings | null>(null);
+    const [allImportStatuses, setAllImportStatuses] = useState<ImportStatus[] | null>(null);
     
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isNonEmployeeFormOpen, setIsNonEmployeeFormOpen] = useState(false);
@@ -186,6 +188,7 @@ export default function MainLayout({
                 nonEmployees,
                 equipment,
                 notifications,
+                importStatuses
             } = await getAllData();
 
             setAllEmployees(employees);
@@ -194,6 +197,7 @@ export default function MainLayout({
             setAllNonEmployees(nonEmployees);
             setAllEquipment(equipment);
             setAllNotifications(notifications);
+            setAllImportStatuses(importStatuses);
             
             if(showToast) {
                 toast({ title: "Sukces", description: "Dane zostały odświeżone." });
@@ -557,6 +561,7 @@ export default function MainLayout({
         allInspections,
         allEquipment,
         settings,
+        allImportStatuses,
         currentUser,
         selectedCoordinatorId,
         setSelectedCoordinatorId,
@@ -587,6 +592,7 @@ export default function MainLayout({
         allInspections,
         allEquipment,
         settings,
+        allImportStatuses,
         currentUser,
         selectedCoordinatorId,
         setSelectedCoordinatorId,

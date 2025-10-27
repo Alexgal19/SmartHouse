@@ -2,8 +2,8 @@
 
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, Room, Inspection, NonEmployee, DeductionReason, EquipmentItem, TemporaryAccess } from '@/types';
-import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getInspectionsFromSheet, getNonEmployeesFromSheet, getEquipmentFromSheet, getAllSheetsData } from './sheets';
+import type { Employee, Settings, Notification, NotificationChange, Room, Inspection, NonEmployee, DeductionReason, EquipmentItem, TemporaryAccess, ImportStatus } from '@/types';
+import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getInspectionsFromSheet, getNonEmployeesFromSheet, getEquipmentFromSheet, getAllSheetsData, getImportStatusFromSheet } from './sheets';
 import { format, isPast, isValid, parse, startOfMonth, endOfMonth, differenceInDays, min, max } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { Storage } from '@google-cloud/storage';
@@ -21,6 +21,7 @@ const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_INSPECTIONS = 'Inspections';
 const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 const SHEET_NAME_EQUIPMENT = 'Equipment';
+const SHEET_NAME_IMPORT_STATUS = 'ImportStatus';
 
 const serializeDate = (date?: string | null): string => {
     if (!date) {
@@ -118,7 +119,7 @@ const EQUIPMENT_HEADERS = [
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
 const ADDRESS_HEADERS = ['id', 'name', 'coordinatorId'];
 const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targetType', 'targetId', 'details'];
-
+const IMPORT_STATUS_HEADERS = ['jobId', 'fileName', 'status', 'message', 'processedRows', 'totalRows', 'createdAt', 'actorName'];
 
 const safeFormat = (dateStr: string | undefined | null): string | null => {
     if (!dateStr) return null;
@@ -229,6 +230,16 @@ export async function getSettings(): Promise<Settings> {
     } catch (error: unknown) {
         console.error("Error in getSettings (actions):", error);
         throw new Error(error instanceof Error ? error.message : "Failed to get settings.");
+    }
+}
+
+export async function getImportStatus(): Promise<ImportStatus[]> {
+    try {
+        const statuses = await getImportStatusFromSheet();
+        return statuses;
+    } catch (error: unknown) {
+        console.error("Error in getImportStatus (actions):", error);
+        throw new Error(error instanceof Error ? error.message : "Failed to get import statuses.");
     }
 }
 
@@ -922,7 +933,7 @@ const parseAndFormatDate = (dateValue: any): string | null => {
     return null;
 };
 
-export async function getSignedUploadUrl(fileName: string, fileType: string): Promise<{ success: boolean; url?: string; filePath?: string; message?: string }> {
+export async function getSignedUploadUrl(fileName: string, fileType: string, actorUid: string): Promise<{ success: boolean; url?: string; jobId?: string; message?: string }> {
     try {
         const storage = new Storage({
             projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
@@ -933,7 +944,8 @@ export async function getSignedUploadUrl(fileName: string, fileType: string): Pr
         });
 
         const bucketName = `${process.env.GOOGLE_CLOUD_PROJECT_ID}.appspot.com`;
-        const filePath = `imports/${Date.now()}-${fileName}`;
+        const jobId = `import-${Date.now()}`;
+        const filePath = `imports/${jobId}-${fileName}`;
         
         const [url] = await storage.bucket(bucketName).file(filePath).getSignedUrl({
             version: 'v4',
@@ -941,8 +953,23 @@ export async function getSignedUploadUrl(fileName: string, fileType: string): Pr
             expires: Date.now() + 15 * 60 * 1000, // 15 minutes
             contentType: fileType,
         });
+
+        // Log the initial status
+        const statusSheet = await getSheet(SHEET_NAME_IMPORT_STATUS, IMPORT_STATUS_HEADERS);
+        const { coordinators } = await getSettings();
+        const actorName = coordinators.find(c => c.uid === actorUid)?.name || actorUid;
+        await statusSheet.addRow({
+            jobId,
+            fileName,
+            status: 'processing',
+            message: 'Oczekiwanie na załadowanie pliku...',
+            processedRows: 0,
+            totalRows: 0,
+            createdAt: new Date().toISOString(),
+            actorName,
+        }, { raw: false, insert: true });
         
-        return { success: true, url, filePath };
+        return { success: true, url, jobId };
     } catch (error: unknown) {
         console.error("Error getting signed URL:", error);
         const message = error instanceof Error ? error.message : "An unknown error occurred.";
@@ -953,9 +980,23 @@ export async function getSignedUploadUrl(fileName: string, fileType: string): Pr
     }
 }
 
+export async function bulkImportEmployees(jobId: string, filePath: string, actorUid: string): Promise<{success: boolean, message: string}> {
+    const statusSheet = await getSheet(SHEET_NAME_IMPORT_STATUS, IMPORT_STATUS_HEADERS);
+    const statusRows = await statusSheet.getRows();
+    const jobRow = statusRows.find(row => row.get('jobId') === jobId);
 
-export async function bulkImportEmployees(filePath: string, actorUid: string): Promise<{success: boolean, message: string}> {
+    const updateStatus = async (status: ImportStatus['status'], message: string, processed?: number, total?: number) => {
+        if(jobRow) {
+            jobRow.set('status', status);
+            jobRow.set('message', message);
+            if (processed !== undefined) jobRow.set('processedRows', processed);
+            if (total !== undefined) jobRow.set('totalRows', total);
+            await jobRow.save();
+        }
+    };
+
     try {
+        await updateStatus('processing', 'Pobieranie pliku z chmury...');
         const storage = new Storage({
              projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
             credentials: {
@@ -967,6 +1008,7 @@ export async function bulkImportEmployees(filePath: string, actorUid: string): P
         
         const file = storage.bucket(bucketName).file(filePath);
         const [buffer] = await file.download();
+        await updateStatus('processing', 'Przetwarzanie pliku Excel...');
 
         const settings = await getSettings();
         
@@ -978,6 +1020,7 @@ export async function bulkImportEmployees(filePath: string, actorUid: string): P
         const requiredHeaders = ['fullName', 'coordinatorName', 'nationality', 'gender', 'address', 'roomNumber', 'zaklad'];
         
         if (json.length === 0) {
+            await updateStatus('failed', 'Plik jest pusty.', 0, 0);
              return { success: false, message: `Plik jest pusty.` };
         }
         
@@ -985,7 +1028,9 @@ export async function bulkImportEmployees(filePath: string, actorUid: string): P
         
         const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
         if (missingHeaders.length > 0) {
-            return { success: false, message: `Brakujące kolumny w pliku: ${missingHeaders.join(', ')}` };
+            const message = `Brakujące kolumny w pliku: ${missingHeaders.join(', ')}`;
+            await updateStatus('failed', message, 0, json.length);
+            return { success: false, message };
         }
         
         const employeesToAdd: (Partial<Employee>)[] = [];
@@ -1014,17 +1059,27 @@ export async function bulkImportEmployees(filePath: string, actorUid: string): P
             employeesToAdd.push(employee);
         }
         
+        await updateStatus('processing', `Importowanie ${employeesToAdd.length} pracowników...`, 0, employeesToAdd.length);
+        let processedCount = 0;
         for (const emp of employeesToAdd) {
             await addEmployee(emp, actorUid);
+            processedCount++;
+             if(processedCount % 10 === 0) { // Update status every 10 rows
+                await updateStatus('processing', `Zaimportowano ${processedCount} z ${employeesToAdd.length}...`, processedCount, employeesToAdd.length);
+            }
         }
 
         await file.delete();
+        const successMessage = `Pomyślnie zaimportowano ${employeesToAdd.length} pracowników.`;
+        await updateStatus('completed', successMessage, employeesToAdd.length, employeesToAdd.length);
 
-        return { success: true, message: `Pomyślnie zaimportowano ${employeesToAdd.length} pracowników.` };
+        return { success: true, message: successMessage };
 
     } catch (e: unknown) {
         console.error("Error in bulkImportEmployees:", e);
-         return { success: false, message: e instanceof Error ? e.message : "Wystąpił nieznany błąd podczas przetwarzania pliku." };
+        const errorMessage = e instanceof Error ? e.message : "Wystąpił nieznany błąd podczas przetwarzania pliku.";
+        await updateStatus('failed', errorMessage);
+        return { success: false, message: errorMessage };
     }
 }
 

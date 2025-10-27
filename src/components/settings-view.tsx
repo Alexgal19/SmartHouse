@@ -18,10 +18,11 @@ import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { generateMonthlyReport, generateAccommodationReport, bulkImportEmployees, getSignedUploadUrl } from '@/lib/actions';
+import { generateMonthlyReport, generateAccommodationReport, getSignedUploadUrl, bulkImportEmployees } from '@/lib/actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import axios from 'axios';
+import { useRouter } from 'next/navigation';
 
 const coordinatorSchema = z.object({
     uid: z.string(),
@@ -183,8 +184,8 @@ const AddressManager = ({ form, onEdit, onRemove, onAdd }: { form: any; onEdit: 
 
 
 const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
-    const { refreshData } = useMainLayout();
     const { toast } = useToast();
+    const router = useRouter();
     const [isImporting, setIsImporting] = useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     
@@ -202,39 +203,34 @@ const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
         }
 
         setIsImporting(true);
-        toast({ title: 'Rozpoczynanie importu...', description: 'Plik jest przetwarzany w tle.' });
+        toast({ title: 'Rozpoczynanie importu...', description: 'Plik jest przesyłany na serwer. To może zająć chwilę.' });
 
         try {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = async (event) => {
-                const base64 = event.target?.result;
-                if (typeof base64 !== 'string') {
-                    throw new Error("Nie udało się odczytać pliku.");
-                }
-                const base64Data = base64.split(',')[1];
-                
-                const importResult = await bulkImportEmployees(base64Data, currentUser.uid);
-                
-                if (importResult.success) {
-                    toast({ title: 'Import udany!', description: importResult.message });
-                    await refreshData(false);
-                } else {
-                    throw new Error(importResult.message);
-                }
-                 if(fileInputRef.current) fileInputRef.current.value = '';
-                setIsImporting(false);
-            };
-            reader.onerror = () => {
-                 if(fileInputRef.current) fileInputRef.current.value = '';
-                setIsImporting(false);
-                 throw new Error("Błąd podczas odczytu pliku.");
+            // 1. Get signed URL from server
+            const signedUrlResult = await getSignedUploadUrl(file.name, file.type, currentUser.uid);
+            if (!signedUrlResult.success || !signedUrlResult.url || !signedUrlResult.jobId) {
+                throw new Error(signedUrlResult.message || 'Nie udało się uzyskać adresu URL do załadowania.');
             }
+            
+            const { url, jobId } = signedUrlResult;
 
+            // 2. Upload file to GCS
+            await axios.put(url, file, {
+                headers: { 'Content-Type': file.type },
+            });
+            
+            toast({ title: 'Przesłano!', description: 'Plik został przesłany, rozpoczynanie przetwarzania w tle.' });
+
+            // 3. Trigger background processing
+            await bulkImportEmployees(jobId, `imports/${jobId}-${file.name}`, currentUser.uid);
+
+            router.push(`/dashboard?view=import-status&jobId=${jobId}`);
+            
         } catch (error) {
             console.error("Import error:", error);
             const errorMessage = error instanceof Error ? error.message : "Wystąpił nieoczekiwany błąd podczas importu.";
             toast({ variant: 'destructive', title: 'Błąd importu', description: String(errorMessage), duration: 10000 });
+        } finally {
             if(fileInputRef.current) fileInputRef.current.value = '';
             setIsImporting(false);
         }
@@ -569,4 +565,3 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     </div>
   );
 }
-

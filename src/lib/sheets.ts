@@ -4,7 +4,7 @@
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet, GoogleSpreadsheetRow } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
-import type { Employee, Settings, Notification, NotificationChange, Room, Inspection, NonEmployee, DeductionReason, InspectionCategory, InspectionCategoryItem, EquipmentItem, TemporaryAccess, Address, Coordinator } from '@/types';
+import type { Employee, Settings, Notification, NotificationChange, Room, Inspection, NonEmployee, DeductionReason, InspectionCategory, InspectionCategoryItem, EquipmentItem, TemporaryAccess, Address, Coordinator, ImportStatus } from '@/types';
 import { format, isValid, parse, parseISO } from 'date-fns';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
@@ -20,6 +20,7 @@ const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_INSPECTIONS = 'Inspections';
 const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 const SHEET_NAME_EQUIPMENT = 'Equipment';
+const SHEET_NAME_IMPORT_STATUS = 'ImportStatus';
 
 let doc: GoogleSpreadsheet | null = null;
 let docPromise: Promise<GoogleSpreadsheet> | null = null;
@@ -611,5 +612,28 @@ export async function getAllSheetsData() {
     } catch (error: unknown) {
         console.error("Error fetching all sheets data:", error);
         throw new Error(`Could not fetch all data from sheets. Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+}
+
+export async function getImportStatusFromSheet(): Promise<ImportStatus[]> {
+    try {
+        const sheet = await getSheet(SHEET_NAME_IMPORT_STATUS, ['jobId']);
+        const rows = await sheet.getRows({ limit: 100 });
+        return rows.map(row => {
+            const obj = row.toObject();
+            return {
+                jobId: obj.jobId,
+                fileName: obj.fileName,
+                status: obj.status as ImportStatus['status'],
+                message: obj.message,
+                processedRows: Number(obj.processedRows) || 0,
+                totalRows: Number(obj.totalRows) || 0,
+                createdAt: obj.createdAt,
+                actorName: obj.actorName,
+            }
+        }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } catch (error) {
+        console.error("Error fetching import statuses from sheet:", error);
+        throw new Error("Could not fetch import statuses.");
     }
 }
