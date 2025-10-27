@@ -14,8 +14,8 @@ import {
 } from '@/components/ui/sidebar';
 import Header from '@/components/header';
 import { MobileNav } from '@/components/mobile-nav';
-import type { View, Notification, Employee, Settings, NonEmployee, EquipmentItem, SessionData, Address } from '@/types';
-import { Building, Home, Settings as SettingsIcon, Users, Archive, Loader2 } from 'lucide-react';
+import type { View, Notification, Employee, Settings, NonEmployee, Inspection, EquipmentItem, SessionData, Address } from '@/types';
+import { Building, ClipboardList, Home, Settings as SettingsIcon, Users, Archive, Loader2 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     clearAllNotifications,
@@ -26,7 +26,8 @@ import {
     addEmployee,
     updateEmployee,
     updateSettings,
-    bulkDeleteEmployees,
+    getInspections, 
+    addInspection,
     getNonEmployees,
     addNonEmployee,
     updateNonEmployee,
@@ -37,7 +38,8 @@ import {
     addEquipment,
     updateEquipment,
     deleteEquipment,
-    getAllData
+    getAllData,
+    bulkDeleteEmployees,
 } from '@/lib/actions';
 import { logout } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -49,6 +51,7 @@ import { AddressForm } from './address-form';
 const navItems: { view: View; icon: React.ElementType; label: string }[] = [
     { view: 'dashboard', icon: Home, label: 'Pulpit' },
     { view: 'employees', icon: Users, label: 'Pracownicy' },
+    { view: 'inspections', icon: ClipboardList, label: 'Inspekcje' },
     { view: 'equipment', icon: Archive, label: 'Wyposażenie' },
     { view: 'settings', icon: SettingsIcon, label: 'Ustawienia' },
 ];
@@ -56,6 +59,7 @@ const navItems: { view: View; icon: React.ElementType; label: string }[] = [
 type MainLayoutContextType = {
     allEmployees: Employee[] | null;
     allNonEmployees: NonEmployee[] | null;
+    allInspections: Inspection[] | null;
     allEquipment: EquipmentItem[] | null;
     settings: Settings | null;
     currentUser: SessionData | null;
@@ -72,6 +76,7 @@ type MainLayoutContextType = {
     handleAddNonEmployeeClick: () => void;
     handleEditNonEmployeeClick: (nonEmployee: NonEmployee) => void;
     handleDeleteNonEmployee: (id: string) => Promise<void>;
+    handleAddInspection: (inspectionData: Omit<Inspection, 'id'>) => Promise<void>;
     handleAddEquipment: (itemData: Omit<EquipmentItem, 'id'>) => Promise<void>;
     handleUpdateEquipment: (id: string, itemData: Partial<EquipmentItem>) => Promise<void>;
     handleDeleteEquipment: (id: string) => Promise<void>;
@@ -111,6 +116,7 @@ export default function MainLayout({
     
     const [allEmployees, setAllEmployees] = useState<Employee[] | null>(null);
     const [allNonEmployees, setAllNonEmployees] = useState<NonEmployee[] | null>(null);
+    const [allInspections, setAllInspections] = useState<Inspection[] | null>(null);
     const [allEquipment, setAllEquipment] = useState<EquipmentItem[] | null>(null);
     const [settings, setSettings] = useState<Settings | null>(null);
     
@@ -188,6 +194,7 @@ export default function MainLayout({
             const {
                 employees,
                 settings,
+                inspections,
                 nonEmployees,
                 equipment,
                 notifications,
@@ -195,6 +202,7 @@ export default function MainLayout({
 
             setAllEmployees(employees);
             setSettings(settings);
+            setAllInspections(inspections);
             setAllNonEmployees(nonEmployees);
             setAllEquipment(equipment);
             setAllNotifications(notifications);
@@ -344,6 +352,22 @@ export default function MainLayout({
         }
     }, [settings, currentUser, toast, refreshData]);
 
+    const handleAddInspection = useCallback(async (inspectionData: Omit<Inspection, 'id'>) => {
+        const tempId = `temp-insp-${Date.now()}`;
+        const newInspection: Inspection = { ...inspectionData, id: tempId };
+
+        setAllInspections(prev => [newInspection, ...(prev || [])]);
+
+        try {
+            await addInspection(inspectionData);
+            toast({ title: "Sukces", description: "Nowa inspekcja została dodana." });
+            await refreshData(false);
+        } catch(e) {
+            setAllInspections(prev => prev ? prev.filter(i => i.id !== tempId) : null);
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się dodać inspekcji." });
+        }
+    }, [refreshData, toast]);
+
     const handleAddEquipment = useCallback(async (itemData: Omit<EquipmentItem, 'id'>) => {
         try {
             await addEquipment(itemData);
@@ -486,6 +510,7 @@ export default function MainLayout({
     const contextValue: MainLayoutContextType = useMemo(() => ({
         allEmployees,
         allNonEmployees,
+        allInspections,
         allEquipment,
         settings,
         currentUser,
@@ -502,6 +527,7 @@ export default function MainLayout({
         handleAddNonEmployeeClick,
         handleEditNonEmployeeClick,
         handleDeleteNonEmployee,
+        handleAddInspection,
         handleAddEquipment,
         handleUpdateEquipment,
         handleDeleteEquipment,
@@ -510,6 +536,7 @@ export default function MainLayout({
     } as MainLayoutContextType), [
         allEmployees,
         allNonEmployees,
+        allInspections,
         allEquipment,
         settings,
         currentUser,
@@ -526,6 +553,7 @@ export default function MainLayout({
         handleAddNonEmployeeClick,
         handleEditNonEmployeeClick,
         handleDeleteNonEmployee,
+        handleAddInspection,
         handleAddEquipment,
         handleUpdateEquipment,
         handleDeleteEquipment,

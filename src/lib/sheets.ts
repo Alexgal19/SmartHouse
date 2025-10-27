@@ -2,7 +2,7 @@
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet, GoogleSpreadsheetRow } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, TemporaryAccess, Address, Coordinator, ImportStatus, InspectionTemplateCategory } from '@/types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, TemporaryAccess, Address, Coordinator, Inspection, InspectionCategory, InspectionCategoryItem, InspectionTemplateCategory } from '@/types';
 import { format, isValid, parse, parseISO } from 'date-fns';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
@@ -16,7 +16,8 @@ const SHEET_NAME_DEPARTMENTS = 'Departments';
 const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_EQUIPMENT = 'Equipment';
-const SHEET_NAME_IMPORT_STATUS = 'ImportStatus';
+const SHEET_NAME_INSPECTIONS = 'Inspections';
+const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 const SHEET_NAME_INSPECTION_TEMPLATE = 'InspectionTemplate';
 
 let doc: GoogleSpreadsheet | null = null;
@@ -424,7 +425,9 @@ export async function getAllSheetsData() {
             settingsSheets,
             nonEmployeesSheet,
             equipmentSheet,
-            notificationsSheet
+            notificationsSheet,
+            inspectionsSheet,
+            inspectionDetailsSheet,
         ] = await Promise.all([
             getSheetData(doc, SHEET_NAME_EMPLOYEES),
             (async () => {
@@ -441,7 +444,9 @@ export async function getAllSheetsData() {
             })(),
             getSheetData(doc, SHEET_NAME_NON_EMPLOYEES),
             getSheetData(doc, SHEET_NAME_EQUIPMENT),
-            getSheetData(doc, SHEET_NAME_NOTIFICATIONS)
+            getSheetData(doc, SHEET_NAME_NOTIFICATIONS),
+            getSheetData(doc, SHEET_NAME_INSPECTIONS),
+            getSheetData(doc, SHEET_NAME_INSPECTION_DETAILS)
         ]);
 
         // Process Settings
@@ -502,9 +507,84 @@ export async function getAllSheetsData() {
             .map(row => deserializeNotification({ toObject: () => row } as any))
             .filter((n): n is Notification => n !== null)
             .sort((a: Notification, b: Notification) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        
+        // Process Inspections
+        const detailsByInspectionId = new Map<string, any[]>();
+        inspectionDetailsSheet.forEach(row => {
+            const inspectionId = row.inspectionId;
+            if (inspectionId) {
+                if (!detailsByInspectionId.has(inspectionId)) {
+                    detailsByInspectionId.set(inspectionId, []);
+                }
+                detailsByInspectionId.get(inspectionId)!.push(row);
+            }
+        });
 
+        const inspections = inspectionsSheet.map(row => {
+            const inspectionId = row.id;
+            const details = detailsByInspectionId.get(inspectionId) || [];
+            
+            const categoriesMap = new Map<string, InspectionCategory>();
 
-        return { employees, settings, nonEmployees, equipment, notifications };
+            details.forEach(detail => {
+                const categoryName = detail.category;
+                if (!categoriesMap.has(categoryName)) {
+                    categoriesMap.set(categoryName, { name: categoryName, items: [], uwagi: '', photos: [] });
+                }
+                const category = categoriesMap.get(categoryName)!;
+
+                const itemLabel = detail.itemLabel;
+                if (itemLabel && itemLabel !== 'Photo' && itemLabel !== 'Uwagi') {
+                    let type: InspectionCategoryItem['type'] = 'text';
+                    const rawValue = detail.itemValue;
+                    let value: any = rawValue;
+                    
+                    if (rawValue?.toLowerCase() === 'true' || rawValue?.toLowerCase() === 'false') {
+                        type = 'yes_no';
+                        value = rawValue.toLowerCase() === 'true';
+                    } else if (['Wysoki', 'Normalny', 'Niski', 'Bardzo czysto', 'Czysto', 'Brudno', 'Bardzo brudno'].includes(rawValue)) {
+                        type = 'select';
+                    } else if (rawValue && !isNaN(parseFloat(rawValue)) && isFinite(rawValue)) {
+                        const num = parseFloat(rawValue);
+                        if (num >= 1 && num <= 5 && Number.isInteger(num)) {
+                            type = 'rating';
+                            value = num;
+                        } else {
+                            type = 'number';
+                            value = num;
+                        }
+                    } else if (typeof rawValue === 'string' && rawValue.startsWith('[') && rawValue.endsWith(']')) {
+                        try {
+                            value = JSON.parse(rawValue);
+                            type = 'checkbox_group';
+                        } catch {}
+                    }
+
+                    category.items.push({ label: itemLabel, value, type, options: [] });
+                }
+                if (detail.uwagi) {
+                    category.uwagi = detail.uwagi;
+                }
+                if (detail.photoData) {
+                    if (!category.photos) category.photos = [];
+                    category.photos.push(detail.photoData);
+                }
+            });
+
+            const inspectionDate = row.date;
+            return {
+                id: inspectionId,
+                addressId: row.addressId,
+                addressName: row.addressName,
+                date: inspectionDate ? new Date(inspectionDate).toISOString() : new Date().toISOString(),
+                coordinatorId: row.coordinatorId,
+                coordinatorName: row.coordinatorName,
+                standard: row.standard || null,
+                categories: [...categoriesMap.values()],
+            };
+        }).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+        return { employees, settings, nonEmployees, equipment, notifications, inspections };
 
     } catch (error: unknown) {
         console.error("Error fetching all sheets data:", error);
@@ -512,25 +592,103 @@ export async function getAllSheetsData() {
     }
 }
 
-export async function getImportStatusFromSheet(): Promise<ImportStatus[]> {
+export async function getInspectionsFromSheet(coordinatorId?: string): Promise<Inspection[]> {
     try {
-        const sheet = await getSheet(SHEET_NAME_IMPORT_STATUS, ['jobId']);
-        const rows = await sheet.getRows({ limit: 100 });
-        return rows.map(row => {
-            const obj = row.toObject();
-            return {
-                jobId: obj.jobId,
-                fileName: obj.fileName,
-                status: obj.status as ImportStatus['status'],
-                message: obj.message,
-                processedRows: Number(obj.processedRows) || 0,
-                totalRows: Number(obj.totalRows) || 0,
-                createdAt: obj.createdAt,
-                actorName: obj.actorName,
+        const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, ['id']);
+        const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, ['id']);
+        
+        let inspectionRowsRaw = await inspectionsSheet.getRows({ limit: 1000 });
+        if (coordinatorId) {
+            inspectionRowsRaw = inspectionRowsRaw.filter(row => row.get('coordinatorId') === coordinatorId);
+        }
+        
+        const inspectionRows = inspectionRowsRaw.map(r => r.toObject());
+        const detailRows = (await detailsSheet.getRows({ limit: 5000 })).map(r => r.toObject());
+
+        const detailsByInspectionId = new Map<string, any[]>();
+        detailRows.forEach(row => {
+            const inspectionId = row.inspectionId;
+            if (inspectionId) {
+                if (!detailsByInspectionId.has(inspectionId)) {
+                    detailsByInspectionId.set(inspectionId, []);
+                }
+                detailsByInspectionId.get(inspectionId)!.push(row);
             }
-        }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    } catch (error) {
-        console.error("Error fetching import statuses from sheet:", error);
-        throw new Error("Could not fetch import statuses.");
+        });
+
+        const inspections = inspectionRows.map(row => {
+            const inspectionId = row.id;
+            const details = detailsByInspectionId.get(inspectionId) || [];
+            
+            const categoriesMap = new Map<string, InspectionCategory>();
+
+            details.forEach(detail => {
+                const categoryName = detail.category;
+                if (!categoriesMap.has(categoryName)) {
+                    categoriesMap.set(categoryName, { name: categoryName, items: [], uwagi: '', photos: [] });
+                }
+                const category = categoriesMap.get(categoryName)!;
+
+                const itemLabel = detail.itemLabel;
+                const uwagi = detail.uwagi;
+                const photoData = detail.photoData;
+
+                if (itemLabel && itemLabel !== 'Photo' && itemLabel !== 'Uwagi') {
+                    let type: InspectionCategoryItem['type'] = 'text';
+                    const rawValue = detail.itemValue;
+                    let value: any = rawValue;
+                    
+                    if (rawValue?.toLowerCase() === 'true' || rawValue?.toLowerCase() === 'false') {
+                        type = 'yes_no';
+                        value = rawValue.toLowerCase() === 'true';
+                    } else if (['Wysoki', 'Normalny', 'Niski', 'Bardzo czysto', 'Czysto', 'Brudno', 'Bardzo brudno'].includes(rawValue)) {
+                        type = 'select';
+                    } else if (rawValue && !isNaN(parseFloat(rawValue)) && isFinite(rawValue)) {
+                        const num = parseFloat(rawValue);
+                        if (num >= 1 && num <= 5 && Number.isInteger(num)) {
+                            type = 'rating';
+                            value = num;
+                        } else {
+                            type = 'number';
+                            value = num;
+                        }
+                    } else if (typeof rawValue === 'string' && rawValue.startsWith('[') && rawValue.endsWith(']')) {
+                        try {
+                            value = JSON.parse(rawValue);
+                            type = 'checkbox_group';
+                        } catch {
+                            // keep as text
+                        }
+                    }
+
+                    category.items.push({ label: itemLabel, value, type, options: [] });
+                }
+                if (uwagi) {
+                    category.uwagi = uwagi;
+                }
+                if (photoData) {
+                    if (!category.photos) category.photos = [];
+                    category.photos.push(photoData);
+                }
+            });
+
+            const inspectionDate = row.date;
+            return {
+                id: inspectionId,
+                addressId: row.addressId,
+                addressName: row.addressName,
+                date: inspectionDate ? new Date(inspectionDate).toISOString() : new Date().toISOString(),
+                coordinatorId: row.coordinatorId,
+                coordinatorName: row.coordinatorName,
+                standard: row.standard || null,
+                categories: [...categoriesMap.values()],
+            };
+        }).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+        return inspections;
+
+    } catch (error: unknown) {
+        console.error("Error fetching inspections from sheet:", error instanceof Error ? error.message : "Unknown error", error instanceof Error ? error.stack : "");
+        throw new Error(`Could not fetch inspections. Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
 }

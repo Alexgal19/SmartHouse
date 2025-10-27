@@ -1,7 +1,7 @@
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, TemporaryAccess, ImportStatus } from '@/types';
-import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getNonEmployeesFromSheet, getEquipmentFromSheet, getAllSheetsData } from './sheets';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, TemporaryAccess, Inspection, InspectionCategoryItem, InspectionCategory } from '@/types';
+import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getNonEmployeesFromSheet, getEquipmentFromSheet, getAllSheetsData, getInspectionsFromSheet } from './sheets';
 import { format, isPast, isValid, parse, startOfMonth, endOfMonth, differenceInDays, min, max } from 'date-fns';
 import * as XLSX from 'xlsx';
 
@@ -16,7 +16,9 @@ const SHEET_NAME_DEPARTMENTS = 'Departments';
 const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_EQUIPMENT = 'Equipment';
-const SHEET_NAME_IMPORT_STATUS = 'ImportStatus';
+const SHEET_NAME_INSPECTIONS = 'Inspections';
+const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
+
 
 const serializeDate = (date?: string | null): string => {
     if (!date) {
@@ -114,7 +116,6 @@ const EQUIPMENT_HEADERS = [
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
 const ADDRESS_HEADERS = ['id', 'name', 'coordinatorId'];
 const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targetType', 'targetId', 'details'];
-const IMPORT_STATUS_HEADERS = ['jobId', 'fileName', 'status', 'message', 'processedRows', 'totalRows', 'createdAt', 'actorName'];
 
 const safeFormat = (dateStr: string | undefined | null): string | null => {
     if (!dateStr) return null;
@@ -710,27 +711,86 @@ export async function clearAllNotifications(): Promise<void> {
     }
 }
 
-const parseAndFormatDate = (dateValue: any): string | null => {
-    if (dateValue === null || dateValue === undefined || dateValue === '') {
-        return null;
+export async function getInspections(coordinatorId?: string): Promise<Inspection[]> {
+    try {
+        const inspections = await getInspectionsFromSheet(coordinatorId);
+        return inspections;
+    } catch (error: unknown) {
+        console.error("Error in getInspections (actions):", error);
+        throw new Error(error instanceof Error ? error.message : "Failed to get inspections.");
     }
-    if (dateValue instanceof Date && isValid(dateValue)) {
-         return format(dateValue, 'yyyy-MM-dd');
-    }
-    if (typeof dateValue === 'number') { 
-        const excelEpoch = new Date(1899, 11, 30);
-        const date = new Date(excelEpoch.getTime() + dateValue * 24 * 60 * 60 * 1000);
-        return format(date, 'yyyy-MM-dd');
-    }
-    if (typeof dateValue === 'string') {
-        const parsedDate = parse(dateValue, 'dd-MM-yyyy', new Date());
-        if (isValid(parsedDate)) {
-            return format(parsedDate, 'yyyy-MM-dd');
+}
+
+export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Promise<void> {
+    try {
+        const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, ['id', 'addressId', 'addressName', 'date', 'coordinatorId', 'coordinatorName', 'standard']);
+        const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, ['id', 'inspectionId', 'addressName', 'date', 'coordinatorName', 'category', 'itemLabel', 'itemValue', 'uwagi', 'photoData']);
+        
+        const inspectionId = `insp-${Date.now()}`;
+        const dateString = inspectionData.date;
+
+        await inspectionsSheet.addRow({
+            id: inspectionId,
+            addressId: inspectionData.addressId,
+            addressName: inspectionData.addressName,
+            date: dateString,
+            coordinatorId: inspectionData.coordinatorId,
+            coordinatorName: inspectionData.coordinatorName,
+            standard: inspectionData.standard || '',
+        }, { raw: false, insert: true });
+
+        const detailRows: any[] = [];
+        inspectionData.categories.forEach((category: { items: any[]; name: any; uwagi: any; photos: any; }) => {
+            category.items.forEach(item => {
+                detailRows.push({
+                    id: `insp-det-${Date.now()}-${Math.random()}`,
+                    inspectionId,
+                    addressName: inspectionData.addressName,
+                    date: dateString,
+                    coordinatorName: inspectionData.coordinatorName,
+                    category: category.name,
+                    itemLabel: item.label,
+                    itemValue: Array.isArray(item.value) ? JSON.stringify(item.value) : (String(item.value) ?? ''),
+                    uwagi: '',
+                    photoData: '',
+                });
+            });
+
+            if (category.uwagi) {
+                detailRows.push({
+                    id: `insp-det-${Date.now()}-${Math.random()}`,
+                    inspectionId,
+                    addressName: inspectionData.addressName,
+                    date: dateString,
+                    coordinatorName: inspectionData.coordinatorName,
+                    category: category.name,
+                    itemLabel: 'Uwagi', itemValue: '',
+                    uwagi: category.uwagi,
+                    photoData: '',
+                });
+            }
+            
+            (category.photos || []).forEach((photo: any) => {
+                detailRows.push({
+                    id: `insp-det-${Date.now()}-${Math.random()}`,
+                    inspectionId,
+                    addressName: inspectionData.addressName,
+                    date: dateString,
+                    coordinatorName: inspectionData.coordinatorName,
+                    category: category.name,
+                    itemLabel: 'Photo', itemValue: '',
+                    uwagi: photo.uwagi || '',
+                    photoData: photo.data || '',
+                });
+            });
+        });
+
+        if (detailRows.length > 0) {
+            await detailsSheet.addRows(detailRows, { raw: false, insert: true });
         }
-        const isoDate = new Date(dateValue);
-        if(isValid(isoDate)) {
-            return format(isoDate, 'yyyy-MM-dd');
-        }
+
+    } catch (e: unknown) {
+        console.error("Error adding inspection:", e);
+        throw new Error(e instanceof Error ? e.message : "Failed to add inspection.");
     }
-    return null;
-};
+}

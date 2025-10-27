@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Bell, CircleUser, Home, Settings, Users, Archive, LogOut, Trash2 } from 'lucide-react';
+import { Bell, CircleUser, Home, Settings, Users, Archive, LogOut, Trash2, ClipboardList } from 'lucide-react';
 import type { SessionData, View, Notification } from '@/types';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils';
 const viewTitles: Record<View, string> = {
   dashboard: 'Pulpit',
   employees: 'Pracownicy',
+  inspections: 'Inspekcje',
   settings: 'Ustawienia',
   equipment: 'Wyposażenie',
 };
@@ -32,6 +33,7 @@ const viewTitles: Record<View, string> = {
 const viewIcons: Record<View, React.ElementType> = {
     dashboard: Home,
     employees: Users,
+    inspections: ClipboardList,
     settings: Settings,
     equipment: Archive
 }
