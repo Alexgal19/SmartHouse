@@ -6,6 +6,7 @@ import type { Employee, Settings, Notification, NotificationChange, Room, Inspec
 import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getInspectionsFromSheet, getNonEmployeesFromSheet, getEquipmentFromSheet, getAllSheetsData } from './sheets';
 import { format, isPast, isValid, parse, startOfMonth, endOfMonth, differenceInDays, min, max } from 'date-fns';
 import * as XLSX from 'xlsx';
+import { Storage } from '@google-cloud/storage';
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
 const SHEET_NAME_NON_EMPLOYEES = 'NonEmployees';
@@ -921,9 +922,52 @@ const parseAndFormatDate = (dateValue: any): string | null => {
     return null;
 };
 
-export async function bulkImportEmployees(fileBase64: string, actorUid: string): Promise<{success: boolean, message: string}> {
+export async function getSignedUploadUrl(fileName: string, fileType: string): Promise<{ success: boolean; url?: string; filePath?: string; message?: string }> {
     try {
-        const buffer = Buffer.from(fileBase64, 'base64');
+        const storage = new Storage({
+            projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
+            credentials: {
+                client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+                private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+            },
+        });
+
+        const bucketName = `${process.env.GOOGLE_CLOUD_PROJECT_ID}.appspot.com`;
+        const filePath = `imports/${Date.now()}-${fileName}`;
+        
+        const [url] = await storage.bucket(bucketName).file(filePath).getSignedUrl({
+            version: 'v4',
+            action: 'write',
+            expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+            contentType: fileType,
+        });
+        
+        return { success: true, url, filePath };
+    } catch (error: unknown) {
+        console.error("Error getting signed URL:", error);
+        const message = error instanceof Error ? error.message : "An unknown error occurred.";
+        if (message.includes('Could not determine project ID')) {
+             return { success: false, message: 'GCS_BUCKET_NAME is not configured in the environment. Cannot determine storage bucket.' };
+        }
+        return { success: false, message: `Failed to get signed URL: ${message}` };
+    }
+}
+
+
+export async function bulkImportEmployees(filePath: string, actorUid: string): Promise<{success: boolean, message: string}> {
+    try {
+        const storage = new Storage({
+             projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
+            credentials: {
+                client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+                private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+            },
+        });
+        const bucketName = `${process.env.GOOGLE_CLOUD_PROJECT_ID}.appspot.com`;
+        
+        const file = storage.bucket(bucketName).file(filePath);
+        const [buffer] = await file.download();
+
         const settings = await getSettings();
         
         const workbook = XLSX.read(buffer, { type: 'buffer' });
@@ -973,6 +1017,8 @@ export async function bulkImportEmployees(fileBase64: string, actorUid: string):
         for (const emp of employeesToAdd) {
             await addEmployee(emp, actorUid);
         }
+
+        await file.delete();
 
         return { success: true, message: `Pomyślnie zaimportowano ${employeesToAdd.length} pracowników.` };
 

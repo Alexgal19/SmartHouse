@@ -18,9 +18,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { generateMonthlyReport, generateAccommodationReport, bulkImportEmployees } from '@/lib/actions';
+import { generateMonthlyReport, generateAccommodationReport, bulkImportEmployees, getSignedUploadUrl } from '@/lib/actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
+import axios from 'axios';
 
 const coordinatorSchema = z.object({
     uid: z.string(),
@@ -187,38 +188,52 @@ const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
     const [isImporting, setIsImporting] = useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     
-    const readFileAsBase64 = (file: File): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => {
-                const base64String = (reader.result as string).split(',')[1];
-                resolve(base64String);
-            };
-            reader.onerror = (error) => reject(error);
-            reader.readAsDataURL(file);
-        });
-    };
-
     const onFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
+        if (!file.name.endsWith('.xlsx')) {
+            toast({
+                variant: 'destructive',
+                title: 'Nieprawidłowy format pliku',
+                description: 'Proszę wybrać plik w formacie .xlsx.',
+            });
+            return;
+        }
+
         setIsImporting(true);
-        toast({ title: 'Przetwarzanie pliku...', description: 'Proszę czekać, plik jest przygotowywany do wysłania.' });
+        toast({ title: 'Rozpoczynanie importu...', description: 'Generowanie bezpiecznego linku do przesłania pliku.' });
 
         try {
-            const fileBase64 = await readFileAsBase64(file);
-            const result = await bulkImportEmployees(fileBase64, currentUser.uid);
+            // 1. Get signed URL from server
+            const { success, url, filePath } = await getSignedUploadUrl(file.name, file.type);
+            if (!success || !url || !filePath) {
+                throw new Error('Nie udało się uzyskać linku do przesłania pliku.');
+            }
 
-            if (result.success) {
-                toast({ title: 'Import udany', description: result.message });
+            toast({ title: 'Przesyłanie pliku...', description: 'Plik jest bezpiecznie przesyłany do chmury. To może zająć chwilę.' });
+            
+            // 2. Upload file directly to GCS
+            await axios.put(url, file, {
+                headers: { 'Content-Type': file.type },
+            });
+            
+            toast({ title: 'Przetwarzanie danych...', description: 'Plik został przesłany. Rozpoczynam import danych po stronie serwera.' });
+
+            // 3. Notify server to process the file
+            const importResult = await bulkImportEmployees(filePath, currentUser.uid);
+
+            if (importResult.success) {
+                toast({ title: 'Import udany!', description: importResult.message });
                 await refreshData(false);
             } else {
-                throw new Error(result.message);
+                throw new Error(importResult.message);
             }
+
         } catch (error) {
             console.error("Import error:", error);
-            toast({ variant: 'destructive', title: 'Błąd importu', description: error instanceof Error ? error.message : "Wystąpił nieoczekiwany błąd.", duration: 10000 });
+            const errorMessage = axios.isAxiosError(error) ? error.response?.data || error.message : (error instanceof Error ? error.message : "Wystąpił nieoczekiwany błąd podczas importu.");
+            toast({ variant: 'destructive', title: 'Błąd importu', description: String(errorMessage), duration: 10000 });
         } finally {
             if(fileInputRef.current) fileInputRef.current.value = '';
             setIsImporting(false);
