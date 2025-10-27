@@ -1,5 +1,4 @@
 
-
 // This component manages the view for housing inspections.
 // It allows creating, viewing, and editing inspection reports.
 
