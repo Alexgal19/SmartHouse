@@ -18,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { generateMonthlyReport, generateAccommodationReport, bulkImportEmployees } from '@/lib/actions';
+import { generateMonthlyReport, generateAccommodationReport, bulkImportEmployees, getSignedUploadUrl } from '@/lib/actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import axios from 'axios';
@@ -204,40 +204,39 @@ const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
         }
 
         setIsImporting(true);
-        toast({ title: 'Rozpoczynanie importu...', description: 'Plik jest przetwarzany. To może zająć chwilę.' });
+        toast({ title: 'Rozpoczynanie importu...', description: 'Plik jest przesyłany na serwer. To może zająć chwilę.' });
 
         try {
-            const reader = new FileReader();
-            reader.onload = async (event) => {
-                try {
-                    const fileData = (event.target?.result as string).split(',')[1];
-                    const result = await bulkImportEmployees(fileData, currentUser.uid);
-
-                    if (result.success) {
-                        toast({ title: 'Import zakończony', description: result.message });
-                        await refreshData(false);
-                    } else {
-                        throw new Error(result.message);
-                    }
-                } catch (error) {
-                    const errorMessage = error instanceof Error ? error.message : "Wystąpił nieoczekiwany błąd podczas przetwarzania.";
-                    toast({ variant: 'destructive', title: 'Błąd importu', description: errorMessage, duration: 10000 });
-                } finally {
-                     setIsImporting(false);
-                     if(fileInputRef.current) fileInputRef.current.value = '';
-                }
-            };
-            reader.onerror = () => {
-                 toast({ variant: 'destructive', title: 'Błąd odczytu pliku', description: 'Nie udało się odczytać pliku po stronie klienta.'});
-                 setIsImporting(false);
-            }
-            reader.readAsDataURL(file);
+            // 1. Get signed URL from server
+            const { success: urlSuccess, url, filePath, message: urlMessage } = await getSignedUploadUrl(file.name, file.type);
             
-        } catch (error) {
+            if (!urlSuccess || !url || !filePath) {
+                throw new Error(urlMessage || 'Nie udało się uzyskać adresu URL do przesłania pliku.');
+            }
+
+            // 2. Upload file to signed URL
+            await axios.put(url, file, {
+                headers: { 'Content-Type': file.type },
+            });
+            
+            toast({ title: 'Przetwarzanie pliku...', description: 'Plik został przesłany, rozpoczynam przetwarzanie danych.' });
+
+            // 3. Notify server to process the file
+            const result = await bulkImportEmployees(filePath, currentUser.uid);
+
+            if (result.success) {
+                toast({ title: 'Import zakończony', description: result.message });
+                await refreshData(false);
+            } else {
+                throw new Error(result.message);
+            }
+        } catch (error: unknown) {
             console.error("Import error:", error);
-            const errorMessage = error instanceof Error ? error.message : "Wystąpił nieoczekiwany błąd podczas importu.";
+            const errorMessage = (error as any)?.response?.data || (error instanceof Error ? error.message : "Wystąpił nieoczekiwany błąd podczas importu.");
             toast({ variant: 'destructive', title: 'Błąd importu', description: String(errorMessage), duration: 10000 });
-            setIsImporting(false);
+        } finally {
+             setIsImporting(false);
+             if(fileInputRef.current) fileInputRef.current.value = '';
         }
     };
     

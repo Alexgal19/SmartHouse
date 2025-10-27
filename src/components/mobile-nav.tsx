@@ -4,7 +4,7 @@
 "use client"
 
 import Link from "next/link"
-import { Home, Users, Settings, ClipboardList, Archive, Import } from "lucide-react"
+import { Home, Users, Settings, ClipboardList, Archive } from "lucide-react"
 import type { View, SessionData } from "@/types"
 import { cn } from "@/lib/utils"
 
@@ -22,7 +22,6 @@ export function MobileNav({
     <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 backdrop-blur-sm sm:hidden shadow-[0_-2px_10px_-3px_rgba(0,0,0,0.1)]">
       <div className="grid h-16 grid-cols-5 items-center justify-center text-xs">
         {navItems.map((item) => {
-          if (item.view === 'import-status' && !currentUser.isAdmin) return null;
           return (
             <Link
               key={item.view}

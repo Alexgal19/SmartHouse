@@ -3,10 +3,12 @@
 "use server";
 
 import type { Employee, Settings, Notification, NotificationChange, Room, Inspection, NonEmployee, DeductionReason, EquipmentItem, TemporaryAccess, ImportStatus } from '@/types';
-import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getInspectionsFromSheet, getNonEmployeesFromSheet, getEquipmentFromSheet, getAllSheetsData, getImportStatusFromSheet } from './sheets';
+import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getInspectionsFromSheet, getNonEmployeesFromSheet, getEquipmentFromSheet, getAllSheetsData } from './sheets';
 import { format, isPast, isValid, parse, startOfMonth, endOfMonth, differenceInDays, min, max } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { Storage } from '@google-cloud/storage';
+
+const BUCKET_NAME = 'studio-6821761262-fdf39.firebasestorage.app';
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
 const SHEET_NAME_NON_EMPLOYEES = 'NonEmployees';
@@ -230,16 +232,6 @@ export async function getSettings(): Promise<Settings> {
     } catch (error: unknown) {
         console.error("Error in getSettings (actions):", error);
         throw new Error(error instanceof Error ? error.message : "Failed to get settings.");
-    }
-}
-
-export async function getImportStatus(): Promise<ImportStatus[]> {
-    try {
-        const statuses = await getImportStatusFromSheet();
-        return statuses;
-    } catch (error: unknown) {
-        console.error("Error in getImportStatus (actions):", error);
-        throw new Error(error instanceof Error ? error.message : "Failed to get import statuses.");
     }
 }
 
@@ -933,12 +925,51 @@ const parseAndFormatDate = (dateValue: any): string | null => {
     return null;
 };
 
-export async function bulkImportEmployees(fileData: string, actorUid: string): Promise<{success: boolean, message: string}> {
+export async function getSignedUploadUrl(fileName: string, contentType: string): Promise<{ success: boolean; message: string; url?: string, filePath?: string }> {
     try {
-        const buffer = Buffer.from(fileData, 'base64');
+        const storage = new Storage({
+             credentials: {
+                client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+                private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+            },
+            projectId: process.env.GOOGLE_PROJECT_ID,
+        });
+        
+        const bucket = storage.bucket(BUCKET_NAME);
+        const filePath = `imports/${Date.now()}-${fileName}`;
+        const file = bucket.file(filePath);
+
+        const [url] = await file.getSignedUrl({
+            version: 'v4',
+            action: 'write',
+            expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+            contentType,
+        });
+
+        return { success: true, url, filePath, message: "URL generated." };
+    } catch (error: unknown) {
+        console.error('Error getting signed URL:', error);
+        return { success: false, message: error instanceof Error ? error.message : 'An unknown error occurred while generating the upload URL.' };
+    }
+}
+
+export async function bulkImportEmployees(filePath: string, actorUid: string): Promise<{success: boolean, message: string}> {
+    try {
+        const storage = new Storage({
+            credentials: {
+                client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+                private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+            },
+            projectId: process.env.GOOGLE_PROJECT_ID,
+        });
+        const bucket = storage.bucket(BUCKET_NAME);
+        const file = bucket.file(filePath);
+
+        const [fileBuffer] = await file.download();
+        
         const settings = await getSettings();
         
-        const workbook = XLSX.read(buffer, { type: 'buffer' });
+        const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         const json: any[] = XLSX.utils.sheet_to_json(worksheet, { raw: false, defval: null });
@@ -958,7 +989,7 @@ export async function bulkImportEmployees(fileData: string, actorUid: string): P
         const employeesToAdd: (Partial<Employee>)[] = [];
         
         for (const row of json) {
-            if (!row.fullName) {
+             if (!row.fullName) {
                 continue; // Skip empty rows
             }
             const coordinator = row.coordinatorName ? settings.coordinators.find(c => c.name.toLowerCase() === String(row.coordinatorName).toLowerCase()) : null;
