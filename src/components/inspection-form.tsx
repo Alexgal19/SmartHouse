@@ -48,7 +48,7 @@ export type InspectionFormProps = {
   onOpenChange: (open: boolean) => void;
   settings: Settings;
   currentUser: SessionData;
-  onSave: (data: Omit<Inspection, 'id'>) => void;
+  onSave: (data: Omit<Inspection, 'id'| 'coordinatorName'>) => void;
   item?: Inspection | null;
 };
 
@@ -244,7 +244,7 @@ export default function InspectionForm({ isOpen, onOpenChange, settings, current
                             </Button>
                              <input
                                 type="file"
-                                ref={(el) => { fileInputRefs.current[categoryIndex] = el; }}
+                                ref={el => fileInputRefs.current[categoryIndex] = el}
                                 className="hidden"
                                 accept="image/*"
                                 multiple
@@ -267,24 +267,47 @@ export default function InspectionForm({ isOpen, onOpenChange, settings, current
                                 control={form.control}
                                 name={fieldName}
                                 render={({ field }) => {
-                                  if (item.type === 'select') {
-                                       return (
-                                        <Select
-                                          onValueChange={field.onChange}
-                                          value={field.value !== undefined && field.value !== null ? String(field.value) : ''}
-                                        >
-                                          <FormControl><SelectTrigger><SelectValue placeholder="Wybierz ocenę" /></SelectTrigger></FormControl>
+                                  switch (item.type) {
+                                    case 'select':
+                                      return (
+                                        <Select onValueChange={field.onChange} value={String(field.value ?? '')}>
+                                          <SelectTrigger><SelectValue placeholder="Wybierz ocenę" /></SelectTrigger>
                                           <SelectContent>
                                             {(item.options || evaluationOptions).map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
                                           </SelectContent>
                                         </Select>
                                       );
+                                    case 'number':
+                                    case 'rating':
+                                      return <Input type="number" value={String(field.value ?? '')} onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))} />;
+                                    case 'yes_no':
+                                      return <Switch checked={field.value as boolean} onCheckedChange={field.onChange} />;
+                                    case 'text':
+                                      return <Input type="text" value={String(field.value ?? '')} onChange={field.onChange} />;
+                                    case 'checkbox_group':
+                                      return (
+                                        <div className="space-y-2">
+                                          {(item.options || []).map(option => (
+                                            <FormItem key={option} className="flex flex-row items-start space-x-3 space-y-0">
+                                              <FormControl>
+                                                <Checkbox
+                                                  checked={(field.value as string[] || []).includes(option)}
+                                                  onCheckedChange={(checked) => {
+                                                    const currentValue = field.value as string[] || [];
+                                                    return checked
+                                                      ? field.onChange([...currentValue, option])
+                                                      : field.onChange(currentValue.filter(v => v !== option));
+                                                  }}
+                                                />
+                                              </FormControl>
+                                              <FormLabel className="font-normal">{option}</FormLabel>
+                                            </FormItem>
+                                          ))}
+                                        </div>
+                                      );
+                                    default:
+                                      return <Input type="text" value={String(field.value ?? '')} onChange={field.onChange} />;
                                   }
-                                   if (item.type === 'number') {
-                                    return <Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))} />;
-                                  }
-                                  // Simplified for brevity, expand for other types
-                                  return <Input type="text" {...field as any} />;
                                 }}
                               />
                             </FormControl>
