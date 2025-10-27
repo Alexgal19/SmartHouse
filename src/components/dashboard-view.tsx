@@ -80,7 +80,6 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
         <DashboardKPIs 
             employees={employeesForCoordinator}
             nonEmployees={nonEmployeesForCoordinator}
-            settings={settings}
             onUpcomingCheckoutsClick={() => setIsUpcomingCheckoutsModalOpen(true)}
         />
         <DashboardCharts 
@@ -135,4 +134,3 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
   );
 }
 
-  
