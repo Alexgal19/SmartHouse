@@ -70,7 +70,8 @@ export function HousingView({
         if (currentUser.isAdmin && selectedCoordinatorId === 'all') {
             const allAddresses = new Set(settings.addresses.map(a => a.name));
             const occupiedAddresses = new Set(allActiveOccupants.map(o => o.address));
-            addressesToDisplay = Array.from(new Set([...allAddresses, ...occupiedAddresses]));
+            // Avoid using spread on Set (requires downlevelIteration) - use Array.from concatenation instead
+            addressesToDisplay = Array.from(new Set(Array.from(allAddresses).concat(Array.from(occupiedAddresses))));
         } else {
             addressesToDisplay = settings.addresses.filter(a => a.coordinatorId === selectedCoordinatorId).map(a => a.name);
         }

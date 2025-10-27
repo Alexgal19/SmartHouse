@@ -1,7 +1,7 @@
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, Room, Inspection, NonEmployee, DeductionReason, EquipmentItem, TemporaryAccess } from '../app/src/types';
-import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getInspectionsFromSheet, getNonEmployeesFromSheet, getEquipmentFromSheet } from '../app/src/lib/sheets';
+import type { Employee, Settings, Notification, NotificationChange, Room, Inspection, NonEmployee, DeductionReason, EquipmentItem, TemporaryAccess } from '../src/types';
+import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getInspectionsFromSheet, getNonEmployeesFromSheet, getEquipmentFromSheet } from './sheets';
 import { format, isPast, isValid, parse, startOfMonth, endOfMonth, differenceInDays, min, max } from 'date-fns';
 import * as XLSX from 'xlsx';
 
@@ -302,18 +302,18 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
             zaklad: employeeData.zaklad || '',
             checkInDate: employeeData.checkInDate || '',
             checkOutDate: employeeData.checkOutDate,
-            contractStartDate: employeeData.contractStartDate,
-            contractEndDate: employeeData.contractEndDate,
+            contractStartDate: employeeData.contractStartDate ?? null,
+            contractEndDate: employeeData.contractEndDate ?? null,
             departureReportDate: employeeData.departureReportDate,
             comments: employeeData.comments,
             oldAddress: employeeData.oldAddress,
             addressChangeDate: employeeData.addressChangeDate,
-            depositReturned: employeeData.depositReturned,
-            depositReturnAmount: employeeData.depositReturnAmount,
-            deductionRegulation: employeeData.deductionRegulation,
-            deductionNo4Months: employeeData.deductionNo4Months,
-            deductionNo30Days: employeeData.deductionNo30Days,
-            deductionReason: employeeData.deductionReason,
+            depositReturned: employeeData.depositReturned ?? null,
+            depositReturnAmount: employeeData.depositReturnAmount ?? null,
+            deductionRegulation: employeeData.deductionRegulation ?? null,
+            deductionNo4Months: employeeData.deductionNo4Months ?? null,
+            deductionNo30Days: employeeData.deductionNo30Days ?? null,
+            deductionReason: employeeData.deductionReason ?? undefined,
         };
 
         const serialized = serializeEmployee(newEmployee);
@@ -757,8 +757,8 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
         }, { raw: false, insert: true });
 
         const detailRows: any[] = [];
-        inspectionData.categories.forEach((category: { items: any[]; name: any; uwagi: any; photos: any; }) => {
-            category.items.forEach(item => {
+    inspectionData.categories.forEach((category: any) => {
+            category.items.forEach((item: any) => {
                 detailRows.push({
                     id: `insp-det-${Date.now()}-${Math.random()}`,
                     inspectionId,

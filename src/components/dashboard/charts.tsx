@@ -72,7 +72,7 @@ export function DashboardCharts({
         }
     }, [employees, settings]);
 
-    const showCoordinatorChart = currentUser.isAdmin && selectedCoordinatorId === 'all';
+    const showCoordinatorChart = currentUser?.isAdmin && selectedCoordinatorId === 'all';
 
     return (
         <div className="grid gap-6 lg:grid-cols-2">

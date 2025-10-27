@@ -4,7 +4,7 @@
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet, GoogleSpreadsheetRow } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
-import type { Employee, Settings, Notification, NotificationChange, Room, Inspection, NonEmployee, DeductionReason, InspectionCategory, InspectionCategoryItem, EquipmentItem, TemporaryAccess } from '../app/src/types';
+import type { Employee, Settings, Notification, NotificationChange, Room, Inspection, NonEmployee, DeductionReason, InspectionCategory, InspectionCategoryItem, EquipmentItem, TemporaryAccess } from '../src/types';
 import { format, isValid, parse, parseISO } from 'date-fns';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
@@ -360,6 +360,7 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             coordinators,
             genders: genderRows.map(row => row.name).filter(Boolean),
             temporaryAccess,
+            inspectionTemplate: [], // default empty template when not present in sheet
         };
     } catch (error: unknown) {
         console.error("Error fetching settings from sheet:", error instanceof Error ? error.message : "Unknown error", error instanceof Error ? error.stack : "");
@@ -471,7 +472,7 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
                 coordinatorId: row.coordinatorId,
                 coordinatorName: row.coordinatorName,
                 standard: row.standard || null,
-                categories: [...categoriesMap.values()],
+                categories: Array.from(categoriesMap.values()),
             };
         }).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 

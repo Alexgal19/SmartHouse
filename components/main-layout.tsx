@@ -1,187 +1,19 @@
-"use client";
 
-import React, { useState, useEffect, useMemo, useCallback, createContext, useContext, useRef } from 'react';
-import Link from 'next/link';
-import {
-    Sidebar,
-    SidebarHeader,
-    SidebarContent,
-    SidebarFooter,
-    SidebarMenu,
-    SidebarMenuItem,
-    SidebarMenuButton,
-    SidebarProvider
-} from '../components/ui/sidebar'; // <--- ПОМИЛКА 1: Виправлено відносний шлях
-import Header from '../app/src/components/header';
-import { MobileNav } from '../app/src/components/mobile-nav';
-import type { View, Notification, Employee, Settings, NonEmployee, Inspection, EquipmentItem, SessionData } from '../app/src/types';
-import { Building, ClipboardList, Home, Settings as SettingsIcon, Users, Archive, Loader2 } from 'lucide-react'; // <--- ПОМИЛКА 2: Додано Loader2 для індикації завантаження
-import { useRouter, useSearchParams } from 'next/navigation';
-// ПОМИЛКА 3: Видалено неіснуючі функції updateInspection, deleteInspection, bulkImportEmployees
-import { 
-    clearAllNotifications, markNotificationAsRead, getNotifications, getEmployees, getSettings, 
-    addEmployee, updateEmployee, updateSettings, getInspections, addInspection, 
-    bulkDeleteEmployees, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee, 
-    deleteEmployee, checkAndUpdateEmployeeStatuses, getEquipment, addEquipment, updateEquipment, 
-    deleteEquipment 
-} from '../app/src/lib/actions';
-import { logout } from '../app/src/lib/session';
-import { useToast } from '../app/src/hooks/use-toast';
-import { AddEmployeeForm, type EmployeeFormData } from '../app/src/components/add-employee-form';
-import { AddNonEmployeeForm } from '../app/src/components/add-non-employee-form';
-// ПОМИЛКА 4: Додана функція для імпорту, оскільки її не було у списку залежностей в actions.ts, але вона використовується.
-import { bulkImportEmployees } from '../app/src/lib/import'; // Припускаємо, що bulkImportEmployees перенесено сюди або в окремий файл
+// Re-export canonical MainLayout from src to avoid duplicate/conflicting copies.
+export { default } from '../src/components/main-layout';
 
-const navItems: { view: View; icon: React.ElementType; label: string }[] = [
-    { view: 'dashboard', icon: Home, label: 'Pulpit' },
-    { view: 'employees', icon: Users, label: 'Pracownicy' },
-    { view: 'inspections', icon: ClipboardList, label: 'Inspekcje' },
-    { view: 'equipment', icon: Archive, label: 'Wyposażenie' },
-    { view: 'settings', icon: SettingsIcon, label: 'Ustawienia' },
-];
+const filteredNotifications = useMemo(() => {
+    if (!currentUser) return [];
+    if (currentUser.isAdmin) {
+        return allNotifications;
+    }
+    return allNotifications.filter(n => n.coordinatorId === currentUser.uid);
+}, [currentUser, allNotifications]);
 
-type MainLayoutContextType = {
-    allEmployees: Employee[] | null;
-    allNonEmployees: NonEmployee[] | null;
-    allInspections: Inspection[] | null;
-    allEquipment: EquipmentItem[] | null;
-    settings: Settings | null;
-    currentUser: SessionData | null;
-    selectedCoordinatorId: string;
-    setSelectedCoordinatorId: React.Dispatch<React.SetStateAction<string>>;
-    handleEditEmployeeClick: (employee: Employee) => void;
-    handleDismissEmployee: (employeeId: string) => Promise<boolean>;
-    handleRestoreEmployee: (employeeId: string) => Promise<boolean>;
-    handleDeleteEmployee: (employeeId: string) => Promise<void>;
-    // ПОМИЛКА 5: Змінено тип entityType, оскільки bulkDeleteEmployees в actions.ts оперує тільки 'employee'
-    handleBulkDeleteEmployees: (status: 'active' | 'dismissed') => Promise<boolean>;
-    handleAddEmployeeClick: () => void;
-    handleUpdateSettings: (newSettings: Partial<Settings>) => Promise<void>;
-    refreshData: (showToast?: boolean) => Promise<void>;
-    // ПОМИЛКА 6: Виправлено тип повернення, щоб він відповідав обробнику
-    handleBulkImport: (fileData: ArrayBuffer) => Promise<{ success: boolean; message: string; }>;
-    handleAddNonEmployeeClick: () => void;
-    handleEditNonEmployeeClick: (nonEmployee: NonEmployee) => void;
-    handleDeleteNonEmployee: (id: string) => Promise<void>;
-    handleAddInspection: (inspectionData: Omit<Inspection, 'id'>) => Promise<void>;
-    // ПОМИЛКА 7: Припускаємо, що ці функції видалено з actions, оскільки їх не було у вихідному actions.ts
-    // handleUpdateInspection: (id: string, inspectionData: Omit<Inspection, 'id'>) => Promise<void>; 
-    // handleDeleteInspection: (id: string) => Promise<void>;
-    handleAddEquipment: (itemData: Omit<EquipmentItem, 'id'>) => Promise<void>;
-    handleUpdateEquipment: (id: string, itemData: Partial<EquipmentItem>) => Promise<void>;
-    handleDeleteEquipment: (id: string) => Promise<void>;
-    handleRefreshStatuses: (showNoChangesToast?: boolean) => Promise<void>;
-};
+// Additional context lines can be added here if necessary
 
-const MainLayoutContext = createContext<MainLayoutContextType | null>(null);
-
-export const useMainLayout = () => {
-    const context = useContext(MainLayoutContext);
-    if (!context) {
-        throw new Error('useMainLayout must be used within a MainLayout');
-    }
-    return context;
-};
-
-export default function MainLayout({
-  initialSession,
-  children
-}: {
-  initialSession: SessionData;
-  children: React.ReactNode;
-}) {
-    const router = useRouter();
-    const routerRef = useRef(router);
-    const searchParams = useSearchParams();
-
-    const activeView = useMemo(() => {
-        return (searchParams.get('view') as View) || 'dashboard';
-    }, [searchParams]);
-
-    const editEmployeeId = searchParams.get('edit');
-
-    const [currentUser] = useState<SessionData | null>(initialSession);
-    const [allNotifications, setAllNotifications] = useState<Notification[]>([]);
-    
-    // Використовуємо явне початкове значення null для запобігання помилкам під час першого рендерингу
-    const [allEmployees, setAllEmployees] = useState<Employee[] | null>(null); 
-    const [allNonEmployees, setAllNonEmployees] = useState<NonEmployee[] | null>(null);
-    const [allInspections, setAllInspections] = useState<Inspection[] | null>(null);
-    const [allEquipment, setAllEquipment] = useState<EquipmentItem[] | null>(null);
-    const [settings, setSettings] = useState<Settings | null>(null);
-    const [isFormOpen, setIsFormOpen] = useState(false);
-    const [isNonEmployeeFormOpen, setIsNonEmployeeFormOpen] = useState(false);
-    const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-    const [editingNonEmployee, setEditingNonEmployee] = useState<NonEmployee | null>(null);
-    const [selectedCoordinatorId, _setSelectedCoordinatorId] = useState('all');
-    
-    const [isLoadingData, setIsLoadingData] = useState(true);
-    const [loadingMessage, setLoadingMessage] = useState("Wczytywanie danych...");
-    const { toast } = useToast();
-
-    useEffect(() => {
-      if (currentUser?.isLoggedIn && !currentUser.isAdmin) {
-          _setSelectedCoordinatorId(currentUser.uid);
-      }
-    }, [currentUser]);
-
-    const setSelectedCoordinatorId = useCallback((value: React.SetStateAction<string>) => {
-        _setSelectedCoordinatorId(value);
-    }, []);
-    
-    const visibleNavItems = useMemo(() => {
-        if (currentUser?.isAdmin) {
-            return navItems;
-        }
-        // ПОМИЛКА 8: Перевірка на settings для не-адміністраторів: має бути лише 'settings'
-        return navItems.filter(item => item.view !== 'settings'); 
-    }, [currentUser]);
-
-    const handleLogout = useCallback(async () => {
-        await logout();
-        routerRef.current.push('/');
-    }, []);
-
-    const handleNotificationClick = useCallback(async (notification: Notification, employeeId?: string) => {
-        // ПОМИЛКА 9: Виправлено логіку навігації для коректної роботи з URLSearchParams та router.replace
-        const currentSearchParams = new URLSearchParams(window.location.search);
-        const pathname = window.location.pathname;
-
-        if (employeeId) {
-            currentSearchParams.set('view', 'employees');
-            currentSearchParams.set('edit', employeeId);
-            routerRef.current.push(`${pathname}?${currentSearchParams.toString()}`);
-        } else if (notification.changes?.[0]?.field === 'address' && notification.changes?.[0]?.newValue) {
-            // Приклад: перехід до інспекцій, якщо це зміна адреси
-            currentSearchParams.set('view', 'inspections');
-            routerRef.current.push(`${pathname}?${currentSearchParams.toString()}`);
-        } else if (notification.changes?.[0]?.field === 'status' && notification.changes?.[0]?.newValue === 'dismissed') {
-            // Приклад: перехід до працівників (звільнених), якщо це зміна статусу
-            currentSearchParams.set('view', 'employees');
-            routerRef.current.push(`${pathname}?${currentSearchParams.toString()}`);
-        }
-        
-        if (!notification.isRead) {
-            setAllNotifications(prev => prev.map(n => n.id === notification.id ? {...n, isRead: true} : n));
-            await markNotificationAsRead(notification.id);
-        }
-    }, []);
-
-     const handleClearNotifications = useCallback(async () => {
-        if (!currentUser?.isAdmin) {
-             toast({ variant: "destructive", title: "Błąd uprawnień", description: "Tylko administratorzy mogą wykonać tę akcję." });
-             return;
-        }
-        try {
-            await clearAllNotifications();
-            setAllNotifications([]);
-            toast({ title: "Sukces", description: "Wszystkie powiadomienia zostały wyczyszczone." });
-        } catch (e) {
-             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się wyczyścić powiadomień." });
-        }
-    }, [currentUser, toast]);
-
-
+// Re-export canonical MainLayout from src to avoid duplicate/conflicting copies.
+export { default } from '../src/components/main-layout';
     const filteredNotifications = useMemo(() => {
         if (!currentUser) return [];
         if (currentUser.isAdmin) {
