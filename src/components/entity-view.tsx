@@ -510,7 +510,20 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
         return (
             <>
                 <ScrollArea className="h-[calc(100vh-22rem)] sm:h-[65vh] overflow-x-auto" style={{ opacity: isPending ? 0.6 : 1 }}>
-                    {isMounted ? <EntityListComponent {...listProps} /> : <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
+                    {isMounted ? <EntityListComponent entities={[]} settings={{
+                        id: 'global-settings',
+                        addresses: [],
+                        nationalities: [],
+                        departments: [],
+                        coordinators: [],
+                        genders: [],
+                        temporaryAccess: [],
+                        inspectionTemplate: []
+                    }} isDismissed={false} onEdit={function (e: Entity): void {
+                        throw new Error('Function not implemented.');
+                    } } onPermanentDelete={function (id: string, type: 'employee' | 'non-employee'): void {
+                        throw new Error('Function not implemented.');
+                    } } {...listProps} /> : <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
                 </ScrollArea>
                  <PaginationControls currentPage={page} totalPages={totalPages} onPageChange={(p) => updateSearchParams({ page: p })} isDisabled={isPending} />
             </>

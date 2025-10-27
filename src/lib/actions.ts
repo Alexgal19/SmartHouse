@@ -1,7 +1,8 @@
 
+
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Inspection, InspectionCategory } from '@/types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Inspection, InspectionCategory } from '../types';
 import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getNonEmployeesFromSheet, getEquipmentFromSheet, getAllSheetsData, getInspectionsFromSheet } from './sheets';
 import { format, isPast, isValid, getDaysInMonth, parseISO } from 'date-fns';
 import * as XLSX from 'xlsx';
@@ -232,7 +233,7 @@ export async function getSettings(): Promise<Settings> {
     }
 }
 
-const writeToAuditLog = async (actorId: string, actorName: string, action: string, targetType: string, targetId: string, details: Record<string, unknown>) => {
+const writeToAuditLog = async (actorId: string, actorName: string, action: string, targetType: string, targetId: string, details: unknown) => {
     try {
         const sheet = await getSheet(SHEET_NAME_AUDIT_LOG, AUDIT_LOG_HEADERS);
         await sheet.addRow({
@@ -915,5 +916,3 @@ export async function generateAccommodationReport(year: number, month: number, c
         return { success: false, message: e instanceof Error ? e.message : "Unknown error" };
     }
 }
-
-    
