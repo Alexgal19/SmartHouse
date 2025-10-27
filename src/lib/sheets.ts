@@ -1,3 +1,4 @@
+
 "use server";
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet, GoogleSpreadsheetRow } from 'google-spreadsheet';
@@ -90,13 +91,11 @@ const safeFormat = (dateValue: any): string | null => {
         return null;
     }
 
-    // Attempt to parse ISO string first (most reliable)
     let date = parseISO(String(dateValue));
     if (isValid(date)) {
         return format(date, 'yyyy-MM-dd');
     }
 
-    // Attempt to parse a specific format like dd-MM-yyyy or dd.MM.yyyy
     date = parse(String(dateValue), 'dd-MM-yyyy', new Date());
      if (isValid(date)) {
         return format(date, 'yyyy-MM-dd');
@@ -106,16 +105,12 @@ const safeFormat = (dateValue: any): string | null => {
         return format(date, 'yyyy-MM-dd');
     }
 
-    // Try a more general Date constructor for other formats
     date = new Date(dateValue);
     if (isValid(date)) {
         return format(date, 'yyyy-MM-dd');
     }
 
-    // Handle Excel's numeric date format
     if (typeof dateValue === 'number' && dateValue > 0) {
-        // Excel's epoch starts on 1900-01-01, but it has a bug treating 1900 as a leap year.
-        // The common workaround is to start from 1899-12-30.
         const excelEpoch = new Date(1899, 11, 30);
         date = new Date(excelEpoch.getTime() + dateValue * 24 * 60 * 60 * 1000);
         if (isValid(date)) {
@@ -123,13 +118,12 @@ const safeFormat = (dateValue: any): string | null => {
         }
     }
 
-    // If all else fails, return null
     return null;
 };
 
 
-const deserializeEmployee = (row: GoogleSpreadsheetRow<any>): Employee | null => {
-    const plainObject = row.toObject();
+const deserializeEmployee = (row: Record<string, any>): Employee | null => {
+    const plainObject = row;
     
     const id = plainObject.id;
     if (!id) return null;
@@ -178,8 +172,8 @@ const deserializeEmployee = (row: GoogleSpreadsheetRow<any>): Employee | null =>
     return newEmployee;
 };
 
-const deserializeNonEmployee = (row: GoogleSpreadsheetRow<any>): NonEmployee | null => {
-    const plainObject = row.toObject();
+const deserializeNonEmployee = (row: Record<string, any>): NonEmployee | null => {
+    const plainObject = row;
 
     const id = plainObject.id;
     const fullName = plainObject.fullName;
@@ -201,8 +195,8 @@ const deserializeNonEmployee = (row: GoogleSpreadsheetRow<any>): NonEmployee | n
     return newNonEmployee;
 };
 
-const deserializeNotification = (row: GoogleSpreadsheetRow<any>): Notification | null => {
-    const plainObject = row.toObject();
+const deserializeNotification = (row: Record<string, any>): Notification | null => {
+    const plainObject = row;
 
     const id = plainObject.id;
     if (!id) return null;
@@ -234,8 +228,8 @@ const deserializeNotification = (row: GoogleSpreadsheetRow<any>): Notification |
     return newNotification;
 };
 
-const deserializeEquipmentItem = (row: GoogleSpreadsheetRow<any>): EquipmentItem | null => {
-    const plainObject = row.toObject();
+const deserializeEquipmentItem = (row: Record<string, any>): EquipmentItem | null => {
+    const plainObject = row;
     const id = plainObject.id;
     if (!id) return null;
 
@@ -255,7 +249,8 @@ export async function getEmployeesFromSheet(coordinatorId?: string): Promise<Emp
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, ['id']);
         const rows = await sheet.getRows({ limit: 2000 });
         
-        const filteredRows = coordinatorId ? rows.filter(row => row.get('coordinatorId') === coordinatorId) : rows;
+        const plainRows = rows.map(r => r.toObject());
+        const filteredRows = coordinatorId ? plainRows.filter(row => row.coordinatorId === coordinatorId) : plainRows;
 
         return filteredRows.map(deserializeEmployee).filter((e): e is Employee => e !== null);
 
@@ -269,7 +264,7 @@ export async function getNonEmployeesFromSheet(): Promise<NonEmployee[]> {
   try {
     const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, ['id']);
     const rows = await sheet.getRows({ limit: 1000 });
-    return rows.map(deserializeNonEmployee).filter((e): e is NonEmployee => e !== null);
+    return rows.map(r => r.toObject()).map(deserializeNonEmployee).filter((e): e is NonEmployee => e !== null);
   } catch (error: unknown) {
     console.error("Error fetching non-employees from sheet:", error instanceof Error ? error.message : "Unknown error", error instanceof Error ? error.stack : "");
     throw new Error(`Could not fetch non-employees from sheet. Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -280,7 +275,8 @@ export async function getEquipmentFromSheet(coordinatorId?: string): Promise<Equ
   try {
     const equipmentSheet = await getSheet(SHEET_NAME_EQUIPMENT, ['id', 'inventoryNumber', 'name', 'quantity', 'description', 'addressId', 'addressName']);
     const equipmentRows = await equipmentSheet.getRows({ limit: 2000 });
-    let equipment = equipmentRows.map(deserializeEquipmentItem).filter((item): item is EquipmentItem => item !== null);
+    const plainEquipmentRows = equipmentRows.map(r => r.toObject());
+    let equipment = plainEquipmentRows.map(deserializeEquipmentItem).filter((item): item is EquipmentItem => item !== null);
 
     if (coordinatorId) {
         const settings = await getSettingsFromSheet();
@@ -407,7 +403,8 @@ export async function getNotificationsFromSheet(): Promise<Notification[]> {
     try {
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id']);
         const rows = await sheet.getRows({ limit: 200 });
-        return rows.map(deserializeNotification)
+        const plainRows = rows.map(r => r.toObject());
+        return plainRows.map(deserializeNotification)
             .filter((n): n is Notification => n !== null)
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } catch (error: unknown) {
@@ -449,7 +446,6 @@ export async function getAllSheetsData() {
             getSheetData(doc, SHEET_NAME_INSPECTION_DETAILS)
         ]);
 
-        // Process Settings
         const roomsByAddressId = new Map<string, Room[]>();
         settingsSheets.roomRows.forEach(rowObj => {
             const addressId = rowObj.addressId;
@@ -493,22 +489,15 @@ export async function getAllSheetsData() {
             inspectionTemplate,
         };
 
-        // Process Employees
-        const employees = employeesSheet.map(row => deserializeEmployee({ toObject: () => row } as any)).filter((e): e is Employee => e !== null);
+        const employees = employeesSheet.map(deserializeEmployee).filter((e): e is Employee => e !== null);
+        const nonEmployees = nonEmployeesSheet.map(deserializeNonEmployee).filter((e): e is NonEmployee => e !== null);
+        const equipment = equipmentSheet.map(deserializeEquipmentItem).filter((item): item is EquipmentItem => item !== null);
 
-        // Process Non-Employees
-        const nonEmployees = nonEmployeesSheet.map(row => deserializeNonEmployee({ toObject: () => row } as any)).filter((e): e is NonEmployee => e !== null);
-
-        // Process Equipment
-        const equipment = equipmentSheet.map(row => deserializeEquipmentItem({ toObject: () => row } as any)).filter((item): item is EquipmentItem => item !== null);
-
-        // Process Notifications
         const notifications = notificationsSheet
-            .map(row => deserializeNotification({ toObject: () => row } as any))
+            .map(deserializeNotification)
             .filter((n): n is Notification => n !== null)
             .sort((a: Notification, b: Notification) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         
-        // Process Inspections
         const detailsByInspectionId = new Map<string, any[]>();
         inspectionDetailsSheet.forEach(row => {
             const inspectionId = row.inspectionId;
@@ -692,3 +681,5 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
         throw new Error(`Could not fetch inspections. Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
 }
+
+    

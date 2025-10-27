@@ -132,12 +132,13 @@ const safeFormat = (dateStr: string | undefined | null): string | null => {
 const deserializeEmployee = (row: any): Employee | null => {
     const plainObject = row;
     
-    const id = plainObject.id;
+    const id = String(plainObject.id || '');
     if (!id) return null;
 
     const checkInDate = safeFormat(plainObject.checkInDate);
+    if (!checkInDate) return null;
 
-    let deductionReason: DeductionReason[] | undefined = undefined;
+    let deductionReason: DeductionReason[] | undefined;
     if (plainObject.deductionReason && typeof plainObject.deductionReason === 'string') {
         try {
             const parsed = JSON.parse(plainObject.deductionReason);
@@ -147,26 +148,27 @@ const deserializeEmployee = (row: any): Employee | null => {
         }
     }
     
-    const validDepositValues = ['Tak', 'Nie', 'Nie dotyczy'];
-    const depositReturned = validDepositValues.includes(plainObject.depositReturned) ? plainObject.depositReturned as Employee['depositReturned'] : null;
+    const validDepositValues: Employee['depositReturned'][] = ['Tak', 'Nie', 'Nie dotyczy'];
+    const depositReturnedValue = String(plainObject.depositReturned || '');
+    const depositReturned = validDepositValues.includes(depositReturnedValue as Employee['depositReturned']) ? depositReturnedValue as Employee['depositReturned'] : null;
 
     const newEmployee: Employee = {
         id: id,
-        fullName: plainObject.fullName || '',
-        coordinatorId: plainObject.coordinatorId || '',
-        nationality: plainObject.nationality || '',
-        gender: plainObject.gender || '',
-        address: plainObject.address || '',
-        roomNumber: plainObject.roomNumber || '',
-        zaklad: plainObject.zaklad || '',
-        checkInDate: checkInDate || '',
+        fullName: String(plainObject.fullName || ''),
+        coordinatorId: String(plainObject.coordinatorId || ''),
+        nationality: String(plainObject.nationality || ''),
+        gender: String(plainObject.gender || ''),
+        address: String(plainObject.address || ''),
+        roomNumber: String(plainObject.roomNumber || ''),
+        zaklad: String(plainObject.zaklad || ''),
+        checkInDate: checkInDate,
         checkOutDate: safeFormat(plainObject.checkOutDate),
         contractStartDate: safeFormat(plainObject.contractStartDate),
         contractEndDate: safeFormat(plainObject.contractEndDate),
         departureReportDate: safeFormat(plainObject.departureReportDate),
-        comments: plainObject.comments || '',
-        status: plainObject.status as 'active' | 'dismissed' || 'active',
-        oldAddress: plainObject.oldAddress || undefined,
+        comments: String(plainObject.comments || ''),
+        status: String(plainObject.status) === 'dismissed' ? 'dismissed' : 'active',
+        oldAddress: plainObject.oldAddress ? String(plainObject.oldAddress) : undefined,
         addressChangeDate: safeFormat(plainObject.addressChangeDate),
         depositReturned: depositReturned,
         depositReturnAmount: plainObject.depositReturnAmount ? parseFloat(plainObject.depositReturnAmount) : null,
@@ -257,22 +259,22 @@ const createNotification = async (
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
         const coordSheet = await getSheet(SHEET_NAME_COORDINATORS, ['uid', 'name']);
         const coordRows = await coordSheet.getRows({ limit: 100 });
-        const actor = coordRows.find((r: { get: (arg0: string) => string; }) => r.get('uid') === actorUid)?.toObject();
+        const actor = coordRows.find((r) => r.get('uid') === actorUid)?.toObject();
         
         if (!actor) {
             console.error(`Could not find actor with uid ${actorUid} to create notification.`);
             return;
         }
 
-        const message = `${actor.name} ${action} pracownika ${employee.fullName}.`;
+        const message = `${String(actor.name)} ${action} pracownika ${employee.fullName}.`;
         
         const newNotification: Notification = {
             id: `notif-${Date.now()}`,
             message,
             employeeId: employee.id,
             employeeName: employee.fullName,
-            coordinatorId: actor.uid,
-            coordinatorName: actor.name,
+            coordinatorId: String(actor.uid || ''),
+            coordinatorName: String(actor.name || ''),
             createdAt: new Date().toISOString(),
             isRead: false,
             changes
@@ -281,7 +283,7 @@ const createNotification = async (
         await sheet.addRow(serializeNotification(newNotification), { raw: false, insert: true });
         
         // Also write to the audit log
-        await writeToAuditLog(actor.uid, actor.name, action, 'employee', employee.id, changes);
+        await writeToAuditLog(String(actor.uid), String(actor.name), action, 'employee', employee.id, changes);
 
     } catch (e: unknown) {
         console.error("Could not create notification:", e instanceof Error ? e.message : "Unknown error");
@@ -302,19 +304,19 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
             roomNumber: employeeData.roomNumber || '',
             zaklad: employeeData.zaklad || '',
             checkInDate: employeeData.checkInDate || '',
-            checkOutDate: employeeData.checkOutDate || null,
-            contractStartDate: employeeData.contractStartDate || null,
-            contractEndDate: employeeData.contractEndDate || null,
-            departureReportDate: employeeData.departureReportDate || null,
-            comments: employeeData.comments || '',
+            checkOutDate: employeeData.checkOutDate,
+            contractStartDate: employeeData.contractStartDate ?? null,
+            contractEndDate: employeeData.contractEndDate ?? null,
+            departureReportDate: employeeData.departureReportDate,
+            comments: employeeData.comments,
             oldAddress: employeeData.oldAddress,
-            addressChangeDate: employeeData.addressChangeDate || null,
+            addressChangeDate: employeeData.addressChangeDate,
             depositReturned: employeeData.depositReturned ?? null,
             depositReturnAmount: employeeData.depositReturnAmount ?? null,
             deductionRegulation: employeeData.deductionRegulation ?? null,
             deductionNo4Months: employeeData.deductionNo4Months ?? null,
             deductionNo30Days: employeeData.deductionNo30Days ?? null,
-            deductionReason: employeeData.deductionReason,
+            deductionReason: employeeData.deductionReason ?? undefined,
         };
 
         const serialized = serializeEmployee(newEmployee);
@@ -332,7 +334,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows({ limit: 2000 });
-        const rowIndex = rows.findIndex((row: { get: (arg0: string) => string; }) => row.get('id') === employeeId);
+        const rowIndex = rows.findIndex((row) => row.get('id') === employeeId);
 
         if (rowIndex === -1) {
             throw new Error('Employee not found');
@@ -357,7 +359,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
 
             let oldValStr: string | null = null;
             if (oldValue !== null && oldValue !== undefined) {
-                 if (key === 'deductionReason') {
+                 if (key === 'deductionReason' && Array.isArray(oldValue)) {
                     oldValStr = JSON.stringify(oldValue);
                 } else if (areDates && isValid(new Date(oldValue as string))) {
                     oldValStr = format(new Date(oldValue as string), 'dd-MM-yyyy');
@@ -368,7 +370,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
 
             let newValStr: string | null = null;
             if (newValue !== null && newValue !== undefined) {
-                 if (key === 'deductionReason') {
+                 if (key === 'deductionReason' && Array.isArray(newValue)) {
                     newValStr = JSON.stringify(newValue);
                 } else if (areDates && isValid(new Date(newValue as string))) {
                     newValStr = format(new Date(newValue as string), 'dd-MM-yyyy');
@@ -376,7 +378,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
                     newValStr = String(newValue);
                 }
             }
-           
+            
             if (oldValStr !== newValStr) {
                 changes.push({ field: typedKey, oldValue: oldValStr || 'Brak', newValue: newValStr || 'Brak' });
             }
@@ -403,7 +405,7 @@ export async function deleteEmployee(employeeId: string, actorUid: string): Prom
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows({ limit: 2000 });
-        const row = rows.find((r: { get: (arg0: string) => string; }) => r.get('id') === employeeId);
+        const row = rows.find((r) => r.get('id') === employeeId);
 
         if (!row) {
             throw new Error('Employee not found for deletion.');
@@ -446,32 +448,32 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>): 
 
 export async function updateNonEmployee(id: string, updates: Partial<NonEmployee>): Promise<void> {
      try {
-        const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows({ limit: 1000 });
-        const rowIndex = rows.findIndex((row: { get: (arg0: string) => string; }) => row.get('id') === id);
+         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
+         const rows = await sheet.getRows({ limit: 1000 });
+         const rowIndex = rows.findIndex((row) => row.get('id') === id);
 
-        if (rowIndex === -1) {
-            throw new Error('Non-employee not found');
-        }
+         if (rowIndex === -1) {
+             throw new Error('Non-employee not found');
+         }
 
-        const row = rows[rowIndex];
-        
-        for (const key in updates) {
-            row.set(key, serializeNonEmployee({ [key]: updates[key as keyof NonEmployee] })[key]);
-        }
-        await row.save();
+         const row = rows[rowIndex];
+         
+         for (const key in updates) {
+             row.set(key, serializeNonEmployee({ [key]: updates[key as keyof NonEmployee] })[key]);
+         }
+         await row.save();
 
-    } catch (e: unknown) {
-        console.error("Error updating non-employee:", e);
-        throw new Error(e instanceof Error ? e.message : "Failed to update non-employee.");
-    }
+     } catch (e: unknown) {
+         console.error("Error updating non-employee:", e);
+         throw new Error(e instanceof Error ? e.message : "Failed to update non-employee.");
+     }
 }
 
 export async function deleteNonEmployee(id: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
         const rows = await sheet.getRows({ limit: 1000 });
-        const row = rows.find((row: { get: (arg0: string) => string; }) => row.get('id') === id);
+        const row = rows.find((row) => row.get('id') === id);
         if (row) {
             await row.delete();
         } else {
@@ -502,7 +504,7 @@ export async function updateEquipment(id: string, updates: Partial<EquipmentItem
     try {
         const sheet = await getSheet(SHEET_NAME_EQUIPMENT, EQUIPMENT_HEADERS);
         const rows = await sheet.getRows({ limit: 2000 });
-        const row = rows.find((r: { get: (arg0: string) => string; }) => r.get('id') === id);
+        const row = rows.find((r) => r.get('id') === id);
         if (!row) throw new Error("Equipment not found");
         
         for (const key in updates) {
@@ -519,7 +521,7 @@ export async function deleteEquipment(id: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_EQUIPMENT, EQUIPMENT_HEADERS);
         const rows = await sheet.getRows({ limit: 2000 });
-        const row = rows.find((r: { get: (arg0: string) => string; }) => r.get('id') === id);
+        const row = rows.find((r) => r.get('id') === id);
         if (row) {
             await row.delete();
         } else {
@@ -536,14 +538,12 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', _actor
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows({ limit: 2000 });
-        const rowsToDelete = rows.filter((row: { get: (arg0: string) => string; }) => row.get('status') === status);
+        const rowsToDelete = rows.filter((row) => row.get('status') === status);
         
         if (rowsToDelete.length === 0) {
             return;
         }
 
-        // Deleting rows in reverse order is a good practice to avoid index shifting issues,
-        // although google-spreadsheet library might handle this, it's a safe bet.
         for (let i = rowsToDelete.length - 1; i >= 0; i--) {
             await rowsToDelete[i].delete();
         }
@@ -557,14 +557,14 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows({ limit: 2000 });
-        const rowsToTransfer = rows.filter((row: { get: (arg0: string) => string; }) => row.get('coordinatorId') === fromCoordinatorId);
+        const rowsToTransfer = rows.filter((row) => row.get('coordinatorId') === fromCoordinatorId);
 
         if (rowsToTransfer.length === 0) {
             return;
         }
 
         const { coordinators } = await getSettings();
-        const toCoordinator = coordinators.find(c => c.uid === toCoordinatorId);
+        const toCoordinator = coordinators.find((c: { uid: string; }) => c.uid === toCoordinatorId);
         if (!toCoordinator) {
             throw new Error("Target coordinator not found.");
         }
@@ -589,8 +589,8 @@ export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<
         let updatedCount = 0;
 
         for (const row of rows) {
-            const status = row.get('status');
-            const checkOutDateString = row.get('checkOutDate');
+            const status = String(row.get('status'));
+            const checkOutDateString = String(row.get('checkOutDate'));
 
             if (status === 'active' && checkOutDateString) {
                 const checkOutDate = new Date(checkOutDateString);
@@ -602,7 +602,7 @@ export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<
                     const originalEmployee = deserializeEmployee(row.toObject());
                     if (originalEmployee) {
                        await createNotification(actorUid, 'automatycznie zwolnił', originalEmployee, [
-                           { field: 'status', oldValue: 'active', newValue: 'dismissed' }
+                            { field: 'status', oldValue: 'active', newValue: 'dismissed' }
                        ]);
                     }
                 }
@@ -642,7 +642,7 @@ export async function updateSettings(newSettings: Partial<Omit<Settings, 'tempor
             await roomsSheet.clearRows();
 
             const allRooms: (Room & {addressId: string})[] = [];
-            const addressesData = newSettings.addresses.map(addr => {
+            const addressesData = newSettings.addresses.map((addr: { rooms: any[]; id: any; name: any; coordinatorId: any; }) => {
                 addr.rooms.forEach(room => {
                     allRooms.push({ ...room, addressId: addr.id });
                 });
@@ -657,17 +657,17 @@ export async function updateSettings(newSettings: Partial<Omit<Settings, 'tempor
                 await addressesSheet.addRows(addressesData, { raw: false, insert: true });
             }
             if (allRooms.length > 0) {
-                 await roomsSheet.addRows(allRooms.map(r => ({...r, capacity: r.capacity.toString()})), { raw: false, insert: true });
+                await roomsSheet.addRows(allRooms.map(r => ({...r, capacity: String(r.capacity)})), { raw: false, insert: true });
             }
         }
         if (newSettings.coordinators) {
              const sheet = await getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS);
              await sheet.clearRows();
              if (newSettings.coordinators.length > 0) {
-                await sheet.addRows(newSettings.coordinators.map(c => ({
-                    ...c,
-                    isAdmin: String(c.isAdmin).toUpperCase()
-                })), { raw: false, insert: true });
+                 await sheet.addRows(newSettings.coordinators.map((c: { isAdmin: any; }) => ({
+                     ...c,
+                     isAdmin: String(c.isAdmin).toUpperCase()
+                 })), { raw: false, insert: true });
              }
         }
 
@@ -692,7 +692,7 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
     try {
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
         const rows = await sheet.getRows({ limit: 200 });
-        const row = rows.find((r: { get: (arg0: string) => string; }) => r.get('id') === notificationId);
+        const row = rows.find((r) => r.get('id') === notificationId);
         if (row) {
             row.set('isRead', 'TRUE');
             await row.save();
@@ -915,3 +915,5 @@ export async function generateAccommodationReport(year: number, month: number, c
         return { success: false, message: e instanceof Error ? e.message : "Unknown error" };
     }
 }
+
+    

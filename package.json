@@ -1,10 +1,11 @@
+
 {
   "name": "nextn",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "rm -rf .next && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint \"**/*.{js,jsx,ts,tsx,vue}\"",
     "lint:fix": "eslint \"**/*.{js,jsx,ts,tsx,vue}\" --fix"
@@ -73,3 +74,5 @@
     "node": ">=18.17.0"
   }
 }
+
+    
