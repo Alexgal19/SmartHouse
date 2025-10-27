@@ -955,9 +955,23 @@ export async function getSignedUploadUrl(fileName: string, contentType: string):
     }
 }
 
-export async function bulkImportEmployees(fileData: string, actorUid: string): Promise<{success: boolean, message: string}> {
+export async function bulkImportEmployees(filePath: string, actorUid: string): Promise<{success: boolean, message: string}> {
     try {
-        const buffer = Buffer.from(fileData, 'base64');
+        if (!process.env.GOOGLE_PROJECT_ID) {
+            throw new Error("GOOGLE_PROJECT_ID is not configured in the environment.");
+        }
+        const storage = new Storage({
+            projectId: process.env.GOOGLE_PROJECT_ID,
+            credentials: {
+                client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+                private_key: process.env.GOOGLE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
+            },
+        });
+        const bucketName = `${process.env.GOOGLE_PROJECT_ID}.appspot.com`;
+        
+        const file = storage.bucket(bucketName).file(filePath);
+        const [buffer] = await file.download();
+
         const settings = await getSettings();
         
         const workbook = XLSX.read(buffer, { type: 'buffer' });
@@ -1007,6 +1021,9 @@ export async function bulkImportEmployees(fileData: string, actorUid: string): P
         for (const emp of employeesToAdd) {
             await addEmployee(emp, actorUid);
         }
+
+        // Clean up the uploaded file
+        await file.delete();
 
         return { success: true, message: `Pomyślnie zaimportowano ${employeesToAdd.length} pracowników.` };
 

@@ -191,41 +191,58 @@ const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
     const [isDeletingDismissed, setIsDeletingDismissed] = useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     
-     const onFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const onFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         setIsImporting(true);
-        toast({ title: 'Rozpoczynanie importu...', description: 'Poczekaj, aż plik zostanie przesłany i przetworzony.' });
+        toast({ title: 'Rozpoczynanie importu...', description: 'Przygotowywanie do wysłania pliku.' });
 
         try {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = async (event) => {
-                const base64 = (event.target?.result as string)?.split(',')[1];
-                if (!base64) {
-                    throw new Error("Nie udało się odczytać pliku.");
-                }
+            // 1. Get signed URL from server
+            const signedUrlResult = await getSignedUploadUrl(file.name, file.type);
+            if (!signedUrlResult.success || !signedUrlResult.url) {
+                throw new Error(signedUrlResult.message || "Nie udało się uzyskać adresu URL do wysłania.");
+            }
+            
+            toast({ title: 'Wysyłanie pliku...', description: 'Plik jest teraz wysyłany na serwer.' });
 
-                const importResult = await bulkImportEmployees(base64, currentUser.uid);
+            // 2. Upload file to GCS
+            const uploadResponse = await fetch(signedUrlResult.url, {
+                method: 'PUT',
+                body: file,
+                headers: {
+                    'Content-Type': file.type,
+                },
+            });
 
-                if (importResult.success) {
-                    toast({ title: 'Import udany', description: importResult.message });
-                    await refreshData(false);
-                } else {
-                    throw new Error(importResult.message);
-                }
-                setIsImporting(false);
-            };
-            reader.onerror = () => {
-                 throw new Error("Błąd odczytu pliku.");
+            if (!uploadResponse.ok) {
+                const errorText = await uploadResponse.text();
+                console.error("Upload failed text:", errorText);
+                throw new Error(`Nie udało się wysłać pliku na serwer. Status: ${uploadResponse.status}`);
+            }
+
+            toast({ title: 'Przetwarzanie pliku...', description: 'Plik został wysłany, serwer go przetwarza.' });
+
+            // 3. Call server action with filePath
+            if (!signedUrlResult.filePath) {
+                 throw new Error("Brak ścieżki do pliku po wysłaniu.");
+            }
+
+            const importResult = await bulkImportEmployees(signedUrlResult.filePath, currentUser.uid);
+
+            if (importResult.success) {
+                toast({ title: 'Import udany', description: importResult.message });
+                await refreshData(false);
+            } else {
+                throw new Error(importResult.message);
             }
         } catch (error) {
             console.error("Import error:", error);
             toast({ variant: 'destructive', title: 'Błąd importu', description: error instanceof Error ? error.message : "Wystąpił nieoczekiwany błąd.", duration: 10000 });
-            setIsImporting(false);
         } finally {
             if(fileInputRef.current) fileInputRef.current.value = '';
+            setIsImporting(false);
         }
     };
     
