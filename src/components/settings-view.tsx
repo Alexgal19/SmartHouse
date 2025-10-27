@@ -195,17 +195,22 @@ const BulkActions = ({ currentUser, settings }: { currentUser: SessionData; sett
         if (!file) return;
 
         setIsImporting(true);
-        const fileData = await file.arrayBuffer();
-        const result = await handleBulkImport(fileData);
-        setIsImporting(false);
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const fileData = Array.from(new Uint8Array(arrayBuffer));
+            const result = await handleBulkImport(fileData);
 
-        if (result.success) {
-            toast({ title: 'Import udany', description: result.message });
-        } else {
-            toast({ variant: 'destructive', title: 'Błąd importu', description: result.message, duration: 10000 });
+            if (result.success) {
+                toast({ title: 'Import udany', description: result.message });
+            } else {
+                toast({ variant: 'destructive', title: 'Błąd importu', description: result.message, duration: 10000 });
+            }
+        } catch (error) {
+             toast({ variant: 'destructive', title: 'Błąd pliku', description: "Nie udało się odczytać pliku.", duration: 10000 });
+        } finally {
+            setIsImporting(false);
+             if(fileInputRef.current) fileInputRef.current.value = '';
         }
-        
-        if(fileInputRef.current) fileInputRef.current.value = '';
     };
     
     const handleBulkDelete = async (status: 'active' | 'dismissed') => {
@@ -533,5 +538,3 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     </div>
   );
 }
-
-    

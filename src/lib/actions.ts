@@ -1,5 +1,4 @@
 
-
 "use server";
 
 import type { Employee, Settings, Notification, NotificationChange, Room, Inspection, NonEmployee, DeductionReason, EquipmentItem, TemporaryAccess } from '@/types';
@@ -923,11 +922,12 @@ const parseAndFormatDate = (dateValue: any): string => {
 };
 
 
-export async function bulkImportEmployees(fileData: ArrayBuffer, actorUid: string): Promise<{success: boolean, message: string}> {
+export async function bulkImportEmployees(fileData: number[], actorUid: string): Promise<{success: boolean, message: string}> {
     try {
         const settings = await getSettings();
         
-        const workbook = XLSX.read(fileData, { type: 'buffer' });
+        const buffer = Buffer.from(fileData);
+        const workbook = XLSX.read(buffer, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         const json: any[] = XLSX.utils.sheet_to_json(worksheet, { raw: false, defval: null });
@@ -1186,5 +1186,3 @@ export async function generateAccommodationReport(year: number, month: number, c
         throw new Error(error instanceof Error ? error.message : "An unknown error occurred during accommodation report generation.");
     }
 }
-
-    

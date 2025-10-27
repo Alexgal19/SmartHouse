@@ -53,7 +53,7 @@ type MainLayoutContextType = {
     handleAddEmployeeClick: () => void;
     handleUpdateSettings: (newSettings: Partial<Settings>) => Promise<void>;
     refreshData: (showToast?: boolean) => Promise<void>;
-    handleBulkImport: (fileData: ArrayBuffer) => Promise<{ success: boolean; message: string; }>;
+    handleBulkImport: (fileData: number[]) => Promise<{ success: boolean; message: string; }>;
     handleAddNonEmployeeClick: () => void;
     handleEditNonEmployeeClick: (nonEmployee: NonEmployee) => void;
     handleDeleteNonEmployee: (id: string) => Promise<void>;
@@ -530,7 +530,7 @@ export default function MainLayout({
         }
     }, [currentUser, refreshData, toast]);
     
-     const handleBulkImport = useCallback(async (fileData: ArrayBuffer) => {
+     const handleBulkImport = useCallback(async (fileData: number[]) => {
         if (!currentUser?.isAdmin) {
             return { success: false, message: "Brak uprawnień do importu." };
         }
