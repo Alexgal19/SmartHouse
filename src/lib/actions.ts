@@ -924,18 +924,18 @@ const parseAndFormatDate = (dateValue: any): string => {
 
 export async function getSignedUploadUrl(fileName: string, contentType: string): Promise<{ success: boolean; url?: string; filePath?: string; message?: string; }> {
     try {
-        if (!process.env.GOOGLE_PROJECT_ID) {
-            throw new Error("GOOGLE_PROJECT_ID is not configured in the environment.");
+        if (!process.env.FIREBASE_PROJECT_ID) {
+            throw new Error("FIREBASE_PROJECT_ID is not configured in the environment.");
         }
         const storage = new Storage({
-            projectId: process.env.GOOGLE_PROJECT_ID,
+            projectId: process.env.FIREBASE_PROJECT_ID,
             credentials: {
                 client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
                 private_key: process.env.GOOGLE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
             },
         });
 
-        const bucketName = `${process.env.GOOGLE_PROJECT_ID}.appspot.com`;
+        const bucketName = `${process.env.FIREBASE_PROJECT_ID}.appspot.com`;
 
         const filePath = `imports/${Date.now()}-${fileName}`;
         const file = storage.bucket(bucketName).file(filePath);
@@ -957,17 +957,17 @@ export async function getSignedUploadUrl(fileName: string, contentType: string):
 
 export async function bulkImportEmployees(filePath: string, actorUid: string): Promise<{success: boolean, message: string}> {
     try {
-        if (!process.env.GOOGLE_PROJECT_ID) {
-            throw new Error("GOOGLE_PROJECT_ID is not configured in the environment.");
+        if (!process.env.FIREBASE_PROJECT_ID) {
+            throw new Error("FIREBASE_PROJECT_ID is not configured in the environment.");
         }
         const storage = new Storage({
-            projectId: process.env.GOOGLE_PROJECT_ID,
+            projectId: process.env.FIREBASE_PROJECT_ID,
             credentials: {
                 client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
                 private_key: process.env.GOOGLE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
             },
         });
-        const bucketName = `${process.env.GOOGLE_PROJECT_ID}.appspot.com`;
+        const bucketName = `${process.env.FIREBASE_PROJECT_ID}.appspot.com`;
         
         const file = storage.bucket(bucketName).file(filePath);
         const [buffer] = await file.download();
