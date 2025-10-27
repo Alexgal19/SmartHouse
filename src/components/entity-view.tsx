@@ -474,14 +474,6 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         );
     }
     
-    const handleAction = async (action: 'dismiss' | 'restore', employeeId: string) => {
-        if (action === 'dismiss') {
-            await handleDismissEmployee(employeeId);
-        } else {
-            await handleRestoreEmployee(employeeId);
-        }
-    };
-
     const handlePermanentDelete = async (id: string, type: 'employee' | 'non-employee') => {
         if (type === 'employee') {
             await handleDeleteEmployee(id);
@@ -503,17 +495,18 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     const renderContent = () => {
         const isEmployeeTab = tab === 'active' || tab === 'dismissed';
 
-        const listProps = {
+        const listProps: any = {
             entities: paginatedData,
             settings: settings,
             onEdit: handleEdit,
             onPermanentDelete: handlePermanentDelete,
             isDismissed: tab === 'dismissed',
-            ...(isEmployeeTab && {
-                onDismiss: (id: string) => handleAction('dismiss', id),
-                onRestore: (id: string) => handleAction('restore', id),
-            })
         };
+        
+        if (isEmployeeTab) {
+            listProps.onDismiss = handleDismissEmployee;
+            listProps.onRestore = handleRestoreEmployee;
+        }
 
         return (
             <>

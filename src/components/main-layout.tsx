@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback, createContext, useContext, useRef } from 'react';
@@ -71,7 +72,6 @@ type MainLayoutContextType = {
     handleEditEmployeeClick: (employee: Employee) => void;
     handleUpdateSettings: (newSettings: Partial<Settings>) => Promise<void>;
     refreshData: (showToast?: boolean) => Promise<void>;
-    handleBulkImport: (fileData: number[]) => Promise<{ success: boolean; message: string; }>;
     handleAddNonEmployeeClick: () => void;
     handleEditNonEmployeeClick: (nonEmployee: NonEmployee) => void;
     handleDeleteNonEmployee: (id: string) => Promise<void>;
@@ -81,6 +81,9 @@ type MainLayoutContextType = {
     handleDeleteEquipment: (id: string) => Promise<void>;
     handleRefreshStatuses: (showNoChangesToast?: boolean) => Promise<void>;
     handleAddressFormOpen: (address: Address | null) => void;
+    handleDismissEmployee: (employeeId: string) => Promise<void>;
+    handleRestoreEmployee: (employeeId: string) => Promise<void>;
+    handleDeleteEmployee: (employeeId: string) => Promise<void>;
 };
 
 const MainLayoutContext = createContext<MainLayoutContextType | null>(null);
@@ -127,7 +130,6 @@ export default function MainLayout({
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
     const [editingNonEmployee, setEditingNonEmployee] = useState<NonEmployee | null>(null);
     const [editingAddress, setEditingAddress] = useState<Address | null>(null);
-    // Inspection editing is handled in the inspections view component
     
     const [selectedCoordinatorId, _setSelectedCoordinatorId] = useState(initialSession.isAdmin ? 'all' : initialSession.uid);
     
@@ -379,9 +381,6 @@ export default function MainLayout({
         }
     }, [refreshData, toast]);
 
-    // handleAddInspection is used directly for saving inspections
-
-
     const handleAddEquipment = useCallback(async (itemData: Omit<EquipmentItem, 'id'>) => {
         try {
             await addEquipment(itemData);
@@ -467,18 +466,39 @@ export default function MainLayout({
         }
     }, [currentUser, refreshData, toast]);
     
-    const handleBulkImport = useCallback(async (fileData: number[]) => {
-        if (!currentUser?.isAdmin) {
-            return { success: false, message: "Brak uprawnień do importu." };
-        }
+    const handleDismissEmployee = useCallback(async (employeeId: string) => {
+        if (!currentUser) return;
         try {
-            const result = await bulkImportEmployees(fileData, currentUser.uid);
+            await updateEmployee(employeeId, { status: 'dismissed' }, currentUser.uid);
+            toast({ title: "Sukces", description: "Pracownik został zwolniony." });
             await refreshData(false);
-            return result;
         } catch (e: unknown) {
-            return { success: false, message: e instanceof Error ? e.message : "Wystąpił nieznany błąd podczas przetwarzania pliku." };
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zwolnić pracownika." });
         }
-    }, [currentUser, refreshData]);
+    }, [currentUser, refreshData, toast]);
+
+    const handleRestoreEmployee = useCallback(async (employeeId: string) => {
+        if (!currentUser) return;
+        try {
+            await updateEmployee(employeeId, { status: 'active' }, currentUser.uid);
+            toast({ title: "Sukces", description: "Pracownik został przywrócony." });
+            await refreshData(false);
+        } catch (e: unknown) {
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się przywrócić pracownika." });
+        }
+    }, [currentUser, refreshData, toast]);
+    
+    const handleDeleteEmployee = useCallback(async (employeeId: string) => {
+        if (!currentUser) return;
+        try {
+            await deleteEmployee(employeeId, currentUser.uid);
+            toast({ title: "Sukces", description: "Pracownik został trwale usunięty." });
+            await refreshData(false);
+        } catch (e: unknown) {
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć pracownika." });
+        }
+    }, [currentUser, refreshData, toast]);
+
     const contextValue: MainLayoutContextType = useMemo(() => ({
         allEmployees,
         allNonEmployees,
@@ -493,7 +513,6 @@ export default function MainLayout({
         handleAddEmployeeClick,
         handleUpdateSettings,
         refreshData,
-        handleBulkImport,
         handleAddNonEmployeeClick,
         handleEditNonEmployeeClick,
         handleDeleteNonEmployee,
@@ -503,6 +522,9 @@ export default function MainLayout({
         handleDeleteEquipment,
         handleRefreshStatuses,
         handleAddressFormOpen,
+        handleDismissEmployee,
+        handleRestoreEmployee,
+        handleDeleteEmployee,
     } as MainLayoutContextType), [
         allEmployees,
         allNonEmployees,
@@ -517,7 +539,6 @@ export default function MainLayout({
         handleAddEmployeeClick,
         handleUpdateSettings,
         refreshData,
-        handleBulkImport,
         handleAddNonEmployeeClick,
         handleEditNonEmployeeClick,
         handleDeleteNonEmployee,
@@ -527,6 +548,9 @@ export default function MainLayout({
         handleDeleteEquipment,
         handleRefreshStatuses,
         handleAddressFormOpen,
+        handleDismissEmployee,
+        handleRestoreEmployee,
+        handleDeleteEmployee,
     ]);
 
     if (isLoadingData) {
@@ -630,10 +654,4 @@ export default function MainLayout({
     );
 }
 
-// Helper function for bulk importing employees
-// Helper function for bulk importing employees (not implemented)
-function bulkImportEmployees(fileData: number[], uid: string): Promise<{ success: boolean; message: string; }> {
-    // TODO: implement actual import logic (e.g. call a server action).
-    // For now, return a failure
-    return Promise.reject(new Error('Function not implemented.'));
-}
+    
