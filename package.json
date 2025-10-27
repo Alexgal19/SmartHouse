@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "rm -rf .next && next build",
     "start": "next start",
     "lint": "eslint \"**/*.{js,jsx,ts,tsx,vue}\"",
     "lint:fix": "eslint \"**/*.{js,jsx,ts,tsx,vue}\" --fix"
@@ -74,5 +74,3 @@
     "node": ">=18.17.0"
   }
 }
-
-    

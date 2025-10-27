@@ -205,6 +205,14 @@ ChartLegendContent.displayName = "ChartLegendContent"
 // #region Tooltip
 const ChartTooltip = RechartsTooltip
 
+interface TooltipPayloadItem {
+  name: string
+  value: number | string
+  color: string
+  dataKey: string
+  payload: Record<string, unknown>
+}
+
 const ChartTooltipContent = ({
   className,
   label: payloadLabel,
@@ -228,11 +236,13 @@ const ChartTooltipContent = ({
   const finalIndicator = indicator || contextIndicator
   const finalLabelKey = labelKey || contextLabelKey
 
-  if (!payload?.length) {
+  const typedPayload = payload as TooltipPayloadItem[] | undefined;
+
+  if (!typedPayload || !typedPayload.length) {
     return null
   }
 
-  const firstPayload = payload[0]
+  const firstPayload = typedPayload[0]
   const { name: labelName } = firstPayload
   const label =
     payloadLabel ||
@@ -253,7 +263,7 @@ const ChartTooltipContent = ({
         <div className="font-medium text-muted-foreground">{label}</div>
       ) : null}
       <div className="grid gap-1.5">
-        {payload.map((item, i) => {
+        {typedPayload.map((item, i) => {
           const key = `${item.name}`
           const color =
             item.color ||
@@ -324,7 +334,15 @@ const AreaChart = RechartsAreaChart
 // #region Pie Chart
 const PieChart = RechartsPieChart
 
-const ChartPie = (props: React.ComponentProps<typeof Pie>) => {
+interface ChartPieProps extends React.ComponentProps<typeof Pie> {
+  data: {
+    name: string;
+    value: number;
+    fill: string;
+  }[];
+}
+
+const ChartPie = (props: ChartPieProps) => {
   const { active, ...rest } = props
   const { config } = useChart()
   const [activeIndex, setActiveIndex] = React.useState<number | null>(
@@ -448,3 +466,6 @@ export {
 }
 
 export type { ChartConfig }
+
+
+      
