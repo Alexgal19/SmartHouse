@@ -191,7 +191,7 @@ export function HousingView({
                                             </div>
                                             <div className="mt-2">
                                                 {address.capacity > 0 ? (
-                                                    <Progress value={occupancyPercentage > 100 ? 100 : occupancyPercentage} className={cn("h-2", getOccupancyColor(occupancyPercentage))} />
+                                                    <Progress value={occupancyPercentage} className={cn("h-2 [&>div]:", getOccupancyColor(occupancyPercentage))} />
                                                 ) : <div className="h-2 bg-muted rounded-full" />}
                                             </div>
                                         </CardContent>
@@ -230,7 +230,7 @@ export function HousingView({
                                 {Object.entries(groupedRooms).map(([groupNumber, groupData]) => (
                                 <Card key={groupNumber} className="shadow-sm">
                                     <CardHeader className="p-3">
-                                        <CardTitle className="text-base">Pokój {groupNumber}</CardTitle>
+                                        <CardTitle className="text-base">Mieszkanie {groupNumber}</CardTitle>
                                         <CardDescription>Miejsca: {groupData.capacity}</CardDescription>
                                     </CardHeader>
                                     <CardContent className="p-3 pt-0 space-y-2">
