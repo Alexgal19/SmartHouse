@@ -363,7 +363,7 @@ const ControlPanel = ({
     )
 }
 
-export default function EntityView({ currentUser: _currentUser }: { currentUser: SessionData }) {
+export default function EntityView({ _currentUser }: { currentUser: SessionData }) {
     const {
         allEmployees,
         allNonEmployees,
@@ -510,20 +510,12 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
         return (
             <>
                 <ScrollArea className="h-[calc(100vh-22rem)] sm:h-[65vh] overflow-x-auto" style={{ opacity: isPending ? 0.6 : 1 }}>
-                    {isMounted ? <EntityListComponent entities={[]} settings={{
-                        id: 'global-settings',
-                        addresses: [],
-                        nationalities: [],
-                        departments: [],
-                        coordinators: [],
-                        genders: [],
-                        temporaryAccess: [],
-                        inspectionTemplate: []
-                    }} isDismissed={false} onEdit={function (e: Entity): void {
-                        throw new Error('Function not implemented.');
-                    } } onPermanentDelete={function (id: string, type: 'employee' | 'non-employee'): void {
-                        throw new Error('Function not implemented.');
-                    } } {...listProps} /> : <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
+                    {isMounted ? <EntityListComponent 
+                        entities={paginatedData}
+                        settings={settings} 
+                        isDismissed={tab === 'dismissed'}
+                        onEdit={(_e: Entity) => { throw new Error('Function not implemented.'); } } 
+                        onPermanentDelete={(_id: string, _type: 'employee' | 'non-employee') => { throw new Error('Function not implemented.'); } } {...listProps} /> : <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
                 </ScrollArea>
                  <PaginationControls currentPage={page} totalPages={totalPages} onPageChange={(p) => updateSearchParams({ page: p })} isDisabled={isPending} />
             </>
@@ -572,5 +564,3 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
         </Card>
     )
 }
-
-    

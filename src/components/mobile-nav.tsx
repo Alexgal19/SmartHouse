@@ -48,5 +48,3 @@ export function MobileNav({
     </div>
   )
 }
-
-    

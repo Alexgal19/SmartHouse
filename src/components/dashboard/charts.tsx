@@ -1,11 +1,11 @@
 
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList } from "recharts";
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart2 } from "lucide-react";
-import type { Employee, Settings, Inspection } from "@/types";
+import type { Employee, Settings } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useMainLayout } from '@/components/main-layout';
 
@@ -35,7 +35,6 @@ export function DashboardCharts({
     isMobile: boolean
 }) {
     const { currentUser, selectedCoordinatorId } = useMainLayout();
-    const [_activeBar, setActiveBar] = useState<string | null>(null);
 
     const chartData = useMemo(() => {
         const activeEmployees = employees.filter(e => e.status === 'active');
@@ -145,5 +144,3 @@ export function DashboardCharts({
         </div>
     );
 }
-
-  

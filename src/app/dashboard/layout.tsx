@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation';
 
 import MainLayout from '@/components/main-layout';
-import type { SessionData } from '@/types';
 import { getSession } from '@/lib/auth';
 
 export default async function DashboardLayout({

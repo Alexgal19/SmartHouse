@@ -3,7 +3,6 @@
 // It defines session options.
 
 import type { SessionOptions } from 'iron-session';
-import type { SessionData } from '@/types';
 
 export const sessionOptions: SessionOptions = {
   password: process.env.SECRET_COOKIE_PASSWORD as string,

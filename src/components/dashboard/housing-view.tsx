@@ -53,7 +53,7 @@ export function HousingView({
     selectedCoordinatorId: string,
 }) {
     const [housingSearch, setHousingSearch] = useState('');
-    const [sortConfig, _setSortConfig] = useState<SortConfig>({ key: 'name', direction: 'ascending' });
+    const [sortConfig] = useState<SortConfig>({ key: 'name', direction: 'ascending' });
     const [selectedAddress, setSelectedAddress] = useState<HousingStat | null>(null);
     const [isHousingDetailOpen, setIsHousingDetailOpen] = useState(false);
     const [selectedRoom, setSelectedRoom] = useState<RoomStat | null>(null);
@@ -290,5 +290,3 @@ export function HousingView({
         </>
     );
 }
-
-  

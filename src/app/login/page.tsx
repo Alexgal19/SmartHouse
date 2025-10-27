@@ -24,7 +24,7 @@ export default function LoginPage() {
     const [name, setName] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [installPrompt, setInstallPrompt] = useState<any>(null);
+    const [installPrompt, setInstallPrompt] = useState<Event | null>(null);
 
     useEffect(() => {
         const handleBeforeInstallPrompt = (e: Event) => {
@@ -71,8 +71,8 @@ export default function LoginPage() {
     
     const handleInstallClick = () => {
         if (!installPrompt) return;
-        installPrompt.prompt();
-        installPrompt.userChoice.then((choiceResult: { outcome: string }) => {
+        (installPrompt as any).prompt();
+        (installPrompt as any).userChoice.then((choiceResult: { outcome: string }) => {
             if (choiceResult.outcome === 'accepted') {
                 console.log('User accepted the install prompt');
             } else {

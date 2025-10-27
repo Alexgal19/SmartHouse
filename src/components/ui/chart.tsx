@@ -117,7 +117,7 @@ const ChartLegend = ({
             content={
           hide 
             ? undefined 
-            : (legendProps: Record<string, unknown>) => (
+            : (legendProps) => (
                 <ChartLegendContent
                   className={className}
                   payload={legendProps.payload as React.ComponentProps<typeof Legend>["payload"]}
@@ -448,5 +448,3 @@ export {
 }
 
 export type { ChartConfig }
-
-    

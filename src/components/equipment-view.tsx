@@ -1,12 +1,9 @@
 
-// This component manages the view for equipment inventory.
-// It allows adding, editing, and deleting equipment items.
-
 "use client";
 
 import React, { useState, useMemo } from 'react';
 import { useMainLayout } from '@/components/main-layout';
-import type { EquipmentItem, Settings, SessionData } from '@/types';
+import type { EquipmentItem, SessionData } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Trash2, MoreHorizontal } from 'lucide-react';
@@ -124,7 +121,7 @@ const EquipmentCardList = ({ items, onEdit, onDelete }: { items: EquipmentItem[]
 }
 
 
-export default function EquipmentView({ currentUser }: { currentUser: SessionData }) {
+export default function EquipmentView({ _currentUser }: { currentUser: SessionData }) {
     const { allEquipment, settings, handleAddEquipment, handleUpdateEquipment, handleDeleteEquipment } = useMainLayout();
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<EquipmentItem | null>(null);

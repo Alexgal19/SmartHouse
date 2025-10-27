@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { Address, Room, Coordinator } from '@/types';
+import type { Address, Coordinator } from '@/types';
 import { PlusCircle, Trash2 } from 'lucide-react';
 
 
@@ -183,5 +183,3 @@ export function AddressForm({
     </Dialog>
   );
 }
-
-    

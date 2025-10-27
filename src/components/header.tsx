@@ -11,24 +11,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Bell, Home, Settings, Users, Archive, LogOut, Trash2, ClipboardList } from 'lucide-react';
+import { Bell, LogOut, Trash2 } from 'lucide-react';
 import type { SessionData, View, Notification } from '@/types';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatDistanceToNow } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { useMainLayout } from './main-layout';
 import { MobileSidebarToggle } from '@/components/ui/sidebar';
 import { Building } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const viewIcons: Record<View, React.ElementType> = {
-    dashboard: Home,
-    employees: Users,
-    inspections: ClipboardList,
-    settings: Settings,
-    equipment: Archive
-}
 
 const NotificationItem = ({ n, onClick }: {n: Notification, onClick: (n: Notification) => void}) => (
     <div 
@@ -54,7 +45,7 @@ const NotificationItem = ({ n, onClick }: {n: Notification, onClick: (n: Notific
 
 export default function Header({
   user,
-  activeView: _activeView,
+  _activeView,
   notifications,
   onNotificationClick,
   onLogout,
@@ -67,7 +58,6 @@ export default function Header({
   onLogout: () => Promise<void>;
   onClearNotifications: () => void;
 }) {
-    const { handleRefreshStatuses } = useMainLayout();
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
@@ -132,5 +122,3 @@ export default function Header({
     </header>
   );
 }
-
-  

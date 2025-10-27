@@ -4,5 +4,3 @@ declare module "recharts-extend" {
   export type ChartContainerProps = Record<string, unknown>;
   export type ChartStyleConfig = Record<string, unknown>;
 }
-
-    
