@@ -59,7 +59,14 @@ export const EquipmentForm = ({
   }, [item, isOpen, form]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    onSave(values, item?.id);
+    const data: Omit<EquipmentItem, 'id' | 'addressName'> = {
+      inventoryNumber: values.inventoryNumber,
+      name: values.name,
+      quantity: values.quantity,
+      description: values.description ?? '',
+      addressId: values.addressId,
+    };
+    onSave(data, item?.id);
   };
 
   return (

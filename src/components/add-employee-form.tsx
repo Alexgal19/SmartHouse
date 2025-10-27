@@ -221,13 +221,24 @@ export function AddEmployeeForm({
         });
 
         form.reset({
-            ...employee,
-            checkInDate: parseDate(employee.checkInDate),
-            checkOutDate: parseDate(employee.checkOutDate),
-            contractStartDate: parseDate(employee.contractStartDate),
-            contractEndDate: parseDate(employee.contractEndDate),
-            departureReportDate: parseDate(employee.departureReportDate),
-            depositReturned: employee.depositReturned || null,
+            fullName: employee.fullName ?? '',
+            coordinatorId: employee.coordinatorId ?? '',
+            address: employee.address ?? '',
+            roomNumber: employee.roomNumber ?? '',
+            zaklad: employee.zaklad ?? '',
+            nationality: employee.nationality ?? '',
+            gender: employee.gender ?? '',
+            checkInDate: parseDate(employee.checkInDate) ?? new Date(),
+            checkOutDate: parseDate(employee.checkOutDate) ?? null,
+            contractStartDate: parseDate(employee.contractStartDate) ?? null,
+            contractEndDate: parseDate(employee.contractEndDate) ?? null,
+            departureReportDate: parseDate(employee.departureReportDate) ?? null,
+            comments: employee.comments ?? '',
+            depositReturned: employee.depositReturned ?? null,
+            depositReturnAmount: employee.depositReturnAmount ?? null,
+            deductionRegulation: employee.deductionRegulation ?? null,
+            deductionNo4Months: employee.deductionNo4Months ?? null,
+            deductionNo30Days: employee.deductionNo30Days ?? null,
             deductionReason: combinedDeductions
         });
     } else {
