@@ -1,6 +1,5 @@
 
 
-
 "use server";
 
 import type { Employee, Settings, Notification, NotificationChange, Room, Inspection, NonEmployee, DeductionReason, EquipmentItem, TemporaryAccess } from '@/types';
@@ -925,6 +924,9 @@ const parseAndFormatDate = (dateValue: any): string => {
 
 export async function getSignedUploadUrl(fileName: string, contentType: string): Promise<{ success: boolean; url?: string; filePath?: string; message?: string; }> {
     try {
+        if (!process.env.GOOGLE_PROJECT_ID) {
+            throw new Error("GOOGLE_PROJECT_ID is not configured in the environment.");
+        }
         const storage = new Storage({
             projectId: process.env.GOOGLE_PROJECT_ID,
             credentials: {
@@ -933,10 +935,7 @@ export async function getSignedUploadUrl(fileName: string, contentType: string):
             },
         });
 
-        const bucketName = process.env.GCS_BUCKET_NAME;
-        if (!bucketName) {
-            throw new Error("GCS_BUCKET_NAME is not configured in the environment.");
-        }
+        const bucketName = `${process.env.GOOGLE_PROJECT_ID}.appspot.com`;
 
         const filePath = `imports/${Date.now()}-${fileName}`;
         const file = storage.bucket(bucketName).file(filePath);
@@ -956,23 +955,9 @@ export async function getSignedUploadUrl(fileName: string, contentType: string):
     }
 }
 
-export async function bulkImportEmployees(filePath: string, actorUid: string): Promise<{success: boolean, message: string}> {
+export async function bulkImportEmployees(fileData: string, actorUid: string): Promise<{success: boolean, message: string}> {
     try {
-        const storage = new Storage({
-            projectId: process.env.GOOGLE_PROJECT_ID,
-            credentials: {
-                client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-                private_key: process.env.GOOGLE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
-            },
-        });
-        const bucketName = process.env.GCS_BUCKET_NAME;
-        if (!bucketName) {
-            throw new Error("GCS_BUCKET_NAME is not configured in the environment.");
-        }
-        
-        const file = storage.bucket(bucketName).file(filePath);
-        const [buffer] = await file.download();
-        
+        const buffer = Buffer.from(fileData, 'base64');
         const settings = await getSettings();
         
         const workbook = XLSX.read(buffer, { type: 'buffer' });
@@ -1022,9 +1007,6 @@ export async function bulkImportEmployees(filePath: string, actorUid: string): P
         for (const emp of employeesToAdd) {
             await addEmployee(emp, actorUid);
         }
-
-        // Clean up the file from GCS
-        await file.delete();
 
         return { success: true, message: `Pomyślnie zaimportowano ${employeesToAdd.length} pracowników.` };
 
