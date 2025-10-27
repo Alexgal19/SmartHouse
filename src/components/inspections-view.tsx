@@ -1,4 +1,3 @@
-
 // This component manages the view for housing inspections.
 // It allows creating, viewing, and editing inspection reports.
 
@@ -32,30 +31,6 @@ import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-
-const defaultCategories: Omit<InspectionCategory, 'items'> & { items: Omit<InspectionCategoryItem, 'value'>[] }[] = [
-    { name: 'Kuchnia', uwagi: '', photos: [], items: [
-        { label: 'Czystość ogólna', type: 'select', options: ['Bardzo czysto', 'Czysto', 'Brudno', 'Bardzo brudno'] },
-        { label: 'Lodówka (czystość)', type: 'yes_no' },
-        { label: 'Kuchenka (czystość)', type: 'yes_no' },
-        { label: 'Zlew (czystość)', type: 'yes_no' },
-    ]},
-    { name: 'Łazienka', uwagi: '', photos: [], items: [
-        { label: 'Czystość ogólna', type: 'select', options: ['Bardzo czysto', 'Czysto', 'Brudno', 'Bardzo brudno'] },
-        { label: 'Prysznic/wanna', type: 'yes_no' },
-        { label: 'Toaleta', type: 'yes_no' },
-        { label: 'Umywalka', type: 'yes_no' },
-    ]},
-    { name: 'Pokój', uwagi: '', photos: [], items: [
-        { label: 'Porządek ogólny', type: 'rating' },
-        { label: 'Stan mebli', type: 'yes_no' },
-        { label: 'Stan pościeli', type: 'yes_no' },
-    ]},
-    { name: 'Inne', uwagi: '', photos: [], items: [
-        { label: 'Segregacja śmieci', type: 'yes_no' },
-        { label: 'Obecność szkodników', type: 'yes_no' },
-    ]},
-];
 
 const inspectionItemSchema = z.object({
   label: z.string(),
@@ -215,8 +190,10 @@ export const InspectionForm = ({
           categories: item.categories,
         });
       } else {
-        const initialCategories = defaultCategories.map(cat => ({
-            ...cat,
+        const initialCategories = (settings.inspectionTemplate || []).map(cat => ({
+            name: cat.name,
+            uwagi: '',
+            photos: [],
             items: cat.items.map(it => {
                 let defaultValue: any = '';
                 if (it.type === 'yes_no') defaultValue = null;
@@ -233,7 +210,7 @@ export const InspectionForm = ({
         });
       }
     }
-  }, [item, isOpen, form]);
+  }, [item, isOpen, form, settings.inspectionTemplate]);
   
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, categoryIndex: number) => {
     const files = event.target.files;

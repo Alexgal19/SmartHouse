@@ -4,7 +4,7 @@
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet, GoogleSpreadsheetRow } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
-import type { Employee, Settings, Notification, NotificationChange, Room, Inspection, NonEmployee, DeductionReason, InspectionCategory, InspectionCategoryItem, EquipmentItem, TemporaryAccess, Address, Coordinator, ImportStatus } from '@/types';
+import type { Employee, Settings, Notification, NotificationChange, Room, Inspection, NonEmployee, DeductionReason, InspectionCategory, InspectionCategoryItem, EquipmentItem, TemporaryAccess, Address, Coordinator, ImportStatus, InspectionTemplateCategory } from '@/types';
 import { format, isValid, parse, parseISO } from 'date-fns';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
@@ -21,6 +21,7 @@ const SHEET_NAME_INSPECTIONS = 'Inspections';
 const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 const SHEET_NAME_EQUIPMENT = 'Equipment';
 const SHEET_NAME_IMPORT_STATUS = 'ImportStatus';
+const SHEET_NAME_INSPECTION_TEMPLATE = 'InspectionTemplate';
 
 let doc: GoogleSpreadsheet | null = null;
 let docPromise: Promise<GoogleSpreadsheet> | null = null;
@@ -323,6 +324,7 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             departmentRows,
             coordinatorRows,
             genderRows,
+            inspectionTemplateRows,
         ] = await Promise.all([
             getSheetData(doc, SHEET_NAME_ADDRESSES),
             getSheetData(doc, SHEET_NAME_ROOMS),
@@ -330,6 +332,7 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             getSheetData(doc, SHEET_NAME_DEPARTMENTS),
             getSheetData(doc, SHEET_NAME_COORDINATORS),
             getSheetData(doc, SHEET_NAME_GENDERS),
+            getSheetData(doc, SHEET_NAME_INSPECTION_TEMPLATE),
         ]);
         
         const roomsByAddressId = new Map<string, Room[]>();
@@ -364,6 +367,25 @@ export async function getSettingsFromSheet(): Promise<Settings> {
                 password: rowObj.password,
             }
         });
+        
+        const inspectionTemplate = inspectionTemplateRows.reduce((acc: InspectionTemplateCategory[], row) => {
+            const categoryName = row.category;
+            if (!categoryName) return acc;
+
+            let category = acc.find(c => c.name === categoryName);
+            if (!category) {
+                category = { name: categoryName, items: [] };
+                acc.push(category);
+            }
+
+            category.items.push({
+                label: row.label,
+                type: row.type as any,
+                options: row.options ? row.options.split(',').map(s => s.trim()) : [],
+            });
+
+            return acc;
+        }, []);
 
         const temporaryAccess: TemporaryAccess[] = [];
 
@@ -375,6 +397,7 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             coordinators,
             genders: genderRows.map(row => row.name).filter(Boolean),
             temporaryAccess,
+            inspectionTemplate,
         };
     } catch (error: unknown) {
         console.error("Error fetching settings from sheet:", error instanceof Error ? error.message : "Unknown error", error instanceof Error ? error.stack : "");
@@ -510,15 +533,16 @@ export async function getAllSheetsData() {
         ] = await Promise.all([
             getSheetData(doc, SHEET_NAME_EMPLOYEES),
             (async () => {
-                const [addressRows, roomRows, nationalityRows, departmentRows, coordinatorRows, genderRows] = await Promise.all([
+                const [addressRows, roomRows, nationalityRows, departmentRows, coordinatorRows, genderRows, inspectionTemplateRows] = await Promise.all([
                     getSheetData(doc, SHEET_NAME_ADDRESSES),
                     getSheetData(doc, SHEET_NAME_ROOMS),
                     getSheetData(doc, SHEET_NAME_NATIONALITIES),
                     getSheetData(doc, SHEET_NAME_DEPARTMENTS),
                     getSheetData(doc, SHEET_NAME_COORDINATORS),
                     getSheetData(doc, SHEET_NAME_GENDERS),
+                    getSheetData(doc, SHEET_NAME_INSPECTION_TEMPLATE),
                 ]);
-                return { addressRows, roomRows, nationalityRows, departmentRows, coordinatorRows, genderRows };
+                return { addressRows, roomRows, nationalityRows, departmentRows, coordinatorRows, genderRows, inspectionTemplateRows };
             })(),
             (async () => {
                 const [inspectionRows, detailRows] = await Promise.all([
@@ -545,6 +569,26 @@ export async function getAllSheetsData() {
         });
         const addresses: Address[] = settingsSheets.addressRows.map(rowObj => ({ id: rowObj.id, name: rowObj.name, coordinatorId: rowObj.coordinatorId, rooms: roomsByAddressId.get(rowObj.id) || [] }));
         const coordinators: Coordinator[] = settingsSheets.coordinatorRows.map(rowObj => ({ uid: rowObj.uid, name: rowObj.name, isAdmin: rowObj.isAdmin === 'TRUE', password: rowObj.password }));
+        
+        const inspectionTemplate = settingsSheets.inspectionTemplateRows.reduce((acc: InspectionTemplateCategory[], row) => {
+            const categoryName = row.category;
+            if (!categoryName) return acc;
+
+            let category = acc.find(c => c.name === categoryName);
+            if (!category) {
+                category = { name: categoryName, items: [] };
+                acc.push(category);
+            }
+
+            category.items.push({
+                label: row.label,
+                type: row.type as any,
+                options: row.options ? row.options.split(',').map(s => s.trim()) : [],
+            });
+
+            return acc;
+        }, []);
+        
         const settings: Settings = {
             id: 'global-settings',
             addresses,
@@ -553,6 +597,7 @@ export async function getAllSheetsData() {
             coordinators,
             genders: settingsSheets.genderRows.map(row => row.name).filter(Boolean),
             temporaryAccess: [],
+            inspectionTemplate,
         };
 
         // Process Employees

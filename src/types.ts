@@ -29,6 +29,15 @@ export interface TemporaryAccess {
   expires: string; // ISO date string
 }
 
+export type InspectionTemplateCategory = {
+    name: string;
+    items: {
+        label: string;
+        type: 'text' | 'number' | 'select' | 'yes_no' | 'rating' | 'checkbox_group';
+        options?: string[];
+    }[];
+};
+
 export type Settings = {
     id: 'global-settings';
     addresses: Address[];
@@ -37,6 +46,7 @@ export type Settings = {
     coordinators: Coordinator[];
     genders: string[];
     temporaryAccess: TemporaryAccess[];
+    inspectionTemplate: InspectionTemplateCategory[];
 }
 
 export type DeductionReason = {
