@@ -8,7 +8,7 @@ import * as z from 'zod';
 import type { Inspection, Settings, SessionData, InspectionCategoryItem } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Camera, Clipboard, Calendar as CalendarIcon } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -22,7 +22,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { Switch } from '@/components/ui/switch';
-import { DialogDescription } from './ui/dialog';
 
 const inspectionItemSchema = z.object({
   label: z.string(),
@@ -50,7 +49,7 @@ export type InspectionFormProps = {
   onOpenChange: (open: boolean) => void;
   settings: Settings;
   currentUser: SessionData;
-  onSave: (data: Omit<Inspection, 'id' | 'coordinatorName'>) => void;
+  onSave: (data: Omit<Inspection, 'id'>) => void;
   item?: Inspection | null;
 };
 
@@ -247,7 +246,7 @@ export default function InspectionForm({ isOpen, onOpenChange, settings, current
                              <input
                                 type="file"
                                 ref={(el) => {
-                                  fileInputRefs.current[categoryIndex] = el;
+                                  if (el) fileInputRefs.current[categoryIndex] = el;
                                 }}
                                 className="hidden"
                                 accept="image/*"
