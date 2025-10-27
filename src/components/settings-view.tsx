@@ -125,15 +125,13 @@ const CoordinatorManager = ({ form, fields, append, remove }: { form: any, field
 
 const AddressManager = ({ form, onEdit, onRemove, onAdd }: { form: any; onEdit: (address: Address) => void; onRemove: (addressId: string) => void; onAdd: (coordinatorId: string) => void; }) => {
     const [filterCoordinatorId, setFilterCoordinatorId] = useState('all');
-    const addresses: Address[] = useWatch({ control: form.control, name: 'addresses' });
-    const coordinators: {uid: string, name: string}[] = useWatch({ control: form.control, name: 'coordinators' });
-    const coordinatorMap = useMemo(() => new Map(coordinators.map(c => [c.uid, c.name])), [coordinators]);
+    const coordinatorMap = useMemo(() => new Map((useWatch({ control: form.control, name: 'coordinators' })).map(c => [c.uid, c.name])), [(useWatch({ control: form.control, name: 'coordinators' }))]);
 
     const filteredAddresses = useMemo(() => {
-        if (!addresses) return [];
-        if (filterCoordinatorId === 'all') return addresses;
-        return addresses.filter(a => a.coordinatorId === filterCoordinatorId);
-    }, [addresses, filterCoordinatorId]);
+        if (!useWatch({ control: form.control, name: 'addresses' })) return [];
+        if (filterCoordinatorId === 'all') return useWatch({ control: form.control, name: 'addresses' });
+        return (useWatch({ control: form.control, name: 'addresses' })).filter(a => a.coordinatorId === filterCoordinatorId);
+    }, [(useWatch({ control: form.control, name: 'addresses' })), filterCoordinatorId]);
 
     return (
         <div className="space-y-4 rounded-md border p-4">
@@ -146,7 +144,7 @@ const AddressManager = ({ form, onEdit, onRemove, onAdd }: { form: any; onEdit: 
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
-                            {coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                            {(useWatch({ control: form.control, name: 'coordinators' })).map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
                     <Button type="button" variant="outline" size="sm" onClick={() => onAdd(filterCoordinatorId)}>

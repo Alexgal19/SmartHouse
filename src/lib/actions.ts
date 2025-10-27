@@ -6,7 +6,6 @@ import type { Employee, Settings, Notification, NotificationChange, Room, Inspec
 import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getInspectionsFromSheet, getNonEmployeesFromSheet, getEquipmentFromSheet, getAllSheetsData } from './sheets';
 import { format, isPast, isValid, parse, startOfMonth, endOfMonth, differenceInDays, min, max } from 'date-fns';
 import * as XLSX from 'xlsx';
-import { Storage } from '@google-cloud/storage';
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
 const SHEET_NAME_NON_EMPLOYEES = 'NonEmployees';
