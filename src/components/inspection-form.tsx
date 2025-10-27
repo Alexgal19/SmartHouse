@@ -1,13 +1,14 @@
+
 "use client";
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import type { Inspection, Settings, SessionData, InspectionCategoryItem } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Camera, Clipboard, Calendar as CalendarIcon } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -160,6 +161,9 @@ export default function InspectionForm({ isOpen, onOpenChange, settings, current
       <DialogContent className="max-w-4xl flex flex-col h-screen sm:h-[90vh]">
         <DialogHeader>
           <DialogTitle>{item ? 'Edytuj kontrolę mieszkania' : 'Nowa Kontrola Mieszkania'}</DialogTitle>
+          <DialogDescription>
+             Wypełnij poniższy formularz, aby {item ? 'zaktualizować' : 'dodać'} kontrolę.
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 min-h-0 flex flex-col">
@@ -239,7 +243,7 @@ export default function InspectionForm({ isOpen, onOpenChange, settings, current
                             </Button>
                              <input
                                 type="file"
-                                ref={el => fileInputRefs.current[categoryIndex] = el}
+                                ref={(el) => { fileInputRefs.current[categoryIndex] = el; }}
                                 className="hidden"
                                 accept="image/*"
                                 multiple
