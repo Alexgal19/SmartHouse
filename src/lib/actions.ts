@@ -721,11 +721,14 @@ export async function getInspections(coordinatorId?: string): Promise<Inspection
     }
 }
 
-export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Promise<void> {
+export async function addInspection(inspectionData: Omit<Inspection, 'id' | 'coordinatorName'>): Promise<void> {
     try {
         const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, ['id', 'addressId', 'addressName', 'date', 'coordinatorId', 'coordinatorName', 'standard']);
         const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, ['id', 'inspectionId', 'addressName', 'date', 'coordinatorName', 'category', 'itemLabel', 'itemValue', 'uwagi', 'photoData']);
         
+        const settings = await getSettings();
+        const coordinatorName = settings.coordinators.find(c => c.uid === inspectionData.coordinatorId)?.name || 'Unknown';
+
         const inspectionId = `insp-${Date.now()}`;
         const dateString = inspectionData.date;
 
@@ -735,7 +738,7 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
             addressName: inspectionData.addressName,
             date: dateString,
             coordinatorId: inspectionData.coordinatorId,
-            coordinatorName: inspectionData.coordinatorName,
+            coordinatorName: coordinatorName,
             standard: inspectionData.standard || '',
         }, { raw: false, insert: true });
 
@@ -747,7 +750,7 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
                     inspectionId,
                     addressName: inspectionData.addressName,
                     date: dateString,
-                    coordinatorName: inspectionData.coordinatorName,
+                    coordinatorName: coordinatorName,
                     category: category.name,
                     itemLabel: item.label,
                     itemValue: Array.isArray(item.value) ? JSON.stringify(item.value) : (String(item.value) ?? ''),
@@ -762,7 +765,7 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
                     inspectionId,
                     addressName: inspectionData.addressName,
                     date: dateString,
-                    coordinatorName: inspectionData.coordinatorName,
+                    coordinatorName: coordinatorName,
                     category: category.name,
                     itemLabel: 'Uwagi', itemValue: '',
                     uwagi: category.uwagi,
@@ -770,17 +773,18 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
                 });
             }
             
-            (category.photos || []).forEach((photo: any) => {
+            (category.photos || []).forEach((photo: any, index: number) => {
                 detailRows.push({
                     id: `insp-det-${Date.now()}-${Math.random()}`,
                     inspectionId,
                     addressName: inspectionData.addressName,
                     date: dateString,
-                    coordinatorName: inspectionData.coordinatorName,
+                    coordinatorName: coordinatorName,
                     category: category.name,
-                    itemLabel: 'Photo', itemValue: '',
-                    uwagi: photo.uwagi || '',
-                    photoData: photo.data || '',
+                    itemLabel: `Photo ${index + 1}`,
+                    itemValue: '',
+                    uwagi: '',
+                    photoData: photo,
                 });
             });
         });

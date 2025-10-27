@@ -534,7 +534,7 @@ export async function getAllSheetsData() {
                 const category = categoriesMap.get(categoryName)!;
 
                 const itemLabel = detail.itemLabel;
-                if (itemLabel && itemLabel !== 'Photo' && itemLabel !== 'Uwagi') {
+                if (itemLabel && !itemLabel.startsWith('Photo') && itemLabel !== 'Uwagi') {
                     let type: InspectionCategoryItem['type'] = 'text';
                     const rawValue = detail.itemValue;
                     let value: any = rawValue;
@@ -633,7 +633,7 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
                 const uwagi = detail.uwagi;
                 const photoData = detail.photoData;
 
-                if (itemLabel && itemLabel !== 'Photo' && itemLabel !== 'Uwagi') {
+                if (itemLabel && !itemLabel.startsWith('Photo') && itemLabel !== 'Uwagi') {
                     let type: InspectionCategoryItem['type'] = 'text';
                     const rawValue = detail.itemValue;
                     let value: any = rawValue;
@@ -641,7 +641,7 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
                     if (rawValue?.toLowerCase() === 'true' || rawValue?.toLowerCase() === 'false') {
                         type = 'yes_no';
                         value = rawValue.toLowerCase() === 'true';
-                    } else if (['Wysoki', 'Normalny', 'Niski', 'Bardzo czysto', 'Czysto', 'Brudno', 'Bardzo brudno'].includes(rawValue)) {
+                    } else if (['Wysoki', 'Normalny', 'Niski', 'Bardzo czysto', 'Czysto', 'Do poprawy', 'Brudno', 'Bardzo brudno'].includes(rawValue)) {
                         type = 'select';
                     } else if (rawValue && !isNaN(parseFloat(rawValue)) && isFinite(rawValue)) {
                         const num = parseFloat(rawValue);
