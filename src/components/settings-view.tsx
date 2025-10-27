@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import { useForm, useFieldArray, useWatch } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch, UseFieldArrayAppend, UseFieldArrayRemove } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useMainLayout } from '@/components/main-layout';
@@ -64,7 +64,7 @@ const ListManager = ({ name, title, fields, append, remove }: { name: string; ti
     </div>
 );
 
-const CoordinatorManager = ({ form, fields, append, remove }: { form:  ReturnType<typeof useForm<z.infer<typeof formSchema>>>; fields: Record<"id", string>[], append: (obj: Partial<z.infer<typeof coordinatorSchema>>) => void, remove: (index: number) => void }) => (
+const CoordinatorManager = ({ form, fields, append, remove }: { form:  ReturnType<typeof useForm<z.infer<typeof formSchema>>>; fields: Record<"id", string>[], append: UseFieldArrayAppend<z.infer<typeof formSchema>, "coordinators">, remove: UseFieldArrayRemove }) => (
   <div className="space-y-4 rounded-md border p-4">
     <div className="flex justify-between items-center mb-4">
         <h3 className="font-medium">Koordynatorzy</h3>
@@ -181,7 +181,7 @@ const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { 
 };
 
 
-const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
+const BulkActions = ({ _currentUser }: { _currentUser: SessionData }) => {
     const { handleBulkDeleteEmployees } = useMainLayout();
     const [isDeletingActive, setIsDeletingActive] = useState(false);
     const [isDeletingDismissed, setIsDeletingDismissed] = useState(false);
@@ -360,9 +360,9 @@ function SettingsManager({ form, handleUpdateSettings, handleAddressFormOpen }: 
     const onSubmit = async () => {
         const currentValues = form.getValues();
         const newSettings: Partial<Settings> = {
-            nationalities: currentValues.nationalities.map((n: { value: any; }) => n.value),
-            departments: currentValues.departments.map((d: { value: any; }) => d.value),
-            genders: currentValues.genders.map((d: { value: any; }) => d.value),
+            nationalities: currentValues.nationalities.map((n) => n.value),
+            departments: currentValues.departments.map((d) => d.value),
+            genders: currentValues.genders.map((d) => d.value),
             addresses: currentValues.addresses,
             coordinators: currentValues.coordinators,
         };
@@ -503,7 +503,9 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     <div className="space-y-6">
       <SettingsManager settings={settings} form={form} handleUpdateSettings={handleUpdateSettings} handleAddressFormOpen={handleAddressFormOpen} />
       <ReportsGenerator settings={settings} currentUser={currentUser} />
-      <BulkActions currentUser={currentUser} />
+      <BulkActions _currentUser={currentUser} />
     </div>
   );
 }
+
+    
