@@ -1,4 +1,5 @@
 
+
 "use server";
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
@@ -487,12 +488,12 @@ export async function getAllSheetsData() {
             inspectionTemplate,
         };
 
-        const employees = employeesSheet.map(row => deserializeEmployee(row as Record<string, unknown>)).filter((e): e is Employee => e !== null);
-        const nonEmployees = nonEmployeesSheet.map(row => deserializeNonEmployee(row as Record<string, unknown>)).filter((e): e is NonEmployee => e !== null);
-        const equipment = equipmentSheet.map(row => deserializeEquipmentItem(row as Record<string, unknown>)).filter((item): item is EquipmentItem => item !== null);
+        const employees = employeesSheet.map(row => deserializeEmployee(row)).filter((e): e is Employee => e !== null);
+        const nonEmployees = nonEmployeesSheet.map(row => deserializeNonEmployee(row)).filter((e): e is NonEmployee => e !== null);
+        const equipment = equipmentSheet.map(row => deserializeEquipmentItem(row)).filter((item): item is EquipmentItem => item !== null);
 
         const notifications = notificationsSheet
-            .map(row => deserializeNotification(row as Record<string, unknown>))
+            .map(row => deserializeNotification(row))
             .filter((n): n is Notification => n !== null)
             .sort((a: Notification, b: Notification) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         

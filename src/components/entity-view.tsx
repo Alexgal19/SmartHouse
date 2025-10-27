@@ -60,11 +60,10 @@ const EntityActions = ({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => onEdit(entity)}>Edytuj</DropdownMenuItem>
-            {isEmployee(entity) && onDismiss && !isDismissed && (
-                <DropdownMenuItem onClick={() => onDismiss(entity.id)}>Zwolnij</DropdownMenuItem>
-            )}
-            {isEmployee(entity) && onRestore && isDismissed && (
-                 <DropdownMenuItem onClick={() => onRestore(entity.id)}>Przywróć</DropdownMenuItem>
+            {isEmployee(entity) && (
+                isDismissed 
+                ? <DropdownMenuItem onClick={() => onRestore?.(entity.id)}>Przywróć</DropdownMenuItem>
+                : <DropdownMenuItem onClick={() => onDismiss?.(entity.id)}>Zwolnij</DropdownMenuItem>
             )}
              <DropdownMenuSeparator />
              <AlertDialog>
@@ -158,7 +157,7 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
                 <TableRow key={entity.id} onClick={() => onEdit(entity)} className="cursor-pointer">
                   <TableCell className="font-medium">{entity.fullName}</TableCell>
                   <TableCell>{isEmployee(entity) ? "Pracownik" : "Mieszkaniec (NZ)"}</TableCell>
-                  <TableCell>{isEmployee(entity) ? getCoordinatorName((entity as Employee).coordinatorId) : "N/A"}</TableCell>
+                  <TableCell>{isEmployee(entity) ? getCoordinatorName(entity.coordinatorId) : "N/A"}</TableCell>
                   <TableCell>{entity.address}</TableCell>
                   <TableCell>{entity.roomNumber}</TableCell>
                   <TableCell>{formatDate(entity.checkInDate)}</TableCell>
@@ -191,7 +190,7 @@ const EntityCardList = ({ entities, onEdit, onDismiss, onRestore, isDismissed, s
                            <div>
                              <CardTitle className="text-base">{entity.fullName}</CardTitle>
                              <CardDescription>
-                                {isEmployee(entity) ? getCoordinatorName((entity as Employee).coordinatorId) : "Mieszkaniec (NZ)"}
+                                {isEmployee(entity) ? getCoordinatorName(entity.coordinatorId) : "Mieszkaniec (NZ)"}
                              </CardDescription>
                            </div>
                            <div onClick={(e) => e.stopPropagation()}>
@@ -200,7 +199,7 @@ const EntityCardList = ({ entities, onEdit, onDismiss, onRestore, isDismissed, s
                         </CardHeader>
                         <CardContent className="text-sm space-y-2">
                             <p><span className="font-semibold text-muted-foreground">Adres:</span> {entity.address}, pok. {entity.roomNumber}</p>
-                            {isEmployee(entity) && <p><span className="font-semibold text-muted-foreground">Narodowość:</span> {(entity as Employee).nationality}</p>}
+                            {isEmployee(entity) && <p><span className="font-semibold text-muted-foreground">Narodowość:</span> {entity.nationality}</p>}
                             <p><span className="font-semibold text-muted-foreground">Zameldowanie:</span> {formatDate(entity.checkInDate)}</p>
                         </CardContent>
                     </Card>
@@ -363,7 +362,7 @@ const ControlPanel = ({
     )
 }
 
-export default function EntityView({ }: { currentUser: SessionData }) {
+export default function EntityView({ _currentUser }: { currentUser: SessionData }) {
     const {
         allEmployees,
         allNonEmployees,
@@ -384,6 +383,7 @@ export default function EntityView({ }: { currentUser: SessionData }) {
     const [isPending, startTransition] = useTransition();
     const { isMobile, isMounted } = useIsMobile();
     
+    // Params from URL
     const tab = (searchParams.get('tab') as 'active' | 'dismissed' | 'non-employees') || 'active';
     const page = Number(searchParams.get('page') || '1');
     const search = searchParams.get('search') || '';
@@ -473,6 +473,14 @@ export default function EntityView({ }: { currentUser: SessionData }) {
         );
     }
     
+    const handleAction = async (action: 'dismiss' | 'restore', employeeId: string) => {
+        if (action === 'dismiss') {
+            await handleDismissEmployee(employeeId);
+        } else {
+            await handleRestoreEmployee(employeeId);
+        }
+    };
+
     const handlePermanentDelete = async (id: string, type: 'employee' | 'non-employee') => {
         if (type === 'employee') {
             await handleDeleteEmployee(id);
