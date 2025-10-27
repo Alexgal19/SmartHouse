@@ -22,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { format } from 'date-fns';
+import { format, parse } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -78,6 +78,73 @@ const formSchema = z.object({
   standard: z.string().optional(),
   categories: z.array(categorySchema),
 });
+
+const DateInput = ({
+  value,
+  onChange,
+  disabled,
+}: {
+  value?: Date | null;
+  onChange: (date?: Date) => void;
+  disabled?: (date: Date) => boolean;
+}) => {
+  const [inputValue, setInputValue] = useState('');
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
+  useEffect(() => {
+    if (value) {
+      setInputValue(format(value, 'dd-MM-yyyy'));
+    } else {
+      setInputValue('');
+    }
+  }, [value]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+    const parsedDate = parse(e.target.value, 'dd-MM-yyyy', new Date());
+    if (!isNaN(parsedDate.getTime())) {
+      onChange(parsedDate);
+    }
+  };
+
+  const handleDateSelect = (date?: Date) => {
+    if (date) {
+      onChange(date);
+      setInputValue(format(date, 'dd-MM-yyyy'));
+      setIsPopoverOpen(false);
+    } else {
+      onChange(undefined);
+      setInputValue('');
+    }
+  };
+
+  return (
+    <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+      <PopoverTrigger asChild>
+        <div className="relative">
+          <Input
+            type="text"
+            value={inputValue}
+            onChange={handleInputChange}
+            placeholder="dd-mm-rrrr"
+            className="pr-10"
+          />
+          <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        </div>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={value || undefined}
+          onSelect={handleDateSelect}
+          disabled={disabled}
+          initialFocus
+        />
+      </PopoverContent>
+    </Popover>
+  );
+};
+
 
 const renderFormControl = (item: InspectionCategoryItem, field: any) => {
     switch (item.type) {
@@ -248,19 +315,10 @@ export const InspectionForm = ({
                             render={({ field }) => (
                                 <FormItem className="flex flex-col">
                                 <FormLabel>Data inspekcji</FormLabel>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                    <FormControl>
-                                        <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                        {field.value ? format(field.value, 'PPP', { locale: pl }) : <span>Wybierz datę</span>}
-                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                        </Button>
-                                    </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
-                                    </PopoverContent>
-                                </Popover>
+                                <DateInput 
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                />
                                 <FormMessage />
                                 </FormItem>
                             )}

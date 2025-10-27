@@ -4,7 +4,7 @@
 
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -38,7 +38,7 @@ import type { Employee, Settings, DeductionReason } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, Info } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
-import { format } from 'date-fns';
+import { format, parse } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -92,6 +92,72 @@ const parseDate = (dateString: string | null | undefined): Date | undefined => {
     if (!dateString) return undefined;
     const date = new Date(dateString + 'T00:00:00'); // Treat as local date
     return isNaN(date.getTime()) ? undefined : date;
+};
+
+const DateInput = ({
+  value,
+  onChange,
+  disabled,
+}: {
+  value?: Date | null;
+  onChange: (date?: Date) => void;
+  disabled?: (date: Date) => boolean;
+}) => {
+  const [inputValue, setInputValue] = useState('');
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
+  useEffect(() => {
+    if (value) {
+      setInputValue(format(value, 'dd-MM-yyyy'));
+    } else {
+      setInputValue('');
+    }
+  }, [value]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+    const parsedDate = parse(e.target.value, 'dd-MM-yyyy', new Date());
+    if (!isNaN(parsedDate.getTime())) {
+      onChange(parsedDate);
+    }
+  };
+
+  const handleDateSelect = (date?: Date) => {
+    if (date) {
+      onChange(date);
+      setInputValue(format(date, 'dd-MM-yyyy'));
+      setIsPopoverOpen(false);
+    } else {
+      onChange(undefined);
+      setInputValue('');
+    }
+  };
+
+  return (
+    <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+      <PopoverTrigger asChild>
+        <div className="relative">
+          <Input
+            type="text"
+            value={inputValue}
+            onChange={handleInputChange}
+            placeholder="dd-mm-rrrr"
+            className="pr-10"
+          />
+          <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        </div>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={value || undefined}
+          onSelect={handleDateSelect}
+          disabled={disabled}
+          initialFocus
+        />
+      </PopoverContent>
+    </Popover>
+  );
 };
 
 
@@ -356,37 +422,13 @@ export function AddEmployeeForm({
                                 control={form.control}
                                 name="checkInDate"
                                 render={({ field }) => (
-                                    <FormItem className="flex flex-col pt-2">
+                                    <FormItem className="flex flex-col">
                                         <FormLabel>Data zameldowania</FormLabel>
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                            <FormControl>
-                                                <Button
-                                                variant={"outline"}
-                                                className={cn(
-                                                    "w-full pl-3 text-left font-normal",
-                                                    !field.value && "text-muted-foreground"
-                                                )}
-                                                >
-                                                {field.value ? (
-                                                    format(field.value, "PPP", { locale: pl })
-                                                ) : (
-                                                    <span>Wybierz datę</span>
-                                                )}
-                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                </Button>
-                                            </FormControl>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0" align="start">
-                                            <Calendar
-                                                mode="single"
-                                                selected={field.value}
-                                                onSelect={field.onChange}
-                                                disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-                                                initialFocus
-                                            />
-                                            </PopoverContent>
-                                        </Popover>
+                                        <DateInput
+                                          value={field.value}
+                                          onChange={field.onChange}
+                                          disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
+                                        />
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -395,36 +437,9 @@ export function AddEmployeeForm({
                                 control={form.control}
                                 name="checkOutDate"
                                 render={({ field }) => (
-                                    <FormItem className="flex flex-col pt-2">
+                                    <FormItem className="flex flex-col">
                                         <FormLabel>Data wymeldowania</FormLabel>
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                            <FormControl>
-                                                <Button
-                                                variant={"outline"}
-                                                className={cn(
-                                                    "w-full pl-3 text-left font-normal",
-                                                    !field.value && "text-muted-foreground"
-                                                )}
-                                                >
-                                                {field.value ? (
-                                                    format(field.value, "PPP", { locale: pl })
-                                                ) : (
-                                                    <span>Wybierz datę</span>
-                                                )}
-                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                </Button>
-                                            </FormControl>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0" align="start">
-                                            <Calendar
-                                                mode="single"
-                                                selected={field.value}
-                                                onSelect={field.onChange}
-                                                initialFocus
-                                            />
-                                            </PopoverContent>
-                                        </Popover>
+                                        <DateInput value={field.value} onChange={field.onChange} />
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -433,36 +448,9 @@ export function AddEmployeeForm({
                                 control={form.control}
                                 name="departureReportDate"
                                 render={({ field }) => (
-                                    <FormItem className="flex flex-col pt-2">
+                                    <FormItem className="flex flex-col">
                                         <FormLabel>Data zgłoszenia wyjazdu</FormLabel>
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                            <FormControl>
-                                                <Button
-                                                variant={"outline"}
-                                                className={cn(
-                                                    "w-full pl-3 text-left font-normal",
-                                                    !field.value && "text-muted-foreground"
-                                                )}
-                                                >
-                                                {field.value ? (
-                                                    format(field.value, "PPP", { locale: pl })
-                                                ) : (
-                                                    <span>Wybierz datę</span>
-                                                )}
-                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                </Button>
-                                            </FormControl>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0" align="start">
-                                            <Calendar
-                                                mode="single"
-                                                selected={field.value}
-                                                onSelect={field.onChange}
-                                                initialFocus
-                                            />
-                                            </PopoverContent>
-                                        </Popover>
+                                        <DateInput value={field.value} onChange={field.onChange} />
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -473,36 +461,9 @@ export function AddEmployeeForm({
                                 control={form.control}
                                 name="contractStartDate"
                                 render={({ field }) => (
-                                    <FormItem className="flex flex-col pt-2">
+                                    <FormItem className="flex flex-col">
                                         <FormLabel>Umowa od</FormLabel>
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                            <FormControl>
-                                                <Button
-                                                variant={"outline"}
-                                                className={cn(
-                                                    "w-full pl-3 text-left font-normal",
-                                                    !field.value && "text-muted-foreground"
-                                                )}
-                                                >
-                                                {field.value ? (
-                                                    format(field.value, "PPP", { locale: pl })
-                                                ) : (
-                                                    <span>Wybierz datę</span>
-                                                )}
-                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                </Button>
-                                            </FormControl>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0" align="start">
-                                            <Calendar
-                                                mode="single"
-                                                selected={field.value}
-                                                onSelect={field.onChange}
-                                                initialFocus
-                                            />
-                                            </PopoverContent>
-                                        </Popover>
+                                        <DateInput value={field.value} onChange={field.onChange} />
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -511,36 +472,9 @@ export function AddEmployeeForm({
                                 control={form.control}
                                 name="contractEndDate"
                                 render={({ field }) => (
-                                    <FormItem className="flex flex-col pt-2">
+                                    <FormItem className="flex flex-col">
                                         <FormLabel>Umowa do</FormLabel>
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                            <FormControl>
-                                                <Button
-                                                variant={"outline"}
-                                                className={cn(
-                                                    "w-full pl-3 text-left font-normal",
-                                                    !field.value && "text-muted-foreground"
-                                                )}
-                                                >
-                                                {field.value ? (
-                                                    format(field.value, "PPP", { locale: pl })
-                                                ) : (
-                                                    <span>Wybierz datę</span>
-                                                )}
-                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                </Button>
-                                            </FormControl>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0" align="start">
-                                            <Calendar
-                                                mode="single"
-                                                selected={field.value}
-                                                onSelect={field.onChange}
-                                                initialFocus
-                                            />
-                                            </PopoverContent>
-                                        </Popover>
+                                        <DateInput value={field.value} onChange={field.onChange} />
                                         <FormMessage />
                                     </FormItem>
                                 )}
