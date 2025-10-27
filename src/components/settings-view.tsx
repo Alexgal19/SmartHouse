@@ -18,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { generateMonthlyReport, generateAccommodationReport, getSignedUploadUrl, bulkImportEmployees } from '@/lib/actions';
+import { generateMonthlyReport, generateAccommodationReport, bulkImportEmployees } from '@/lib/actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import axios from 'axios';
@@ -185,6 +185,7 @@ const AddressManager = ({ form, onEdit, onRemove, onAdd }: { form: any; onEdit: 
 
 const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
     const { toast } = useToast();
+    const { refreshData } = useMainLayout();
     const router = useRouter();
     const [isImporting, setIsImporting] = useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -203,35 +204,39 @@ const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
         }
 
         setIsImporting(true);
-        toast({ title: 'Rozpoczynanie importu...', description: 'Plik jest przesyłany na serwer. To może zająć chwilę.' });
+        toast({ title: 'Rozpoczynanie importu...', description: 'Plik jest przetwarzany. To może zająć chwilę.' });
 
         try {
-            // 1. Get signed URL from server
-            const signedUrlResult = await getSignedUploadUrl(file.name, file.type, currentUser.uid);
-            if (!signedUrlResult.success || !signedUrlResult.url || !signedUrlResult.jobId) {
-                throw new Error(signedUrlResult.message || 'Nie udało się uzyskać adresu URL do załadowania.');
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                try {
+                    const fileData = (event.target?.result as string).split(',')[1];
+                    const result = await bulkImportEmployees(fileData, currentUser.uid);
+
+                    if (result.success) {
+                        toast({ title: 'Import zakończony', description: result.message });
+                        await refreshData(false);
+                    } else {
+                        throw new Error(result.message);
+                    }
+                } catch (error) {
+                    const errorMessage = error instanceof Error ? error.message : "Wystąpił nieoczekiwany błąd podczas przetwarzania.";
+                    toast({ variant: 'destructive', title: 'Błąd importu', description: errorMessage, duration: 10000 });
+                } finally {
+                     setIsImporting(false);
+                     if(fileInputRef.current) fileInputRef.current.value = '';
+                }
+            };
+            reader.onerror = () => {
+                 toast({ variant: 'destructive', title: 'Błąd odczytu pliku', description: 'Nie udało się odczytać pliku po stronie klienta.'});
+                 setIsImporting(false);
             }
-            
-            const { url, jobId } = signedUrlResult;
-
-            // 2. Upload file to GCS
-            await axios.put(url, file, {
-                headers: { 'Content-Type': file.type },
-            });
-            
-            toast({ title: 'Przesłano!', description: 'Plik został przesłany, rozpoczynanie przetwarzania w tle.' });
-
-            // 3. Trigger background processing
-            await bulkImportEmployees(jobId, `imports/${jobId}-${file.name}`, currentUser.uid);
-
-            router.push(`/dashboard?view=import-status&jobId=${jobId}`);
+            reader.readAsDataURL(file);
             
         } catch (error) {
             console.error("Import error:", error);
             const errorMessage = error instanceof Error ? error.message : "Wystąpił nieoczekiwany błąd podczas importu.";
             toast({ variant: 'destructive', title: 'Błąd importu', description: String(errorMessage), duration: 10000 });
-        } finally {
-            if(fileInputRef.current) fileInputRef.current.value = '';
             setIsImporting(false);
         }
     };

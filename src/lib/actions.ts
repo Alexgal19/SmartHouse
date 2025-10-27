@@ -933,83 +933,9 @@ const parseAndFormatDate = (dateValue: any): string | null => {
     return null;
 };
 
-export async function getSignedUploadUrl(fileName: string, fileType: string, actorUid: string): Promise<{ success: boolean; url?: string; jobId?: string; message?: string }> {
+export async function bulkImportEmployees(fileData: string, actorUid: string): Promise<{success: boolean, message: string}> {
     try {
-        const storage = new Storage({
-            projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
-            credentials: {
-                client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-                private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-            },
-        });
-
-        const bucketName = `${process.env.GOOGLE_CLOUD_PROJECT_ID}.appspot.com`;
-        const jobId = `import-${Date.now()}`;
-        const filePath = `imports/${jobId}-${fileName}`;
-        
-        const [url] = await storage.bucket(bucketName).file(filePath).getSignedUrl({
-            version: 'v4',
-            action: 'write',
-            expires: Date.now() + 15 * 60 * 1000, // 15 minutes
-            contentType: fileType,
-        });
-
-        // Log the initial status
-        const statusSheet = await getSheet(SHEET_NAME_IMPORT_STATUS, IMPORT_STATUS_HEADERS);
-        const { coordinators } = await getSettings();
-        const actorName = coordinators.find(c => c.uid === actorUid)?.name || actorUid;
-        await statusSheet.addRow({
-            jobId,
-            fileName,
-            status: 'processing',
-            message: 'Oczekiwanie na załadowanie pliku...',
-            processedRows: 0,
-            totalRows: 0,
-            createdAt: new Date().toISOString(),
-            actorName,
-        }, { raw: false, insert: true });
-        
-        return { success: true, url, jobId };
-    } catch (error: unknown) {
-        console.error("Error getting signed URL:", error);
-        const message = error instanceof Error ? error.message : "An unknown error occurred.";
-        if (message.includes('Could not determine project ID')) {
-             return { success: false, message: 'GCS_BUCKET_NAME is not configured in the environment. Cannot determine storage bucket.' };
-        }
-        return { success: false, message: `Failed to get signed URL: ${message}` };
-    }
-}
-
-export async function bulkImportEmployees(jobId: string, filePath: string, actorUid: string): Promise<{success: boolean, message: string}> {
-    const statusSheet = await getSheet(SHEET_NAME_IMPORT_STATUS, IMPORT_STATUS_HEADERS);
-    const statusRows = await statusSheet.getRows();
-    const jobRow = statusRows.find(row => row.get('jobId') === jobId);
-
-    const updateStatus = async (status: ImportStatus['status'], message: string, processed?: number, total?: number) => {
-        if(jobRow) {
-            jobRow.set('status', status);
-            jobRow.set('message', message);
-            if (processed !== undefined) jobRow.set('processedRows', processed);
-            if (total !== undefined) jobRow.set('totalRows', total);
-            await jobRow.save();
-        }
-    };
-
-    try {
-        await updateStatus('processing', 'Pobieranie pliku z chmury...');
-        const storage = new Storage({
-             projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
-            credentials: {
-                client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-                private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-            },
-        });
-        const bucketName = `${process.env.GOOGLE_CLOUD_PROJECT_ID}.appspot.com`;
-        
-        const file = storage.bucket(bucketName).file(filePath);
-        const [buffer] = await file.download();
-        await updateStatus('processing', 'Przetwarzanie pliku Excel...');
-
+        const buffer = Buffer.from(fileData, 'base64');
         const settings = await getSettings();
         
         const workbook = XLSX.read(buffer, { type: 'buffer' });
@@ -1017,33 +943,28 @@ export async function bulkImportEmployees(jobId: string, filePath: string, actor
         const worksheet = workbook.Sheets[sheetName];
         const json: any[] = XLSX.utils.sheet_to_json(worksheet, { raw: false, defval: null });
 
-        const requiredHeaders = ['fullName', 'coordinatorName', 'nationality', 'gender', 'address', 'roomNumber', 'zaklad'];
-        
         if (json.length === 0) {
-            await updateStatus('failed', 'Plik jest pusty.', 0, 0);
-             return { success: false, message: `Plik jest pusty.` };
+            return { success: false, message: 'Plik jest pusty.' };
         }
-        
+
+        const requiredHeaders = ['fullName', 'coordinatorName', 'nationality', 'gender', 'address', 'roomNumber', 'zaklad'];
         const headers = Object.keys(json[0] || {});
         
         const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
         if (missingHeaders.length > 0) {
-            const message = `Brakujące kolumny w pliku: ${missingHeaders.join(', ')}`;
-            await updateStatus('failed', message, 0, json.length);
-            return { success: false, message };
+            return { success: false, message: `Brakujące kolumny w pliku: ${missingHeaders.join(', ')}` };
         }
         
         const employeesToAdd: (Partial<Employee>)[] = [];
         
         for (const row of json) {
             if (!row.fullName) {
-                continue;
+                continue; // Skip empty rows
             }
-
             const coordinator = row.coordinatorName ? settings.coordinators.find(c => c.name.toLowerCase() === String(row.coordinatorName).toLowerCase()) : null;
             
             const employee: Partial<Employee> = {
-                fullName: String(row.fullName),
+                fullName: row.fullName ? String(row.fullName) : '',
                 coordinatorId: coordinator ? coordinator.uid : '',
                 nationality: row.nationality ? String(row.nationality) : '',
                 gender: row.gender ? String(row.gender) : '',
@@ -1051,35 +972,22 @@ export async function bulkImportEmployees(jobId: string, filePath: string, actor
                 roomNumber: row.roomNumber ? String(row.roomNumber) : '',
                 zaklad: row.zaklad ? String(row.zaklad) : '',
                 checkInDate: parseAndFormatDate(row.checkInDate) ?? undefined,
-                contractStartDate: parseAndFormatDate(row.contractStartDate),
-                contractEndDate: parseAndFormatDate(row.contractEndDate),
-                departureReportDate: parseAndFormatDate(row.departureReportDate),
+                contractStartDate: parseAndFormatDate(row.contractStartDate) || undefined,
+                contractEndDate: parseAndFormatDate(row.contractEndDate) || undefined,
+                departureReportDate: parseAndFormatDate(row.departureReportDate) || undefined,
                 comments: row.comments ? String(row.comments) : undefined,
             };
             employeesToAdd.push(employee);
         }
         
-        await updateStatus('processing', `Importowanie ${employeesToAdd.length} pracowników...`, 0, employeesToAdd.length);
-        let processedCount = 0;
         for (const emp of employeesToAdd) {
             await addEmployee(emp, actorUid);
-            processedCount++;
-             if(processedCount % 10 === 0) { // Update status every 10 rows
-                await updateStatus('processing', `Zaimportowano ${processedCount} z ${employeesToAdd.length}...`, processedCount, employeesToAdd.length);
-            }
         }
 
-        await file.delete();
-        const successMessage = `Pomyślnie zaimportowano ${employeesToAdd.length} pracowników.`;
-        await updateStatus('completed', successMessage, employeesToAdd.length, employeesToAdd.length);
-
-        return { success: true, message: successMessage };
+        return { success: true, message: `Pomyślnie zaimportowano ${employeesToAdd.length} pracowników.` };
 
     } catch (e: unknown) {
-        console.error("Error in bulkImportEmployees:", e);
-        const errorMessage = e instanceof Error ? e.message : "Wystąpił nieznany błąd podczas przetwarzania pliku.";
-        await updateStatus('failed', errorMessage);
-        return { success: false, message: errorMessage };
+         return { success: false, message: e instanceof Error ? e.message : "Wystąpił nieznany błąd podczas przetwarzania pliku." };
     }
 }
 
