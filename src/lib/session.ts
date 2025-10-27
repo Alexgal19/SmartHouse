@@ -2,10 +2,10 @@
 // This file configures the iron-session library for session management.
 // It defines session options.
 
-import type { IronSessionOptions } from 'iron-session';
+import type { SessionOptions } from 'iron-session';
 import type { SessionData } from '@/types';
 
-export const sessionOptions: IronSessionOptions = {
+export const sessionOptions: SessionOptions = {
   password: process.env.SECRET_COOKIE_PASSWORD as string,
   cookieName: 'smarthouse-session',
   cookieOptions: {

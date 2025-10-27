@@ -301,18 +301,18 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
             roomNumber: employeeData.roomNumber || '',
             zaklad: employeeData.zaklad || '',
             checkInDate: employeeData.checkInDate || '',
-            checkOutDate: employeeData.checkOutDate,
+            checkOutDate: employeeData.checkOutDate || null,
             contractStartDate: employeeData.contractStartDate || null,
             contractEndDate: employeeData.contractEndDate || null,
-            departureReportDate: employeeData.departureReportDate,
-            comments: employeeData.comments,
+            departureReportDate: employeeData.departureReportDate || null,
+            comments: employeeData.comments || '',
             oldAddress: employeeData.oldAddress,
-            addressChangeDate: employeeData.addressChangeDate,
-            depositReturned: employeeData.depositReturned,
-            depositReturnAmount: employeeData.depositReturnAmount,
-            deductionRegulation: employeeData.deductionRegulation,
-            deductionNo4Months: employeeData.deductionNo4Months,
-            deductionNo30Days: employeeData.deductionNo30Days,
+            addressChangeDate: employeeData.addressChangeDate || null,
+            depositReturned: employeeData.depositReturned ?? null,
+            depositReturnAmount: employeeData.depositReturnAmount ?? null,
+            deductionRegulation: employeeData.deductionRegulation ?? null,
+            deductionNo4Months: employeeData.deductionNo4Months ?? null,
+            deductionNo30Days: employeeData.deductionNo30Days ?? null,
             deductionReason: employeeData.deductionReason,
         };
 
@@ -740,7 +740,7 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
         }, { raw: false, insert: true });
 
         const detailRows: any[] = [];
-        inspectionData.categories.forEach((category: { items: any[]; name: any; uwagi: any; photos: any; }) => {
+        inspectionData.categories.forEach((category: { items: any[]; name: any; uwagi?: any; photos?: any; }) => {
             category.items.forEach(item => {
                 detailRows.push({
                     id: `insp-det-${Date.now()}-${Math.random()}`,

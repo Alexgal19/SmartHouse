@@ -580,7 +580,7 @@ export async function getAllSheetsData() {
                 coordinatorId: row.coordinatorId,
                 coordinatorName: row.coordinatorName,
                 standard: row.standard || null,
-                categories: [...categoriesMap.values()],
+                categories: Array.from(categoriesMap.values()),
             };
         }).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -681,7 +681,7 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
                 coordinatorId: row.coordinatorId,
                 coordinatorName: row.coordinatorName,
                 standard: row.standard || null,
-                categories: [...categoriesMap.values()],
+                categories: Array.from(categoriesMap.values()),
             };
         }).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
