@@ -2,19 +2,19 @@
 "use client";
 
 import React from 'react';
+import Image from 'next/image';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import type { Inspection, Settings, SessionData, InspectionCategoryItem } from '@/types';
+import type { Inspection, Settings, SessionData } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Camera, Clipboard, Calendar as CalendarIcon } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Camera, Clipboard } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -22,6 +22,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { Switch } from '@/components/ui/switch';
+import { Calendar as CalendarIcon } from 'lucide-react';
+
 
 const inspectionItemSchema = z.object({
   label: z.string(),
@@ -325,7 +327,7 @@ export default function InspectionForm({ isOpen, onOpenChange, settings, current
                                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 mt-2">
                                     {form.watch(`categories.${categoryIndex}.photos`)!.map((photo, photoIndex) => (
                                         <div key={photoIndex} className="relative aspect-square">
-                                            <img src={photo} alt={`photo ${photoIndex + 1}`} className="w-full h-full object-cover rounded-md" />
+                                            <Image src={photo} alt={`photo ${photoIndex + 1}`} layout='fill' className="object-cover rounded-md" />
                                         </div>
                                     ))}
                                 </div>
@@ -356,3 +358,5 @@ export default function InspectionForm({ isOpen, onOpenChange, settings, current
     </Dialog>
   );
 }
+
+    

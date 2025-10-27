@@ -16,26 +16,20 @@ import {
 import Header from './header';
 import { MobileNav } from './mobile-nav';
 import type { View, Notification, Employee, Settings, NonEmployee, Inspection, EquipmentItem, SessionData, Address } from '../types';
-import { Building, ClipboardList, Home, Settings as SettingsIcon, Users, Archive, Loader2 } from 'lucide-react';
+import { Building, ClipboardList, Home, Settings as SettingsIcon, Users, Archive } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     clearAllNotifications,
     markNotificationAsRead,
-    getNotifications,
-    getEmployees,
-    getSettings,
     addEmployee,
     updateEmployee,
     updateSettings,
-    getInspections, 
     addInspection,
-    getNonEmployees,
     addNonEmployee,
     updateNonEmployee,
     deleteNonEmployee,
     deleteEmployee,
     checkAndUpdateEmployeeStatuses,
-    getEquipment,
     addEquipment,
     updateEquipment,
     deleteEquipment,
@@ -46,7 +40,6 @@ import { logout } from '../lib/auth';
 import { useToast } from '../hooks/use-toast';
 import { AddEmployeeForm, type EmployeeFormData } from './add-employee-form';
 import { AddNonEmployeeForm } from './add-non-employee-form';
-import InspectionForm from './inspection-form';
 import { cn } from '../lib/utils';
 import { AddressForm } from './address-form';
 
@@ -125,7 +118,7 @@ export default function MainLayout({
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isNonEmployeeFormOpen, setIsNonEmployeeFormOpen] = useState(false);
     const [isAddressFormOpen, setIsAddressFormOpen] = useState(false);
-    const [isInspectionFormOpen, setIsInspectionFormOpen] = useState(false);
+    
 
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
     const [editingNonEmployee, setEditingNonEmployee] = useState<NonEmployee | null>(null);

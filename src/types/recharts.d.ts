@@ -70,8 +70,8 @@ declare module 'recharts' {
     content?: ContentType;
     separator?: string;
     offset?: number;
-    wrapperStyle?: object;
-    cursor?: boolean | object | React.ReactElement;
+    wrapperStyle?: Record<string, unknown>;
+    cursor?: boolean | Record<string, unknown> | React.ReactElement;
     viewBox?: { x?: number; y?: number; width?: number; height?: number };
     active?: boolean;
     coordinate?: { x: number; y: number };

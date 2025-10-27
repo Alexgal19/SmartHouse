@@ -64,7 +64,7 @@ const ListManager = ({ name, title, fields, append, remove }: { name: string; ti
     </div>
 );
 
-const CoordinatorManager = ({ form, fields, append, remove }: { form: any, fields: Record<"id", string>[], append: (obj: Record<string,any>) => void, remove: (index: number) => void }) => (
+const CoordinatorManager = ({ form, fields, append, remove }: { form:  ReturnType<typeof useForm<z.infer<typeof formSchema>>>; fields: Record<"id", string>[], append: (obj: Record<string,unknown>) => void, remove: (index: number) => void }) => (
   <div className="space-y-4 rounded-md border p-4">
     <div className="flex justify-between items-center mb-4">
         <h3 className="font-medium">Koordynatorzy</h3>
@@ -122,15 +122,15 @@ const CoordinatorManager = ({ form, fields, append, remove }: { form: any, field
   </div>
 );
 
-const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { addresses: Address[]; coordinators: any[], onEdit: (address: Address) => void; onRemove: (addressId: string) => void; onAdd: (coordinatorId: string) => void; }) => {
+const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { addresses: Address[]; coordinators:  z.infer<typeof coordinatorSchema>[]; onEdit: (address: Address) => void; onRemove: (addressId: string) => void; onAdd: (coordinatorId: string) => void; }) => {
     const [filterCoordinatorId, setFilterCoordinatorId] = useState('all');
     
-    const coordinatorMap = useMemo(() => new Map(coordinators.map((c: { uid: any; name: any; }) => [c.uid, c.name])), [coordinators]);
+    const coordinatorMap = useMemo(() => new Map(coordinators.map(c => [c.uid, c.name])), [coordinators]);
 
     const filteredAddresses = useMemo(() => {
         if (!addresses) return [];
         if (filterCoordinatorId === 'all') return addresses;
-        return addresses.filter((a: { coordinatorId: string; }) => a.coordinatorId === filterCoordinatorId);
+        return addresses.filter(a => a.coordinatorId === filterCoordinatorId);
     }, [addresses, filterCoordinatorId]);
 
     return (
@@ -144,7 +144,7 @@ const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { 
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
-                            {coordinators.map((c: { uid: React.Key | null | undefined; name: string; }) => <SelectItem key={c.uid} value={String(c.uid)}>{c.name}</SelectItem>)}
+                            {coordinators.map(c => <SelectItem key={c.uid} value={String(c.uid)}>{c.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
                     <Button type="button" variant="outline" size="sm" onClick={() => onAdd(filterCoordinatorId)}>
@@ -181,7 +181,7 @@ const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { 
 };
 
 
-const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
+const BulkActions = ({ _currentUser }: { currentUser: SessionData }) => {
     const { handleBulkDeleteEmployees } = useMainLayout();
     const [isDeletingActive, setIsDeletingActive] = useState(false);
     const [isDeletingDismissed, setIsDeletingDismissed] = useState(false);
@@ -347,7 +347,7 @@ const ReportsGenerator = ({ settings, currentUser }: { settings: Settings; curre
     );
 };
 
-function SettingsManager({ form, handleUpdateSettings, handleAddressFormOpen }: { settings: Settings, form: any, handleUpdateSettings: any, handleAddressFormOpen: any }) {
+function SettingsManager({ form, handleUpdateSettings, handleAddressFormOpen }: { settings: Settings, form: ReturnType<typeof useForm<z.infer<typeof formSchema>>>, handleUpdateSettings: (newSettings: Partial<Settings>) => Promise<void>, handleAddressFormOpen: (address: Address | null) => void }) {
     const { fields: natFields, append: appendNat, remove: removeNat } = useFieldArray({ control: form.control, name: 'nationalities' });
     const { fields: depFields, append: appendDep, remove: removeDep } = useFieldArray({ control: form.control, name: 'departments' });
     const { fields: genFields, append: appendGen, remove: removeGen } = useFieldArray({ control: form.control, name: 'genders' });
@@ -508,4 +508,4 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
   );
 }
 
-  
+    

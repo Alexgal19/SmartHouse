@@ -2,7 +2,6 @@
 "use client";
 
 import Link from "next/link"
-import { ClipboardList, Home, Users, Settings, Archive } from "lucide-react"
 import type { View, SessionData } from "@/types"
 import { cn } from "@/lib/utils"
 
@@ -50,4 +49,4 @@ export function MobileNav({
   )
 }
 
-  
+    

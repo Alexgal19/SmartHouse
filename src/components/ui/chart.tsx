@@ -34,7 +34,7 @@ import {
 } from "recharts"
 import { cn } from "@/lib/utils"
 import {
-  Card,
+  Card
 } from "@/components/ui/card"
 
 // #region Chart
@@ -117,10 +117,10 @@ const ChartLegend = ({
             content={
           hide 
             ? undefined 
-            : (props: any) => (
+            : (legendProps: Record<string, unknown>) => (
                 <ChartLegendContent
                   className={className}
-                  payload={props.payload}
+                  payload={legendProps.payload as React.ComponentProps<typeof Legend>["payload"]}
                   getLabel={getLabel}
                 />
               )
@@ -236,7 +236,7 @@ const ChartTooltipContent = ({
   const { name: labelName } = firstPayload
   const label =
     payloadLabel ||
-    (finalLabelKey && firstPayload.payload[finalLabelKey]) ||
+    (finalLabelKey && (firstPayload.payload as Record<string, unknown>)[finalLabelKey]) ||
     (typeof labelName === "number"
       ? labelName.toString()
       : labelName) ||
@@ -449,4 +449,4 @@ export {
 
 export type { ChartConfig }
 
-  
+    

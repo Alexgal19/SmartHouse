@@ -3,7 +3,7 @@
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Address, Coordinator, Inspection, InspectionCategory, InspectionCategoryItem, InspectionTemplateCategory } from '@/types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Address, Coordinator, Inspection, InspectionTemplateCategory } from '@/types';
 import { format, isValid, parse, parseISO } from 'date-fns';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
@@ -361,7 +361,7 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             }
         });
         
-        const inspectionTemplate = inspectionTemplateRows.reduce((acc: InspectionTemplateCategory[], row) => {
+        const inspectionTemplate: InspectionTemplateCategory[] = inspectionTemplateRows.reduce((acc: InspectionTemplateCategory[], row) => {
             const categoryName = row.category;
             if (!categoryName) return acc;
 
@@ -373,7 +373,7 @@ export async function getSettingsFromSheet(): Promise<Settings> {
 
             category.items.push({
                 label: row.label,
-                type: row.type as InspectionCategoryItem['type'],
+                type: row.type as InspectionTemplateCategory['items'][number]['type'],
                 options: row.options ? row.options.split(',').map((s: string) => s.trim()) : [],
             });
 
@@ -457,7 +457,7 @@ export async function getAllSheetsData() {
         const addresses: Address[] = settingsSheets.addressRows.map(rowObj => ({ id: rowObj.id, name: rowObj.name, coordinatorId: rowObj.coordinatorId, rooms: roomsByAddressId.get(rowObj.id) || [] }));
         const coordinators: Coordinator[] = settingsSheets.coordinatorRows.map(rowObj => ({ uid: rowObj.uid, name: rowObj.name, isAdmin: rowObj.isAdmin === 'TRUE', password: rowObj.password }));
         
-        const inspectionTemplate = settingsSheets.inspectionTemplateRows.reduce((acc: InspectionTemplateCategory[], row) => {
+        const inspectionTemplate : InspectionTemplateCategory[] = settingsSheets.inspectionTemplateRows.reduce((acc: InspectionTemplateCategory[], row) => {
             const categoryName = row.category;
             if (!categoryName) return acc;
 
@@ -469,7 +469,7 @@ export async function getAllSheetsData() {
 
             category.items.push({
                 label: row.label,
-                type: row.type as InspectionCategoryItem['type'],
+                type: row.type as InspectionTemplateCategory['items'][number]['type'],
                 options: row.options ? row.options.split(',').map((s: string) => s.trim()) : [],
             });
 
@@ -511,7 +511,7 @@ export async function getAllSheetsData() {
             const inspectionId = row.id;
             const details = detailsByInspectionId.get(inspectionId) || [];
             
-            const categoriesMap = new Map<string, InspectionCategory>();
+            const categoriesMap = new Map<string, any>();
 
             details.forEach(detail => {
                 const categoryName = detail.category;
@@ -522,9 +522,9 @@ export async function getAllSheetsData() {
 
                 const itemLabel = detail.itemLabel;
                 if (itemLabel && !itemLabel.startsWith('Photo') && itemLabel !== 'Uwagi') {
-                    let type: InspectionCategoryItem['type'] = 'text';
+                    let type: any = 'text';
                     const rawValue = detail.itemValue;
-                    let value: unknown = rawValue;
+                    let value: any = rawValue;
                     
                     if (rawValue?.toLowerCase() === 'true' || rawValue?.toLowerCase() === 'false') {
                         type = 'yes_no';
@@ -545,11 +545,11 @@ export async function getAllSheetsData() {
                             value = JSON.parse(rawValue);
                             type = 'checkbox_group';
                         } catch {
-                             // eslint-disable-next-line no-empty
+                            // eslint-disable-next-line no-empty
                         }
                     }
 
-                    category.items.push({ label: itemLabel, value: value as string | number | boolean | string[], type, options: [] });
+                    category.items.push({ label: itemLabel, value, type, options: [] });
                 }
                 if (detail.uwagi) {
                     category.uwagi = detail.uwagi;
@@ -609,7 +609,7 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
             const inspectionId = row.id;
             const details = detailsByInspectionId.get(inspectionId) || [];
             
-            const categoriesMap = new Map<string, InspectionCategory>();
+            const categoriesMap = new Map<string, any>();
 
             details.forEach(detail => {
                 const categoryName = detail.category;
@@ -623,9 +623,9 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
                 const photoData = detail.photoData;
 
                 if (itemLabel && !itemLabel.startsWith('Photo') && itemLabel !== 'Uwagi') {
-                    let type: InspectionCategoryItem['type'] = 'text';
+                    let type: any = 'text';
                     const rawValue = detail.itemValue;
-                    let value: unknown = rawValue;
+                    let value: any = rawValue;
                     
                     if (rawValue?.toLowerCase() === 'true' || rawValue?.toLowerCase() === 'false') {
                         type = 'yes_no';
@@ -650,7 +650,7 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
                         }
                     }
 
-                    category.items.push({ label: itemLabel, value: value as string | number | boolean | string[], type, options: [] });
+                    category.items.push({ label: itemLabel, value, type, options: [] });
                 }
                 if (uwagi) {
                     category.uwagi = uwagi;
