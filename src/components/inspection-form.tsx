@@ -48,7 +48,7 @@ export type InspectionFormProps = {
   onOpenChange: (open: boolean) => void;
   settings: Settings;
   currentUser: SessionData;
-  onSave: (data: Omit<Inspection, 'id' | 'coordinatorName'>) => void;
+  onSave: (data: Omit<Inspection, 'id'>) => void;
   item?: Inspection | null;
 };
 
@@ -113,11 +113,12 @@ export default function InspectionForm({ isOpen, onOpenChange, settings, current
     const address = settings.addresses.find(a => a.id === values.addressId);
     if (!address) return;
 
-    const inspectionData: Omit<Inspection, 'id' | 'coordinatorName'> = {
+    const inspectionData: Omit<Inspection, 'id'> = {
       ...values,
       date: format(values.date, 'yyyy-MM-dd'),
       addressName: address.name,
       coordinatorId: currentUser.uid,
+      coordinatorName: currentUser.name,
       categories: values.categories.map(cat => ({
         name: cat.name,
         items: cat.items.map(item => ({
@@ -326,3 +327,5 @@ export default function InspectionForm({ isOpen, onOpenChange, settings, current
     </Dialog>
   );
 }
+
+    
