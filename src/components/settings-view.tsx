@@ -189,6 +189,13 @@ const BulkActions = ({ currentUser, settings }: { currentUser: SessionData; sett
     const [isDeletingActive, setIsDeletingActive] = useState(false);
     const [isDeletingDismissed, setIsDeletingDismissed] = useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
+    
+    const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve((reader.result as string).split(',')[1]);
+        reader.onerror = error => reject(error);
+    });
 
     const onFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -196,9 +203,8 @@ const BulkActions = ({ currentUser, settings }: { currentUser: SessionData; sett
 
         setIsImporting(true);
         try {
-            const arrayBuffer = await file.arrayBuffer();
-            const fileData = Array.from(new Uint8Array(arrayBuffer));
-            const result = await handleBulkImport(fileData);
+            const base64String = await toBase64(file);
+            const result = await handleBulkImport(base64String);
 
             if (result.success) {
                 toast({ title: 'Import udany', description: result.message });
@@ -538,3 +544,5 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     </div>
   );
 }
+
+    

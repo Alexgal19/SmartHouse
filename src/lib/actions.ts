@@ -922,11 +922,11 @@ const parseAndFormatDate = (dateValue: any): string => {
 };
 
 
-export async function bulkImportEmployees(fileData: number[], actorUid: string): Promise<{success: boolean, message: string}> {
+export async function bulkImportEmployees(fileData: string, actorUid: string): Promise<{success: boolean, message: string}> {
     try {
         const settings = await getSettings();
         
-        const buffer = Buffer.from(fileData);
+        const buffer = Buffer.from(fileData, 'base64');
         const workbook = XLSX.read(buffer, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
@@ -1186,3 +1186,5 @@ export async function generateAccommodationReport(year: number, month: number, c
         throw new Error(error instanceof Error ? error.message : "An unknown error occurred during accommodation report generation.");
     }
 }
+
+    
