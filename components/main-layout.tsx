@@ -13,7 +13,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarProvider
-} from '../app/src/components/ui/sidebar';
+} from '..components/ui/sidebar';
 import Header from '../app/src/components/header';
 import { MobileNav } from '../app/src/components/mobile-nav';
 import type { View, Notification, Employee, Settings, NonEmployee, Inspection, EquipmentItem, SessionData } from '../app/src/types';

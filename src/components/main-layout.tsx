@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/sidebar';
 import Header from '@/components/header';
 import { MobileNav } from '@/components/mobile-nav';
-import type { View, Notification, Employee, Settings, NonEmployee, Inspection, EquipmentItem, SessionData, Address, ImportStatus } from '@/types';
+import type { View, Notification, Employee, Settings, NonEmployee, Inspection, EquipmentItem, SessionData, Address } from '@/types';
 import { Building, ClipboardList, Home, Settings as SettingsIcon, Users, Archive } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { clearAllNotifications, markNotificationAsRead, getNotifications, getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getInspections, addInspection, updateInspection, deleteInspection, bulkDeleteEmployees, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee, deleteEmployee, checkAndUpdateEmployeeStatuses, getEquipment, addEquipment, updateEquipment, deleteEquipment, getAllData } from '@/lib/actions';
