@@ -499,22 +499,27 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
 
     const EntityListComponent = viewMode === 'grid' || isMobile ? EntityCardList : EntityTable;
 
-    const renderContent = () => (
-        <>
-            <ScrollArea className="h-[calc(100vh-22rem)] sm:h-[65vh] overflow-x-auto" style={{ opacity: isPending ? 0.6 : 1 }}>
-                {isMounted ? <EntityListComponent 
-                    entities={paginatedData}
-                    settings={settings}
-                    onEdit={handleEdit}
-                    onDismiss={(id) => handleAction('dismiss', id)}
-                    onRestore={(id) => handleAction('restore', id)}
-                    onPermanentDelete={handlePermanentDelete}
-                    isDismissed={tab === 'dismissed'}
-                /> : <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
-            </ScrollArea>
-             <PaginationControls currentPage={page} totalPages={totalPages} onPageChange={(p) => updateSearchParams({ page: p })} isDisabled={isPending} />
-        </>
-    );
+    const renderContent = () => {
+        const isDismissedTab = tab === 'dismissed';
+        const isEmployeeTab = tab === 'active' || tab === 'dismissed';
+
+        return (
+            <>
+                <ScrollArea className="h-[calc(100vh-22rem)] sm:h-[65vh] overflow-x-auto" style={{ opacity: isPending ? 0.6 : 1 }}>
+                    {isMounted ? <EntityListComponent
+                        entities={paginatedData}
+                        settings={settings}
+                        onEdit={handleEdit}
+                        onDismiss={isEmployeeTab ? (id) => handleAction('dismiss', id) : undefined}
+                        onRestore={isEmployeeTab ? (id) => handleAction('restore', id) : undefined}
+                        onPermanentDelete={handlePermanentDelete}
+                        isDismissed={isDismissedTab}
+                    /> : <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
+                </ScrollArea>
+                 <PaginationControls currentPage={page} totalPages={totalPages} onPageChange={(p) => updateSearchParams({ page: p })} isDisabled={isPending} />
+            </>
+        );
+    };
 
     return (
         <Card>
