@@ -1,7 +1,6 @@
+
 {
   "compilerOptions": {
-    "target": "es2015",
-    "downlevelIteration": true,
     "lib": [
       "dom",
       "dom.iterable",
@@ -23,10 +22,9 @@
         "name": "next"
       }
     ],
-    "baseUrl": ".",
     "paths": {
       "@/*": [
-        "src/*"
+        "./src/*"
       ]
     }
   },
@@ -34,12 +32,9 @@
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts"
+    ".next/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    "src_backup",
-    ".next"
+    "node_modules"
   ]
 }
