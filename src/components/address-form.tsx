@@ -93,9 +93,9 @@ export function AddressForm({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
         <DialogHeader>
-          <DialogTitle>{address ? 'Edytuj adres' : 'Dodaj nowy adres'}</DialogTitle>
+          <DialogTitle>{address?.name ? 'Edytuj adres' : 'Dodaj nowy adres'}</DialogTitle>
           <DialogDescription>
-            Wypełnij poniższe pola, aby {address ? 'zaktualizować' : 'dodać'} adres i zarządzać pokojami.
+            Wypełnij poniższe pola, aby {address?.name ? 'zaktualizować' : 'dodać'} adres i zarządzać pokojami.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -119,7 +119,7 @@ export function AddressForm({
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Przypisany koordynator</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="Wybierz koordynatora" /></SelectTrigger></FormControl>
                                 <SelectContent>
                                     {coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
@@ -183,3 +183,5 @@ export function AddressForm({
     </Dialog>
   );
 }
+
+    

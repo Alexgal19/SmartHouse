@@ -18,10 +18,6 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { generateMonthlyReport, generateAccommodationReport } from '@/lib/actions';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Check, ChevronsUpDown } from 'lucide-react';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 
@@ -126,22 +122,40 @@ const CoordinatorManager = ({ form, fields, append, remove }: { form: any, field
   </div>
 );
 
-const AddressManager = ({ form, onEdit, onRemove, onAdd }: { form: any; onEdit: (address: Address) => void; onRemove: (addressId: string) => void; onAdd: () => void; }) => {
+const AddressManager = ({ form, onEdit, onRemove, onAdd }: { form: any; onEdit: (address: Address) => void; onRemove: (addressId: string) => void; onAdd: (coordinatorId: string) => void; }) => {
+    const [filterCoordinatorId, setFilterCoordinatorId] = useState('all');
     const addresses: Address[] = useWatch({ control: form.control, name: 'addresses' });
     const coordinators: {uid: string, name: string}[] = useWatch({ control: form.control, name: 'coordinators' });
     const coordinatorMap = useMemo(() => new Map(coordinators.map(c => [c.uid, c.name])), [coordinators]);
 
+    const filteredAddresses = useMemo(() => {
+        if (!addresses) return [];
+        if (filterCoordinatorId === 'all') return addresses;
+        return addresses.filter(a => a.coordinatorId === filterCoordinatorId);
+    }, [addresses, filterCoordinatorId]);
+
     return (
         <div className="space-y-4 rounded-md border p-4">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                 <h3 className="font-medium">Adresy i pokoje</h3>
-                <Button type="button" variant="outline" size="sm" onClick={onAdd}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Dodaj adres
-                </Button>
+                 <div className="flex w-full sm:w-auto items-center gap-2">
+                    <Select value={filterCoordinatorId} onValueChange={setFilterCoordinatorId}>
+                        <SelectTrigger className="w-full sm:w-[200px]">
+                            <SelectValue placeholder="Filtruj wg koordynatora" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
+                            {coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <Button type="button" variant="outline" size="sm" onClick={() => onAdd(filterCoordinatorId)}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Dodaj adres
+                    </Button>
+                 </div>
             </div>
-            {addresses && addresses.length > 0 ? (
+            {filteredAddresses && filteredAddresses.length > 0 ? (
                 <div className="space-y-2">
-                    {addresses.map((address) => (
+                    {filteredAddresses.map((address) => (
                         <div key={address.id} className="flex items-center justify-between rounded-lg border p-3">
                             <div>
                                 <p className="font-semibold">{address.name}</p>
@@ -161,7 +175,7 @@ const AddressManager = ({ form, onEdit, onRemove, onAdd }: { form: any; onEdit: 
                     ))}
                 </div>
             ) : (
-                <p className="text-sm text-muted-foreground text-center py-2">Brak zdefiniowanych adresów.</p>
+                <p className="text-sm text-muted-foreground text-center py-2">Brak zdefiniowanych adresów dla wybranego koordynatora.</p>
             )}
         </div>
     );
@@ -393,8 +407,6 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
   }, [settings, form]);
   
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
-    // The handleUpdateSettings function in main-layout now gets its data from the form's state directly
-    // This onSubmit only needs to trigger the update.
     const currentValues = form.getValues();
     const newSettings: Partial<Settings> = {
         nationalities: currentValues.nationalities.map(n => n.value),
@@ -414,6 +426,16 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
         removeAddr(addressIndex);
     }
   }
+
+  const handleAddAddress = (coordinatorId: string) => {
+    const newAddress: Address = {
+        id: `addr-${Date.now()}`,
+        name: '',
+        coordinatorId: coordinatorId === 'all' ? '' : coordinatorId,
+        rooms: [],
+    };
+    handleAddressFormOpen(newAddress);
+  };
   
   if (!currentUser.isAdmin) {
       return (
@@ -486,7 +508,7 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
                                 <AddressManager 
                                     form={form} 
                                     onEdit={(address) => handleAddressFormOpen(address)} 
-                                    onAdd={() => handleAddressFormOpen(null)}
+                                    onAdd={handleAddAddress}
                                     onRemove={handleRemoveAddress}
                                 />
                              </AccordionContent>
@@ -511,3 +533,5 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     </div>
   );
 }
+
+    
