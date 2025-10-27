@@ -1,5 +1,6 @@
 
 
+
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback, createContext, useContext, useRef } from 'react';
@@ -19,7 +20,7 @@ import { MobileNav } from '@/components/mobile-nav';
 import type { View, Notification, Employee, Settings, NonEmployee, Inspection, EquipmentItem, SessionData, Address } from '@/types';
 import { Building, ClipboardList, Home, Settings as SettingsIcon, Users, Archive } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { clearAllNotifications, markNotificationAsRead, getNotifications, getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getInspections, addInspection, updateInspection, deleteInspection, bulkDeleteEmployees, bulkImportEmployees, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee, deleteEmployee, checkAndUpdateEmployeeStatuses, getEquipment, addEquipment, updateEquipment, deleteEquipment, getAllData } from '@/lib/actions';
+import { clearAllNotifications, markNotificationAsRead, getNotifications, getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getInspections, addInspection, updateInspection, deleteInspection, bulkDeleteEmployees, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee, deleteEmployee, checkAndUpdateEmployeeStatuses, getEquipment, addEquipment, updateEquipment, deleteEquipment, getAllData } from '@/lib/actions';
 import { logout } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { AddEmployeeForm, type EmployeeFormData } from '@/components/add-employee-form';
@@ -53,7 +54,6 @@ type MainLayoutContextType = {
     handleAddEmployeeClick: () => void;
     handleUpdateSettings: (newSettings: Partial<Settings>) => Promise<void>;
     refreshData: (showToast?: boolean) => Promise<void>;
-    handleBulkImport: (fileData: string) => Promise<{ success: boolean; message: string; }>;
     handleAddNonEmployeeClick: () => void;
     handleEditNonEmployeeClick: (nonEmployee: NonEmployee) => void;
     handleDeleteNonEmployee: (id: string) => Promise<void>;
@@ -530,19 +530,6 @@ export default function MainLayout({
         }
     }, [currentUser, refreshData, toast]);
     
-     const handleBulkImport = useCallback(async (fileData: string) => {
-        if (!currentUser?.isAdmin) {
-            return { success: false, message: "Brak uprawnień do importu." };
-        }
-        try {
-            const result = await bulkImportEmployees(fileData, currentUser.uid);
-            await refreshData(false);
-            return result;
-        } catch (e: unknown) {
-            return { success: false, message: e instanceof Error ? e.message : "Wystąpił nieznany błąd podczas przetwarzania pliku." };
-        }
-    }, [currentUser, refreshData]);
-    
     const handleSaveInspection = (data: Omit<Inspection, 'id' | 'addressName' | 'coordinatorName'>, id?: string) => {
         if (!currentUser || !settings) return;
 
@@ -581,7 +568,6 @@ export default function MainLayout({
         handleAddEmployeeClick,
         handleUpdateSettings,
         refreshData,
-        handleBulkImport,
         handleAddNonEmployeeClick,
         handleEditNonEmployeeClick,
         handleDeleteNonEmployee,
@@ -612,7 +598,6 @@ export default function MainLayout({
         handleAddEmployeeClick,
         handleUpdateSettings,
         refreshData,
-        handleBulkImport,
         handleAddNonEmployeeClick,
         handleEditNonEmployeeClick,
         handleDeleteNonEmployee,
@@ -731,5 +716,3 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
-
-    

@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useMemo } from 'react';
@@ -17,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { generateMonthlyReport, generateAccommodationReport } from '@/lib/actions';
+import { generateMonthlyReport, generateAccommodationReport, getSignedUploadUrl, bulkImportEmployees } from '@/lib/actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 
@@ -183,7 +184,7 @@ const AddressManager = ({ form, onEdit, onRemove, onAdd }: { form: any; onEdit: 
 
 
 const BulkActions = ({ currentUser, settings }: { currentUser: SessionData; settings: Settings }) => {
-    const { handleBulkDeleteEmployees, handleBulkImport } = useMainLayout();
+    const { handleBulkDeleteEmployees, refreshData } = useMainLayout();
     const { toast } = useToast();
     const [isImporting, setIsImporting] = useState(false);
     const [isDeletingActive, setIsDeletingActive] = useState(false);
@@ -195,33 +196,42 @@ const BulkActions = ({ currentUser, settings }: { currentUser: SessionData; sett
         if (!file) return;
 
         setIsImporting(true);
-        try {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = async () => {
-                try {
-                    const base64String = (reader.result as string).split(',')[1];
-                    const result = await handleBulkImport(base64String);
+        toast({ title: 'Rozpoczynanie importu...', description: 'Poczekaj, aż plik zostanie przesłany i przetworzony.' });
 
-                    if (result.success) {
-                        toast({ title: 'Import udany', description: result.message });
-                    } else {
-                        toast({ variant: 'destructive', title: 'Błąd importu', description: result.message, duration: 10000 });
-                    }
-                } catch (error) {
-                    toast({ variant: 'destructive', title: 'Błąd przetwarzania', description: "Wystąpił nieoczekiwany błąd.", duration: 10000 });
-                } finally {
-                     setIsImporting(false);
-                     if(fileInputRef.current) fileInputRef.current.value = '';
-                }
-            };
-            reader.onerror = () => {
-                toast({ variant: 'destructive', title: 'Błąd pliku', description: "Nie udało się odczytać pliku.", duration: 10000 });
-                setIsImporting(false);
+        try {
+            // 1. Get signed URL from server
+            const urlRes = await getSignedUploadUrl(file.name, file.type);
+            if (!urlRes.success || !urlRes.url || !urlRes.filePath) {
+                throw new Error(urlRes.message || "Nie udało się uzyskać adresu URL do przesyłania.");
             }
+            
+            // 2. Upload file to GCS
+            const uploadRes = await fetch(urlRes.url, {
+                method: 'PUT',
+                body: file,
+                headers: { 'Content-Type': file.type },
+            });
+
+            if (!uploadRes.ok) {
+                throw new Error(`Błąd przesyłania pliku: ${uploadRes.statusText}`);
+            }
+
+            // 3. Trigger processing on the server
+            const importResult = await bulkImportEmployees(urlRes.filePath, currentUser.uid);
+
+            if (importResult.success) {
+                toast({ title: 'Import udany', description: importResult.message });
+                await refreshData(false);
+            } else {
+                throw new Error(importResult.message);
+            }
+
         } catch (error) {
-             toast({ variant: 'destructive', title: 'Błąd pliku', description: "Nie udało się odczytać pliku.", duration: 10000 });
-             setIsImporting(false);
+            console.error("Import error:", error);
+            toast({ variant: 'destructive', title: 'Błąd importu', description: error instanceof Error ? error.message : "Wystąpił nieoczekiwany błąd.", duration: 10000 });
+        } finally {
+            setIsImporting(false);
+            if(fileInputRef.current) fileInputRef.current.value = '';
         }
     };
     
@@ -550,5 +560,3 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     </div>
   );
 }
-
-    

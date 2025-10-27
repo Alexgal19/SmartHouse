@@ -1,11 +1,13 @@
 
 
+
 "use server";
 
 import type { Employee, Settings, Notification, NotificationChange, Room, Inspection, NonEmployee, DeductionReason, EquipmentItem, TemporaryAccess } from '@/types';
 import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getInspectionsFromSheet, getNonEmployeesFromSheet, getEquipmentFromSheet, getAllSheetsData } from './sheets';
 import { format, isPast, isValid, parse, startOfMonth, endOfMonth, differenceInDays, min, max } from 'date-fns';
 import * as XLSX from 'xlsx';
+import { Storage } from '@google-cloud/storage';
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
 const SHEET_NAME_NON_EMPLOYEES = 'NonEmployees';
@@ -137,7 +139,6 @@ const deserializeEmployee = (row: any): Employee | null => {
     if (!id) return null;
 
     const checkInDate = safeFormat(plainObject.checkInDate);
-    if (!checkInDate) return null;
 
     let deductionReason: DeductionReason[] | undefined = undefined;
     if (plainObject.deductionReason && typeof plainObject.deductionReason === 'string') {
@@ -161,7 +162,7 @@ const deserializeEmployee = (row: any): Employee | null => {
         address: plainObject.address || '',
         roomNumber: plainObject.roomNumber || '',
         zaklad: plainObject.zaklad || '',
-        checkInDate: checkInDate,
+        checkInDate: checkInDate || '',
         checkOutDate: safeFormat(plainObject.checkOutDate),
         contractStartDate: safeFormat(plainObject.contractStartDate),
         contractEndDate: safeFormat(plainObject.contractEndDate),
@@ -922,12 +923,58 @@ const parseAndFormatDate = (dateValue: any): string => {
     return '';
 };
 
-
-export async function bulkImportEmployees(fileData: string, actorUid: string): Promise<{success: boolean, message: string}> {
+export async function getSignedUploadUrl(fileName: string, contentType: string): Promise<{ success: boolean; url?: string; filePath?: string; message?: string; }> {
     try {
+        const storage = new Storage({
+            projectId: process.env.GOOGLE_PROJECT_ID,
+            credentials: {
+                client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+                private_key: process.env.GOOGLE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
+            },
+        });
+
+        const bucketName = process.env.GCS_BUCKET_NAME;
+        if (!bucketName) {
+            throw new Error("GCS_BUCKET_NAME is not configured in the environment.");
+        }
+
+        const filePath = `imports/${Date.now()}-${fileName}`;
+        const file = storage.bucket(bucketName).file(filePath);
+
+        const [url] = await file.getSignedUrl({
+            version: 'v4',
+            action: 'write',
+            expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+            contentType,
+        });
+
+        return { success: true, url, filePath };
+
+    } catch (e: unknown) {
+        console.error("Error getting signed URL:", e);
+        return { success: false, message: e instanceof Error ? e.message : "Failed to create upload URL." };
+    }
+}
+
+export async function bulkImportEmployees(filePath: string, actorUid: string): Promise<{success: boolean, message: string}> {
+    try {
+        const storage = new Storage({
+            projectId: process.env.GOOGLE_PROJECT_ID,
+            credentials: {
+                client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+                private_key: process.env.GOOGLE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
+            },
+        });
+        const bucketName = process.env.GCS_BUCKET_NAME;
+        if (!bucketName) {
+            throw new Error("GCS_BUCKET_NAME is not configured in the environment.");
+        }
+        
+        const file = storage.bucket(bucketName).file(filePath);
+        const [buffer] = await file.download();
+        
         const settings = await getSettings();
         
-        const buffer = Buffer.from(fileData, 'base64');
         const workbook = XLSX.read(buffer, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
@@ -949,7 +996,6 @@ export async function bulkImportEmployees(fileData: string, actorUid: string): P
         const employeesToAdd: (Partial<Employee>)[] = [];
         
         for (const row of json) {
-            // Ignore empty rows
             if (!row.fullName) {
                 continue;
             }
@@ -977,12 +1023,17 @@ export async function bulkImportEmployees(fileData: string, actorUid: string): P
             await addEmployee(emp, actorUid);
         }
 
+        // Clean up the file from GCS
+        await file.delete();
+
         return { success: true, message: `Pomyślnie zaimportowano ${employeesToAdd.length} pracowników.` };
 
     } catch (e: unknown) {
+        console.error("Error in bulkImportEmployees:", e);
          return { success: false, message: e instanceof Error ? e.message : "Wystąpił nieznany błąd podczas przetwarzania pliku." };
     }
 }
+
 
 export async function generateMonthlyReport(year: number, month: number, coordinatorId?: string): Promise<{ success: boolean; message?: string; fileContent?: string; fileName?: string }> {
     try {
@@ -1187,5 +1238,3 @@ export async function generateAccommodationReport(year: number, month: number, c
         throw new Error(error instanceof Error ? error.message : "An unknown error occurred during accommodation report generation.");
     }
 }
-
-    
