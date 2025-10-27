@@ -327,7 +327,7 @@ export default function InspectionForm({ isOpen, onOpenChange, settings, current
                                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 mt-2">
                                     {form.watch(`categories.${categoryIndex}.photos`)!.map((photo, photoIndex) => (
                                         <div key={photoIndex} className="relative aspect-square">
-                                            <Image src={photo} alt={`photo ${photoIndex + 1}`} layout='fill' className="object-cover rounded-md" />
+                                            <Image src={photo} alt={`photo ${photoIndex + 1}`} fill className="object-cover rounded-md" />
                                         </div>
                                     ))}
                                 </div>
@@ -358,5 +358,3 @@ export default function InspectionForm({ isOpen, onOpenChange, settings, current
     </Dialog>
   );
 }
-
-    

@@ -18,18 +18,28 @@ import { useToast } from "@/hooks/use-toast";
 import { login } from '@/lib/auth';
 import { Building, Download } from 'lucide-react';
 
+// Define an interface for the BeforeInstallPromptEvent
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: string[];
+  readonly userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed';
+    platform: string;
+  }>;
+  prompt(): Promise<void>;
+}
+
 export default function LoginPage() {
     const router = useRouter();
     const { toast } = useToast();
     const [name, setName] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [installPrompt, setInstallPrompt] = useState<Event | null>(null);
+    const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
 
     useEffect(() => {
         const handleBeforeInstallPrompt = (e: Event) => {
             e.preventDefault();
-            setInstallPrompt(e);
+            setInstallPrompt(e as BeforeInstallPromptEvent);
         };
 
         window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -71,8 +81,8 @@ export default function LoginPage() {
     
     const handleInstallClick = () => {
         if (!installPrompt) return;
-        (installPrompt as any).prompt();
-        (installPrompt as any).userChoice.then((choiceResult: { outcome: string }) => {
+        installPrompt.prompt();
+        installPrompt.userChoice.then((choiceResult) => {
             if (choiceResult.outcome === 'accepted') {
                 console.log('User accepted the install prompt');
             } else {
