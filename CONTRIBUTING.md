@@ -31,6 +31,45 @@ Dziękujemy za zainteresowanie rozwojem tego projektu. Aby zapewnić najwyższą
 *   Jeśli to możliwe, podawaj nazwy plików, które mam zmodyfikować.
 *   Jeżeli chcesz dodać nową funkcjonalność, opisz krótko, jak ma ona działać i gdzie powinna się znajdować.
 
+## Standardy Importowania Modułów (Import Paths)
+Aby utrzymać czystość, stabilność i łatwość refaktoryzacji kodu, prosimy o przestrzeganie następujących zasad podczas importowania modułów:
+
+### 1. Typy Ścieżek i Priorytety
+
+| Priorytet | Typ Ścieżki | Forma | Kiedy używać |
+|---|---|---|---|
+| 🥇 | **Absolutna (Aliasy)** | Używa skonfigurowanych aliasów (np. `@/`, `~`) lub głównego katalogu. `import { Foo } from '@/utils/Foo';` | **Zawsze preferowane** dla importów między głównymi podkatalogami projektu (np. z `src/components` do `src/utils`). Zapewnia stabilność przy przenoszeniu plików. |
+| 🥈 | **Relatywna (Względna)** | Ścieżka względem bieżącego pliku (`./`, `../`). `import { Bar } from './Bar';` | **Wyłącznie** dla importów z tego samego katalogu lub z jego bezpośredniego sąsiedztwa (max 1-2 poziomy `../`). |
+| ❌ | **Unikaj** | Długie, zagnieżdżone ścieżki relatywne. `import { Baz } from '../../../../core/Baz';` | Kategorycznie unikaj "łańcuchów" typu `../../../`. W takich przypadkach należy użyć ścieżki absolutnej (aliasu). |
+
+### 2. Konfiguracja Aliasów (Jeśli dotyczy)
+Jeśli projekt wykorzystuje aliasy (np. poprzez `tsconfig.json`, `jsconfig.json`, Webpack/Vite):
+*   **Weryfikacja:** Zawsze sprawdź, czy w konfiguracji istnieje odpowiedni alias (np. `@/`, `@components`, `src/`).
+*   **Zastosowanie:** Używaj tych aliasów, aby skrócić ścieżki i przechodzić na ścieżki absolutne.
+
+### 3. Czystość i Upraszczanie
+*   **Pominięcie Indexu:** Jeśli katalog zawiera plik `index.js/index.ts`, importuj tylko katalog:
+    ```javascript
+    // Dobre:
+    import { Button } from '@/components/Button'; 
+    // Zamiast:
+    import { Button } from '@/components/Button/index.js';
+    ```
+*   **Pominięcie Rozszerzenia:** W miarę możliwości (zgodnie z konfiguracją bundlera), pomijaj rozszerzenia plików (`.js`, `.ts`, `.jsx`, etc.).
+
+### 4. Wymogi Jakości i Bezpieczeństwa (Tylko dla AI/Narzędzi)
+⚠️ **Minimalna Zmiana:** Zmieniaj ścieżki importu tylko wtedy, gdy jest to absolutnie niezbędne do wykonania zadania (np. podczas przenoszenia pliku). Nie zmieniaj istniejących, poprawnie działających importów tylko w celu dostosowania ich do nowego standardu, jeśli nie jest to częścią refaktoryzacji na pełną skalę.
+*   **Walidacja:** Upewnij się, że zaimportowany plik istnieje pod nową ścieżką i że wszystkie powiązane testy jednostkowe/integracyjne przechodzą pomyślnie po zmianie (zgodnie z zasadami bezpieczeństwa dla zmian krytycznych).
+
+## Linter i Formatter
+Aby zapewnić spójność kodu w całym projekcie, używamy ESLint do analizy kodu i Prettier do jego formatowania.
+
+### Uruchamianie
+*   **Sprawdzanie błędów:** Uruchom `npm run lint`, aby sprawdzić, czy w kodzie nie ma błędów.
+*   **Automatyczne poprawki:** Uruchom `npm run lint:fix`, aby automatycznie poprawić większość problemów ze stylem i formatowaniem.
+
+Wszelkie zmiany w kodzie muszą przechodzić pomyślnie testy lintera przed ich zatwierdzeniem.
+
 ## NAJNOWSZE SPECYFIKACJE DESIGNU I BUDOWY WEBOWEJ ✨
 *   **WYDAJNOŚĆ (PERFORMANCE):** Optymalizuj kod pod kątem szybkości ładowania. Stosuj leniwego ładowania (lazy loading) dla komponentów i obrazów poza widocznym obszarem (above-the-fold), a także minimalizację i drzewo potrząsania (tree-shaking) w zależnościach.
 *   **DOSTĘPNOŚĆ (ACCESSIBILITY – A11y):** Buduj interfejsy z myślą o dostępności. Zawsze używaj poprawnej semantyki HTML5 (np. tagi `<header>`, `<main>`, `<nav>`) i prawidłowych atrybutów ARIA tam, gdzie jest to wymagane.
@@ -78,33 +117,3 @@ Ta warstwa jest kluczowa dla jakości danych.
 | **Weryfikacja i Konwersja** | TypeScript Safety, Architektura | W trakcie strumieniowego czytania: Weryfikuj każdą komórkę pod kątem typu (np. czy pole numeryczne to faktycznie liczba). Wymuszaj konwersję (np. daty z formatu Excela na obiekt `Date`). Wszystkie błędy walidacji raportuj, zamiast rzucać błędem i przerywać całe zadanie. |
 | **Zapis do Bazy** | Architektura/Wydajność | Wstaw dane do bazy danych w transakcjach lub paczkach (batching), aby zoptymalizować wydajność I/O i zapewnić spójność danych. |
 | **Finalizacja** | UX | Po zakończeniu przetwarzania (sukces lub błędy), zaktualizuj status `Job ID` w systemie powiadomień (np. Firestore), co automatycznie poinformuje klienta o zakończeniu. |
-
-## Standardy Importowania Modułów (Import Paths)
-Aby utrzymać czystość, stabilność i łatwość refaktoryzacji kodu, prosimy o przestrzeganie następujących zasad podczas importowania modułów:
-
-### 1. Typy Ścieżek i Priorytety
-
-| Priorytet | Typ Ścieżki | Forma | Kiedy używać |
-|---|---|---|---|
-| 🥇 | **Absolutna (Aliasy)** | Używa skonfigurowanych aliasów (np. `@/`, `~`) lub głównego katalogu. `import { Foo } from '@/utils/Foo';` | **Zawsze preferowane** dla importów między głównymi podkatalogami projektu (np. z `src/components` do `src/utils`). Zapewnia stabilność przy przenoszeniu plików. |
-| 🥈 | **Relatywna (Względna)** | Ścieżka względem bieżącego pliku (`./`, `../`). `import { Bar } from './Bar';` | **Wyłącznie** dla importów z tego samego katalogu lub z jego bezpośredniego sąsiedztwa (max 1-2 poziomy `../`). |
-| ❌ | **Unikaj** | Długie, zagnieżdżone ścieżki relatywne. `import { Baz } from '../../../../core/Baz';` | Kategorycznie unikaj "łańcuchów" typu `../../../`. W takich przypadkach należy użyć ścieżki absolutnej (aliasu). |
-
-### 2. Konfiguracja Aliasów (Jeśli dotyczy)
-Jeśli projekt wykorzystuje aliasy (np. poprzez `tsconfig.json`, `jsconfig.json`, Webpack/Vite):
-*   **Weryfikacja:** Zawsze sprawdź, czy w konfiguracji istnieje odpowiedni alias (np. `@/`, `@components`, `src/`).
-*   **Zastosowanie:** Używaj tych aliasów, aby skrócić ścieżki i przechodzić na ścieżki absolutne.
-
-### 3. Czystość i Upraszczanie
-*   **Pominięcie Indexu:** Jeśli katalog zawiera plik `index.js/index.ts`, importuj tylko katalog:
-    ```javascript
-    // Dobre:
-    import { Button } from '@/components/Button'; 
-    // Zamiast:
-    import { Button } from '@/components/Button/index.js';
-    ```
-*   **Pominięcie Rozszerzenia:** W miarę możliwości (zgodnie z konfiguracją bundlera), pomijaj rozszerzenia plików (`.js`, `.ts`, `.jsx`, etc.).
-
-### 4. Wymogi Jakości i Bezpieczeństwa (Tylko dla AI/Narzędzi)
-⚠️ **Minimalna Zmiana:** Zmieniaj ścieżki importu tylko wtedy, gdy jest to absolutnie niezbędne do wykonania zadania (np. podczas przenoszenia pliku). Nie zmieniaj istniejących, poprawnie działających importów tylko w celu dostosowania ich do nowego standardu, jeśli nie jest to częścią refaktoryzacji na pełną skalę.
-*   **Walidacja:** Upewnij się, że zaimportowany plik istnieje pod nową ścieżką i że wszystkie powiązane testy jednostkowe/integracyjne przechodzą pomyślnie po zmianie (zgodnie z zasadami bezpieczeństwa dla zmian krytycznych).
