@@ -18,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { generateMonthlyReport, generateAccommodationReport, getSignedUploadUrl, bulkImportEmployees } from '@/lib/actions';
+import { generateMonthlyReport, generateAccommodationReport, bulkImportEmployees } from '@/lib/actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 
@@ -184,58 +184,39 @@ const AddressManager = ({ form, onEdit, onRemove, onAdd }: { form: any; onEdit: 
 
 
 const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
-    const { handleBulkDeleteEmployees, refreshData } = useMainLayout();
+    const { refreshData } = useMainLayout();
     const { toast } = useToast();
     const [isImporting, setIsImporting] = useState(false);
-    const [isDeletingActive, setIsDeletingActive] = useState(false);
-    const [isDeletingDismissed, setIsDeletingDismissed] = useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     
+    const readFileAsBase64 = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const base64String = (reader.result as string).split(',')[1];
+                resolve(base64String);
+            };
+            reader.onerror = (error) => reject(error);
+            reader.readAsDataURL(file);
+        });
+    };
+
     const onFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         setIsImporting(true);
-        toast({ title: 'Rozpoczynanie importu...', description: 'Przygotowywanie do wysłania pliku.' });
+        toast({ title: 'Przetwarzanie pliku...', description: 'Proszę czekać, plik jest przygotowywany do wysłania.' });
 
         try {
-            // 1. Get signed URL from server
-            const signedUrlResult = await getSignedUploadUrl(file.name, file.type);
-            if (!signedUrlResult.success || !signedUrlResult.url) {
-                throw new Error(signedUrlResult.message || "Nie udało się uzyskać adresu URL do wysłania.");
-            }
-            
-            toast({ title: 'Wysyłanie pliku...', description: 'Plik jest teraz wysyłany na serwer.' });
+            const fileBase64 = await readFileAsBase64(file);
+            const result = await bulkImportEmployees(fileBase64, currentUser.uid);
 
-            // 2. Upload file to GCS
-            const uploadResponse = await fetch(signedUrlResult.url, {
-                method: 'PUT',
-                body: file,
-                headers: {
-                    'Content-Type': file.type,
-                },
-            });
-
-            if (!uploadResponse.ok) {
-                const errorText = await uploadResponse.text();
-                console.error("Upload failed text:", errorText);
-                throw new Error(`Nie udało się wysłać pliku na serwer. Status: ${uploadResponse.status}`);
-            }
-
-            toast({ title: 'Przetwarzanie pliku...', description: 'Plik został wysłany, serwer go przetwarza.' });
-
-            // 3. Call server action with filePath
-            if (!signedUrlResult.filePath) {
-                 throw new Error("Brak ścieżki do pliku po wysłaniu.");
-            }
-
-            const importResult = await bulkImportEmployees(signedUrlResult.filePath, currentUser.uid);
-
-            if (importResult.success) {
-                toast({ title: 'Import udany', description: importResult.message });
+            if (result.success) {
+                toast({ title: 'Import udany', description: result.message });
                 await refreshData(false);
             } else {
-                throw new Error(importResult.message);
+                throw new Error(result.message);
             }
         } catch (error) {
             console.error("Import error:", error);
@@ -245,6 +226,10 @@ const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
             setIsImporting(false);
         }
     };
+    
+    const { handleBulkDeleteEmployees } = useMainLayout();
+    const [isDeletingActive, setIsDeletingActive] = useState(false);
+    const [isDeletingDismissed, setIsDeletingDismissed] = useState(false);
     
     const handleBulkDelete = async (status: 'active' | 'dismissed') => {
         if(status === 'active') setIsDeletingActive(true);

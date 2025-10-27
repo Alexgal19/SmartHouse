@@ -897,9 +897,9 @@ export async function deleteInspection(id: string): Promise<void> {
     }
 }
 
-const parseAndFormatDate = (dateValue: any): string => {
+const parseAndFormatDate = (dateValue: any): string | null => {
     if (dateValue === null || dateValue === undefined || dateValue === '') {
-        return '';
+        return null;
     }
     if (dateValue instanceof Date && isValid(dateValue)) {
          return format(dateValue, 'yyyy-MM-dd');
@@ -919,53 +919,12 @@ const parseAndFormatDate = (dateValue: any): string => {
             return format(isoDate, 'yyyy-MM-dd');
         }
     }
-    return '';
+    return null;
 };
 
-export async function getSignedUploadUrl(fileName: string, contentType: string): Promise<{ success: boolean; url?: string; filePath?: string; message?: string; }> {
+export async function bulkImportEmployees(fileBase64: string, actorUid: string): Promise<{success: boolean, message: string}> {
     try {
-        const storage = new Storage({
-            projectId: process.env.FIREBASE_PROJECT_ID,
-            credentials: {
-                client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-                private_key: process.env.GOOGLE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
-            },
-        });
-
-        const bucketName = `${process.env.FIREBASE_PROJECT_ID}.appspot.com`;
-
-        const filePath = `imports/${Date.now()}-${fileName}`;
-        const file = storage.bucket(bucketName).file(filePath);
-
-        const [url] = await file.getSignedUrl({
-            version: 'v4',
-            action: 'write',
-            expires: Date.now() + 15 * 60 * 1000, // 15 minutes
-            contentType,
-        });
-
-        return { success: true, url, filePath };
-
-    } catch (e: unknown) {
-        console.error("Error getting signed URL:", e);
-        return { success: false, message: e instanceof Error ? e.message : "Failed to create upload URL." };
-    }
-}
-
-export async function bulkImportEmployees(filePath: string, actorUid: string): Promise<{success: boolean, message: string}> {
-    try {
-        const storage = new Storage({
-             projectId: process.env.FIREBASE_PROJECT_ID,
-            credentials: {
-                client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-                private_key: process.env.GOOGLE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
-            },
-        });
-        const bucketName = `${process.env.FIREBASE_PROJECT_ID}.appspot.com`;
-        
-        const file = storage.bucket(bucketName).file(filePath);
-        const [buffer] = await file.download();
-
+        const buffer = Buffer.from(fileBase64, 'base64');
         const settings = await getSettings();
         
         const workbook = XLSX.read(buffer, { type: 'buffer' });
@@ -1003,10 +962,10 @@ export async function bulkImportEmployees(filePath: string, actorUid: string): P
                 address: row.address ? String(row.address) : '',
                 roomNumber: row.roomNumber ? String(row.roomNumber) : '',
                 zaklad: row.zaklad ? String(row.zaklad) : '',
-                checkInDate: parseAndFormatDate(row.checkInDate),
-                contractStartDate: parseAndFormatDate(row.contractStartDate) || undefined,
-                contractEndDate: parseAndFormatDate(row.contractEndDate) || undefined,
-                departureReportDate: parseAndFormatDate(row.departureReportDate) || undefined,
+                checkInDate: parseAndFormatDate(row.checkInDate) ?? undefined,
+                contractStartDate: parseAndFormatDate(row.contractStartDate),
+                contractEndDate: parseAndFormatDate(row.contractEndDate),
+                departureReportDate: parseAndFormatDate(row.departureReportDate),
                 comments: row.comments ? String(row.comments) : undefined,
             };
             employeesToAdd.push(employee);
@@ -1015,9 +974,6 @@ export async function bulkImportEmployees(filePath: string, actorUid: string): P
         for (const emp of employeesToAdd) {
             await addEmployee(emp, actorUid);
         }
-
-        // Clean up the uploaded file
-        await file.delete();
 
         return { success: true, message: `Pomyślnie zaimportowano ${employeesToAdd.length} pracowników.` };
 
