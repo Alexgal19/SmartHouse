@@ -125,15 +125,15 @@ const CoordinatorManager = ({ form, fields, append, remove }: { form: any, field
   </div>
 );
 
-const AddressManager = ({ form, onEdit, onRemove, onAdd }: { form: any; onEdit: (address: Address) => void; onRemove: (addressId: string) => void; onAdd: (coordinatorId: string) => void; }) => {
+const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { addresses: Address[]; coordinators: any[], onEdit: (address: Address) => void; onRemove: (addressId: string) => void; onAdd: (coordinatorId: string) => void; }) => {
     const [filterCoordinatorId, setFilterCoordinatorId] = useState('all');
-    const coordinatorMap = useMemo(() => new Map((useWatch({ control: form.control, name: 'coordinators' })).map((c: { uid: any; name: any; }) => [c.uid, c.name])), [(useWatch({ control: form.control, name: 'coordinators' }))]);
+    const coordinatorMap = useMemo(() => new Map(coordinators.map((c: { uid: any; name: any; }) => [c.uid, c.name])), [coordinators]);
 
     const filteredAddresses = useMemo(() => {
-        if (!useWatch({ control: form.control, name: 'addresses' })) return [];
-        if (filterCoordinatorId === 'all') return useWatch({ control: form.control, name: 'addresses' });
-        return (useWatch({ control: form.control, name: 'addresses' })).filter((a: { coordinatorId: string; }) => a.coordinatorId === filterCoordinatorId);
-    }, [(useWatch({ control: form.control, name: 'addresses' })), filterCoordinatorId]);
+        if (!addresses) return [];
+        if (filterCoordinatorId === 'all') return addresses;
+        return addresses.filter((a: { coordinatorId: string; }) => a.coordinatorId === filterCoordinatorId);
+    }, [addresses, filterCoordinatorId]);
 
     return (
         <div className="space-y-4 rounded-md border p-4">
@@ -146,7 +146,7 @@ const AddressManager = ({ form, onEdit, onRemove, onAdd }: { form: any; onEdit: 
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
-                            {(useWatch({ control: form.control, name: 'coordinators' })).map((c: { uid: string; name: string; }) => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                            {coordinators.map((c: { uid: string; name: string; }) => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
                     <Button type="button" variant="outline" size="sm" onClick={() => onAdd(filterCoordinatorId)}>
@@ -207,35 +207,30 @@ const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
         toast({ title: 'Rozpoczynanie importu...', description: 'Plik jest przesyłany na serwer. To może zająć chwilę.' });
 
         try {
-            // 1. Get signed URL from server
-            const { success: urlSuccess, url, filePath, message: urlMessage } = await getSignedUploadUrl(file.name, file.type);
-            
-            if (!urlSuccess || !url || !filePath) {
-                throw new Error(urlMessage || 'Nie udało się uzyskać adresu URL do przesłania pliku.');
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = async (event) => {
+                const base64 = (event.target?.result as string).split(',')[1];
+                const result = await bulkImportEmployees(base64, currentUser.uid);
+
+                if (result.success) {
+                    toast({ title: 'Import zakończony', description: result.message });
+                    await refreshData(false);
+                } else {
+                    throw new Error(result.message);
+                }
+                setIsImporting(false);
+            };
+            reader.onerror = () => {
+                throw new Error("Nie udało się odczytać pliku.");
             }
 
-            // 2. Upload file to signed URL
-            await axios.put(url, file, {
-                headers: { 'Content-Type': file.type },
-            });
-            
-            toast({ title: 'Przetwarzanie pliku...', description: 'Plik został przesłany, rozpoczynam przetwarzanie danych.' });
-
-            // 3. Notify server to process the file
-            const result = await bulkImportEmployees(filePath, currentUser.uid);
-
-            if (result.success) {
-                toast({ title: 'Import zakończony', description: result.message });
-                await refreshData(false);
-            } else {
-                throw new Error(result.message);
-            }
         } catch (error: unknown) {
             console.error("Import error:", error);
             const errorMessage = (error as any)?.response?.data || (error instanceof Error ? error.message : "Wystąpił nieoczekiwany błąd podczas importu.");
             toast({ variant: 'destructive', title: 'Błąd importu', description: String(errorMessage), duration: 10000 });
+            setIsImporting(false);
         } finally {
-             setIsImporting(false);
              if(fileInputRef.current) fileInputRef.current.value = '';
         }
     };
@@ -288,7 +283,7 @@ const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
                             <AlertDialogContent>
                                 <AlertDialogHeader>
                                     <AlertDialogTitle>Czy na pewno chcesz usunąć WSZYSTKICH aktywnych pracowników?</AlertDialogTitle>
-                                    <AlertDialogDescription>Ta operacja jest nieodwracalna. Wszyscy pracownicy ze statusem "aktywny" zostaną trwale usunięci.</AlertDialogDescription>
+                                    <AlertDialogDescription>Ta operacja jest nieodwracalna. Wszyscy pracownicy ze statusem &quot;aktywny&quot; zostaną trwale usunięci.</AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                     <AlertDialogCancel>Anuluj</AlertDialogCancel>
@@ -306,7 +301,7 @@ const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
                              <AlertDialogContent>
                                 <AlertDialogHeader>
                                     <AlertDialogTitle>Czy na pewno chcesz usunąć WSZYSTKICH zwolnionych pracowników?</AlertDialogTitle>
-                                    <AlertDialogDescription>Ta operacja jest nieodwracalna. Wszyscy pracownicy ze statusem "zwolniony" zostaną trwale usunięci.</AlertDialogDescription>
+                                    <AlertDialogDescription>Ta operacja jest nieodwracalna. Wszyscy pracownicy ze statusem &quot;zwolniony&quot; zostaną trwale usunięci.</AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                     <AlertDialogCancel>Anuluj</AlertDialogCancel>
@@ -415,6 +410,97 @@ const ReportsGenerator = ({ settings, currentUser }: { settings: Settings; curre
     );
 };
 
+function SettingsManager({ settings, form, handleUpdateSettings, handleAddressFormOpen }: { settings: Settings, form: any, handleUpdateSettings: any, handleAddressFormOpen: any }) {
+    const { fields: natFields, append: appendNat, remove: removeNat } = useFieldArray({ control: form.control, name: 'nationalities' });
+    const { fields: depFields, append: appendDep, remove: removeDep } = useFieldArray({ control: form.control, name: 'departments' });
+    const { fields: genFields, append: appendGen, remove: removeGen } = useFieldArray({ control: form.control, name: 'genders' });
+    const { fields: coordFields, append: appendCoord, remove: removeCoord } = useFieldArray({ control: form.control, name: 'coordinators' });
+    const { remove: removeAddr } = useFieldArray({ control: form.control, name: 'addresses' });
+
+    const watchedAddresses = useWatch({ control: form.control, name: 'addresses' });
+    const watchedCoordinators = useWatch({ control: form.control, name: 'coordinators' });
+
+    const onSubmit = async (data: z.infer<typeof formSchema>) => {
+        const currentValues = form.getValues();
+        const newSettings: Partial<Settings> = {
+            nationalities: currentValues.nationalities.map((n: { value: any; }) => n.value),
+            departments: currentValues.departments.map((d: { value: any; }) => d.value),
+            genders: currentValues.genders.map((d: { value: any; }) => d.value),
+            addresses: currentValues.addresses,
+            coordinators: currentValues.coordinators,
+        };
+        await handleUpdateSettings(newSettings);
+        form.reset(currentValues); // Resets the dirty state
+    };
+
+    const handleRemoveAddress = (addressId: string) => {
+        const addresses = form.getValues('addresses');
+        const addressIndex = addresses.findIndex((a: Address) => a.id === addressId);
+        if (addressIndex > -1) {
+            removeAddr(addressIndex);
+        }
+    }
+
+    const handleAddAddress = (coordinatorId: string) => {
+        const newAddress: Address = {
+            id: `addr-${Date.now()}`,
+            name: '',
+            coordinatorId: coordinatorId === 'all' ? '' : coordinatorId,
+            rooms: [],
+        };
+        handleAddressFormOpen(newAddress);
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Ustawienia aplikacji</CardTitle>
+                <CardDescription>Zarządzaj globalnymi ustawieniami aplikacji, takimi jak listy, adresy i koordynatorzy.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                        <Accordion type="single" collapsible className="w-full">
+                            <AccordionItem value="lists">
+                                <AccordionTrigger>Zarządzanie listami</AccordionTrigger>
+                                <AccordionContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-2">
+                                    <ListManager name="nationalities" title="Narodowości" fields={natFields} append={appendNat} remove={removeNat} />
+                                    <ListManager name="departments" title="Zakłady" fields={depFields} append={appendDep} remove={removeDep} />
+                                    <ListManager name="genders" title="Płcie" fields={genFields} append={appendGen} remove={removeGen} />
+                                </AccordionContent>
+                            </AccordionItem>
+                            <AccordionItem value="coordinators">
+                                <AccordionTrigger>Zarządzanie koordynatorami</AccordionTrigger>
+                                <AccordionContent className="p-2">
+                                    <CoordinatorManager form={form} fields={coordFields} append={appendCoord} remove={removeCoord} />
+                                </AccordionContent>
+                            </AccordionItem>
+                            <AccordionItem value="addresses">
+                                <AccordionTrigger>Zarządzanie adresami</AccordionTrigger>
+                                <AccordionContent className="p-2">
+                                    <AddressManager 
+                                        addresses={watchedAddresses}
+                                        coordinators={watchedCoordinators}
+                                        onEdit={(address) => handleAddressFormOpen(address)}
+                                        onAdd={handleAddAddress}
+                                        onRemove={handleRemoveAddress}
+                                    />
+                                </AccordionContent>
+                            </AccordionItem>
+                        </Accordion>
+                        
+                        <div className="flex justify-end">
+                            <Button type="submit" disabled={!form.formState.isDirty || form.formState.isSubmitting}>
+                                {form.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                                Zapisz zmiany
+                            </Button>
+                        </div>
+                    </form>
+                </Form>
+            </CardContent>
+        </Card>
+    )
+}
 
 export default function SettingsView({ currentUser }: { currentUser: SessionData }) {
   const { settings, handleUpdateSettings, handleAddressFormOpen } = useMainLayout();
@@ -423,12 +509,6 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     resolver: zodResolver(formSchema),
     mode: 'onChange',
   });
-
-  const { fields: natFields, append: appendNat, remove: removeNat } = useFieldArray({ control: form.control, name: 'nationalities' });
-  const { fields: depFields, append: appendDep, remove: removeDep } = useFieldArray({ control: form.control, name: 'departments' });
-  const { fields: genFields, append: appendGen, remove: removeGen } = useFieldArray({ control: form.control, name: 'genders' });
-  const { fields: coordFields, append: appendCoord, remove: removeCoord } = useFieldArray({ control: form.control, name: 'coordinators' });
-  const { remove: removeAddr } = useFieldArray({ control: form.control, name: 'addresses' });
 
   React.useEffect(() => {
     if (settings) {
@@ -441,37 +521,6 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
       });
     }
   }, [settings, form]);
-  
-  const onSubmit = async (data: z.infer<typeof formSchema>) => {
-    const currentValues = form.getValues();
-    const newSettings: Partial<Settings> = {
-        nationalities: currentValues.nationalities.map(n => n.value),
-        departments: currentValues.departments.map(d => d.value),
-        genders: currentValues.genders.map(d => d.value),
-        addresses: currentValues.addresses,
-        coordinators: currentValues.coordinators,
-    };
-    await handleUpdateSettings(newSettings);
-    form.reset(currentValues); // Resets the dirty state
-  };
-
-  const handleRemoveAddress = (addressId: string) => {
-    const addresses = form.getValues('addresses');
-    const addressIndex = addresses.findIndex((a: Address) => a.id === addressId);
-    if (addressIndex > -1) {
-        removeAddr(addressIndex);
-    }
-  }
-
-  const handleAddAddress = (coordinatorId: string) => {
-    const newAddress: Address = {
-        id: `addr-${Date.now()}`,
-        name: '',
-        coordinatorId: coordinatorId === 'all' ? '' : coordinatorId,
-        rooms: [],
-    };
-    handleAddressFormOpen(newAddress);
-  };
   
   if (!currentUser.isAdmin) {
       return (
@@ -515,57 +564,10 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
 
   return (
     <div className="space-y-6">
-    <Card>
-        <CardHeader>
-            <CardTitle>Ustawienia aplikacji</CardTitle>
-            <CardDescription>Zarządzaj globalnymi ustawieniami aplikacji, takimi jak listy, adresy i koordynatorzy.</CardDescription>
-        </CardHeader>
-        <CardContent>
-             <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                     <Accordion type="single" collapsible className="w-full">
-                        <AccordionItem value="lists">
-                            <AccordionTrigger>Zarządzanie listami</AccordionTrigger>
-                            <AccordionContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-2">
-                                <ListManager name="nationalities" title="Narodowości" fields={natFields} append={appendNat} remove={removeNat} />
-                                <ListManager name="departments" title="Zakłady" fields={depFields} append={appendDep} remove={removeDep} />
-                                <ListManager name="genders" title="Płcie" fields={genFields} append={appendGen} remove={removeGen} />
-                            </AccordionContent>
-                        </AccordionItem>
-                        <AccordionItem value="coordinators">
-                             <AccordionTrigger>Zarządzanie koordynatorami</AccordionTrigger>
-                             <AccordionContent className="p-2">
-                                <CoordinatorManager form={form} fields={coordFields} append={appendCoord} remove={removeCoord} />
-                             </AccordionContent>
-                        </AccordionItem>
-                        <AccordionItem value="addresses">
-                             <AccordionTrigger>Zarządzanie adresami</AccordionTrigger>
-                             <AccordionContent className="p-2">
-                                <AddressManager 
-                                    form={form} 
-                                    onEdit={(address) => handleAddressFormOpen(address)} 
-                                    onAdd={handleAddAddress}
-                                    onRemove={handleRemoveAddress}
-                                />
-                             </AccordionContent>
-                        </AccordionItem>
-                    </Accordion>
-                    
-                    <div className="flex justify-end">
-                        <Button type="submit" disabled={!form.formState.isDirty || form.formState.isSubmitting}>
-                            {form.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
-                            Zapisz zmiany
-                        </Button>
-                    </div>
-                </form>
-            </Form>
-        </CardContent>
-    </Card>
-    
-    <ReportsGenerator settings={settings} currentUser={currentUser} />
-
-    <BulkActions currentUser={currentUser} />
-
+      <SettingsManager settings={settings} form={form} handleUpdateSettings={handleUpdateSettings} handleAddressFormOpen={handleAddressFormOpen} />
+      <ReportsGenerator settings={settings} currentUser={currentUser} />
+      <BulkActions currentUser={currentUser} />
     </div>
   );
 }
+

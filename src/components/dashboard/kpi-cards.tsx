@@ -66,7 +66,7 @@ export function DashboardKPIs({
             apartmentsInUse,
             upcomingCheckouts: upcomingCheckoutsList.length,
         };
-    }, [employees, nonEmployees, settings]);
+    }, [employees, nonEmployees]);
 
     const kpiData = [
         { title: 'Wszyscy pracownicy', value: stats.totalEmployees.toString(), icon: kpiIcons.housedEmployees },
