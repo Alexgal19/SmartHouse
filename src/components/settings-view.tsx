@@ -126,12 +126,12 @@ const CoordinatorManager = ({ form, fields, append, remove }: { form: any, field
 
 const AddressManager = ({ form, onEdit, onRemove, onAdd }: { form: any; onEdit: (address: Address) => void; onRemove: (addressId: string) => void; onAdd: (coordinatorId: string) => void; }) => {
     const [filterCoordinatorId, setFilterCoordinatorId] = useState('all');
-    const coordinatorMap = useMemo(() => new Map((useWatch({ control: form.control, name: 'coordinators' })).map(c => [c.uid, c.name])), [(useWatch({ control: form.control, name: 'coordinators' }))]);
+    const coordinatorMap = useMemo(() => new Map((useWatch({ control: form.control, name: 'coordinators' })).map((c: { uid: any; name: any; }) => [c.uid, c.name])), [(useWatch({ control: form.control, name: 'coordinators' }))]);
 
     const filteredAddresses = useMemo(() => {
         if (!useWatch({ control: form.control, name: 'addresses' })) return [];
         if (filterCoordinatorId === 'all') return useWatch({ control: form.control, name: 'addresses' });
-        return (useWatch({ control: form.control, name: 'addresses' })).filter(a => a.coordinatorId === filterCoordinatorId);
+        return (useWatch({ control: form.control, name: 'addresses' })).filter((a: { coordinatorId: string; }) => a.coordinatorId === filterCoordinatorId);
     }, [(useWatch({ control: form.control, name: 'addresses' })), filterCoordinatorId]);
 
     return (
@@ -145,7 +145,7 @@ const AddressManager = ({ form, onEdit, onRemove, onAdd }: { form: any; onEdit: 
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
-                            {(useWatch({ control: form.control, name: 'coordinators' })).map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                            {(useWatch({ control: form.control, name: 'coordinators' })).map((c: { uid: string; name: string; }) => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
                     <Button type="button" variant="outline" size="sm" onClick={() => onAdd(filterCoordinatorId)}>
@@ -155,7 +155,7 @@ const AddressManager = ({ form, onEdit, onRemove, onAdd }: { form: any; onEdit: 
             </div>
             {filteredAddresses && filteredAddresses.length > 0 ? (
                 <div className="space-y-2">
-                    {filteredAddresses.map((address) => (
+                    {filteredAddresses.map((address: { id: any; name: any; coordinatorId: any; rooms: any; }) => (
                         <div key={address.id} className="flex items-center justify-between rounded-lg border p-3">
                             <div>
                                 <p className="font-semibold">{address.name}</p>
@@ -202,39 +202,39 @@ const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
         }
 
         setIsImporting(true);
-        toast({ title: 'Rozpoczynanie importu...', description: 'Generowanie bezpiecznego linku do przesłania pliku.' });
+        toast({ title: 'Rozpoczynanie importu...', description: 'Plik jest przetwarzany w tle.' });
 
         try {
-            // 1. Get signed URL from server
-            const { success, url, filePath } = await getSignedUploadUrl(file.name, file.type);
-            if (!success || !url || !filePath) {
-                throw new Error('Nie udało się uzyskać linku do przesłania pliku.');
-            }
-
-            toast({ title: 'Przesyłanie pliku...', description: 'Plik jest bezpiecznie przesyłany do chmury. To może zająć chwilę.' });
-            
-            // 2. Upload file directly to GCS
-            await axios.put(url, file, {
-                headers: { 'Content-Type': file.type },
-            });
-            
-            toast({ title: 'Przetwarzanie danych...', description: 'Plik został przesłany. Rozpoczynam import danych po stronie serwera.' });
-
-            // 3. Notify server to process the file
-            const importResult = await bulkImportEmployees(filePath, currentUser.uid);
-
-            if (importResult.success) {
-                toast({ title: 'Import udany!', description: importResult.message });
-                await refreshData(false);
-            } else {
-                throw new Error(importResult.message);
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = async (event) => {
+                const base64 = event.target?.result;
+                if (typeof base64 !== 'string') {
+                    throw new Error("Nie udało się odczytać pliku.");
+                }
+                const base64Data = base64.split(',')[1];
+                
+                const importResult = await bulkImportEmployees(base64Data, currentUser.uid);
+                
+                if (importResult.success) {
+                    toast({ title: 'Import udany!', description: importResult.message });
+                    await refreshData(false);
+                } else {
+                    throw new Error(importResult.message);
+                }
+                 if(fileInputRef.current) fileInputRef.current.value = '';
+                setIsImporting(false);
+            };
+            reader.onerror = () => {
+                 if(fileInputRef.current) fileInputRef.current.value = '';
+                setIsImporting(false);
+                 throw new Error("Błąd podczas odczytu pliku.");
             }
 
         } catch (error) {
             console.error("Import error:", error);
-            const errorMessage = axios.isAxiosError(error) ? error.response?.data || error.message : (error instanceof Error ? error.message : "Wystąpił nieoczekiwany błąd podczas importu.");
+            const errorMessage = error instanceof Error ? error.message : "Wystąpił nieoczekiwany błąd podczas importu.";
             toast({ variant: 'destructive', title: 'Błąd importu', description: String(errorMessage), duration: 10000 });
-        } finally {
             if(fileInputRef.current) fileInputRef.current.value = '';
             setIsImporting(false);
         }
@@ -569,3 +569,4 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     </div>
   );
 }
+
