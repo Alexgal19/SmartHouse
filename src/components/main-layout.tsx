@@ -17,9 +17,34 @@ import {
 import Header from '@/components/header';
 import { MobileNav } from '@/components/mobile-nav';
 import type { View, Notification, Employee, Settings, NonEmployee, Inspection, EquipmentItem, SessionData, Address } from '@/types';
-import { Building, ClipboardList, Home, Settings as SettingsIcon, Users, Archive } from 'lucide-react';
+import { Building, ClipboardList, Home, Settings as SettingsIcon, Users, Archive, Loader2 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { clearAllNotifications, markNotificationAsRead, getNotifications, getEmployees, getSettings, addEmployee, updateEmployee, updateSettings, getInspections, addInspection, updateInspection, deleteInspection, bulkDeleteEmployees, getNonEmployees, addNonEmployee, updateNonEmployee, deleteNonEmployee, deleteEmployee, checkAndUpdateEmployeeStatuses, getEquipment, addEquipment, updateEquipment, deleteEquipment, getAllData } from '@/lib/actions';
+import {
+    clearAllNotifications,
+    markNotificationAsRead,
+    getNotifications,
+    getEmployees,
+    getSettings,
+    addEmployee,
+    updateEmployee,
+    updateSettings,
+    getInspections,
+    addInspection,
+    updateInspection,
+    deleteInspection,
+    bulkDeleteEmployees,
+    getNonEmployees,
+    addNonEmployee,
+    updateNonEmployee,
+    deleteNonEmployee,
+    deleteEmployee,
+    checkAndUpdateEmployeeStatuses,
+    getEquipment,
+    addEquipment,
+    updateEquipment,
+    deleteEquipment,
+    getAllData
+} from '@/lib/actions';
 import { logout } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { AddEmployeeForm, type EmployeeFormData } from '@/components/add-employee-form';
@@ -49,7 +74,7 @@ type MainLayoutContextType = {
     handleDismissEmployee: (employeeId: string) => Promise<boolean>;
     handleRestoreEmployee: (employeeId: string) => Promise<boolean>;
     handleDeleteEmployee: (employeeId: string) => Promise<void>;
-    handleBulkDeleteEmployees: (entityType: 'employee' | 'non-employee', status: 'active' | 'dismissed') => Promise<boolean>;
+    handleBulkDeleteEmployees: (status: 'active' | 'dismissed') => Promise<boolean>;
     handleAddEmployeeClick: () => void;
     handleUpdateSettings: (newSettings: Partial<Settings>) => Promise<void>;
     refreshData: (showToast?: boolean) => Promise<void>;
@@ -321,6 +346,7 @@ export default function MainLayout({
     }, [editingNonEmployee, refreshData, toast]);
     
     const handleDeleteNonEmployee = useCallback(async (id: string) => {
+        if (!allNonEmployees) return;
         const originalNonEmployees = allNonEmployees;
         
         setAllNonEmployees(prev => prev!.filter(ne => ne.id !== id));
@@ -341,7 +367,7 @@ export default function MainLayout({
         }
 
         const originalSettings = settings;
-        setSettings(prev => ({ ...prev!, ...newSettings }));
+        setSettings(prev => ({ ...prev!, ...newSettings } as Settings));
 
         try {
             await updateSettings(newSettings);
@@ -374,14 +400,17 @@ export default function MainLayout({
     }, [refreshData, toast]);
 
     const handleDeleteInspection = useCallback(async (id: string) => {
+        if (!allInspections) return;
+        const originalInspections = allInspections;
+        setAllInspections(prev => prev!.filter(i => i.id !== id));
         try {
             await deleteInspection(id);
             toast({ title: "Sukces", description: "Inspekcja została usunięta." });
-            await refreshData(false);
         } catch(e) {
+            setAllInspections(originalInspections);
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć inspekcji." });
         }
-    }, [refreshData, toast]);
+    }, [allInspections, toast]);
 
     const handleAddEquipment = useCallback(async (itemData: Omit<EquipmentItem, 'id'>) => {
         try {
@@ -404,14 +433,17 @@ export default function MainLayout({
     }, [refreshData, toast]);
 
     const handleDeleteEquipment = useCallback(async (id: string) => {
+        if (!allEquipment) return;
+        const originalEquipment = allEquipment;
+        setAllEquipment(prev => prev!.filter(item => item.id !== id));
         try {
             await deleteEquipment(id);
             toast({ title: "Sukces", description: "Usunięto sprzęt." });
-            await refreshData(false);
         } catch (e) {
+            setAllEquipment(originalEquipment);
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć sprzętu." });
         }
-    }, [refreshData, toast]);
+    }, [allEquipment, toast]);
 
     const handleAddEmployeeClick = useCallback(() => {
         setEditingEmployee(null);
@@ -462,7 +494,7 @@ export default function MainLayout({
     }, [settings, handleUpdateSettings]);
 
     const handleDismissEmployee = useCallback(async (employeeId: string) => {
-        if (!currentUser) return false;
+        if (!currentUser || !allEmployees) return false;
         
         const originalEmployees = allEmployees;
         const updatedData: Partial<Employee> = { status: 'dismissed', checkOutDate: new Date().toISOString().split('T')[0] };
@@ -481,7 +513,7 @@ export default function MainLayout({
     }, [currentUser, allEmployees, toast]);
 
     const handleRestoreEmployee = useCallback(async (employeeId: string) => {
-        if (!currentUser) return false;
+        if (!currentUser || !allEmployees) return false;
         
         const originalEmployees = allEmployees;
         const updatedData: Partial<Employee> = { status: 'active', checkOutDate: null };
@@ -500,7 +532,7 @@ export default function MainLayout({
     }, [currentUser, allEmployees, toast]);
     
     const handleDeleteEmployee = useCallback(async (employeeId: string) => {
-        if (!currentUser) return;
+        if (!currentUser || !allEmployees) return;
         const originalEmployees = allEmployees;
         setAllEmployees(prev => prev!.filter(e => e.id !== employeeId));
         try {
@@ -512,7 +544,7 @@ export default function MainLayout({
         }
     }, [currentUser, allEmployees, toast]);
 
-    const handleBulkDeleteEmployees = useCallback(async (entityType: 'employee' | 'non-employee', status: 'active' | 'dismissed') => {
+    const handleBulkDeleteEmployees = useCallback(async (status: 'active' | 'dismissed') => {
         if (!currentUser || !currentUser.isAdmin) {
              toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administratorzy mogą wykonać tę akcję." });
             return false;
@@ -715,5 +747,3 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
-
-    
