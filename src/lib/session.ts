@@ -1,3 +1,4 @@
+
 // This file configures the iron-session library for session management.
 // It defines session options.
 
@@ -12,7 +13,11 @@ export const sessionOptions: IronSessionOptions = {
   },
 };
 
-// This is where we specify the typings of the session object
 declare module 'iron-session' {
-  interface IronSessionData extends SessionData {}
+  interface IronSessionData {
+    isLoggedIn: boolean;
+    uid: string;
+    name: string;
+    isAdmin: boolean;
+  }
 }
