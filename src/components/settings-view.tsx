@@ -144,7 +144,7 @@ const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { 
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
-                            {coordinators.map((c: { uid: React.Key | null | undefined; name: string; }) => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                            {coordinators.map((c: { uid: React.Key | null | undefined; name: string; }) => <SelectItem key={c.uid} value={String(c.uid)}>{c.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
                     <Button type="button" variant="outline" size="sm" onClick={() => onAdd(filterCoordinatorId)}>
@@ -332,7 +332,7 @@ const ReportsGenerator = ({ settings, currentUser }: { settings: Settings; curre
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
-                                    {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                                    {settings.coordinators.map(c => <SelectItem key={c.uid} value={String(c.uid)}>{c.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
