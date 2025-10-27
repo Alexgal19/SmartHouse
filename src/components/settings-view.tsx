@@ -190,32 +190,38 @@ const BulkActions = ({ currentUser, settings }: { currentUser: SessionData; sett
     const [isDeletingDismissed, setIsDeletingDismissed] = useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     
-    const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve((reader.result as string).split(',')[1]);
-        reader.onerror = error => reject(error);
-    });
-
     const onFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         setIsImporting(true);
         try {
-            const base64String = await toBase64(file);
-            const result = await handleBulkImport(base64String);
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = async () => {
+                try {
+                    const base64String = (reader.result as string).split(',')[1];
+                    const result = await handleBulkImport(base64String);
 
-            if (result.success) {
-                toast({ title: 'Import udany', description: result.message });
-            } else {
-                toast({ variant: 'destructive', title: 'Błąd importu', description: result.message, duration: 10000 });
+                    if (result.success) {
+                        toast({ title: 'Import udany', description: result.message });
+                    } else {
+                        toast({ variant: 'destructive', title: 'Błąd importu', description: result.message, duration: 10000 });
+                    }
+                } catch (error) {
+                    toast({ variant: 'destructive', title: 'Błąd przetwarzania', description: "Wystąpił nieoczekiwany błąd.", duration: 10000 });
+                } finally {
+                     setIsImporting(false);
+                     if(fileInputRef.current) fileInputRef.current.value = '';
+                }
+            };
+            reader.onerror = () => {
+                toast({ variant: 'destructive', title: 'Błąd pliku', description: "Nie udało się odczytać pliku.", duration: 10000 });
+                setIsImporting(false);
             }
         } catch (error) {
              toast({ variant: 'destructive', title: 'Błąd pliku', description: "Nie udało się odczytać pliku.", duration: 10000 });
-        } finally {
-            setIsImporting(false);
-             if(fileInputRef.current) fileInputRef.current.value = '';
+             setIsImporting(false);
         }
     };
     
