@@ -715,5 +715,3 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
-
-    
