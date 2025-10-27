@@ -1,8 +1,3 @@
-
-
-// This component represents the main header of the application.
-// It includes user information, notifications, and logout functionality.
-
 "use client";
 
 import React from 'react';
@@ -15,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Bell, CircleUser, Home, Settings, Users, ClipboardList, Archive, LogOut, Trash2 } from 'lucide-react';
+import { Bell, CircleUser, Home, Settings, Users, Archive, LogOut, Trash2, ClipboardList } from 'lucide-react';
 import type { SessionData, View, Notification } from '@/types';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -30,16 +25,16 @@ import { cn } from '@/lib/utils';
 const viewTitles: Record<View, string> = {
   dashboard: 'Pulpit',
   employees: 'Pracownicy',
-  settings: 'Ustawienia',
   inspections: 'Inspekcje',
+  settings: 'Ustawienia',
   equipment: 'Wyposażenie',
 };
 
 const viewIcons: Record<View, React.ElementType> = {
     dashboard: Home,
     employees: Users,
-    settings: Settings,
     inspections: ClipboardList,
+    settings: Settings,
     equipment: Archive
 }
 

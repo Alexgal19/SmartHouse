@@ -1,10 +1,7 @@
-
-// This component provides the mobile navigation bar at the bottom of the screen.
-
-"use client"
+"use client";
 
 import Link from "next/link"
-import { Home, Users, Settings, ClipboardList, Archive } from "lucide-react"
+import { ClipboardList, Home, Users, Settings, Archive } from "lucide-react"
 import type { View, SessionData } from "@/types"
 import { cn } from "@/lib/utils"
 

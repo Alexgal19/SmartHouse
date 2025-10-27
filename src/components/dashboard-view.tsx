@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useState } from 'react';
@@ -19,7 +18,6 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
     allEmployees, 
     allNonEmployees,
     settings,
-    allInspections,
     selectedCoordinatorId,
   } = useMainLayout();
 
@@ -48,16 +46,7 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
     return allNonEmployees.filter(ne => coordinatorAddresses.includes(ne.address));
   }, [allNonEmployees, settings, currentUser.isAdmin, selectedCoordinatorId]);
 
-  const inspectionsForCoordinator = useMemo(() => {
-    if (!allInspections) return [];
-    if (currentUser.isAdmin && selectedCoordinatorId === 'all') {
-      return allInspections;
-    }
-    return allInspections.filter(i => i.coordinatorId === selectedCoordinatorId);
-  }, [allInspections, currentUser.isAdmin, selectedCoordinatorId]);
-
-
-  if (!allEmployees || !allNonEmployees || !settings || !allInspections) {
+  if (!allEmployees || !allNonEmployees || !settings) {
       return (
         <div className="space-y-6">
             <Card>
@@ -97,7 +86,7 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
             employees={employeesForCoordinator}
             dismissedEmployees={allEmployees.filter(e => e.status === 'dismissed')}
             settings={settings}
-            inspections={inspectionsForCoordinator}
+            inspections={[]}
             isMobile={isMobile}
         />
       </div>

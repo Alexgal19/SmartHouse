@@ -1,6 +1,6 @@
 // This file contains all the TypeScript type definitions for the application's data structures.
 
-export type View = 'dashboard' | 'employees' | 'settings' | 'inspections' | 'equipment';
+export type View = 'dashboard' | 'employees' | 'inspections' | 'settings' | 'equipment';
 
 export type Address = {
     id: string;
@@ -117,32 +117,6 @@ export type SessionData = {
   isAdmin: boolean;
 }
 
-export type InspectionCategoryItem = {
-    label: string;
-    value: any;
-    type: 'text' | 'number' | 'select' | 'yes_no' | 'rating' | 'checkbox_group';
-    options?: string[];
-}
-
-export type InspectionCategory = {
-    name: string;
-    items: InspectionCategoryItem[];
-    uwagi: string;
-
-    photos?: string[];
-}
-
-export type Inspection = {
-    id: string;
-    addressId: string;
-    addressName: string;
-    date: string; // YYYY-MM-DD
-    coordinatorId: string;
-    coordinatorName: string;
-    standard: 'Wysoki' | 'Normalny' | 'Niski' | null;
-    categories: InspectionCategory[];
-};
-
 export type EquipmentItem = {
     id: string;
     inventoryNumber: string;
@@ -153,13 +127,27 @@ export type EquipmentItem = {
     addressName: string;
 }
 
-export type ImportStatus = {
-    jobId: string;
-    fileName: string;
-    status: 'processing' | 'completed' | 'failed';
-    message: string;
-    processedRows: number;
-    totalRows: number;
-    createdAt: string;
-    actorName: string;
+export type InspectionCategoryItem = {
+    label: string;
+    value: string | number | boolean | string[];
+    type: 'text' | 'number' | 'select' | 'yes_no' | 'rating' | 'checkbox_group';
+    options?: string[];
+};
+
+export type InspectionCategory = {
+    name: string;
+    items: InspectionCategoryItem[];
+    uwagi?: string;
+    photos?: string[];
+};
+
+export type Inspection = {
+    id: string;
+    addressId: string;
+    addressName: string;
+    date: string;
+    coordinatorId: string;
+    coordinatorName: string;
+    standard: 'Wysoki' | 'Normalny' | 'Niski' | null;
+    categories: InspectionCategory[];
 };

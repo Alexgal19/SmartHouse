@@ -1,9 +1,6 @@
-// This component manages the view for housing inspections.
-// It allows creating, viewing, and editing inspection reports.
-
 "use client";
 
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -11,599 +8,357 @@ import { useMainLayout } from '@/components/main-layout';
 import type { Inspection, Settings, SessionData, InspectionCategory, InspectionCategoryItem } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Trash2, Calendar as CalendarIcon, X, Camera, MoreHorizontal } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Calendar as CalendarIcon, Trash2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { format } from 'date-fns';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { format, parse } from 'date-fns';
-import { pl } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import Image from 'next/image';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 const inspectionItemSchema = z.object({
   label: z.string(),
-  type: z.enum(['text', 'number', 'select', 'yes_no', 'rating', 'checkbox_group']),
   value: z.any(),
+  type: z.enum(['text', 'number', 'select', 'yes_no', 'rating', 'checkbox_group']),
   options: z.array(z.string()).optional(),
 });
 
-const categorySchema = z.object({
-    name: z.string(),
-    items: z.array(inspectionItemSchema),
-    uwagi: z.string().optional(),
-    photos: z.array(z.string()).optional(),
+const inspectionCategorySchema = z.object({
+  name: z.string(),
+  items: z.array(inspectionItemSchema),
+  uwagi: z.string().optional(),
+  photos: z.array(z.string()).optional(),
 });
 
 const formSchema = z.object({
-  addressId: z.string().min(1, 'Adres jest wymagany.'),
-  date: z.date({ required_error: 'Data inspekcji jest wymagana.' }),
-  standard: z.string().optional(),
-  categories: z.array(categorySchema),
+  addressId: z.string().min(1, "Adres jest wymagany."),
+  date: z.date({ required_error: "Data inspekcji jest wymagana." }),
+  standard: z.enum(['Wysoki', 'Normalny', 'Niski']).nullable(),
+  categories: z.array(inspectionCategorySchema),
 });
 
-const DateInput = ({
-  value,
-  onChange,
-  disabled,
-}: {
-  value?: Date | null;
-  onChange: (date?: Date) => void;
-  disabled?: (date: Date) => boolean;
-}) => {
-  const [inputValue, setInputValue] = useState('');
-  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-
-  useEffect(() => {
-    if (value) {
-      setInputValue(format(value, 'dd-MM-yyyy'));
-    } else {
-      setInputValue('');
+const renderValue = (item: InspectionCategoryItem) => {
+    if (item.type === 'yes_no') {
+        return item.value ? 'Tak' : 'Nie';
     }
-  }, [value]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(e.target.value);
-    const parsedDate = parse(e.target.value, 'dd-MM-yyyy', new Date());
-    if (!isNaN(parsedDate.getTime())) {
-      onChange(parsedDate);
+    if (item.type === 'checkbox_group' && Array.isArray(item.value)) {
+        return item.value.join(', ');
     }
-  };
-
-  const handleDateSelect = (date?: Date) => {
-    if (date) {
-      onChange(date);
-      setInputValue(format(date, 'dd-MM-yyyy'));
-      setIsPopoverOpen(false);
-    } else {
-      onChange(undefined);
-      setInputValue('');
-    }
-  };
-
-  return (
-    <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-      <PopoverTrigger asChild>
-        <div className="relative">
-          <Input
-            type="text"
-            value={inputValue}
-            onChange={handleInputChange}
-            placeholder="dd-mm-rrrr"
-            className="pr-10"
-          />
-          <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        </div>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          selected={value || undefined}
-          onSelect={handleDateSelect}
-          disabled={disabled}
-          initialFocus
-        />
-      </PopoverContent>
-    </Popover>
-  );
+    return String(item.value);
 };
 
+const InspectionForm = ({ isOpen, onOpenChange, settings, currentUser, onSave }: { isOpen: boolean; onOpenChange: (open: boolean) => void; settings: Settings; currentUser: SessionData; onSave: (data: Omit<Inspection, 'id'>) => void; }) => {
+    const form = useForm<z.infer<typeof formSchema>>({
+        resolver: zodResolver(formSchema),
+        defaultValues: {
+            addressId: '',
+            date: new Date(),
+            standard: null,
+            categories: settings.inspectionTemplate || []
+        },
+    });
 
-const renderFormControl = (item: Partial<InspectionCategoryItem>, field: any) => {
-    switch (item.type) {
-        case 'yes_no':
-            return (
-                <RadioGroup onValueChange={(val) => field.onChange(val === 'true')} value={String(field.value)} className="flex items-center space-x-4">
-                    <FormItem className="flex items-center space-x-2 space-y-0">
-                        <FormControl><RadioGroupItem value="true" /></FormControl>
-                        <FormLabel className="font-normal">Tak</FormLabel>
-                    </FormItem>
-                    <FormItem className="flex items-center space-x-2 space-y-0">
-                        <FormControl><RadioGroupItem value="false" /></FormControl>
-                        <FormLabel className="font-normal">Nie</FormLabel>
-                    </FormItem>
-                </RadioGroup>
-            );
-        case 'rating':
-            return (
-                <div className="flex items-center space-x-1">
-                    {[1, 2, 3, 4, 5].map(v => (
-                        <Button key={v} type="button" variant={field.value === v ? 'default' : 'outline'} size="icon" onClick={() => field.onChange(v)}>{v}</Button>
-                    ))}
-                </div>
-            );
-        case 'select':
-            return (
-                 <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Wybierz opcję" /></SelectTrigger></FormControl>
-                    <SelectContent>
-                        {item.options?.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-            );
-        default:
-            return <Input {...field} />;
-    }
-}
+    const { fields } = useFieldArray({ control: form.control, name: "categories" });
 
+    const onSubmit = (values: z.infer<typeof formSchema>) => {
+        const address = settings.addresses.find(a => a.id === values.addressId);
+        if (!address) return;
 
-export const InspectionForm = ({
-  isOpen,
-  onOpenChange,
-  onSave,
-  settings,
-  currentUser,
-  item,
-}: {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSave: (data: Omit<Inspection, 'id' | 'addressName' | 'coordinatorName'>, id?: string) => void;
-  settings: Settings;
-  currentUser: SessionData;
-  item: Inspection | null;
-}) => {
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-  });
-  
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [activeCategoryIndex, setActiveCategoryIndex] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      if (item) {
-        form.reset({
-          addressId: item.addressId,
-          date: new Date(item.date),
-          standard: item.standard || '',
-          categories: item.categories,
-        });
-      } else {
-        const initialCategories = (settings.inspectionTemplate || []).map(cat => ({
-            name: cat.name,
-            uwagi: '',
-            photos: [],
-            items: cat.items.map(it => {
-                let defaultValue: any = '';
-                if (it.type === 'yes_no') defaultValue = null;
-                if (it.type === 'rating') defaultValue = 3;
-                if (it.type === 'select') defaultValue = it.options?.[0] || '';
-                return { ...it, value: defaultValue };
-            })
-        }));
-        form.reset({
-          addressId: '',
-          date: new Date(),
-          standard: '',
-          categories: initialCategories
-        });
-      }
-    }
-  }, [item, isOpen, form, settings.inspectionTemplate]);
-  
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, categoryIndex: number) => {
-    const files = event.target.files;
-    if (files) {
-        const values = form.getValues();
-        const existingPhotos = (values.categories?.[categoryIndex]?.photos as string[]) || [];
-        const newPhotos: string[] = [];
-        
-        Array.from(files).forEach(file => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                if (typeof e.target?.result === 'string') {
-                    newPhotos.push(e.target.result);
-                    if (newPhotos.length === files.length) {
-                        form.setValue(`categories.${categoryIndex}.photos` as any, [...existingPhotos, ...newPhotos]);
-                    }
-                }
-            };
-            reader.readAsDataURL(file);
-        });
-    }
-  };
-
-  const removePhoto = (categoryIndex: number, photoIndex: number) => {
-    const values = form.getValues();
-    const existingPhotos = (values.categories?.[categoryIndex]?.photos as string[]) || [];
-    const updatedPhotos = existingPhotos.filter((_, i) => i !== photoIndex);
-    form.setValue(`categories.${categoryIndex}.photos` as any, updatedPhotos);
-  };
-  
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    const formattedDate = format(values.date, 'yyyy-MM-dd');
-
-    // normalize standard to the exact union expected by Inspection (or null)
-    const standardValue =
-      values.standard === 'Wysoki' || values.standard === 'Normalny' || values.standard === 'Niski'
-        ? (values.standard as 'Wysoki' | 'Normalny' | 'Niski')
-        : null;
-
-    // Ensure every item has a defined `value` (fallback to null) and match the InspectionCategory type
-    const categories = (values.categories || []).map((cat) => ({
-      name: cat.name,
-      uwagi: cat.uwagi,
-      photos: cat.photos,
-      items: (cat.items || []).map((it) => ({
-        ...it,
-        value: typeof (it as any).value === 'undefined' ? null : (it as any).value,
-      })),
-    })) as InspectionCategory[];
-
-    const inspectionData: Omit<Inspection, 'id' | 'addressName' | 'coordinatorName'> = {
-      addressId: values.addressId,
-      date: formattedDate,
-      standard: standardValue,
-      categories,
-      coordinatorId: currentUser.uid,
+        const inspectionData = {
+            ...values,
+            date: format(values.date, 'yyyy-MM-dd'),
+            addressName: address.name,
+            coordinatorId: currentUser.uid,
+            coordinatorName: currentUser.name,
+        };
+        onSave(inspectionData);
+        onOpenChange(false);
     };
 
-    onSave(inspectionData, item?.id);
-  };
-
-  const { fields: categoryFields } = useFieldArray({
-    control: form.control,
-    name: 'categories',
-  });
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
-        <DialogHeader>
-          <DialogTitle>{item ? 'Edytuj inspekcję' : 'Nowa inspekcja'}</DialogTitle>
-          <DialogDescription>Wypełnij raport z inspekcji mieszkania.</DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <ScrollArea className="h-[70vh] p-1">
-                 <div className="space-y-4 px-4">
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         <FormField
-                            control={form.control}
-                            name="addressId"
-                            render={({ field }) => (
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-4xl flex flex-col h-screen sm:h-[90vh]">
+                <DialogHeader>
+                    <DialogTitle>Nowa inspekcja</DialogTitle>
+                    <DialogDescription>Wypełnij formularz, aby dodać nową inspekcję.</DialogDescription>
+                </DialogHeader>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 min-h-0 flex flex-col">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-1">
+                             <FormField
+                                control={form.control}
+                                name="addressId"
+                                render={({ field }) => (
                                 <FormItem>
-                                <FormLabel>Adres</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl><SelectTrigger><SelectValue placeholder="Wybierz adres" /></SelectTrigger></FormControl>
-                                    <SelectContent>
-                                    {settings.addresses.map((address) => (
-                                        <SelectItem key={address.id} value={address.id}>{address.name}</SelectItem>))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
+                                    <FormLabel>Adres</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl><SelectTrigger><SelectValue placeholder="Wybierz adres" /></SelectTrigger></FormControl>
+                                        <SelectContent>
+                                            {settings.addresses.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
                                 </FormItem>
-                            )}
-                        />
-                         <FormField
-                            control={form.control}
-                            name="date"
-                            render={({ field }) => (
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="date"
+                                render={({ field }) => (
                                 <FormItem className="flex flex-col">
-                                <FormLabel>Data inspekcji</FormLabel>
-                                <DateInput 
-                                    value={field.value}
-                                    onChange={field.onChange}
-                                />
-                                <FormMessage />
+                                    <FormLabel>Data inspekcji</FormLabel>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                        <FormControl>
+                                            <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                            {field.value ? format(field.value, "PPP") : <span>Wybierz datę</span>}
+                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                            </Button>
+                                        </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                                        </PopoverContent>
+                                    </Popover>
+                                    <FormMessage />
                                 </FormItem>
-                            )}
-                        />
-                     </div>
-                     <FormField
-                        control={form.control}
-                        name="standard"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Ogólny standard</FormLabel>
-                                 <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl><SelectTrigger><SelectValue placeholder="Oceń ogólny standard mieszkania" /></SelectTrigger></FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="Wysoki">Wysoki</SelectItem>
-                                        <SelectItem value="Normalny">Normalny</SelectItem>
-                                        <SelectItem value="Niski">Niski</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                      />
-                     
-                    <Accordion type="multiple" className="w-full">
-                        {categoryFields.map((category, categoryIndex) => (
-                            <AccordionItem key={category.id} value={category.name}>
-                                <AccordionTrigger>{category.name}</AccordionTrigger>
-                                <AccordionContent>
-                                    <ScrollArea className="max-h-64">
-                                        <div className="space-y-6 p-4">
-                                            {(form.getValues(`categories.${categoryIndex}.items`) || []).map((item, itemIndex) => (
-                                                <FormField
-                                                    key={`${category.id}-${item.label}`}
-                                                    control={form.control}
-                                                    name={`categories.${categoryIndex}.items.${itemIndex}.value`}
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>{item.label}</FormLabel>
-                                                            <FormControl>{renderFormControl(item, field)}</FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            ))}
-                                            <FormField
-                                                control={form.control}
-                                                name={`categories.${categoryIndex}.uwagi`}
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Uwagi</FormLabel>
-                                                        <FormControl><Textarea {...field} /></FormControl>
+                                )}
+                            />
+                             <FormField
+                                control={form.control}
+                                name="standard"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Standard</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value || ''}>
+                                        <FormControl><SelectTrigger><SelectValue placeholder="Wybierz standard" /></SelectTrigger></FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="Wysoki">Wysoki</SelectItem>
+                                            <SelectItem value="Normalny">Normalny</SelectItem>
+                                            <SelectItem value="Niski">Niski</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                        </div>
+
+                        <ScrollArea className="flex-1 mt-4 -mr-6 pr-6">
+                            <div className="space-y-6 p-1">
+                                {fields.map((category, categoryIndex) => (
+                                    <Card key={category.id}>
+                                        <CardHeader><CardTitle className="text-lg">{category.name}</CardTitle></CardHeader>
+                                        <CardContent className="space-y-4">
+                                            {category.items.map((item, itemIndex) => {
+                                                const fieldName = `categories.${categoryIndex}.items.${itemIndex}.value` as const;
+                                                return (
+                                                    <FormItem key={`${category.id}-${itemIndex}`}>
+                                                        <FormLabel>{item.label}</FormLabel>
+                                                        <FormControl>
+                                                             <Controller
+                                                                control={form.control}
+                                                                name={fieldName}
+                                                                render={({ field }) => {
+                                                                    switch (item.type) {
+                                                                        case 'yes_no':
+                                                                            return (
+                                                                                <RadioGroup onValueChange={(val) => field.onChange(val === 'true')} defaultValue={String(field.value)} className="flex gap-4">
+                                                                                    <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="true" /></FormControl><FormLabel className="font-normal">Tak</FormLabel></FormItem>
+                                                                                    <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="false" /></FormControl><FormLabel className="font-normal">Nie</FormLabel></FormItem>
+                                                                                </RadioGroup>
+                                                                            );
+                                                                        case 'select':
+                                                                            return (
+                                                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                                                    <FormControl><SelectTrigger><SelectValue placeholder="..." /></SelectTrigger></FormControl>
+                                                                                    <SelectContent>{item.options?.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}</SelectContent>
+                                                                                </Select>
+                                                                            );
+                                                                        case 'checkbox_group':
+                                                                            return (
+                                                                                <div className="space-y-2">
+                                                                                    {item.options?.map(opt => (
+                                                                                        <FormItem key={opt} className="flex flex-row items-start space-x-3 space-y-0">
+                                                                                            <FormControl>
+                                                                                                <Checkbox
+                                                                                                    checked={field.value?.includes(opt)}
+                                                                                                    onCheckedChange={(checked) => {
+                                                                                                        return checked
+                                                                                                            ? field.onChange([...(field.value || []), opt])
+                                                                                                            : field.onChange((field.value || []).filter((v: string) => v !== opt));
+                                                                                                    }}
+                                                                                                />
+                                                                                            </FormControl>
+                                                                                            <FormLabel className="font-normal">{opt}</FormLabel>
+                                                                                        </FormItem>
+                                                                                    ))}
+                                                                                </div>
+                                                                            );
+                                                                        default:
+                                                                            return <Input type={item.type} {...field} />;
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
                                                     </FormItem>
-                                                )}
-                                            />
-                                            <FormItem>
-                                                <FormLabel>Zdjęcia</FormLabel>
-                                                <div className="flex items-center gap-2">
-                                                    <Button type="button" variant="outline" onClick={() => { setActiveCategoryIndex(categoryIndex); fileInputRef.current?.click(); }}>
-                                                        <Camera className="mr-2 h-4 w-4" /> Dodaj zdjęcia
-                                                    </Button>
-                                                </div>
-                                                <div className="mt-2 flex flex-wrap gap-2">
-                                                    {(form.watch(`categories.${categoryIndex}.photos` as any) || []).map((photoSrc: string, photoIndex: number) => (
-                                                        <div key={photoIndex} className="relative">
-                                                            <Image src={photoSrc} alt={`Zdjęcie ${photoIndex + 1}`} width={80} height={80} className="rounded-md object-cover h-20 w-20" />
-                                                            <Button type="button" variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full" onClick={() => removePhoto(categoryIndex, photoIndex)}>
-                                                                <X className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </FormItem>
-                                        </div>
-                                    </ScrollArea>
-                                </AccordionContent>
-                            </AccordionItem>
-                        ))}
-                    </Accordion>
-                     <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        multiple 
-                        accept="image/*" 
-                        className="hidden" 
-                        onChange={(e) => activeCategoryIndex !== null && handleFileChange(e, activeCategoryIndex)} 
-                    />
-                </div>
-            </ScrollArea>
-            <DialogFooter className="p-6 pt-4">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Anuluj</Button>
-              <Button type="submit">Zapisz inspekcję</Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-const InspectionActions = ({ item, onEdit, onDelete }: { item: Inspection; onEdit: (item: Inspection) => void; onDelete: (id: string) => void; }) => {
-    return (
-        <AlertDialog>
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0">
-                        <span className="sr-only">Otwórz menu</span>
-                        <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => onEdit(item)}>Edytuj</DropdownMenuItem>
-                    <AlertDialogTrigger asChild>
-                        <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Usuń
-                        </DropdownMenuItem>
-                    </AlertDialogTrigger>
-                </DropdownMenuContent>
-            </DropdownMenu>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Czy na pewno chcesz usunąć tę inspekcję?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        Tej operacji nie można cofnąć. Spowoduje to trwałe usunięcie raportu z dnia <span className="font-bold">{format(new Date(item.date), 'dd-MM-yyyy')}</span> dla adresu <span className="font-bold">{item.addressName}</span>.
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel>Anuluj</AlertDialogCancel>
-                    <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => onDelete(item.id)}>Usuń</AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-    );
-};
-
-const InspectionsTable = ({ inspections, onEdit, onDelete }: { inspections: Inspection[]; onEdit: (item: Inspection) => void; onDelete: (id: string) => void; }) => {
-    return (
-        <div className="overflow-x-auto">
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Adres</TableHead>
-                        <TableHead>Data</TableHead>
-                        <TableHead>Koordynator</TableHead>
-                        <TableHead>Standard</TableHead>
-                        <TableHead><span className="sr-only">Akcje</span></TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {inspections.length > 0 ? (
-                        inspections.map(item => (
-                            <TableRow key={item.id} onClick={() => onEdit(item)} className="cursor-pointer">
-                                <TableCell>{item.addressName}</TableCell>
-                                <TableCell>{format(new Date(item.date), 'dd-MM-yyyy')}</TableCell>
-                                <TableCell>{item.coordinatorName}</TableCell>
-                                <TableCell>{item.standard}</TableCell>
-                                <TableCell onClick={(e) => e.stopPropagation()}>
-                                    <InspectionActions item={item} onEdit={onEdit} onDelete={onDelete} />
-                                </TableCell>
-                            </TableRow>
-                        ))
-                    ) : (
-                        <TableRow>
-                            <TableCell colSpan={5} className="h-24 text-center">
-                                Brak inspekcji do wyświetlenia.
-                            </TableCell>
-                        </TableRow>
-                    )}
-                </TableBody>
-            </Table>
-        </div>
-    );
-};
-
-const InspectionsCardList = ({ inspections, onEdit, onDelete }: { inspections: Inspection[]; onEdit: (item: Inspection) => void; onDelete: (id: string) => void; }) => {
-    return (
-        <div className="space-y-4">
-            {inspections.length > 0 ? (
-                inspections.map(item => (
-                    <Card key={item.id} onClick={() => onEdit(item)} className="cursor-pointer">
-                        <CardHeader className="flex flex-row items-start justify-between pb-4">
-                            <div>
-                                <CardTitle className="text-base">{item.addressName}</CardTitle>
-                                <CardDescription>{format(new Date(item.date), 'dd MMMM yyyy', { locale: pl })}</CardDescription>
+                                                )
+                                            })}
+                                            <FormField control={form.control} name={`categories.${categoryIndex}.uwagi`} render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Uwagi</FormLabel>
+                                                    <FormControl><Textarea {...field} /></FormControl>
+                                                </FormItem>
+                                            )}/>
+                                        </CardContent>
+                                    </Card>
+                                ))}
                             </div>
-                            <div onClick={(e) => e.stopPropagation()}>
-                                <InspectionActions item={item} onEdit={onEdit} onDelete={onDelete} />
-                            </div>
-                        </CardHeader>
-                        <CardContent className="text-sm space-y-2">
-                             <p><span className="font-semibold text-muted-foreground">Koordynator:</span> {item.coordinatorName}</p>
-                             <p><span className="font-semibold text-muted-foreground">Standard:</span> {item.standard || 'Nieoceniony'}</p>
-                        </CardContent>
-                    </Card>
-                ))
-            ) : (
-                 <div className="text-center text-muted-foreground py-8">Brak inspekcji do wyświetlenia.</div>
-            )}
-        </div>
+                        </ScrollArea>
+                        <DialogFooter className="p-6 pt-4">
+                            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Anuluj</Button>
+                            <Button type="submit">Zapisz inspekcję</Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog>
     );
 }
+
+const InspectionDetailDialog = ({ inspection, isOpen, onOpenChange }: { inspection: Inspection | null; isOpen: boolean; onOpenChange: (open: boolean) => void; }) => {
+    if (!inspection) return null;
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-3xl flex flex-col h-screen sm:h-[90vh]">
+                <DialogHeader>
+                    <DialogTitle>Szczegóły inspekcji</DialogTitle>
+                    <DialogDescription>{inspection.addressName} - {format(new Date(inspection.date), 'PPP')}</DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="flex-1 -mr-6 pr-6">
+                    <div className="space-y-4 py-4">
+                        {inspection.categories.map((category, i) => (
+                            <Card key={i}>
+                                <CardHeader><CardTitle className="text-base">{category.name}</CardTitle></CardHeader>
+                                <CardContent>
+                                    <ul className="space-y-2 text-sm">
+                                        {category.items.map((item, j) => (
+                                            <li key={j} className="flex justify-between">
+                                                <span>{item.label}:</span>
+                                                <span className="font-semibold text-right">{renderValue(item)}</span>
+                                            </li>
+                                        ))}
+                                        {category.uwagi && <li className="pt-2"><strong className="text-muted-foreground">Uwagi:</strong> {category.uwagi}</li>}
+                                    </ul>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                </ScrollArea>
+            </DialogContent>
+        </Dialog>
+    );
+};
 
 export default function InspectionsView({ currentUser }: { currentUser: SessionData }) {
-    const { allInspections, settings, handleAddInspection, handleUpdateInspection, handleDeleteInspection } = useMainLayout();
+    const { allInspections, settings, handleAddInspection } = useMainLayout();
     const [isFormOpen, setIsFormOpen] = useState(false);
-    const [editingItem, setEditingItem] = useState<Inspection | null>(null);
-    const { isMobile, isMounted } = useIsMobile();
+    const [selectedInspection, setSelectedInspection] = useState<Inspection | null>(null);
 
-    const handleSave = (data: Omit<Inspection, 'id' | 'addressName' | 'coordinatorName'>, id?: string) => {
-        if (!currentUser || !settings) return;
-        const addressName = settings.addresses.find(a => a.id === data.addressId)?.name || 'Nieznany';
-        const coordinatorName = settings.coordinators.find(c => c.uid === data.coordinatorId)?.name || 'Nieznany';
-        const inspectionData = { ...data, addressName, coordinatorName };
-
-        if (id) {
-            handleUpdateInspection(id, inspectionData);
-        } else {
-            handleAddInspection(inspectionData);
-        }
-        setIsFormOpen(false);
-        setEditingItem(null);
-    };
-
-    const handleAddNew = () => {
-        setEditingItem(null);
-        setIsFormOpen(true);
-    };
-
-    const handleEdit = (item: Inspection) => {
-        setEditingItem(item);
-        setIsFormOpen(true);
-    };
-
+    const inspections = useMemo(() => {
+        if (!allInspections) return [];
+        return allInspections.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [allInspections]);
 
     if (!allInspections || !settings) {
-         return (
+        return (
             <Card>
                 <CardHeader>
-                     <Skeleton className="h-8 w-1/3" />
+                    <Skeleton className="h-8 w-1/3" />
                 </CardHeader>
                 <CardContent>
-                     <div className="space-y-4">
-                        <Skeleton className="h-24 w-full" />
-                        <Skeleton className="h-24 w-full" />
-                        <Skeleton className="h-24 w-full" />
+                    <div className="space-y-4">
+                        <Skeleton className="h-12 w-full" />
+                        <Skeleton className="h-12 w-full" />
+                        <Skeleton className="h-12 w-full" />
                     </div>
                 </CardContent>
             </Card>
         );
     }
-    
-    const InspectionsListComponent = isMobile ? InspectionsCardList : InspectionsTable;
 
     return (
         <>
-        <Card>
-            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                    <CardTitle>Inspekcje</CardTitle>
-                    <CardDescription>Przeglądaj, dodawaj i edytuj raporty z inspekcji.</CardDescription>
-                </div>
-                <Button onClick={handleAddNew}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Nowa inspekcja
-                </Button>
-            </CardHeader>
-            <CardContent>
-                {isMounted ? (
-                     <InspectionsListComponent inspections={allInspections} onEdit={handleEdit} onDelete={handleDeleteInspection} />
-                ) : (
-                    <div className="space-y-4">
-                        <Skeleton className="h-24 w-full" />
-                        <Skeleton className="h-24 w-full" />
-                        <Skeleton className="h-24 w-full" />
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle>Inspekcje</CardTitle>
+                        <CardDescription>Przeglądaj i dodawaj nowe inspekcje.</CardDescription>
                     </div>
-                )}
-            </CardContent>
-        </Card>
-         {settings && currentUser && (
+                    <Button onClick={() => setIsFormOpen(true)}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Dodaj inspekcję
+                    </Button>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Adres</TableHead>
+                                <TableHead>Data</TableHead>
+                                <TableHead>Koordynator</TableHead>
+                                <TableHead>Standard</TableHead>
+                                <TableHead><span className="sr-only">Akcje</span></TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {inspections.length > 0 ? (
+                                inspections.map(inspection => (
+                                    <TableRow key={inspection.id} onClick={() => setSelectedInspection(inspection)} className="cursor-pointer">
+                                        <TableCell className="font-medium">{inspection.addressName}</TableCell>
+                                        <TableCell>{format(new Date(inspection.date), 'dd-MM-yyyy')}</TableCell>
+                                        <TableCell>{inspection.coordinatorName}</TableCell>
+                                        <TableCell>{inspection.standard || 'N/A'}</TableCell>
+                                        <TableCell>
+                                             <Button variant="ghost" size="icon" onClick={() => setSelectedInspection(inspection)}>
+                                                <MoreHorizontal className="h-4 w-4" />
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="h-24 text-center">Brak inspekcji.</TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+
             <InspectionForm
                 isOpen={isFormOpen}
                 onOpenChange={setIsFormOpen}
-                onSave={handleSave}
                 settings={settings}
                 currentUser={currentUser}
-                item={editingItem}
+                onSave={handleAddInspection}
             />
-        )}
+
+            <InspectionDetailDialog
+                inspection={selectedInspection}
+                isOpen={!!selectedInspection}
+                onOpenChange={(isOpen) => !isOpen && setSelectedInspection(null)}
+            />
         </>
     );
 }

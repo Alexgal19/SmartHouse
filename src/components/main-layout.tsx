@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback, createContext, useContext, useRef } from 'react';
@@ -28,11 +26,8 @@ import {
     addEmployee,
     updateEmployee,
     updateSettings,
-    getInspections,
+    getInspections, 
     addInspection,
-    updateInspection,
-    deleteInspection,
-    bulkDeleteEmployees,
     getNonEmployees,
     addNonEmployee,
     updateNonEmployee,
@@ -43,6 +38,7 @@ import {
     addEquipment,
     updateEquipment,
     deleteEquipment,
+<<<<<<< HEAD
     getAllData
 } from '../lib/actions';
 import { logout } from '../lib/auth';
@@ -51,6 +47,16 @@ import { AddEmployeeForm, type EmployeeFormData } from './add-employee-form';
 import { AddNonEmployeeForm } from './add-non-employee-form';
 import { InspectionForm } from './inspections-view';
 import { cn } from '../lib/utils';
+=======
+    getAllData,
+    bulkDeleteEmployees,
+} from '@/lib/actions';
+import { logout } from '@/lib/auth';
+import { useToast } from '@/hooks/use-toast';
+import { AddEmployeeForm, type EmployeeFormData } from '@/components/add-employee-form';
+import { AddNonEmployeeForm } from '@/components/add-non-employee-form';
+import { cn } from '@/lib/utils';
+>>>>>>> 65518da84c676f2a66d2a593ae351bf3de1ec7b3
 import { AddressForm } from './address-form';
 
 const navItems: { view: View; icon: React.ElementType; label: string }[] = [
@@ -83,14 +89,10 @@ type MainLayoutContextType = {
     handleEditNonEmployeeClick: (nonEmployee: NonEmployee) => void;
     handleDeleteNonEmployee: (id: string) => Promise<void>;
     handleAddInspection: (inspectionData: Omit<Inspection, 'id'>) => Promise<void>;
-    handleUpdateInspection: (id: string, inspectionData: Omit<Inspection, 'id'>) => Promise<void>;
-    handleDeleteInspection: (id: string) => Promise<void>;
     handleAddEquipment: (itemData: Omit<EquipmentItem, 'id'>) => Promise<void>;
     handleUpdateEquipment: (id: string, itemData: Partial<EquipmentItem>) => Promise<void>;
     handleDeleteEquipment: (id: string) => Promise<void>;
     handleRefreshStatuses: (showNoChangesToast?: boolean) => Promise<void>;
-    handleEditInspectionClick: (inspection: Inspection) => void;
-    handleAddInspectionClick: () => void;
     handleAddressFormOpen: (address: Address | null) => void;
 };
 
@@ -120,7 +122,6 @@ export default function MainLayout({
     }, [searchParams]);
 
     const editEmployeeId = searchParams.get('edit');
-    const editInspectionId = searchParams.get('edit-inspection');
 
     const [currentUser] = useState<SessionData | null>(initialSession);
     const [allNotifications, setAllNotifications] = useState<Notification[]>([]);
@@ -133,12 +134,10 @@ export default function MainLayout({
     
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isNonEmployeeFormOpen, setIsNonEmployeeFormOpen] = useState(false);
-    const [isInspectionFormOpen, setIsInspectionFormOpen] = useState(false);
     const [isAddressFormOpen, setIsAddressFormOpen] = useState(false);
 
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
     const [editingNonEmployee, setEditingNonEmployee] = useState<NonEmployee | null>(null);
-    const [editingInspection, setEditingInspection] = useState<Inspection | null>(null);
     const [editingAddress, setEditingAddress] = useState<Address | null>(null);
     
     const [selectedCoordinatorId, _setSelectedCoordinatorId] = useState(initialSession.isAdmin ? 'all' : initialSession.uid);
@@ -282,21 +281,6 @@ export default function MainLayout({
             return () => clearInterval(intervalId);
         }
     }, [currentUser, fetchAllData, handleRefreshStatuses]);
-    
-    useEffect(() => {
-        const pathname = window.location.pathname;
-        if (editInspectionId && allInspections) {
-            const inspectionToEdit = allInspections.find(i => i.id === editInspectionId);
-            if(inspectionToEdit) {
-                setEditingInspection(inspectionToEdit);
-                setIsInspectionFormOpen(true);
-
-                const currentSearchParams = new URLSearchParams(window.location.search);
-                currentSearchParams.delete('edit-inspection');
-                routerRef.current.replace(`${pathname}?${currentSearchParams.toString()}`, { scroll: false });
-            }
-        }
-    }, [editInspectionId, allInspections]);
 
     useEffect(() => {
         const pathname = window.location.pathname;
@@ -389,17 +373,24 @@ export default function MainLayout({
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać ustawień." });
         }
     }, [settings, currentUser, toast, refreshData]);
-    
+
     const handleAddInspection = useCallback(async (inspectionData: Omit<Inspection, 'id'>) => {
+        const tempId = `temp-insp-${Date.now()}`;
+        const newInspection: Inspection = { ...inspectionData, id: tempId };
+
+        setAllInspections(prev => [newInspection, ...(prev || [])]);
+
         try {
             await addInspection(inspectionData);
             toast({ title: "Sukces", description: "Nowa inspekcja została dodana." });
             await refreshData(false);
         } catch(e) {
+            setAllInspections(prev => prev ? prev.filter(i => i.id !== tempId) : null);
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się dodać inspekcji." });
         }
     }, [refreshData, toast]);
 
+<<<<<<< HEAD
     const handleUpdateInspection = useCallback(async (id: string, inspectionData: Omit<Inspection, 'id'>) => {
         try {
             await updateInspection(id, inspectionData);
@@ -420,6 +411,8 @@ export default function MainLayout({
         }
     }, [refreshData, toast]);
 
+=======
+>>>>>>> 65518da84c676f2a66d2a593ae351bf3de1ec7b3
     const handleAddEquipment = useCallback(async (itemData: Omit<EquipmentItem, 'id'>) => {
         try {
             await addEquipment(itemData);
@@ -454,11 +447,6 @@ export default function MainLayout({
         setEditingEmployee(null);
         setIsFormOpen(true);
     }, []);
-    
-    const handleAddInspectionClick = useCallback(() => {
-        setEditingInspection(null);
-        setIsInspectionFormOpen(true);
-    }, []);
 
     const handleAddNonEmployeeClick = useCallback(() => {
       setEditingNonEmployee(null);
@@ -468,11 +456,6 @@ export default function MainLayout({
     const handleEditEmployeeClick = useCallback((employee: Employee) => {
         setEditingEmployee(employee);
         setIsFormOpen(true);
-    }, []);
-    
-    const handleEditInspectionClick = useCallback((inspection: Inspection) => {
-        setEditingInspection(inspection);
-        setIsInspectionFormOpen(true);
     }, []);
 
     const handleEditNonEmployeeClick = useCallback((nonEmployee: NonEmployee) => {
@@ -566,6 +549,7 @@ export default function MainLayout({
         }
     }, [currentUser, refreshData, toast]);
     
+<<<<<<< HEAD
      const handleBulkImport = useCallback(async (fileData: number[]) => {
         if (!currentUser?.isAdmin) {
             return { success: false, message: "Brak uprawnień do importu." };
@@ -600,6 +584,8 @@ export default function MainLayout({
         setEditingInspection(null);
     };
 
+=======
+>>>>>>> 65518da84c676f2a66d2a593ae351bf3de1ec7b3
     const contextValue: MainLayoutContextType = useMemo(() => ({
         allEmployees,
         allNonEmployees,
@@ -622,16 +608,12 @@ export default function MainLayout({
         handleEditNonEmployeeClick,
         handleDeleteNonEmployee,
         handleAddInspection,
-        handleUpdateInspection,
-        handleDeleteInspection,
         handleAddEquipment,
         handleUpdateEquipment,
         handleDeleteEquipment,
         handleRefreshStatuses,
-        handleEditInspectionClick,
-        handleAddInspectionClick,
         handleAddressFormOpen,
-    }), [
+    } as MainLayoutContextType), [
         allEmployees,
         allNonEmployees,
         allInspections,
@@ -653,14 +635,10 @@ export default function MainLayout({
         handleEditNonEmployeeClick,
         handleDeleteNonEmployee,
         handleAddInspection,
-        handleUpdateInspection,
-        handleDeleteInspection,
         handleAddEquipment,
         handleUpdateEquipment,
         handleDeleteEquipment,
         handleRefreshStatuses,
-        handleEditInspectionClick,
-        handleAddInspectionClick,
         handleAddressFormOpen,
     ]);
 
@@ -750,6 +728,7 @@ export default function MainLayout({
                     settings={settings}
                     nonEmployee={editingNonEmployee}
                 />
+<<<<<<< HEAD
             )}  {settings && currentUser && (
                  <InspectionForm
                     isOpen={isInspectionFormOpen}
@@ -759,6 +738,8 @@ export default function MainLayout({
                     currentUser={currentUser}
                     item={editingInspection}
                 />
+=======
+>>>>>>> 65518da84c676f2a66d2a593ae351bf3de1ec7b3
             )}
             {settings && currentUser && (
                 <AddressForm

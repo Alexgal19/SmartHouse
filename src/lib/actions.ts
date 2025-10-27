@@ -1,9 +1,7 @@
-
-
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, Room, Inspection, NonEmployee, DeductionReason, EquipmentItem, TemporaryAccess, ImportStatus } from '@/types';
-import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getInspectionsFromSheet, getNonEmployeesFromSheet, getEquipmentFromSheet, getAllSheetsData } from './sheets';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, TemporaryAccess, Inspection, InspectionCategoryItem, InspectionCategory } from '@/types';
+import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getNonEmployeesFromSheet, getEquipmentFromSheet, getAllSheetsData, getInspectionsFromSheet } from './sheets';
 import { format, isPast, isValid, parse, startOfMonth, endOfMonth, differenceInDays, min, max } from 'date-fns';
 import * as XLSX from 'xlsx';
 
@@ -17,10 +15,10 @@ const SHEET_NAME_NATIONALITIES = 'Nationalities';
 const SHEET_NAME_DEPARTMENTS = 'Departments';
 const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_GENDERS = 'Genders';
+const SHEET_NAME_EQUIPMENT = 'Equipment';
 const SHEET_NAME_INSPECTIONS = 'Inspections';
 const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
-const SHEET_NAME_EQUIPMENT = 'Equipment';
-const SHEET_NAME_IMPORT_STATUS = 'ImportStatus';
+
 
 const serializeDate = (date?: string | null): string => {
     if (!date) {
@@ -118,7 +116,6 @@ const EQUIPMENT_HEADERS = [
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
 const ADDRESS_HEADERS = ['id', 'name', 'coordinatorId'];
 const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targetType', 'targetId', 'details'];
-const IMPORT_STATUS_HEADERS = ['jobId', 'fileName', 'status', 'message', 'processedRows', 'totalRows', 'createdAt', 'actorName'];
 
 const safeFormat = (dateStr: string | undefined | null): string | null => {
     if (!dateStr) return null;
@@ -714,7 +711,6 @@ export async function clearAllNotifications(): Promise<void> {
     }
 }
 
-
 export async function getInspections(coordinatorId?: string): Promise<Inspection[]> {
     try {
         const inspections = await getInspectionsFromSheet(coordinatorId);
@@ -744,7 +740,7 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
         }, { raw: false, insert: true });
 
         const detailRows: any[] = [];
-        inspectionData.categories.forEach(category => {
+        inspectionData.categories.forEach((category: { items: any[]; name: any; uwagi: any; photos: any; }) => {
             category.items.forEach(item => {
                 detailRows.push({
                     id: `insp-det-${Date.now()}-${Math.random()}`,
@@ -754,7 +750,7 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
                     coordinatorName: inspectionData.coordinatorName,
                     category: category.name,
                     itemLabel: item.label,
-                    itemValue: Array.isArray(item.value) ? JSON.stringify(item.value) : (item.value?.toString() ?? ''),
+                    itemValue: Array.isArray(item.value) ? JSON.stringify(item.value) : (String(item.value) ?? ''),
                     uwagi: '',
                     photoData: '',
                 });
@@ -774,7 +770,7 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
                 });
             }
             
-            (category.photos || []).forEach(photo => {
+            (category.photos || []).forEach((photo: any) => {
                 detailRows.push({
                     id: `insp-det-${Date.now()}-${Math.random()}`,
                     inspectionId,
@@ -782,346 +778,19 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
                     date: dateString,
                     coordinatorName: inspectionData.coordinatorName,
                     category: category.name,
-                    itemLabel: 'Photo', itemValue: '', uwagi: '',
-                    photoData: photo,
+                    itemLabel: 'Photo', itemValue: '',
+                    uwagi: photo.uwagi || '',
+                    photoData: photo.data || '',
                 });
-            })
+            });
         });
-        
+
         if (detailRows.length > 0) {
             await detailsSheet.addRows(detailRows, { raw: false, insert: true });
         }
+
     } catch (e: unknown) {
         console.error("Error adding inspection:", e);
         throw new Error(e instanceof Error ? e.message : "Failed to add inspection.");
-    }
-}
-
-export async function updateInspection(id: string, inspectionData: Omit<Inspection, 'id'>): Promise<void> {
-    try {
-        const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, ['id', 'addressId', 'addressName', 'date', 'coordinatorId', 'coordinatorName', 'standard']);
-        const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, ['id', 'inspectionId', 'addressName', 'date', 'coordinatorName', 'category', 'itemLabel', 'itemValue', 'uwagi', 'photoData']);
-        
-        const inspectionRows = await inspectionsSheet.getRows({ limit: 1000 });
-        const inspectionRow = inspectionRows.find((r: { get: (arg0: string) => string; }) => r.get('id') === id);
-        if (!inspectionRow) throw new Error("Inspection not found");
-        
-        const dateString = inspectionData.date;
-        inspectionRow.set('addressId', inspectionData.addressId);
-        inspectionRow.set('addressName', inspectionData.addressName);
-        inspectionRow.set('date', dateString);
-        inspectionRow.set('coordinatorId', inspectionData.coordinatorId);
-        inspectionRow.set('coordinatorName', inspectionData.coordinatorName);
-        inspectionRow.set('standard', inspectionData.standard || '');
-        await inspectionRow.save();
-
-        const detailRows = await detailsSheet.getRows({ limit: 5000 });
-        const oldDetailRows = detailRows.filter((r: { get: (arg0: string) => string; }) => r.get('inspectionId') === id);
-        for (let i = oldDetailRows.length - 1; i >= 0; i--) {
-            await oldDetailRows[i].delete();
-        }
-
-        const newDetailRows: any[] = [];
-        inspectionData.categories.forEach(category => {
-            category.items.forEach(item => {
-                newDetailRows.push({
-                    id: `insp-det-${Date.now()}-${Math.random()}`,
-                    inspectionId: id,
-                    addressName: inspectionData.addressName,
-                    date: dateString,
-                    coordinatorName: inspectionData.coordinatorName,
-                    category: category.name,
-                    itemLabel: item.label,
-                    itemValue: Array.isArray(item.value) ? JSON.stringify(item.value) : (item.value?.toString() ?? ''),
-                    uwagi: '',
-                    photoData: '',
-                });
-            });
-
-            if (category.uwagi) {
-                newDetailRows.push({
-                    id: `insp-det-${Date.now()}-${Math.random()}`,
-                    inspectionId: id,
-                    addressName: inspectionData.addressName,
-                    date: dateString,
-                    coordinatorName: inspectionData.coordinatorName,
-                    category: category.name,
-                    itemLabel: 'Uwagi', itemValue: '',
-                    uwagi: category.uwagi,
-                    photoData: '',
-                });
-            }
-            
-            (category.photos || []).forEach(photo => {
-                newDetailRows.push({
-                    id: `insp-det-${Date.now()}-${Math.random()}`,
-                    inspectionId: id,
-                    addressName: inspectionData.addressName,
-                    date: dateString,
-                    coordinatorName: inspectionData.coordinatorName,
-                    category: category.name,
-                    itemLabel: 'Photo', itemValue: '', uwagi: '',
-                    photoData: photo,
-                });
-            })
-        });
-
-        if (newDetailRows.length > 0) {
-            await detailsSheet.addRows(newDetailRows, { raw: false, insert: true });
-        }
-    } catch(e: unknown) {
-        console.error("Error updating inspection:", e);
-        throw new Error(e instanceof Error ? e.message : "Failed to update inspection.");
-    }
-}
-
-export async function deleteInspection(id: string): Promise<void> {
-    try {
-        const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, ['id']);
-        const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, ['inspectionId']);
-
-        const inspectionRows = await inspectionsSheet.getRows({ limit: 1000 });
-        const inspectionRow = inspectionRows.find((r: { get: (arg0: string) => string; }) => r.get('id') === id);
-        if (inspectionRow) {
-            await inspectionRow.delete();
-        }
-
-        const detailRows = await detailsSheet.getRows({ limit: 5000 });
-        const oldDetailRows = detailRows.filter((r: { get: (arg0: string) => string; }) => r.get('inspectionId') === id);
-        for (let i = oldDetailRows.length - 1; i >= 0; i--) {
-            await oldDetailRows[i].delete();
-        }
-    } catch(e: unknown) {
-         console.error("Error deleting inspection:", e);
-         throw new Error(e instanceof Error ? e.message : "Failed to delete inspection.");
-    }
-}
-
-const parseAndFormatDate = (dateValue: any): string | null => {
-    if (dateValue === null || dateValue === undefined || dateValue === '') {
-        return null;
-    }
-    if (dateValue instanceof Date && isValid(dateValue)) {
-         return format(dateValue, 'yyyy-MM-dd');
-    }
-    if (typeof dateValue === 'number') { 
-        const excelEpoch = new Date(1899, 11, 30);
-        const date = new Date(excelEpoch.getTime() + dateValue * 24 * 60 * 60 * 1000);
-        return format(date, 'yyyy-MM-dd');
-    }
-    if (typeof dateValue === 'string') {
-        const parsedDate = parse(dateValue, 'dd-MM-yyyy', new Date());
-        if (isValid(parsedDate)) {
-            return format(parsedDate, 'yyyy-MM-dd');
-        }
-        const isoDate = new Date(dateValue);
-        if(isValid(isoDate)) {
-            return format(isoDate, 'yyyy-MM-dd');
-        }
-    }
-    return null;
-};
-
-export async function generateMonthlyReport(year: number, month: number, coordinatorId?: string): Promise<{ success: boolean; message?: string; fileContent?: string; fileName?: string }> {
-    try {
-        const startDate = startOfMonth(new Date(year, month - 1));
-        const endDate = endOfMonth(new Date(year, month - 1));
-
-        let allEmployees = await getEmployeesFromSheet();
-        let allInspections = await getInspectionsFromSheet();
-        const settings = await getSettingsFromSheet();
-        
-        const coordinatorMap = new Map(settings.coordinators.map(c => [c.uid, c.name]));
-        let reportCoordinatorName = 'Wszyscy';
-
-        if(coordinatorId && coordinatorId !== 'all') {
-            allEmployees = allEmployees.filter(e => e.coordinatorId === coordinatorId);
-            allInspections = allInspections.filter(i => i.coordinatorId === coordinatorId);
-            reportCoordinatorName = coordinatorMap.get(coordinatorId) || 'Nieznany';
-        }
-
-        const employeesInMonth = allEmployees.filter(e => {
-            if (!e.checkInDate) return false;
-            const checkIn = new Date(e.checkInDate);
-            const checkOut = e.checkOutDate ? new Date(e.checkOutDate) : null;
-            return checkIn <= endDate && (!checkOut || checkOut >= startDate);
-        });
-
-        const inspectionsInMonth = allInspections.filter(i => {
-            const inspectionDate = new Date(i.date);
-            return inspectionDate >= startDate && inspectionDate <= endDate;
-        });
-        
-        const wb = XLSX.utils.book_new();
-
-        // Employees Sheet
-        const employeesHeaders = ["ID", "Imię і nazwisko", "Koordynator", "Adres", "Pokój", "Data zameldowania", "Data wymeldowania", "Status", "Potrącenia (zł)"];
-        const employeesData = employeesInMonth.map(e => {
-            const deductionReasonTotal = e.deductionReason?.reduce((sum, r) => sum + (r.checked && r.amount ? r.amount : 0), 0) || 0;
-            const totalDeductions = (e.deductionRegulation || 0) + (e.deductionNo4Months || 0) + (e.deductionNo30Days || 0) + deductionReasonTotal;
-            return [
-                e.id, e.fullName, coordinatorMap.get(e.coordinatorId) || e.coordinatorId, e.address, e.roomNumber, e.checkInDate, e.checkOutDate || '', e.status, totalDeductions
-            ];
-        });
-        const ws_employees = XLSX.utils.aoa_to_sheet([employeesHeaders, ...employeesData]);
-        XLSX.utils.book_append_sheet(wb, ws_employees, `Pracownicy (${reportCoordinatorName})`);
-
-        // Inspections Sheet
-        const inspectionsHeaders = ["ID Інспекції", "Adres", "Data", "Koordynator", "Standard"];
-        const inspectionsData = inspectionsInMonth.map(i => [i.id, i.addressName, format(new Date(i.date), 'yyyy-MM-dd'), i.coordinatorName, i.standard || '']);
-        const ws_inspections = XLSX.utils.aoa_to_sheet([inspectionsHeaders, ...inspectionsData]);
-        XLSX.utils.book_append_sheet(wb, ws_inspections, `Інспекції (${reportCoordinatorName})`);
-        
-        // Finance Sheet
-        const financeHeaders = ["Pracownik", "Zwrot kaucji", "Kwota zwrotu", "Potrącenie (regulamin)", "Potrącenie (4 msc)", "Potrącenie (30 dni)", "Potrącenia (inne)", "Suma potrąceń"];
-        const financeData = employeesInMonth.filter(e => e.depositReturnAmount || e.deductionRegulation || e.deductionNo4Months || e.deductionNo30Days || e.deductionReason?.some(r => r.checked)).map(e => {
-            const deductionReasonTotal = e.deductionReason?.reduce((sum, r) => sum + (r.checked && r.amount ? r.amount : 0), 0) || 0;
-            const totalDeductions = (e.deductionRegulation || 0) + (e.deductionNo4Months || 0) + (e.deductionNo30Days || 0) + deductionReasonTotal;
-            return [
-                e.fullName, e.depositReturned || 'Nie dotyczy', e.depositReturnAmount || 0, e.deductionRegulation || 0, e.deductionNo4Months || 0, e.deductionNo30Days || 0, deductionReasonTotal, totalDeductions
-            ];
-        });
-        const ws_finance = XLSX.utils.aoa_to_sheet([financeHeaders, ...financeData]);
-        XLSX.utils.book_append_sheet(wb, ws_finance, `Finanse (${reportCoordinatorName})`);
-
-        // Housing Sheet (new)
-        if (coordinatorId && coordinatorId !== 'all') {
-            const { addresses } = await getSettingsFromSheet();
-            const coordinatorAddresses = addresses.filter(addr => addr.coordinatorId === coordinatorId);
-            const housingHeaders = ["Adres", "Liczba pokoi", "Całkowita pojemność", "Zajęte miejsca", "Wolne miejsca"];
-            const housingData = coordinatorAddresses.map(addr => {
-                const totalCapacity = addr.rooms.reduce((sum, room) => sum + room.capacity, 0);
-                const occupiedCount = allEmployees.filter(e => e.address === addr.name && e.status === 'active').length;
-                return [
-                    addr.name,
-                    addr.rooms.length,
-                    totalCapacity,
-                    occupiedCount,
-                    totalCapacity - occupiedCount
-                ];
-            });
-             const ws_housing = XLSX.utils.aoa_to_sheet([housingHeaders, ...housingData]);
-             XLSX.utils.book_append_sheet(wb, ws_housing, `Mieszkania (${reportCoordinatorName})`);
-        }
-
-
-        const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-        const fileContent = buf.toString('base64');
-        const fileName = `raport_${reportCoordinatorName.replace(/\s/g, '_')}_${year}_${String(month).padStart(2, '0')}.xlsx`;
-
-        return { success: true, fileContent, fileName };
-
-    } catch (error: unknown) {
-        console.error("Error generating monthly report:", error);
-        throw new Error(error instanceof Error ? error.message : "An unknown error occurred during report generation.");
-    }
-}
-
-
-export async function generateAccommodationReport(year: number, month: number, coordinatorId?: string): Promise<{ success: boolean; message?: string; fileContent?: string; fileName?: string }> {
-    try {
-        const monthStartDate = startOfMonth(new Date(year, month - 1));
-        const monthEndDate = endOfMonth(new Date(year, month - 1));
-
-        let allEmployees = await getEmployeesFromSheet();
-        const settings = await getSettingsFromSheet();
-        const coordinatorMap = new Map(settings.coordinators.map(c => [c.uid, c.name]));
-
-        if (coordinatorId && coordinatorId !== 'all') {
-            allEmployees = allEmployees.filter(e => e.coordinatorId === coordinatorId);
-        }
-
-        const reportData: { employeeName: string; address: string; days: number; month: string, coordinatorName: string }[] = [];
-
-        for (const employee of allEmployees) {
-            if (!employee.checkInDate || !isValid(new Date(employee.checkInDate))) {
-                continue; 
-            }
-            
-            const checkInDate = new Date(employee.checkInDate);
-            const checkOutDate = employee.checkOutDate && isValid(new Date(employee.checkOutDate)) ? new Date(employee.checkOutDate) : null;
-            const addressChangeDate = employee.addressChangeDate && isValid(new Date(employee.addressChangeDate)) ? new Date(employee.addressChangeDate) : null;
-            const employeeCoordinatorName = coordinatorMap.get(employee.coordinatorId) || 'Nieznany';
-
-            if (checkInDate > monthEndDate || (checkOutDate && checkOutDate < monthStartDate)) {
-                continue;
-            }
-
-            const reportMonthStr = format(monthStartDate, 'yyyy-MM');
-
-            if (addressChangeDate && addressChangeDate > monthStartDate && addressChangeDate <= monthEndDate && employee.oldAddress) {
-                
-                const oldAddressStartDate = max([monthStartDate, checkInDate]);
-                const oldAddressEndDate = min([addressChangeDate, ...(checkOutDate ? [checkOutDate] : []), monthEndDate]);
-                if (oldAddressStartDate < oldAddressEndDate) {
-                    const daysAtOldAddress = differenceInDays(oldAddressEndDate, oldAddressStartDate);
-                    if (daysAtOldAddress > 0) {
-                        reportData.push({
-                            employeeName: employee.fullName,
-                            address: `${employee.oldAddress} (стара)`,
-                            days: daysAtOldAddress,
-                            month: reportMonthStr,
-                            coordinatorName: employeeCoordinatorName
-                        });
-                    }
-                }
-                
-                const newAddressStartDate = addressChangeDate;
-                const newAddressEndDate = min([monthEndDate, ...(checkOutDate ? [checkOutDate] : [])]);
-                 if (newAddressStartDate <= newAddressEndDate) {
-                    const daysAtNewAddress = differenceInDays(newAddressEndDate, newAddressStartDate) + 1;
-                    if (daysAtNewAddress > 0) {
-                         reportData.push({
-                            employeeName: employee.fullName,
-                            address: employee.address,
-                            days: daysAtNewAddress,
-                            month: reportMonthStr,
-                            coordinatorName: employeeCoordinatorName
-                        });
-                    }
-                }
-
-            } else {
-                let currentAddress = employee.address;
-                
-                if(addressChangeDate && addressChangeDate > monthEndDate && employee.oldAddress){
-                    currentAddress = employee.oldAddress;
-                }
-
-                const effectiveStartDate = max([monthStartDate, checkInDate]);
-                const effectiveEndDate = min([monthEndDate, ...(checkOutDate ? [checkOutDate] : [])]);
-
-                if (effectiveStartDate <= effectiveEndDate) {
-                    const days = differenceInDays(effectiveEndDate, effectiveStartDate) + 1;
-                    if (days > 0) {
-                        reportData.push({
-                            employeeName: employee.fullName,
-                            address: currentAddress,
-                            days: days,
-                            month: reportMonthStr,
-                            coordinatorName: employeeCoordinatorName
-                        });
-                    }
-                }
-            }
-        }
-        
-        const wb = XLSX.utils.book_new();
-        const headers = ["Employee Name", "Address", "Days Lived", "Month", "Coordinator Name"];
-        const data = reportData.map(row => [row.employeeName, row.address, row.days, row.month, row.coordinatorName]);
-        const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
-        
-        const reportCoordinatorName = coordinatorId && coordinatorId !== 'all' ? coordinatorMap.get(coordinatorId) : 'Wszyscy';
-        XLSX.utils.book_append_sheet(wb, ws, `Dni Pobytu (${reportCoordinatorName})`);
-
-        const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-        const fileContent = buf.toString('base64');
-        const fileName = `raport_zakwaterowania_${reportCoordinatorName?.replace(/\s/g, '_')}_${year}_${String(month).padStart(2, '0')}.xlsx`;
-
-        return { success: true, fileContent, fileName };
-
-    } catch (error: unknown) {
-        console.error("Error generating accommodation report:", error);
-        throw new Error(error instanceof Error ? error.message : "An unknown error occurred during accommodation report generation.");
     }
 }
