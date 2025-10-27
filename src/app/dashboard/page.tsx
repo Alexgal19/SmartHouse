@@ -1,13 +1,7 @@
-
-
-// This file is the main entry point for the authenticated part of the app.
-// It uses the useMainLayout hook to get data and renders the appropriate view based on the 'view' search param.
-
 "use client";
 
 import DashboardView from '@/components/dashboard-view';
 import EquipmentView from '@/components/equipment-view';
-import InspectionsView from '@/components/inspections-view';
 import { useMainLayout } from '@/components/main-layout';
 import SettingsView from '@/components/settings-view';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -25,8 +19,6 @@ function CurrentView({ activeView, currentUser }: { activeView: View; currentUse
       return <EntityView currentUser={currentUser} />;
     case 'settings':
       return <SettingsView currentUser={currentUser} />;
-    case 'inspections':
-        return <InspectionsView currentUser={currentUser} />;
     case 'equipment':
         return <EquipmentView currentUser={currentUser} />;
     default:
@@ -41,8 +33,6 @@ export default function DashboardPage() {
     const { currentUser, allEmployees, settings } = useMainLayout();
     const activeView = (searchParams.get('view') as View) || 'employees';
 
-    // While data is loading, we can show a skeleton loader.
-    // This improves user experience by providing immediate feedback.
     if (!currentUser || !allEmployees || !settings) {
         return (
             <div className="space-y-6">
