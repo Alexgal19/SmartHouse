@@ -38,25 +38,15 @@ import {
     addEquipment,
     updateEquipment,
     deleteEquipment,
-<<<<<<< HEAD
-    getAllData
+    getAllData,
+    bulkDeleteEmployees,
 } from '../lib/actions';
 import { logout } from '../lib/auth';
 import { useToast } from '../hooks/use-toast';
 import { AddEmployeeForm, type EmployeeFormData } from './add-employee-form';
 import { AddNonEmployeeForm } from './add-non-employee-form';
-import { InspectionForm } from './inspections-view';
+import InspectionForm from './inspection-form';
 import { cn } from '../lib/utils';
-=======
-    getAllData,
-    bulkDeleteEmployees,
-} from '@/lib/actions';
-import { logout } from '@/lib/auth';
-import { useToast } from '@/hooks/use-toast';
-import { AddEmployeeForm, type EmployeeFormData } from '@/components/add-employee-form';
-import { AddNonEmployeeForm } from '@/components/add-non-employee-form';
-import { cn } from '@/lib/utils';
->>>>>>> 65518da84c676f2a66d2a593ae351bf3de1ec7b3
 import { AddressForm } from './address-form';
 
 const navItems: { view: View; icon: React.ElementType; label: string }[] = [
@@ -76,12 +66,9 @@ type MainLayoutContextType = {
     currentUser: SessionData | null;
     selectedCoordinatorId: string;
     setSelectedCoordinatorId: React.Dispatch<React.SetStateAction<string>>;
-    handleEditEmployeeClick: (employee: Employee) => void;
-    handleDismissEmployee: (employeeId: string) => Promise<boolean>;
-    handleRestoreEmployee: (employeeId: string) => Promise<boolean>;
-    handleDeleteEmployee: (employeeId: string) => Promise<void>;
     handleBulkDeleteEmployees: (entityType: 'employee' | 'non-employee', status: 'active' | 'dismissed') => Promise<boolean>;
     handleAddEmployeeClick: () => void;
+    handleEditEmployeeClick: (employee: Employee) => void;
     handleUpdateSettings: (newSettings: Partial<Settings>) => Promise<void>;
     refreshData: (showToast?: boolean) => Promise<void>;
     handleBulkImport: (fileData: number[]) => Promise<{ success: boolean; message: string; }>;
@@ -135,10 +122,12 @@ export default function MainLayout({
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isNonEmployeeFormOpen, setIsNonEmployeeFormOpen] = useState(false);
     const [isAddressFormOpen, setIsAddressFormOpen] = useState(false);
+    const [isInspectionFormOpen, setIsInspectionFormOpen] = useState(false);
 
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
     const [editingNonEmployee, setEditingNonEmployee] = useState<NonEmployee | null>(null);
     const [editingAddress, setEditingAddress] = useState<Address | null>(null);
+    // Inspection editing is handled in the inspections view component
     
     const [selectedCoordinatorId, _setSelectedCoordinatorId] = useState(initialSession.isAdmin ? 'all' : initialSession.uid);
     
@@ -374,7 +363,7 @@ export default function MainLayout({
         }
     }, [settings, currentUser, toast, refreshData]);
 
-    const handleAddInspection = useCallback(async (inspectionData: Omit<Inspection, 'id'>) => {
+        const handleAddInspection = useCallback(async (inspectionData: Omit<Inspection, 'id'>) => {
         const tempId = `temp-insp-${Date.now()}`;
         const newInspection: Inspection = { ...inspectionData, id: tempId };
 
@@ -390,29 +379,9 @@ export default function MainLayout({
         }
     }, [refreshData, toast]);
 
-<<<<<<< HEAD
-    const handleUpdateInspection = useCallback(async (id: string, inspectionData: Omit<Inspection, 'id'>) => {
-        try {
-            await updateInspection(id, inspectionData);
-            toast({ title: "Sukces", description: "Inspekcja została zaktualizowana." });
-             await refreshData(false);
-        } catch (e) {
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zaktualizować inspekcji." });
-        }
-    }, [refreshData, toast]);
+    // handleAddInspection is used directly for saving inspections
 
-    const handleDeleteInspection = useCallback(async (id: string) => {
-        try {
-            await deleteInspection(id);
-            toast({ title: "Sukces", description: "Inspekcja została usunięta." });
-            await refreshData(false);
-        } catch(e) {
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć inspekcji." });
-        }
-    }, [refreshData, toast]);
 
-=======
->>>>>>> 65518da84c676f2a66d2a593ae351bf3de1ec7b3
     const handleAddEquipment = useCallback(async (itemData: Omit<EquipmentItem, 'id'>) => {
         try {
             await addEquipment(itemData);
@@ -481,76 +450,24 @@ export default function MainLayout({
         handleUpdateSettings({ addresses: newAddresses });
     }, [settings, handleUpdateSettings]);
 
-    const handleDismissEmployee = useCallback(async (employeeId: string) => {
-        if (!currentUser) return false;
-        
-        const originalEmployees = allEmployees;
-        const updatedData: Partial<Employee> = { status: 'dismissed', checkOutDate: new Date().toISOString().split('T')[0] };
-
-        setAllEmployees(prev => prev!.map(e => e.id === employeeId ? Object.assign({}, e, updatedData) : e));
-
-        try {
-            await updateEmployee(employeeId, updatedData, currentUser.uid);
-            toast({ title: "Sukces", description: "Pracownik został zwolniony." });
-            return true;
-        } catch(e) {
-            setAllEmployees(originalEmployees);
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zwolnić pracownika." });
-            return false;
-        }
-    }, [currentUser, allEmployees, toast]);
-
-    const handleRestoreEmployee = useCallback(async (employeeId: string) => {
-        if (!currentUser) return false;
-        
-        const originalEmployees = allEmployees;
-        const updatedData: Partial<Employee> = { status: 'active', checkOutDate: null };
-        
-        setAllEmployees(prev => prev!.map(e => e.id === employeeId ? Object.assign({}, e, updatedData) : e));
-        
-        try {
-            await updateEmployee(employeeId, updatedData, currentUser.uid);
-            toast({ title: "Sukces", description: "Pracownik został przywrócony." });
-            return true;
-        } catch(e) {
-            setAllEmployees(originalEmployees);
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się przywrócić pracownika." });
-            return false;
-        }
-    }, [currentUser, allEmployees, toast]);
-    
-    const handleDeleteEmployee = useCallback(async (employeeId: string) => {
-        if (!currentUser) return;
-        const originalEmployees = allEmployees;
-        setAllEmployees(prev => prev!.filter(e => e.id !== employeeId));
-        try {
-            await deleteEmployee(employeeId, currentUser.uid);
-            toast({ title: "Sukces", description: "Pracownik został trwale usunięty."});
-        } catch (e) {
-            setAllEmployees(originalEmployees);
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć pracownika." });
-        }
-    }, [currentUser, allEmployees, toast]);
-
     const handleBulkDeleteEmployees = useCallback(async (entityType: 'employee' | 'non-employee', status: 'active' | 'dismissed') => {
         if (!currentUser || !currentUser.isAdmin) {
-             toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administratorzy mogą wykonać tę akcję." });
+            toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administratorzy mogą wykonać tę akcję." });
             return false;
         }
         
-         try {
+        try {
             await bulkDeleteEmployees(status, currentUser.uid);
             toast({ title: "Sukces", description: `Wszyscy ${status === 'active' ? 'aktywni' : 'zwolnieni'} pracownicy zostali usunięci.` });
             await refreshData(false);
-             return true;
+            return true;
         } catch(e) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć pracowników." });
-             return false;
+            return false;
         }
     }, [currentUser, refreshData, toast]);
     
-<<<<<<< HEAD
-     const handleBulkImport = useCallback(async (fileData: number[]) => {
+    const handleBulkImport = useCallback(async (fileData: number[]) => {
         if (!currentUser?.isAdmin) {
             return { success: false, message: "Brak uprawnień do importu." };
         }
@@ -562,30 +479,6 @@ export default function MainLayout({
             return { success: false, message: e instanceof Error ? e.message : "Wystąpił nieznany błąd podczas przetwarzania pliku." };
         }
     }, [currentUser, refreshData]);
-    
-    const handleSaveInspection = (data: Omit<Inspection, 'id' | 'addressName' | 'coordinatorName'>, id?: string) => {
-        if (!currentUser || !settings) return;
-
-        const addressName = settings.addresses.find(a => a.id === data.addressId)?.name || 'Nieznany';
-        const coordinatorName = settings.coordinators.find(c => c.uid === currentUser.uid)?.name || 'Nieznany';
-        
-        const inspectionData = {
-            ...data,
-            addressName,
-            coordinatorName,
-        };
-
-        if (id) {
-            handleUpdateInspection(id, inspectionData);
-        } else {
-            handleAddInspection(inspectionData);
-        }
-        setIsInspectionFormOpen(false);
-        setEditingInspection(null);
-    };
-
-=======
->>>>>>> 65518da84c676f2a66d2a593ae351bf3de1ec7b3
     const contextValue: MainLayoutContextType = useMemo(() => ({
         allEmployees,
         allNonEmployees,
@@ -596,9 +489,6 @@ export default function MainLayout({
         selectedCoordinatorId,
         setSelectedCoordinatorId,
         handleEditEmployeeClick,
-        handleDismissEmployee,
-        handleRestoreEmployee,
-        handleDeleteEmployee,
         handleBulkDeleteEmployees,
         handleAddEmployeeClick,
         handleUpdateSettings,
@@ -623,9 +513,6 @@ export default function MainLayout({
         selectedCoordinatorId,
         setSelectedCoordinatorId,
         handleEditEmployeeClick,
-        handleDismissEmployee,
-        handleRestoreEmployee,
-        handleDeleteEmployee,
         handleBulkDeleteEmployees,
         handleAddEmployeeClick,
         handleUpdateSettings,
@@ -728,18 +615,6 @@ export default function MainLayout({
                     settings={settings}
                     nonEmployee={editingNonEmployee}
                 />
-<<<<<<< HEAD
-            )}  {settings && currentUser && (
-                 <InspectionForm
-                    isOpen={isInspectionFormOpen}
-                    onOpenChange={setIsInspectionFormOpen}
-                    onSave={handleSaveInspection}
-                    settings={settings}
-                    currentUser={currentUser}
-                    item={editingInspection}
-                />
-=======
->>>>>>> 65518da84c676f2a66d2a593ae351bf3de1ec7b3
             )}
             {settings && currentUser && (
                 <AddressForm
@@ -754,10 +629,11 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
-async function bulkImportEmployees(fileData: number[], uid: string): Promise<{ success: boolean; message: string; }> {
-    // TODO: implement actual import logic (e.g. call a server action).
-    // Throwing here preserves runtime behavior while ensuring the function
-    // has the correct Promise-based return type for TypeScript.
-    throw new Error('Function not implemented.');
-}
 
+// Helper function for bulk importing employees
+// Helper function for bulk importing employees (not implemented)
+function bulkImportEmployees(fileData: number[], uid: string): Promise<{ success: boolean; message: string; }> {
+    // TODO: implement actual import logic (e.g. call a server action).
+    // For now, return a failure
+    return Promise.reject(new Error('Function not implemented.'));
+}
