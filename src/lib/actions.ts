@@ -293,7 +293,7 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
 export async function updateEmployee(employeeId: string, updates: Partial<Employee>, actorUid: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows({ limit: 2000 });
+        const rows = await sheet.getRows({ limit: 3000 });
         const rowIndex = rows.findIndex((row) => row.get('id') === employeeId);
 
         if (rowIndex === -1) {
@@ -364,7 +364,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
 export async function deleteEmployee(employeeId: string, actorUid: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows({ limit: 2000 });
+        const rows = await sheet.getRows({ limit: 3000 });
         const row = rows.find((r) => r.get('id') === employeeId);
 
         if (!row) {
@@ -521,7 +521,7 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', _actor
 export async function transferEmployees(fromCoordinatorId: string, toCoordinatorId: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows({ limit: 2000 });
+        const rows = await sheet.getRows({ limit: 3000 });
         const rowsToTransfer = rows.filter((row) => row.get('coordinatorId') === fromCoordinatorId);
 
         if (rowsToTransfer.length === 0) {
@@ -537,8 +537,9 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
         for (const row of rowsToTransfer) {
             row.set('coordinatorId', toCoordinatorId);
         }
-
-        await sheet.saveUpdatedCells();
+        
+        const promises = rowsToTransfer.map(row => row.save());
+        await Promise.all(promises);
 
     } catch (e: unknown) {
         console.error("Error transferring employees:", e);
@@ -549,7 +550,7 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
 export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<{ updated: number }> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows({ limit: 2000 });
+        const rows = await sheet.getRows({ limit: 3000 });
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
@@ -920,17 +921,19 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
             try {
                 const employeeData: Partial<Employee> = {};
                 for(const excelHeader in columnMap) {
-                    const employeeKey = columnMap[excelHeader];
-                    const value = rowData[excelHeader];
+                    if (headers.includes(excelHeader)) {
+                        const employeeKey = columnMap[excelHeader];
+                        const value = rowData[excelHeader];
 
-                    if (employeeKey.toLowerCase().includes('date')) {
-                        (employeeData as any)[employeeKey] = value ? safeFormat(value) : null;
-                    } else if (employeeKey === 'coordinatorId') {
-                         const coordinatorName = String(value || '').toLowerCase();
-                         employeeData.coordinatorId = coordinatorMap.get(coordinatorName) || '';
-                    }
-                    else {
-                        (employeeData as any)[employeeKey] = value ? String(value) : '';
+                        if (employeeKey.toLowerCase().includes('date')) {
+                            (employeeData as any)[employeeKey] = value ? safeFormat(value) : null;
+                        } else if (employeeKey === 'coordinatorId') {
+                             const coordinatorName = String(value || '').toLowerCase();
+                             employeeData.coordinatorId = coordinatorMap.get(coordinatorName) || '';
+                        }
+                        else {
+                            (employeeData as any)[employeeKey] = value ? String(value) : '';
+                        }
                     }
                 }
                 
@@ -953,5 +956,3 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
         throw new Error(e instanceof Error ? e.message : "Failed to import employees from Excel.");
     }
 }
-
-    
