@@ -15,7 +15,7 @@ import {
 } from './ui/sidebar';
 import Header from './header';
 import { MobileNav } from './mobile-nav';
-import type { View, Notification, Employee, Settings, NonEmployee, Inspection, EquipmentItem, SessionData, Address } from '../types';
+import type { View, Notification, Employee, Settings, NonEmployee, Inspection, EquipmentItem, SessionData, Address } from '@/types';
 import { Building, ClipboardList, Home, Settings as SettingsIcon, Users, Archive } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -205,11 +205,11 @@ export default function MainLayout({
                 // Ensure `standard` matches the expected union type or is null
                 standard:
                     i.standard === "Wysoki" || i.standard === "Normalny" || i.standard === "Niski"
-                        ? (i.standard as import('../types').Inspection['standard'])
+                        ? (i.standard as import('@/types').Inspection['standard'])
                         : null,
                 // Ensure categories is at least an empty array if undefined
                 categories: i.categories ?? [],
-            })) as import('../types').Inspection[];
+            })) as import('@/types').Inspection[];
 
             setAllInspections(normalizedInspections);
             setAllNonEmployees(nonEmployees);
