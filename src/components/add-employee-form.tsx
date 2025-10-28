@@ -288,7 +288,7 @@ export function AddEmployeeForm({
   const handleAddressChange = (value: string) => {
     form.setValue('address', value);
     form.setValue('roomNumber', '');
-  }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -455,7 +455,7 @@ export function AddEmployeeForm({
                                 name="departureReportDate"
                                 render={({ field }) => (
                                     <FormItem className="flex flex-col">
-                                        <FormLabel>Data zgłoszenia wyjazdu</লাম</FormLabel>
+                                        <FormLabel>Data zgłoszenia wyjazdu</FormLabel>
                                         <DateInput value={field.value} onChange={field.onChange} />
                                         <FormMessage />
                                     </FormItem>
@@ -664,5 +664,3 @@ export function AddEmployeeForm({
     </Dialog>
   );
 }
-
-    
