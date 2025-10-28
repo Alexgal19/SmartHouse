@@ -144,7 +144,7 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
           <TableHeader>
             <TableRow>
               <TableHead>Imię i nazwisko</TableHead>
-              <TableHead>Typ</TableHead>
+              <TableHead>Płeć</TableHead>
               <TableHead>Koordynator</TableHead>
               <TableHead>Adres</TableHead>
               <TableHead>Pokój</TableHead>
@@ -158,7 +158,7 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
               entities.map((entity) => (
                 <TableRow key={entity.id} onClick={() => onEdit(entity)} className="cursor-pointer">
                   <TableCell className="font-medium">{entity.fullName}</TableCell>
-                  <TableCell>{isEmployee(entity) ? "Pracownik" : "Mieszkaniec (NZ)"}</TableCell>
+                  <TableCell>{isEmployee(entity) ? entity.gender : "N/A"}</TableCell>
                   <TableCell>{isEmployee(entity) ? getCoordinatorName(entity.coordinatorId) : "N/A"}</TableCell>
                   <TableCell>{entity.address}</TableCell>
                   <TableCell>{entity.roomNumber}</TableCell>
