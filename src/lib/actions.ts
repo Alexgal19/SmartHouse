@@ -120,6 +120,17 @@ const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targe
 
 const safeFormat = (dateStr: unknown): string | null => {
     if (!dateStr) return null;
+    
+    // Handle Excel's numeric date format
+    if (typeof dateStr === 'number' && dateStr > 0) {
+        // Excel's epoch starts on 1900-01-01, but it has a bug treating 1900 as a leap year.
+        const excelEpoch = new Date(1899, 11, 30);
+        const date = new Date(excelEpoch.getTime() + dateStr * 24 * 60 * 60 * 1000);
+        if (isValid(date)) {
+            return format(date, 'yyyy-MM-dd');
+        }
+    }
+
     const date = new Date(dateStr as string | number);
     if (!isValid(date)) return null;
     try {
@@ -447,7 +458,7 @@ export async function addEquipment(itemData: Omit<EquipmentItem, 'id' | 'address
     try {
         const sheet = await getSheet(SHEET_NAME_EQUIPMENT, EQUIPMENT_HEADERS);
         const { settings } = await getAllData();
-        const addressName = settings.addresses.find(a => a.id === itemData.addressId)?.name || 'Nieznany';
+        const addressName = settings.addresses.find((a: { id: string; }) => a.id === itemData.addressId)?.name || 'Nieznany';
         
         const newItem: EquipmentItem = {
             id: `equip-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
@@ -470,7 +481,7 @@ export async function updateEquipment(id: string, updates: Partial<EquipmentItem
         if (!row) throw new Error("Equipment not found");
         
         for (const key in updates) {
-            row.set(key, (updates as Record<string,unknown>)[key]);
+            row.set(key, (updates as Record<string, string | number | boolean>)[key]);
         }
         await row.save();
     } catch (e: unknown) {
@@ -526,7 +537,7 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
         }
 
         const { settings } = await getAllData();
-        const toCoordinator = settings.coordinators.find((c) => c.uid === toCoordinatorId);
+        const toCoordinator = settings.coordinators.find((c: { uid: string; }) => c.uid === toCoordinatorId);
         if (!toCoordinator) {
             throw new Error("Target coordinator not found.");
         }
@@ -610,7 +621,7 @@ export async function updateSettings(newSettings: Partial<Omit<Settings, 'tempor
             await roomsSheet.clearRows();
 
             const allRooms: (Room & {addressId: string})[] = [];
-            const addressesData = newSettings.addresses.map((addr) => {
+            const addressesData = newSettings.addresses.map((addr: { rooms: any[]; id: any; name: any; coordinatorId: any; }) => {
                 addr.rooms.forEach(room => {
                     allRooms.push({ ...room, addressId: addr.id });
                 });
@@ -632,7 +643,7 @@ export async function updateSettings(newSettings: Partial<Omit<Settings, 'tempor
              const sheet = await getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS);
              await sheet.clearRows();
              if (newSettings.coordinators.length > 0) {
-                 await sheet.addRows(newSettings.coordinators.map((c) => ({
+                 await sheet.addRows(newSettings.coordinators.map((c: { isAdmin: any; }) => ({
                      ...c,
                      isAdmin: String(c.isAdmin).toUpperCase()
                  })), { raw: false, insert: true });
@@ -690,7 +701,7 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
 
         const detailRows: Record<string, string>[] = [];
         inspectionData.categories.forEach((category: InspectionCategory) => {
-            category.items.forEach(item => {
+            category.items.forEach((item: { label: any; value: any; }) => {
                 detailRows.push({
                     id: `insp-det-${Date.now()}-${Math.random()}`,
                     inspectionId,
@@ -748,7 +759,7 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
 export async function generateMonthlyReport(year: number, month: number, coordinatorId: string): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
     try {
         const { employees, settings } = await getAllData();
-        const coordinatorMap = new Map(settings.coordinators.map(c => [c.uid, c.name]));
+        const coordinatorMap = new Map(settings.coordinators.map((c: { uid: any; name: any; }) => [c.uid, c.name]));
 
         const reportStart = new Date(year, month - 1, 1);
         const reportEnd = new Date(year, month, 0);
@@ -797,7 +808,7 @@ export async function generateMonthlyReport(year: number, month: number, coordin
         
         if (reportData.length > 0) {
             const cols = Object.keys(reportData[0] || {}).map(key => ({
-                wch: Math.max(key.length, ...reportData.map(row => String(row[key as keyof typeof row] ?? '').length))
+                wch: Math.max(key.length, ...reportData.map(row => String((row as any)[key] ?? '').length))
             }));
             worksheet["!cols"] = cols;
         }
@@ -818,16 +829,16 @@ export async function generateAccommodationReport(year: number, month: number, c
         const { employees, settings } = await getAllData();
         
         const daysInMonth = getDaysInMonth(new Date(year, month - 1));
-        const coordinatorMap = new Map(settings.coordinators.map(c => [c.uid, c.name]));
+        const coordinatorMap = new Map(settings.coordinators.map((c: { uid: any; name: any; }) => [c.uid, c.name]));
         
         let filteredAddresses = settings.addresses;
         if (coordinatorId !== 'all') {
-            filteredAddresses = settings.addresses.filter(a => a.coordinatorId === coordinatorId);
+            filteredAddresses = settings.addresses.filter((a: { coordinatorId: string; }) => a.coordinatorId === coordinatorId);
         }
 
         const reportData: Record<string, string | number>[] = [];
 
-        filteredAddresses.forEach(address => {
+        filteredAddresses.forEach((address: { name: any; rooms: any[]; coordinatorId: unknown; }) => {
             const addressRow: Record<string, string | number> = { "Adres": address.name };
             
             for (let day = 1; day <= daysInMonth; day++) {
@@ -869,7 +880,7 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
     try {
         const workbook = XLSX.read(fileContent, { type: 'base64', cellDates: true });
         const sheetName = workbook.SheetNames[0];
-        if(!sheetName) throw new Error("Nie znaleziono arkusza w pliku Excel.");
+        if(!sheetName) throw new Error("Nie znaleziono arkusza в pliku Excel.");
 
         const worksheet = workbook.Sheets[sheetName];
         const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet);
@@ -887,19 +898,19 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
                     address: row['Adres'] as string,
                     roomNumber: String(row['Pokój'] || ''),
                     zaklad: row['Zakład'] as string,
-                    checkInDate: row['Data zameldowania'] ? format(new Date(row['Data zameldowania'] as string | number), 'yyyy-MM-dd') : '',
-                    checkOutDate: row['Data wymeldowania'] ? format(new Date(row['Data wymeldowania'] as string | number), 'yyyy-MM-dd') : undefined,
-                    contractStartDate: row['Umowa od'] ? format(new Date(row['Umowa od'] as string | number), 'yyyy-MM-dd') : undefined,
-                    contractEndDate: row['Umowa do'] ? format(new Date(row['Umowa do'] as string | number), 'yyyy-MM-dd') : undefined,
+                    checkInDate: row['Data zameldowania'] ? safeFormat(row['Data zameldowania']) : '',
+                    checkOutDate: row['Data wymeldowania'] ? safeFormat(row['Data wymeldowania']) : undefined,
+                    contractStartDate: row['Umowa od'] ? safeFormat(row['Umowa od']) : undefined,
+                    contractEndDate: row['Umowa do'] ? safeFormat(row['Umowa do']) : undefined,
                     comments: row['Komentarze'] as string,
                 };
                 
-                if (!employeeData.fullName) {
-                    console.warn('Skipping row due to missing full name:', row);
+                if (!employeeData.fullName || !employeeData.checkInDate) {
+                    console.warn('Skipping row due to missing full name or check-in date:', row);
                     continue;
                 }
                 
-                const coordinator = settings.coordinators.find(c => c.name.toLowerCase() === (employeeData.coordinatorId || '').toLowerCase());
+                const coordinator = settings.coordinators.find((c: { name: string; }) => c.name.toLowerCase() === (employeeData.coordinatorId || '').toLowerCase());
                 employeeData.coordinatorId = coordinator ? coordinator.uid : '';
 
                 await addEmployee(employeeData, actorUid);
@@ -916,3 +927,5 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
         throw new Error(e instanceof Error ? e.message : "Failed to import employees from Excel.");
     }
 }
+
+    

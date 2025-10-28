@@ -458,7 +458,7 @@ export async function addEquipment(itemData: Omit<EquipmentItem, 'id' | 'address
     try {
         const sheet = await getSheet(SHEET_NAME_EQUIPMENT, EQUIPMENT_HEADERS);
         const { settings } = await getAllData();
-        const addressName = settings.addresses.find(a => a.id === itemData.addressId)?.name || 'Nieznany';
+        const addressName = settings.addresses.find((a: { id: any; }) => a.id === itemData.addressId)?.name || 'Nieznany';
         
         const newItem: EquipmentItem = {
             id: `equip-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
@@ -537,7 +537,7 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
         }
 
         const { settings } = await getAllData();
-        const toCoordinator = settings.coordinators.find((c) => c.uid === toCoordinatorId);
+        const toCoordinator = settings.coordinators.find((c: { uid: string; }) => c.uid === toCoordinatorId);
         if (!toCoordinator) {
             throw new Error("Target coordinator not found.");
         }
@@ -621,7 +621,7 @@ export async function updateSettings(newSettings: Partial<Omit<Settings, 'tempor
             await roomsSheet.clearRows();
 
             const allRooms: (Room & {addressId: string})[] = [];
-            const addressesData = newSettings.addresses.map((addr) => {
+            const addressesData = newSettings.addresses.map((addr: { rooms: any[]; id: any; name: any; coordinatorId: any; }) => {
                 addr.rooms.forEach(room => {
                     allRooms.push({ ...room, addressId: addr.id });
                 });
@@ -643,7 +643,7 @@ export async function updateSettings(newSettings: Partial<Omit<Settings, 'tempor
              const sheet = await getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS);
              await sheet.clearRows();
              if (newSettings.coordinators.length > 0) {
-                 await sheet.addRows(newSettings.coordinators.map((c) => ({
+                 await sheet.addRows(newSettings.coordinators.map((c: { isAdmin: any; }) => ({
                      ...c,
                      isAdmin: String(c.isAdmin).toUpperCase()
                  })), { raw: false, insert: true });
@@ -701,7 +701,7 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
 
         const detailRows: Record<string, string>[] = [];
         inspectionData.categories.forEach((category: InspectionCategory) => {
-            category.items.forEach(item => {
+            category.items.forEach((item: { label: any; value: any; }) => {
                 detailRows.push({
                     id: `insp-det-${Date.now()}-${Math.random()}`,
                     inspectionId,
@@ -759,7 +759,7 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
 export async function generateMonthlyReport(year: number, month: number, coordinatorId: string): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
     try {
         const { employees, settings } = await getAllData();
-        const coordinatorMap = new Map(settings.coordinators.map(c => [c.uid, c.name]));
+        const coordinatorMap = new Map(settings.coordinators.map((c: { uid: any; name: any; }) => [c.uid, c.name]));
 
         const reportStart = new Date(year, month - 1, 1);
         const reportEnd = new Date(year, month, 0);
@@ -829,16 +829,16 @@ export async function generateAccommodationReport(year: number, month: number, c
         const { employees, settings } = await getAllData();
         
         const daysInMonth = getDaysInMonth(new Date(year, month - 1));
-        const coordinatorMap = new Map(settings.coordinators.map(c => [c.uid, c.name]));
+        const coordinatorMap = new Map(settings.coordinators.map((c: { uid: any; name: any; }) => [c.uid, c.name]));
         
         let filteredAddresses = settings.addresses;
         if (coordinatorId !== 'all') {
-            filteredAddresses = settings.addresses.filter(a => a.coordinatorId === coordinatorId);
+            filteredAddresses = settings.addresses.filter((a: { coordinatorId: string; }) => a.coordinatorId === coordinatorId);
         }
 
         const reportData: Record<string, string | number>[] = [];
 
-        filteredAddresses.forEach(address => {
+        filteredAddresses.forEach((address: { name: any; rooms: any[]; coordinatorId: unknown; }) => {
             const addressRow: Record<string, string | number> = { "Adres": address.name };
             
             for (let day = 1; day <= daysInMonth; day++) {
@@ -910,7 +910,7 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
                     continue;
                 }
                 
-                const coordinator = settings.coordinators.find(c => c.name.toLowerCase() === (employeeData.coordinatorId || '').toLowerCase());
+                const coordinator = settings.coordinators.find((c: { name: string; }) => c.name.toLowerCase() === (employeeData.coordinatorId || '').toLowerCase());
                 employeeData.coordinatorId = coordinator ? coordinator.uid : '';
 
                 await addEmployee(employeeData, actorUid);
