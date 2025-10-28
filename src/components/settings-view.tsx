@@ -4,7 +4,7 @@
 import React, { useState, useMemo } from 'react';
 import { useForm, useFieldArray, useWatch, UseFieldArrayAppend, UseFieldArrayRemove } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * * as z from 'zod';
+import * as z from 'zod';
 import { useMainLayout } from '@/components/main-layout';
 import type { Settings, SessionData, Address, Coordinator } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,12 +26,6 @@ const coordinatorSchema = z.object({
     name: z.string().min(1, 'Imię jest wymagane.'),
     password: z.string().optional(),
     isAdmin: z.boolean(),
-}).refine(data => {
-    // Password is required only if it's a new user (or if you decide to enforce it on change)
-    // For simplicity, let's say if password field is touched and empty, it's an error.
-    // A better approach might be to have different schemas for create and update.
-    // For now, let's just make it optional and handle logic in the action.
-    return true;
 });
 
 const formSchema = z.object({
@@ -103,7 +97,7 @@ const CoordinatorManager = ({ form, fields, append, remove }: { form:  ReturnTyp
           name={`coordinators.${index}.password`}
           render={({ field: passField }) => (
             <FormItem>
-              <FormLabel>Hasło (pozostaw puste, aby не zmieniać)</FormLabel>
+              <FormLabel>Hasło (pozostaw puste, aby nie zmieniać)</FormLabel>
               <FormControl><Input type="password" {...passField} placeholder="Nowe hasło" /></FormControl>
                <FormMessage />
             </FormItem>
@@ -571,5 +565,3 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     </div>
   );
 }
-
-    
