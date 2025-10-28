@@ -21,6 +21,7 @@ const SHEET_NAME_INSPECTIONS = 'Inspections';
 const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 const SHEET_NAME_INSPECTION_TEMPLATE = 'InspectionTemplate';
 
+let docPromise: Promise<GoogleSpreadsheet> | null = null;
 
 function getAuth(): JWT {
     const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
@@ -40,16 +41,22 @@ function getAuth(): JWT {
     });
 }
 
-async function getDoc(): Promise<GoogleSpreadsheet> {
-    try {
-        const auth = getAuth();
-        const doc = new GoogleSpreadsheet(SPREADSHEET_ID, auth);
-        await doc.loadInfo();
-        return doc;
-    } catch (error: unknown) {
-        console.error("Failed to load Google Sheet document:", error);
-        throw new Error(`Could not connect to Google Sheets. Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
+function getDoc(): Promise<GoogleSpreadsheet> {
+    if (!docPromise) {
+        docPromise = (async () => {
+            try {
+                const auth = getAuth();
+                const doc = new GoogleSpreadsheet(SPREADSHEET_ID, auth);
+                await doc.loadInfo();
+                return doc;
+            } catch (error: unknown) {
+                console.error("Failed to load Google Sheet document:", error);
+                docPromise = null; // Reset promise on error to allow retrying
+                throw new Error(`Could not connect to Google Sheets. Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
+            }
+        })();
     }
+    return docPromise;
 }
 
 export async function getSheet(title: string, headers: string[]): Promise<GoogleSpreadsheetWorksheet> {
@@ -81,7 +88,6 @@ const safeFormat = (dateValue: unknown): string | null => {
     let date: Date;
 
     if (typeof dateValue === 'number' && dateValue > 0) {
-        // Excel's epoch starts on 1900-01-01, but it has a bug treating 1900 as a leap year.
         const excelEpoch = new Date(1899, 11, 30);
         date = new Date(excelEpoch.getTime() + dateValue * 24 * 60 * 60 * 1000);
         if (isValid(date)) {
@@ -91,13 +97,11 @@ const safeFormat = (dateValue: unknown): string | null => {
 
     const dateString = String(dateValue);
 
-    // Attempt to parse ISO string first (most reliable)
     date = parseISO(dateString);
     if (isValid(date)) {
         return format(date, 'yyyy-MM-dd');
     }
 
-    // Attempt to parse a specific format like dd-MM-yyyy or dd.MM.yyyy
     date = parse(dateString, 'dd-MM-yyyy', new Date());
      if (isValid(date)) {
         return format(date, 'yyyy-MM-dd');
@@ -107,13 +111,11 @@ const safeFormat = (dateValue: unknown): string | null => {
         return format(date, 'yyyy-MM-dd');
     }
 
-    // Try a more general Date constructor for other formats
     date = new Date(dateValue as string | number);
     if (isValid(date)) {
         return format(date, 'yyyy-MM-dd');
     }
-
-    // If all else fails, return null
+    
     return null;
 };
 
@@ -428,3 +430,5 @@ export const getAllSheetsData = async () => {
         throw new Error(`Could not fetch all data from sheets. Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
 }
+
+    
