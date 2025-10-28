@@ -308,10 +308,10 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         }
         
         const changes: NotificationChange[] = [];
-        const updatedEmployeeData: Employee = { ...originalEmployee, ...updates };
-
+        
         for (const key in updates) {
             const typedKey = key as keyof Employee;
+            
             const oldValue = originalEmployee[typedKey];
             const newValue = updates[typedKey];
             
@@ -344,8 +344,12 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
             }
         }
         
+        const updatedEmployeeData: Employee = { ...originalEmployee, ...updates };
         const serialized = serializeEmployee(updatedEmployeeData);
+        
         for(const header of EMPLOYEE_HEADERS) {
+            // This is the key fix. Ensure that null/undefined values from 'updates' correctly
+            // overwrite existing values by setting them to the serialized (empty string) value.
             row.set(header, serialized[header]);
         }
 
