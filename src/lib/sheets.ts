@@ -1,10 +1,9 @@
 
-
 "use server";
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Address, Coordinator, Inspection, InspectionTemplateCategory } from '@/types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Address, Coordinator, Inspection, InspectionTemplateCategory } from '../types';
 import { format, isValid, parse, parseISO } from 'date-fns';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
@@ -130,6 +129,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     if (!id) return null;
 
     const checkInDate = safeFormat(plainObject.checkInDate);
+    if (!checkInDate) return null; // checkInDate is mandatory
 
     let deductionReason: DeductionReason[] | undefined = undefined;
     if (plainObject.deductionReason && typeof plainObject.deductionReason === 'string') {
@@ -153,7 +153,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         address: (plainObject.address || '') as string,
         roomNumber: (plainObject.roomNumber || '') as string,
         zaklad: (plainObject.zaklad || '') as string,
-        checkInDate: checkInDate || '',
+        checkInDate: checkInDate,
         checkOutDate: safeFormat(plainObject.checkOutDate),
         contractStartDate: safeFormat(plainObject.contractStartDate),
         contractEndDate: safeFormat(plainObject.contractEndDate),
@@ -683,5 +683,3 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
         throw new Error(`Could not fetch inspections. Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
 }
-
-    

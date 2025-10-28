@@ -495,9 +495,9 @@ export default function MainLayout({
     }, [currentUser, refreshData, toast]);
     
     const handleImportEmployees = useCallback(async (fileContent: string) => {
-        if (!currentUser) return;
+        if (!currentUser || !settings) return;
         try {
-            const result = await importEmployeesFromExcel(fileContent, currentUser.uid);
+            const result = await importEmployeesFromExcel(fileContent, currentUser.uid, settings);
             toast({
                 title: "Import zakończony",
                 description: `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} pracowników.`,
@@ -510,7 +510,7 @@ export default function MainLayout({
                 description: e instanceof Error ? e.message : "Wystąpił nieznany błąd.",
             });
         }
-    }, [currentUser, refreshData, toast]);
+    }, [currentUser, settings, refreshData, toast]);
 
     const contextValue: MainLayoutContextType = useMemo(() => ({
         allEmployees,
@@ -668,11 +668,3 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
-
-
-function refreshData(arg0: boolean) {
-    throw new Error('Function not implemented.');
-}
-    
-
-    

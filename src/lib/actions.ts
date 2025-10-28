@@ -120,7 +120,7 @@ const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targe
 
 const safeFormat = (dateStr: unknown): string | null => {
     if (!dateStr) return null;
-    const date = new Date(dateStr as string);
+    const date = new Date(dateStr as string | number);
     if (!isValid(date)) return null;
     try {
         return format(date, 'yyyy-MM-dd');
@@ -506,9 +506,9 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', _actor
             return;
         }
 
-        for (let i = rowsToDelete.length - 1; i >= 0; i--) {
-            await rowsToDelete[i].delete();
-        }
+        const deletedRowIndexes = rowsToDelete.map(r => r.rowNumber - 1);
+        await sheet.deleteRows(deletedRowIndexes);
+
     } catch (e: unknown) {
         console.error("Error bulk deleting employees:", e);
         throw new Error(e instanceof Error ? e.message : "Failed to bulk delete employees.");
@@ -533,8 +533,10 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
 
         for (const row of rowsToTransfer) {
             row.set('coordinatorId', toCoordinatorId);
-            await row.save();
         }
+
+        await sheet.saveUpdatedCells();
+
     } catch (e: unknown) {
         console.error("Error transferring employees:", e);
         throw new Error(e instanceof Error ? e.message : "Failed to transfer employees.");
@@ -549,6 +551,7 @@ export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<
         today.setHours(0, 0, 0, 0);
 
         let updatedCount = 0;
+        const rowsToUpdate = [];
 
         for (const row of rows) {
             const status = String(row.get('status'));
@@ -558,7 +561,7 @@ export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<
                 const checkOutDate = new Date(checkOutDateString);
                 if (isValid(checkOutDate) && isPast(checkOutDate)) {
                     row.set('status', 'dismissed');
-                    await row.save();
+                    rowsToUpdate.push(row.save()); // Pushing promise to array
                     updatedCount++;
 
                     const originalEmployee = deserializeEmployee(row.toObject());
@@ -570,6 +573,9 @@ export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<
                 }
             }
         }
+        
+        await Promise.all(rowsToUpdate);
+
         return { updated: updatedCount };
     } catch (e: unknown) {
         console.error("Error updating statuses:", e);
@@ -859,10 +865,12 @@ export async function generateAccommodationReport(year: number, month: number, c
     }
 }
 
-export async function importEmployeesFromExcel(fileContent: string, actorUid: string): Promise<{ importedCount: number; totalRows: number; }> {
+export async function importEmployeesFromExcel(fileContent: string, actorUid: string, settings: Settings): Promise<{ importedCount: number; totalRows: number; }> {
     try {
         const workbook = XLSX.read(fileContent, { type: 'base64', cellDates: true });
         const sheetName = workbook.SheetNames[0];
+        if(!sheetName) throw new Error("Nie znaleziono arkusza w pliku Excel.");
+
         const worksheet = workbook.Sheets[sheetName];
         const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet);
 
@@ -873,7 +881,7 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
                 // Map Excel columns to Employee properties
                 const employeeData: Partial<Employee> = {
                     fullName: row['Imię i nazwisko'] as string,
-                    coordinatorId: row['Koordynator'] as string, // This should be coordinator NAME, needs mapping
+                    coordinatorId: row['Koordynator'] as string, // This is coordinator NAME, needs mapping
                     nationality: row['Narodowość'] as string,
                     gender: row['Płeć'] as string,
                     address: row['Adres'] as string,
@@ -886,14 +894,11 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
                     comments: row['Komentarze'] as string,
                 };
                 
-                // Add validation and default values as necessary
                 if (!employeeData.fullName) {
                     console.warn('Skipping row due to missing full name:', row);
                     continue;
                 }
                 
-                // Example of mapping coordinator name to ID
-                const { settings } = await getAllData();
                 const coordinator = settings.coordinators.find(c => c.name.toLowerCase() === (employeeData.coordinatorId || '').toLowerCase());
                 employeeData.coordinatorId = coordinator ? coordinator.uid : '';
 
@@ -911,5 +916,3 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
         throw new Error(e instanceof Error ? e.message : "Failed to import employees from Excel.");
     }
 }
-
-    
