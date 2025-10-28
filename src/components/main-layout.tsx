@@ -34,8 +34,9 @@ import {
     updateEquipment,
     deleteEquipment,
     importEmployeesFromExcel,
+    bulkDeleteEmployees,
 } from '@/lib/actions';
-import { getAllData } from '@/lib/sheets';
+import { getAllSheetsData } from '@/lib/sheets';
 import { logout } from '../lib/auth';
 import { useToast } from '../hooks/use-toast';
 import { AddEmployeeForm, type EmployeeFormData } from './add-employee-form';
@@ -195,7 +196,7 @@ export default function MainLayout({
                 nonEmployees,
                 equipment,
                 notifications,
-            } = await getAllData();
+            } = await getAllSheetsData();
 
             setAllEmployees(employees);
             setSettings(settings);
@@ -443,7 +444,7 @@ export default function MainLayout({
         handleUpdateSettings({ addresses: newAddresses });
     }, [settings, handleUpdateSettings]);
 
-    const handleBulkDeleteEmployees = useCallback(async (entityType: 'employee' | 'non-employee', status: 'active' | 'dismissed') => {
+    const handleBulkDeleteEmployees = useCallback(async (_entityType: 'employee' | 'non-employee', status: 'active' | 'dismissed') => {
         if (!currentUser || !currentUser.isAdmin) {
             toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administratorzy mogą wykonać tę akcję." });
             return false;
