@@ -6,7 +6,7 @@ import type { Employee, NonEmployee, Settings, SessionData } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Copy, Bed } from "lucide-react";
+import { Copy, Bed, Users } from "lucide-react";
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -69,7 +69,6 @@ export function HousingView({
         if (currentUser.isAdmin && selectedCoordinatorId === 'all') {
             const allAddresses = new Set(settings.addresses.map(a => a.name));
             const occupiedAddresses = new Set(allActiveOccupants.map(o => o.address));
-            // Avoid using spread on Set (requires downlevelIteration) - use Array.from concatenation instead
             addressesToDisplay = Array.from(new Set(Array.from(allAddresses).concat(Array.from(occupiedAddresses))));
         } else {
             addressesToDisplay = settings.addresses.filter(a => a.coordinatorId === selectedCoordinatorId).map(a => a.name);
@@ -162,7 +161,7 @@ export function HousingView({
 
     return (
         <>
-            <Card>
+            <Card className="bg-card/80 backdrop-blur-sm">
                 <CardHeader>
                     <CardTitle>Przegląd zakwaterowania</CardTitle>
                     <CardDescription>Poniżej znajduje się lista wszystkich mieszkań i ich obłożenie.</CardDescription>
@@ -180,9 +179,13 @@ export function HousingView({
                             {sortedAndFilteredHousingStats.length > 0 ? sortedAndFilteredHousingStats.map((address) => {
                                 const occupancyPercentage = address.capacity > 0 ? (address.occupantCount / address.capacity) * 100 : 0;
                                 return (
-                                    <Card key={address.name} onClick={() => { setSelectedAddress(address); setIsHousingDetailOpen(true); }} className="cursor-pointer hover:shadow-md transition-shadow">
+                                    <Card 
+                                        key={address.name} 
+                                        onClick={() => { setSelectedAddress(address); setIsHousingDetailOpen(true); }} 
+                                        className="cursor-pointer transition-all duration-300 hover:shadow-primary/20 hover:shadow-lg hover:scale-[1.02]"
+                                    >
                                         <CardHeader>
-                                            <CardTitle className="text-lg">{address.name}</CardTitle>
+                                            <CardTitle className="text-lg truncate">{address.name}</CardTitle>
                                         </CardHeader>
                                         <CardContent>
                                             <div className="flex items-center justify-between text-sm">
@@ -191,8 +194,8 @@ export function HousingView({
                                             </div>
                                             <div className="mt-2">
                                                 {address.capacity > 0 ? (
-                                                    <Progress value={occupancyPercentage} className={cn("h-2 [&>div]:", getOccupancyColor(occupancyPercentage))} />
-                                                ) : <div className="h-2 bg-muted rounded-full" />}
+                                                    <Progress value={occupancyPercentage} className={cn("h-3 [&>div]:transition-all [&>div]:duration-500", getOccupancyColor(occupancyPercentage))} />
+                                                ) : <div className="h-3 bg-muted rounded-full" />}
                                             </div>
                                         </CardContent>
                                     </Card>
@@ -209,37 +212,53 @@ export function HousingView({
                 <DialogContent className="max-w-3xl flex flex-col h-screen sm:h-[90vh]">
                 {selectedAddress && (
                     <>
-                    <DialogHeader>
-                        <Button variant="link" className="p-0 h-auto justify-start text-lg text-primary" onClick={() => setIsHousingDetailOpen(false)}>
+                    <DialogHeader className="text-center">
+                        <DialogTitle className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent">
                             {selectedAddress.name}
-                        </Button>
+                        </DialogTitle>
                         <DialogDescription>Szczegóły obłożenia</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-3 gap-2 text-center py-4">
-                            <div><p className="text-xs text-muted-foreground">Zajęte</p><p className="font-bold text-lg text-red-600">{selectedAddress.occupantCount}</p></div>
-                            <div><p className="text-xs text-muted-foreground">Wolne</p><p className="font-bold text-lg text-green-600">{isFinite(selectedAddress.available) ? selectedAddress.available : '∞'}</p></div>
-                            <div><p className="text-xs text-muted-foreground">Pojemność</p><p className="font-bold text-lg text-primary">{selectedAddress.capacity > 0 ? selectedAddress.capacity : ''}</p></div>
+                    <div className="grid grid-cols-3 gap-2 text-center py-4">
+                        <div>
+                            <div className="mx-auto h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center">
+                                <Users className="h-6 w-6 text-red-600 dark:text-red-400" />
+                            </div>
+                            <p className="font-bold text-2xl mt-2 text-red-600 dark:text-red-400">{selectedAddress.occupantCount}</p>
+                            <p className="text-xs text-muted-foreground">Zajęte</p>
                         </div>
-                        <Separator />
+                        <div>
+                             <div className="mx-auto h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
+                                <Bed className="h-6 w-6 text-green-600 dark:text-green-400" />
+                            </div>
+                            <p className="font-bold text-2xl mt-2 text-green-600 dark:text-green-400">{isFinite(selectedAddress.available) ? selectedAddress.available : '∞'}</p>
+                            <p className="text-xs text-muted-foreground">Wolne</p>
+                        </div>
+                        <div>
+                             <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                                <Users className="h-6 w-6 text-primary" />
+                            </div>
+                            <p className="font-bold text-2xl mt-2 text-primary">{selectedAddress.capacity > 0 ? selectedAddress.capacity : 'N/A'}</p>
+                            <p className="text-xs text-muted-foreground">Pojemność</p>
+                        </div>
                     </div>
+                    <Separator />
                     <div className="space-y-4 flex-1 flex flex-col min-h-0">
                         <h4 className="font-medium text-sm text-primary">Pokoje</h4>
                         <ScrollArea className="flex-1 -mr-6 pr-6">
                             <div className="space-y-4">
-                                {Object.entries(groupedRooms).map(([groupNumber, groupData]) => (
-                                <Card key={groupNumber} className="shadow-sm">
+                                {Object.entries(groupedRooms).map(([groupNumber, groupData], index) => (
+                                <Card key={groupNumber} className="shadow-sm animate-in fade-in-0 duration-300" style={{animationDelay: `${index * 100}ms`}}>
                                     <CardHeader className="p-3">
                                         <CardTitle className="text-base">Mieszkanie {groupNumber}</CardTitle>
                                         <CardDescription>Miejsca: {groupData.capacity}</CardDescription>
                                     </CardHeader>
-                                    <CardContent className="p-3 pt-0 space-y-2">
+                                    <CardContent className="p-3 pt-0 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                                     {groupData.rooms.map((room) => (
-                                        <div key={room.roomNumber} onClick={() => {setSelectedRoom(room); setIsRoomDetailOpen(true);}} className="flex justify-between items-center cursor-pointer hover:bg-muted/50 p-2 rounded-md">
-                                            <span className="font-medium">{room.roomNumber}</span>
-                                            <div className={cn("flex items-center gap-2 font-bold", room.available > 0 ? 'text-green-600' : 'text-red-600')}>
-                                                <span>{room.available}</span>
-                                                <Bed className="h-4 w-4" />
+                                        <div key={room.roomNumber} onClick={() => {setSelectedRoom(room); setIsRoomDetailOpen(true);}} className="flex flex-col items-center justify-center p-3 rounded-lg border cursor-pointer hover:bg-muted/50 hover:border-primary transition-colors">
+                                            <span className="font-bold text-lg">{room.roomNumber.split('.')[1] || room.roomNumber}</span>
+                                            <div className={cn("flex items-center gap-1 text-xs font-semibold mt-1", room.available > 0 ? 'text-green-600' : 'text-red-600')}>
+                                                <Bed className="h-3 w-3" />
+                                                <span>{room.available} wolne</span>
                                             </div>
                                         </div>
                                     ))}
@@ -277,7 +296,8 @@ export function HousingView({
                     <ScrollArea className="flex-1 -mr-6 pr-6">
                         <div className="space-y-2">
                         {selectedRoom.occupants.length > 0 ? selectedRoom.occupants.map((occupant, index) => (
-                            <div key={index} className="flex items-center gap-3 p-2 rounded-md bg-muted/50 shadow-sm">
+                            <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 shadow-sm animate-in fade-in-0 duration-300" style={{animationDelay: `${index * 50}ms`}}>
+                                <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs">{occupant.fullName.slice(0,2).toUpperCase()}</div>
                                 <span className="font-medium text-sm">{occupant.fullName}</span>
                             </div>
                         )) : <p className='text-center text-muted-foreground p-4'>Brak mieszkańców</p>}
