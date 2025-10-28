@@ -33,7 +33,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { NonEmployee, Settings } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, X } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parse } from 'date-fns';
 
@@ -96,6 +96,11 @@ const DateInput = ({
     }
   };
 
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    handleDateSelect(undefined);
+  }
+
   return (
     <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
       <PopoverTrigger asChild>
@@ -107,7 +112,13 @@ const DateInput = ({
             placeholder="dd-mm-rrrr"
             className="pr-10"
           />
-          <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 flex items-center">
+            {value ? (
+                <X className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-pointer" onClick={handleClear}/>
+            ) : (
+                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+            )}
+          </div>
         </div>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
@@ -305,4 +316,5 @@ export function AddNonEmployeeForm({
     </Dialog>
   );
 }
-  
+
+    
