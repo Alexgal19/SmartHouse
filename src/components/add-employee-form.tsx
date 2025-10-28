@@ -46,7 +46,7 @@ const formSchema = z.object({
   coordinatorId: z.string().min(1, "Koordynator jest wymagany."),
   address: z.string().min(1, "Adres jest wymagany."),
   roomNumber: z.string().min(1, "Numer pokoju jest wymagany."),
-  zaklad: z.string().min(1, "Zakład jest wymagany."),
+  zaklad: z.string().nullable(),
   nationality: z.string().min(1, "Narodowość jest wymagana."),
   gender: z.string().min(1, "Płeć jest wymagana."),
   checkInDate: z.date({ required_error: "Data zameldowania jest wymagana." }),
@@ -176,7 +176,7 @@ export function AddEmployeeForm({
       coordinatorId: '',
       address: '',
       roomNumber: '',
-      zaklad: '',
+      zaklad: null,
       nationality: '',
       gender: '',
       checkInDate: undefined,
@@ -220,7 +220,7 @@ export function AddEmployeeForm({
             coordinatorId: employee.coordinatorId ?? '',
             address: employee.address ?? '',
             roomNumber: employee.roomNumber ?? '',
-            zaklad: employee.zaklad ?? '',
+            zaklad: employee.zaklad ?? null,
             nationality: employee.nationality ?? '',
             gender: employee.gender ?? '',
             checkInDate: parseDate(employee.checkInDate) ?? new Date(),
@@ -242,7 +242,7 @@ export function AddEmployeeForm({
           coordinatorId: '',
           address: '',
           roomNumber: '',
-          zaklad: '',
+          zaklad: null,
           nationality: '',
           gender: '',
           checkInDate: new Date(),
@@ -411,7 +411,7 @@ export function AddEmployeeForm({
                                 render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Zakład</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value || ''}>
                                     <FormControl><SelectTrigger><SelectValue placeholder="Wybierz zakład" /></SelectTrigger></FormControl>
                                     <SelectContent>
                                         {settings.departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}

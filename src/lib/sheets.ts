@@ -150,7 +150,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         gender: (plainObject.gender || '') as string,
         address: (plainObject.address || '') as string,
         roomNumber: (plainObject.roomNumber || '') as string,
-        zaklad: (plainObject.zaklad || '') as string,
+        zaklad: (plainObject.zaklad as string | null) || null,
         checkInDate: checkInDate,
         checkOutDate: safeFormat(plainObject.checkOutDate),
         contractStartDate: safeFormat(plainObject.contractStartDate),

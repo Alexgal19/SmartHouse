@@ -65,7 +65,7 @@ export type Employee = {
     gender: string;
     address: string;
     roomNumber: string;
-    zaklad: string; // department
+    zaklad: string | null; // department
     checkInDate: string; // YYYY-MM-DD
     checkOutDate?: string | null; // YYYY-MM-DD
     contractStartDate: string | null;
