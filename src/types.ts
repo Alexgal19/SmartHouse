@@ -80,7 +80,7 @@ export type Employee = {
     deductionRegulation: number | null; // potracenie_regulamin
     deductionNo4Months: number | null; // potracenie_4_msc
     deductionNo30Days: number | null; // potracenie_30_dni
-    deductionReason?: DeductionReason[];
+    deductionReason: DeductionReason[] | undefined;
 };
 
 export type NonEmployee = {

@@ -41,6 +41,8 @@ export function DashboardCharts({
 
     const [departureYear, setDepartureYear] = useState(new Date().getFullYear());
     const [departureMonth, setDepartureMonth] = useState<number | 'all'>('all');
+    const [deductionYear, setDeductionYear] = useState(new Date().getFullYear());
+    const [deductionMonth, setDeductionMonth] = useState<number | 'all'>('all');
 
     const chartData = useMemo(() => {
         const activeEmployees = employees.filter(e => e.status === 'active');
@@ -117,14 +119,61 @@ export function DashboardCharts({
             })
         }
 
+        const deductionsByDate = employees.reduce((acc, employee) => {
+            if (employee.checkOutDate) {
+                const totalDeduction = (employee.deductionRegulation || 0) +
+                                     (employee.deductionNo4Months || 0) +
+                                     (employee.deductionNo30Days || 0) +
+                                     (employee.deductionReason || []).reduce((sum, reason) => sum + (reason.checked && reason.amount ? reason.amount : 0), 0);
+
+                if (totalDeduction > 0) {
+                    const dateKey = format(new Date(employee.checkOutDate), 'yyyy-MM-dd');
+                    if (!acc[dateKey]) {
+                        acc[dateKey] = { deductions: 0 };
+                    }
+                    acc[dateKey].deductions += totalDeduction;
+                }
+            }
+            return acc;
+        }, {} as Record<string, { deductions: number }>);
+        
+        let deductionsData;
+        if (deductionMonth === 'all') {
+            const yearStartDate = startOfYear(new Date(deductionYear, 0, 1));
+            const yearEndDate = endOfYear(new Date(deductionYear, 11, 31));
+            const monthsInYear = eachMonthOfInterval({ start: yearStartDate, end: yearEndDate });
+            
+            deductionsData = monthsInYear.map(monthDate => {
+                const monthKey = format(monthDate, 'yyyy-MM');
+                const monthDeductions = Object.keys(deductionsByDate).filter(dateKey => dateKey.startsWith(monthKey)).reduce((sum, dateKey) => sum + deductionsByDate[dateKey].deductions, 0);
+                return {
+                    label: format(monthDate, 'MMM', { locale: pl }),
+                    deductions: monthDeductions,
+                }
+            });
+        } else {
+            const monthStartDate = startOfMonth(new Date(deductionYear, deductionMonth - 1));
+            const monthEndDate = endOfMonth(monthStartDate);
+            const daysInMonth = eachDayOfInterval({start: monthStartDate, end: monthEndDate});
+
+            deductionsData = daysInMonth.map(dayDate => {
+                const dayKey = format(dayDate, 'yyyy-MM-dd');
+                return {
+                    label: format(dayDate, 'd'),
+                    deductions: deductionsByDate[dayKey]?.deductions || 0,
+                }
+            });
+        }
+
 
         return {
             employeesPerCoordinator: Object.values(employeesPerCoordinator),
             employeesByNationality: Object.values(employeesByNationality).sort((a, b) => b.employees - a.employees),
             employeesByDepartment: Object.values(employeesByDepartment).sort((a,b) => b.employees - a.employees),
             departuresByMonth: departuresData,
+            deductionsByDate: deductionsData,
         }
-    }, [employees, settings, departureYear, departureMonth]);
+    }, [employees, settings, departureYear, departureMonth, deductionYear, deductionMonth]);
 
     const showCoordinatorChart = currentUser?.isAdmin && selectedCoordinatorId === 'all';
     
@@ -293,9 +342,59 @@ export function DashboardCharts({
                     )}
                 </CardContent>
             </Card>
+            <Card className="shadow-lg">
+                <CardHeader className='pb-2'>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                         <div>
+                            <CardTitle className="text-lg">Potrącenia</CardTitle>
+                         </div>
+                         <div className="flex items-center gap-2 pt-2 sm:pt-0">
+                             <Select value={String(deductionYear)} onValueChange={(v) => setDeductionYear(Number(v))}>
+                                <SelectTrigger className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                                </SelectContent>
+                             </Select>
+                             <Select value={String(deductionMonth)} onValueChange={(v) => setDeductionMonth(v === 'all' ? 'all' : Number(v))}>
+                                <SelectTrigger className="w-36 h-8 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Wszystkie miesiące</SelectItem>
+                                    {months.map(m => <SelectItem key={m} value={String(m)}>{format(new Date(deductionYear, m-1), 'LLLL', {locale: pl})}</SelectItem>)}
+                                </SelectContent>
+                             </Select>
+                         </div>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {chartData.deductionsByDate.length > 0 ? (
+                         <ChartContainer config={{}} className="w-full h-64">
+                            <ResponsiveContainer>
+                                <BarChart 
+                                    data={chartData.deductionsByDate}
+                                    margin={{ top: 20, right: 20, bottom: 5, left: 0 }}
+                                >
+                                     <defs>
+                                        <linearGradient id="chart-deductions-gradient" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="hsl(var(--chart-5))" stopOpacity={0.8}/>
+                                            <stop offset="95%" stopColor="hsl(var(--chart-5))" stopOpacity={0.1}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border/50"/>
+                                    <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} className="text-xs" />
+                                    <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
+                                    <Tooltip cursor={false} content={<ChartTooltipContent formatter={(value) => `${value} PLN`}/>} />
+                                    <Bar dataKey="deductions" radius={[4, 4, 0, 0]} fill="url(#chart-deductions-gradient)">
+                                       <LabelList dataKey="deductions" position="top" offset={8} className="fill-foreground text-xs" formatter={(value: number) => value > 0 ? `${value}` : ''}/>
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </ChartContainer>
+                    ) : (
+                        <NoDataState message={'Brak danych o potrąceniach w wybranym okresie'} />
+                    )}
+                </CardContent>
+            </Card>
         </div>
     );
 }
 
-
-    
