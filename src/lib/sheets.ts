@@ -3,7 +3,7 @@
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Address, Coordinator, Inspection, InspectionTemplateCategory } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Address, Coordinator, Inspection, InspectionTemplateCategory } from '@/types';
 import { format, isValid, parse, parseISO } from 'date-fns';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
@@ -91,26 +91,10 @@ const safeFormat = (dateValue: unknown): string | null => {
         return null;
     }
 
-    let date = parseISO(String(dateValue));
-    if (isValid(date)) {
-        return format(date, 'yyyy-MM-dd');
-    }
-
-    date = parse(String(dateValue), 'dd-MM-yyyy', new Date());
-     if (isValid(date)) {
-        return format(date, 'yyyy-MM-dd');
-    }
-    date = parse(String(dateValue), 'dd.MM.yyyy', new Date());
-     if (isValid(date)) {
-        return format(date, 'yyyy-MM-dd');
-    }
-
-    date = new Date(dateValue as string | number);
-    if (isValid(date)) {
-        return format(date, 'yyyy-MM-dd');
-    }
+    let date: Date;
 
     if (typeof dateValue === 'number' && dateValue > 0) {
+        // Excel's epoch starts on 1900-01-01, but it has a bug treating 1900 as a leap year.
         const excelEpoch = new Date(1899, 11, 30);
         date = new Date(excelEpoch.getTime() + dateValue * 24 * 60 * 60 * 1000);
         if (isValid(date)) {
@@ -118,6 +102,31 @@ const safeFormat = (dateValue: unknown): string | null => {
         }
     }
 
+    const dateString = String(dateValue);
+
+    // Attempt to parse ISO string first (most reliable)
+    date = parseISO(dateString);
+    if (isValid(date)) {
+        return format(date, 'yyyy-MM-dd');
+    }
+
+    // Attempt to parse a specific format like dd-MM-yyyy or dd.MM.yyyy
+    date = parse(dateString, 'dd-MM-yyyy', new Date());
+     if (isValid(date)) {
+        return format(date, 'yyyy-MM-dd');
+    }
+    date = parse(dateString, 'dd.MM.yyyy', new Date());
+     if (isValid(date)) {
+        return format(date, 'yyyy-MM-dd');
+    }
+
+    // Try a more general Date constructor for other formats
+    date = new Date(dateValue as string | number);
+    if (isValid(date)) {
+        return format(date, 'yyyy-MM-dd');
+    }
+
+    // If all else fails, return null
     return null;
 };
 
@@ -683,3 +692,5 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
         throw new Error(`Could not fetch inspections. Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
 }
+
+    
