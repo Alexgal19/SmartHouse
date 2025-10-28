@@ -7,7 +7,7 @@ export default async function Home() {
   const session = await getSession();
 
   if (session.isLoggedIn) {
-    redirect('/dashboard?view=employees');
+    redirect('/dashboard?view=dashboard');
   } 
   
   return <LoginPage />;

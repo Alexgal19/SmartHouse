@@ -60,7 +60,7 @@ export default function LoginPage() {
                     title: "Zalogowano pomyślnie",
                     description: `Witaj, ${user.name}!`,
                 });
-                router.push('/dashboard?view=employees');
+                router.push('/dashboard?view=dashboard');
             } else {
                  toast({
                     variant: "destructive",

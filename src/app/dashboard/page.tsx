@@ -1,3 +1,4 @@
+
 "use client";
 
 import DashboardView from '@/components/dashboard-view';
@@ -26,7 +27,7 @@ function CurrentView({ activeView, currentUser }: { activeView: View; currentUse
         return <EquipmentView currentUser={currentUser} />;
     default:
       return (
-        <EntityView currentUser={currentUser} />
+        <DashboardView currentUser={currentUser} />
       )
   }
 }
@@ -34,7 +35,7 @@ function CurrentView({ activeView, currentUser }: { activeView: View; currentUse
 export default function DashboardPage() {
     const searchParams = useSearchParams();
     const { currentUser, allEmployees, settings } = useMainLayout();
-    const activeView = (searchParams.get('view') as View) || 'employees';
+    const activeView = (searchParams.get('view') as View) || 'dashboard';
 
     if (!currentUser || !allEmployees || !settings) {
         return (
