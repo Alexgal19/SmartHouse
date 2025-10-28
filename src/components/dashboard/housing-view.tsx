@@ -238,7 +238,7 @@ export function HousingView({
                                         <div key={room.roomNumber} onClick={() => {setSelectedRoom(room); setIsRoomDetailOpen(true);}} className="flex justify-between items-center cursor-pointer hover:bg-muted/50 p-2 rounded-md">
                                             <span className="font-medium">{room.roomNumber}</span>
                                             <div className={cn("flex items-center gap-2 font-bold", room.available > 0 ? 'text-green-600' : 'text-red-600')}>
-                                                
+                                                <span>{room.available}</span>
                                                 <Bed className="h-4 w-4" />
                                             </div>
                                         </div>
