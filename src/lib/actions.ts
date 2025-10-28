@@ -476,7 +476,7 @@ export async function updateEquipment(id: string, updates: Partial<EquipmentItem
         if (!row) throw new Error("Equipment not found");
         
         for (const key in updates) {
-            row.set(key, (updates as Record<string, string | number | boolean>)[key]);
+            row.set(key, (updates as Record<string, any>)[key]);
         }
         await row.save();
     } catch (e: unknown) {
