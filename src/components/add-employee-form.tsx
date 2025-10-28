@@ -455,7 +455,7 @@ export function AddEmployeeForm({
                                 name="departureReportDate"
                                 render={({ field }) => (
                                     <FormItem className="flex flex-col">
-                                        <FormLabel>Data zgłoszenia wyjazdu</FormLabel>
+                                        <FormLabel>Data zgłoszenia wyjazdu</লাম</FormLabel>
                                         <DateInput value={field.value} onChange={field.onChange} />
                                         <FormMessage />
                                     </FormItem>
@@ -664,3 +664,5 @@ export function AddEmployeeForm({
     </Dialog>
   );
 }
+
+    
