@@ -308,37 +308,50 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         }
         
         const changes: NotificationChange[] = [];
-        
-        // A helper function to check if a value is "empty" (null, undefined, or empty string)
-        const isEmpty = (value: any) => value === null || value === undefined || value === '';
+        const updatedEmployeeData: Employee = { ...originalEmployee, ...updates };
 
         for (const key in updates) {
             const typedKey = key as keyof Employee;
             const oldValue = originalEmployee[typedKey];
             const newValue = updates[typedKey];
             
-            const oldIsEffectivelyEmpty = isEmpty(oldValue);
-            const newIsEffectivelyEmpty = isEmpty(newValue);
+            const areDates = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'addressChangeDate'].includes(key);
 
-            // Compare values, treating null, undefined, and '' as the same.
-            if (oldIsEffectivelyEmpty && newIsEffectivelyEmpty) {
-                continue; // Both are empty, so no change.
+            let oldValStr: string | null = null;
+            if (oldValue !== null && oldValue !== undefined) {
+                 if (key === 'deductionReason' && Array.isArray(oldValue)) {
+                    oldValStr = JSON.stringify(oldValue);
+                } else if (areDates && isValid(new Date(oldValue as string))) {
+                    oldValStr = format(new Date(oldValue as string), 'dd-MM-yyyy');
+                } else {
+                    oldValStr = String(oldValue);
+                }
+            }
+
+            let newValStr: string | null = null;
+            if (newValue !== null && newValue !== undefined) {
+                 if (key === 'deductionReason' && Array.isArray(newValue)) {
+                    newValStr = JSON.stringify(newValue);
+                } else if (areDates && isValid(new Date(newValue as string))) {
+                    newValStr = format(new Date(newValue as string), 'dd-MM-yyyy');
+                } else {
+                    newValStr = String(newValue);
+                }
             }
             
-            if (String(oldValue ?? '') !== String(newValue ?? '')) {
-                 changes.push({ 
-                    field: typedKey, 
-                    oldValue: String(oldValue ?? 'Brak'), 
-                    newValue: String(newValue ?? 'Brak') 
-                });
+            if (oldValStr !== newValStr) {
+                changes.push({ field: typedKey, oldValue: oldValStr || 'Brak', newValue: newValStr || 'Brak' });
             }
-
-            const serializedUpdate = serializeEmployee({ [typedKey]: newValue });
-            row.set(typedKey, serializedUpdate[typedKey]);
         }
         
+        const serialized = serializeEmployee(updatedEmployeeData);
+        for(const header of EMPLOYEE_HEADERS) {
+            row.set(header, serialized[header]);
+        }
+
+        await row.save();
+        
         if (changes.length > 0) {
-            await row.save();
             await createNotification(actorUid, 'zaktualizował', originalEmployee, changes);
         }
 
