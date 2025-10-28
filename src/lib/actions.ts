@@ -458,7 +458,7 @@ export async function addEquipment(itemData: Omit<EquipmentItem, 'id' | 'address
     try {
         const sheet = await getSheet(SHEET_NAME_EQUIPMENT, EQUIPMENT_HEADERS);
         const { settings } = await getAllData();
-        const addressName = settings.addresses.find((a: { id: string; }) => a.id === itemData.addressId)?.name || 'Nieznany';
+        const addressName = settings.addresses.find((a: { id: any; }) => a.id === itemData.addressId)?.name || 'Nieznany';
         
         const newItem: EquipmentItem = {
             id: `equip-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
@@ -516,9 +516,10 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', _actor
         if (rowsToDelete.length === 0) {
             return;
         }
-
-        const deletedRowIndexes = rowsToDelete.map(r => r.rowNumber - 1);
-        await sheet.deleteRows(deletedRowIndexes);
+        // Delete rows one by one, in reverse order to avoid index shifting issues
+        for (let i = rowsToDelete.length - 1; i >= 0; i--) {
+            await rowsToDelete[i].delete();
+        }
 
     } catch (e: unknown) {
         console.error("Error bulk deleting employees:", e);
