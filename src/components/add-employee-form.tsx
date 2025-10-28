@@ -49,8 +49,6 @@ const formSchema = z.object({
   zaklad: z.string().min(1, "Zakład jest wymagany."),
   nationality: z.string().min(1, "Narodowość jest wymagana."),
   gender: z.string().min(1, "Płeć jest wymagana."),
-  entryDate: z.date().nullable().optional(),
-  departureDate: z.date().nullable().optional(),
   checkInDate: z.date({ required_error: "Data zameldowania jest wymagana." }),
   checkOutDate: z.date().nullable().optional(),
   contractStartDate: z.date().nullable().optional(),
@@ -70,14 +68,12 @@ const formSchema = z.object({
   })).optional(),
 });
 
-export type EmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate' | 'contractStartDate' | 'contractEndDate' | 'departureReportDate' | 'entryDate' | 'departureDate'> & {
+export type EmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate' | 'contractStartDate' | 'contractEndDate' | 'departureReportDate'> & {
   checkInDate: string;
   checkOutDate?: string | null;
   contractStartDate?: string | null;
   contractEndDate?: string | null;
   departureReportDate?: string | null;
-  entryDate?: string | null;
-  departureDate?: string | null;
 };
 
 const defaultDeductionReasons: { label: string }[] = [
@@ -183,8 +179,6 @@ export function AddEmployeeForm({
       zaklad: '',
       nationality: '',
       gender: '',
-      entryDate: null,
-      departureDate: null,
       checkInDate: undefined,
       checkOutDate: null,
       contractStartDate: null,
@@ -229,8 +223,6 @@ export function AddEmployeeForm({
             zaklad: employee.zaklad ?? '',
             nationality: employee.nationality ?? '',
             gender: employee.gender ?? '',
-            entryDate: parseDate(employee.entryDate) ?? null,
-            departureDate: parseDate(employee.departureDate) ?? null,
             checkInDate: parseDate(employee.checkInDate) ?? new Date(),
             checkOutDate: parseDate(employee.checkOutDate) ?? null,
             contractStartDate: parseDate(employee.contractStartDate) ?? null,
@@ -253,8 +245,6 @@ export function AddEmployeeForm({
           zaklad: '',
           nationality: '',
           gender: '',
-          entryDate: null,
-          departureDate: null,
           checkInDate: new Date(),
           checkOutDate: null,
           contractStartDate: null,
@@ -289,8 +279,6 @@ export function AddEmployeeForm({
         contractStartDate: formatDate(values.contractStartDate),
         contractEndDate: formatDate(values.contractEndDate),
         departureReportDate: formatDate(values.departureReportDate),
-        entryDate: formatDate(values.entryDate),
-        departureDate: formatDate(values.departureDate),
     };
 
     onSave(formData);
@@ -436,28 +424,6 @@ export function AddEmployeeForm({
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <FormField
-                                control={form.control}
-                                name="entryDate"
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-col">
-                                        <FormLabel>Data wjazdu</FormLabel>
-                                        <DateInput value={field.value} onChange={field.onChange} />
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="departureDate"
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-col">
-                                        <FormLabel>Data wyjazdu</FormLabel>
-                                        <DateInput value={field.value} onChange={field.onChange} />
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
                              <FormField
                                 control={form.control}
                                 name="checkInDate"
