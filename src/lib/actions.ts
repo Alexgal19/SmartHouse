@@ -309,24 +309,30 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         
         const changes: NotificationChange[] = [];
         
+        // A helper function to check if a value is "empty" (null, undefined, or empty string)
+        const isEmpty = (value: any) => value === null || value === undefined || value === '';
+
         for (const key in updates) {
             const typedKey = key as keyof Employee;
             const oldValue = originalEmployee[typedKey];
             const newValue = updates[typedKey];
             
-            // This is the robust way to check for changes, especially for null/undefined/''
-            const oldValStr = Array.isArray(oldValue) ? JSON.stringify(oldValue) : (oldValue ?? null);
-            const newValStr = Array.isArray(newValue) ? JSON.stringify(newValue) : (newValue ?? null);
+            const oldIsEffectivelyEmpty = isEmpty(oldValue);
+            const newIsEffectivelyEmpty = isEmpty(newValue);
 
-            if (String(oldValStr) !== String(newValStr)) {
-                changes.push({ 
+            // Compare values, treating null, undefined, and '' as the same.
+            if (oldIsEffectivelyEmpty && newIsEffectivelyEmpty) {
+                continue; // Both are empty, so no change.
+            }
+            
+            if (String(oldValue ?? '') !== String(newValue ?? '')) {
+                 changes.push({ 
                     field: typedKey, 
-                    oldValue: String(oldValStr ?? 'Brak'), 
-                    newValue: String(newValStr ?? 'Brak') 
+                    oldValue: String(oldValue ?? 'Brak'), 
+                    newValue: String(newValue ?? 'Brak') 
                 });
             }
 
-            // Update the row cell by cell
             const serializedUpdate = serializeEmployee({ [typedKey]: newValue });
             row.set(typedKey, serializedUpdate[typedKey]);
         }
@@ -948,6 +954,8 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
         throw new Error(e instanceof Error ? e.message : "Failed to import employees from Excel.");
     }
 }
+
+    
 
     
 
