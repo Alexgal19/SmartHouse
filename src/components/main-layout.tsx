@@ -33,10 +33,9 @@ import {
     addEquipment,
     updateEquipment,
     deleteEquipment,
-    getAllData,
-    bulkDeleteEmployees,
     importEmployeesFromExcel,
-} from '../lib/actions';
+} from '@/lib/actions';
+import { getAllData } from '@/lib/sheets';
 import { logout } from '../lib/auth';
 import { useToast } from '../hooks/use-toast';
 import { AddEmployeeForm, type EmployeeFormData } from './add-employee-form';
@@ -78,7 +77,7 @@ type MainLayoutContextType = {
     handleDismissEmployee: (employeeId: string) => Promise<void>;
     handleRestoreEmployee: (employeeId: string) => Promise<void>;
     handleDeleteEmployee: (employeeId: string) => Promise<void>;
-    handleImportEmployees: (fileContent: string) => Promise<void>;
+    handleImportEmployees: (file: File) => Promise<void>;
 };
 
 const MainLayoutContext = createContext<MainLayoutContextType | null>(null);
@@ -494,22 +493,35 @@ export default function MainLayout({
         }
     }, [currentUser, refreshData, toast]);
     
-    const handleImportEmployees = useCallback(async (fileContent: string) => {
-        if (!currentUser || !settings) return;
-        try {
-            const result = await importEmployeesFromExcel(fileContent, currentUser.uid, settings);
-            toast({
-                title: "Import zakończony",
-                description: `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} pracowników.`,
-            });
-            await refreshData(false);
-        } catch (e) {
-            toast({
-                variant: "destructive",
-                title: "Błąd importu",
-                description: e instanceof Error ? e.message : "Wystąpił nieznany błąd.",
-            });
+    const handleImportEmployees = useCallback(async (file: File) => {
+        if (!currentUser || !settings) {
+            throw new Error("Brak danych użytkownika lub ustawień do przeprowadzenia importu.");
         }
+
+        const reader = new FileReader();
+        const promise = new Promise<string>((resolve, reject) => {
+            reader.onload = (e) => {
+                const result = e.target?.result;
+                if (typeof result === 'string') {
+                    const base64 = result.split(',')[1];
+                    resolve(base64);
+                } else {
+                    reject(new Error("Nie udało się odczytać pliku."));
+                }
+            };
+            reader.onerror = (error) => reject(error);
+        });
+        
+        reader.readAsDataURL(file);
+        const fileContent = await promise;
+
+        const result = await importEmployeesFromExcel(fileContent, currentUser.uid, settings);
+        toast({
+            title: "Import zakończony",
+            description: `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} wierszy.`,
+        });
+        await refreshData(false);
+
     }, [currentUser, settings, refreshData, toast]);
 
     const contextValue: MainLayoutContextType = useMemo(() => ({
@@ -668,5 +680,3 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
-
-    

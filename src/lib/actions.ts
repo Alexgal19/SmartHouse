@@ -1,7 +1,7 @@
 
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Inspection, InspectionCategory } from '@/types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Inspection, InspectionCategory } from '../types';
 import { getSheet, getAllSheetsData } from './sheets';
 import { format, isPast, isValid, getDaysInMonth, parseISO } from 'date-fns';
 import * as XLSX from 'xlsx';
@@ -119,7 +119,7 @@ const ADDRESS_HEADERS = ['id', 'name', 'coordinatorId'];
 const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targetType', 'targetId', 'details'];
 
 const safeFormat = (dateStr: unknown): string | null => {
-    if (!dateStr) return null;
+    if (dateStr === null || dateStr === undefined || dateStr === '') return null;
     
     // Handle Excel's numeric date format
     if (typeof dateStr === 'number' && dateStr > 0) {
@@ -871,47 +871,81 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
     try {
         const workbook = XLSX.read(fileContent, { type: 'base64', cellDates: true });
         const sheetName = workbook.SheetNames[0];
-        if(!sheetName) throw new Error("Nie znaleziono arkusza в pliku Excel.");
+        if(!sheetName) throw new Error("Nie znaleziono arkusza w pliku Excel.");
 
         const worksheet = workbook.Sheets[sheetName];
-        const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet);
-
+        const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { header: 1 });
+        
+        if (data.length <= 1) {
+             throw new Error("Plik Excel jest pusty lub zawiera tylko nagłówki.");
+        }
+        
+        const headers = data[0] as string[];
+        const rows = data.slice(1);
+        
         let importedCount = 0;
+        const coordinatorMap = new Map(settings.coordinators.map(c => [c.name.toLowerCase(), c.uid]));
 
-        for (const row of data) {
+        const columnMap: Record<string, string> = {
+            'Imię i nazwisko': 'fullName',
+            'Koordynator': 'coordinatorId',
+            'Narodowość': 'nationality',
+            'Płeć': 'gender',
+            'Adres': 'address',
+            'Pokój': 'roomNumber',
+            'Zakład': 'zaklad',
+            'Data zameldowania': 'checkInDate',
+            'Data wymeldowania': 'checkOutDate',
+            'Umowa od': 'contractStartDate',
+            'Umowa do': 'contractEndDate',
+            'Komentarze': 'comments',
+        };
+        const requiredColumns = ['Imię i nazwisko', 'Data zameldowania'];
+        for (const col of requiredColumns) {
+            if (!headers.includes(col)) {
+                throw new Error(`Brak wymaganej kolumny w pliku Excel: "${col}"`);
+            }
+        }
+
+        for (const row of rows) {
+            const rowData = (row as (string | number | null)[]).reduce((acc, cell, index) => {
+                const header = headers[index];
+                if(header) {
+                   acc[header] = cell;
+                }
+                return acc;
+            }, {} as Record<string, unknown>);
+
             try {
-                // Map Excel columns to Employee properties
-                const employeeData: Partial<Employee> = {
-                    fullName: row['Imię i nazwisko'] as string,
-                    coordinatorId: row['Koordynator'] as string, // This is coordinator NAME, needs mapping
-                    nationality: row['Narodowość'] as string,
-                    gender: row['Płeć'] as string,
-                    address: row['Adres'] as string,
-                    roomNumber: String(row['Pokój'] || ''),
-                    zaklad: row['Zakład'] as string,
-                    checkInDate: row['Data zameldowania'] ? safeFormat(row['Data zameldowania']) : '',
-                    checkOutDate: row['Data wymeldowania'] ? safeFormat(row['Data wymeldowania']) : undefined,
-                    contractStartDate: row['Umowa od'] ? safeFormat(row['Umowa od']) : undefined,
-                    contractEndDate: row['Umowa do'] ? safeFormat(row['Umowa do']) : undefined,
-                    comments: row['Komentarze'] as string,
-                };
-                
-                if (!employeeData.fullName || !employeeData.checkInDate) {
-                    console.warn('Skipping row due to missing full name or check-in date:', row);
-                    continue;
+                const employeeData: Partial<Employee> = {};
+                for(const excelHeader in columnMap) {
+                    const employeeKey = columnMap[excelHeader] as keyof Employee;
+                    const value = rowData[excelHeader];
+
+                    if (employeeKey.toLowerCase().includes('date')) {
+                        (employeeData as any)[employeeKey] = value ? safeFormat(value) : null;
+                    } else if (employeeKey === 'coordinatorId') {
+                         const coordinatorName = String(value || '').toLowerCase();
+                         employeeData.coordinatorId = coordinatorMap.get(coordinatorName) || '';
+                    }
+                    else {
+                        (employeeData as any)[employeeKey] = value ? String(value) : '';
+                    }
                 }
                 
-                const coordinator = settings.coordinators.find((c: { name: string; }) => c.name.toLowerCase() === (employeeData.coordinatorId || '').toLowerCase());
-                employeeData.coordinatorId = coordinator ? coordinator.uid : '';
+                if (!employeeData.fullName || !employeeData.checkInDate) {
+                    console.warn('Skipping row due to missing full name or check-in date:', rowData);
+                    continue;
+                }
 
                 await addEmployee(employeeData, actorUid);
                 importedCount++;
             } catch (rowError) {
-                console.error('Error processing row:', row, rowError);
+                console.error('Error processing row:', rowData, rowError);
             }
         }
         
-        return { importedCount, totalRows: data.length };
+        return { importedCount, totalRows: rows.length };
 
     } catch (e) {
         console.error("Error importing from Excel:", e);

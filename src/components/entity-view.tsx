@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, PlusCircle, SlidersHorizontal, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, X, Users, UserX, LayoutGrid, List, Trash2, FileUp } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, SlidersHorizontal, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, X, Users, UserX, LayoutGrid, List, Trash2, FileUp, UploadCloud, CheckCircle, AlertTriangle } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
@@ -19,6 +19,8 @@ import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, Di
 import { Label } from '@/components/ui/label';
 import { useMainLayout } from '@/components/main-layout';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -295,6 +297,64 @@ const FilterDialog = ({ isOpen, onOpenChange, settings, onApply, initialFilters 
     )
 }
 
+const FileUploader = ({ onFileUpload, isImporting }: { onFileUpload: (file: File) => void; isImporting: boolean }) => {
+    const [dragActive, setDragActive] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    const handleDrag = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.type === 'dragenter' || e.type === 'dragover') {
+            setDragActive(true);
+        } else if (e.type === 'dragleave') {
+            setDragActive(false);
+        }
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragActive(false);
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            onFileUpload(e.dataTransfer.files[0]);
+        }
+    };
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        e.preventDefault();
+        if (e.target.files && e.target.files[0]) {
+            onFileUpload(e.target.files[0]);
+        }
+    };
+
+    return (
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Importuj pracowników z Excela</DialogTitle>
+                <DialogDescription>
+                    Przeciągnij i upuść plik .xlsx lub .xls tutaj, aby zaimportować dane pracowników. Upewnij się, że plik ma odpowiednie kolumny.
+                </DialogDescription>
+            </DialogHeader>
+            <form id="form-file-upload" onDragEnter={handleDrag} onSubmit={(e) => e.preventDefault()} className="relative flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                <input ref={inputRef} type="file" id="input-file-upload" multiple={false} accept=".xlsx, .xls" className="hidden" onChange={handleChange} />
+                <label htmlFor="input-file-upload" className={cn("flex flex-col items-center justify-center w-full h-full", { 'bg-muted/50': dragActive })}>
+                    <UploadCloud className="w-10 h-10 text-muted-foreground" />
+                    <p className="mt-2 text-sm text-muted-foreground">
+                        <span className="font-semibold">Kliknij, aby wybrać</span> lub przeciągnij i upuść plik
+                    </p>
+                </label>
+                {dragActive && <div className="absolute w-full h-full" onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}></div>}
+            </form>
+             {isImporting && (
+                <div className="w-full flex items-center justify-center p-4">
+                    <p className="text-sm text-muted-foreground animate-pulse">Trwa importowanie...</p>
+                </div>
+            )}
+        </DialogContent>
+    );
+};
+
+
 const ControlPanel = ({
     search,
     onSearch,
@@ -389,7 +449,7 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
     const searchParams = useSearchParams();
     const [isPending, startTransition] = useTransition();
     const { isMobile, isMounted } = useIsMobile();
-    const importFileRef = useRef<HTMLInputElement>(null);
+    const { toast } = useToast();
     
     // Params from URL
     const tab = (searchParams.get('tab') as 'active' | 'dismissed' | 'non-employees') || 'active';
@@ -404,6 +464,8 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
     }), [searchParams]);
 
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [isImportOpen, setIsImportOpen] = useState(false);
+    const [isImporting, setIsImporting] = useState(false);
 
     const updateSearchParams = (newParams: Record<string, string | number>) => {
         startTransition(() => {
@@ -505,23 +567,19 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
         }
     }
     
-    const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            const content = e.target?.result;
-            if (typeof content === 'string') {
-                const base64 = content.split(',')[1];
-                await handleImportEmployees(base64);
-            }
-        };
-        reader.readAsDataURL(file);
-        
-        // Reset file input
-        if(importFileRef.current) {
-            importFileRef.current.value = '';
+    const onFileSelect = async (file: File) => {
+        setIsImporting(true);
+        try {
+            await handleImportEmployees(file);
+            setIsImportOpen(false);
+        } catch (e: unknown) {
+             toast({
+                variant: "destructive",
+                title: "Błąd importu",
+                description: e instanceof Error ? e.message : "Wystąpił nieznany błąd.",
+            });
+        } finally {
+            setIsImporting(false);
         }
     };
 
@@ -570,17 +628,10 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
                     onViewChange={(mode) => updateSearchParams({ viewMode: mode })}
                     isFilterActive={isFilterActive}
                     onResetFilters={() => updateSearchParams({ search: '', page: 1, coordinator: '', address: '', department: '', nationality: ''})}
-                    onImport={() => importFileRef.current?.click()}
+                    onImport={() => setIsImportOpen(true)}
                 />
             </CardHeader>
             <CardContent>
-                <input
-                    type="file"
-                    ref={importFileRef}
-                    onChange={handleFileImport}
-                    className="hidden"
-                    accept=".xlsx, .xls"
-                />
                  <Tabs value={tab} onValueChange={(v) => updateSearchParams({ tab: v, page: 1 })}>
                     <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="active" disabled={isPending}>
@@ -605,8 +656,9 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
                 initialFilters={filters}
                 onApply={(f) => updateSearchParams({ ...f, page: 1 })}
             />
+            <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
+                <FileUploader onFileUpload={onFileSelect} isImporting={isImporting} />
+            </Dialog>
         </Card>
     )
 }
-
-    
