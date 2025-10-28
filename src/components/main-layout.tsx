@@ -70,7 +70,7 @@ type MainLayoutContextType = {
     handleEditNonEmployeeClick: (nonEmployee: NonEmployee) => void;
     handleDeleteNonEmployee: (id: string) => Promise<void>;
     handleAddInspection: (inspectionData: Omit<Inspection, 'id'>) => Promise<void>;
-    handleAddEquipment: (itemData: Omit<EquipmentItem, 'id'>) => Promise<void>;
+    handleAddEquipment: (itemData: Omit<EquipmentItem, 'id' | 'addressName'>) => Promise<void>;
     handleUpdateEquipment: (id: string, itemData: Partial<EquipmentItem>) => Promise<void>;
     handleDeleteEquipment: (id: string) => Promise<void>;
     handleRefreshStatuses: (showNoChangesToast?: boolean) => Promise<void>;
@@ -376,7 +376,7 @@ export default function MainLayout({
         }
     }, [refreshData, toast]);
 
-    const handleAddEquipment = useCallback(async (itemData: Omit<EquipmentItem, 'id'>) => {
+    const handleAddEquipment = useCallback(async (itemData: Omit<EquipmentItem, 'id' | 'addressName'>) => {
         try {
             await addEquipment(itemData);
             toast({ title: "Sukces", description: "Dodano nowy sprzęt." });
@@ -489,7 +489,7 @@ export default function MainLayout({
             await deleteEmployee(employeeId, currentUser.uid);
             toast({ title: "Sukces", description: "Pracownik został trwale usunięty." });
             await refreshData(false);
-        } catch (e: unknown) => {
+        } catch (e: unknown) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć pracownika." });
         }
     }, [currentUser, refreshData, toast]);
@@ -539,7 +539,7 @@ export default function MainLayout({
         handleRestoreEmployee,
         handleDeleteEmployee,
         handleImportEmployees,
-    } as MainLayoutContextType), [
+    } ), [
         allEmployees,
         allNonEmployees,
         allInspections,
@@ -668,5 +668,11 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
+
+
+function refreshData(arg0: boolean) {
+    throw new Error('Function not implemented.');
+}
+    
 
     
