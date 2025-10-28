@@ -4,7 +4,7 @@
 import * as React from "react"
 import { ChevronLast, ChevronFirst } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 type CollapsibleState = "icon" | "full"
@@ -42,7 +42,7 @@ const Sidebar = React.forwardRef<
       <nav
         data-collapsible={collapsible}
         className={cn(
-          "hidden h-full flex-col border-r bg-background sm:flex group",
+          "hidden h-full flex-col border-r bg-sidebar text-sidebar-foreground sm:flex group",
           "data-[collapsible=full]:w-56 data-[collapsible=icon]:w-16",
           "transition-all duration-300 ease-in-out",
           className
@@ -63,7 +63,7 @@ const SidebarHeader = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "flex h-14 items-center justify-between border-b p-4",
+        "flex h-16 items-center justify-between border-b border-sidebar-border p-4",
         className
       )}
       {...props}
@@ -80,6 +80,7 @@ const SidebarHeader = React.forwardRef<
       <Button
         variant="ghost"
         size="icon"
+        className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         onClick={() => setCollapsible(collapsible === "full" ? "icon" : "full")}
       >
         {collapsible === "full" ? <ChevronFirst /> : <ChevronLast />}
@@ -134,11 +135,11 @@ const SidebarMenuButton = React.forwardRef<
     <a
       ref={ref}
       className={cn(
-        buttonVariants({
-          variant: isActive ? "secondary" : "ghost",
-          size: "default",
-        }),
-        "flex w-full items-center justify-start gap-3",
+        "flex w-full items-center justify-start gap-3 rounded-md px-4 py-3 transition-colors",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
+        isActive 
+          ? "bg-sidebar-primary text-sidebar-primary-foreground"
+          : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         collapsible === "icon" && "h-12 w-12 justify-center p-0",
         className
       )}
@@ -180,7 +181,7 @@ const SidebarFooter = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("mt-auto border-t p-4", className)}
+    className={cn("mt-auto border-t border-sidebar-border p-4", className)}
     {...props}
   />
 ))
@@ -206,5 +207,3 @@ export {
   useSidebar,
   MobileSidebarToggle,
 }
-
-  

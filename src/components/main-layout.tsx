@@ -5,12 +5,12 @@ import React, { useState, useEffect, useMemo, useCallback, createContext, useCon
 import Link from 'next/link';
 import {
     Sidebar,
-    SidebarHeader,
     SidebarContent,
     SidebarFooter,
+    SidebarHeader,
     SidebarMenu,
-    SidebarMenuItem,
     SidebarMenuButton,
+    SidebarMenuItem,
     SidebarProvider
 } from './ui/sidebar';
 import Header from './header';
@@ -583,8 +583,8 @@ export default function MainLayout({
             <div className="flex h-screen w-full bg-muted/50">
                 <Sidebar>
                     <SidebarHeader>
-                        <div className="flex items-center gap-2">
-                            <Building className="h-8 w-8 text-primary" />
+                         <div className="flex items-center gap-3">
+                            <Building className="h-7 w-7 text-primary" />
                             <span className={cn("font-semibold text-xl whitespace-nowrap transition-all duration-300", "group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0")}>SmartHouse</span>
                         </div>
                     </SidebarHeader>
@@ -663,5 +663,3 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
-
-    
