@@ -368,7 +368,7 @@ const ControlPanel = ({
     )
 }
 
-export default function EntityView({ currentUser }: { currentUser: SessionData }) {
+export default function EntityView({ currentUser: _currentUser }: { currentUser: SessionData }) {
     const {
         allEmployees,
         allNonEmployees,
@@ -545,7 +545,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
 
         return (
             <>
-                <ScrollArea className="h-[calc(100vh-22rem)] sm:h-[65vh] overflow-x-auto" style={{ opacity: isPending ? 0.6 : 1 }}>
+                <ScrollArea className="h-[calc(100vh-22rem)] sm:h-[55vh] overflow-x-auto" style={{ opacity: isPending ? 0.6 : 1 }}>
                     {isMounted ? <EntityListComponent 
                         entities={paginatedData}
                         settings={settings} 

@@ -1,9 +1,8 @@
 
-
 "use server";
 
 import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Inspection, InspectionCategory } from '../types';
-import { getSheet, getEmployeesFromSheet, getSettingsFromSheet, getNotificationsFromSheet, getNonEmployeesFromSheet, getEquipmentFromSheet, getAllSheetsData, getInspectionsFromSheet } from './sheets';
+import { getSheet, getAllSheetsData } from './sheets';
 import { format, isPast, isValid, getDaysInMonth, parseISO } from 'date-fns';
 import * as XLSX from 'xlsx';
 
@@ -119,9 +118,20 @@ const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
 const ADDRESS_HEADERS = ['id', 'name', 'coordinatorId'];
 const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targetType', 'targetId', 'details'];
 
-const safeFormat = (dateStr: string | undefined | null): string | null => {
+const safeFormat = (dateStr: unknown): string | null => {
     if (!dateStr) return null;
-    const date = new Date(dateStr);
+    
+    // Handle Excel's numeric date format
+    if (typeof dateStr === 'number' && dateStr > 0) {
+        // Excel's epoch starts on 1900-01-01, but it has a bug treating 1900 as a leap year.
+        const excelEpoch = new Date(1899, 11, 30);
+        const date = new Date(excelEpoch.getTime() + dateStr * 24 * 60 * 60 * 1000);
+        if (isValid(date)) {
+            return format(date, 'yyyy-MM-dd');
+        }
+    }
+
+    const date = new Date(dateStr as string | number);
     if (!isValid(date)) return null;
     try {
         return format(date, 'yyyy-MM-dd');
@@ -136,7 +146,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     const id = String(plainObject.id || '');
     if (!id) return null;
 
-    const checkInDate = safeFormat(plainObject.checkInDate as string);
+    const checkInDate = safeFormat(plainObject.checkInDate);
     if (!checkInDate) return null;
 
     let deductionReason: DeductionReason[] | undefined;
@@ -163,14 +173,14 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         roomNumber: String(plainObject.roomNumber || ''),
         zaklad: String(plainObject.zaklad || ''),
         checkInDate: checkInDate,
-        checkOutDate: safeFormat(plainObject.checkOutDate as string),
-        contractStartDate: safeFormat(plainObject.contractStartDate as string),
-        contractEndDate: safeFormat(plainObject.contractEndDate as string),
-        departureReportDate: safeFormat(plainObject.departureReportDate as string),
+        checkOutDate: safeFormat(plainObject.checkOutDate),
+        contractStartDate: safeFormat(plainObject.contractStartDate),
+        contractEndDate: safeFormat(plainObject.contractEndDate),
+        departureReportDate: safeFormat(plainObject.departureReportDate),
         comments: String(plainObject.comments || ''),
         status: String(plainObject.status) === 'dismissed' ? 'dismissed' : 'active',
         oldAddress: plainObject.oldAddress ? String(plainObject.oldAddress) : undefined,
-        addressChangeDate: safeFormat(plainObject.addressChangeDate as string),
+        addressChangeDate: safeFormat(plainObject.addressChangeDate),
         depositReturned: depositReturned,
         depositReturnAmount: plainObject.depositReturnAmount ? parseFloat(plainObject.depositReturnAmount as string) : null,
         deductionRegulation: plainObject.deductionRegulation ? parseFloat(plainObject.deductionRegulation as string) : null,
@@ -189,47 +199,6 @@ export async function getAllData() {
     } catch (error: unknown) {
         console.error("Error in getAllData (actions):", error);
         throw new Error(error instanceof Error ? error.message : "Failed to get all data.");
-    }
-}
-
-export async function getEmployees(coordinatorId?: string): Promise<Employee[]> {
-    try {
-        const employees = await getEmployeesFromSheet(coordinatorId);
-        return employees;
-    } catch (error: unknown) {
-        console.error("Error in getEmployees (actions):", error);
-        throw new Error(error instanceof Error ? error.message : "Failed to get employees.");
-    }
-}
-
-export async function getNonEmployees(): Promise<NonEmployee[]> {
-  try {
-     const nonEmployees = await getNonEmployeesFromSheet();
-     return nonEmployees;
-  } catch (error: unknown) {
-    console.error("Error in getNonEmployees (actions):", error);
-    throw new Error(error instanceof Error ? error.message : "Failed to get non-employees.");
-  }
-}
-
-export async function getEquipment(coordinatorId?: string): Promise<EquipmentItem[]> {
-  try {
-     const equipment = await getEquipmentFromSheet(coordinatorId);
-     return equipment;
-  } catch (error: unknown) {
-    console.error("Error in getEquipment (actions):", error);
-    throw new Error(error instanceof Error ? error.message : "Failed to get equipment.");
-  }
-}
-
-
-export async function getSettings(): Promise<Settings> {
-    try {
-        const settings = await getSettingsFromSheet();
-        return settings;
-    } catch (error: unknown) {
-        console.error("Error in getSettings (actions):", error);
-        throw new Error(error instanceof Error ? error.message : "Failed to get settings.");
     }
 }
 
@@ -341,7 +310,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         }
 
         const row = rows[rowIndex];
-        const originalEmployee = deserializeEmployee(row.toObject() as Record<string, unknown>);
+        const originalEmployee = deserializeEmployee(row.toObject());
 
         if (!originalEmployee) {
             throw new Error('Could not deserialize original employee data.');
@@ -411,7 +380,7 @@ export async function deleteEmployee(employeeId: string, actorUid: string): Prom
             throw new Error('Employee not found for deletion.');
         }
 
-        const employeeToDelete = deserializeEmployee(row.toObject() as Record<string, unknown>);
+        const employeeToDelete = deserializeEmployee(row.toObject());
 
         await row.delete();
 
@@ -485,12 +454,16 @@ export async function deleteNonEmployee(id: string): Promise<void> {
     }
 }
 
-export async function addEquipment(itemData: Omit<EquipmentItem, 'id'>): Promise<void> {
+export async function addEquipment(itemData: Omit<EquipmentItem, 'id' | 'addressName'>): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_EQUIPMENT, EQUIPMENT_HEADERS);
+        const { settings } = await getAllData();
+        const addressName = settings.addresses.find(a => a.id === itemData.addressId)?.name || 'Nieznany';
+        
         const newItem: EquipmentItem = {
             id: `equip-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
             ...itemData,
+            addressName
         };
         const serialized = serializeEquipment(newItem);
         await sheet.addRow(serialized, { raw: false, insert: true });
@@ -544,9 +517,9 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', _actor
             return;
         }
 
-        for (let i = rowsToDelete.length - 1; i >= 0; i--) {
-            await rowsToDelete[i].delete();
-        }
+        const deletedRowIndexes = rowsToDelete.map(r => r.rowNumber - 1);
+        await sheet.deleteRows(deletedRowIndexes);
+
     } catch (e: unknown) {
         console.error("Error bulk deleting employees:", e);
         throw new Error(e instanceof Error ? e.message : "Failed to bulk delete employees.");
@@ -563,16 +536,18 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
             return;
         }
 
-        const { coordinators } = await getSettings();
-        const toCoordinator = coordinators.find((c) => c.uid === toCoordinatorId);
+        const { settings } = await getAllData();
+        const toCoordinator = settings.coordinators.find((c) => c.uid === toCoordinatorId);
         if (!toCoordinator) {
             throw new Error("Target coordinator not found.");
         }
 
         for (const row of rowsToTransfer) {
             row.set('coordinatorId', toCoordinatorId);
-            await row.save();
         }
+
+        await sheet.saveUpdatedCells();
+
     } catch (e: unknown) {
         console.error("Error transferring employees:", e);
         throw new Error(e instanceof Error ? e.message : "Failed to transfer employees.");
@@ -587,6 +562,7 @@ export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<
         today.setHours(0, 0, 0, 0);
 
         let updatedCount = 0;
+        const rowsToUpdate = [];
 
         for (const row of rows) {
             const status = String(row.get('status'));
@@ -596,10 +572,10 @@ export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<
                 const checkOutDate = new Date(checkOutDateString);
                 if (isValid(checkOutDate) && isPast(checkOutDate)) {
                     row.set('status', 'dismissed');
-                    await row.save();
+                    rowsToUpdate.push(row.save()); // Pushing promise to array
                     updatedCount++;
 
-                    const originalEmployee = deserializeEmployee(row.toObject() as Record<string, unknown>);
+                    const originalEmployee = deserializeEmployee(row.toObject());
                     if (originalEmployee) {
                        await createNotification(actorUid, 'automatycznie zwolnił', originalEmployee, [
                             { field: 'status', oldValue: 'active', newValue: 'dismissed' }
@@ -608,6 +584,9 @@ export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<
                 }
             }
         }
+        
+        await Promise.all(rowsToUpdate);
+
         return { updated: updatedCount };
     } catch (e: unknown) {
         console.error("Error updating statuses:", e);
@@ -678,16 +657,6 @@ export async function updateSettings(newSettings: Partial<Omit<Settings, 'tempor
 }
 
 
-export async function getNotifications(): Promise<Notification[]> {
-    try {
-        const notifications = await getNotificationsFromSheet();
-        return notifications;
-    } catch (error: unknown) {
-        console.error("Error in getNotifications (actions):", error);
-        throw new Error(error instanceof Error ? error.message : "Failed to get notifications.");
-    }
-}
-
 export async function markNotificationAsRead(notificationId: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
@@ -709,16 +678,6 @@ export async function clearAllNotifications(): Promise<void> {
     } catch (e: unknown) {
         console.error("Could not clear notifications:", e);
         throw new Error(e instanceof Error ? e.message : "Failed to clear notifications.");
-    }
-}
-
-export async function getInspections(coordinatorId?: string): Promise<Inspection[]> {
-    try {
-        const inspections = await getInspectionsFromSheet(coordinatorId);
-        return inspections;
-    } catch (error: unknown) {
-        console.error("Error in getInspections (actions):", error);
-        throw new Error(error instanceof Error ? error.message : "Failed to get inspections.");
     }
 }
 
@@ -797,27 +756,65 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
     }
 }
 
-export async function generateMonthlyReport(_year: number, _month: number, _coordinatorId: string): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
+export async function generateMonthlyReport(year: number, month: number, coordinatorId: string): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
     try {
         const { employees, settings } = await getAllData();
         const coordinatorMap = new Map(settings.coordinators.map(c => [c.uid, c.name]));
 
-        const reportData = employees.map(e => ({
-            "Imię i nazwisko": e.fullName,
-            "Koordynator": coordinatorMap.get(e.coordinatorId) || 'N/A',
-            "Adres": e.address,
-            "Pokój": e.roomNumber,
-            "Zakład": e.zaklad,
-            "Data zameldowania": e.checkInDate,
-            "Data wymeldowania": e.checkOutDate,
-        }));
+        const reportStart = new Date(year, month - 1, 1);
+        const reportEnd = new Date(year, month, 0);
+        
+        let filteredEmployees = employees;
+        if (coordinatorId !== 'all') {
+            filteredEmployees = employees.filter(e => e.coordinatorId === coordinatorId);
+        }
+
+        const reportData = filteredEmployees
+            .filter(e => {
+                const checkIn = e.checkInDate ? parseISO(e.checkInDate) : null;
+                const checkOut = e.checkOutDate ? parseISO(e.checkOutDate) : null;
+
+                if (!checkIn) return false;
+
+                const startsBeforeReportEnd = checkIn <= reportEnd;
+                const endsAfterReportStart = !checkOut || checkOut >= reportStart;
+                
+                return startsBeforeReportEnd && endsAfterReportStart;
+            })
+            .map(e => {
+                const checkIn = parseISO(e.checkInDate!);
+                const checkOut = e.checkOutDate ? parseISO(e.checkOutDate) : null;
+
+                const startDateInMonth = checkIn > reportStart ? checkIn : reportStart;
+                const endDateInMonth = checkOut && checkOut < reportEnd ? checkOut : reportEnd;
+
+                const daysInMonth = (endDateInMonth.getTime() - startDateInMonth.getTime()) / (1000 * 3600 * 24) + 1;
+                
+                return {
+                    "Imię i nazwisko": e.fullName,
+                    "Koordynator": coordinatorMap.get(e.coordinatorId) || 'N/A',
+                    "Adres": e.address,
+                    "Pokój": e.roomNumber,
+                    "Zakład": e.zaklad,
+                    "Data zameldowania": e.checkInDate,
+                    "Data wymeldowania": e.checkOutDate,
+                    "Dni w miesiącu": daysInMonth > 0 ? Math.round(daysInMonth) : 0,
+                }
+            });
 
         const worksheet = XLSX.utils.json_to_sheet(reportData);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Raport Miesięczny");
         
+        if (reportData.length > 0) {
+            const cols = Object.keys(reportData[0] || {}).map(key => ({
+                wch: Math.max(key.length, ...reportData.map(row => String(row[key as keyof typeof row] ?? '').length))
+            }));
+            worksheet["!cols"] = cols;
+        }
+
         const fileContent = XLSX.write(workbook, { type: 'base64', bookType: 'xlsx' });
-        const fileName = `Raport_Miesieczny.xlsx`;
+        const fileName = `Raport_Miesieczny_${year}_${month}.xlsx`;
 
         return { success: true, fileContent, fileName };
 
@@ -878,3 +875,57 @@ export async function generateAccommodationReport(year: number, month: number, c
         return { success: false, message: e instanceof Error ? e.message : "Unknown error" };
     }
 }
+
+export async function importEmployeesFromExcel(fileContent: string, actorUid: string, settings: Settings): Promise<{ importedCount: number; totalRows: number; }> {
+    try {
+        const workbook = XLSX.read(fileContent, { type: 'base64', cellDates: true });
+        const sheetName = workbook.SheetNames[0];
+        if(!sheetName) throw new Error("Nie znaleziono arkusza в pliku Excel.");
+
+        const worksheet = workbook.Sheets[sheetName];
+        const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet);
+
+        let importedCount = 0;
+
+        for (const row of data) {
+            try {
+                // Map Excel columns to Employee properties
+                const employeeData: Partial<Employee> = {
+                    fullName: row['Imię i nazwisko'] as string,
+                    coordinatorId: row['Koordynator'] as string, // This is coordinator NAME, needs mapping
+                    nationality: row['Narodowość'] as string,
+                    gender: row['Płeć'] as string,
+                    address: row['Adres'] as string,
+                    roomNumber: String(row['Pokój'] || ''),
+                    zaklad: row['Zakład'] as string,
+                    checkInDate: row['Data zameldowania'] ? safeFormat(row['Data zameldowania']) : '',
+                    checkOutDate: row['Data wymeldowania'] ? safeFormat(row['Data wymeldowania']) : undefined,
+                    contractStartDate: row['Umowa od'] ? safeFormat(row['Umowa od']) : undefined,
+                    contractEndDate: row['Umowa do'] ? safeFormat(row['Umowa do']) : undefined,
+                    comments: row['Komentarze'] as string,
+                };
+                
+                if (!employeeData.fullName || !employeeData.checkInDate) {
+                    console.warn('Skipping row due to missing full name or check-in date:', row);
+                    continue;
+                }
+                
+                const coordinator = settings.coordinators.find(c => c.name.toLowerCase() === (employeeData.coordinatorId || '').toLowerCase());
+                employeeData.coordinatorId = coordinator ? coordinator.uid : '';
+
+                await addEmployee(employeeData, actorUid);
+                importedCount++;
+            } catch (rowError) {
+                console.error('Error processing row:', row, rowError);
+            }
+        }
+        
+        return { importedCount, totalRows: data.length };
+
+    } catch (e) {
+        console.error("Error importing from Excel:", e);
+        throw new Error(e instanceof Error ? e.message : "Failed to import employees from Excel.");
+    }
+}
+
+    
