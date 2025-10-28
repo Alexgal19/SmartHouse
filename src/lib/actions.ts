@@ -192,16 +192,6 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     return newEmployee;
 };
 
-export async function getAllData() {
-    try {
-        const allData = await getAllSheetsData();
-        return allData;
-    } catch (error: unknown) {
-        console.error("Error in getAllData (actions):", error);
-        throw new Error(error instanceof Error ? error.message : "Failed to get all data.");
-    }
-}
-
 const writeToAuditLog = async (actorId: string, actorName: string, action: string, targetType: string, targetId: string, details: unknown) => {
     try {
         const sheet = await getSheet(SHEET_NAME_AUDIT_LOG, AUDIT_LOG_HEADERS);
@@ -457,7 +447,7 @@ export async function deleteNonEmployee(id: string): Promise<void> {
 export async function addEquipment(itemData: Omit<EquipmentItem, 'id' | 'addressName'>): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_EQUIPMENT, EQUIPMENT_HEADERS);
-        const { settings } = await getAllData();
+        const { settings } = await getAllSheetsData();
         const addressName = settings.addresses.find((a: { id: any; }) => a.id === itemData.addressId)?.name || 'Nieznany';
         
         const newItem: EquipmentItem = {
@@ -537,7 +527,7 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
             return;
         }
 
-        const { settings } = await getAllData();
+        const { settings } = await getAllSheetsData();
         const toCoordinator = settings.coordinators.find((c: { uid: string; }) => c.uid === toCoordinatorId);
         if (!toCoordinator) {
             throw new Error("Target coordinator not found.");
@@ -759,7 +749,7 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
 
 export async function generateMonthlyReport(year: number, month: number, coordinatorId: string): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
     try {
-        const { employees, settings } = await getAllData();
+        const { employees, settings } = await getAllSheetsData();
         const coordinatorMap = new Map(settings.coordinators.map((c: { uid: any; name: any; }) => [c.uid, c.name]));
 
         const reportStart = new Date(year, month - 1, 1);
@@ -827,7 +817,7 @@ export async function generateMonthlyReport(year: number, month: number, coordin
 
 export async function generateAccommodationReport(year: number, month: number, coordinatorId: string): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
     try {
-        const { employees, settings } = await getAllData();
+        const { employees, settings } = await getAllSheetsData();
         
         const daysInMonth = getDaysInMonth(new Date(year, month - 1));
         const coordinatorMap = new Map(settings.coordinators.map((c: { uid: any; name: any; }) => [c.uid, c.name]));
@@ -928,5 +918,3 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
         throw new Error(e instanceof Error ? e.message : "Failed to import employees from Excel.");
     }
 }
-
-    

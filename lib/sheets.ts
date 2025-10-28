@@ -290,7 +290,7 @@ export async function getEquipmentFromSheet(coordinatorId?: string): Promise<Equ
 
     if (coordinatorId) {
         const settings = await getSettingsFromSheet();
-        const coordinatorAddresses = new Set(settings.addresses.filter(a => a.coordinatorId === coordinatorId).map(a => a.id));
+        const coordinatorAddresses = new Set(settings.addresses.filter((a: { coordinatorId: string; }) => a.coordinatorId === coordinatorId).map((a: { id: any; }) => a.id));
         equipment = equipment.filter(item => coordinatorAddresses.has(item.addressId));
     }
     

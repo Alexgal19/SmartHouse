@@ -55,7 +55,7 @@ async function getDoc(): Promise<GoogleSpreadsheet> {
             const newDoc = new GoogleSpreadsheet(SPREADSHEET_ID, auth);
             await newDoc.loadInfo();
             doc = newDoc;
-            return doc;
+            return newDoc;
         } catch (error: unknown) {
             console.error("Failed to load Google Sheet document:", error);
             docPromise = null; // Reset promise on error
@@ -290,7 +290,7 @@ export async function getEquipmentFromSheet(coordinatorId?: string): Promise<Equ
 
     if (coordinatorId) {
         const settings = await getSettingsFromSheet();
-        const coordinatorAddresses = new Set(settings.addresses.filter(a => a.coordinatorId === coordinatorId).map(a => a.id));
+        const coordinatorAddresses = new Set(settings.addresses.filter((a: { coordinatorId: string; }) => a.coordinatorId === coordinatorId).map((a: { id: any; }) => a.id));
         equipment = equipment.filter(item => coordinatorAddresses.has(item.addressId));
     }
     
@@ -692,5 +692,3 @@ export async function getInspectionsFromSheet(coordinatorId?: string): Promise<I
         throw new Error(`Could not fetch inspections. Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
 }
-
-    
