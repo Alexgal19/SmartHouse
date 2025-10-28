@@ -328,7 +328,7 @@ export function AddEmployeeForm({
                                 render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Koordynator</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl><SelectTrigger><SelectValue placeholder="Wybierz koordynatora" /></SelectTrigger></FormControl>
                                     <SelectContent>
                                         {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
@@ -344,7 +344,7 @@ export function AddEmployeeForm({
                                 render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Narodowość</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl><SelectTrigger><SelectValue placeholder="Wybierz narodowość" /></SelectTrigger></FormControl>
                                     <SelectContent>
                                         {settings.nationalities.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
@@ -360,7 +360,7 @@ export function AddEmployeeForm({
                                 render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Płeć</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl><SelectTrigger><SelectValue placeholder="Wybierz płeć" /></SelectTrigger></FormControl>
                                     <SelectContent>
                                         {settings.genders.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
@@ -411,7 +411,7 @@ export function AddEmployeeForm({
                                 render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Zakład</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl><SelectTrigger><SelectValue placeholder="Wybierz zakład" /></SelectTrigger></FormControl>
                                     <SelectContent>
                                         {settings.departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
