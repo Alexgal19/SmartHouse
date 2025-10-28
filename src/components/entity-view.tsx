@@ -1,13 +1,13 @@
 
 "use client"
-import React, { useState, useMemo, useTransition } from 'react';
+import React, { useState, useMemo, useTransition, useRef } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import type { Employee, Settings, NonEmployee, SessionData } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, PlusCircle, SlidersHorizontal, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, X, Users, UserX, LayoutGrid, List, Trash2 } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, SlidersHorizontal, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, X, Users, UserX, LayoutGrid, List, Trash2, FileUp } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
@@ -304,6 +304,7 @@ const ControlPanel = ({
     viewMode,
     isFilterActive,
     onResetFilters,
+    onImport,
 }: {
     search: string;
     onSearch: (value: string) => void;
@@ -313,6 +314,7 @@ const ControlPanel = ({
     viewMode: 'list' | 'grid';
     isFilterActive: boolean;
     onResetFilters: () => void;
+    onImport: () => void;
 }) => {
     const { isMobile } = useIsMobile();
     return (
@@ -334,6 +336,10 @@ const ControlPanel = ({
                             <X className="h-4 w-4" />
                         </Button>
                     )}
+                    <Button variant="outline" onClick={onImport}>
+                        <FileUp className="mr-2 h-4 w-4" />
+                        Importuj
+                    </Button>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button size={isMobile ? "icon" : "default"}>
@@ -362,7 +368,7 @@ const ControlPanel = ({
     )
 }
 
-export default function EntityView({ }: { currentUser: SessionData }) {
+export default function EntityView({ currentUser }: { currentUser: SessionData }) {
     const {
         allEmployees,
         allNonEmployees,
@@ -374,7 +380,8 @@ export default function EntityView({ }: { currentUser: SessionData }) {
         handleEditNonEmployeeClick,
         handleAddEmployeeClick,
         handleAddNonEmployeeClick,
-        handleDeleteNonEmployee
+        handleDeleteNonEmployee,
+        handleImportEmployees,
     } = useMainLayout();
 
     const router = useRouter();
@@ -382,6 +389,7 @@ export default function EntityView({ }: { currentUser: SessionData }) {
     const searchParams = useSearchParams();
     const [isPending, startTransition] = useTransition();
     const { isMobile, isMounted } = useIsMobile();
+    const importFileRef = useRef<HTMLInputElement>(null);
     
     // Params from URL
     const tab = (searchParams.get('tab') as 'active' | 'dismissed' | 'non-employees') || 'active';
@@ -496,6 +504,26 @@ export default function EntityView({ }: { currentUser: SessionData }) {
             handleEditNonEmployeeClick(entity);
         }
     }
+    
+    const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const content = e.target?.result;
+            if (typeof content === 'string') {
+                const base64 = content.split(',')[1];
+                await handleImportEmployees(base64);
+            }
+        };
+        reader.readAsDataURL(file);
+        
+        // Reset file input
+        if(importFileRef.current) {
+            importFileRef.current.value = '';
+        }
+    };
 
     const EntityListComponent = viewMode === 'grid' || isMobile ? EntityCardList : EntityTable;
 
@@ -511,8 +539,8 @@ export default function EntityView({ }: { currentUser: SessionData }) {
         };
         
         if (isEmployeeTab) {
-            listProps.onDismiss = handleDismissEmployee;
-            listProps.onRestore = handleRestoreEmployee;
+            listProps.onDismiss = (id: string) => handleAction('dismiss', id);
+            listProps.onRestore = (id: string) => handleAction('restore', id);
         }
 
         return (
@@ -542,9 +570,17 @@ export default function EntityView({ }: { currentUser: SessionData }) {
                     onViewChange={(mode) => updateSearchParams({ viewMode: mode })}
                     isFilterActive={isFilterActive}
                     onResetFilters={() => updateSearchParams({ search: '', page: 1, coordinator: '', address: '', department: '', nationality: ''})}
+                    onImport={() => importFileRef.current?.click()}
                 />
             </CardHeader>
             <CardContent>
+                <input
+                    type="file"
+                    ref={importFileRef}
+                    onChange={handleFileImport}
+                    className="hidden"
+                    accept=".xlsx, .xls"
+                />
                  <Tabs value={tab} onValueChange={(v) => updateSearchParams({ tab: v, page: 1 })}>
                     <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="active" disabled={isPending}>
@@ -572,3 +608,5 @@ export default function EntityView({ }: { currentUser: SessionData }) {
         </Card>
     )
 }
+
+    

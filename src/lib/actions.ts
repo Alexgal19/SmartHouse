@@ -2,7 +2,7 @@
 "use server";
 
 import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Inspection, InspectionCategory } from '../types';
-import { getSheet, getAllSheetsData, getInspectionsFromSheet } from './sheets';
+import { getSheet, getAllSheetsData } from './sheets';
 import { format, isPast, isValid, getDaysInMonth, parseISO } from 'date-fns';
 import * as XLSX from 'xlsx';
 
@@ -640,16 +640,6 @@ export async function updateSettings(newSettings: Partial<Omit<Settings, 'tempor
 }
 
 
-export async function getNotifications(): Promise<Notification[]> {
-    try {
-        const { notifications } = await getAllData();
-        return notifications;
-    } catch (error: unknown) {
-        console.error("Error in getNotifications (actions):", error);
-        throw new Error(error instanceof Error ? error.message : "Failed to get notifications.");
-    }
-}
-
 export async function markNotificationAsRead(notificationId: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
@@ -868,3 +858,58 @@ export async function generateAccommodationReport(year: number, month: number, c
         return { success: false, message: e instanceof Error ? e.message : "Unknown error" };
     }
 }
+
+export async function importEmployeesFromExcel(fileContent: string, actorUid: string): Promise<{ importedCount: number; totalRows: number; }> {
+    try {
+        const workbook = XLSX.read(fileContent, { type: 'base64', cellDates: true });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet);
+
+        let importedCount = 0;
+
+        for (const row of data) {
+            try {
+                // Map Excel columns to Employee properties
+                const employeeData: Partial<Employee> = {
+                    fullName: row['Imię i nazwisko'] as string,
+                    coordinatorId: row['Koordynator'] as string, // This should be coordinator NAME, needs mapping
+                    nationality: row['Narodowość'] as string,
+                    gender: row['Płeć'] as string,
+                    address: row['Adres'] as string,
+                    roomNumber: String(row['Pokój'] || ''),
+                    zaklad: row['Zakład'] as string,
+                    checkInDate: row['Data zameldowania'] ? format(new Date(row['Data zameldowania'] as string | number), 'yyyy-MM-dd') : '',
+                    checkOutDate: row['Data wymeldowania'] ? format(new Date(row['Data wymeldowania'] as string | number), 'yyyy-MM-dd') : undefined,
+                    contractStartDate: row['Umowa od'] ? format(new Date(row['Umowa od'] as string | number), 'yyyy-MM-dd') : undefined,
+                    contractEndDate: row['Umowa do'] ? format(new Date(row['Umowa do'] as string | number), 'yyyy-MM-dd') : undefined,
+                    comments: row['Komentarze'] as string,
+                };
+                
+                // Add validation and default values as necessary
+                if (!employeeData.fullName) {
+                    console.warn('Skipping row due to missing full name:', row);
+                    continue;
+                }
+                
+                // Example of mapping coordinator name to ID
+                const { settings } = await getAllData();
+                const coordinator = settings.coordinators.find(c => c.name.toLowerCase() === (employeeData.coordinatorId || '').toLowerCase());
+                employeeData.coordinatorId = coordinator ? coordinator.uid : '';
+
+                await addEmployee(employeeData, actorUid);
+                importedCount++;
+            } catch (rowError) {
+                console.error('Error processing row:', row, rowError);
+            }
+        }
+        
+        return { importedCount, totalRows: data.length };
+
+    } catch (e) {
+        console.error("Error importing from Excel:", e);
+        throw new Error(e instanceof Error ? e.message : "Failed to import employees from Excel.");
+    }
+}
+
+    

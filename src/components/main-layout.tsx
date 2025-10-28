@@ -35,6 +35,7 @@ import {
     deleteEquipment,
     getAllData,
     bulkDeleteEmployees,
+    importEmployeesFromExcel,
 } from '../lib/actions';
 import { logout } from '../lib/auth';
 import { useToast } from '../hooks/use-toast';
@@ -77,6 +78,7 @@ type MainLayoutContextType = {
     handleDismissEmployee: (employeeId: string) => Promise<void>;
     handleRestoreEmployee: (employeeId: string) => Promise<void>;
     handleDeleteEmployee: (employeeId: string) => Promise<void>;
+    handleImportEmployees: (fileContent: string) => Promise<void>;
 };
 
 const MainLayoutContext = createContext<MainLayoutContextType | null>(null);
@@ -487,8 +489,26 @@ export default function MainLayout({
             await deleteEmployee(employeeId, currentUser.uid);
             toast({ title: "Sukces", description: "Pracownik został trwale usunięty." });
             await refreshData(false);
-        } catch (e: unknown) {
+        } catch (e: unknown) => {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć pracownika." });
+        }
+    }, [currentUser, refreshData, toast]);
+    
+    const handleImportEmployees = useCallback(async (fileContent: string) => {
+        if (!currentUser) return;
+        try {
+            const result = await importEmployeesFromExcel(fileContent, currentUser.uid);
+            toast({
+                title: "Import zakończony",
+                description: `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} pracowników.`,
+            });
+            await refreshData(false);
+        } catch (e) {
+            toast({
+                variant: "destructive",
+                title: "Błąd importu",
+                description: e instanceof Error ? e.message : "Wystąpił nieznany błąd.",
+            });
         }
     }, [currentUser, refreshData, toast]);
 
@@ -518,6 +538,7 @@ export default function MainLayout({
         handleDismissEmployee,
         handleRestoreEmployee,
         handleDeleteEmployee,
+        handleImportEmployees,
     } as MainLayoutContextType), [
         allEmployees,
         allNonEmployees,
@@ -544,6 +565,7 @@ export default function MainLayout({
         handleDismissEmployee,
         handleRestoreEmployee,
         handleDeleteEmployee,
+        handleImportEmployees,
     ]);
 
     if (isLoadingData) {
@@ -646,3 +668,5 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
+
+    
