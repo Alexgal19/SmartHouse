@@ -24,7 +24,13 @@ type KpiCardProps = {
 }
 
 const KpiCard = ({ title, value, icon, onClick, description }: KpiCardProps) => (
-    <Card onClick={onClick} className={cn(onClick && "cursor-pointer hover:bg-muted/50", "shadow-lg")}>
+    <Card 
+        onClick={onClick} 
+        className={cn(
+            "transition-all duration-300",
+            onClick && "cursor-pointer hover:shadow-primary/20 hover:shadow-lg hover:-translate-y-1"
+        )}
+    >
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{title}</CardTitle>
             {icon}
@@ -80,8 +86,10 @@ export function DashboardKPIs({
 
     return (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {kpiData.map((kpi) => (
-                <KpiCard key={kpi.title} {...kpi} />
+            {kpiData.map((kpi, index) => (
+                <div key={kpi.title} className="animate-in fade-in-0 slide-in-from-bottom-4" style={{ animationDelay: `${index * 100}ms`, animationFillMode: 'forwards' }}>
+                    <KpiCard {...kpi} />
+                </div>
             ))}
         </div>
     );

@@ -182,9 +182,9 @@ export function DashboardCharts({
 
 
     return (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-6">
             {showCoordinatorChart && (
-                <Card className="shadow-lg">
+                <Card>
                     <CardHeader className='pb-2'>
                         <CardTitle className="text-lg">Pracownicy wg koordynatora</CardTitle>
                     </CardHeader>
@@ -220,7 +220,7 @@ export function DashboardCharts({
                     </CardContent>
                 </Card>
             )}
-            <Card className="shadow-lg">
+            <Card>
                 <CardHeader className='pb-2'>
                     <CardTitle className="text-lg">Pracownicy wg narodowości</CardTitle>
                 </CardHeader>
@@ -255,7 +255,7 @@ export function DashboardCharts({
                     )}
                 </CardContent>
             </Card>
-            <Card className="shadow-lg">
+            <Card>
                 <CardHeader className='pb-2'>
                     <CardTitle className="text-lg">Pracownicy według zakładu</CardTitle>
                 </CardHeader>
@@ -290,7 +290,7 @@ export function DashboardCharts({
                     )}
                 </CardContent>
             </Card>
-            <Card className="shadow-lg">
+            <Card>
                 <CardHeader className='pb-2'>
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                          <div>
@@ -342,7 +342,7 @@ export function DashboardCharts({
                     )}
                 </CardContent>
             </Card>
-            <Card className="shadow-lg">
+            <Card>
                 <CardHeader className='pb-2'>
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                          <div>
@@ -397,4 +397,3 @@ export function DashboardCharts({
         </div>
     );
 }
-

@@ -102,7 +102,7 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
   
   return (
     <>
-      <div className="grid gap-6 p-4 sm:p-6">
+      <div className="space-y-6">
           {currentUser.isAdmin && <CoordinatorFilter />}
           {isMobile ? (
               <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -114,14 +114,10 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
                   <TabsContent value="housing">{housingContent}</TabsContent>
               </Tabs>
           ) : (
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="mb-4 grid w-full grid-cols-2">
-                      <TabsTrigger value="stats">Podsumowanie</TabsTrigger>
-                      <TabsTrigger value="housing">Zakwaterowanie</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="stats">{statsContent}</TabsContent>
-                  <TabsContent value="housing">{housingContent}</TabsContent>
-              </Tabs>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {statsContent}
+                  {housingContent}
+              </div>
           )}
       </div>
 

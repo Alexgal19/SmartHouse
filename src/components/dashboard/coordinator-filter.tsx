@@ -10,7 +10,7 @@ export function CoordinatorFilter() {
     const { settings, selectedCoordinatorId, setSelectedCoordinatorId } = useMainLayout();
 
     return (
-        <Card className="shadow-lg">
+        <Card className="animate-in fade-in-0 slide-in-from-bottom-4">
             <CardHeader>
                 <CardTitle>Filtry Główne</CardTitle>
                 <CardDescription>Wybierz koordynatora, aby filtrować dane w całej aplikacji.</CardDescription>
