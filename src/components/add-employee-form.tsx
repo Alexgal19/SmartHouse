@@ -49,7 +49,7 @@ const formSchema = z.object({
   zaklad: z.string().nullable(),
   nationality: z.string().min(1, "Narodowość jest wymagana."),
   gender: z.string().min(1, "Płeć jest wymagana."),
-  checkInDate: z.date({ required_error: "Data zameldowania jest wymagana." }),
+  checkInDate: z.date({ required_error: "Data zameldowania jest wymagana." }).nullable(),
   checkOutDate: z.date().nullable().optional(),
   contractStartDate: z.date().nullable().optional(),
   contractEndDate: z.date().nullable().optional(),
@@ -69,7 +69,7 @@ const formSchema = z.object({
 });
 
 export type EmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate' | 'contractStartDate' | 'contractEndDate' | 'departureReportDate'> & {
-  checkInDate: string;
+  checkInDate: string | null;
   checkOutDate?: string | null;
   contractStartDate?: string | null;
   contractEndDate?: string | null;
@@ -95,7 +95,7 @@ const DateInput = ({
   disabled,
 }: {
   value?: Date | null;
-  onChange: (date?: Date) => void;
+  onChange: (date?: Date | null) => void;
   disabled?: (date: Date) => boolean;
 }) => {
   const [inputValue, setInputValue] = useState('');
@@ -111,26 +111,30 @@ const DateInput = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
+    if (e.target.value === '') {
+        onChange(null);
+        return;
+    }
     const parsedDate = parse(e.target.value, 'dd-MM-yyyy', new Date());
     if (!isNaN(parsedDate.getTime())) {
       onChange(parsedDate);
     }
   };
 
-  const handleDateSelect = (date?: Date) => {
+  const handleDateSelect = (date?: Date | null) => {
     if (date) {
       onChange(date);
       setInputValue(format(date, 'dd-MM-yyyy'));
       setIsPopoverOpen(false);
     } else {
-      onChange(undefined);
+      onChange(null);
       setInputValue('');
     }
   };
 
   const handleClear = (e: React.MouseEvent) => {
       e.stopPropagation();
-      handleDateSelect(undefined);
+      handleDateSelect(null);
   }
 
   return (
@@ -157,7 +161,7 @@ const DateInput = ({
         <Calendar
           mode="single"
           selected={value || undefined}
-          onSelect={handleDateSelect}
+          onSelect={(d) => handleDateSelect(d)}
           disabled={disabled}
           initialFocus
         />
@@ -190,7 +194,7 @@ export function AddEmployeeForm({
       zaklad: null,
       nationality: '',
       gender: '',
-      checkInDate: undefined,
+      checkInDate: new Date(),
       checkOutDate: null,
       contractStartDate: null,
       contractEndDate: null,
@@ -234,7 +238,7 @@ export function AddEmployeeForm({
             zaklad: employee.zaklad ?? null,
             nationality: employee.nationality ?? '',
             gender: employee.gender ?? '',
-            checkInDate: parseDate(employee.checkInDate) ?? new Date(),
+            checkInDate: parseDate(employee.checkInDate) ?? null,
             checkOutDate: parseDate(employee.checkOutDate) ?? null,
             contractStartDate: parseDate(employee.contractStartDate) ?? null,
             contractEndDate: parseDate(employee.contractEndDate) ?? null,
@@ -279,13 +283,13 @@ export function AddEmployeeForm({
   
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     const formatDate = (date: Date | null | undefined): string | null | undefined => {
-        if (!date) return date;
+        if (!date) return null;
         return format(date, 'yyyy-MM-dd');
     }
 
     const formData: EmployeeFormData = {
         ...values,
-        checkInDate: formatDate(values.checkInDate)!,
+        checkInDate: formatDate(values.checkInDate),
         checkOutDate: formatDate(values.checkOutDate),
         contractStartDate: formatDate(values.contractStartDate),
         contractEndDate: formatDate(values.contractEndDate),
@@ -444,7 +448,6 @@ export function AddEmployeeForm({
                                         <DateInput
                                           value={field.value}
                                           onChange={field.onChange}
-                                          disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
                                         />
                                         <FormMessage />
                                     </FormItem>
@@ -675,5 +678,3 @@ export function AddEmployeeForm({
     </Dialog>
   );
 }
-
-    

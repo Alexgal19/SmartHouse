@@ -126,9 +126,6 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     const id = plainObject.id;
     if (!id) return null;
 
-    const checkInDate = safeFormat(plainObject.checkInDate);
-    if (!checkInDate) return null; // checkInDate is mandatory
-
     let deductionReason: DeductionReason[] | undefined = undefined;
     if (plainObject.deductionReason && typeof plainObject.deductionReason === 'string') {
         try {
@@ -151,7 +148,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         address: (plainObject.address || '') as string,
         roomNumber: (plainObject.roomNumber || '') as string,
         zaklad: (plainObject.zaklad as string | null) || null,
-        checkInDate: checkInDate,
+        checkInDate: safeFormat(plainObject.checkInDate),
         checkOutDate: safeFormat(plainObject.checkOutDate),
         contractStartDate: safeFormat(plainObject.contractStartDate),
         contractEndDate: safeFormat(plainObject.contractEndDate),
