@@ -157,6 +157,8 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         address: (plainObject.address || '') as string,
         roomNumber: (plainObject.roomNumber || '') as string,
         zaklad: (plainObject.zaklad || '') as string,
+        entryDate: safeFormat(plainObject.entryDate),
+        departureDate: safeFormat(plainObject.departureDate),
         checkInDate: checkInDate,
         checkOutDate: safeFormat(plainObject.checkOutDate),
         contractStartDate: safeFormat(plainObject.contractStartDate),
@@ -249,14 +251,14 @@ const deserializeEquipmentItem = (row: Record<string, unknown>): EquipmentItem |
     };
 };
 
-const getSheetData = async (doc: GoogleSpreadsheet, title: string): Promise<Record<string, string>[]> => {
+const getSheetData = async (doc: GoogleSpreadsheet, title: string, limit = 2000): Promise<Record<string, string>[]> => {
     const sheet = doc.sheetsByTitle[title];
     if (!sheet) {
         console.warn(`Sheet "${title}" not found. Returning empty array.`);
         return [];
     }
     try {
-        const rows = await sheet.getRows({ limit: 500 });
+        const rows = await sheet.getRows({ limit });
         return rows.map(r => r.toObject());
     } catch (e) {
          console.warn(`Could not get rows from sheet: ${title}. It might be empty or missing.`);
@@ -264,7 +266,7 @@ const getSheetData = async (doc: GoogleSpreadsheet, title: string): Promise<Reco
     }
 };
 
-export async function getAllSheetsData() {
+export const getAllSheetsData = async () => {
     try {
         const doc = await getDoc();
 
@@ -277,7 +279,7 @@ export async function getAllSheetsData() {
             inspectionsSheet,
             inspectionDetailsSheet,
         ] = await Promise.all([
-            getSheetData(doc, SHEET_NAME_EMPLOYEES),
+            getSheetData(doc, SHEET_NAME_EMPLOYEES, 3000),
             (async () => {
                 const [addressRows, roomRows, nationalityRows, departmentRows, coordinatorRows, genderRows, inspectionTemplateRows] = await Promise.all([
                     getSheetData(doc, SHEET_NAME_ADDRESSES),
@@ -291,10 +293,10 @@ export async function getAllSheetsData() {
                 return { addressRows, roomRows, nationalityRows, departmentRows, coordinatorRows, genderRows, inspectionTemplateRows };
             })(),
             getSheetData(doc, SHEET_NAME_NON_EMPLOYEES),
-            getSheetData(doc, SHEET_NAME_EQUIPMENT),
-            getSheetData(doc, SHEET_NAME_NOTIFICATIONS),
-            getSheetData(doc, SHEET_NAME_INSPECTIONS),
-            getSheetData(doc, SHEET_NAME_INSPECTION_DETAILS)
+            getSheetData(doc, SHEET_NAME_EQUIPMENT, 2000),
+            getSheetData(doc, SHEET_NAME_NOTIFICATIONS, 200),
+            getSheetData(doc, SHEET_NAME_INSPECTIONS, 500),
+            getSheetData(doc, SHEET_NAME_INSPECTION_DETAILS, 5000)
         ]);
 
         const roomsByAddressId = new Map<string, Room[]>();
