@@ -501,13 +501,13 @@ export async function deleteEquipment(id: string): Promise<void> {
 export async function bulkDeleteEmployees(status: 'active' | 'dismissed', _actorUid: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows({ limit: 2000 });
+        const rows = await sheet.getRows({ limit: 3000 });
         const rowsToDelete = rows.filter((row) => row.get('status') === status);
         
         if (rowsToDelete.length === 0) {
             return;
         }
-        // Delete rows one by one, in reverse order to avoid index shifting issues
+        
         for (let i = rowsToDelete.length - 1; i >= 0; i--) {
             await rowsToDelete[i].delete();
         }
@@ -887,7 +887,7 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
         let importedCount = 0;
         const coordinatorMap = new Map(settings.coordinators.map(c => [c.name.toLowerCase(), c.uid]));
 
-        const columnMap: Record<string, string> = {
+        const columnMap: Record<string, keyof Employee> = {
             'Imię i nazwisko': 'fullName',
             'Koordynator': 'coordinatorId',
             'Narodowość': 'nationality',
@@ -920,7 +920,7 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
             try {
                 const employeeData: Partial<Employee> = {};
                 for(const excelHeader in columnMap) {
-                    const employeeKey = columnMap[excelHeader] as keyof Employee;
+                    const employeeKey = columnMap[excelHeader];
                     const value = rowData[excelHeader];
 
                     if (employeeKey.toLowerCase().includes('date')) {
