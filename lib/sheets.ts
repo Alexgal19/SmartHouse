@@ -54,7 +54,7 @@ async function getDoc(): Promise<GoogleSpreadsheet> {
             const auth = getAuth();
             const newDoc = new GoogleSpreadsheet(SPREADSHEET_ID, auth);
             await newDoc.loadInfo();
-            doc = newNewDoc;
+            doc = newDoc;
             return doc;
         } catch (error: unknown) {
             console.error("Failed to load Google Sheet document:", error);
