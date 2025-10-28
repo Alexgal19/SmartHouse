@@ -1,7 +1,7 @@
 
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Inspection, InspectionCategory, Coordinator } from '@/types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Inspection, InspectionCategory, Coordinator } from '../types';
 import { getSheet } from './sheets';
 import { getAllSheetsData } from './sheets';
 import { format, isPast, isValid, getDaysInMonth, parseISO } from 'date-fns';
@@ -311,51 +311,28 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         
         for (const key in updates) {
             const typedKey = key as keyof Employee;
-            
             const oldValue = originalEmployee[typedKey];
             const newValue = updates[typedKey];
             
-            const areDates = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'addressChangeDate'].includes(key);
+            // This is the robust way to check for changes, especially for null/undefined/''
+            const oldValStr = Array.isArray(oldValue) ? JSON.stringify(oldValue) : (oldValue ?? null);
+            const newValStr = Array.isArray(newValue) ? JSON.stringify(newValue) : (newValue ?? null);
 
-            let oldValStr: string | null = null;
-            if (oldValue !== null && oldValue !== undefined) {
-                 if (key === 'deductionReason' && Array.isArray(oldValue)) {
-                    oldValStr = JSON.stringify(oldValue);
-                } else if (areDates && isValid(new Date(oldValue as string))) {
-                    oldValStr = format(new Date(oldValue as string), 'dd-MM-yyyy');
-                } else {
-                    oldValStr = String(oldValue);
-                }
+            if (String(oldValStr) !== String(newValStr)) {
+                changes.push({ 
+                    field: typedKey, 
+                    oldValue: String(oldValStr ?? 'Brak'), 
+                    newValue: String(newValStr ?? 'Brak') 
+                });
             }
 
-            let newValStr: string | null = null;
-            if (newValue !== null && newValue !== undefined) {
-                 if (key === 'deductionReason' && Array.isArray(newValue)) {
-                    newValStr = JSON.stringify(newValue);
-                } else if (areDates && isValid(new Date(newValue as string))) {
-                    newValStr = format(new Date(newValue as string), 'dd-MM-yyyy');
-                } else {
-                    newValStr = String(newValue);
-                }
-            }
-            
-            if (oldValStr !== newValStr) {
-                changes.push({ field: typedKey, oldValue: oldValStr || 'Brak', newValue: newValStr || 'Brak' });
-            }
+            // Update the row cell by cell
+            const serializedUpdate = serializeEmployee({ [typedKey]: newValue });
+            row.set(typedKey, serializedUpdate[typedKey]);
         }
-        
-        const updatedEmployeeData: Employee = { ...originalEmployee, ...updates };
-        const serialized = serializeEmployee(updatedEmployeeData);
-        
-        for(const header of EMPLOYEE_HEADERS) {
-            // This is the key fix. Ensure that null/undefined values from 'updates' correctly
-            // overwrite existing values by setting them to the serialized (empty string) value.
-            row.set(header, serialized[header]);
-        }
-
-        await row.save();
         
         if (changes.length > 0) {
+            await row.save();
             await createNotification(actorUid, 'zaktualizował', originalEmployee, changes);
         }
 
@@ -971,5 +948,7 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
         throw new Error(e instanceof Error ? e.message : "Failed to import employees from Excel.");
     }
 }
+
+    
 
     
