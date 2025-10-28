@@ -36,112 +36,166 @@ const formSchema = z.object({
   coordinators: z.array(coordinatorSchema),
 });
 
-const ListManager = ({ name, title, fields, append, remove }: { name: string; title: string; fields: Record<"id", string>[]; append: (obj: { value: string}) => void; remove: (index: number) => void; }) => (
-    <div className="space-y-2 rounded-md border p-4">
-        <div className="flex justify-between items-center mb-4">
+const ListManager = ({ name, title, fields, append, remove, control }: { name: string; title: string; fields: Record<"id", string>[]; append: (obj: { value: string}) => void; remove: (index: number) => void; control: any }) => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const watchedValues = useWatch({ control, name });
+
+    const filteredFields = useMemo(() => {
+        if (!searchTerm) return fields.map((field, index) => ({ ...field, originalIndex: index }));
+        
+        return fields
+            .map((field, index) => ({ ...field, originalIndex: index, value: watchedValues[index]?.value }))
+            .filter(field => field.value?.toLowerCase().includes(searchTerm.toLowerCase()));
+    }, [fields, watchedValues, searchTerm]);
+
+    return (
+        <div className="space-y-2 rounded-md border p-4">
             <h3 className="font-medium">{title}</h3>
-            <Button type="button" variant="outline" size="sm" onClick={() => append({ value: '' })}>
-                <PlusCircle className="mr-2 h-4 w-4" /> Dodaj
-            </Button>
+            <div className="flex justify-between items-center mb-4 gap-2">
+                 <Input 
+                    placeholder="Szukaj..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="h-9"
+                />
+                <Button type="button" variant="outline" size="sm" onClick={() => append({ value: '' })} className="shrink-0">
+                    <PlusCircle className="mr-2 h-4 w-4" /> Dodaj
+                </Button>
+            </div>
+            {filteredFields.map((field) => (
+                <FormField
+                    key={field.id}
+                    name={`${name}.${field.originalIndex}.value`}
+                    render={({ field: formField }) => (
+                        <FormItem className="flex items-center gap-2">
+                            <FormControl>
+                                <Input {...formField} />
+                            </FormControl>
+                            <Button type="button" variant="ghost" size="icon" onClick={() => remove(field.originalIndex)}>
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </FormItem>
+                    )}
+                />
+            ))}
+            {filteredFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Brak pozycji pasujących do wyszukiwania.</p>}
         </div>
-        {fields.map((field, index) => (
-            <FormField
-                key={field.id}
-                name={`${name}.${index}.value`}
-                render={({ field: formField }) => (
-                    <FormItem className="flex items-center gap-2">
-                        <FormControl>
-                            <Input {...formField} />
-                        </FormControl>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
+    );
+};
+
+const CoordinatorManager = ({ form, fields, append, remove }: { form:  ReturnType<typeof useForm<z.infer<typeof formSchema>>>; fields: Record<"id", string>[], append: UseFieldArrayAppend<z.infer<typeof formSchema>, "coordinators">, remove: UseFieldArrayRemove }) => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const watchedCoordinators = useWatch({ control: form.control, name: 'coordinators' });
+
+    const filteredFields = useMemo(() => {
+        if (!searchTerm) return fields.map((field, index) => ({ ...field, originalIndex: index }));
+
+        return fields
+            .map((field, index) => ({ ...field, originalIndex: index, name: watchedCoordinators[index]?.name }))
+            .filter(field => field.name?.toLowerCase().includes(searchTerm.toLowerCase()));
+    }, [fields, watchedCoordinators, searchTerm]);
+
+
+    return (
+        <div className="space-y-4 rounded-md border p-4">
+            <h3 className="font-medium">Koordynatorzy</h3>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+                <Input 
+                    placeholder="Szukaj koordynatora..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full sm:w-64 h-9"
+                />
+                <Button type="button" variant="outline" size="sm" onClick={() => append({ uid: `coord-${Date.now()}`, name: '', password: '', isAdmin: false })}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Dodaj koordynatora
+                </Button>
+            </div>
+
+            {filteredFields.map((field) => (
+            <div key={field.id} className="space-y-2 rounded-lg border p-3">
+                <div className="flex items-center justify-between">
+                    <p className="font-semibold">{form.getValues(`coordinators.${field.originalIndex}.name`) || `Nowy koordynator`}</p>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(field.originalIndex)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                </div>
+                <FormField
+                control={form.control}
+                name={`coordinators.${field.originalIndex}.name`}
+                render={({ field: nameField }) => (
+                    <FormItem>
+                    <FormLabel>Imię</FormLabel>
+                    <FormControl><Input {...nameField} /></FormControl>
+                    <FormMessage />
                     </FormItem>
                 )}
-            />
-        ))}
-        {fields.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Brak pozycji na liście.</p>}
-    </div>
-);
-
-const CoordinatorManager = ({ form, fields, append, remove }: { form:  ReturnType<typeof useForm<z.infer<typeof formSchema>>>; fields: Record<"id", string>[], append: UseFieldArrayAppend<z.infer<typeof formSchema>, "coordinators">, remove: UseFieldArrayRemove }) => (
-  <div className="space-y-4 rounded-md border p-4">
-    <div className="flex justify-between items-center mb-4">
-        <h3 className="font-medium">Koordynatorzy</h3>
-        <Button type="button" variant="outline" size="sm" onClick={() => append({ uid: `coord-${Date.now()}`, name: '', password: '', isAdmin: false })}>
-            <PlusCircle className="mr-2 h-4 w-4" /> Dodaj koordynatora
-        </Button>
-    </div>
-
-    {fields.map((field, index) => (
-      <div key={field.id} className="space-y-2 rounded-lg border p-3">
-        <div className="flex items-center justify-between">
-            <p className="font-semibold">{form.getValues(`coordinators.${index}.name`) || `Nowy koordynator`}</p>
-            <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
-                <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
-        </div>
-        <FormField
-          control={form.control}
-          name={`coordinators.${index}.name`}
-          render={({ field: nameField }) => (
-            <FormItem>
-              <FormLabel>Imię</FormLabel>
-              <FormControl><Input {...nameField} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name={`coordinators.${index}.password`}
-          render={({ field: passField }) => (
-            <FormItem>
-              <FormLabel>Hasło (pozostaw puste, aby nie zmieniać)</FormLabel>
-              <FormControl><Input type="password" {...passField} placeholder="Nowe hasło" /></FormControl>
-               <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name={`coordinators.${index}.isAdmin`}
-          render={({ field: adminField }) => (
-            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                <div className="space-y-0.5">
-                    <FormLabel>Administrator</FormLabel>
+                />
+                <FormField
+                control={form.control}
+                name={`coordinators.${field.originalIndex}.password`}
+                render={({ field: passField }) => (
+                    <FormItem>
+                    <FormLabel>Hasło (pozostaw puste, aby не zmieniać)</FormLabel>
+                    <FormControl><Input type="password" {...passField} placeholder="Nowe hasło" /></FormControl>
                     <FormMessage />
-                </div>
-                <FormControl>
-                    <Switch checked={adminField.value} onCheckedChange={adminField.onChange} />
-                </FormControl>
-            </FormItem>
-          )}
-        />
-      </div>
-    ))}
-    {fields.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Brak zdefiniowanych koordynatorów.</p>}
-  </div>
-);
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name={`coordinators.${field.originalIndex}.isAdmin`}
+                render={({ field: adminField }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                        <div className="space-y-0.5">
+                            <FormLabel>Administrator</FormLabel>
+                            <FormMessage />
+                        </div>
+                        <FormControl>
+                            <Switch checked={adminField.value} onCheckedChange={adminField.onChange} />
+                        </FormControl>
+                    </FormItem>
+                )}
+                />
+            </div>
+            ))}
+            {filteredFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Brak koordynatorów pasujących do wyszukiwania.</p>}
+        </div>
+    );
+};
 
 const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { addresses: Address[]; coordinators:  Coordinator[]; onEdit: (address: Address) => void; onRemove: (addressId: string) => void; onAdd: (coordinatorId: string) => void; }) => {
     const [filterCoordinatorId, setFilterCoordinatorId] = useState('all');
+    const [searchTerm, setSearchTerm] = useState('');
     
     const coordinatorMap = useMemo(() => new Map(coordinators.map(c => [c.uid, c.name])), [coordinators]);
 
     const filteredAddresses = useMemo(() => {
         if (!addresses) return [];
-        if (filterCoordinatorId === 'all') return addresses;
-        return addresses.filter(a => a.coordinatorId === filterCoordinatorId);
-    }, [addresses, filterCoordinatorId]);
+        let tempAddresses = addresses;
+
+        if (filterCoordinatorId !== 'all') {
+            tempAddresses = tempAddresses.filter(a => a.coordinatorId === filterCoordinatorId);
+        }
+        if (searchTerm) {
+            tempAddresses = tempAddresses.filter(a => a.name.toLowerCase().includes(searchTerm.toLowerCase()));
+        }
+
+        return tempAddresses;
+    }, [addresses, filterCoordinatorId, searchTerm]);
 
     return (
         <div className="space-y-4 rounded-md border p-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                 <h3 className="font-medium">Adresy i pokoje</h3>
-                 <div className="flex w-full sm:w-auto items-center gap-2">
+                 <div className="flex w-full sm:w-auto items-center gap-2 flex-wrap">
+                    <Input 
+                        placeholder="Szukaj adresu..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="h-9 w-full sm:w-48"
+                    />
                     <Select value={filterCoordinatorId} onValueChange={setFilterCoordinatorId}>
-                        <SelectTrigger className="w-full sm:w-[200px]">
+                        <SelectTrigger className="w-full sm:w-[200px] h-9">
                             <SelectValue placeholder="Filtruj wg koordynatora" />
                         </SelectTrigger>
                         <SelectContent>
@@ -150,7 +204,7 @@ const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { 
                         </SelectContent>
                     </Select>
                     <Button type="button" variant="outline" size="sm" onClick={() => onAdd(filterCoordinatorId)}>
-                        <PlusCircle className="mr-2 h-4 w-4" /> Dodaj adres
+                        <PlusCircle className="mr-2 h-4 w-4" /> Dodaj
                     </Button>
                  </div>
             </div>
@@ -176,7 +230,7 @@ const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { 
                     ))}
                 </div>
             ) : (
-                <p className="text-sm text-muted-foreground text-center py-2">Brak zdefiniowanych adresów dla wybranego koordynatora.</p>
+                <p className="text-sm text-muted-foreground text-center py-2">Brak adresów pasujących do kryteriów.</p>
             )}
         </div>
     );
@@ -346,7 +400,7 @@ const ReportsGenerator = ({ settings, currentUser }: { settings: Settings; curre
     };
     
     const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
-    const months = Array.from({ length: 12 }, (_, i) => i + 1);
+    const months = Array.from({ length: 12 }, (_, i) + 1);
 
     return (
         <Card>
@@ -459,9 +513,9 @@ function SettingsManager({ form, handleUpdateSettings, handleAddressFormOpen }: 
                             <AccordionItem value="lists">
                                 <AccordionTrigger>Zarządzanie listami</AccordionTrigger>
                                 <AccordionContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-2">
-                                    <ListManager name="nationalities" title="Narodowości" fields={natFields} append={appendNat} remove={removeNat} />
-                                    <ListManager name="departments" title="Zakłady" fields={depFields} append={appendDep} remove={removeDep} />
-                                    <ListManager name="genders" title="Płcie" fields={genFields} append={appendGen} remove={removeGen} />
+                                    <ListManager name="nationalities" title="Narodowości" fields={natFields} append={appendNat} remove={removeNat} control={form.control} />
+                                    <ListManager name="departments" title="Zakłady" fields={depFields} append={appendDep} remove={removeDep} control={form.control} />
+                                    <ListManager name="genders" title="Płcie" fields={genFields} append={appendGen} remove={removeGen} control={form.control} />
                                 </AccordionContent>
                             </AccordionItem>
                             <AccordionItem value="coordinators">
@@ -565,3 +619,5 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     </div>
   );
 }
+
+    
