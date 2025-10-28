@@ -27,12 +27,12 @@ const KpiCard = ({ title, value, icon, onClick, description }: KpiCardProps) => 
     <Card 
         onClick={onClick} 
         className={cn(
-            "transition-all duration-300",
-            onClick && "cursor-pointer hover:shadow-primary/20 hover:shadow-lg hover:-translate-y-1"
+            "transition-all duration-300 animate-in fade-in-0 scale-95",
+            onClick && "cursor-pointer hover:shadow-primary/20 hover:shadow-lg hover:-translate-y-1 hover:scale-100"
         )}
     >
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{title}</CardTitle>
+            <CardTitle className="text-sm font-medium whitespace-nowrap">{title}</CardTitle>
             {icon}
         </CardHeader>
         <CardContent>
@@ -94,3 +94,4 @@ export function DashboardKPIs({
         </div>
     );
 }
+
