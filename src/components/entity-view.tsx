@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, PlusCircle, SlidersHorizontal, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, X, Users, UserX, LayoutGrid, List, Trash2, FileUp, UploadCloud, CheckCircle, AlertTriangle } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, SlidersHorizontal, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, X, Users, UserX, LayoutGrid, List, Trash2, FileUp, UploadCloud } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
@@ -146,10 +146,16 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
               <TableHead>Imię i nazwisko</TableHead>
               <TableHead>Płeć</TableHead>
               <TableHead>Koordynator</TableHead>
+              <TableHead>Narodowość</TableHead>
               <TableHead>Adres</TableHead>
               <TableHead>Pokój</TableHead>
+              <TableHead>Zakład</TableHead>
               <TableHead>Data zameldowania</TableHead>
               <TableHead>Data wymeldowania</TableHead>
+              <TableHead>Umowa od</TableHead>
+              <TableHead>Umowa do</TableHead>
+              <TableHead>Zgłosz. wyjazdu</TableHead>
+              <TableHead>Komentarze</TableHead>
               <TableHead><span className="sr-only">Akcje</span></TableHead>
             </TableRow>
           </TableHeader>
@@ -158,12 +164,18 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
               entities.map((entity) => (
                 <TableRow key={entity.id} onClick={() => onEdit(entity)} className="cursor-pointer">
                   <TableCell className="font-medium">{entity.fullName}</TableCell>
-                  <TableCell>{isEmployee(entity) ? entity.gender : "N/A"}</TableCell>
+                   <TableCell>{isEmployee(entity) ? entity.gender : "N/A"}</TableCell>
                   <TableCell>{isEmployee(entity) ? getCoordinatorName(entity.coordinatorId) : "N/A"}</TableCell>
+                  <TableCell>{isEmployee(entity) ? entity.nationality : "N/A"}</TableCell>
                   <TableCell>{entity.address}</TableCell>
                   <TableCell>{entity.roomNumber}</TableCell>
+                  <TableCell>{isEmployee(entity) ? entity.zaklad : "N/A"}</TableCell>
                   <TableCell>{formatDate(entity.checkInDate)}</TableCell>
                   <TableCell>{formatDate(entity.checkOutDate)}</TableCell>
+                  <TableCell>{isEmployee(entity) ? formatDate(entity.contractStartDate) : "N/A"}</TableCell>
+                  <TableCell>{isEmployee(entity) ? formatDate(entity.contractEndDate) : "N/A"}</TableCell>
+                  <TableCell>{isEmployee(entity) ? formatDate(entity.departureReportDate) : "N/A"}</TableCell>
+                  <TableCell className="max-w-xs truncate">{isEmployee(entity) ? entity.comments : entity.comments}</TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <EntityActions {...{ entity, onEdit, onDismiss, onRestore, onPermanentDelete, isDismissed }} />
                   </TableCell>
@@ -171,7 +183,7 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={8} className="text-center">Brak danych do wyświetlenia.</TableCell>
+                <TableCell colSpan={14} className="text-center">Brak danych do wyświetlenia.</TableCell>
               </TableRow>
             )}
           </TableBody>
@@ -201,6 +213,7 @@ const EntityCardList = ({ entities, onEdit, onDismiss, onRestore, isDismissed, s
                         </CardHeader>
                         <CardContent className="text-sm space-y-2">
                             <p><span className="font-semibold text-muted-foreground">Adres:</span> {entity.address}, pok. {entity.roomNumber}</p>
+                            {isEmployee(entity) && <p><span className="font-semibold text-muted-foreground">Zakład:</span> {entity.zaklad}</p>}
                             {isEmployee(entity) && <p><span className="font-semibold text-muted-foreground">Narodowość:</span> {entity.nationality}</p>}
                             <p><span className="font-semibold text-muted-foreground">Zameldowanie:</span> {formatDate(entity.checkInDate)}</p>
                         </CardContent>
@@ -662,3 +675,5 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
         </Card>
     )
 }
+
+    
