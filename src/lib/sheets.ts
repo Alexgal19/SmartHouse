@@ -3,7 +3,7 @@
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Address, Coordinator, Inspection, InspectionTemplateCategory } from '@/types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Address, Coordinator, Inspection, InspectionTemplateCategory } from '../types';
 import { format, isValid, parse, parseISO } from 'date-fns';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
@@ -21,7 +21,6 @@ const SHEET_NAME_INSPECTIONS = 'Inspections';
 const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 const SHEET_NAME_INSPECTION_TEMPLATE = 'InspectionTemplate';
 
-let docPromise: Promise<GoogleSpreadsheet> | null = null;
 
 function getAuth(): JWT {
     const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
@@ -42,22 +41,15 @@ function getAuth(): JWT {
 }
 
 async function getDoc(): Promise<GoogleSpreadsheet> {
-    if (docPromise) {
-        return docPromise;
+    try {
+        const auth = getAuth();
+        const doc = new GoogleSpreadsheet(SPREADSHEET_ID, auth);
+        await doc.loadInfo();
+        return doc;
+    } catch (error: unknown) {
+        console.error("Failed to load Google Sheet document:", error);
+        throw new Error(`Could not connect to Google Sheets. Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
-    docPromise = (async () => {
-        try {
-            const auth = getAuth();
-            const newDoc = new GoogleSpreadsheet(SPREADSHEET_ID, auth);
-            await newDoc.loadInfo();
-            return newDoc;
-        } catch (error: unknown) {
-            docPromise = null; // Reset promise on error
-            console.error("Failed to load Google Sheet document:", error);
-            throw new Error(`Could not connect to Google Sheets. Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
-        }
-    })();
-    return docPromise;
 }
 
 export async function getSheet(title: string, headers: string[]): Promise<GoogleSpreadsheetWorksheet> {
