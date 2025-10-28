@@ -128,8 +128,6 @@ export default function MainLayout({
     
     const [selectedCoordinatorId, _setSelectedCoordinatorId] = useState(initialSession.isAdmin ? 'all' : initialSession.uid);
     
-    const [isLoadingData, setIsLoadingData] = useState(true);
-    const [loadingMessage, setLoadingMessage] = useState("Wczytywanie danych...");
     const { toast } = useToast();
     
     const setSelectedCoordinatorId = useCallback((value: React.SetStateAction<string>) => {
@@ -202,12 +200,10 @@ export default function MainLayout({
             setSettings(settings);
             const normalizedInspections = inspections.map(i => ({
                 ...i,
-                // Ensure `standard` matches the expected union type or is null
                 standard:
                     i.standard === "Wysoki" || i.standard === "Normalny" || i.standard === "Niski"
                         ? (i.standard as import('@/types').Inspection['standard'])
                         : null,
-                // Ensure categories is at least an empty array if undefined
                 categories: i.categories ?? [],
             })) as import('@/types').Inspection[];
 
@@ -244,29 +240,16 @@ export default function MainLayout({
         }
     }, [currentUser, refreshData, toast]);
 
-    const fetchAllData = useCallback(async () => {
-        if (!currentUser) return;
-        setIsLoadingData(true);
-        try {
-            setLoadingMessage("Wczytywanie danych...");
-            await refreshData(false);
-        } catch (error) {
-             console.error("Critical data loading error:", error);
-        } finally {
-             setIsLoadingData(false);
-        }
-    }, [currentUser, refreshData]);
-
     useEffect(() => {
         if (currentUser) {
-            fetchAllData();
+            refreshData(false);
             const intervalId = setInterval(() => {
                  handleRefreshStatuses(false);
             }, 5 * 60 * 1000); // every 5 minutes
             
             return () => clearInterval(intervalId);
         }
-    }, [currentUser, fetchAllData, handleRefreshStatuses]);
+    }, [currentUser, refreshData, handleRefreshStatuses]);
 
     useEffect(() => {
         const pathname = window.location.pathname;
@@ -581,14 +564,14 @@ export default function MainLayout({
         handleImportEmployees,
     ]);
 
-    if (isLoadingData) {
+    if (!settings || !allEmployees || !allNonEmployees || !allEquipment || !allInspections) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
                 <div className="flex animate-fade-in flex-col items-center gap-6">
                      <h1 className="text-4xl sm:text-5xl md:text-7xl font-semibold tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm">
                         SmartHouse
                     </h1>
-                     <p className="text-muted-foreground">{loadingMessage}</p>
+                     <p className="text-muted-foreground">Wczytywanie danych...</p>
                 </div>
             </div>
         );
@@ -660,7 +643,6 @@ export default function MainLayout({
                     onSave={(data) =>
                         handleSaveNonEmployee({
                             ...data,
-                            // ensure comments is a string as the API expects
                             comments: data.comments ?? '',
                         })
                     }
@@ -681,3 +663,5 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
+
+    
