@@ -1,14 +1,16 @@
 
 "use client";
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList } from "recharts";
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart2 } from "lucide-react";
 import type { Employee, Settings } from "@/types";
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useMainLayout } from '@/components/main-layout';
-import { subMonths, format, getMonth, getYear } from 'date-fns';
+import { subMonths, format, getYear, getMonth, eachDayOfInterval, startOfMonth, endOfMonth, getDaysInMonth, startOfYear, endOfYear, eachMonthOfInterval } from 'date-fns';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { pl } from 'date-fns/locale';
 
 const NoDataState = ({ message }: { message: string }) => (
     <div className="flex h-64 w-full items-center justify-center rounded-lg border border-dashed border-border/50">
@@ -36,6 +38,9 @@ export function DashboardCharts({
     isMobile: boolean
 }) {
     const { currentUser, selectedCoordinatorId } = useMainLayout();
+
+    const [departureYear, setDepartureYear] = useState(new Date().getFullYear());
+    const [departureMonth, setDepartureMonth] = useState<number | 'all'>('all');
 
     const chartData = useMemo(() => {
         const activeEmployees = employees.filter(e => e.status === 'active');
@@ -70,30 +75,46 @@ export function DashboardCharts({
             }
             return acc;
         }, {} as Record<string, { department: string, employees: number }>);
-
-        const departuresByMonth = employees.reduce((acc, employee) => {
+        
+        const departuresByDate = employees.reduce((acc, employee) => {
             if (employee.checkOutDate) {
                 const checkOut = new Date(employee.checkOutDate);
-                const monthYear = format(checkOut, 'yyyy-MM');
-                if (!acc[monthYear]) {
-                    acc[monthYear] = { month: format(checkOut, 'MMM yy'), departures: 0, sortKey: checkOut.getTime() };
+                const dateKey = format(checkOut, 'yyyy-MM-dd');
+                 if (!acc[dateKey]) {
+                    acc[dateKey] = { departures: 0 };
                 }
-                acc[monthYear].departures++;
+                acc[dateKey].departures++;
             }
             return acc;
-        }, {} as Record<string, { month: string, departures: number, sortKey: number }>);
+        }, {} as Record<string, { departures: number }>);
+        
+        let departuresData;
+        if (departureMonth === 'all') {
+            const yearStartDate = startOfYear(new Date(departureYear, 0, 1));
+            const yearEndDate = endOfYear(new Date(departureYear, 11, 31));
+            const monthsInYear = eachMonthOfInterval({ start: yearStartDate, end: yearEndDate });
+            
+            departuresData = monthsInYear.map(monthDate => {
+                const monthKey = format(monthDate, 'yyyy-MM');
+                const monthDepartures = Object.keys(departuresByDate).filter(dateKey => dateKey.startsWith(monthKey)).reduce((sum, dateKey) => sum + departuresByDate[dateKey].departures, 0);
+                return {
+                    label: format(monthDate, 'MMM', { locale: pl }),
+                    departures: monthDepartures,
+                }
+            })
 
-        const last6Months = [];
-        const today = new Date();
-        for (let i = 5; i >= 0; i--) {
-          const d = subMonths(today, i);
-          const monthYear = format(d, 'yyyy-MM');
-          const monthLabel = format(d, 'MMM yy');
-          last6Months.push({
-            month: monthLabel,
-            departures: departuresByMonth[monthYear]?.departures || 0,
-            sortKey: d.getTime(),
-          });
+        } else {
+            const monthStartDate = startOfMonth(new Date(departureYear, departureMonth - 1));
+            const monthEndDate = endOfMonth(monthStartDate);
+            const daysInMonth = eachDayOfInterval({start: monthStartDate, end: monthEndDate});
+
+            departuresData = daysInMonth.map(dayDate => {
+                const dayKey = format(dayDate, 'yyyy-MM-dd');
+                return {
+                    label: format(dayDate, 'd'),
+                    departures: departuresByDate[dayKey]?.departures || 0,
+                }
+            })
         }
 
 
@@ -101,11 +122,15 @@ export function DashboardCharts({
             employeesPerCoordinator: Object.values(employeesPerCoordinator),
             employeesByNationality: Object.values(employeesByNationality).sort((a, b) => b.employees - a.employees),
             employeesByDepartment: Object.values(employeesByDepartment).sort((a,b) => b.employees - a.employees),
-            departuresByMonth: last6Months,
+            departuresByMonth: departuresData,
         }
-    }, [employees, settings]);
+    }, [employees, settings, departureYear, departureMonth]);
 
     const showCoordinatorChart = currentUser?.isAdmin && selectedCoordinatorId === 'all';
+    
+    const availableYears = useMemo(() => Array.from(new Set(employees.filter(e => e.checkOutDate).map(e => getYear(new Date(e.checkOutDate!))))).sort((a,b) => b-a), [employees]);
+    const months = Array.from({ length: 12 }, (_, i) => i + 1);
+
 
     return (
         <div className="grid gap-6 lg:grid-cols-2">
@@ -218,7 +243,26 @@ export function DashboardCharts({
             </Card>
             <Card className="shadow-lg">
                 <CardHeader className='pb-2'>
-                    <CardTitle className="text-lg">Statystyка выездов (6 мес)</CardTitle>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                         <div>
+                            <CardTitle className="text-lg">Statystyka wyjazdów</CardTitle>
+                         </div>
+                         <div className="flex items-center gap-2 pt-2 sm:pt-0">
+                             <Select value={String(departureYear)} onValueChange={(v) => setDepartureYear(Number(v))}>
+                                <SelectTrigger className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                                </SelectContent>
+                             </Select>
+                             <Select value={String(departureMonth)} onValueChange={(v) => setDepartureMonth(v === 'all' ? 'all' : Number(v))}>
+                                <SelectTrigger className="w-36 h-8 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Wszystkie miesiące</SelectItem>
+                                    {months.map(m => <SelectItem key={m} value={String(m)}>{format(new Date(departureYear, m-1), 'LLLL', {locale: pl})}</SelectItem>)}
+                                </SelectContent>
+                             </Select>
+                         </div>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     {chartData.departuresByMonth.length > 0 ? (
@@ -235,7 +279,7 @@ export function DashboardCharts({
                                         </linearGradient>
                                     </defs>
                                     <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border/50"/>
-                                    <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} className="text-xs" />
+                                    <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} className="text-xs" />
                                     <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
                                     <Tooltip cursor={false} content={<ChartTooltipContent />} />
                                     <Bar dataKey="departures" radius={[4, 4, 0, 0]} fill="url(#chart-departures-gradient)">
@@ -245,12 +289,13 @@ export function DashboardCharts({
                             </ResponsiveContainer>
                         </ChartContainer>
                     ) : (
-                        <NoDataState message={'Brak danych do wyświetления на wykresie'} />
+                        <NoDataState message={'Brak danych do wyświetlenia na wykresie'} />
                     )}
                 </CardContent>
             </Card>
         </div>
     );
 }
+
 
     
