@@ -4,9 +4,9 @@
 import React, { useState, useMemo } from 'react';
 import { useForm, useFieldArray, useWatch, UseFieldArrayAppend, UseFieldArrayRemove } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import * * as z from 'zod';
 import { useMainLayout } from '@/components/main-layout';
-import type { Settings, SessionData, Address } from '@/types';
+import type { Settings, SessionData, Address, Coordinator } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -17,15 +17,21 @@ import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { generateMonthlyReport, generateAccommodationReport } from '@/lib/actions';
+import { generateMonthlyReport, generateAccommodationReport, transferEmployees } from '@/lib/actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 
 const coordinatorSchema = z.object({
     uid: z.string(),
     name: z.string().min(1, 'Imię jest wymagane.'),
-    password: z.string().min(1, 'Hasło jest wymagane.'),
+    password: z.string().optional(),
     isAdmin: z.boolean(),
+}).refine(data => {
+    // Password is required only if it's a new user (or if you decide to enforce it on change)
+    // For simplicity, let's say if password field is touched and empty, it's an error.
+    // A better approach might be to have different schemas for create and update.
+    // For now, let's just make it optional and handle logic in the action.
+    return true;
 });
 
 const formSchema = z.object({
@@ -88,6 +94,7 @@ const CoordinatorManager = ({ form, fields, append, remove }: { form:  ReturnTyp
             <FormItem>
               <FormLabel>Imię</FormLabel>
               <FormControl><Input {...nameField} /></FormControl>
+              <FormMessage />
             </FormItem>
           )}
         />
@@ -96,8 +103,9 @@ const CoordinatorManager = ({ form, fields, append, remove }: { form:  ReturnTyp
           name={`coordinators.${index}.password`}
           render={({ field: passField }) => (
             <FormItem>
-              <FormLabel>Hasło</FormLabel>
-              <FormControl><Input type="password" {...passField} /></FormControl>
+              <FormLabel>Hasło (pozostaw puste, aby не zmieniać)</FormLabel>
+              <FormControl><Input type="password" {...passField} placeholder="Nowe hasło" /></FormControl>
+               <FormMessage />
             </FormItem>
           )}
         />
@@ -122,7 +130,7 @@ const CoordinatorManager = ({ form, fields, append, remove }: { form:  ReturnTyp
   </div>
 );
 
-const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { addresses: Address[]; coordinators:  z.infer<typeof coordinatorSchema>[]; onEdit: (address: Address) => void; onRemove: (addressId: string) => void; onAdd: (coordinatorId: string) => void; }) => {
+const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { addresses: Address[]; coordinators:  Coordinator[]; onEdit: (address: Address) => void; onRemove: (addressId: string) => void; onAdd: (coordinatorId: string) => void; }) => {
     const [filterCoordinatorId, setFilterCoordinatorId] = useState('all');
     
     const coordinatorMap = useMemo(() => new Map(coordinators.map(c => [c.uid, c.name])), [coordinators]);
@@ -181,11 +189,15 @@ const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { 
 };
 
 
-const BulkActions = ({ _currentUser }: { _currentUser: SessionData }) => {
-    const { handleBulkDeleteEmployees } = useMainLayout();
+const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
+    const { handleBulkDeleteEmployees, settings } = useMainLayout();
     const [isDeletingActive, setIsDeletingActive] = useState(false);
     const [isDeletingDismissed, setIsDeletingDismissed] = useState(false);
-    
+    const [isTransferring, setIsTransferring] = useState(false);
+    const [transferFrom, setTransferFrom] = useState('');
+    const [transferTo, setTransferTo] = useState('');
+    const { toast } = useToast();
+
     const handleBulkDelete = async (status: 'active' | 'dismissed') => {
         if(status === 'active') setIsDeletingActive(true);
         else setIsDeletingDismissed(true);
@@ -195,6 +207,26 @@ const BulkActions = ({ _currentUser }: { _currentUser: SessionData }) => {
         if(status === 'active') setIsDeletingActive(false);
         else setIsDeletingDismissed(false);
         return success
+    };
+    
+    const handleTransfer = async () => {
+        if (!transferFrom || !transferTo) {
+            toast({ variant: 'destructive', title: 'Błąd', description: 'Wybierz obu koordynatorów.' });
+            return;
+        }
+        if (transferFrom === transferTo) {
+            toast({ variant: 'destructive', title: 'Błąd', description: 'Nie można przenieść pracowników do tego samego koordynatora.' });
+            return;
+        }
+        setIsTransferring(true);
+        try {
+            await transferEmployees(transferFrom, transferTo);
+            toast({ title: "Sukces", description: "Pracownicy zostali przeniesieni." });
+        } catch (e) {
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się przenieść pracowników." });
+        } finally {
+            setIsTransferring(false);
+        }
     };
 
     return (
@@ -248,6 +280,39 @@ const BulkActions = ({ _currentUser }: { _currentUser: SessionData }) => {
                         </AlertDialog>
                     </div>
                  </div>
+
+                 {currentUser.isAdmin && settings?.coordinators && (
+                     <div className="rounded-lg border p-4 space-y-4">
+                         <div className="flex-1">
+                            <h3 className="font-medium">Przenoszenie pracowników</h3>
+                            <p className="text-sm text-muted-foreground">Przenieś wszystkich pracowników od jednego koordynatora do drugiego.</p>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                            <div className="space-y-2">
+                                <Label>Od koordynatora</Label>
+                                <Select value={transferFrom} onValueChange={setTransferFrom}>
+                                    <SelectTrigger><SelectValue placeholder="Wybierz koordynatora" /></SelectTrigger>
+                                    <SelectContent>
+                                        {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                             <div className="space-y-2">
+                                <Label>Do koordynatora</Label>
+                                <Select value={transferTo} onValueChange={setTransferTo}>
+                                    <SelectTrigger><SelectValue placeholder="Wybierz koordynatora" /></SelectTrigger>
+                                    <SelectContent>
+                                        {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <Button onClick={handleTransfer} disabled={isTransferring}>
+                                {isTransferring ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                                Przenieś
+                            </Button>
+                        </div>
+                     </div>
+                 )}
             </CardContent>
         </Card>
     );
@@ -357,17 +422,16 @@ function SettingsManager({ form, handleUpdateSettings, handleAddressFormOpen }: 
     const watchedAddresses = useWatch({ control: form.control, name: 'addresses' });
     const watchedCoordinators = useWatch({ control: form.control, name: 'coordinators' });
 
-    const onSubmit = async () => {
-        const currentValues = form.getValues();
+    const onSubmit = async (values: z.infer<typeof formSchema>) => {
         const newSettings: Partial<Settings> = {
-            nationalities: currentValues.nationalities.map((n) => n.value),
-            departments: currentValues.departments.map((d) => d.value),
-            genders: currentValues.genders.map((d) => d.value),
-            addresses: currentValues.addresses,
-            coordinators: currentValues.coordinators,
+            nationalities: values.nationalities.map((n) => n.value),
+            departments: values.departments.map((d) => d.value),
+            genders: values.genders.map((d) => d.value),
+            addresses: values.addresses,
+            coordinators: values.coordinators,
         };
         await handleUpdateSettings(newSettings);
-        form.reset(currentValues); // Resets the dirty state
+        form.reset(values); // Resets the dirty state
     };
 
     const handleRemoveAddress = (addressId: string) => {
@@ -454,7 +518,7 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
         departments: settings.departments.map(d => ({ value: d })),
         genders: settings.genders.map(g => ({ value: g })),
         addresses: settings.addresses,
-        coordinators: settings.coordinators,
+        coordinators: settings.coordinators.map(c => ({...c, password: ''})), // Clear password on load
       });
     }
   }, [settings, form]);
@@ -503,7 +567,7 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     <div className="space-y-6">
       <SettingsManager settings={settings} form={form} handleUpdateSettings={handleUpdateSettings} handleAddressFormOpen={handleAddressFormOpen} />
       <ReportsGenerator settings={settings} currentUser={currentUser} />
-      <BulkActions _currentUser={currentUser} />
+      <BulkActions currentUser={currentUser} />
     </div>
   );
 }

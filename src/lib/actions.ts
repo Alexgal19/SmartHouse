@@ -1,7 +1,7 @@
 
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Inspection, InspectionCategory } from '@/types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Inspection, InspectionCategory, Coordinator } from '@/types';
 import { getSheet } from './sheets';
 import { getAllSheetsData } from './sheets';
 import { format, isPast, isValid, getDaysInMonth, parseISO } from 'date-fns';
@@ -634,12 +634,23 @@ export async function updateSettings(newSettings: Partial<Omit<Settings, 'tempor
         }
         if (newSettings.coordinators) {
              const sheet = await getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS);
+             const { settings: currentSettings } = await getAllSheetsData();
+             const existingPasswords = new Map(currentSettings.coordinators.map(c => [c.uid, c.password]));
+
              await sheet.clearRows();
+
              if (newSettings.coordinators.length > 0) {
-                 await sheet.addRows(newSettings.coordinators.map((c: { isAdmin: any; }) => ({
-                     ...c,
-                     isAdmin: String(c.isAdmin).toUpperCase()
-                 })), { raw: false, insert: true });
+                 const coordinatorsToSave = newSettings.coordinators.map((c: Coordinator) => {
+                     const newPassword = c.password;
+                     // If new password is empty or not provided, keep the old one if it exists
+                     const finalPassword = (newPassword && newPassword.trim() !== '') ? newPassword : (existingPasswords.get(c.uid) || '');
+                     return {
+                        ...c,
+                        password: finalPassword,
+                        isAdmin: String(c.isAdmin).toUpperCase(),
+                     }
+                 });
+                 await sheet.addRows(coordinatorsToSave, { raw: false, insert: true });
              }
         }
 
@@ -956,3 +967,5 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
         throw new Error(e instanceof Error ? e.message : "Failed to import employees from Excel.");
     }
 }
+
+    
