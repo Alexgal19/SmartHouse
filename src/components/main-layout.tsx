@@ -64,14 +64,14 @@ const HouseLoader = () => {
                     </linearGradient>
                 </defs>
                  <g fill="none" stroke="url(#houseGradient)" strokeWidth="0.5" strokeOpacity="0.5">
-                    <path d={housePath} style={pathStyle(148, "0s")} className="animate-stroke-draw" />
+                    <path d={housePath} style={pathStyle(148, "0s")} />
                 </g>
                 <text
                     x="50%"
                     y="50%"
                     dy=".3em"
                     textAnchor="middle"
-                    className="text-7xl font-semibold tracking-tight stroke-primary stroke-[0.5px] fill-[hsl(var(--primary)_/_0.1)]"
+                    className="text-6xl font-semibold tracking-tight stroke-primary stroke-[0.5px] fill-[hsl(var(--primary)_/_0.1)]"
                     style={{ paintOrder: 'stroke' }}
                 >
                     SmartHouse
