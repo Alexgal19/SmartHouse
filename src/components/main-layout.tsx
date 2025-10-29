@@ -70,7 +70,7 @@ const HouseLoader = () => {
                     fontSize="6"
                     fontWeight="bold"
                     className="font-headline"
-                    fill="hsl(var(--primary) / 0.7)"
+                    fill="url(#houseGradient)"
                 >
                     SmartHouse
                 </text>
@@ -131,6 +131,14 @@ export default function MainLayout({
     const router = useRouter();
     const routerRef = useRef(router);
     const searchParams = useSearchParams();
+    
+    const navItems = [
+        { view: 'dashboard', icon: Home, label: 'Pulpit' },
+        { view: 'employees', icon: Users, label: 'Pracownicy' },
+        { view: 'inspections', icon: ClipboardList, label: 'Inspekcje' },
+        { view: 'equipment', icon: Archive, label: 'Wyposażenie' },
+        { view: 'settings', icon: SettingsIcon, label: 'Ustawienia' },
+    ] as const;
 
     const activeView = useMemo(() => {
         return (searchParams.get('view') as View) || 'dashboard';
@@ -164,14 +172,6 @@ export default function MainLayout({
         _setSelectedCoordinatorId(value);
     }, []);
 
-    const navItems = [
-        { view: 'dashboard', icon: Home, label: 'Pulpit' },
-        { view: 'employees', icon: Users, label: 'Pracownicy' },
-        { view: 'inspections', icon: ClipboardList, label: 'Inspekcje' },
-        { view: 'equipment', icon: Archive, label: 'Wyposażenie' },
-        { view: 'settings', icon: SettingsIcon, label: 'Ustawienia' },
-    ] as const;
-    
     const visibleNavItems = useMemo(() => {
         if (currentUser?.isAdmin) {
             return navItems;
@@ -696,3 +696,5 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
+
+    
