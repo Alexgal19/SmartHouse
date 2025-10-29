@@ -190,7 +190,7 @@ export function HousingView({
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <ScrollArea className="h-[40vh]">
+                    <ScrollArea className="h-[60vh]">
                         <div className="space-y-4 pr-6">
                             {sortedAndFilteredHousingStats.length > 0 ? sortedAndFilteredHousingStats.map((address) => {
                                 const occupancyPercentage = address.capacity > 0 ? (address.occupantCount / address.capacity) * 100 : 0;
