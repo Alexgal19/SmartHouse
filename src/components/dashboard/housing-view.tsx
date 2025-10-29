@@ -14,8 +14,11 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useMainLayout } from '@/components/main-layout';
 
 type Occupant = Employee | NonEmployee;
+
+const isEmployee = (entity: Occupant): entity is Employee => 'coordinatorId' in entity;
 
 type RoomStat = {
     roomNumber: string;
@@ -59,6 +62,7 @@ export function HousingView({
     const [selectedRoom, setSelectedRoom] = useState<RoomStat | null>(null);
     const [isRoomDetailOpen, setIsRoomDetailOpen] = useState(false);
     const { copyToClipboard } = useCopyToClipboard();
+    const { handleEditEmployeeClick, handleEditNonEmployeeClick } = useMainLayout();
 
     const housingStats = useMemo(() => {
         const activeEmployees = employees.filter(e => e.status === 'active');
@@ -143,6 +147,16 @@ export function HousingView({
     const handleCopy = (data: Occupant[]) => {
         const textToCopy = data.map(o => o.fullName).join('\n');
         copyToClipboard(textToCopy, 'Lista skopiowana!');
+    };
+    
+    const handleOccupantClick = (occupant: Occupant) => {
+        setIsRoomDetailOpen(false);
+        setIsHousingDetailOpen(false);
+        if (isEmployee(occupant)) {
+            handleEditEmployeeClick(occupant);
+        } else {
+            handleEditNonEmployeeClick(occupant);
+        }
     };
 
     const groupedRooms = useMemo(() => {
@@ -298,7 +312,12 @@ export function HousingView({
                     <ScrollArea className="flex-1 -mr-6 pr-6">
                         <div className="space-y-2">
                         {selectedRoom.occupants.length > 0 ? selectedRoom.occupants.map((occupant, index) => (
-                            <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 shadow-sm animate-in fade-in-0 duration-300" style={{animationDelay: `${index * 50}ms`}}>
+                            <div 
+                                key={index} 
+                                onClick={() => handleOccupantClick(occupant)}
+                                className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 shadow-sm animate-in fade-in-0 duration-300 cursor-pointer hover:bg-muted" 
+                                style={{animationDelay: `${index * 50}ms`}}
+                            >
                                 <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs">{occupant.fullName.slice(0,2).toUpperCase()}</div>
                                 <span className="font-medium text-sm">{occupant.fullName}</span>
                             </div>
