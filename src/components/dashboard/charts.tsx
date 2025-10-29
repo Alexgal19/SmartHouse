@@ -215,7 +215,7 @@ export function DashboardCharts({
                         <CardTitle className="text-lg">Pracownicy wg narodowości</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <ChartContainer config={{}} className="w-full min-h-[150px] aspect-video">
+                        <ChartContainer config={{}} className="w-full h-[400px]">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart 
                                     data={chartData.employeesByNationality} 
@@ -383,3 +383,4 @@ export function DashboardCharts({
         </div>
     );
 }
+    
