@@ -56,10 +56,9 @@ const HouseLoader = () => {
                     </linearGradient>
                 </defs>
                  <g fill="none" stroke="url(#houseGradient)" strokeWidth="0.5" strokeOpacity="0.5">
-                    <path d="M2,24 L25,2 L48,24 L48,48 L2,48 L2,24 Z" style={{
+                    <path d="M2,24 L25,2 L48,24 L48,48 L2,48 L2,24 Z" className="animate-stroke-draw" style={{
                         strokeDasharray: 148,
                         strokeDashoffset: 148,
-                        animation: `stroke-draw 1s 0s ease-out forwards`,
                     }} />
                 </g>
                 <text
@@ -739,5 +738,3 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
-
-    
