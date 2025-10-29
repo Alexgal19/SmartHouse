@@ -147,10 +147,6 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     const id = String(plainObject.id || '');
     if (!id) return null;
 
-    const checkInDate = safeFormat(plainObject.checkInDate);
-    // checkInDate is not strictly mandatory here for deserialization, but good to have
-    // if (!checkInDate) return null; 
-
     let deductionReason: DeductionReason[] | undefined;
     if (plainObject.deductionReason && typeof plainObject.deductionReason === 'string') {
         try {
@@ -174,7 +170,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         address: String(plainObject.address || ''),
         roomNumber: String(plainObject.roomNumber || ''),
         zaklad: (plainObject.zaklad as string | null) || null,
-        checkInDate: checkInDate,
+        checkInDate: safeFormat(plainObject.checkInDate),
         checkOutDate: safeFormat(plainObject.checkOutDate),
         contractStartDate: safeFormat(plainObject.contractStartDate),
         contractEndDate: safeFormat(plainObject.contractEndDate),
@@ -264,7 +260,7 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
             address: employeeData.address || '',
             roomNumber: employeeData.roomNumber || '',
             zaklad: employeeData.zaklad || null,
-            checkInDate: employeeData.checkInDate,
+            checkInDate: employeeData.checkInDate || null,
             checkOutDate: employeeData.checkOutDate,
             contractStartDate: employeeData.contractStartDate ?? null,
             contractEndDate: employeeData.contractEndDate ?? null,
@@ -309,20 +305,26 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         }
         
         const changes: NotificationChange[] = [];
+        // Important: Create the final updated object first
         const updatedEmployeeData: Employee = { ...originalEmployee, ...updates };
 
-        // Logic to detect changes for notifications
+        // Then, compare the final object with the original one to generate notifications
         for (const key of Object.keys(updates) as Array<keyof Employee>) {
             const oldValue = originalEmployee[key];
-            const newValue = updates[key];
+            const newValue = updatedEmployeeData[key];
             
-            const normalizedOld = (!oldValue || oldValue === '') ? null : String(oldValue);
-            const normalizedNew = (!newValue || newValue === '') ? null : String(newValue);
+            // Normalize values for comparison: treat null, undefined, and '' as "empty"
+            const oldIsEmpty = oldValue === null || oldValue === undefined || oldValue === '';
+            const newIsEmpty = newValue === null || newValue === undefined || newValue === '';
 
-            if (normalizedOld !== normalizedNew) {
-                let oldValStr: string | null = null;
+            if (oldIsEmpty && newIsEmpty) {
+                continue; // Both are empty, no change
+            }
+
+            if (String(oldValue) !== String(newValue)) {
+                 let oldValStr: string | null = null;
                 if (oldValue !== null && oldValue !== undefined) {
-                    if (key === 'deductionReason' && Array.isArray(oldValue)) {
+                     if (key === 'deductionReason' && Array.isArray(oldValue)) {
                         oldValStr = JSON.stringify(oldValue);
                     } else if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'addressChangeDate'].includes(key) && isValid(new Date(oldValue as string))) {
                         oldValStr = format(new Date(oldValue as string), 'dd-MM-yyyy');
@@ -333,7 +335,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
 
                 let newValStr: string | null = null;
                 if (newValue !== null && newValue !== undefined) {
-                    if (key === 'deductionReason' && Array.isArray(newValue)) {
+                     if (key === 'deductionReason' && Array.isArray(newValue)) {
                         newValStr = JSON.stringify(newValue);
                     } else if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'addressChangeDate'].includes(key) && isValid(new Date(newValue as string))) {
                         newValStr = format(new Date(newValue as string), 'dd-MM-yyyy');
@@ -341,11 +343,12 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
                         newValStr = String(newValue);
                     }
                 }
-                
+
                 changes.push({ field: key, oldValue: oldValStr || 'Brak', newValue: newValStr || 'Brak' });
             }
         }
         
+        // Serialize the final, complete object for saving
         const serialized = serializeEmployee(updatedEmployeeData);
         for(const header of EMPLOYEE_HEADERS) {
             row.set(header, serialized[header]);
