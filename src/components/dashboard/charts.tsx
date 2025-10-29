@@ -172,6 +172,13 @@ export function DashboardCharts({
     
     const availableYears = useMemo(() => Array.from(new Set(employees.filter(e => e.checkOutDate).map(e => getYear(new Date(e.checkOutDate!))))).sort((a,b) => b-a), [employees]);
     const months = Array.from({ length: 12 }, (_, i) => i + 1);
+    
+    const calculateChartHeight = (dataLength: number) => {
+        const minHeight = 150;
+        const rowHeight = 35;
+        const calculatedHeight = dataLength * rowHeight + 50;
+        return Math.max(minHeight, calculatedHeight);
+    };
 
 
     return (
@@ -182,29 +189,27 @@ export function DashboardCharts({
                         <CardTitle className="text-lg">Pracownicy wg koordynatora</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <ChartContainer config={{}} className="w-full min-h-[150px] aspect-video">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart 
-                                    data={chartData.employeesPerCoordinator}
-                                    layout="vertical"
-                                    margin={{ top: 5, right: 20, bottom: 5, left: 10 }}
-                                    barSize={15}
-                                >
-                                    <defs>
-                                        <linearGradient id="chart-coordinator-gradient" x1="0" y1="0" x2="1" y2="0">
-                                            <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.8}/>
-                                            <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0.1}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50" />
-                                    <YAxis dataKey="coordinator" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
-                                    <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
-                                    <Tooltip cursor={false} content={<ChartTooltipContent />} />
-                                    <Bar dataKey="employees" radius={[0, 4, 4, 0]} fill="url(#chart-coordinator-gradient)">
-                                        <LabelList dataKey="employees" position="right" offset={8} className="fill-foreground text-xs" />
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
+                        <ChartContainer config={{}} style={{ height: `${calculateChartHeight(chartData.employeesPerCoordinator.length)}px` }}>
+                            <BarChart 
+                                data={chartData.employeesPerCoordinator}
+                                layout="vertical"
+                                margin={{ top: 5, right: 20, bottom: 5, left: 10 }}
+                                barSize={15}
+                            >
+                                <defs>
+                                    <linearGradient id="chart-coordinator-gradient" x1="0" y1="0" x2="1" y2="0">
+                                        <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.8}/>
+                                        <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0.1}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50" />
+                                <YAxis dataKey="coordinator" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
+                                <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
+                                <Tooltip cursor={false} content={<ChartTooltipContent />} />
+                                <Bar dataKey="employees" radius={[0, 4, 4, 0]} fill="url(#chart-coordinator-gradient)">
+                                    <LabelList dataKey="employees" position="right" offset={8} className="fill-foreground text-xs" />
+                                </Bar>
+                            </BarChart>
                         </ChartContainer>
                     </CardContent>
                 </Card>
@@ -215,29 +220,27 @@ export function DashboardCharts({
                         <CardTitle className="text-lg">Pracownicy wg narodowości</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <ChartContainer config={{}} className="w-full h-[400px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart 
-                                    data={chartData.employeesByNationality} 
-                                    layout="vertical"
-                                    margin={{ top: 5, right: 20, bottom: 5, left: 10 }}
-                                    barSize={15}
-                                >
-                                    <defs>
-                                        <linearGradient id="chart-nationality-gradient" x1="0" y1="0" x2="1" y2="0">
-                                            <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.8}/>
-                                            <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0.1}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50"/>
-                                    <YAxis dataKey="nationality" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
-                                    <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
-                                    <Tooltip cursor={false} content={<ChartTooltipContent />} />
-                                    <Bar dataKey="employees" radius={[0, 4, 4, 0]} fill="url(#chart-nationality-gradient)">
-                                        <LabelList dataKey="employees" position="right" offset={8} className="fill-foreground text-xs" />
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
+                        <ChartContainer config={{}} style={{ height: `${calculateChartHeight(chartData.employeesByNationality.length)}px` }}>
+                            <BarChart 
+                                data={chartData.employeesByNationality} 
+                                layout="vertical"
+                                margin={{ top: 5, right: 20, bottom: 5, left: 10 }}
+                                barSize={15}
+                            >
+                                <defs>
+                                    <linearGradient id="chart-nationality-gradient" x1="0" y1="0" x2="1" y2="0">
+                                        <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.8}/>
+                                        <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0.1}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50"/>
+                                <YAxis dataKey="nationality" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
+                                <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
+                                <Tooltip cursor={false} content={<ChartTooltipContent />} />
+                                <Bar dataKey="employees" radius={[0, 4, 4, 0]} fill="url(#chart-nationality-gradient)">
+                                    <LabelList dataKey="employees" position="right" offset={8} className="fill-foreground text-xs" />
+                                </Bar>
+                            </BarChart>
                         </ChartContainer>
                     </CardContent>
                 </Card>
@@ -248,29 +251,27 @@ export function DashboardCharts({
                         <CardTitle className="text-lg">Pracownicy według zakładu</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <ChartContainer config={{}} className="w-full min-h-[150px] aspect-video">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart 
-                                    data={chartData.employeesByDepartment}
-                                    layout="vertical"
-                                    margin={{ top: 5, right: 20, bottom: 5, left: 10 }}
-                                    barSize={15}
-                                >
-                                    <defs>
-                                        <linearGradient id="chart-department-gradient" x1="0" y1="0" x2="1" y2="0">
-                                            <stop offset="5%" stopColor="hsl(var(--chart-3))" stopOpacity={0.8}/>
-                                            <stop offset="95%" stopColor="hsl(var(--chart-3))" stopOpacity={0.1}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50" />
-                                    <YAxis dataKey="department" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
-                                    <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
-                                    <Tooltip cursor={false} content={<ChartTooltipContent />} />
-                                    <Bar dataKey="employees" radius={[0, 4, 4, 0]} fill="url(#chart-department-gradient)">
-                                        <LabelList dataKey="employees" position="right" offset={8} className="fill-foreground text-xs" />
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
+                        <ChartContainer config={{}} style={{ height: `${calculateChartHeight(chartData.employeesByDepartment.length)}px` }}>
+                            <BarChart 
+                                data={chartData.employeesByDepartment}
+                                layout="vertical"
+                                margin={{ top: 5, right: 20, bottom: 5, left: 10 }}
+                                barSize={15}
+                            >
+                                <defs>
+                                    <linearGradient id="chart-department-gradient" x1="0" y1="0" x2="1" y2="0">
+                                        <stop offset="5%" stopColor="hsl(var(--chart-3))" stopOpacity={0.8}/>
+                                        <stop offset="95%" stopColor="hsl(var(--chart-3))" stopOpacity={0.1}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50" />
+                                <YAxis dataKey="department" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
+                                <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
+                                <Tooltip cursor={false} content={<ChartTooltipContent />} />
+                                <Bar dataKey="employees" radius={[0, 4, 4, 0]} fill="url(#chart-department-gradient)">
+                                    <LabelList dataKey="employees" position="right" offset={8} className="fill-foreground text-xs" />
+                                </Bar>
+                            </BarChart>
                         </ChartContainer>
                     </CardContent>
                 </Card>
@@ -383,4 +384,3 @@ export function DashboardCharts({
         </div>
     );
 }
-    
