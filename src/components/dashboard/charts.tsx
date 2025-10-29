@@ -23,8 +23,8 @@ const NoDataState = ({ message }: { message: string }) => (
 
 const calculateChartHeight = (itemCount: number, isMobile: boolean) => {
     const minHeight = 150;
-    const heightPerItem = isMobile ? 30 : 35;
-    const calculatedHeight = (isMobile ? 40 : 60) + (itemCount * heightPerItem);
+    const heightPerItem = isMobile ? 35 : 35;
+    const calculatedHeight = (isMobile ? 50 : 60) + (itemCount * heightPerItem);
     return Math.max(minHeight, calculatedHeight);
 };
 
@@ -190,29 +190,31 @@ export function DashboardCharts({
                     </CardHeader>
                     <CardContent>
                         {chartData.employeesPerCoordinator.length > 0 ? (
-                            <ChartContainer config={{}} className="w-full" style={{ height: calculateChartHeight(chartData.employeesPerCoordinator.length, isMobile) }}>
-                                <ResponsiveContainer>
-                                    <BarChart 
-                                        data={chartData.employeesPerCoordinator}
-                                        layout="vertical"
-                                        margin={{ top: 5, right: 20, bottom: 5, left: 10 }}
-                                        barSize={15}
-                                    >
-                                        <defs>
-                                            <linearGradient id="chart-coordinator-gradient" x1="0" y1="0" x2="1" y2="0">
-                                                <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.8}/>
-                                                <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0.1}/>
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50" />
-                                        <YAxis dataKey="coordinator" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
-                                        <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
-                                        <Tooltip cursor={false} content={<ChartTooltipContent />} />
-                                        <Bar dataKey="employees" radius={[0, 4, 4, 0]} fill="url(#chart-coordinator-gradient)">
-                                            <LabelList dataKey="employees" position="right" offset={8} className="fill-foreground text-xs" />
-                                        </Bar>
-                                    </BarChart>
-                                </ResponsiveContainer>
+                            <ChartContainer config={{}} className="w-full min-h-[150px]" style={{ height: calculateChartHeight(chartData.employeesPerCoordinator.length, isMobile) }}>
+                                 <div className="h-full w-full">
+                                    <ResponsiveContainer>
+                                        <BarChart 
+                                            data={chartData.employeesPerCoordinator}
+                                            layout="vertical"
+                                            margin={{ top: 5, right: 20, bottom: 5, left: 10 }}
+                                            barSize={15}
+                                        >
+                                            <defs>
+                                                <linearGradient id="chart-coordinator-gradient" x1="0" y1="0" x2="1" y2="0">
+                                                    <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.8}/>
+                                                    <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0.1}/>
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50" />
+                                            <YAxis dataKey="coordinator" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
+                                            <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
+                                            <Tooltip cursor={false} content={<ChartTooltipContent />} />
+                                            <Bar dataKey="employees" radius={[0, 4, 4, 0]} fill="url(#chart-coordinator-gradient)">
+                                                <LabelList dataKey="employees" position="right" offset={8} className="fill-foreground text-xs" />
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
                             </ChartContainer>
                         ) : (
                             <NoDataState message={'Brak danych do wyświetlenia na wykresie'} />
@@ -226,29 +228,31 @@ export function DashboardCharts({
                 </CardHeader>
                 <CardContent>
                     {chartData.employeesByNationality.length > 0 ? (
-                        <ChartContainer config={{}} className="w-full" style={{ height: calculateChartHeight(chartData.employeesByNationality.length, isMobile) }}>
-                            <ResponsiveContainer>
-                                <BarChart 
-                                    data={chartData.employeesByNationality} 
-                                    layout="vertical"
-                                    margin={{ top: 5, right: 20, bottom: 5, left: 10 }}
-                                    barSize={15}
-                                >
-                                    <defs>
-                                        <linearGradient id="chart-nationality-gradient" x1="0" y1="0" x2="1" y2="0">
-                                            <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.8}/>
-                                            <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0.1}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50"/>
-                                    <YAxis dataKey="nationality" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
-                                    <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
-                                    <Tooltip cursor={false} content={<ChartTooltipContent />} />
-                                    <Bar dataKey="employees" radius={[0, 4, 4, 0]} fill="url(#chart-nationality-gradient)">
-                                        <LabelList dataKey="employees" position="right" offset={8} className="fill-foreground text-xs" />
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
+                        <ChartContainer config={{}} className="w-full min-h-[150px]" style={{ height: calculateChartHeight(chartData.employeesByNationality.length, isMobile) }}>
+                            <div className="h-full w-full">
+                                <ResponsiveContainer>
+                                    <BarChart 
+                                        data={chartData.employeesByNationality} 
+                                        layout="vertical"
+                                        margin={{ top: 5, right: 20, bottom: 5, left: 10 }}
+                                        barSize={15}
+                                    >
+                                        <defs>
+                                            <linearGradient id="chart-nationality-gradient" x1="0" y1="0" x2="1" y2="0">
+                                                <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.8}/>
+                                                <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0.1}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50"/>
+                                        <YAxis dataKey="nationality" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
+                                        <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
+                                        <Tooltip cursor={false} content={<ChartTooltipContent />} />
+                                        <Bar dataKey="employees" radius={[0, 4, 4, 0]} fill="url(#chart-nationality-gradient)">
+                                            <LabelList dataKey="employees" position="right" offset={8} className="fill-foreground text-xs" />
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
                         </ChartContainer>
                     ) : (
                         <NoDataState message={'Brak danych do wyświetlenia na wykresie'} />
@@ -261,29 +265,31 @@ export function DashboardCharts({
                 </CardHeader>
                 <CardContent>
                     {chartData.employeesByDepartment.length > 0 ? (
-                        <ChartContainer config={{}} className="w-full" style={{ height: calculateChartHeight(chartData.employeesByDepartment.length, isMobile) }}>
-                            <ResponsiveContainer>
-                                <BarChart 
-                                    data={chartData.employeesByDepartment}
-                                    layout="vertical"
-                                    margin={{ top: 5, right: 20, bottom: 5, left: 10 }}
-                                    barSize={15}
-                                >
-                                    <defs>
-                                        <linearGradient id="chart-department-gradient" x1="0" y1="0" x2="1" y2="0">
-                                            <stop offset="5%" stopColor="hsl(var(--chart-3))" stopOpacity={0.8}/>
-                                            <stop offset="95%" stopColor="hsl(var(--chart-3))" stopOpacity={0.1}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50" />
-                                    <YAxis dataKey="department" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
-                                    <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
-                                    <Tooltip cursor={false} content={<ChartTooltipContent />} />
-                                    <Bar dataKey="employees" radius={[0, 4, 4, 0]} fill="url(#chart-department-gradient)">
-                                        <LabelList dataKey="employees" position="right" offset={8} className="fill-foreground text-xs" />
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
+                        <ChartContainer config={{}} className="w-full min-h-[150px]" style={{ height: calculateChartHeight(chartData.employeesByDepartment.length, isMobile) }}>
+                            <div className="h-full w-full">
+                                <ResponsiveContainer>
+                                    <BarChart 
+                                        data={chartData.employeesByDepartment}
+                                        layout="vertical"
+                                        margin={{ top: 5, right: 20, bottom: 5, left: 10 }}
+                                        barSize={15}
+                                    >
+                                        <defs>
+                                            <linearGradient id="chart-department-gradient" x1="0" y1="0" x2="1" y2="0">
+                                                <stop offset="5%" stopColor="hsl(var(--chart-3))" stopOpacity={0.8}/>
+                                                <stop offset="95%" stopColor="hsl(var(--chart-3))" stopOpacity={0.1}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50" />
+                                        <YAxis dataKey="department" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
+                                        <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
+                                        <Tooltip cursor={false} content={<ChartTooltipContent />} />
+                                        <Bar dataKey="employees" radius={[0, 4, 4, 0]} fill="url(#chart-department-gradient)">
+                                            <LabelList dataKey="employees" position="right" offset={8} className="fill-foreground text-xs" />
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
                         </ChartContainer>
                     ) : (
                         <NoDataState message={'Brak danych do wyświetlenia na wykresie'} />
@@ -397,3 +403,5 @@ export function DashboardCharts({
         </div>
     );
 }
+
+    
