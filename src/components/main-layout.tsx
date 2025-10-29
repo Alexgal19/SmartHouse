@@ -175,13 +175,21 @@ export default function MainLayout({
     const setSelectedCoordinatorId = useCallback((value: React.SetStateAction<string>) => {
         _setSelectedCoordinatorId(value);
     }, []);
+
+    const navItems: { view: View; icon: React.ElementType; label: string }[] = [
+        { view: 'dashboard', icon: Home, label: 'Pulpit' },
+        { view: 'employees', icon: Users, label: 'Pracownicy' },
+        { view: 'inspections', icon: ClipboardList, label: 'Inspekcje' },
+        { view: 'equipment', icon: Archive, label: 'Wyposażenie' },
+        { view: 'settings', icon: SettingsIcon, label: 'Ustawienia' },
+    ];
     
     const visibleNavItems = useMemo(() => {
         if (currentUser?.isAdmin) {
             return navItems;
         }
         return navItems.filter(item => item.view !== 'settings');
-    }, [currentUser]);
+    }, [currentUser, navItems]);
 
     const handleLogout = useCallback(async () => {
         await logout();
@@ -605,14 +613,6 @@ export default function MainLayout({
         handleDeleteEmployee,
         handleImportEmployees,
     ]);
-
-    const navItems: { view: View; icon: React.ElementType; label: string }[] = [
-        { view: 'dashboard', icon: Home, label: 'Pulpit' },
-        { view: 'employees', icon: Users, label: 'Pracownicy' },
-        { view: 'inspections', icon: ClipboardList, label: 'Inspekcje' },
-        { view: 'equipment', icon: Archive, label: 'Wyposażenie' },
-        { view: 'settings', icon: SettingsIcon, label: 'Ustawienia' },
-    ];
 
     if (!settings || !allEmployees || !allNonEmployees || !allEquipment || !allInspections) {
         return (
