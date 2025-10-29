@@ -313,12 +313,11 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
 
         // Logic to detect changes for notifications
         for (const key of Object.keys(updates) as Array<keyof Employee>) {
-             const oldValue = originalEmployee[key];
-             const newValue = updates[key];
-             
-             // Normalize falsy values for comparison
-             const normalizedOld = (!oldValue || oldValue === '') ? null : String(oldValue);
-             const normalizedNew = (!newValue || newValue === '') ? null : String(newValue);
+            const oldValue = originalEmployee[key];
+            const newValue = updates[key];
+            
+            const normalizedOld = (!oldValue || oldValue === '') ? null : String(oldValue);
+            const normalizedNew = (!newValue || newValue === '') ? null : String(newValue);
 
             if (normalizedOld !== normalizedNew) {
                 let oldValStr: string | null = null;
@@ -349,7 +348,6 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         
         const serialized = serializeEmployee(updatedEmployeeData);
         for(const header of EMPLOYEE_HEADERS) {
-            // Explicitly set the value for each header
             row.set(header, serialized[header]);
         }
 
@@ -915,8 +913,10 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
             'Data wymeldowania': 'checkOutDate',
             'Umowa od': 'contractStartDate',
             'Umowa do': 'contractEndDate',
+            'Data zgłoszenia wyjazdu': 'departureReportDate',
             'Komentarze': 'comments',
         };
+        
         const requiredColumns = ['Imię i nazwisko', 'Data zameldowania'];
         for (const col of requiredColumns) {
             if (!headers.includes(col)) {
@@ -947,7 +947,7 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
                              employeeData.coordinatorId = coordinatorMap.get(coordinatorName) || '';
                         }
                         else {
-                            (employeeData as any)[employeeKey] = value ? String(value) : '';
+                            (employeeData as any)[employeeKey] = value ? String(value) : null;
                         }
                     }
                 }
@@ -971,3 +971,5 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
         throw new Error(e instanceof Error ? e.message : "Failed to import employees from Excel.");
     }
 }
+
+    
