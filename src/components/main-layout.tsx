@@ -46,14 +46,6 @@ import { AddressForm } from './address-form';
 import { ModernHouseIcon } from './icons/modern-house-icon';
 
 const HouseLoader = () => {
-    const housePath = "M2,24 L25,2 L48,24 L48,48 L2,48 L2,24 Z";
-
-    const pathStyle = (length: number, delay: string) => ({
-        strokeDasharray: length,
-        strokeDashoffset: length,
-        animation: `stroke-draw 1s ${delay} ease-out forwards`,
-    });
-
     return (
         <div className="relative w-[500px] h-[500px] flex items-center justify-center">
             <svg viewBox="0 0 50 50" className="absolute inset-0 w-full h-full">
@@ -64,22 +56,26 @@ const HouseLoader = () => {
                     </linearGradient>
                 </defs>
                  <g fill="none" stroke="url(#houseGradient)" strokeWidth="0.5" strokeOpacity="0.5">
-                    <path d={housePath} style={pathStyle(148, "0s")} />
+                    <path d="M2,24 L25,2 L48,24 L48,48 L2,48 L2,24 Z" style={{
+                        strokeDasharray: 148,
+                        strokeDashoffset: 148,
+                        animation: `stroke-draw 1s 0s ease-out forwards`,
+                    }} />
                 </g>
                 <text
                     x="50%"
                     y="50%"
                     dy=".3em"
                     textAnchor="middle"
-                    fontSize="8"
+                    fontSize="6"
                     fontWeight="bold"
                     className="font-headline"
-                    fill="hsl(var(--primary))"
+                    fill="hsl(var(--primary) / 0.7)"
                 >
                     SmartHouse
                 </text>
             </svg>
-             <p className="absolute bottom-[35%] text-sm text-muted-foreground animate-pulse-text">
+             <p className="absolute bottom-[30%] text-sm text-muted-foreground animate-pulse-text">
                 Wczytywanie danych...
             </p>
         </div>
