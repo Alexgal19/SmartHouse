@@ -54,10 +54,6 @@ const navItems: { view: View; icon: React.ElementType; label: string }[] = [
 
 const HouseLoader = () => {
     const housePath = "M2,24 L2,48 L48,48 L48,24 L25,2 L2,24 Z";
-    const roofOutlinePath = "M2,24 L25,2 L48,24";
-    const doorPath = "M20,48 L20,34 L28,34 L28,48";
-    const windowPath = "M34,28 L42,28 L42,36 L34,36 Z";
-    const chimneyPath = "M38,8 L38,1 L43,1 L43,12";
 
     const pathStyle = (length: number, delay: string) => ({
         strokeDasharray: length,
@@ -66,26 +62,17 @@ const HouseLoader = () => {
     });
 
     return (
-        <div className="relative w-96 h-96">
+        <div className="relative w-[500px] h-[500px] flex items-center justify-center">
             <svg viewBox="0 0 50 50" className="absolute inset-0 w-full h-full">
-                <g fill="none" stroke="hsl(var(--primary))" strokeWidth="1">
-                    {/* House outline */}
+                <g fill="none" stroke="hsl(var(--primary))" strokeWidth="0.5">
                     <path d={housePath} style={pathStyle(148, "0s")} className="animate-stroke-draw" />
-                    {/* Roof outline */}
-                    <path d={roofOutlinePath} style={pathStyle(70, "0.5s")} className="animate-stroke-draw" />
-                    {/* Door */}
-                    <path d={doorPath} style={pathStyle(30, "0.8s")} className="animate-stroke-draw" />
-                    {/* Window */}
-                    <path d={windowPath} style={pathStyle(32, "1s")} className="animate-stroke-draw" />
-                    {/* Chimney */}
-                     <path d={chimneyPath} style={pathStyle(30, "1.2s")} className="animate-stroke-draw" />
                 </g>
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center animate-fade-in animation-delay-1500">
-                 <h1 className="text-2xl font-semibold tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm">
+                 <h1 className="text-7xl font-semibold tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm">
                     SmartHouse
                 </h1>
-                <p className="text-xs text-muted-foreground animate-pulse-text">Wczytywanie danych...</p>
+                <p className="text-sm text-muted-foreground animate-pulse-text">Wczytywanie danych...</p>
             </div>
         </div>
     );
