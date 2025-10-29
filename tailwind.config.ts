@@ -139,6 +139,20 @@ export default {
             strokeDashoffset: '0',
           },
         },
+        blob: {
+          "0%": {
+            transform: "translate(0px, 0px) scale(1)",
+          },
+          "33%": {
+            transform: "translate(30px, -50px) scale(1.1)",
+          },
+          "66%": {
+            transform: "translate(-20px, 20px) scale(0.9)",
+          },
+          "100%": {
+            transform: "translate(0px, 0px) scale(1)",
+          },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
@@ -151,8 +165,25 @@ export default {
         "slide-in-from-bottom": "slide-in-from-bottom 0.3s ease-out",
         "slide-out-to-bottom": "slide-out-to-bottom 0.3s ease-out",
         'stroke-draw': 'stroke-draw 1s ease-out forwards',
+        blob: "blob 7s infinite",
       },
+      animationDelay: {
+        '2000': '2000ms',
+        '4000': '4000ms',
+      }
     },
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [require('tailwindcss-animate'),
+    function ({ addUtilities, theme }: { addUtilities: any, theme: any }) {
+      const newUtilities = {
+        '.animation-delay-2000': {
+          'animation-delay': theme('animationDelay.2000'),
+        },
+        '.animation-delay-4000': {
+          'animation-delay': theme('animationDelay.4000'),
+        },
+      }
+      addUtilities(newUtilities, ['responsive', 'hover'])
+    }
+  ],
 } satisfies Config;

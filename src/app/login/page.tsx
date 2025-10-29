@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { login } from '@/lib/auth';
-import { Building, Download } from 'lucide-react';
+import { Building, Download, Loader2 } from 'lucide-react';
 
 // Define an interface for the BeforeInstallPromptEvent
 interface BeforeInstallPromptEvent extends Event {
@@ -93,21 +93,26 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="flex h-screen w-full items-center justify-center bg-background px-4">
-            <Card className="w-full max-w-sm animate-fade-in-up shadow-xl rounded-2xl">
+        <div className="flex h-screen w-full items-center justify-center bg-gray-900 text-white px-4 overflow-hidden relative">
+            {/* Gradient Background */}
+            <div className="absolute top-0 left-0 -translate-x-1/4 -translate-y-1/4 w-96 h-96 bg-primary/30 rounded-full filter blur-3xl opacity-50 animate-blob"></div>
+            <div className="absolute top-0 right-0 translate-x-1/4 -translate-y-1/4 w-96 h-96 bg-purple-500/30 rounded-full filter blur-3xl opacity-50 animate-blob animation-delay-2000"></div>
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/4 w-96 h-96 bg-orange-500/30 rounded-full filter blur-3xl opacity-50 animate-blob animation-delay-4000"></div>
+            
+            <Card className="w-full max-w-sm animate-fade-in-up bg-black/30 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl text-white">
                 <form onSubmit={handleLogin}>
                     <CardHeader className="items-center text-center space-y-4">
-                        <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10">
+                        <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 border border-primary/20 shadow-inner">
                             <Building className="h-8 w-8 text-primary" />
                         </div>
                         <div className="space-y-1">
-                            <CardTitle className="text-2xl">Witaj w SmartHouse</CardTitle>
-                            <CardDescription>Zaloguj się, aby kontynuować</CardDescription>
+                            <CardTitle className="text-2xl font-bold">Witaj w SmartHouse</CardTitle>
+                            <CardDescription className="text-white/60">Zaloguj się, aby kontynuować</CardDescription>
                         </div>
                     </CardHeader>
                     <CardContent className="grid gap-4">
                         <div className="grid gap-2 text-left">
-                            <Label htmlFor="name">Imię i nazwisko / Login</Label>
+                            <Label htmlFor="name" className="text-white/80">Imię i nazwisko / Login</Label>
                             <Input 
                                 id="name" 
                                 type="text" 
@@ -116,7 +121,7 @@ export default function LoginPage() {
                                 onChange={(e) => setName(e.target.value)}
                                 required 
                                 disabled={isLoading}
-                                className="bg-muted/50"
+                                className="bg-white/5 border-white/20 text-white placeholder:text-white/40 focus:ring-primary focus:border-primary"
                             />
                         </div>
                         <div className="grid gap-2 text-left">
@@ -124,21 +129,21 @@ export default function LoginPage() {
                             <Input 
                                 id="password" 
                                 type="password" 
-                                placeholder="Wprowadź swoje hasło"
+                                placeholder="••••••••"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required 
                                 disabled={isLoading}
-                                className="bg-muted/50"
+                                className="bg-white/5 border-white/20 text-white placeholder:text-white/40 focus:ring-primary focus:border-primary"
                             />
                         </div>
                     </CardContent>
                     <CardFooter className="flex-col gap-4">
-                        <Button className="w-full" type="submit" disabled={isLoading || password === ''}>
-                            {isLoading ? "Logowanie..." : "Zaloguj się"}
+                        <Button className="w-full font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20" type="submit" disabled={isLoading || password === ''}>
+                            {isLoading ? <Loader2 className="animate-spin" /> : "Zaloguj się"}
                         </Button>
                         {installPrompt && (
-                            <Button variant="outline" className="w-full" onClick={handleInstallClick}>
+                            <Button variant="outline" className="w-full border-white/20 bg-white/5 hover:bg-white/10 text-white/80" onClick={handleInstallClick}>
                                 <Download className="mr-2 h-4 w-4" />
                                 Zainstaluj aplikację
                             </Button>
@@ -149,3 +154,4 @@ export default function LoginPage() {
         </div>
     );
 }
+
