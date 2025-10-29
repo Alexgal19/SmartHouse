@@ -66,19 +66,19 @@ const HouseLoader = () => {
     });
 
     return (
-        <div className="relative w-48 h-48">
+        <div className="relative w-96 h-96">
             <svg viewBox="0 0 50 50" className="absolute inset-0 w-full h-full">
                 <g fill="none" stroke="hsl(var(--primary))" strokeWidth="1">
                     {/* House outline */}
-                    <path d={housePath} style={pathStyle(148, "0s")} />
+                    <path d={housePath} style={pathStyle(148, "0s")} className="animate-stroke-draw" />
                     {/* Roof outline */}
-                    <path d={roofOutlinePath} style={pathStyle(70, "0.5s")} />
+                    <path d={roofOutlinePath} style={pathStyle(70, "0.5s")} className="animate-stroke-draw" />
                     {/* Door */}
-                    <path d={doorPath} style={pathStyle(30, "0.8s")} />
+                    <path d={doorPath} style={pathStyle(30, "0.8s")} className="animate-stroke-draw" />
                     {/* Window */}
-                    <path d={windowPath} style={pathStyle(32, "1s")} />
+                    <path d={windowPath} style={pathStyle(32, "1s")} className="animate-stroke-draw" />
                     {/* Chimney */}
-                     <path d={chimneyPath} style={pathStyle(30, "1.2s")} />
+                     <path d={chimneyPath} style={pathStyle(30, "1.2s")} className="animate-stroke-draw" />
                 </g>
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center animate-fade-in animation-delay-1500">
@@ -697,5 +697,3 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
-
-    
