@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -16,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { login } from '@/lib/auth';
 import { Building, Download, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // Define an interface for the BeforeInstallPromptEvent
 interface BeforeInstallPromptEvent extends Event {
@@ -92,15 +94,20 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="flex h-screen w-full items-center justify-center bg-muted/40 px-4">
-            <Card className="w-full max-w-sm">
+        <div className="relative flex h-screen w-full items-center justify-center bg-muted/40 px-4 overflow-hidden">
+             <div className="absolute top-0 left-0 w-full h-full z-0">
+                <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-primary/20 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+                <div className="absolute top-1/2 right-1/4 w-72 h-72 bg-accent/20 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
+                <div className="absolute bottom-1/4 left-1/2 w-72 h-72 bg-secondary/20 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
+            </div>
+            <Card className="w-full max-w-sm z-10 animate-scale-in">
                 <form onSubmit={handleLogin}>
-                    <CardHeader className="items-center text-center">
+                    <CardHeader className="items-center text-center animate-fade-in-up">
                         <Building className="h-8 w-8 text-primary" />
                         <CardTitle>Witaj w SmartHouse</CardTitle>
                         <CardDescription>Zaloguj się, aby kontynuować</CardDescription>
                     </CardHeader>
-                    <CardContent className="grid gap-4">
+                    <CardContent className="grid gap-4 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
                         <div className="grid gap-2 text-left">
                             <Label htmlFor="name">Imię i nazwisko / Login</Label>
                             <Input 
@@ -125,7 +132,7 @@ export default function LoginPage() {
                             />
                         </div>
                     </CardContent>
-                    <CardFooter className="flex-col gap-4">
+                    <CardFooter className="flex-col gap-4 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
                         <Button className="w-full" type="submit" disabled={isLoading || password === ''}>
                             {isLoading ? <Loader2 className="animate-spin" /> : "Zaloguj się"}
                         </Button>
