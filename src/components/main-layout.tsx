@@ -52,7 +52,7 @@ const HouseLoader = () => {
                 <defs>
                     <linearGradient id="houseGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                         <stop offset="0%" stopColor="hsl(var(--primary))" />
-                        <stop offset="100%" stopColor="hsl(24 95% 45%)" />
+                        <stop offset="100%" stopColor="hsl(24 94% 45%)" />
                     </linearGradient>
                 </defs>
                  <g fill="none" stroke="url(#houseGradient)" strokeWidth="0.5" strokeOpacity="0.5">
@@ -132,13 +132,13 @@ export default function MainLayout({
     const routerRef = useRef(router);
     const searchParams = useSearchParams();
     
-    const navItems = [
+    const navItems = useMemo(() => [
         { view: 'dashboard', icon: Home, label: 'Pulpit' },
         { view: 'employees', icon: Users, label: 'Pracownicy' },
         { view: 'inspections', icon: ClipboardList, label: 'Inspekcje' },
         { view: 'equipment', icon: Archive, label: 'Wyposażenie' },
         { view: 'settings', icon: SettingsIcon, label: 'Ustawienia' },
-    ] as const;
+    ], [])  as { view: View; icon: React.ElementType; label: string }[];
 
     const activeView = useMemo(() => {
         return (searchParams.get('view') as View) || 'dashboard';
@@ -207,9 +207,9 @@ export default function MainLayout({
         try {
             await clearAllNotifications();
             setAllNotifications([]);
-            toast({ title: "Sukces", description: "Wszystkie powiadomienia zostały wyczyszczone." });
+            toast({ title: "Sukces", description: "Wszystkie powiadomienia zostały вилучені." });
         } catch (e) {
-             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się wyczyścić powiadomień." });
+             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się вилучити powiadomienia." });
         }
     }, [currentUser, toast]);
 
@@ -358,7 +358,7 @@ export default function MainLayout({
             toast({ title: "Sukces", description: "Mieszkaniec został usunięty." });
         } catch(e) {
             setAllNonEmployees(originalNonEmployees); // Revert
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć mieszkańca." });
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć mieszkańца." });
         }
     }, [allNonEmployees, toast]);
     
@@ -540,7 +540,7 @@ export default function MainLayout({
         const result = await importEmployeesFromExcel(fileContent, currentUser.uid, settings);
         toast({
             title: "Import zakończony",
-            description: `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} wierszy.`,
+            description: `Pomyślnie заimportowano ${result.importedCount} z ${result.totalRows} wierszy.`,
         });
         await refreshData(false);
 
