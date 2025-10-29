@@ -64,7 +64,7 @@ const HouseLoader = () => {
     return (
         <div className="relative w-[500px] h-[500px] flex items-center justify-center">
             <svg viewBox="0 0 50 50" className="absolute inset-0 w-full h-full">
-                <g fill="none" stroke="hsl(var(--primary))" strokeWidth="0.5">
+                <g fill="none" stroke="hsl(var(--primary))" strokeWidth="0.5" strokeOpacity="0.5">
                     <path d={housePath} style={pathStyle(148, "0s")} className="animate-stroke-draw" />
                 </g>
             </svg>
@@ -684,3 +684,5 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
+
+    
