@@ -46,7 +46,7 @@ import { AddressForm } from './address-form';
 import { ModernHouseIcon } from './icons/modern-house-icon';
 
 const HouseLoader = () => {
-    const housePath = "M2,24 L2,48 L48,48 L48,24 L25,2 L2,24 Z";
+    const housePath = "M2,24 L25,2 L48,24 L48,48 L2,48 L2,24 Z";
 
     const pathStyle = (length: number, delay: string) => ({
         strokeDasharray: length,
