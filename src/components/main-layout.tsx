@@ -71,6 +71,7 @@ const HouseLoader = () => {
                     fontWeight="bold"
                     className="font-headline"
                     fill="url(#houseGradient)"
+                    fillOpacity="0.8"
                 >
                     SmartHouse
                 </text>
