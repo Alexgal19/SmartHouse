@@ -71,7 +71,7 @@ const HouseLoader = () => {
                     y="50%"
                     dy=".3em"
                     textAnchor="middle"
-                    className="text-7xl font-semibold tracking-tight fill-transparent stroke-primary stroke-[0.5px] opacity-0 animate-fade-in animation-delay-1500"
+                    className="text-7xl font-semibold tracking-tight fill-transparent stroke-primary stroke-[0.5px]"
                     style={{ paintOrder: 'stroke' }}
                 >
                     SmartHouse
@@ -81,7 +81,7 @@ const HouseLoader = () => {
                     y="50%"
                     dy=".3em"
                     textAnchor="middle"
-                    className="text-7xl font-semibold tracking-tight fill-[hsl(var(--primary)_/_0.1))] opacity-0 animate-fade-in animation-delay-1500"
+                    className="text-7xl font-semibold tracking-tight fill-[hsl(var(--primary)_/_0.1))]"
                     style={{ backdropFilter: 'blur(2px)' }}
                 >
                     SmartHouse
