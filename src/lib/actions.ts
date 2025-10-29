@@ -116,7 +116,7 @@ const EQUIPMENT_HEADERS = [
 ];
 
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
-const ADDRESS_HEADERS = ['id', 'name', 'coordinatorId'];
+const ADDRESS_HEADERS = ['id', 'name', 'coordinatorIds'];
 const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targetType', 'targetId', 'details'];
 
 const safeFormat = (dateStr: unknown): string | null => {
@@ -305,20 +305,17 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         }
         
         const changes: NotificationChange[] = [];
-        // Important: Create the final updated object first
         const updatedEmployeeData: Employee = { ...originalEmployee, ...updates };
 
-        // Then, compare the final object with the original one to generate notifications
         for (const key of Object.keys(updates) as Array<keyof Employee>) {
             const oldValue = originalEmployee[key];
             const newValue = updatedEmployeeData[key];
             
-            // Normalize values for comparison: treat null, undefined, and '' as "empty"
             const oldIsEmpty = oldValue === null || oldValue === undefined || oldValue === '';
             const newIsEmpty = newValue === null || newValue === undefined || newValue === '';
 
             if (oldIsEmpty && newIsEmpty) {
-                continue; // Both are empty, no change
+                continue; 
             }
 
             if (String(oldValue) !== String(newValue)) {
@@ -348,10 +345,9 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
             }
         }
         
-        // Serialize the final, complete object for saving
         const serialized = serializeEmployee(updatedEmployeeData);
         for(const header of EMPLOYEE_HEADERS) {
-            row.set(header, serialized[header]);
+             row.set(header, serialized[header] === null || serialized[header] === undefined ? '' : serialized[header]);
         }
 
         await row.save();
@@ -619,14 +615,14 @@ export async function updateSettings(newSettings: Partial<Omit<Settings, 'tempor
             await roomsSheet.clearRows();
 
             const allRooms: (Room & {addressId: string})[] = [];
-            const addressesData = newSettings.addresses.map((addr: { rooms: any[]; id: any; name: any; coordinatorId: any; }) => {
+            const addressesData = newSettings.addresses.map((addr) => {
                 addr.rooms.forEach(room => {
                     allRooms.push({ ...room, addressId: addr.id });
                 });
                 return { 
                     id: addr.id, 
                     name: addr.name, 
-                    coordinatorId: addr.coordinatorId 
+                    coordinatorIds: addr.coordinatorIds.join(',') 
                 };
             });
 
@@ -842,12 +838,12 @@ export async function generateAccommodationReport(year: number, month: number, c
         
         let filteredAddresses = settings.addresses;
         if (coordinatorId !== 'all') {
-            filteredAddresses = settings.addresses.filter((a: { coordinatorId: string; }) => a.coordinatorId === coordinatorId);
+             filteredAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(coordinatorId));
         }
 
         const reportData: Record<string, string | number>[] = [];
 
-        filteredAddresses.forEach((address: { name: any; rooms: any[]; coordinatorId: unknown; }) => {
+        filteredAddresses.forEach((address) => {
             const addressRow: Record<string, string | number> = { "Adres": address.name };
             
             for (let day = 1; day <= daysInMonth; day++) {
@@ -865,7 +861,7 @@ export async function generateAccommodationReport(year: number, month: number, c
 
             const totalCapacity = address.rooms.reduce((sum, room) => sum + room.capacity, 0);
             addressRow["Pojemność"] = totalCapacity;
-            addressRow["Koordynator"] = coordinatorMap.get(address.coordinatorId) || 'N/A';
+            addressRow["Koordynator"] = address.coordinatorIds.map(id => coordinatorMap.get(id) || 'N/A').join(', ');
             
             reportData.push(addressRow);
         });
@@ -943,7 +939,7 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
                         const employeeKey = columnMap[excelHeader];
                         const value = rowData[excelHeader];
 
-                        if (employeeKey.toLowerCase().includes('date')) {
+                        if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate'].includes(employeeKey)) {
                             (employeeData as any)[employeeKey] = value ? safeFormat(value) : null;
                         } else if (employeeKey === 'coordinatorId') {
                              const coordinatorName = String(value || '').toLowerCase();
@@ -974,5 +970,3 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
         throw new Error(e instanceof Error ? e.message : "Failed to import employees from Excel.");
     }
 }
-
-    

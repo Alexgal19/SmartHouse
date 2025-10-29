@@ -174,7 +174,7 @@ const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { 
         let tempAddresses = addresses;
 
         if (filterCoordinatorId !== 'all') {
-            tempAddresses = tempAddresses.filter(a => a.coordinatorId === filterCoordinatorId);
+            tempAddresses = tempAddresses.filter(a => a.coordinatorIds.includes(filterCoordinatorId));
         }
         if (searchTerm) {
             tempAddresses = tempAddresses.filter(a => a.name.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -215,7 +215,7 @@ const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { 
                             <div>
                                 <p className="font-semibold">{address.name}</p>
                                 <p className="text-sm text-muted-foreground">
-                                    {coordinatorMap.get(address.coordinatorId) || 'Brak koordynatora'}, {address.rooms.length} pokoi
+                                    {address.coordinatorIds.map(id => coordinatorMap.get(id) || 'B/D').join(', ')}, {address.rooms.length} pokoi
                                 </p>
                             </div>
                             <div className="flex items-center gap-2">
@@ -494,7 +494,7 @@ function SettingsManager({ form, handleUpdateSettings, handleAddressFormOpen }: 
         const newAddress: Address = {
             id: `addr-${Date.now()}`,
             name: '',
-            coordinatorId: coordinatorId === 'all' ? '' : coordinatorId,
+            coordinatorIds: coordinatorId === 'all' ? [] : [coordinatorId],
             rooms: [],
         };
         handleAddressFormOpen(newAddress);
@@ -619,5 +619,3 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     </div>
   );
 }
-
-    

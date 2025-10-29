@@ -44,7 +44,7 @@ const roomSchema = z.object({
 const addressSchema = z.object({
   id: z.string(),
   name: z.string().min(1, 'Nazwa adresu jest wymagana.'),
-  coordinatorId: z.string().min(1, 'Koordynator jest wymagany.'),
+  coordinatorIds: z.array(z.string()).min(1, 'Przypisz co najmniej jednego koordynatora.'),
   rooms: z.array(roomSchema),
 });
 
@@ -66,28 +66,44 @@ export function AddressForm({
     resolver: zodResolver(addressSchema),
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields: roomFields, append: appendRoom, remove: removeRoom } = useFieldArray({
     control: form.control,
     name: 'rooms',
+  });
+  
+  const { fields: coordFields, append: appendCoord, remove: removeCoord } = useFieldArray({
+      control: form.control,
+      name: "coordinatorIds"
   });
 
   useEffect(() => {
     if (address) {
-        form.reset(address);
+        form.reset({
+            ...address,
+            coordinatorIds: address.coordinatorIds.map(id => id)
+        });
     } else {
         form.reset({
             id: `addr-${Date.now()}`,
             name: '',
-            coordinatorId: '',
+            coordinatorIds: [],
             rooms: [],
         });
     }
   }, [address, isOpen, form]);
   
   const onSubmit = (values: z.infer<typeof addressSchema>) => {
-    onSave(values);
+    const dataToSave: Address = {
+        ...values,
+        coordinatorIds: values.coordinatorIds.map((item: any) => item.id || item)
+    }
+    onSave(dataToSave);
     onOpenChange(false);
   };
+  
+  const availableCoordinators = coordinators.filter(
+      c => !(form.watch('coordinatorIds') || []).some((assigned: any) => (assigned.id || assigned) === c.uid)
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -113,31 +129,54 @@ export function AddressForm({
                         </FormItem>
                         )}
                     />
-                    <FormField
-                        control={form.control}
-                        name="coordinatorId"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Przypisany koordynator</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Wybierz koordynatora" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                    {coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
-                                </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                    
+                    <div className="space-y-2 rounded-md border p-4">
+                        <FormLabel>Przypisani koordynatorzy</FormLabel>
+                        {coordFields.map((field, index) => (
+                           <div key={field.id} className="flex items-center gap-2">
+                                <FormField
+                                    control={form.control}
+                                    name={`coordinatorIds.${index}`}
+                                    render={({ field }) => (
+                                         <FormItem className="flex-1">
+                                            <Select onValueChange={(val) => field.onChange(val)} value={typeof field.value === 'object' ? (field.value as any).id : field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger><SelectValue placeholder="Wybierz koordynatora"/></SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                         </FormItem>
+                                    )}
+                                />
+                                 <Button type="button" variant="ghost" size="icon" onClick={() => removeCoord(index)}>
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                           </div>
+                        ))}
+                         <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => appendCoord({ id: '' } as any)}
+                        >
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Dodaj koordynatora
+                        </Button>
+                         <FormMessage>{form.formState.errors.coordinatorIds?.message}</FormMessage>
+                    </div>
+
                     
                     <div className="space-y-2 rounded-md border p-4">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="font-medium">Pokoje</h3>
-                            <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `room-${Date.now()}`, name: '', capacity: 1 })}>
+                            <Button type="button" variant="outline" size="sm" onClick={() => appendRoom({ id: `room-${Date.now()}`, name: '', capacity: 1 })}>
                                 <PlusCircle className="mr-2 h-4 w-4" /> Dodaj pokój
                             </Button>
                         </div>
-                        {fields.map((field, index) => (
+                        {roomFields.map((field, index) => (
                            <div key={field.id} className="flex items-start gap-2">
                                 <FormField
                                     control={form.control}
@@ -161,12 +200,12 @@ export function AddressForm({
                                         </FormItem>
                                     )}
                                 />
-                                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+                                <Button type="button" variant="ghost" size="icon" onClick={() => removeRoom(index)}>
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
                             </div>
                         ))}
-                        {fields.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Brak pokoi dla tego adresu.</p>}
+                        {roomFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Brak pokoi dla tego adresu.</p>}
                     </div>
 
                 </div>

@@ -6,7 +6,7 @@ export type View = 'dashboard' | 'employees' | 'inspections' | 'settings' | 'equ
 export type Address = {
     id: string;
     name: string;
-    coordinatorId: string;
+    coordinatorIds: string[];
     rooms: Room[];
 }
 

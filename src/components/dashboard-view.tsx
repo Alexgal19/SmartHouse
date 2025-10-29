@@ -41,7 +41,7 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
       return allNonEmployees;
     }
      const coordinatorAddresses = settings.addresses
-      .filter(a => a.coordinatorId === selectedCoordinatorId)
+      .filter(a => a.coordinatorIds.includes(selectedCoordinatorId))
       .map(a => a.name);
 
     return allNonEmployees.filter(ne => coordinatorAddresses.includes(ne.address));

@@ -3,7 +3,7 @@
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Address, Coordinator, Inspection, InspectionTemplateCategory } from '@/types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Address, Coordinator, Inspection, InspectionTemplateCategory } from '../types';
 import { format, isValid, parse, parseISO } from 'date-fns';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
@@ -298,7 +298,12 @@ export const getAllSheetsData = async () => {
                 roomsByAddressId.get(addressId)!.push({ id: rowObj.id, name: rowObj.name, capacity: Number(rowObj.capacity) || 0 });
             }
         });
-        const addresses: Address[] = settingsSheets.addressRows.map(rowObj => ({ id: rowObj.id, name: rowObj.name, coordinatorId: rowObj.coordinatorId, rooms: roomsByAddressId.get(rowObj.id) || [] }));
+        const addresses: Address[] = settingsSheets.addressRows.map(rowObj => ({
+            id: rowObj.id,
+            name: rowObj.name,
+            coordinatorIds: (rowObj.coordinatorIds || rowObj.coordinatorId || '').split(',').filter(Boolean),
+            rooms: roomsByAddressId.get(rowObj.id) || []
+        }));
         const coordinators: Coordinator[] = settingsSheets.coordinatorRows.map(rowObj => ({ uid: rowObj.uid, name: rowObj.name, isAdmin: rowObj.isAdmin === 'TRUE', password: rowObj.password }));
         
         const inspectionTemplate : InspectionTemplateCategory[] = (settingsSheets.inspectionTemplateRows || []).reduce((acc: InspectionTemplateCategory[], row) => {

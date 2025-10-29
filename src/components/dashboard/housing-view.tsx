@@ -64,17 +64,19 @@ export function HousingView({
         const activeEmployees = employees.filter(e => e.status === 'active');
         const allActiveOccupants = [...activeEmployees, ...nonEmployees];
         
-        let addressesToDisplay: string[];
+        let addressesToDisplay;
 
         if (currentUser.isAdmin && selectedCoordinatorId === 'all') {
-            const allAddresses = new Set(settings.addresses.map(a => a.name));
-            const occupiedAddresses = new Set(allActiveOccupants.map(o => o.address));
-            addressesToDisplay = Array.from(new Set(Array.from(allAddresses).concat(Array.from(occupiedAddresses))));
+            addressesToDisplay = settings.addresses;
         } else {
-            addressesToDisplay = settings.addresses.filter(a => a.coordinatorId === selectedCoordinatorId).map(a => a.name);
+            addressesToDisplay = settings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
         }
 
-        return addressesToDisplay.map(addressName => {
+        const occupiedAddressesNames = new Set(allActiveOccupants.map(o => o.address));
+        const allAddressNames = new Set([...addressesToDisplay.map(a => a.name), ...Array.from(occupiedAddressesNames)]);
+
+
+        return Array.from(allAddressNames).map(addressName => {
             if (!addressName) return null;
             const occupantsInAddress = allActiveOccupants.filter(o => o.address === addressName);
             const addressDetails = settings.addresses.find(a => a.name === addressName);
