@@ -71,7 +71,8 @@ const HouseLoader = () => {
                     y="50%"
                     dy=".3em"
                     textAnchor="middle"
-                    className="text-2xl font-semibold tracking-tight stroke-primary stroke-[0.5px] fill-[hsl(var(--primary)_/_0.1)]"
+                    fontSize="6"
+                    className="font-semibold tracking-tight stroke-primary stroke-[0.5px] fill-[hsl(var(--primary)_/_0.1)]"
                     style={{ paintOrder: 'stroke' }}
                 >
                     SmartHouse
@@ -698,3 +699,5 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
+
+    
