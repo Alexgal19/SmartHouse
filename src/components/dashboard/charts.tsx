@@ -60,17 +60,6 @@ export function DashboardCharts({
             return acc;
         }, {} as Record<string, { nationality: string, employees: number }>);
         
-        const employeesByDepartment = activeEmployees.reduce((acc, employee) => {
-            const department = employee.zaklad || 'Brak';
-            if (department) {
-                if(!acc[department]) {
-                    acc[department] = { department, employees: 0 };
-                }
-                acc[department].employees++;
-            }
-            return acc;
-        }, {} as Record<string, { department: string, employees: number }>);
-        
         const departuresByDate = employees.reduce((acc, employee) => {
             if (employee.checkOutDate) {
                 const checkOut = new Date(employee.checkOutDate);
@@ -162,7 +151,6 @@ export function DashboardCharts({
         return {
             employeesPerCoordinator: Object.values(employeesPerCoordinator),
             employeesByNationality: Object.values(employeesByNationality).sort((a, b) => b.employees - a.employees),
-            employeesByDepartment: Object.values(employeesByDepartment).sort((a,b) => b.employees - a.employees),
             departuresByMonth: departuresData,
             deductionsByDate: deductionsData,
         }
@@ -174,12 +162,12 @@ export function DashboardCharts({
     const months = Array.from({ length: 12 }, (_, i) => i + 1);
     
     const calculateChartHeight = (dataLength: number) => {
+        if (dataLength === 0) return 150;
         const minHeight = 150;
         const rowHeight = 35;
-        const calculatedHeight = dataLength * rowHeight + 50;
+        const calculatedHeight = dataLength * rowHeight + 50; // 50 for padding
         return Math.max(minHeight, calculatedHeight);
     };
-
 
     return (
         <div className="grid gap-6">
@@ -238,37 +226,6 @@ export function DashboardCharts({
                                 <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
                                 <Tooltip cursor={false} content={<ChartTooltipContent />} />
                                 <Bar dataKey="employees" radius={[0, 4, 4, 0]} fill="url(#chart-nationality-gradient)">
-                                    <LabelList dataKey="employees" position="right" offset={8} className="fill-foreground text-xs" />
-                                </Bar>
-                            </BarChart>
-                        </ChartContainer>
-                    </CardContent>
-                </Card>
-            )}
-            {chartData.employeesByDepartment.length > 0 && (
-                 <Card>
-                    <CardHeader className='pb-2'>
-                        <CardTitle className="text-lg">Pracownicy według zakładu</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <ChartContainer config={{}} style={{ height: `${calculateChartHeight(chartData.employeesByDepartment.length)}px` }}>
-                            <BarChart 
-                                data={chartData.employeesByDepartment}
-                                layout="vertical"
-                                margin={{ top: 5, right: 20, bottom: 5, left: 10 }}
-                                barSize={15}
-                            >
-                                <defs>
-                                    <linearGradient id="chart-department-gradient" x1="0" y1="0" x2="1" y2="0">
-                                        <stop offset="5%" stopColor="hsl(var(--chart-3))" stopOpacity={0.8}/>
-                                        <stop offset="95%" stopColor="hsl(var(--chart-3))" stopOpacity={0.1}/>
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50" />
-                                <YAxis dataKey="department" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
-                                <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
-                                <Tooltip cursor={false} content={<ChartTooltipContent />} />
-                                <Bar dataKey="employees" radius={[0, 4, 4, 0]} fill="url(#chart-department-gradient)">
                                     <LabelList dataKey="employees" position="right" offset={8} className="fill-foreground text-xs" />
                                 </Bar>
                             </BarChart>
