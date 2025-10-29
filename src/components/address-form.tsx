@@ -80,7 +80,7 @@ export function AddressForm({
     if (address) {
         form.reset({
             ...address,
-            coordinatorIds: address.coordinatorIds.map(id => id)
+            coordinatorIds: address.coordinatorIds || []
         });
     } else {
         form.reset({
@@ -132,14 +132,15 @@ export function AddressForm({
                     
                     <div className="space-y-2 rounded-md border p-4">
                         <FormLabel>Przypisani koordynatorzy</FormLabel>
-                        {coordFields.map((field, index) => (
-                           <div key={field.id} className="flex items-center gap-2">
+                        <div className="space-y-2">
+                            {coordFields.map((field, index) => (
+                            <div key={field.id} className="flex items-center gap-2">
                                 <FormField
                                     control={form.control}
                                     name={`coordinatorIds.${index}`}
                                     render={({ field }) => (
-                                         <FormItem className="flex-1">
-                                            <Select onValueChange={(val) => field.onChange(val)} value={typeof field.value === 'object' ? (field.value as any).id : field.value}>
+                                        <FormItem className="flex-1">
+                                            <Select onValueChange={(val) => field.onChange(val)} value={field.value}>
                                                 <FormControl>
                                                     <SelectTrigger><SelectValue placeholder="Wybierz koordynatora"/></SelectTrigger>
                                                 </FormControl>
@@ -147,20 +148,21 @@ export function AddressForm({
                                                     {coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                                                 </SelectContent>
                                             </Select>
-                                         </FormItem>
+                                        </FormItem>
                                     )}
                                 />
-                                 <Button type="button" variant="ghost" size="icon" onClick={() => removeCoord(index)}>
-                                    <Trash2 className="h-4 w-4" />
+                                <Button type="button" variant="ghost" size="icon" onClick={() => removeCoord(index)}>
+                                    <Trash2 className="h-4 w-4 text-destructive" />
                                 </Button>
-                           </div>
-                        ))}
+                            </div>
+                            ))}
+                        </div>
                          <Button
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="w-full"
-                            onClick={() => appendCoord({ id: '' } as any)}
+                            className="mt-2 w-full"
+                            onClick={() => appendCoord('')}
                         >
                             <PlusCircle className="mr-2 h-4 w-4" />
                             Dodaj koordynatora
