@@ -47,34 +47,29 @@ import { ModernHouseIcon } from './icons/modern-house-icon';
 
 const HouseLoader = () => {
     return (
-        <div className="relative w-[500px] h-[500px] flex items-center justify-center">
-            <svg viewBox="0 0 50 50" className="absolute inset-0 w-full h-full">
+        <div className="relative w-48 h-48 flex flex-col items-center justify-center">
+            <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full">
                 <defs>
-                    <linearGradient id="houseGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                         <stop offset="0%" stopColor="hsl(var(--primary))" />
-                         <stop offset="100%" stopColor="hsl(24 94% 45%)" />
+                    <linearGradient id="liquidGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="hsl(var(--primary) / 0.8)" />
+                        <stop offset="50%" stopColor="hsl(var(--primary) / 0.4)" />
+                        <stop offset="100%" stopColor="hsl(var(--primary) / 0.8)" />
                     </linearGradient>
+                    <mask id="houseMask">
+                        <path d="M10 50 L50 10 L90 50 L90 90 L65 90 L65 65 L35 65 L35 90 L10 90 Z" fill="white" />
+                    </mask>
                 </defs>
-                 <g fill="none" stroke="url(#houseGradient)" strokeWidth="0.5" strokeOpacity="0.5">
-                    <path d="M2,24 L25,2 L48,24 L48,48 L2,48 L2,24 Z" className="animate-stroke-draw" style={{
-                        strokeDasharray: 148,
-                        strokeDashoffset: 148,
-                    }} />
-                </g>
-                <text
-                    x="50%"
-                    y="50%"
-                    dy=".3em"
-                    textAnchor="middle"
-                    fontSize="8"
-                    fontWeight="bold"
-                    className="font-headline"
-                    fill="url(#houseGradient)"
-                >
-                    SmartHouse
-                </text>
+                <rect 
+                    x="-50" 
+                    y="-50" 
+                    width="200" 
+                    height="200" 
+                    fill="url(#liquidGradient)" 
+                    mask="url(#houseMask)"
+                    className="animate-liquid-gradient"
+                />
             </svg>
-             <p className="absolute bottom-[30%] text-sm text-muted-foreground animate-pulse-text">
+            <p className="absolute bottom-10 text-sm text-muted-foreground animate-pulse-text">
                 Wczytywanie danych...
             </p>
         </div>

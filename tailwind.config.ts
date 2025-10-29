@@ -134,10 +134,10 @@ export default {
           "0%": { transform: "translateY(0)" },
           "100%": { transform: "translateY(100%)" },
         },
-        'stroke-draw': {
-          to: {
-            strokeDashoffset: '0',
-          },
+        'liquid-gradient': {
+          '0%': { transform: 'translateX(-50%)' },
+          '50%': { transform: 'translateX(0%)' },
+          '100%': { transform: 'translateX(-50%)' },
         },
         blob: {
           "0%": {
@@ -164,7 +164,7 @@ export default {
         'pulse-text': 'pulse-text 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         "slide-in-from-bottom": "slide-in-from-bottom 0.3s ease-out",
         "slide-out-to-bottom": "slide-out-to-bottom 0.3s ease-out",
-        'stroke-draw': 'stroke-draw 1s ease-out forwards',
+        'liquid-gradient': 'liquid-gradient 6s ease-in-out infinite',
         blob: "blob 7s infinite",
       },
       animationDelay: {
