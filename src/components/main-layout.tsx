@@ -71,18 +71,8 @@ const HouseLoader = () => {
                     y="50%"
                     dy=".3em"
                     textAnchor="middle"
-                    className="text-7xl font-semibold tracking-tight fill-transparent stroke-primary stroke-[0.5px]"
+                    className="text-7xl font-semibold tracking-tight stroke-primary stroke-[0.5px] fill-[hsl(var(--primary)_/_0.1)]"
                     style={{ paintOrder: 'stroke' }}
-                >
-                    SmartHouse
-                </text>
-                 <text
-                    x="50%"
-                    y="50%"
-                    dy=".3em"
-                    textAnchor="middle"
-                    className="text-7xl font-semibold tracking-tight fill-[hsl(var(--primary)_/_0.1))]"
-                    style={{ backdropFilter: 'blur(2px)' }}
                 >
                     SmartHouse
                 </text>
@@ -708,3 +698,5 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
+
+    
