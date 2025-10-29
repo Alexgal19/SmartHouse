@@ -3,15 +3,16 @@
 
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, User, Building, CalendarOff } from "lucide-react";
+import { Users, User, CalendarOff } from "lucide-react";
 import type { Employee, NonEmployee } from "@/types";
 import { differenceInDays, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { ModernHouseIcon } from '../icons/modern-house-icon';
 
 const kpiIcons = {
     housedEmployees: <Users className="h-6 w-6 text-primary" />,
     nonEmployees: <User className="h-6 w-6 text-purple-500" />,
-    apartmentsInUse: <Building className="h-6 w-6 text-primary" />,
+    apartmentsInUse: <ModernHouseIcon className="h-6 w-6 text-primary" />,
     upcomingCheckouts: <CalendarOff className="h-6 w-6 text-pink-500" />,
 };
 
@@ -94,5 +95,3 @@ export function DashboardKPIs({
         </div>
     );
 }
-
-

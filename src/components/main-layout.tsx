@@ -16,7 +16,7 @@ import {
 import Header from './header';
 import { MobileNav } from './mobile-nav';
 import type { View, Notification, Employee, Settings, NonEmployee, Inspection, EquipmentItem, SessionData, Address } from '@/types';
-import { Building, ClipboardList, Home, Settings as SettingsIcon, Users, Archive } from 'lucide-react';
+import { ClipboardList, Home, Settings as SettingsIcon, Users, Archive } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     clearAllNotifications,
@@ -43,6 +43,7 @@ import { AddEmployeeForm, type EmployeeFormData } from './add-employee-form';
 import { AddNonEmployeeForm } from './add-non-employee-form';
 import { cn } from '../lib/utils';
 import { AddressForm } from './address-form';
+import { ModernHouseIcon } from './icons/modern-house-icon';
 
 const navItems: { view: View; icon: React.ElementType; label: string }[] = [
     { view: 'dashboard', icon: Home, label: 'Pulpit' },
@@ -64,16 +65,39 @@ const HouseLoader = () => {
     return (
         <div className="relative w-[500px] h-[500px] flex items-center justify-center">
             <svg viewBox="0 0 50 50" className="absolute inset-0 w-full h-full">
-                <g fill="none" stroke="hsl(var(--primary))" strokeWidth="0.5" strokeOpacity="0.5">
+                <defs>
+                    <linearGradient id="houseGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="hsl(var(--primary))" />
+                        <stop offset="100%" stopColor="hsl(24 95% 45%)" />
+                    </linearGradient>
+                </defs>
+                 <g fill="none" stroke="url(#houseGradient)" strokeWidth="0.5" strokeOpacity="0.5">
                     <path d={housePath} style={pathStyle(148, "0s")} className="animate-stroke-draw" />
                 </g>
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center animate-fade-in animation-delay-1500">
-                 <h1 className="text-7xl font-semibold tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm">
+                <text
+                    x="50%"
+                    y="50%"
+                    dy=".3em"
+                    textAnchor="middle"
+                    className="text-7xl font-semibold tracking-tight fill-transparent stroke-primary stroke-[0.5px] opacity-0 animate-fade-in animation-delay-1500"
+                    style={{ paintOrder: 'stroke' }}
+                >
                     SmartHouse
-                </h1>
-                <p className="text-sm text-muted-foreground animate-pulse-text">Wczytywanie danych...</p>
-            </div>
+                </text>
+                 <text
+                    x="50%"
+                    y="50%"
+                    dy=".3em"
+                    textAnchor="middle"
+                    className="text-7xl font-semibold tracking-tight fill-[hsl(var(--primary_/_0.1))] opacity-0 animate-fade-in animation-delay-1500"
+                    style={{ backdropFilter: 'blur(2px)' }}
+                >
+                    SmartHouse
+                </text>
+            </svg>
+             <p className="absolute bottom-[30%] text-sm text-muted-foreground animate-pulse-text opacity-0 animation-delay-1500">
+                Wczytywanie danych...
+            </p>
         </div>
     );
 };
@@ -605,7 +629,7 @@ export default function MainLayout({
                 <Sidebar>
                     <SidebarHeader>
                          <div className="flex items-center gap-3">
-                            <Building className="h-7 w-7 text-primary" />
+                            <ModernHouseIcon className="h-7 w-7 text-primary" />
                             <span className={cn("font-semibold text-xl whitespace-nowrap transition-all duration-300", "group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0")}>SmartHouse</span>
                         </div>
                     </SidebarHeader>
@@ -684,5 +708,3 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
-
-    
