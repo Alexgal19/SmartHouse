@@ -45,14 +45,6 @@ import { cn } from '../lib/utils';
 import { AddressForm } from './address-form';
 import { ModernHouseIcon } from './icons/modern-house-icon';
 
-const navItems: { view: View; icon: React.ElementType; label: string }[] = [
-    { view: 'dashboard', icon: Home, label: 'Pulpit' },
-    { view: 'employees', icon: Users, label: 'Pracownicy' },
-    { view: 'inspections', icon: ClipboardList, label: 'Inspekcje' },
-    { view: 'equipment', icon: Archive, label: 'Wyposażenie' },
-    { view: 'settings', icon: SettingsIcon, label: 'Ustawienia' },
-];
-
 const HouseLoader = () => {
     const housePath = "M2,24 L2,48 L48,48 L48,24 L25,2 L2,24 Z";
 
@@ -89,7 +81,7 @@ const HouseLoader = () => {
                     y="50%"
                     dy=".3em"
                     textAnchor="middle"
-                    className="text-7xl font-semibold tracking-tight fill-[hsl(var(--primary_/_0.1))] opacity-0 animate-fade-in animation-delay-1500"
+                    className="text-7xl font-semibold tracking-tight fill-[hsl(var(--primary)_/_0.1))] opacity-0 animate-fade-in animation-delay-1500"
                     style={{ backdropFilter: 'blur(2px)' }}
                 >
                     SmartHouse
@@ -613,6 +605,14 @@ export default function MainLayout({
         handleDeleteEmployee,
         handleImportEmployees,
     ]);
+
+    const navItems: { view: View; icon: React.ElementType; label: string }[] = [
+        { view: 'dashboard', icon: Home, label: 'Pulpit' },
+        { view: 'employees', icon: Users, label: 'Pracownicy' },
+        { view: 'inspections', icon: ClipboardList, label: 'Inspekcje' },
+        { view: 'equipment', icon: Archive, label: 'Wyposażenie' },
+        { view: 'settings', icon: SettingsIcon, label: 'Ustawienia' },
+    ];
 
     if (!settings || !allEmployees || !allNonEmployees || !allEquipment || !allInspections) {
         return (
