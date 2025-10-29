@@ -67,11 +67,10 @@ const HouseLoader = () => {
                     y="50%"
                     dy=".3em"
                     textAnchor="middle"
-                    fontSize="6"
+                    fontSize="8"
                     fontWeight="bold"
                     className="font-headline"
                     fill="url(#houseGradient)"
-                    fillOpacity="0.8"
                 >
                     SmartHouse
                 </text>
@@ -150,10 +149,10 @@ export default function MainLayout({
     const [currentUser] = useState<SessionData | null>(initialSession);
     const [allNotifications, setAllNotifications] = useState<Notification[]>([]);
     
-    const [allEmployees, setAllEmployees] = useState<Employee[] | null>(null);
-    const [allNonEmployees, setAllNonEmployees] = useState<NonEmployee[] | null>(null);
-    const [allInspections, setAllInspections] = useState<Inspection[] | null>(null);
-    const [allEquipment, setAllEquipment] = useState<EquipmentItem[] | null>(null);
+    const [rawEmployees, setRawEmployees] = useState<Employee[] | null>(null);
+    const [rawNonEmployees, setRawNonEmployees] = useState<NonEmployee[] | null>(null);
+    const [rawInspections, setRawInspections] = useState<Inspection[] | null>(null);
+    const [rawEquipment, setRawEquipment] = useState<EquipmentItem[] | null>(null);
     const [settings, setSettings] = useState<Settings | null>(null);
     
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -168,6 +167,49 @@ export default function MainLayout({
     const [selectedCoordinatorId, _setSelectedCoordinatorId] = useState(initialSession.isAdmin ? 'all' : initialSession.uid);
     
     const { toast } = useToast();
+
+    // Filtered data based on selected coordinator
+    const allEmployees = useMemo(() => {
+        if (!rawEmployees || !currentUser) return null;
+        if (currentUser.isAdmin && selectedCoordinatorId === 'all') {
+            return rawEmployees;
+        }
+        return rawEmployees.filter(e => e.coordinatorId === selectedCoordinatorId);
+    }, [rawEmployees, currentUser, selectedCoordinatorId]);
+
+    const allNonEmployees = useMemo(() => {
+        if (!rawNonEmployees || !settings || !currentUser) return null;
+        if (currentUser.isAdmin && selectedCoordinatorId === 'all') {
+            return rawNonEmployees;
+        }
+        const coordinatorAddresses = new Set(
+            settings.addresses
+                .filter(a => a.coordinatorIds.includes(selectedCoordinatorId))
+                .map(a => a.name)
+        );
+        return rawNonEmployees.filter(ne => coordinatorAddresses.has(ne.address));
+    }, [rawNonEmployees, settings, currentUser, selectedCoordinatorId]);
+
+    const allInspections = useMemo(() => {
+        if (!rawInspections || !currentUser) return null;
+        if (currentUser.isAdmin && selectedCoordinatorId === 'all') {
+            return rawInspections;
+        }
+        return rawInspections.filter(i => i.coordinatorId === selectedCoordinatorId);
+    }, [rawInspections, currentUser, selectedCoordinatorId]);
+
+    const allEquipment = useMemo(() => {
+        if (!rawEquipment || !settings || !currentUser) return null;
+        if (currentUser.isAdmin && selectedCoordinatorId === 'all') {
+            return rawEquipment;
+        }
+        const coordinatorAddresses = new Set(
+            settings.addresses
+                .filter(a => a.coordinatorIds.includes(selectedCoordinatorId))
+                .map(a => a.id)
+        );
+        return rawEquipment.filter(eq => coordinatorAddresses.has(eq.addressId));
+    }, [rawEquipment, settings, currentUser, selectedCoordinatorId]);
     
     const setSelectedCoordinatorId = useCallback((value: React.SetStateAction<string>) => {
         _setSelectedCoordinatorId(value);
@@ -235,7 +277,7 @@ export default function MainLayout({
                 notifications,
             } = await getAllSheetsData();
 
-            setAllEmployees(employees);
+            setRawEmployees(employees);
             setSettings(settings);
             const normalizedInspections = inspections.map(i => ({
                 ...i,
@@ -246,9 +288,9 @@ export default function MainLayout({
                 categories: i.categories ?? [],
             })) as import('@/types').Inspection[];
 
-            setAllInspections(normalizedInspections);
-            setAllNonEmployees(nonEmployees);
-            setAllEquipment(equipment);
+            setRawInspections(normalizedInspections);
+            setRawNonEmployees(nonEmployees);
+            setRawEquipment(equipment);
             setAllNotifications(notifications);
             
             if(showToast) {
@@ -292,8 +334,8 @@ export default function MainLayout({
 
     useEffect(() => {
         const pathname = window.location.pathname;
-        if (editEmployeeId && allEmployees) {
-            const employeeToEdit = allEmployees.find(e => e.id === editEmployeeId);
+        if (editEmployeeId && rawEmployees) {
+            const employeeToEdit = rawEmployees.find(e => e.id === editEmployeeId);
             if (employeeToEdit) {
                 setEditingEmployee(employeeToEdit);
                 setIsFormOpen(true);
@@ -303,7 +345,7 @@ export default function MainLayout({
                 routerRef.current.replace(`${pathname}?${currentSearchParams.toString()}`, { scroll: false });
             }
         }
-    }, [editEmployeeId, allEmployees]);
+    }, [editEmployeeId, rawEmployees]);
 
     const handleSaveEmployee = useCallback(async (data: EmployeeFormData) => {
         if (!currentUser) return;
@@ -311,7 +353,7 @@ export default function MainLayout({
         try {
             if (editingEmployee) {
                 const updatedData: Partial<Employee> = { ...data };
-                const initialAddress = allEmployees?.find(e => e.id === editingEmployee.id)?.address;
+                const initialAddress = rawEmployees?.find(e => e.id === editingEmployee.id)?.address;
                 if (data.address !== initialAddress) {
                   updatedData.oldAddress = initialAddress;
                 } else if (editingEmployee) {
@@ -328,7 +370,7 @@ export default function MainLayout({
         } catch (e: unknown) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać pracownika." });
         }
-    }, [currentUser, editingEmployee, allEmployees, refreshData, toast]);
+    }, [currentUser, editingEmployee, rawEmployees, refreshData, toast]);
 
     const handleSaveNonEmployee = useCallback(async (data: Omit<NonEmployee, 'id'>) => {
         if (editingNonEmployee) {
@@ -350,18 +392,18 @@ export default function MainLayout({
     }, [editingNonEmployee, refreshData, toast]);
     
     const handleDeleteNonEmployee = useCallback(async (id: string) => {
-        const originalNonEmployees = allNonEmployees;
+        const originalNonEmployees = rawNonEmployees;
         
-        setAllNonEmployees(prev => prev!.filter(ne => ne.id !== id));
+        setRawNonEmployees(prev => prev!.filter(ne => ne.id !== id));
         
         try {
             await deleteNonEmployee(id);
             toast({ title: "Sukces", description: "Mieszkaniec został usunięty." });
         } catch(e) {
-            setAllNonEmployees(originalNonEmployees); // Revert
+            setRawNonEmployees(originalNonEmployees); // Revert
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć mieszkańца." });
         }
-    }, [allNonEmployees, toast]);
+    }, [rawNonEmployees, toast]);
     
     const handleUpdateSettings = useCallback(async (newSettings: Partial<Settings>) => {
         if (!settings || !currentUser?.isAdmin) {
@@ -386,14 +428,14 @@ export default function MainLayout({
         const tempId = `temp-insp-${Date.now()}`;
         const newInspection: Inspection = { ...inspectionData, id: tempId };
 
-        setAllInspections(prev => [newInspection, ...(prev || [])]);
+        setRawInspections(prev => [newInspection, ...(prev || [])]);
 
         try {
             await addInspection(inspectionData);
             toast({ title: "Sukces", description: "Nowa inspekcja została dodana." });
             await refreshData(false);
         } catch(e) {
-            setAllInspections(prev => prev ? prev.filter(i => i.id !== tempId) : null);
+            setRawInspections(prev => prev ? prev.filter(i => i.id !== tempId) : null);
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się dodać inspekcji." });
         }
     }, [refreshData, toast]);
@@ -697,3 +739,5 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
+
+    

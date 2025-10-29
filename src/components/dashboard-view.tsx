@@ -8,7 +8,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DashboardKPIs } from './dashboard/kpi-cards';
 import { CoordinatorFilter } from './dashboard/coordinator-filter';
-import { DashboardCharts }from './dashboard/charts';
+import { DashboardCharts } from './dashboard/charts';
 import { HousingView } from './dashboard/housing-view';
 import { UpcomingCheckoutsDialog } from './dashboard/upcoming-checkouts-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -27,26 +27,6 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
 
   const { isMobile } = useIsMobile();
   
-  const employeesForCoordinator = useMemo(() => {
-    if (!allEmployees) return [];
-    if (currentUser.isAdmin && selectedCoordinatorId === 'all') {
-      return allEmployees;
-    }
-    return allEmployees.filter(e => e.coordinatorId === selectedCoordinatorId);
-  }, [allEmployees, currentUser.isAdmin, selectedCoordinatorId]);
-
-  const nonEmployeesForCoordinator = useMemo(() => {
-    if (!allNonEmployees || !settings) return [];
-    if (currentUser.isAdmin && selectedCoordinatorId === 'all') {
-      return allNonEmployees;
-    }
-     const coordinatorAddresses = settings.addresses
-      .filter(a => a.coordinatorIds.includes(selectedCoordinatorId))
-      .map(a => a.name);
-
-    return allNonEmployees.filter(ne => coordinatorAddresses.includes(ne.address));
-  }, [allNonEmployees, settings, currentUser.isAdmin, selectedCoordinatorId]);
-
   if (!allEmployees || !allNonEmployees || !settings) {
       return (
         <div className="space-y-6">
@@ -78,12 +58,12 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
   const statsContent = (
       <div className="space-y-6">
         <DashboardKPIs 
-            employees={employeesForCoordinator}
-            nonEmployees={nonEmployeesForCoordinator}
+            employees={allEmployees}
+            nonEmployees={allNonEmployees}
             onUpcomingCheckoutsClick={() => setIsUpcomingCheckoutsModalOpen(true)}
         />
         <DashboardCharts 
-            employees={employeesForCoordinator}
+            employees={allEmployees}
             settings={settings}
             isMobile={isMobile}
         />
@@ -92,8 +72,8 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
 
   const housingContent = (
     <HousingView 
-        employees={employeesForCoordinator}
-        nonEmployees={nonEmployeesForCoordinator}
+        employees={allEmployees}
+        nonEmployees={allNonEmployees}
         settings={settings}
         currentUser={currentUser}
         selectedCoordinatorId={selectedCoordinatorId}
@@ -124,8 +104,10 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
       <UpcomingCheckoutsDialog 
         isOpen={isUpcomingCheckoutsModalOpen}
         onOpenChange={setIsUpcomingCheckoutsModalOpen}
-        employees={employeesForCoordinator}
+        employees={allEmployees}
       />
     </>
   );
 }
+
+    
