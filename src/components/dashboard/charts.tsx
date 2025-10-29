@@ -24,7 +24,6 @@ const NoDataState = ({ message }: { message: string }) => (
 export function DashboardCharts({
     employees,
     settings,
-    isMobile: _isMobile,
 }: {
     employees: Employee[],
     settings: Settings,
@@ -160,14 +159,6 @@ export function DashboardCharts({
     
     const availableYears = useMemo(() => Array.from(new Set(employees.filter(e => e.checkOutDate).map(e => getYear(new Date(e.checkOutDate!))))).sort((a,b) => b-a), [employees]);
     const months = Array.from({ length: 12 }, (_, i) => i + 1);
-    
-    const calculateChartHeight = (dataLength: number) => {
-        if (dataLength === 0) return 150;
-        const minHeight = 150;
-        const rowHeight = 35;
-        const calculatedHeight = dataLength * rowHeight + 50; // 50 for padding
-        return Math.max(minHeight, calculatedHeight);
-    };
 
     return (
         <div className="grid gap-6">
@@ -177,8 +168,8 @@ export function DashboardCharts({
                         <CardTitle className="text-lg">Pracownicy wg koordynatora</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <ChartContainer config={{}} style={{ height: `${calculateChartHeight(chartData.employeesPerCoordinator.length)}px` }}>
-                            <BarChart 
+                        <ChartContainer config={{}} className="min-h-[250px] w-full">
+                             <BarChart 
                                 data={chartData.employeesPerCoordinator}
                                 layout="vertical"
                                 margin={{ top: 5, right: 20, bottom: 5, left: 10 }}
@@ -208,7 +199,7 @@ export function DashboardCharts({
                         <CardTitle className="text-lg">Pracownicy wg narodowości</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <ChartContainer config={{}} style={{ height: `${calculateChartHeight(chartData.employeesByNationality.length)}px` }}>
+                        <ChartContainer config={{}} className="min-h-[250px] w-full">
                             <BarChart 
                                 data={chartData.employeesByNationality} 
                                 layout="vertical"
@@ -259,27 +250,25 @@ export function DashboardCharts({
                 </CardHeader>
                 <CardContent>
                     {chartData.departuresByMonth.length > 0 ? (
-                         <ChartContainer config={{}} className="w-full h-64">
-                            <ResponsiveContainer>
-                                <BarChart 
-                                    data={chartData.departuresByMonth}
-                                    margin={{ top: 20, right: 20, bottom: 5, left: 0 }}
-                                >
-                                     <defs>
-                                        <linearGradient id="chart-departures-gradient" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="hsl(var(--chart-4))" stopOpacity={0.8}/>
-                                            <stop offset="95%" stopColor="hsl(var(--chart-4))" stopOpacity={0.1}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border/50"/>
-                                    <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} className="text-xs" />
-                                    <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
-                                    <Tooltip cursor={false} content={<ChartTooltipContent />} />
-                                    <Bar dataKey="departures" radius={[4, 4, 0, 0]} fill="url(#chart-departures-gradient)">
-                                       <LabelList dataKey="departures" position="top" offset={8} className="fill-foreground text-xs" />
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
+                         <ChartContainer config={{}} className="w-full aspect-video">
+                            <BarChart 
+                                data={chartData.departuresByMonth}
+                                margin={{ top: 20, right: 20, bottom: 5, left: 0 }}
+                            >
+                                 <defs>
+                                    <linearGradient id="chart-departures-gradient" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="hsl(var(--chart-4))" stopOpacity={0.8}/>
+                                        <stop offset="95%" stopColor="hsl(var(--chart-4))" stopOpacity={0.1}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border/50"/>
+                                <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} className="text-xs" />
+                                <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
+                                <Tooltip cursor={false} content={<ChartTooltipContent />} />
+                                <Bar dataKey="departures" radius={[4, 4, 0, 0]} fill="url(#chart-departures-gradient)">
+                                   <LabelList dataKey="departures" position="top" offset={8} className="fill-foreground text-xs" />
+                                </Bar>
+                            </BarChart>
                         </ChartContainer>
                     ) : (
                         <NoDataState message={'Brak danych do wyświetlenia na wykresie'} />
@@ -311,27 +300,25 @@ export function DashboardCharts({
                 </CardHeader>
                 <CardContent>
                     {chartData.deductionsByDate.length > 0 ? (
-                         <ChartContainer config={{}} className="w-full h-64">
-                            <ResponsiveContainer>
-                                <BarChart 
-                                    data={chartData.deductionsByDate}
-                                    margin={{ top: 20, right: 20, bottom: 5, left: 0 }}
-                                >
-                                     <defs>
-                                        <linearGradient id="chart-deductions-gradient" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="hsl(var(--chart-5))" stopOpacity={0.8}/>
-                                            <stop offset="95%" stopColor="hsl(var(--chart-5))" stopOpacity={0.1}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border/50"/>
-                                    <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} className="text-xs" />
-                                    <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
-                                    <Tooltip cursor={false} content={<ChartTooltipContent formatter={(value) => `${value} PLN`}/>} />
-                                    <Bar dataKey="deductions" radius={[4, 4, 0, 0]} fill="url(#chart-deductions-gradient)">
-                                       <LabelList dataKey="deductions" position="top" offset={8} className="fill-foreground text-xs" formatter={(value: number) => value > 0 ? `${value}` : ''}/>
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
+                         <ChartContainer config={{}} className="w-full aspect-video">
+                            <BarChart 
+                                data={chartData.deductionsByDate}
+                                margin={{ top: 20, right: 20, bottom: 5, left: 0 }}
+                            >
+                                 <defs>
+                                    <linearGradient id="chart-deductions-gradient" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="hsl(var(--chart-5))" stopOpacity={0.8}/>
+                                        <stop offset="95%" stopColor="hsl(var(--chart-5))" stopOpacity={0.1}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border/50"/>
+                                <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} className="text-xs" />
+                                <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
+                                <Tooltip cursor={false} content={<ChartTooltipContent formatter={(value) => `${value} PLN`}/>} />
+                                <Bar dataKey="deductions" radius={[4, 4, 0, 0]} fill="url(#chart-deductions-gradient)">
+                                   <LabelList dataKey="deductions" position="top" offset={8} className="fill-foreground text-xs" formatter={(value: number) => value > 0 ? `${value}` : ''}/>
+                                </Bar>
+                            </BarChart>
                         </ChartContainer>
                     ) : (
                         <NoDataState message={'Brak danych o potrąceniach w wybranym okresie'} />
