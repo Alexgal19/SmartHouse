@@ -16,8 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { login } from '@/lib/auth';
-import { Building, Download, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Download, Loader2 } from 'lucide-react';
 
 // Define an interface for the BeforeInstallPromptEvent
 interface BeforeInstallPromptEvent extends Event {
@@ -28,6 +27,22 @@ interface BeforeInstallPromptEvent extends Event {
   }>;
   prompt(): Promise<void>;
 }
+
+const ModernHouseIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+      <polyline points="9 22 9 12 15 12 15 22"></polyline>
+    </svg>
+  );
 
 export default function LoginPage() {
     const router = useRouter();
@@ -59,7 +74,7 @@ export default function LoginPage() {
             if (success && user) {
                 toast({
                     title: "Zalogowano pomyślnie",
-                    description: `Witaj, ${user.name}!`,
+                    description: `Witaj, ${'user.name'}!`,
                 });
                 router.push('/dashboard?view=dashboard');
             } else {
@@ -103,7 +118,7 @@ export default function LoginPage() {
             <Card className="w-full max-w-sm z-10 animate-scale-in">
                 <form onSubmit={handleLogin}>
                     <CardHeader className="items-center text-center animate-fade-in-up">
-                        <Building className="h-8 w-8 text-primary" />
+                        <ModernHouseIcon className="h-8 w-8 text-primary" />
                         <CardTitle>Witaj w SmartHouse</CardTitle>
                         <CardDescription>Zaloguj się, aby kontynuować</CardDescription>
                     </CardHeader>
