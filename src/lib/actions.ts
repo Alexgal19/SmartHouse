@@ -917,7 +917,7 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
             'Komentarze': 'comments',
         };
         
-        const requiredColumns = ['Imię i nazwisko', 'Data zameldowania'];
+        const requiredColumns = ['Imię i nazwisko'];
         for (const col of requiredColumns) {
             if (!headers.includes(col)) {
                 throw new Error(`Brak wymaganej kolumny w pliku Excel: "${col}"`);
@@ -952,8 +952,8 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
                     }
                 }
                 
-                if (!employeeData.fullName || !employeeData.checkInDate) {
-                    console.warn('Skipping row due to missing full name or check-in date:', rowData);
+                if (!employeeData.fullName) {
+                    console.warn('Skipping row due to missing full name:', rowData);
                     continue;
                 }
 
@@ -971,3 +971,5 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
         throw new Error(e instanceof Error ? e.message : "Failed to import employees from Excel.");
     }
 }
+
+    
