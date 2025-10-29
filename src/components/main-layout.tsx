@@ -51,8 +51,8 @@ const HouseLoader = () => {
             <svg viewBox="0 0 50 50" className="absolute inset-0 w-full h-full">
                 <defs>
                     <linearGradient id="houseGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="hsl(var(--primary))" />
-                        <stop offset="100%" stopColor="hsl(24 95% 45%)" />
+                         <stop offset="0%" stopColor="hsl(var(--primary))" />
+                         <stop offset="100%" stopColor="hsl(24 94% 45%)" />
                     </linearGradient>
                 </defs>
                  <g fill="none" stroke="url(#houseGradient)" strokeWidth="0.5" strokeOpacity="0.5">
@@ -70,10 +70,7 @@ const HouseLoader = () => {
                     fontSize="6"
                     fontWeight="bold"
                     className="font-headline"
-                    fill="none"
-                    stroke="url(#houseGradient)"
-                    strokeWidth="0.2"
-                    strokeOpacity="0.7"
+                    fill="url(#houseGradient)"
                 >
                     SmartHouse
                 </text>
