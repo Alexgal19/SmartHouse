@@ -77,7 +77,7 @@ const HouseLoader = () => {
                     SmartHouse
                 </text>
             </svg>
-             <p className="absolute bottom-[30%] text-sm text-muted-foreground animate-pulse-text opacity-0 animation-delay-1500">
+             <p className="absolute bottom-[30%] text-sm text-muted-foreground animate-pulse-text">
                 Wczytywanie danych...
             </p>
         </div>
