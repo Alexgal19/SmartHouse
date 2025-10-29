@@ -73,8 +73,8 @@ export default function LoginPage() {
             const { success, user } = await login(name, password);
             if (success && user) {
                 toast({
-                    title: "Zalogowano pomyślnie",
-                    description: `Witaj, ${'user.name'}!`,
+                    title: `Witaj z powrotem, ${user.name}!`,
+                    duration: 2000,
                 });
                 router.push('/dashboard?view=dashboard');
             } else {
