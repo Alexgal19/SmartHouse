@@ -71,14 +71,15 @@ const HouseLoader = () => {
                     y="50%"
                     dy=".3em"
                     textAnchor="middle"
-                    fontSize="6"
-                    className="font-semibold tracking-tight stroke-primary stroke-[0.5px] fill-[hsl(var(--primary)_/_0.1)]"
-                    style={{ paintOrder: 'stroke' }}
+                    fontSize="8"
+                    fontWeight="bold"
+                    className="font-headline"
+                    fill="hsl(var(--primary))"
                 >
                     SmartHouse
                 </text>
             </svg>
-             <p className="absolute bottom-[30%] text-sm text-muted-foreground animate-pulse-text">
+             <p className="absolute bottom-[35%] text-sm text-muted-foreground animate-pulse-text">
                 Wczytywanie danych...
             </p>
         </div>
@@ -167,13 +168,13 @@ export default function MainLayout({
         _setSelectedCoordinatorId(value);
     }, []);
 
-    const navItems: { view: View; icon: React.ElementType; label: string }[] = [
+    const navItems = [
         { view: 'dashboard', icon: Home, label: 'Pulpit' },
         { view: 'employees', icon: Users, label: 'Pracownicy' },
         { view: 'inspections', icon: ClipboardList, label: 'Inspekcje' },
         { view: 'equipment', icon: Archive, label: 'Wyposażenie' },
         { view: 'settings', icon: SettingsIcon, label: 'Ustawienia' },
-    ];
+    ] as const;
     
     const visibleNavItems = useMemo(() => {
         if (currentUser?.isAdmin) {
