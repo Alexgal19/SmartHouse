@@ -52,6 +52,56 @@ const NoDataState = ({ message, className }: { message: string, className?: stri
     </div>
 );
 
+const StatsCharts = ({ occupants, chartConfig }: { occupants: Occupant[], chartConfig: ChartConfig }) => {
+    const statsData = useMemo(() => calculateStats(occupants), [occupants]);
+    
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="bg-muted/50">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Wg narodowości</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    {statsData.nationalities.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={statsData.nationalities.length * 25 + 20}>
+                            <BarChart data={statsData.nationalities} layout="vertical" margin={{ left: 10, right: 30 }}>
+                                <CartesianGrid horizontal={false} strokeDasharray="3 3" />
+                                <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
+                                <XAxis type="number" hide />
+                                <RechartsTooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
+                                <Bar dataKey="count" fill={chartConfig.nationalities.color} radius={[0, 4, 4, 0]}>
+                                    <LabelList dataKey="count" position="right" offset={8} className="fill-foreground text-xs" />
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    ) : <NoDataState message="Brak danych" />}
+                </CardContent>
+            </Card>
+            <Card className="bg-muted/50">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Wg płci</CardTitle>
+                </CardHeader>
+                <CardContent>
+                     {statsData.genders.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={statsData.genders.length * 30 + 20}>
+                            <BarChart data={statsData.genders} layout="vertical" margin={{ left: 10, right: 30 }}>
+                                <CartesianGrid horizontal={false} strokeDasharray="3 3" />
+                                <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
+                                <XAxis type="number" hide />
+                                <RechartsTooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
+                                <Bar dataKey="count" fill={chartConfig.genders.color} radius={[0, 4, 4, 0]}>
+                                    <LabelList dataKey="count" position="right" offset={8} className="fill-foreground text-xs" />
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    ) : <NoDataState message="Brak danych" />}
+                </CardContent>
+            </Card>
+        </div>
+    );
+};
+
+
 const AddressDetailView = ({
   addresses,
   onOccupantClick,
@@ -65,53 +115,47 @@ const AddressDetailView = ({
   onRoomClick: (roomId: string) => void;
   selectedRoomId: string | null;
 }) => {
-    const { isMobile } = useIsMobile();
     
-    const selectedData = useMemo(() => {
-        if (selectedAddressIds.length === 0) return null;
-        
-        const selectedAddresses = addresses.filter(a => selectedAddressIds.includes(a.id));
-        if(selectedAddresses.length === 0) return null;
+    const selectedAddressesData = useMemo(() => {
+        return addresses.filter(a => selectedAddressIds.includes(a.id));
+    }, [addresses, selectedAddressIds]);
+    
+    const aggregatedData = useMemo(() => {
+        if (selectedAddressesData.length === 0) return null;
 
-        if (selectedAddresses.length === 1) {
+        if (selectedAddressesData.length === 1) {
             return {
                 isMultiple: false,
-                name: selectedAddresses[0].name,
-                occupants: selectedAddresses[0].occupants,
-                occupantCount: selectedAddresses[0].occupantCount,
-                capacity: selectedAddresses[0].capacity,
-                available: selectedAddresses[0].available,
-                rooms: selectedAddresses[0].rooms,
+                name: selectedAddressesData[0].name,
+                occupants: selectedAddressesData[0].occupants,
+                occupantCount: selectedAddressesData[0].occupantCount,
+                capacity: selectedAddressesData[0].capacity,
+                available: selectedAddressesData[0].available,
+                rooms: selectedAddressesData[0].rooms,
             }
         }
         
         // Aggregated data for multiple selections
-        const totalOccupantCount = selectedAddresses.reduce((sum, a) => sum + a.occupantCount, 0);
-        const totalCapacity = selectedAddresses.reduce((sum, a) => sum + a.capacity, 0);
-        const allOccupants = selectedAddresses.flatMap(a => a.occupants);
+        const totalOccupantCount = selectedAddressesData.reduce((sum, a) => sum + a.occupantCount, 0);
+        const totalCapacity = selectedAddressesData.reduce((sum, a) => sum + a.capacity, 0);
+        const allOccupants = selectedAddressesData.flatMap(a => a.occupants);
 
         return {
             isMultiple: true,
-            name: `${selectedAddresses.length} wybrane adresy`,
+            name: `${selectedAddressesData.length} wybrane adresy`,
             occupants: allOccupants,
             occupantCount: totalOccupantCount,
             capacity: totalCapacity,
             available: totalCapacity - totalOccupantCount,
             rooms: [], // Don't show individual rooms for multi-select
         }
-    }, [selectedAddressIds, addresses]);
+    }, [selectedAddressesData]);
 
 
     const selectedRoom = useMemo(() => {
-        if (!selectedData || selectedData.isMultiple || !selectedRoomId) return null;
-        return selectedData.rooms.find(r => r.id === selectedRoomId) ?? null;
-    }, [selectedData, selectedRoomId]);
-
-    const statsData = useMemo(() => {
-        if (!selectedData) return { nationalities: [], genders: [] };
-        const occupantsToAnalyze = selectedRoom ? selectedRoom.occupants : selectedData.occupants;
-        return calculateStats(occupantsToAnalyze);
-    }, [selectedData, selectedRoom]);
+        if (!aggregatedData || aggregatedData.isMultiple || !selectedRoomId) return null;
+        return aggregatedData.rooms.find(r => r.id === selectedRoomId) ?? null;
+    }, [aggregatedData, selectedRoomId]);
 
     const chartConfig: ChartConfig = {
         count: { label: "Ilość" },
@@ -119,8 +163,7 @@ const AddressDetailView = ({
         genders: { label: "Genders", color: "hsl(var(--chart-1))" },
     };
     
-
-    if (!selectedData) {
+    if (!aggregatedData) {
         return (
             <Card className="lg:col-span-2 h-full">
                 <CardHeader>
@@ -137,99 +180,89 @@ const AddressDetailView = ({
     return (
         <Card className="lg:col-span-2 h-full">
             <CardHeader>
-                <CardTitle>{selectedData.name}</CardTitle>
+                <CardTitle>{aggregatedData.name}</CardTitle>
                 <CardDescription>
-                    <span className="font-bold">{selectedData.occupantCount}</span> / <span className="font-bold">{selectedData.capacity}</span> mieszkańców
-                    <span className={cn("ml-2 font-bold", selectedData.available > 0 ? "text-green-600" : "text-red-600")}>
-                        ({selectedData.available} wolnych miejsc)
+                    <span className="font-bold">{aggregatedData.occupantCount}</span> / <span className="font-bold">{aggregatedData.capacity}</span> mieszkańców
+                    <span className={cn("ml-2 font-bold", aggregatedData.available > 0 ? "text-green-600" : "text-red-600")}>
+                        ({aggregatedData.available} wolnych miejsc)
                     </span>
                 </CardDescription>
             </CardHeader>
             <CardContent>
                 <ScrollArea className="h-[calc(100vh - 16rem)]">
-                  <ChartContainer config={chartConfig} className="w-full h-full p-0 border-0 shadow-none">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-4">
-                           {!selectedData.isMultiple && (
-                            <>
-                             <h3 className="font-semibold">Pokoje</h3>
-                                {selectedData.rooms.length > 0 ? selectedData.rooms.sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(room => (
-                                    <div 
-                                        key={room.id} 
-                                        className={cn(
-                                            "rounded-md border p-3 cursor-pointer transition-colors",
-                                            selectedRoomId === room.id ? "bg-primary/10 border-primary" : "hover:bg-muted/50",
-                                            room.available > 0 && selectedRoomId !== room.id && "bg-green-500/10 border-green-500/20"
-                                        )}
-                                        onClick={() => onRoomClick(room.id)}
-                                    >
-                                        <div className="flex justify-between items-center font-medium">
-                                            <div className="flex items-center gap-2">
-                                                <Bed className="h-4 w-4 text-muted-foreground" />
-                                                Pokój {room.name}
-                                            </div>
-                                            <span className="text-sm">
-                                                <span className="font-bold">{room.occupantCount}</span> / <span className="font-bold">{room.capacity}</span>
-                                            </span>
+                  <div className="space-y-6">
+                    {!aggregatedData.isMultiple ? (
+                         <div className="space-y-4">
+                           <h3 className="font-semibold">Pokoje</h3>
+                            {aggregatedData.rooms.length > 0 ? aggregatedData.rooms.sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(room => (
+                                <div 
+                                    key={room.id} 
+                                    className={cn(
+                                        "rounded-md border p-3 cursor-pointer transition-colors",
+                                        selectedRoomId === room.id ? "bg-primary/10 border-primary" : "hover:bg-muted/50",
+                                        room.available > 0 && selectedRoomId !== room.id && "bg-green-500/10 border-green-500/20"
+                                    )}
+                                    onClick={() => onRoomClick(room.id)}
+                                >
+                                    <div className="flex justify-between items-center font-medium">
+                                        <div className="flex items-center gap-2">
+                                            <Bed className="h-4 w-4 text-muted-foreground" />
+                                            Pokój {room.name}
                                         </div>
-                                        <div className="pl-4 mt-2 space-y-1">
-                                            {room.occupants.map(o => (
-                                                <div key={o.id} onClick={(e) => { e.stopPropagation(); onOccupantClick(o); }} className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-primary">
-                                                    <User className="h-3 w-3" />
-                                                    {o.fullName}
-                                                </div>
-                                            ))}
-                                        </div>
+                                        <span className="text-sm">
+                                            <span className="font-bold">{room.occupantCount}</span> / <span className="font-bold">{room.capacity}</span>
+                                        </span>
                                     </div>
-                                )) : <NoDataState message="Brak pokoi dla tego adresu" />}
-                            </>
-                           )}
+                                    <div className="pl-4 mt-2 space-y-1">
+                                        {room.occupants.map(o => (
+                                            <div key={o.id} onClick={(e) => { e.stopPropagation(); onOccupantClick(o); }} className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-primary">
+                                                <User className="h-3 w-3" />
+                                                {o.fullName}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )) : <NoDataState message="Brak pokoi dla tego adresu" />}
                         </div>
-                        <div className="space-y-4">
-                            <h3 className="font-semibold">{selectedRoom ? `Statystyki dla pokoju ${selectedRoom.name}` : selectedData.isMultiple ? `Statystyki dla wybranych adresów` : "Statystyki dla adresu"}</h3>
-                            <Card className="bg-muted/50">
-                                <CardHeader className="pb-2">
-                                    <CardTitle className="text-sm">Wg narodowości</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    {statsData.nationalities.length > 0 ? (
-                                        <ResponsiveContainer width="100%" height={statsData.nationalities.length * 25 + 20}>
-                                            <BarChart data={statsData.nationalities} layout="vertical" margin={{ left: 10, right: 30 }}>
-                                                <CartesianGrid horizontal={false} strokeDasharray="3 3" />
-                                                <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
-                                                <XAxis type="number" hide />
-                                                <RechartsTooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
-                                                <Bar dataKey="count" fill={chartConfig.nationalities.color} radius={[0, 4, 4, 0]}>
-                                                    <LabelList dataKey="count" position="right" offset={8} className="fill-foreground text-xs" />
-                                                </Bar>
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    ) : <NoDataState message="Brak danych" />}
-                                </CardContent>
-                            </Card>
-                            <Card className="bg-muted/50">
-                                <CardHeader className="pb-2">
-                                    <CardTitle className="text-sm">Wg płci</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                     {statsData.genders.length > 0 ? (
-                                        <ResponsiveContainer width="100%" height={statsData.genders.length * 30 + 20}>
-                                            <BarChart data={statsData.genders} layout="vertical" margin={{ left: 10, right: 30 }}>
-                                                <CartesianGrid horizontal={false} strokeDasharray="3 3" />
-                                                <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
-                                                <XAxis type="number" hide />
-                                                <RechartsTooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
-                                                <Bar dataKey="count" fill={chartConfig.genders.color} radius={[0, 4, 4, 0]}>
-                                                    <LabelList dataKey="count" position="right" offset={8} className="fill-foreground text-xs" />
-                                                </Bar>
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    ) : <NoDataState message="Brak danych" />}
-                                </CardContent>
-                            </Card>
-                        </div>
+                    ) : null}
+
+                    <div>
+                        <h3 className="font-semibold mb-4">{selectedRoom ? `Statystyki dla pokoju ${selectedRoom.name}` : aggregatedData.isMultiple ? `Statystyki łączne` : "Statystyki dla adresu"}</h3>
+                         <StatsCharts occupants={selectedRoom ? selectedRoom.occupants : aggregatedData.occupants} chartConfig={chartConfig}/>
                     </div>
-                  </ChartContainer>
+
+                    {aggregatedData.isMultiple && (
+                        <div>
+                             <h3 className="font-semibold mb-4">Statystyki indywidualne</h3>
+                              <Accordion type="multiple" className="w-full space-y-3">
+                                {selectedAddressesData.map(address => (
+                                     <Card asChild key={address.id} className="overflow-hidden">
+                                        <AccordionItem value={address.id} className="border-b-0">
+                                            <AccordionTrigger className="p-4 hover:no-underline">
+                                                 <div className="w-full">
+                                                    <div className="flex justify-between items-start">
+                                                        <CardTitle className="text-base font-semibold flex items-center gap-2">
+                                                            {address.name}
+                                                        </CardTitle>
+                                                        <span className="text-base">
+                                                            <span className="font-bold">{address.occupantCount}</span> / <span className="font-bold">{address.capacity}</span>
+                                                        </span>
+                                                    </div>
+                                                     <CardDescription className="text-xs pt-1 text-left">
+                                                        Wolne miejsca: <span className={cn("font-bold", address.available > 0 ? "text-green-600" : "text-red-600")}>{address.available}</span>
+                                                    </CardDescription>
+                                                </div>
+                                            </AccordionTrigger>
+                                            <AccordionContent className="p-4 pt-0">
+                                                <StatsCharts occupants={address.occupants} chartConfig={chartConfig}/>
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                    </Card>
+                                ))}
+                            </Accordion>
+                        </div>
+                    )}
+                  </div>
                 </ScrollArea>
             </CardContent>
         </Card>
@@ -287,12 +320,6 @@ const useHousingData = () => {
 
 
 const MobileAddressCard = ({ address, onOccupantClick }: { address: HousingData; onOccupantClick: (occupant: Occupant) => void }) => {
-    const statsData = useMemo(() => calculateStats(address.occupants), [address.occupants]);
-    const chartConfig: ChartConfig = {
-        count: { label: "Ilość" },
-        nationalities: { label: "Nationalities", color: "hsl(var(--chart-2))" },
-        genders: { label: "Genders", color: "hsl(var(--chart-1))" },
-    };
 
     return (
         <Card asChild className={cn("overflow-hidden", address.available > 0 && "border-green-500/30")}>
@@ -341,41 +368,13 @@ const MobileAddressCard = ({ address, onOccupantClick }: { address: HousingData;
                                 ))}
                             </div>
                         </div>
-                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <h4 className="text-sm font-semibold mb-2">Wg narodowości</h4>
-                                {statsData.nationalities.length > 0 ? (
-                                    <div style={{ height: `${statsData.nationalities.length * 25 + 20}px` }}>
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={statsData.nationalities} layout="vertical" margin={{ left: 10, right: 30 }}>
-                                            <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
-                                            <XAxis type="number" hide />
-                                            <RechartsTooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
-                                            <Bar dataKey="count" fill={chartConfig.nationalities.color} radius={[0, 4, 4, 0]}>
-                                                <LabelList dataKey="count" position="right" offset={8} className="fill-foreground text-xs" />
-                                            </Bar>
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                    </div>
-                                ) : <NoDataState message="Brak danych" className="h-32"/>}
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-semibold mb-2">Wg płci</h4>
-                                {statsData.genders.length > 0 ? (
-                                     <div style={{ height: `${statsData.genders.length * 30 + 20}px` }}>
-                                    <ResponsiveContainer width="100%" height="100%">
-                                         <BarChart data={statsData.genders} layout="vertical" margin={{ left: 10, right: 30 }}>
-                                            <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
-                                            <XAxis type="number" hide />
-                                            <RechartsTooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
-                                            <Bar dataKey="count" fill={chartConfig.genders.color} radius={[0, 4, 4, 0]}>
-                                                <LabelList dataKey="count" position="right" offset={8} className="fill-foreground text-xs" />
-                                            </Bar>
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                    </div>
-                                ) : <NoDataState message="Brak danych" className="h-32"/>}
-                            </div>
+                         <div>
+                            <h4 className="text-sm font-semibold mb-2">Statystyki</h4>
+                            <StatsCharts occupants={address.occupants} chartConfig={{
+                                count: { label: "Ilość" },
+                                nationalities: { label: "Nationalities", color: "hsl(var(--chart-2))" },
+                                genders: { label: "Genders", color: "hsl(var(--chart-1))" },
+                            }} />
                         </div>
                     </div>
                 </AccordionContent>
