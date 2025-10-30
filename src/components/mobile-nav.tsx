@@ -27,7 +27,7 @@ export function MobileNav({
               key={item.view}
               href={`/dashboard?view=${item.view}`}
               className={cn(
-                "flex flex-1 flex-col items-center gap-1 p-2 h-full",
+                "flex flex-1 flex-col items-center justify-center h-full",
                 activeView === item.view
                   ? "font-semibold text-primary"
                   : "text-muted-foreground",
@@ -40,7 +40,7 @@ export function MobileNav({
               )}>
                 <item.icon className="h-5 w-5" />
               </div>
-              <span className="truncate">{item.label}</span>
+              <span className="truncate text-center">{item.label}</span>
             </Link>
           )
         })}
