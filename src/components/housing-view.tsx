@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useMemo } from 'react';
@@ -59,11 +58,7 @@ const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData 
 
     const selectedRoom = useMemo(() => {
         if (!address || !selectedRoomId) return null;
-        const room = address.rooms.find(r => r.id === selectedRoomId);
-        if (room) {
-            handleRoomClick(room.id);
-        }
-        return room ?? null;
+        return address.rooms.find(r => r.id === selectedRoomId) ?? null;
     }, [address, selectedRoomId]);
 
     const statsData = useMemo(() => {
@@ -105,8 +100,8 @@ const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData 
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <ScrollArea className="h-[calc(100vh-12rem)]">
-                  <ChartContainer config={chartConfig} className="w-full h-full">
+                <ScrollArea className="h-[calc(100vh - 12rem)]">
+                  <ChartContainer config={chartConfig} className="w-full h-full p-0 border-0 shadow-none">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-4">
                             <h3 className="font-semibold">Pokoje</h3>
@@ -324,7 +319,7 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                             <Label htmlFor="show-available">Tylko z wolnymi miejscami</Label>
                         </div>
                     </div>
-                    <ScrollArea className="h-[calc(100vh-22rem)]">
+                    <ScrollArea className="h-[calc(100vh-22rem)] lg:h-[calc(100vh - 20rem)]">
                         <div className="space-y-2">
                         {filteredData.map(address => (
                             <Card 
@@ -358,5 +353,6 @@ export default function HousingView({ }: { currentUser: SessionData }) {
     );
 }
 
+    
 
     
