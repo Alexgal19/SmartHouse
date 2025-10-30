@@ -84,6 +84,7 @@ const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData 
             </CardHeader>
             <CardContent>
                 <ScrollArea className="h-[calc(100vh-22rem)]">
+                  <ChartContainer config={chartConfig} className="w-full h-full">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-4">
                             <h3 className="font-semibold">Pokoje</h3>
@@ -120,7 +121,7 @@ const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData 
                                                 <CartesianGrid horizontal={false} strokeDasharray="3 3" />
                                                 <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
                                                 <XAxis type="number" hide />
-                                                <RechartsTooltip cursor={false} content={<ChartTooltipContent />} />
+                                                <RechartsTooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
                                                 <Bar dataKey="count" fill="var(--color-nationalities)" radius={[0, 4, 4, 0]}>
                                                     <LabelList dataKey="count" position="right" offset={8} className="fill-foreground text-xs" />
                                                 </Bar>
@@ -140,7 +141,7 @@ const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData 
                                                 <CartesianGrid horizontal={false} strokeDasharray="3 3" />
                                                 <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
                                                 <XAxis type="number" hide />
-                                                <RechartsTooltip cursor={false} content={<ChartTooltipContent />} />
+                                                <RechartsTooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
                                                 <Bar dataKey="count" fill="var(--color-genders)" radius={[0, 4, 4, 0]}>
                                                     <LabelList dataKey="count" position="right" offset={8} className="fill-foreground text-xs" />
                                                 </Bar>
@@ -151,6 +152,7 @@ const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData 
                             </Card>
                         </div>
                     </div>
+                  </ChartContainer>
                 </ScrollArea>
             </CardContent>
         </Card>
@@ -326,6 +328,3 @@ export default function HousingView({ }: { currentUser: SessionData }) {
         </div>
     );
 }
-
-
-    

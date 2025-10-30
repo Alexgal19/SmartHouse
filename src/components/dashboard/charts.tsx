@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList } from "recharts";
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart2 } from "lucide-react";
-import type { Employee, Settings } from "@/types";
+import type { Employee, Settings, ChartConfig } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useMainLayout } from '@/components/main-layout';
 import { format, getYear, eachDayOfInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, eachMonthOfInterval } from 'date-fns';
@@ -35,6 +35,21 @@ export function DashboardCharts({
     const [departureMonth, setDepartureMonth] = useState<number | 'all'>('all');
     const [deductionYear, setDeductionYear] = useState(new Date().getFullYear());
     const [deductionMonth, setDeductionMonth] = useState<number | 'all'>('all');
+
+    const chartConfig = {
+      employees: {
+        label: "Employees",
+        color: "hsl(var(--chart-1))",
+      },
+       departures: {
+        label: "Departures",
+        color: "hsl(var(--chart-4))",
+      },
+       deductions: {
+        label: "Deductions",
+        color: "hsl(var(--chart-5))",
+      },
+    } satisfies ChartConfig
 
     const chartData = useMemo(() => {
         const activeEmployees = employees.filter(e => e.status === 'active');
@@ -168,7 +183,7 @@ export function DashboardCharts({
                         <CardTitle className="text-lg">Pracownicy wg koordynatora</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <ChartContainer config={{}} className="min-h-[250px] w-full">
+                        <ChartContainer config={chartConfig} className="min-h-[250px] w-full">
                              <BarChart 
                                 data={chartData.employeesPerCoordinator}
                                 layout="vertical"
@@ -184,7 +199,7 @@ export function DashboardCharts({
                                 <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50" />
                                 <YAxis dataKey="coordinator" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
                                 <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
-                                <Tooltip cursor={false} content={<ChartTooltipContent />} />
+                                <Tooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
                                 <Bar dataKey="employees" radius={[0, 4, 4, 0]} fill="url(#chart-coordinator-gradient)">
                                     <LabelList dataKey="employees" position="right" offset={8} className="fill-foreground text-xs" />
                                 </Bar>
@@ -199,7 +214,7 @@ export function DashboardCharts({
                         <CardTitle className="text-lg">Pracownicy wg narodowości</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <ChartContainer config={{}} className="min-h-[250px] w-full">
+                        <ChartContainer config={chartConfig} className="min-h-[250px] w-full">
                             <BarChart 
                                 data={chartData.employeesByNationality} 
                                 layout="vertical"
@@ -215,7 +230,7 @@ export function DashboardCharts({
                                 <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50"/>
                                 <YAxis dataKey="nationality" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
                                 <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
-                                <Tooltip cursor={false} content={<ChartTooltipContent />} />
+                                <Tooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
                                 <Bar dataKey="employees" radius={[0, 4, 4, 0]} fill="url(#chart-nationality-gradient)">
                                     <LabelList dataKey="employees" position="right" offset={8} className="fill-foreground text-xs" />
                                 </Bar>
@@ -250,7 +265,7 @@ export function DashboardCharts({
                 </CardHeader>
                 <CardContent>
                     {chartData.departuresByMonth.length > 0 ? (
-                         <ChartContainer config={{}} className="w-full aspect-video">
+                         <ChartContainer config={chartConfig} className="w-full aspect-video">
                             <BarChart 
                                 data={chartData.departuresByMonth}
                                 margin={{ top: 20, right: 20, bottom: 5, left: 0 }}
@@ -264,7 +279,7 @@ export function DashboardCharts({
                                 <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border/50"/>
                                 <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} className="text-xs" />
                                 <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
-                                <Tooltip cursor={false} content={<ChartTooltipContent />} />
+                                <Tooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
                                 <Bar dataKey="departures" radius={[4, 4, 0, 0]} fill="url(#chart-departures-gradient)">
                                    <LabelList dataKey="departures" position="top" offset={8} className="fill-foreground text-xs" />
                                 </Bar>
@@ -300,7 +315,7 @@ export function DashboardCharts({
                 </CardHeader>
                 <CardContent>
                     {chartData.deductionsByDate.length > 0 ? (
-                         <ChartContainer config={{}} className="w-full aspect-video">
+                         <ChartContainer config={chartConfig} className="w-full aspect-video">
                             <BarChart 
                                 data={chartData.deductionsByDate}
                                 margin={{ top: 20, right: 20, bottom: 5, left: 0 }}
@@ -314,7 +329,7 @@ export function DashboardCharts({
                                 <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border/50"/>
                                 <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} className="text-xs" />
                                 <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
-                                <Tooltip cursor={false} content={<ChartTooltipContent formatter={(value) => `${value} PLN`}/>} />
+                                <Tooltip cursor={false} content={<ChartTooltipContent config={chartConfig} labelFormatter={(value) => `${value} PLN`}/>} />
                                 <Bar dataKey="deductions" radius={[4, 4, 0, 0]} fill="url(#chart-deductions-gradient)">
                                    <LabelList dataKey="deductions" position="top" offset={8} className="fill-foreground text-xs" formatter={(value: number) => value > 0 ? `${value}` : ''}/>
                                 </Bar>
@@ -328,5 +343,3 @@ export function DashboardCharts({
         </div>
     );
 }
-
-    

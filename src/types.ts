@@ -41,6 +41,22 @@ export type Settings = {
     temporaryAccess: TemporaryAccess[];
 }
 
+export type ChartConfig = {
+  [key in string]: {
+    label?: React.ReactNode
+    icon?: React.ComponentType
+  } & ({
+    color?: string
+    theme?: never
+  } | {
+    color?: never
+    theme: {
+      light: string
+      dark: string
+    }
+  })
+}
+
 export type DeductionReason = {
     id: string;
     label: string;
