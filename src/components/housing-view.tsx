@@ -35,21 +35,13 @@ const calculateStats = (occupants: Occupant[]) => {
     };
 };
 
-const StatsPills = ({ items }: { items: { name: string, count: number }[] }) => (
-    <div className="flex flex-wrap gap-1">
-        {items.sort((a,b)=> b.count - a.count).map(item => (
-            <TooltipProvider key={item.name}>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <span className="text-xs font-semibold inline-flex items-center px-2 py-0.5 rounded-full text-primary-foreground bg-primary/80">
-                            {item.count}
-                        </span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        <p>{item.name}</p>
-                    </TooltipContent>
-                </Tooltip>
-            </TooltipProvider>
+const StatsList = ({ items }: { items: { name: string, count: number }[] }) => (
+    <div className="flex flex-col text-xs">
+        {items.sort((a, b) => b.count - a.count).map(item => (
+            <div key={item.name}>
+                <span>{item.name} - </span>
+                <span className="font-semibold">{item.count}</span>
+            </div>
         ))}
     </div>
 );
@@ -171,8 +163,8 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                                         <TableCell className="text-center">{address.occupantCount}</TableCell>
                                         <TableCell className="text-center">{address.capacity}</TableCell>
                                         <TableCell className={cn("text-center", address.available > 0 ? "text-green-600" : "text-red-600")}>{address.available}</TableCell>
-                                        <TableCell><StatsPills items={address.nationalities} /></TableCell>
-                                        <TableCell><StatsPills items={address.genders} /></TableCell>
+                                        <TableCell><StatsList items={address.nationalities} /></TableCell>
+                                        <TableCell><StatsList items={address.genders} /></TableCell>
                                     </TableRow>
                                     {expandedAddresses.has(address.id) && (
                                         <>
@@ -196,8 +188,8 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                                                     <TableCell className="text-center">{room.occupantCount}</TableCell>
                                                     <TableCell className="text-center">{room.capacity}</TableCell>
                                                     <TableCell className={cn("text-center", room.available > 0 ? "text-green-600" : "text-red-600")}>{room.available}</TableCell>
-                                                    <TableCell><StatsPills items={room.nationalities} /></TableCell>
-                                                    <TableCell><StatsPills items={room.genders} /></TableCell>
+                                                    <TableCell><StatsList items={room.nationalities} /></TableCell>
+                                                    <TableCell><StatsList items={room.genders} /></TableCell>
                                                 </TableRow>
                                             ))}
                                         </>
