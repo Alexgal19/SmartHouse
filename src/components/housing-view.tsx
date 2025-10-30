@@ -99,7 +99,7 @@ const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData 
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <ScrollArea className="h-[calc(100vh-22rem)]">
+                <ScrollArea className="h-[calc(100vh-14rem)]">
                   <ChartContainer config={chartConfig} className="w-full h-full">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-4">
@@ -318,7 +318,7 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                             <Label htmlFor="show-available">Tylko z wolnymi miejscami</Label>
                         </div>
                     </div>
-                    <ScrollArea className="h-[calc(100vh-28rem)]">
+                    <ScrollArea className="h-[calc(100vh-18rem)]">
                         <div className="space-y-2">
                         {filteredData.map(address => (
                             <Card 
