@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import type { Employee, NonEmployee, SessionData, Address } from "@/types";
+import type { Employee, NonEmployee, SessionData, Address, Room } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, Bed, Building, User, BarChart2 } from "lucide-react";
@@ -14,10 +14,11 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, LabelList } from "recharts";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, LabelList, Tooltip as RechartsTooltip } from "recharts";
 import { ChartConfig, ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 
 type Occupant = Employee | NonEmployee;
+type RoomWithOccupants = Room & { occupants: Occupant[]; occupantCount: number; available: number; };
 type HousingData = ReturnType<typeof useHousingData>[0];
 
 const isEmployee = (occupant: Occupant): occupant is Employee => 'coordinatorId' in occupant;
@@ -49,13 +50,28 @@ const NoDataState = ({ message, className }: { message: string, className?: stri
 );
 
 const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData | null; onOccupantClick: (occupant: Occupant) => void; }) => {
-    const { nationalities, genders } = useMemo(() => address ? calculateStats(address.occupants) : { nationalities: [], genders: [] }, [address]);
+    const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+
+    const selectedRoom = useMemo(() => {
+        if (!address || !selectedRoomId) return null;
+        return address.rooms.find(r => r.id === selectedRoomId) ?? null;
+    }, [address, selectedRoomId]);
+
+    const statsData = useMemo(() => {
+        if (!address) return { nationalities: [], genders: [] };
+        const occupantsToAnalyze = selectedRoom ? selectedRoom.occupants : address.occupants;
+        return calculateStats(occupantsToAnalyze);
+    }, [address, selectedRoom]);
 
     const chartConfig: ChartConfig = {
         count: { label: "Ilość" },
         nationalities: { color: "hsl(var(--chart-2))" },
         genders: { color: "hsl(var(--chart-1))" },
     };
+    
+    const handleRoomClick = (roomId: string) => {
+        setSelectedRoomId(prev => prev === roomId ? null : roomId);
+    }
 
     if (!address) {
         return (
@@ -89,7 +105,14 @@ const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData 
                         <div className="space-y-4">
                             <h3 className="font-semibold">Pokoje</h3>
                             {address.rooms.length > 0 ? address.rooms.sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(room => (
-                                <div key={room.id} className="rounded-md border p-3">
+                                <div 
+                                    key={room.id} 
+                                    className={cn(
+                                        "rounded-md border p-3 cursor-pointer transition-colors",
+                                        selectedRoomId === room.id ? "bg-primary/10 border-primary" : "hover:bg-muted/50"
+                                    )}
+                                    onClick={() => handleRoomClick(room.id)}
+                                >
                                     <div className="flex justify-between items-center font-medium">
                                         <div className="flex items-center gap-2">
                                             <Bed className="h-4 w-4 text-muted-foreground" />
@@ -99,7 +122,7 @@ const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData 
                                     </div>
                                     <div className="pl-4 mt-2 space-y-1">
                                         {room.occupants.map(o => (
-                                            <div key={o.id} onClick={() => onOccupantClick(o)} className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-primary">
+                                            <div key={o.id} onClick={(e) => { e.stopPropagation(); onOccupantClick(o); }} className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-primary">
                                                 <User className="h-3 w-3" />
                                                 {o.fullName}
                                             </div>
@@ -109,15 +132,15 @@ const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData 
                             )) : <NoDataState message="Brak pokoi dla tego adresu" />}
                         </div>
                         <div className="space-y-4">
-                            <h3 className="font-semibold">Statystyki</h3>
+                            <h3 className="font-semibold">{selectedRoom ? `Statystyki dla pokoju ${selectedRoom.name}` : "Statystyki dla adresu"}</h3>
                             <Card className="bg-muted/50">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-sm">Wg narodowości</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    {nationalities.length > 0 ? (
-                                        <ResponsiveContainer width="100%" height={nationalities.length * 25 + 20}>
-                                            <BarChart data={nationalities} layout="vertical" margin={{ left: 10, right: 30 }}>
+                                    {statsData.nationalities.length > 0 ? (
+                                        <ResponsiveContainer width="100%" height={statsData.nationalities.length * 25 + 20}>
+                                            <BarChart data={statsData.nationalities} layout="vertical" margin={{ left: 10, right: 30 }}>
                                                 <CartesianGrid horizontal={false} strokeDasharray="3 3" />
                                                 <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
                                                 <XAxis type="number" hide />
@@ -135,9 +158,9 @@ const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData 
                                     <CardTitle className="text-sm">Wg płci</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                     {genders.length > 0 ? (
-                                        <ResponsiveContainer width="100%" height={genders.length * 30 + 20}>
-                                            <BarChart data={genders} layout="vertical" margin={{ left: 10, right: 30 }}>
+                                     {statsData.genders.length > 0 ? (
+                                        <ResponsiveContainer width="100%" height={statsData.genders.length * 30 + 20}>
+                                            <BarChart data={statsData.genders} layout="vertical" margin={{ left: 10, right: 30 }}>
                                                 <CartesianGrid horizontal={false} strokeDasharray="3 3" />
                                                 <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
                                                 <XAxis type="number" hide />
@@ -181,7 +204,7 @@ const useHousingData = () => {
             const totalCapacity = address.rooms.reduce((sum, room) => sum + room.capacity, 0);
             const occupantCount = occupantsInAddress.length;
 
-            const rooms = address.rooms.map(room => {
+            const rooms: RoomWithOccupants[] = address.rooms.map(room => {
                 const occupantsInRoom = occupantsInAddress.filter(o => o.roomNumber === room.name);
                 return {
                     id: room.id,
