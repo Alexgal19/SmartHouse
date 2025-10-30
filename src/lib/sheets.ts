@@ -275,7 +275,7 @@ export const getAllSheetsData = async () => {
             getSheet(SHEET_NAME_EQUIPMENT, []),
             getSheet(SHEET_NAME_INSPECTIONS, []),
             getSheet(SHEET_NAME_INSPECTION_DETAILS, []),
-            getSheet(SHEET_NAME_INSPECTION_TEMPLATE, [])
+            getSheet(SHEET_NAME_INSPECTION_TEMPLATE, ['category', 'label', 'type', 'options'])
         ]);
 
 
