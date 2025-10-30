@@ -388,30 +388,7 @@ export {
   ChartTooltipContent,
 }
 
-// Export recharts components
-export const BarChart = Recharts.BarChart;
-export const LineChart = Recharts.LineChart;
-export const AreaChart = Recharts.AreaChart;
-export const RadarChart = Recharts.RadarChart;
-export const RadialBarChart = Recharts.RadialBarChart;
-export const ResponsiveContainer = Recharts.ResponsiveContainer;
-export const XAxis = Recharts.XAxis;
-export const YAxis = Recharts.YAxis;
-export const CartesianGrid = Recharts.CartesianGrid;
-export const PolarGrid = Recharts.PolarGrid;
-export const PolarAngleAxis = Recharts.PolarAngleAxis;
-export const PolarRadiusAxis = Recharts.PolarRadiusAxis;
-export const Bar = Recharts.Bar;
-export const Line = Recharts.Line;
-export const Area = Recharts.Area;
-export const Cell = Recharts.Cell;
-export const Legend = Recharts.Legend;
-export const Sector = Recharts.Sector;
-export const Label = Recharts.Label;
-export const LabelList = Recharts.LabelList;
-export const Pie = Recharts.Pie;
-export const Radar = Recharts.Radar;
-export const RadialBar = Recharts.RadialBar;
-export { Tooltip as RechartsTooltip } from 'recharts';
 
 export type { ChartConfig }
+
+    
