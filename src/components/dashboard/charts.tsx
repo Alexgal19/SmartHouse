@@ -183,12 +183,12 @@ export function DashboardCharts({
                         <CardTitle className="text-lg">Pracownicy wg koordynatora</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <ChartContainer config={chartConfig} className="min-h-[250px] w-full">
+                        <ResponsiveContainer width="100%" height={chartData.employeesPerCoordinator.length * 35 + 50}>
                              <BarChart 
                                 data={chartData.employeesPerCoordinator}
                                 layout="vertical"
                                 margin={{ top: 5, right: 20, bottom: 5, left: 10 }}
-                                barSize={15}
+                                barCategoryGap="20%"
                             >
                                 <defs>
                                     <linearGradient id="chart-coordinator-gradient" x1="0" y1="0" x2="1" y2="0">
@@ -204,7 +204,7 @@ export function DashboardCharts({
                                     <LabelList dataKey="employees" position="right" offset={8} className="fill-foreground text-xs" />
                                 </Bar>
                             </BarChart>
-                        </ChartContainer>
+                        </ResponsiveContainer>
                     </CardContent>
                 </Card>
             )}
@@ -214,12 +214,12 @@ export function DashboardCharts({
                         <CardTitle className="text-lg">Pracownicy wg narodowości</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <ChartContainer config={chartConfig} className="min-h-[250px] w-full">
+                        <ResponsiveContainer width="100%" height={chartData.employeesByNationality.length * 35 + 50}>
                             <BarChart 
                                 data={chartData.employeesByNationality} 
                                 layout="vertical"
                                 margin={{ top: 5, right: 20, bottom: 5, left: 10 }}
-                                barSize={15}
+                                barCategoryGap="20%"
                             >
                                 <defs>
                                     <linearGradient id="chart-nationality-gradient" x1="0" y1="0" x2="1" y2="0">
@@ -235,7 +235,7 @@ export function DashboardCharts({
                                     <LabelList dataKey="employees" position="right" offset={8} className="fill-foreground text-xs" />
                                 </Bar>
                             </BarChart>
-                        </ChartContainer>
+                        </ResponsiveContainer>
                     </CardContent>
                 </Card>
             )}
@@ -281,7 +281,7 @@ export function DashboardCharts({
                                 <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
                                 <Tooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
                                 <Bar dataKey="departures" radius={[4, 4, 0, 0]} fill="url(#chart-departures-gradient)">
-                                   <LabelList dataKey="departures" position="top" offset={8} className="fill-foreground text-xs" />
+                                   <LabelList dataKey="departures" position="top" offset={8} className="fill-foreground text-xs" formatter={(value: number) => value > 0 ? `${value}` : ''}/>
                                 </Bar>
                             </BarChart>
                         </ChartContainer>
@@ -343,3 +343,5 @@ export function DashboardCharts({
         </div>
     );
 }
+
+    
