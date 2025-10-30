@@ -245,9 +245,9 @@ export default function MainLayout({
         try {
             await clearAllNotifications();
             setAllNotifications([]);
-            toast({ title: "Sukces", description: "Wszystkie powiadomienia zostały вилучені." });
+            toast({ title: "Sukces", description: "Wszystkie powiadomienia zostały usunięte." });
         } catch (e) {
-             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się вилучити powiadomienia." });
+             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć powiadomienia." });
         }
     }, [currentUser, toast]);
 
@@ -396,7 +396,7 @@ export default function MainLayout({
             toast({ title: "Sukces", description: "Mieszkaniec został usunięty." });
         } catch(e) {
             setRawNonEmployees(originalNonEmployees); // Revert
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć mieszkańца." });
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć mieszkańca." });
         }
     }, [rawNonEmployees, toast]);
     
@@ -578,7 +578,7 @@ export default function MainLayout({
         const result = await importEmployeesFromExcel(fileContent, currentUser.uid, settings);
         toast({
             title: "Import zakończony",
-            description: `Pomyślnie заimportowano ${result.importedCount} z ${result.totalRows} wierszy.`,
+            description: `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} wierszy.`,
         });
         await refreshData(false);
 
@@ -726,7 +726,7 @@ export default function MainLayout({
                     isOpen={isAddressFormOpen}
                     onOpenChange={setIsAddressFormOpen}
                     onSave={handleSaveAddress}
-                    coordinators={settings.coordinators}
+                    settings={settings}
                     address={editingAddress}
                 />
             )}
