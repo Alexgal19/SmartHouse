@@ -1,5 +1,6 @@
 
 "use client"
+
 import React, { useState, useMemo, useTransition, useRef } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import type { Employee, Settings, NonEmployee, SessionData } from '@/types';
