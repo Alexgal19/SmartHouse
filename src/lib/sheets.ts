@@ -244,14 +244,14 @@ const deserializeEquipmentItem = (row: Record<string, unknown>): EquipmentItem |
 const getSheetData = async (doc: GoogleSpreadsheet, title: string, limit = 2000): Promise<Record<string, string>[]> => {
     const sheet = doc.sheetsByTitle[title];
     if (!sheet) {
-        console.warn(`Sheet "${title}" not found. Returning empty array.`);
+        console.warn(`Sheet "${title}" not found during getSheetData call. This may be normal if it hasn't been created yet.`);
         return [];
     }
     try {
         const rows = await sheet.getRows({ limit });
         return rows.map(r => r.toObject());
     } catch (e) {
-         console.warn(`Could not get rows from sheet: ${title}. It might be empty or missing.`);
+         console.warn(`Could not get rows from sheet: ${title}. It might be empty or missing headers.`);
         return [];
     }
 };
@@ -259,6 +259,25 @@ const getSheetData = async (doc: GoogleSpreadsheet, title: string, limit = 2000)
 export const getAllSheetsData = async () => {
     try {
         const doc = await getDoc();
+
+        // Ensure sheets exist before trying to fetch data from them
+        await Promise.all([
+            getSheet(SHEET_NAME_EMPLOYEES, []),
+            getSheet(SHEET_NAME_NON_EMPLOYEES, []),
+            getSheet(SHEET_NAME_NOTIFICATIONS, []),
+            getSheet(SHEET_NAME_ADDRESSES, []),
+            getSheet(SHEET_NAME_ROOMS, []),
+            getSheet(SHEET_NAME_NATIONALITIES, ['name']),
+            getSheet(SHEET_NAME_DEPARTMENTS, ['name']),
+            getSheet(SHEET_NAME_COORDINATORS, []),
+            getSheet(SHEET_NAME_GENDERS, ['name']),
+            getSheet(SHEET_NAME_LOCALITIES, ['name']),
+            getSheet(SHEET_NAME_EQUIPMENT, []),
+            getSheet(SHEET_NAME_INSPECTIONS, []),
+            getSheet(SHEET_NAME_INSPECTION_DETAILS, []),
+            getSheet(SHEET_NAME_INSPECTION_TEMPLATE, [])
+        ]);
+
 
         const [
             employeesSheet,
