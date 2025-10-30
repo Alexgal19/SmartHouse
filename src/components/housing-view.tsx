@@ -113,7 +113,8 @@ const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData 
                                     key={room.id} 
                                     className={cn(
                                         "rounded-md border p-3 cursor-pointer transition-colors",
-                                        selectedRoomId === room.id ? "bg-primary/10 border-primary" : "hover:bg-muted/50"
+                                        selectedRoomId === room.id ? "bg-primary/10 border-primary" : "hover:bg-muted/50",
+                                        room.available > 0 && selectedRoomId !== room.id && "bg-green-500/10 border-green-500/20"
                                     )}
                                     onClick={() => handleRoomClick(room.id)}
                                 >
@@ -241,7 +242,7 @@ const MobileAddressCard = ({ address, onOccupantClick }: { address: HousingData;
     const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
 
     return (
-        <Card className="overflow-hidden">
+        <Card className={cn("overflow-hidden", address.available > 0 && "border-green-500/30")}>
             <Accordion type="single" collapsible>
                 <AccordionItem value={address.id} className="border-b-0">
                     <AccordionTrigger className="p-4 hover:no-underline">
@@ -264,7 +265,7 @@ const MobileAddressCard = ({ address, onOccupantClick }: { address: HousingData;
                                 <h4 className="text-sm font-semibold mb-2">Pokoje</h4>
                                 <div className="space-y-2">
                                     {address.rooms.sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(room => (
-                                        <div key={room.id} className="rounded-md border p-3">
+                                        <div key={room.id} className={cn("rounded-md border p-3", room.available > 0 && "bg-green-500/10 border-green-500/20")}>
                                             <div className="flex justify-between items-center font-medium text-sm">
                                                 <div className="flex items-center gap-2">
                                                     <Bed className="h-4 w-4 text-muted-foreground" />
@@ -500,11 +501,12 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                                 key={address.id}
                                 className={cn(
                                     "cursor-pointer transition-colors",
-                                    selectedAddressId === address.id ? "bg-primary/10 border-primary" : "hover:bg-muted/50"
+                                    selectedAddressId === address.id ? "bg-primary/10 border-primary" : "hover:bg-muted/50",
+                                    address.available > 0 && selectedAddressId !== address.id && "bg-green-500/10 border-green-500/20"
                                 )}
                                 onClick={() => setSelectedAddressId(address.id)}
                             >
-                                <CardHeader className="p-2">
+                                <CardHeader className="p-3">
                                     <div className="flex justify-between items-start">
                                         <CardTitle className="text-sm font-medium flex items-center gap-2">
                                             <Building className="h-4 w-4 text-primary" />
