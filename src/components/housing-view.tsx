@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import type { Employee, NonEmployee, SessionData } from "@/types";
+import type { Employee, NonEmployee, SessionData, Address } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -18,7 +18,7 @@ import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip, LabelList } from "recharts";
-import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
+import { ChartContainer, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 
 
 type Occupant = Employee | NonEmployee;
@@ -53,34 +53,40 @@ const NoDataState = ({ message }: { message: string }) => (
 );
 
 
-const HousingStatsCharts = ({ occupants }: { occupants: Occupant[] }) => {
+const HousingStatsCharts = ({ occupants, title }: { occupants: Occupant[], title: string }) => {
     const { nationalities, genders } = useMemo(() => calculateStats(occupants), [occupants]);
-
+    
     const chartConfig = {
-        count: { label: "Ilość", color: "hsl(var(--chart-1))" },
-    } as const;
+        count: { label: "Ilość" },
+        nationalities: { color: "hsl(var(--chart-2))" },
+        genders: { color: "hsl(var(--chart-1))" },
+    } as ChartConfig;
+
+    const nationalityChartHeight = nationalities.length > 0 ? `${nationalities.length * 30 + 40}px` : '150px';
+    const genderChartHeight = genders.length > 0 ? `${genders.length * 35 + 40}px` : '150px';
+
 
     return (
         <div className="space-y-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-lg">Statystyka</CardTitle>
+                    <CardDescription>{title}</CardDescription>
+                </CardHeader>
+            </Card>
             <Card>
                 <CardHeader className="pb-2">
                     <CardTitle className="text-base">Wg narodowości</CardTitle>
                 </CardHeader>
                 <CardContent>
                     {nationalities.length > 0 ? (
-                        <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
+                        <ChartContainer config={chartConfig} style={{ height: nationalityChartHeight }}>
                             <BarChart data={nationalities} layout="vertical" margin={{ left: 10, right: 30 }}>
-                                 <defs>
-                                    <linearGradient id="chart-nationality-gradient" x1="0" y1="0" x2="1" y2="0">
-                                        <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.8}/>
-                                        <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0.1}/>
-                                    </linearGradient>
-                                </defs>
                                 <CartesianGrid horizontal={false} strokeDasharray="3 3" />
                                 <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
                                 <XAxis type="number" hide />
                                 <RechartsTooltip cursor={false} content={<ChartTooltipContent />} />
-                                <Bar dataKey="count" fill="url(#chart-nationality-gradient)" radius={[0, 4, 4, 0]}>
+                                <Bar dataKey="count" fill="var(--color-nationalities)" radius={[0, 4, 4, 0]}>
                                    <LabelList dataKey="count" position="right" offset={8} className="fill-foreground text-xs" />
                                 </Bar>
                             </BarChart>
@@ -94,19 +100,13 @@ const HousingStatsCharts = ({ occupants }: { occupants: Occupant[] }) => {
                 </CardHeader>
                 <CardContent>
                     {genders.length > 0 ? (
-                        <ChartContainer config={chartConfig} className="min-h-[100px] w-full">
+                        <ChartContainer config={chartConfig} style={{ height: genderChartHeight }}>
                             <BarChart data={genders} layout="vertical" margin={{ left: 10, right: 30 }}>
-                                <defs>
-                                    <linearGradient id="chart-gender-gradient" x1="0" y1="0" x2="1" y2="0">
-                                        <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.8}/>
-                                        <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0.1}/>
-                                    </linearGradient>
-                                </defs>
                                 <CartesianGrid horizontal={false} strokeDasharray="3 3" />
                                 <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
                                 <XAxis type="number" hide />
                                 <RechartsTooltip cursor={false} content={<ChartTooltipContent />} />
-                                <Bar dataKey="count" fill="url(#chart-gender-gradient)" radius={[0, 4, 4, 0]}>
+                                <Bar dataKey="count" fill="var(--color-genders)" radius={[0, 4, 4, 0]}>
                                      <LabelList dataKey="count" position="right" offset={8} className="fill-foreground text-xs" />
                                 </Bar>
                             </BarChart>
@@ -171,6 +171,8 @@ const useHousingData = () => {
 export default function HousingView({ }: { currentUser: SessionData }) {
     const { settings, handleEditEmployeeClick, handleEditNonEmployeeClick } = useMainLayout();
     const [expandedAddresses, setExpandedAddresses] = useState<Set<string>>(new Set());
+    const [selectedAddressIdForStats, setSelectedAddressIdForStats] = useState<string | null>(null);
+
     const [sortConfig, setSortConfig] = useState<{ key: keyof HousingData | null; direction: 'ascending' | 'descending' }>({ key: 'name', direction: 'ascending' });
     const [filters, setFilters] = useState({
         name: '',
@@ -181,7 +183,7 @@ export default function HousingView({ }: { currentUser: SessionData }) {
 
     const rawHousingData = useHousingData();
 
-    const toggleAddress = (addressId: string) => {
+    const toggleAddressExpansion = (addressId: string) => {
         setExpandedAddresses(prev => {
             const newSet = new Set(prev);
             if (newSet.has(addressId)) {
@@ -191,6 +193,11 @@ export default function HousingView({ }: { currentUser: SessionData }) {
             }
             return newSet;
         });
+    };
+
+    const handleRowClick = (addressId: string) => {
+        toggleAddressExpansion(addressId);
+        setSelectedAddressIdForStats(prev => (prev === addressId ? null : addressId));
     };
     
     const handleOccupantClick = (occupant: Occupant) => {
@@ -211,6 +218,7 @@ export default function HousingView({ }: { currentUser: SessionData }) {
     
     const handleFilterChange = (key: string, value: string | boolean) => {
         setFilters(prev => ({...prev, [key]: value}));
+        setSelectedAddressIdForStats(null); // Reset selected address on filter change
     }
 
     const sortedAndFilteredData = useMemo(() => {
@@ -249,9 +257,21 @@ export default function HousingView({ }: { currentUser: SessionData }) {
         return sortableItems;
     }, [rawHousingData, sortConfig, filters]);
     
-    const allFilteredOccupants = useMemo(() => {
+    const occupantsForCharts = useMemo(() => {
+        if (selectedAddressIdForStats) {
+            const selectedAddress = sortedAndFilteredData.find(addr => addr.id === selectedAddressIdForStats);
+            return selectedAddress ? selectedAddress.occupants : [];
+        }
         return sortedAndFilteredData.flatMap(address => address.occupants);
-    }, [sortedAndFilteredData]);
+    }, [sortedAndFilteredData, selectedAddressIdForStats]);
+
+    const chartTitle = useMemo(() => {
+        if (selectedAddressIdForStats) {
+            const selectedAddress = sortedAndFilteredData.find(addr => addr.id === selectedAddressIdForStats);
+            return selectedAddress ? `Dla adresu: ${selectedAddress.name}` : 'Statystyka globalna';
+        }
+        return 'Statystyka dla wszystkich odfiltrowanych adresów';
+    }, [selectedAddressIdForStats, sortedAndFilteredData]);
     
     if (!rawHousingData || !settings) {
         return <Card><CardHeader><Skeleton className="h-8 w-1/3" /></CardHeader><CardContent><Skeleton className="h-64 w-full" /></CardContent></Card>;
@@ -273,7 +293,7 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                     <CardHeader>
                         <CardTitle>Przegląd zakwaterowania</CardTitle>
                         <CardDescription>
-                            Szczegółowy widok obłożenia adresów i pokoi z podziałem na narodowość i płeć.
+                            Szczegółowy widok obłożenia adresów i pokoi. Kliknij na adres, aby zobaczyć statystyki po prawej.
                         </CardDescription>
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pt-4 flex-wrap">
                             <div className="grid w-full sm:w-auto items-center gap-1.5">
@@ -336,9 +356,15 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                                 <TableBody>
                                     {sortedAndFilteredData.map(address => (
                                         <React.Fragment key={address.id}>
-                                            <TableRow className="bg-muted/50 font-semibold" onClick={() => toggleAddress(address.id)}>
+                                            <TableRow 
+                                                className={cn(
+                                                    "font-semibold cursor-pointer",
+                                                    selectedAddressIdForStats === address.id ? "bg-primary/10 hover:bg-primary/20" : "bg-muted/50 hover:bg-muted"
+                                                )}
+                                                onClick={() => handleRowClick(address.id)}
+                                            >
                                                 <TableCell>
-                                                    <Button variant="ghost" size="icon">
+                                                    <Button variant="ghost" size="icon" className="w-8 h-8">
                                                         {expandedAddresses.has(address.id) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                                                     </Button>
                                                 </TableCell>
@@ -393,7 +419,7 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                 </Card>
             </div>
             <div className="lg:col-span-1 space-y-6">
-                <HousingStatsCharts occupants={allFilteredOccupants} />
+                <HousingStatsCharts occupants={occupantsForCharts} title={chartTitle}/>
             </div>
         </div>
     );
