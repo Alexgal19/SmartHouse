@@ -96,7 +96,7 @@ const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData 
             <CardHeader>
                 <CardTitle>{address.name}</CardTitle>
                 <CardDescription>
-                    <span className="font-bold text-red-500">{address.occupantCount}</span> / <span className="font-bold text-blue-500">{address.capacity}</span> mieszkańców
+                    <span className="font-bold">{address.occupantCount}</span> / <span className="font-bold">{address.capacity}</span> mieszkańców
                     <span className={cn("ml-2 font-bold", address.available > 0 ? "text-green-600" : "text-red-600")}>
                         ({address.available} wolnych miejsc)
                     </span>
@@ -124,7 +124,7 @@ const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData 
                                             Pokój {room.name}
                                         </div>
                                         <span className="text-sm">
-                                            <span className="font-bold text-red-500">{room.occupantCount}</span> / <span className="font-bold text-blue-500">{room.capacity}</span>
+                                            <span className="font-bold">{room.occupantCount}</span> / <span className="font-bold">{room.capacity}</span>
                                         </span>
                                     </div>
                                     <div className="pl-4 mt-2 space-y-1">
@@ -259,7 +259,7 @@ const MobileAddressCard = ({ address, onOccupantClick }: { address: HousingData;
                                     {address.name}
                                 </CardTitle>
                                 <span className="text-base">
-                                    <span className="font-bold text-red-500">{address.occupantCount}</span> / <span className="font-bold text-blue-500">{address.capacity}</span>
+                                    <span className="font-bold">{address.occupantCount}</span> / <span className="font-bold">{address.capacity}</span>
                                 </span>
                             </div>
                             <CardDescription className="text-xs pt-1 text-left">
@@ -280,7 +280,7 @@ const MobileAddressCard = ({ address, onOccupantClick }: { address: HousingData;
                                                     Pokój {room.name}
                                                 </div>
                                                 <span className="text-sm">
-                                                    <span className="font-bold text-red-500">{room.occupantCount}</span> / <span className="font-bold text-blue-500">{room.capacity}</span>
+                                                    <span className="font-bold">{room.occupantCount}</span> / <span className="font-bold">{room.capacity}</span>
                                                 </span>
                                             </div>
                                              <div className="pl-4 mt-2 space-y-1">
@@ -523,7 +523,7 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                                             {address.name}
                                         </CardTitle>
                                         <span className="text-sm">
-                                            <span className="font-bold text-red-500">{address.occupantCount}</span> / <span className="font-bold text-blue-500">{address.capacity}</span>
+                                            <span className="font-bold">{address.occupantCount}</span> / <span className="font-bold">{address.capacity}</span>
                                         </span>
                                     </div>
                                     <CardDescription className="text-xs pt-1">
