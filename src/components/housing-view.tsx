@@ -239,7 +239,11 @@ const useHousingData = () => {
 
 const MobileAddressCard = ({ address, onOccupantClick }: { address: HousingData; onOccupantClick: (occupant: Occupant) => void }) => {
     const statsData = useMemo(() => calculateStats(address.occupants), [address.occupants]);
-    const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
+    const chartConfig: ChartConfig = {
+        count: { label: "Ilość" },
+        nationalities: { label: "Nationalities", color: "hsl(var(--chart-2))" },
+        genders: { label: "Genders", color: "hsl(var(--chart-1))" },
+    };
 
     return (
         <Card className={cn("overflow-hidden", address.available > 0 && "border-green-500/30")}>
@@ -289,16 +293,16 @@ const MobileAddressCard = ({ address, onOccupantClick }: { address: HousingData;
                                 <div>
                                     <h4 className="text-sm font-semibold mb-2">Wg narodowości</h4>
                                     {statsData.nationalities.length > 0 ? (
-                                        <div className="h-32">
+                                        <div style={{ height: `${statsData.nationalities.length * 25 + 20}px` }}>
                                         <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart>
-                                                <Pie data={statsData.nationalities} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={40} label={(props) => `${props.name}: ${props.value}`}>
-                                                    {statsData.nationalities.map((_entry, index) => (
-                                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                    ))}
-                                                </Pie>
-                                                <RechartsTooltip content={<ChartTooltipContent />} />
-                                            </PieChart>
+                                            <BarChart data={statsData.nationalities} layout="vertical" margin={{ left: 10, right: 30 }}>
+                                                <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
+                                                <XAxis type="number" hide />
+                                                <RechartsTooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
+                                                <Bar dataKey="count" fill={chartConfig.nationalities.color} radius={[0, 4, 4, 0]}>
+                                                    <LabelList dataKey="count" position="right" offset={8} className="fill-foreground text-xs" />
+                                                </Bar>
+                                            </BarChart>
                                         </ResponsiveContainer>
                                         </div>
                                     ) : <NoDataState message="Brak danych" className="h-32"/>}
@@ -306,16 +310,16 @@ const MobileAddressCard = ({ address, onOccupantClick }: { address: HousingData;
                                 <div>
                                     <h4 className="text-sm font-semibold mb-2">Wg płci</h4>
                                     {statsData.genders.length > 0 ? (
-                                         <div className="h-32">
+                                         <div style={{ height: `${statsData.genders.length * 30 + 20}px` }}>
                                         <ResponsiveContainer width="100%" height="100%">
-                                             <PieChart>
-                                                <Pie data={statsData.genders} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={40} label={(props) => `${props.name}: ${props.value}`}>
-                                                    {statsData.genders.map((_entry, index) => (
-                                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                    ))}
-                                                </Pie>
-                                                <RechartsTooltip content={<ChartTooltipContent />} />
-                                            </PieChart>
+                                             <BarChart data={statsData.genders} layout="vertical" margin={{ left: 10, right: 30 }}>
+                                                <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
+                                                <XAxis type="number" hide />
+                                                <RechartsTooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
+                                                <Bar dataKey="count" fill={chartConfig.genders.color} radius={[0, 4, 4, 0]}>
+                                                    <LabelList dataKey="count" position="right" offset={8} className="fill-foreground text-xs" />
+                                                </Bar>
+                                            </BarChart>
                                         </ResponsiveContainer>
                                         </div>
                                     ) : <NoDataState message="Brak danych" className="h-32"/>}
