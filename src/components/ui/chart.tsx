@@ -2,36 +2,14 @@
 "use client"
 
 import * as React from "react"
+import * as Recharts from "recharts"
 import {
   Label,
   Pie,
   PieChart as RechartsPieChart,
   Sector,
-  Tooltip as RechartsTooltip,
 } from "recharts"
-import {
-  Cell,
-  Legend,
-  PolarAngleAxis,
-  PolarGrid,
-  PolarRadiusAxis,
-  Radar,
-  RadarChart as RechartsRadarChart,
-  RadialBar,
-  RadialBarChart as RechartsRadialBarChart,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-} from "recharts"
-import {
-  Bar,
-  CartesianGrid,
-  Line,
-  Area,
-  BarChart as RechartsBarChart,
-  LineChart as RechartsLineChart,
-  AreaChart as RechartsAreaChart,
-} from "recharts"
+
 import { cn } from "@/lib/utils"
 import {
   Card
@@ -65,7 +43,7 @@ const ChartContainer = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & {
     config: ChartConfig
-    children: React.ComponentProps<typeof ResponsiveContainer>["children"]
+    children: React.ComponentProps<typeof Recharts.ResponsiveContainer>["children"]
   }
 >(({ config, children, className, ...props }, ref) => {
   const chartConfig = React.useMemo(
@@ -103,7 +81,7 @@ const ChartContainer = React.forwardRef<
         }
         {...props}
       >
-        <ResponsiveContainer>{children}</ResponsiveContainer>
+        <Recharts.ResponsiveContainer>{children}</Recharts.ResponsiveContainer>
       </div>
     </ChartContext.Provider>
   )
@@ -331,19 +309,19 @@ ChartTooltipContent.displayName = "ChartTooltipContent"
 // #endregion
 
 // #region Bar Chart
-const BarChart = RechartsBarChart
+const BarChart = Recharts.BarChart
 // #endregion
 
 // #region Line Chart
-const LineChart = RechartsLineChart
+const LineChart = Recharts.LineChart
 // #endregion
 
 // #region Area Chart
-const AreaChart = RechartsAreaChart
+const AreaChart = Recharts.AreaChart
 // #endregion
 
 // #region Pie Chart
-const PieChart = RechartsPieChart
+const PieChart = Recharts.PieChart
 
 const ChartPie = (
   props: React.ComponentProps<typeof Pie> & {
@@ -385,7 +363,7 @@ const ChartPie = (
       {...rest}
     >
       {props.data?.map((_, index) => (
-        <Cell
+        <Recharts.Cell
           key={`cell-${index}`}
           fill={chartConfig[index % chartConfig.length]?.color}
           style={
@@ -417,18 +395,33 @@ const PieLabel = (
 // #endregion
 
 // #region Radar Chart
-const RadarChart = RechartsRadarChart
+const RadarChart = Recharts.RadarChart
 
-const ChartRadar = Radar
+const ChartRadar = Recharts.Radar
 // #endregion
 
 // #region Radial Chart
-const RadialChart = RechartsRadialBarChart
+const RadialChart = Recharts.RadialBarChart
 
-const ChartRadial = RadialBar
+const ChartRadial = Recharts.RadialBar
 // #endregion
 
 // #region Exports
+const {
+    ResponsiveContainer,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    PolarGrid,
+    PolarAngleAxis,
+    PolarRadiusAxis,
+    Bar,
+    Line,
+    Area,
+    Cell,
+    Legend,
+} = Recharts;
+
 export {
   // Chart
   ChartContainer,
