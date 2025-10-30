@@ -3,39 +3,14 @@
 
 import * as React from "react"
 import * as Recharts from "recharts";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Legend,
-  Line,
-  LineChart,
-  Pie,
-  PieChart,
-  PolarAngleAxis,
-  PolarGrid,
-  PolarRadiusAxis,
-  Radar,
-  RadarChart,
-  RadialBar,
-  RadialBarChart,
-  ResponsiveContainer,
-  Sector,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Label,
-  LabelList
-} from "recharts"
-import { LegendProps } from "recharts";
 
 
 import { cn } from "@/lib/utils"
 import {
   Card
 } from "@/components/ui/card"
+import { BarChart, LineChart, AreaChart, PieChart, RadarChart, RadialBarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Bar, Line, Area, Cell, Legend, Sector, Label, LabelList, Pie, Radar, RadialBar } from "recharts";
+import { Tooltip as RechartsTooltip } from "recharts";
 
 // #region Chart
 
@@ -118,7 +93,7 @@ ChartContainer.displayName = "Chart"
 // #endregion
 
 // #region Legend
-const ChartLegend = (props: LegendProps) => <Legend {...props} />;
+const ChartLegend = Recharts.Legend
 
 
 const ChartLegendContent = React.forwardRef<
@@ -419,8 +394,4 @@ export {
   PieLabel,
 }
 
-export { Tooltip as RechartsTooltip } from "recharts";
-
 export type { ChartConfig }
-
-    
