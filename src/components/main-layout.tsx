@@ -16,7 +16,7 @@ import {
 import Header from './header';
 import { MobileNav } from './mobile-nav';
 import type { View, Notification, Employee, Settings, NonEmployee, Inspection, EquipmentItem, SessionData, Address } from '@/types';
-import { ClipboardList, Home, Settings as SettingsIcon, Users, Archive } from 'lucide-react';
+import { ClipboardList, Home, Settings as SettingsIcon, Users, Archive, Building } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     clearAllNotifications,
@@ -129,6 +129,7 @@ export default function MainLayout({
     const navItems = useMemo(() => [
         { view: 'dashboard', icon: Home, label: 'Pulpit' },
         { view: 'employees', icon: Users, label: 'Pracownicy' },
+        { view: 'housing', icon: Building, label: 'Zakwaterowanie' },
         { view: 'inspections', icon: ClipboardList, label: 'Inspekcje' },
         { view: 'equipment', icon: Archive, label: 'Wyposażenie' },
         { view: 'settings', icon: SettingsIcon, label: 'Ustawienia' },

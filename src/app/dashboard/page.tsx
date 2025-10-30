@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { SessionData, View } from '@/types';
 import { useSearchParams } from 'next/navigation';
 import EntityView from '@/components/entity-view';
+import HousingView from '@/components/housing-view';
 
 
 function CurrentView({ activeView, currentUser }: { activeView: View; currentUser: SessionData }) {
@@ -19,6 +20,8 @@ function CurrentView({ activeView, currentUser }: { activeView: View; currentUse
       return <DashboardView currentUser={currentUser} />;
     case 'employees':
       return <EntityView currentUser={currentUser} />;
+    case 'housing':
+      return <HousingView currentUser={currentUser} />;
     case 'inspections':
         return <InspectionsView currentUser={currentUser} />;
     case 'settings':

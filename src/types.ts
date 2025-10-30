@@ -1,7 +1,7 @@
 
 // This file contains all the TypeScript type definitions for the application's data structures.
 
-export type View = 'dashboard' | 'employees' | 'inspections' | 'settings' | 'equipment';
+export type View = 'dashboard' | 'employees' | 'inspections' | 'settings' | 'equipment' | 'housing';
 
 export type Address = {
     id: string;
