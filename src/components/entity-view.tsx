@@ -446,6 +446,7 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
         allEmployees,
         allNonEmployees,
         settings,
+        selectedCoordinatorId,
         handleDismissEmployee,
         handleRestoreEmployee,
         handleDeleteEmployee,
@@ -538,8 +539,22 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
     }, [currentData, page]);
 
     const isFilterActive = Object.values(filters).some(v => v !== 'all') || search !== '';
+    
+    const filterDialogSettings = useMemo(() => {
+        if (!settings) return null;
+        
+        let availableAddresses = settings.addresses;
+        if (selectedCoordinatorId !== 'all') {
+            availableAddresses = settings.addresses.filter(addr => addr.coordinatorIds.includes(selectedCoordinatorId));
+        }
 
-    if (!settings || !allEmployees || !allNonEmployees) {
+        return {
+            ...settings,
+            addresses: availableAddresses,
+        };
+    }, [settings, selectedCoordinatorId]);
+
+    if (!settings || !allEmployees || !allNonEmployees || !filterDialogSettings) {
         return (
             <Card>
                 <CardHeader>
@@ -665,7 +680,7 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
             <FilterDialog
                 isOpen={isFilterOpen}
                 onOpenChange={setIsFilterOpen}
-                settings={settings}
+                settings={filterDialogSettings}
                 initialFilters={filters}
                 onApply={(f) => updateSearchParams({ ...f, page: 1 })}
             />
@@ -675,5 +690,3 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
         </Card>
     )
 }
-
-    
