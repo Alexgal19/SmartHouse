@@ -16,6 +16,7 @@ import { ScrollArea } from './ui/scroll-area';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 type Occupant = Employee | NonEmployee;
@@ -105,10 +106,15 @@ const useHousingData = () => {
 
 
 export default function HousingView({ currentUser }: { currentUser: SessionData }) {
-    const { handleEditEmployeeClick, handleEditNonEmployeeClick } = useMainLayout();
+    const { settings, handleEditEmployeeClick, handleEditNonEmployeeClick } = useMainLayout();
     const [expandedAddresses, setExpandedAddresses] = useState<Set<string>>(new Set());
     const [sortConfig, setSortConfig] = useState<{ key: keyof HousingData | null; direction: 'ascending' | 'descending' }>({ key: 'name', direction: 'ascending' });
-    const [filters, setFilters] = useState({ name: '', showOnlyAvailable: false });
+    const [filters, setFilters] = useState({
+        name: '',
+        showOnlyAvailable: false,
+        nationality: 'all',
+        gender: 'all',
+    });
 
     const rawHousingData = useHousingData();
 
@@ -139,6 +145,10 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
         }
         setSortConfig({ key, direction });
     };
+    
+    const handleFilterChange = (key: string, value: string | boolean) => {
+        setFilters(prev => ({...prev, [key]: value}));
+    }
 
     const sortedAndFilteredData = useMemo(() => {
         let sortableItems = [...rawHousingData];
@@ -149,6 +159,16 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
         }
         if (filters.showOnlyAvailable) {
             sortableItems = sortableItems.filter(item => item.available > 0);
+        }
+        if (filters.nationality !== 'all') {
+            sortableItems = sortableItems.filter(item => 
+                item.occupants.some(occ => isEmployee(occ) && occ.nationality === filters.nationality)
+            );
+        }
+        if (filters.gender !== 'all') {
+            sortableItems = sortableItems.filter(item => 
+                item.occupants.some(occ => isEmployee(occ) && occ.gender === filters.gender)
+            );
         }
 
         // Sorting
@@ -166,13 +186,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
         return sortableItems;
     }, [rawHousingData, sortConfig, filters]);
     
-    const getSortIndicator = (key: keyof HousingData) => {
-        if (sortConfig.key !== key) return null;
-        return sortConfig.direction === 'ascending' ? ' ▲' : ' ▼';
-    };
-
-
-    if (!rawHousingData) {
+    if (!rawHousingData || !settings) {
         return <Card><CardHeader><Skeleton className="h-8 w-1/3" /></CardHeader><CardContent><Skeleton className="h-64 w-full" /></CardContent></Card>;
     }
 
@@ -193,28 +207,49 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                 <CardDescription>
                     Szczegółowy widok obłożenia adresów i pokoi z podziałem na narodowość i płeć.
                 </CardDescription>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pt-4">
-                    <div className="grid w-full max-w-sm items-center gap-1.5">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pt-4 flex-wrap">
+                    <div className="grid w-full sm:w-auto items-center gap-1.5">
                         <Label htmlFor="search-address">Szukaj adresu</Label>
                         <Input 
                             id="search-address"
                             placeholder="Wpisz nazwę adresu..."
                             value={filters.name}
-                            onChange={e => setFilters(prev => ({ ...prev, name: e.target.value }))}
+                            onChange={e => handleFilterChange('name', e.target.value)}
+                            className="w-full sm:w-48"
                         />
                     </div>
-                    <div className="flex items-center space-x-2 pt-4 sm:pt-0">
+                    <div className="grid w-full sm:w-auto items-center gap-1.5">
+                        <Label>Narodowość</Label>
+                         <Select value={filters.nationality} onValueChange={(v) => handleFilterChange('nationality', v)}>
+                            <SelectTrigger className="w-full sm:w-48"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Wszystkie</SelectItem>
+                                {settings.nationalities.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                     <div className="grid w-full sm:w-auto items-center gap-1.5">
+                        <Label>Płeć</Label>
+                        <Select value={filters.gender} onValueChange={(v) => handleFilterChange('gender', v)}>
+                            <SelectTrigger className="w-full sm:w-48"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Wszystkie</SelectItem>
+                                {settings.genders.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="flex items-center space-x-2 pt-4 sm:pt-6">
                         <Switch 
                             id="show-available" 
                             checked={filters.showOnlyAvailable}
-                            onCheckedChange={checked => setFilters(prev => ({...prev, showOnlyAvailable: checked}))}
+                            onCheckedChange={checked => handleFilterChange('showOnlyAvailable', checked)}
                         />
                         <Label htmlFor="show-available">Tylko z wolnymi miejscami</Label>
                     </div>
                 </div>
             </CardHeader>
             <CardContent>
-                <ScrollArea className="h-[calc(100vh-22rem)]">
+                <ScrollArea className="h-[calc(100vh-25rem)]">
                     <Table className="whitespace-nowrap">
                         <TableHeader>
                             <TableRow>
@@ -290,3 +325,5 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
         </Card>
     );
 }
+
+    
