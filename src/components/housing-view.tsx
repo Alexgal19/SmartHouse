@@ -5,7 +5,7 @@ import React, { useState, useMemo } from 'react';
 import type { Employee, NonEmployee, SessionData, Address, Room } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, Bed, Building, User, BarChart2 } from "lucide-react";
+import { Users, Bed, Building, User, BarChart2, SlidersHorizontal } from "lucide-react";
 import { useMainLayout } from '@/components/main-layout';
 import { cn } from '@/lib/utils';
 import { Skeleton } from './ui/skeleton';
@@ -14,8 +14,11 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, LabelList, Tooltip as RechartsTooltip } from "recharts";
-import { ChartConfig, ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, LabelList, Tooltip as RechartsTooltip, Pie, PieChart, Cell } from "recharts";
+import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from '@/components/ui/dialog';
 
 type Occupant = Employee | NonEmployee;
 type RoomWithOccupants = Room & { occupants: Occupant[]; occupantCount: number; available: number; };
@@ -30,8 +33,8 @@ const calculateStats = (occupants: Occupant[]) => {
     };
     occupants.forEach(occ => {
         if (isEmployee(occ)) {
-            stats.nationalities.set(occ.nationality, (stats.nationalities.get(occ.nationality) || 0) + 1);
-            stats.genders.set(occ.gender, (stats.genders.get(occ.gender) || 0) + 1);
+            stats.nationalities.set(occ.nationality || 'Brak', (stats.nationalities.get(occ.nationality || 'Brak') || 0) + 1);
+            stats.genders.set(occ.gender || 'Brak', (stats.genders.get(occ.gender || 'Brak') || 0) + 1);
         }
     });
     return {
@@ -69,8 +72,8 @@ const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData 
 
     const chartConfig: ChartConfig = {
         count: { label: "Ilość" },
-        nationalities: { color: "hsl(var(--chart-2))" },
-        genders: { color: "hsl(var(--chart-1))" },
+        nationalities: { label: "Nationalities", color: "hsl(var(--chart-2))" },
+        genders: { label: "Genders", color: "hsl(var(--chart-1))" },
     };
     
 
@@ -100,7 +103,7 @@ const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData 
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <ScrollArea className="h-[calc(100vh - 12rem)]">
+                <ScrollArea className="h-[calc(100vh - 16rem)]">
                   <ChartContainer config={chartConfig} className="w-full h-full p-0 border-0 shadow-none">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-4">
@@ -233,16 +236,155 @@ const useHousingData = () => {
 }
 
 
+const MobileAddressCard = ({ address, onOccupantClick }: { address: HousingData; onOccupantClick: (occupant: Occupant) => void }) => {
+    const statsData = useMemo(() => calculateStats(address.occupants), [address.occupants]);
+    const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
+
+    return (
+        <Card className="overflow-hidden">
+            <Accordion type="single" collapsible>
+                <AccordionItem value={address.id} className="border-b-0">
+                    <AccordionTrigger className="p-4 hover:no-underline">
+                        <div className="w-full">
+                            <div className="flex justify-between items-start">
+                                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                                    <Building className="h-5 w-5 text-primary" />
+                                    {address.name}
+                                </CardTitle>
+                                <span className="text-base font-bold">{address.occupantCount}/{address.capacity}</span>
+                            </div>
+                            <CardDescription className="text-xs pt-1 text-left">
+                                Wolne miejsca: <span className={cn("font-bold", address.available > 0 ? "text-green-600" : "text-red-600")}>{address.available}</span>
+                            </CardDescription>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="p-4 pt-0">
+                        <div className="space-y-4">
+                            <div>
+                                <h4 className="text-sm font-semibold mb-2">Pokoje</h4>
+                                <div className="space-y-2">
+                                    {address.rooms.sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(room => (
+                                        <div key={room.id} className="rounded-md border p-3">
+                                            <div className="flex justify-between items-center font-medium text-sm">
+                                                <div className="flex items-center gap-2">
+                                                    <Bed className="h-4 w-4 text-muted-foreground" />
+                                                    Pokój {room.name}
+                                                </div>
+                                                <span className="text-sm">{room.occupantCount}/{room.capacity}</span>
+                                            </div>
+                                             <div className="pl-4 mt-2 space-y-1">
+                                                {room.occupants.map(o => (
+                                                    <div key={o.id} onClick={() => onOccupantClick(o)} className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-primary">
+                                                        <User className="h-3 w-3" />
+                                                        {o.fullName}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <h4 className="text-sm font-semibold mb-2">Wg narodowości</h4>
+                                    {statsData.nationalities.length > 0 ? (
+                                        <div className="h-32">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie data={statsData.nationalities} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={40} label={(props) => `${props.name}: ${props.value}`}>
+                                                    {statsData.nationalities.map((_entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                    ))}
+                                                </Pie>
+                                                <RechartsTooltip content={<ChartTooltipContent />} />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                        </div>
+                                    ) : <NoDataState message="Brak danych" className="h-32"/>}
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-semibold mb-2">Wg płci</h4>
+                                    {statsData.genders.length > 0 ? (
+                                         <div className="h-32">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                             <PieChart>
+                                                <Pie data={statsData.genders} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={40} label={(props) => `${props.name}: ${props.value}`}>
+                                                    {statsData.genders.map((_entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                    ))}
+                                                </Pie>
+                                                <RechartsTooltip content={<ChartTooltipContent />} />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                        </div>
+                                    ) : <NoDataState message="Brak danych" className="h-32"/>}
+                                </div>
+                            </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        </Card>
+    )
+}
+
+const FilterDialog = ({ isOpen, onOpenChange, onApply, initialFilters, settings }: { isOpen: boolean, onOpenChange: (open: boolean) => void; onApply: (filters: Record<string, string | boolean>) => void; initialFilters: Record<string, string | boolean>, settings: Settings | null }) => {
+    const [filters, setFilters] = useState(initialFilters);
+
+    const handleFilterChange = (key: string, value: string | boolean) => {
+        setFilters(prev => ({...prev, [key]: value}));
+    }
+    
+    const handleApply = () => {
+        onApply(filters);
+        onOpenChange(false);
+    }
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Filtruj adresy</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="grid w-full items-center gap-1.5">
+                        <Label htmlFor="search-address">Szukaj adresu</Label>
+                        <Input 
+                            id="search-address"
+                            placeholder="Wpisz nazwę adresu..."
+                            value={filters.name as string}
+                            onChange={e => handleFilterChange('name', e.target.value)}
+                        />
+                    </div>
+                     <div className="flex items-center space-x-2 pt-2">
+                        <Switch 
+                            id="show-available" 
+                            checked={filters.showOnlyAvailable as boolean}
+                            onCheckedChange={checked => handleFilterChange('showOnlyAvailable', checked)}
+                        />
+                        <Label htmlFor="show-available">Tylko z wolnymi miejscami</Label>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Anuluj</Button>
+                    <Button onClick={handleApply}>Zastosuj</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
+
 export default function HousingView({ }: { currentUser: SessionData }) {
     const { settings, handleEditEmployeeClick, handleEditNonEmployeeClick } = useMainLayout();
+    const { isMobile } = useIsMobile();
     const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
 
     const [filters, setFilters] = useState({
         name: '',
         showOnlyAvailable: false,
-        nationality: 'all',
-        gender: 'all',
     });
+     const [isFilterOpen, setIsFilterOpen] = useState(false);
 
     const rawHousingData = useHousingData();
     
@@ -254,8 +396,8 @@ export default function HousingView({ }: { currentUser: SessionData }) {
         }
     };
     
-    const handleFilterChange = (key: string, value: string | boolean) => {
-        setFilters(prev => ({...prev, [key]: value}));
+    const handleFilterChange = (newFilters: Record<string, string | boolean>) => {
+        setFilters(prev => ({...prev, ...newFilters}));
     }
 
     const filteredData = useMemo(() => {
@@ -266,16 +408,6 @@ export default function HousingView({ }: { currentUser: SessionData }) {
         }
         if (filters.showOnlyAvailable) {
             items = items.filter(item => item.available > 0);
-        }
-        if (filters.nationality !== 'all') {
-            items = items.filter(item => 
-                item.occupants.some(occ => isEmployee(occ) && occ.nationality === filters.nationality)
-            );
-        }
-        if (filters.gender !== 'all') {
-            items = items.filter(item => 
-                item.occupants.some(occ => isEmployee(occ) && occ.gender === filters.gender)
-            );
         }
         
         items.sort((a,b) => a.name.localeCompare(b.name));
@@ -292,6 +424,48 @@ export default function HousingView({ }: { currentUser: SessionData }) {
         return <Card><CardHeader><Skeleton className="h-8 w-1/3" /></CardHeader><CardContent><Skeleton className="h-64 w-full" /></CardContent></Card>;
     }
     
+    // Mobile View
+    if (isMobile) {
+        return (
+            <>
+            <Card>
+                <CardHeader>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <CardTitle>Adresy</CardTitle>
+                            <CardDescription>Przegląd zakwaterowania</CardDescription>
+                        </div>
+                        <Button variant="outline" size="icon" onClick={() => setIsFilterOpen(true)}>
+                            <SlidersHorizontal className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <ScrollArea className="h-[calc(100vh-14rem)] -mx-4 px-4">
+                        <div className="space-y-3">
+                        {filteredData.map(address => (
+                            <MobileAddressCard 
+                                key={address.id}
+                                address={address}
+                                onOccupantClick={handleOccupantClick}
+                            />
+                        ))}
+                        </div>
+                    </ScrollArea>
+                </CardContent>
+            </Card>
+            <FilterDialog
+                isOpen={isFilterOpen}
+                onOpenChange={setIsFilterOpen}
+                initialFilters={filters}
+                onApply={handleFilterChange}
+                settings={settings}
+            />
+            </>
+        )
+    }
+
+    // Desktop View
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start h-full">
             <Card className="h-full">
@@ -307,14 +481,14 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                                 id="search-address"
                                 placeholder="Wpisz nazwę adresu..."
                                 value={filters.name}
-                                onChange={e => handleFilterChange('name', e.target.value)}
+                                onChange={e => handleFilterChange({ name: e.target.value })}
                             />
                         </div>
                         <div className="flex items-center space-x-2 pt-2">
                             <Switch 
                                 id="show-available" 
                                 checked={filters.showOnlyAvailable}
-                                onCheckedChange={checked => handleFilterChange('showOnlyAvailable', checked)}
+                                onCheckedChange={checked => handleFilterChange({ showOnlyAvailable: checked })}
                             />
                             <Label htmlFor="show-available">Tylko z wolnymi miejscami</Label>
                         </div>
@@ -352,9 +526,3 @@ export default function HousingView({ }: { currentUser: SessionData }) {
         </div>
     );
 }
-
-    
-
-    
-
-    
