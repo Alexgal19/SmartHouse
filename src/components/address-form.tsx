@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { Address, Coordinator } from '@/types';
+import type { Address, Coordinator, Settings } from '@/types';
 import { PlusCircle, Trash2 } from 'lucide-react';
 
 
@@ -54,13 +54,13 @@ export function AddressForm({
   isOpen,
   onOpenChange,
   onSave,
-  coordinators,
+  settings,
   address,
 }: {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onSave: (data: Address) => void;
-  coordinators: Coordinator[];
+  settings: Settings,
   address: Address | null;
 }) {
   const form = useForm<z.infer<typeof addressSchema>>({
@@ -103,7 +103,7 @@ export function AddressForm({
     onOpenChange(false);
   };
   
-  const availableCoordinators = coordinators.filter(
+  const availableCoordinators = settings.coordinators.filter(
       c => !(form.watch('coordinatorIds') || []).some((assigned: any) => (assigned.id || assigned) === c.uid)
   );
 
@@ -126,7 +126,14 @@ export function AddressForm({
                         render={({ field }) => (
                         <FormItem>
                             <FormLabel>Miejscowość</FormLabel>
-                            <FormControl><Input placeholder="np. Warszawa" {...field} /></FormControl>
+                             <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                    <SelectTrigger><SelectValue placeholder="Wybierz miejscowość" /></SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {settings.localities.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
                             <FormMessage />
                         </FormItem>
                         )}
@@ -158,7 +165,7 @@ export function AddressForm({
                                                     <SelectTrigger><SelectValue placeholder="Wybierz koordynatora"/></SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent>
-                                                    {coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                                                    {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                                                 </SelectContent>
                                             </Select>
                                         </FormItem>
@@ -237,3 +244,5 @@ export function AddressForm({
     </Dialog>
   );
 }
+
+    

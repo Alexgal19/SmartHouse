@@ -46,6 +46,7 @@ export type Settings = {
     departments: string[];
     coordinators: Coordinator[];
     genders: string[];
+    localities: string[];
     temporaryAccess: TemporaryAccess[];
     inspectionTemplate: InspectionTemplateCategory[];
 }
@@ -152,3 +153,5 @@ export type Inspection = {
     standard: 'Wysoki' | 'Normalny' | 'Niski' | null;
     categories: InspectionCategory[];
 };
+
+    

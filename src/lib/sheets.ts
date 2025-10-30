@@ -16,6 +16,7 @@ const SHEET_NAME_NATIONALITIES = 'Nationalities';
 const SHEET_NAME_DEPARTMENTS = 'Departments';
 const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_GENDERS = 'Genders';
+const SHEET_NAME_LOCALITIES = 'Localities';
 const SHEET_NAME_EQUIPMENT = 'Equipment';
 const SHEET_NAME_INSPECTIONS = 'Inspections';
 const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
@@ -270,16 +271,17 @@ export const getAllSheetsData = async () => {
         ] = await Promise.all([
             getSheetData(doc, SHEET_NAME_EMPLOYEES, 3000),
             (async () => {
-                const [addressRows, roomRows, nationalityRows, departmentRows, coordinatorRows, genderRows, inspectionTemplateRows] = await Promise.all([
+                const [addressRows, roomRows, nationalityRows, departmentRows, coordinatorRows, genderRows, localityRows, inspectionTemplateRows] = await Promise.all([
                     getSheetData(doc, SHEET_NAME_ADDRESSES),
                     getSheetData(doc, SHEET_NAME_ROOMS),
                     getSheetData(doc, SHEET_NAME_NATIONALITIES),
                     getSheetData(doc, SHEET_NAME_DEPARTMENTS),
                     getSheetData(doc, SHEET_NAME_COORDINATORS),
                     getSheetData(doc, SHEET_NAME_GENDERS),
+                    getSheetData(doc, SHEET_NAME_LOCALITIES),
                     getSheetData(doc, SHEET_NAME_INSPECTION_TEMPLATE),
                 ]);
-                return { addressRows, roomRows, nationalityRows, departmentRows, coordinatorRows, genderRows, inspectionTemplateRows };
+                return { addressRows, roomRows, nationalityRows, departmentRows, coordinatorRows, genderRows, localityRows, inspectionTemplateRows };
             })(),
             getSheetData(doc, SHEET_NAME_NON_EMPLOYEES),
             getSheetData(doc, SHEET_NAME_EQUIPMENT, 2000),
@@ -333,6 +335,7 @@ export const getAllSheetsData = async () => {
             departments: settingsSheets.departmentRows.map(row => row.name).filter(Boolean),
             coordinators,
             genders: settingsSheets.genderRows.map(row => row.name).filter(Boolean),
+            localities: settingsSheets.localityRows.map(row => row.name).filter(Boolean),
             temporaryAccess: [],
             inspectionTemplate,
         };
@@ -431,3 +434,5 @@ export const getAllSheetsData = async () => {
         throw new Error(`Could not fetch all data from sheets. Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
 }
+
+    

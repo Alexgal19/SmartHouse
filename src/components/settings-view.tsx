@@ -32,6 +32,7 @@ const formSchema = z.object({
   nationalities: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
   departments: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
   genders: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
+  localities: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
   addresses: z.array(z.any()), // Simplified for top-level form, validation will be in the dialog
   coordinators: z.array(coordinatorSchema),
 });
@@ -464,6 +465,7 @@ function SettingsManager({ form, handleUpdateSettings, handleAddressFormOpen }: 
     const { fields: natFields, append: appendNat, remove: removeNat } = useFieldArray({ control: form.control, name: 'nationalities' });
     const { fields: depFields, append: appendDep, remove: removeDep } = useFieldArray({ control: form.control, name: 'departments' });
     const { fields: genFields, append: appendGen, remove: removeGen } = useFieldArray({ control: form.control, name: 'genders' });
+    const { fields: locFields, append: appendLoc, remove: removeLoc } = useFieldArray({ control: form.control, name: 'localities' });
     const { fields: coordFields, append: appendCoord, remove: removeCoord } = useFieldArray({ control: form.control, name: 'coordinators' });
     const { remove: removeAddr } = useFieldArray({ control: form.control, name: 'addresses' });
 
@@ -475,6 +477,7 @@ function SettingsManager({ form, handleUpdateSettings, handleAddressFormOpen }: 
             nationalities: values.nationalities.map((n) => n.value),
             departments: values.departments.map((d) => d.value),
             genders: values.genders.map((d) => d.value),
+            localities: values.localities.map((l) => l.value),
             addresses: values.addresses,
             coordinators: values.coordinators,
         };
@@ -494,6 +497,7 @@ function SettingsManager({ form, handleUpdateSettings, handleAddressFormOpen }: 
         const newAddress: Address = {
             id: `addr-${Date.now()}`,
             name: '',
+            locality: '',
             coordinatorIds: coordinatorId === 'all' ? [] : [coordinatorId],
             rooms: [],
         };
@@ -512,10 +516,11 @@ function SettingsManager({ form, handleUpdateSettings, handleAddressFormOpen }: 
                         <Accordion type="single" collapsible className="w-full">
                             <AccordionItem value="lists">
                                 <AccordionTrigger>Zarządzanie listami</AccordionTrigger>
-                                <AccordionContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-2">
+                                <AccordionContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-2">
                                     <ListManager name="nationalities" title="Narodowości" fields={natFields} append={appendNat} remove={removeNat} control={form.control} />
                                     <ListManager name="departments" title="Zakłady" fields={depFields} append={appendDep} remove={removeDep} control={form.control} />
                                     <ListManager name="genders" title="Płcie" fields={genFields} append={appendGen} remove={removeGen} control={form.control} />
+                                    <ListManager name="localities" title="Miejscowości" fields={locFields} append={appendLoc} remove={removeLoc} control={form.control} />
                                 </AccordionContent>
                             </AccordionItem>
                             <AccordionItem value="coordinators">
@@ -561,10 +566,12 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
 
   React.useEffect(() => {
     if (settings) {
+      const uniqueLocalities = Array.from(new Set(settings.addresses.map(a => a.locality).filter(Boolean)));
       form.reset({
         nationalities: settings.nationalities.map(n => ({ value: n })),
         departments: settings.departments.map(d => ({ value: d })),
         genders: settings.genders.map(g => ({ value: g })),
+        localities: uniqueLocalities.map(l => ({ value: l })),
         addresses: settings.addresses,
         coordinators: settings.coordinators.map(c => ({...c, password: ''})), // Clear password on load
       });
@@ -619,3 +626,5 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     </div>
   );
 }
+
+    

@@ -17,6 +17,7 @@ const SHEET_NAME_NATIONALITIES = 'Nationalities';
 const SHEET_NAME_DEPARTMENTS = 'Departments';
 const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_GENDERS = 'Genders';
+const SHEET_NAME_LOCALITIES = 'Localities';
 const SHEET_NAME_EQUIPMENT = 'Equipment';
 const SHEET_NAME_INSPECTIONS = 'Inspections';
 const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
@@ -606,6 +607,9 @@ export async function updateSettings(newSettings: Partial<Omit<Settings, 'tempor
         }
         if (newSettings.genders) {
             await updateSimpleList(SHEET_NAME_GENDERS, newSettings.genders);
+        }
+        if (newSettings.localities) {
+            await updateSimpleList(SHEET_NAME_LOCALITIES, newSettings.localities);
         }
         if (newSettings.addresses) {
             const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ADDRESS_HEADERS);
