@@ -300,6 +300,7 @@ export const getAllSheetsData = async () => {
         });
         const addresses: Address[] = settingsSheets.addressRows.map(rowObj => ({
             id: rowObj.id,
+            locality: rowObj.locality,
             name: rowObj.name,
             coordinatorIds: (rowObj.coordinatorIds || rowObj.coordinatorId || '').split(',').filter(Boolean),
             rooms: roomsByAddressId.get(rowObj.id) || []

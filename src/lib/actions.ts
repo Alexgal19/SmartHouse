@@ -116,7 +116,7 @@ const EQUIPMENT_HEADERS = [
 ];
 
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
-const ADDRESS_HEADERS = ['id', 'name', 'coordinatorIds'];
+const ADDRESS_HEADERS = ['id', 'name', 'locality', 'coordinatorIds'];
 const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targetType', 'targetId', 'details'];
 
 const safeFormat = (dateStr: unknown): string | null => {
@@ -621,7 +621,8 @@ export async function updateSettings(newSettings: Partial<Omit<Settings, 'tempor
                 });
                 return { 
                     id: addr.id, 
-                    name: addr.name, 
+                    name: addr.name,
+                    locality: addr.locality,
                     coordinatorIds: addr.coordinatorIds.join(',') 
                 };
             });

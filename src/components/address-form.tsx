@@ -43,6 +43,7 @@ const roomSchema = z.object({
 
 const addressSchema = z.object({
   id: z.string(),
+  locality: z.string().min(1, "Miejscowość jest wymagana."),
   name: z.string().min(1, 'Nazwa adresu jest wymagana.'),
   coordinatorIds: z.array(z.string()).min(1, 'Przypisz co najmniej jednego koordynatora.'),
   rooms: z.array(roomSchema),
@@ -85,6 +86,7 @@ export function AddressForm({
     } else {
         form.reset({
             id: `addr-${Date.now()}`,
+            locality: '',
             name: '',
             coordinatorIds: [],
             rooms: [],
@@ -120,11 +122,22 @@ export function AddressForm({
                 <div className="space-y-4 p-1">
                     <FormField
                         control={form.control}
+                        name="locality"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Miejscowość</FormLabel>
+                            <FormControl><Input placeholder="np. Warszawa" {...field} /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
                         name="name"
                         render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Nazwa adresu</FormLabel>
-                            <FormControl><Input placeholder="np. ul. Słoneczna 5, 00-123 Warszawa" {...field} /></FormControl>
+                            <FormLabel>Adres (ulica i numer)</FormLabel>
+                            <FormControl><Input placeholder="np. ul. Słoneczna 5" {...field} /></FormControl>
                             <FormMessage />
                         </FormItem>
                         )}

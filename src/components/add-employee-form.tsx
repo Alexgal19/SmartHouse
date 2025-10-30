@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -29,6 +29,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel,
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { Employee, Settings } from '@/types';
@@ -215,6 +217,14 @@ export function AddEmployeeForm({
   });
   
   const selectedAddress = form.watch('address');
+  
+  const addressesByLocality = useMemo(() => {
+    return settings.addresses.reduce((acc, address) => {
+        (acc[address.locality] = acc[address.locality] || []).push(address);
+        return acc;
+    }, {} as Record<string, typeof settings.addresses>);
+  }, [settings.addresses]);
+
   const availableRooms = settings.addresses.find(a => a.name === selectedAddress)?.rooms || [];
 
   useEffect(() => {
@@ -388,17 +398,22 @@ export function AddEmployeeForm({
                         </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <FormField
+                             <FormField
                                 control={form.control}
                                 name="address"
                                 render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Adres</FormLabel>
                                     <Select onValueChange={handleAddressChange} value={field.value}>
-                                    <FormControl><SelectTrigger><SelectValue placeholder="Wybierz adres" /></SelectTrigger></FormControl>
-                                    <SelectContent>
-                                        {settings.addresses.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
-                                    </SelectContent>
+                                        <FormControl><SelectTrigger><SelectValue placeholder="Wybierz adres" /></SelectTrigger></FormControl>
+                                        <SelectContent>
+                                            {Object.entries(addressesByLocality).map(([locality, addresses]) => (
+                                                <SelectGroup key={locality}>
+                                                    <SelectLabel>{locality}</SelectLabel>
+                                                    {addresses.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
+                                                </SelectGroup>
+                                            ))}
+                                        </SelectContent>
                                     </Select>
                                     <FormMessage />
                                 </FormItem>
