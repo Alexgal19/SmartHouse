@@ -229,7 +229,7 @@ const AddressDetailView = ({
                             </div>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+                       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
                             <div className="space-y-4">
                                 <h3 className="font-semibold">Pokoje</h3>
                                 {aggregatedData.rooms.length > 0 ? aggregatedData.rooms.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(room => (
@@ -337,7 +337,9 @@ const MobileAddressCard = ({ address, onOccupantClick }: { address: HousingData;
                                 {address.name}
                             </CardTitle>
                             <span className="text-base">
-                                <span>{address.occupantCount} / {address.capacity}</span>
+                                <span className="font-semibold text-red-500">{address.occupantCount}</span>
+                                <span className="text-muted-foreground"> / </span>
+                                <span className="font-semibold text-blue-500">{address.capacity}</span>
                             </span>
                         </div>
                         <CardDescription className="text-xs pt-1 text-left">
@@ -358,7 +360,9 @@ const MobileAddressCard = ({ address, onOccupantClick }: { address: HousingData;
                                                 Pokój {room.name}
                                             </div>
                                             <span className="text-sm">
-                                                <span>{room.occupantCount} / {room.capacity}</span>
+                                                <span className="font-semibold text-red-500">{room.occupantCount}</span>
+                                                <span className="text-muted-foreground"> / </span>
+                                                <span className="font-semibold text-blue-500">{room.capacity}</span>
                                             </span>
                                         </div>
                                          <div className="pl-4 mt-2 space-y-1">
@@ -584,7 +588,9 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                                             {address.name}
                                         </CardTitle>
                                         <span className="text-sm">
-                                            <span>{address.occupantCount} / {address.capacity}</span>
+                                            <span className="font-semibold text-red-500">{address.occupantCount}</span>
+                                            <span className="text-muted-foreground"> / </span>
+                                            <span className="font-semibold text-blue-500">{address.capacity}</span>
                                         </span>
                                     </div>
                                     <CardDescription className="text-xs pt-1">
@@ -607,3 +613,4 @@ export default function HousingView({ }: { currentUser: SessionData }) {
         </div>
     );
 }
+
