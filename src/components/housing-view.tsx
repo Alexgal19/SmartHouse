@@ -146,7 +146,7 @@ const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData 
                                                 <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
                                                 <XAxis type="number" hide />
                                                 <RechartsTooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
-                                                <Bar dataKey="count" fill="var(--color-nationalities)" radius={[0, 4, 4, 0]}>
+                                                <Bar dataKey="count" fill={chartConfig.nationalities.color} radius={[0, 4, 4, 0]}>
                                                     <LabelList dataKey="count" position="right" offset={8} className="fill-foreground text-xs" />
                                                 </Bar>
                                             </BarChart>
@@ -166,7 +166,7 @@ const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData 
                                                 <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
                                                 <XAxis type="number" hide />
                                                 <RechartsTooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
-                                                <Bar dataKey="count" fill="var(--color-genders)" radius={[0, 4, 4, 0]}>
+                                                <Bar dataKey="count" fill={chartConfig.genders.color} radius={[0, 4, 4, 0]}>
                                                     <LabelList dataKey="count" position="right" offset={8} className="fill-foreground text-xs" />
                                                 </Bar>
                                             </BarChart>
@@ -319,7 +319,7 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                             <Label htmlFor="show-available">Tylko z wolnymi miejscami</Label>
                         </div>
                     </div>
-                    <ScrollArea className="h-[calc(100vh-22rem)] lg:h-[calc(100vh - 20rem)]">
+                    <ScrollArea className="h-[calc(100vh-20rem)] lg:h-[calc(100vh - 20rem)]">
                         <div className="space-y-2">
                         {filteredData.map(address => (
                             <Card 
@@ -352,6 +352,8 @@ export default function HousingView({ }: { currentUser: SessionData }) {
         </div>
     );
 }
+
+    
 
     
 
