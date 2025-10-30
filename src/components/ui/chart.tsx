@@ -3,32 +3,33 @@
 
 import * as React from "react"
 import {
-  BarChart,
-  LineChart,
-  AreaChart,
-  PieChart,
-  RadarChart,
-  RadialBarChart,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as RechartsTooltip,
-  Legend,
   Bar,
-  Line,
-  Area,
-  Pie,
+  BarChart,
+  CartesianGrid,
   Cell,
-  Sector,
   Label,
   LabelList,
-  PolarGrid,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
   PolarAngleAxis,
+  PolarGrid,
   PolarRadiusAxis,
   Radar,
+  RadarChart,
   RadialBar,
+  RadialBarChart,
+  ResponsiveContainer,
+  Sector,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
 } from "recharts"
+import { LegendProps } from "recharts";
+
 
 import { cn } from "@/lib/utils"
 import {
@@ -46,7 +47,7 @@ interface ChartConfig {
 }
 
 const ChartContext = React.createContext<{
-  config: ChartConfig
+  config: ChartConfig;
 } | null>(null)
 
 function useChart() {
@@ -94,7 +95,9 @@ const ChartContainer = React.forwardRef<
           Object.entries(chartConfig).reduce(
             (prev, [key, value]) => ({
               ...prev,
-              [`--color-${key}`]: value.color,
+              ...(typeof value === 'object' && value !== null && 'color' in value && typeof value.color === 'string'
+                ? { [`--color-${key}`]: value.color }
+                : {}),
             }),
             {}
           ) as React.CSSProperties
@@ -111,7 +114,8 @@ ChartContainer.displayName = "Chart"
 // #endregion
 
 // #region Legend
-const ChartLegend = Legend
+const ChartLegend = (props: LegendProps) => <Legend {...props} />;
+
 
 const ChartLegendContent = React.forwardRef<
   HTMLDivElement,
@@ -166,7 +170,9 @@ ChartLegendContent.displayName = "ChartLegendContent"
 // #endregion
 
 // #region Tooltip
-const ChartTooltip = RechartsTooltip
+import { TooltipProps } from "recharts";
+const RechartsTooltip = (props: TooltipProps) => <Tooltip {...props} />;
+
 
 type TooltipContentProps = React.ComponentProps<typeof RechartsTooltip> &
   React.ComponentProps<"div"> & {
@@ -351,7 +357,7 @@ const ChartPie = (
     [config]
   )
 
-  const onPieEnter = React.useCallback(
+  const onPieEnter = React. useCallback(
     (_: unknown, index: number) => {
       setActiveIndex(index)
     },
@@ -405,38 +411,10 @@ export {
   ChartContainer,
   ChartLegend,
   ChartLegendContent,
-  ChartTooltip,
+  RechartsTooltip as ChartTooltip,
   ChartTooltipContent,
   ChartPie,
   PieLabel,
-  // recharts
-  BarChart,
-  LineChart,
-  AreaChart,
-  PieChart,
-  RadarChart,
-  RadialBarChart,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Bar,
-  Line,
-  Area,
-  Cell,
-  Legend,
-  Sector,
-  Label,
-  LabelList,
-  Pie,
-  Radar,
-  RadialBar,
 }
 
-
 export type { ChartConfig }
-
-    
