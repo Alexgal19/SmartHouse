@@ -14,8 +14,8 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, LabelList, Tooltip as RechartsTooltip, Pie, PieChart, Cell } from "recharts";
-import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, LabelList, Tooltip as RechartsTooltip } from "recharts";
+import { ChartConfig, ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from '@/components/ui/dialog';
@@ -96,7 +96,7 @@ const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData 
             <CardHeader>
                 <CardTitle>{address.name}</CardTitle>
                 <CardDescription>
-                    {address.occupantCount} / {address.capacity} mieszkańców
+                    <span className="font-bold text-red-500">{address.occupantCount}</span> / <span className="font-bold text-blue-500">{address.capacity}</span> mieszkańców
                     <span className={cn("ml-2 font-bold", address.available > 0 ? "text-green-600" : "text-red-600")}>
                         ({address.available} wolnych miejsc)
                     </span>
@@ -123,7 +123,9 @@ const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData 
                                             <Bed className="h-4 w-4 text-muted-foreground" />
                                             Pokój {room.name}
                                         </div>
-                                        <span className="text-sm">{room.occupantCount}/{room.capacity}</span>
+                                        <span className="text-sm">
+                                            <span className="font-bold text-red-500">{room.occupantCount}</span> / <span className="font-bold text-blue-500">{room.capacity}</span>
+                                        </span>
                                     </div>
                                     <div className="pl-4 mt-2 space-y-1">
                                         {room.occupants.map(o => (
@@ -256,7 +258,9 @@ const MobileAddressCard = ({ address, onOccupantClick }: { address: HousingData;
                                     <Building className="h-5 w-5 text-primary" />
                                     {address.name}
                                 </CardTitle>
-                                <span className="text-base font-bold">{address.occupantCount}/{address.capacity}</span>
+                                <span className="text-base">
+                                    <span className="font-bold text-red-500">{address.occupantCount}</span> / <span className="font-bold text-blue-500">{address.capacity}</span>
+                                </span>
                             </div>
                             <CardDescription className="text-xs pt-1 text-left">
                                 Wolne miejsca: <span className={cn("font-bold", address.available > 0 ? "text-green-600" : "text-red-600")}>{address.available}</span>
@@ -275,7 +279,9 @@ const MobileAddressCard = ({ address, onOccupantClick }: { address: HousingData;
                                                     <Bed className="h-4 w-4 text-muted-foreground" />
                                                     Pokój {room.name}
                                                 </div>
-                                                <span className="text-sm">{room.occupantCount}/{room.capacity}</span>
+                                                <span className="text-sm">
+                                                    <span className="font-bold text-red-500">{room.occupantCount}</span> / <span className="font-bold text-blue-500">{room.capacity}</span>
+                                                </span>
                                             </div>
                                              <div className="pl-4 mt-2 space-y-1">
                                                 {room.occupants.map(o => (
@@ -474,11 +480,11 @@ export default function HousingView({ }: { currentUser: SessionData }) {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start h-full">
             <Card className="h-full">
-                 <CardHeader>
+                 <CardHeader className="p-4">
                     <CardTitle>Adresy</CardTitle>
                     <CardDescription>Wybierz adres, aby zobaczyć szczegóły.</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4 pt-0">
                     <div className="space-y-4 mb-4">
                         <div className="grid w-full items-center gap-1.5">
                             <Label htmlFor="search-address">Szukaj adresu</Label>
@@ -498,7 +504,7 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                             <Label htmlFor="show-available">Tylko z wolnymi miejscami</Label>
                         </div>
                     </div>
-                    <ScrollArea className="h-[calc(100vh-20rem)] lg:h-[calc(100vh - 20rem)]">
+                    <ScrollArea className="h-[calc(100vh-22rem)] lg:h-[calc(100vh - 22rem)]">
                         <div className="space-y-2">
                         {filteredData.map(address => (
                             <Card 
@@ -510,13 +516,15 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                                 )}
                                 onClick={() => setSelectedAddressId(address.id)}
                             >
-                                <CardHeader className="p-3">
+                                <CardHeader className="p-2">
                                     <div className="flex justify-between items-start">
                                         <CardTitle className="text-sm font-medium flex items-center gap-2">
                                             <Building className="h-4 w-4 text-primary" />
                                             {address.name}
                                         </CardTitle>
-                                        <span className="text-sm font-bold">{address.occupantCount}/{address.capacity}</span>
+                                        <span className="text-sm">
+                                            <span className="font-bold text-red-500">{address.occupantCount}</span> / <span className="font-bold text-blue-500">{address.capacity}</span>
+                                        </span>
                                     </div>
                                     <CardDescription className="text-xs pt-1">
                                         Wolne miejsca: <span className={cn("font-bold", address.available > 0 ? "text-green-600" : "text-red-600")}>{address.available}</span>

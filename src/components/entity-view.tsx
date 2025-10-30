@@ -379,6 +379,7 @@ const ControlPanel = ({
     isFilterActive,
     onResetFilters,
     onImport,
+    showImport
 }: {
     search: string;
     onSearch: (value: string) => void;
@@ -389,6 +390,7 @@ const ControlPanel = ({
     isFilterActive: boolean;
     onResetFilters: () => void;
     onImport: () => void;
+    showImport: boolean;
 }) => {
     const { isMobile } = useIsMobile();
     return (
@@ -410,10 +412,12 @@ const ControlPanel = ({
                             <X className="h-4 w-4" />
                         </Button>
                     )}
-                    <Button variant="outline" onClick={onImport}>
-                        <FileUp className="mr-2 h-4 w-4" />
-                        Importuj
-                    </Button>
+                    {showImport && (
+                        <Button variant="outline" onClick={onImport}>
+                            <FileUp className="mr-2 h-4 w-4" />
+                            Importuj
+                        </Button>
+                    )}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button size={isMobile ? "icon" : "default"}>
@@ -447,6 +451,7 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
         allEmployees,
         allNonEmployees,
         settings,
+        currentUser,
         selectedCoordinatorId,
         handleDismissEmployee,
         handleRestoreEmployee,
@@ -555,7 +560,7 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
         };
     }, [settings, selectedCoordinatorId]);
 
-    if (!settings || !allEmployees || !allNonEmployees || !filterDialogSettings) {
+    if (!settings || !allEmployees || !allNonEmployees || !filterDialogSettings || !currentUser) {
         return (
             <Card>
                 <CardHeader>
@@ -658,6 +663,7 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
                     isFilterActive={isFilterActive}
                     onResetFilters={() => updateSearchParams({ search: '', page: 1, coordinator: '', address: '', department: '', nationality: ''})}
                     onImport={() => setIsImportOpen(true)}
+                    showImport={currentUser.isAdmin}
                 />
             </CardHeader>
             <CardContent>
