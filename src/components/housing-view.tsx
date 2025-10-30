@@ -6,7 +6,7 @@ import type { Employee, NonEmployee, SessionData } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChevronDown, ChevronRight, Users, Bed, Building, User, ArrowUpDown } from "lucide-react";
+import { ChevronDown, ChevronRight, Users, Bed, Building, User, ArrowUpDown, BarChart2 } from "lucide-react";
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 import { useMainLayout } from '@/components/main-layout';
 import { cn } from '@/lib/utils';
@@ -17,6 +17,8 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip, LabelList } from "recharts";
+import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 
 
 type Occupant = Employee | NonEmployee;
@@ -41,16 +43,64 @@ const calculateStats = (occupants: Occupant[]) => {
     };
 };
 
-const StatsList = ({ items }: { items: { name: string, count: number }[] }) => (
-    <div className="flex flex-col text-xs">
-        {items.length > 0 ? items.sort((a, b) => b.count - a.count).map(item => (
-            <div key={item.name}>
-                <span>{item.name} - </span>
-                <span className="font-semibold">{item.count}</span>
-            </div>
-        )) : <span className="text-muted-foreground">-</span>}
+const NoDataState = ({ message }: { message: string }) => (
+    <div className="flex h-full w-full items-center justify-center rounded-lg border border-dashed border-border/50 bg-muted/20">
+        <div className="flex flex-col items-center gap-2 text-center text-muted-foreground">
+            <BarChart2 className="h-8 w-8 text-muted-foreground/50" />
+            <p className="text-xs">{message}</p>
+        </div>
     </div>
 );
+
+
+const AddressStatsCharts = ({ address }: { address: HousingData }) => {
+    const chartConfig = {
+        count: {
+          label: "Ilość",
+        },
+    } as const;
+
+    const hasNationalityData = address.nationalities.length > 0;
+    const hasGenderData = address.genders.length > 0;
+
+    return (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 p-4">
+            <div className="space-y-2">
+                <h4 className="font-medium text-sm">Narodowość</h4>
+                {hasNationalityData ? (
+                     <ChartContainer config={chartConfig} className="min-h-[150px] w-full">
+                        <BarChart data={address.nationalities} layout="vertical" margin={{ left: 10, right: 30 }}>
+                            <CartesianGrid horizontal={false} strokeDasharray="3 3" />
+                            <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
+                            <XAxis type="number" hide />
+                            <RechartsTooltip cursor={false} content={<ChartTooltipContent />} />
+                            <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]}>
+                               <LabelList dataKey="count" position="right" offset={8} className="fill-foreground text-xs" />
+                            </Bar>
+                        </BarChart>
+                    </ChartContainer>
+                ) : <NoDataState message="Brak danych" />}
+            </div>
+             <div className="space-y-2">
+                <h4 className="font-medium text-sm">Płeć</h4>
+                {hasGenderData ? (
+                    <ChartContainer config={chartConfig} className="min-h-[150px] w-full">
+                        <BarChart data={address.genders} layout="vertical" margin={{ left: 10, right: 30 }}>
+                            <CartesianGrid horizontal={false} strokeDasharray="3 3" />
+                            <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
+                            <XAxis type="number" hide />
+                            <RechartsTooltip cursor={false} content={<ChartTooltipContent />} />
+                            <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]}>
+                                 <LabelList dataKey="count" position="right" offset={8} className="fill-foreground text-xs" />
+                            </Bar>
+                        </BarChart>
+                    </ChartContainer>
+                ) : <NoDataState message="Brak danych" />}
+            </div>
+        </div>
+    );
+};
+
 
 const useHousingData = () => {
     const { allEmployees, allNonEmployees, settings, currentUser, selectedCoordinatorId } = useMainLayout();
@@ -263,8 +313,6 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                                 {renderSortableHeader('occupantCount', 'Mieszkańcy')}
                                 {renderSortableHeader('capacity', 'Miejsca')}
                                 {renderSortableHeader('available', 'Wolne')}
-                                <TableHead>Narodowość</TableHead>
-                                <TableHead>Płeć</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -285,36 +333,41 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                                         <TableCell className="text-center">{address.occupantCount}</TableCell>
                                         <TableCell className="text-center">{address.capacity}</TableCell>
                                         <TableCell className={cn("text-center font-bold", address.available > 0 ? "text-green-600" : "text-red-600")}>{address.available}</TableCell>
-                                        <TableCell><StatsList items={address.nationalities} /></TableCell>
-                                        <TableCell><StatsList items={address.genders} /></TableCell>
                                     </TableRow>
                                     {expandedAddresses.has(address.id) && (
-                                        <>
-                                            {address.rooms.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(room => (
-                                                <TableRow key={room.id} className="hover:bg-muted/20">
-                                                    <TableCell></TableCell>
-                                                    <TableCell className="pl-12">
-                                                        <div className="flex items-center gap-2">
-                                                            <Bed className="h-4 w-4 text-muted-foreground" />
-                                                            <span>Pokój {room.name}</span>
-                                                        </div>
-                                                        <div className="pl-6 text-xs text-muted-foreground space-y-1 mt-1">
-                                                        {room.occupants.map(o => (
-                                                            <div key={o.id} onClick={() => handleOccupantClick(o)} className="flex items-center gap-2 cursor-pointer hover:text-primary">
-                                                                <User className="h-3 w-3" />
-                                                                {o.fullName}
+                                       <TableRow>
+                                            <TableCell colSpan={5} className="p-0">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-background">
+                                                    <div className="p-4">
+                                                        <h4 className="font-medium text-sm mb-2 pl-12">Pokoje</h4>
+                                                        {address.rooms.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(room => (
+                                                             <div key={room.id} className="hover:bg-muted/50 rounded-md p-2">
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="pl-10 flex items-center gap-2">
+                                                                        <Bed className="h-4 w-4 text-muted-foreground" />
+                                                                        <span>Pokój {room.name}</span>
+                                                                    </div>
+                                                                    <div className="flex gap-4 text-center text-xs">
+                                                                        <span className="w-12">{room.occupantCount}</span>
+                                                                        <span className="w-12">{room.capacity}</span>
+                                                                        <span className={cn("w-12 font-bold", room.available > 0 ? "text-green-600" : "text-red-600")}>{room.available}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="pl-16 text-xs text-muted-foreground space-y-1 mt-1">
+                                                                    {room.occupants.map(o => (
+                                                                        <div key={o.id} onClick={() => handleOccupantClick(o)} className="flex items-center gap-2 cursor-pointer hover:text-primary">
+                                                                            <User className="h-3 w-3" />
+                                                                            {o.fullName}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
                                                             </div>
                                                         ))}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="text-center">{room.occupantCount}</TableCell>
-                                                    <TableCell className="text-center">{room.capacity}</TableCell>
-                                                    <TableCell className={cn("text-center font-bold", room.available > 0 ? "text-green-600" : "text-red-600")}>{room.available}</TableCell>
-                                                    <TableCell><StatsList items={room.nationalities} /></TableCell>
-                                                    <TableCell><StatsList items={room.genders} /></TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </>
+                                                    </div>
+                                                    <AddressStatsCharts address={address} />
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
                                     )}
                                 </React.Fragment>
                             ))}
@@ -325,5 +378,3 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
         </Card>
     );
 }
-
-    
