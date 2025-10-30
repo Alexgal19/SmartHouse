@@ -124,14 +124,15 @@ const AddressDetailView = ({
         if (selectedAddressesData.length === 0) return null;
 
         if (selectedAddressesData.length === 1) {
+            const singleAddress = selectedAddressesData[0];
             return {
                 isMultiple: false,
-                name: selectedAddressesData[0].name,
-                occupants: selectedAddressesData[0].occupants,
-                occupantCount: selectedAddressesData[0].occupantCount,
-                capacity: selectedAddressesData[0].capacity,
-                available: selectedAddressesData[0].available,
-                rooms: selectedAddressesData[0].rooms,
+                name: singleAddress.name,
+                occupants: singleAddress.occupants,
+                occupantCount: singleAddress.occupantCount,
+                capacity: singleAddress.capacity,
+                available: singleAddress.available,
+                rooms: singleAddress.rooms,
             }
         }
         
@@ -190,84 +191,84 @@ const AddressDetailView = ({
             </CardHeader>
             <CardContent>
                 <ScrollArea className="h-[calc(100vh - 16rem)]">
-                  <div className="space-y-6">
-                    {aggregatedData.isMultiple ? (
-                        <>
-                            <div>
-                                <h3 className="font-semibold mb-4">Statystyki łączne</h3>
-                                <StatsCharts occupants={aggregatedData.occupants} chartConfig={chartConfig}/>
-                            </div>
-                            <div>
-                                <h3 className="font-semibold mb-4">Statystyki indywidualne</h3>
-                                <Accordion type="multiple" className="w-full space-y-3">
-                                    {selectedAddressesData.map(address => (
-                                        <Card asChild key={address.id} className="overflow-hidden">
-                                            <AccordionItem value={address.id} className="border-b-0">
-                                                <AccordionTrigger className="p-4 hover:no-underline">
-                                                    <div className="w-full">
-                                                        <div className="flex justify-between items-start">
-                                                            <CardTitle className="text-base font-semibold flex items-center gap-2">
-                                                                {address.name}
-                                                            </CardTitle>
-                                                            <span className="text-base">
-                                                                <span className="font-bold">{address.occupantCount}</span> / <span className="font-bold">{address.capacity}</span>
-                                                            </span>
+                    <div className="space-y-6">
+                        {aggregatedData.isMultiple ? (
+                            <>
+                                <div>
+                                    <h3 className="font-semibold mb-4">Statystyki łączne</h3>
+                                    <StatsCharts occupants={aggregatedData.occupants} chartConfig={chartConfig} />
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold mb-4">Statystyki indywidualne</h3>
+                                    <Accordion type="multiple" className="w-full space-y-3">
+                                        {selectedAddressesData.map(address => (
+                                            <Card asChild key={address.id} className="overflow-hidden">
+                                                <AccordionItem value={address.id} className="border-b-0">
+                                                    <AccordionTrigger className="p-4 hover:no-underline">
+                                                        <div className="w-full">
+                                                            <div className="flex justify-between items-start">
+                                                                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                                                                    {address.name}
+                                                                </CardTitle>
+                                                                <span className="text-base">
+                                                                    <span className="font-bold">{address.occupantCount}</span> / <span className="font-bold">{address.capacity}</span>
+                                                                </span>
+                                                            </div>
+                                                            <CardDescription className="text-xs pt-1 text-left">
+                                                                Wolne miejsca: <span className={cn("font-bold", address.available > 0 ? "text-green-600" : "text-red-600")}>{address.available}</span>
+                                                            </CardDescription>
                                                         </div>
-                                                        <CardDescription className="text-xs pt-1 text-left">
-                                                            Wolne miejsca: <span className={cn("font-bold", address.available > 0 ? "text-green-600" : "text-red-600")}>{address.available}</span>
-                                                        </CardDescription>
-                                                    </div>
-                                                </AccordionTrigger>
-                                                <AccordionContent className="p-4 pt-0">
-                                                    <StatsCharts occupants={address.occupants} chartConfig={chartConfig}/>
-                                                </AccordionContent>
-                                            </AccordionItem>
-                                        </Card>
-                                    ))}
-                                </Accordion>
-                            </div>
-                        </>
-                    ) : (
-                         <div className="space-y-6">
-                            <div className="space-y-4">
-                                <h3 className="font-semibold">Pokoje</h3>
-                                {aggregatedData.rooms.length > 0 ? aggregatedData.rooms.sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(room => (
-                                    <div 
-                                        key={room.id} 
-                                        className={cn(
-                                            "rounded-md border p-3 cursor-pointer transition-colors",
-                                            selectedRoomId === room.id ? "bg-primary/10 border-primary" : "hover:bg-muted/50",
-                                            room.available > 0 && selectedRoomId !== room.id && "bg-green-500/10 border-green-500/20"
-                                        )}
-                                        onClick={() => onRoomClick(room.id)}
-                                    >
-                                        <div className="flex justify-between items-center font-medium">
-                                            <div className="flex items-center gap-2">
-                                                <Bed className="h-4 w-4 text-muted-foreground" />
-                                                Pokój {room.name}
-                                            </div>
-                                            <span className="text-sm">
-                                                <span className="font-bold">{room.occupantCount}</span> / <span className="font-bold">{room.capacity}</span>
-                                            </span>
-                                        </div>
-                                        <div className="pl-4 mt-2 space-y-1">
-                                            {room.occupants.map(o => (
-                                                <div key={o.id} onClick={(e) => { e.stopPropagation(); onOccupantClick(o); }} className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-primary">
-                                                    <User className="h-3 w-3" />
-                                                    {o.fullName}
+                                                    </AccordionTrigger>
+                                                    <AccordionContent className="p-4 pt-0">
+                                                        <StatsCharts occupants={address.occupants} chartConfig={chartConfig} />
+                                                    </AccordionContent>
+                                                </AccordionItem>
+                                            </Card>
+                                        ))}
+                                    </Accordion>
+                                </div>
+                            </>
+                        ) : (
+                             <div className="space-y-6">
+                                <div className="space-y-4">
+                                    <h3 className="font-semibold">Pokoje</h3>
+                                    {aggregatedData.rooms.length > 0 ? aggregatedData.rooms.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(room => (
+                                        <div
+                                            key={room.id}
+                                            className={cn(
+                                                "rounded-md border p-3 cursor-pointer transition-colors",
+                                                selectedRoomId === room.id ? "bg-primary/10 border-primary" : "hover:bg-muted/50",
+                                                room.available > 0 && selectedRoomId !== room.id && "bg-green-500/10 border-green-500/20"
+                                            )}
+                                            onClick={() => onRoomClick(room.id)}
+                                        >
+                                            <div className="flex justify-between items-center font-medium">
+                                                <div className="flex items-center gap-2">
+                                                    <Bed className="h-4 w-4 text-muted-foreground" />
+                                                    Pokój {room.name}
                                                 </div>
-                                            ))}
+                                                <span className="text-sm">
+                                                    <span className="font-bold">{room.occupantCount}</span> / <span className="font-bold">{room.capacity}</span>
+                                                </span>
+                                            </div>
+                                            <div className="pl-4 mt-2 space-y-1">
+                                                {room.occupants.map(o => (
+                                                    <div key={o.id} onClick={(e) => { e.stopPropagation(); onOccupantClick(o); }} className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-primary">
+                                                        <User className="h-3 w-3" />
+                                                        {o.fullName}
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
-                                )) : <NoDataState message="Brak pokoi dla tego adresu" />}
+                                    )) : <NoDataState message="Brak pokoi dla tego adresu" />}
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold mb-4">{selectedRoom ? `Statystyki dla pokoju ${selectedRoom.name}` : "Statystyki dla adresu"}</h3>
+                                    <StatsCharts occupants={selectedRoom ? selectedRoom.occupants : aggregatedData.occupants} chartConfig={chartConfig} />
+                                </div>
                             </div>
-                             <div>
-                                <h3 className="font-semibold mb-4">{selectedRoom ? `Statystyki dla pokoju ${selectedRoom.name}` : "Statystyki dla adresu"}</h3>
-                                <StatsCharts occupants={selectedRoom ? selectedRoom.occupants : aggregatedData.occupants} chartConfig={chartConfig}/>
-                            </div>
-                        </div>
-                    )}
-                  </div>
+                        )}
+                    </div>
                 </ScrollArea>
             </CardContent>
         </Card>
