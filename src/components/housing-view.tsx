@@ -6,15 +6,20 @@ import type { Employee, NonEmployee, SessionData } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChevronDown, ChevronRight, Users, Bed, Building, User } from "lucide-react";
+import { ChevronDown, ChevronRight, Users, Bed, Building, User, ArrowUpDown } from "lucide-react";
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 import { useMainLayout } from '@/components/main-layout';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Skeleton } from './ui/skeleton';
 import { ScrollArea } from './ui/scroll-area';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Switch } from './ui/switch';
+
 
 type Occupant = Employee | NonEmployee;
+type HousingData = (ReturnType<typeof useHousingData>)[0];
 
 const isEmployee = (occupant: Occupant): occupant is Employee => 'coordinatorId' in occupant;
 
@@ -37,19 +42,75 @@ const calculateStats = (occupants: Occupant[]) => {
 
 const StatsList = ({ items }: { items: { name: string, count: number }[] }) => (
     <div className="flex flex-col text-xs">
-        {items.sort((a, b) => b.count - a.count).map(item => (
+        {items.length > 0 ? items.sort((a, b) => b.count - a.count).map(item => (
             <div key={item.name}>
                 <span>{item.name} - </span>
                 <span className="font-semibold">{item.count}</span>
             </div>
-        ))}
+        )) : <span className="text-muted-foreground">-</span>}
     </div>
 );
 
+const useHousingData = () => {
+    const { allEmployees, allNonEmployees, settings, currentUser, selectedCoordinatorId } = useMainLayout();
+
+    return useMemo(() => {
+        if (!settings || !allEmployees || !allNonEmployees || !currentUser) return [];
+
+        let addressesToDisplay = settings.addresses;
+        if (!currentUser.isAdmin || (currentUser.isAdmin && selectedCoordinatorId !== 'all')) {
+             addressesToDisplay = settings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
+        }
+        
+        const allActiveOccupants: Occupant[] = [
+            ...allEmployees.filter(e => e.status === 'active'),
+            ...allNonEmployees
+        ];
+
+        return addressesToDisplay.map(address => {
+            const occupantsInAddress = allActiveOccupants.filter(o => o.address === address.name);
+            const addressStats = calculateStats(occupantsInAddress);
+            const totalCapacity = address.rooms.reduce((sum, room) => sum + room.capacity, 0);
+            const occupantCount = occupantsInAddress.length;
+
+            const rooms = address.rooms.map(room => {
+                const occupantsInRoom = occupantsInAddress.filter(o => o.roomNumber === room.name);
+                const roomStats = calculateStats(occupantsInRoom);
+                return {
+                    id: room.id,
+                    name: room.name,
+                    capacity: room.capacity,
+                    occupants: occupantsInRoom,
+                    occupantCount: occupantsInRoom.length,
+                    available: room.capacity - occupantsInRoom.length,
+                    ...roomStats
+                };
+            });
+
+            return {
+                id: address.id,
+                name: address.name,
+                occupants: occupantsInAddress,
+                occupantCount: occupantCount,
+                capacity: totalCapacity,
+                available: totalCapacity - occupantCount,
+                occupancy: totalCapacity > 0 ? (occupantCount / totalCapacity) * 100 : 0,
+                ...addressStats,
+                rooms: rooms
+            };
+        });
+
+    }, [allEmployees, allNonEmployees, settings, currentUser, selectedCoordinatorId]);
+}
+
 
 export default function HousingView({ currentUser }: { currentUser: SessionData }) {
-    const { allEmployees, allNonEmployees, settings, selectedCoordinatorId, handleEditEmployeeClick, handleEditNonEmployeeClick } = useMainLayout();
+    const { handleEditEmployeeClick, handleEditNonEmployeeClick } = useMainLayout();
     const [expandedAddresses, setExpandedAddresses] = useState<Set<string>>(new Set());
+    const [sortConfig, setSortConfig] = useState<{ key: keyof HousingData | null; direction: 'ascending' | 'descending' }>({ key: 'name', direction: 'ascending' });
+    const [filters, setFilters] = useState({ name: '', showOnlyAvailable: false });
+
+    const rawHousingData = useHousingData();
 
     const toggleAddress = (addressId: string) => {
         setExpandedAddresses(prev => {
@@ -70,57 +131,59 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
             handleEditNonEmployeeClick(occupant);
         }
     };
-
-
-    const housingData = useMemo(() => {
-        if (!settings || !allEmployees || !allNonEmployees) return [];
-
-        let addressesToDisplay = settings.addresses;
-        if (!currentUser.isAdmin || (currentUser.isAdmin && selectedCoordinatorId !== 'all')) {
-             addressesToDisplay = settings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
+    
+    const requestSort = (key: keyof HousingData) => {
+        let direction: 'ascending' | 'descending' = 'ascending';
+        if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+            direction = 'descending';
         }
+        setSortConfig({ key, direction });
+    };
+
+    const sortedAndFilteredData = useMemo(() => {
+        let sortableItems = [...rawHousingData];
         
-        const allActiveOccupants: Occupant[] = [
-            ...allEmployees.filter(e => e.status === 'active'),
-            ...allNonEmployees
-        ];
+        // Filtering
+        if (filters.name) {
+            sortableItems = sortableItems.filter(item => item.name.toLowerCase().includes(filters.name.toLowerCase()));
+        }
+        if (filters.showOnlyAvailable) {
+            sortableItems = sortableItems.filter(item => item.available > 0);
+        }
 
-        return addressesToDisplay.map(address => {
-            const occupantsInAddress = allActiveOccupants.filter(o => o.address === address.name);
-            const addressStats = calculateStats(occupantsInAddress);
-            const totalCapacity = address.rooms.reduce((sum, room) => sum + room.capacity, 0);
-
-            const rooms = address.rooms.map(room => {
-                const occupantsInRoom = occupantsInAddress.filter(o => o.roomNumber === room.name);
-                const roomStats = calculateStats(occupantsInRoom);
-                return {
-                    id: room.id,
-                    name: room.name,
-                    capacity: room.capacity,
-                    occupants: occupantsInRoom,
-                    occupantCount: occupantsInRoom.length,
-                    available: room.capacity - occupantsInRoom.length,
-                    ...roomStats
-                };
+        // Sorting
+        if (sortConfig.key !== null) {
+            sortableItems.sort((a, b) => {
+                if (a[sortConfig.key!] < b[sortConfig.key!]) {
+                    return sortConfig.direction === 'ascending' ? -1 : 1;
+                }
+                if (a[sortConfig.key!] > b[sortConfig.key!]) {
+                    return sortConfig.direction === 'ascending' ? 1 : -1;
+                }
+                return 0;
             });
+        }
+        return sortableItems;
+    }, [rawHousingData, sortConfig, filters]);
+    
+    const getSortIndicator = (key: keyof HousingData) => {
+        if (sortConfig.key !== key) return null;
+        return sortConfig.direction === 'ascending' ? ' ▲' : ' ▼';
+    };
 
-            return {
-                id: address.id,
-                name: address.name,
-                occupants: occupantsInAddress,
-                occupantCount: occupantsInAddress.length,
-                capacity: totalCapacity,
-                available: totalCapacity - occupantsInAddress.length,
-                ...addressStats,
-                rooms: rooms
-            };
-        }).sort((a,b) => a.name.localeCompare(b.name));
 
-    }, [allEmployees, allNonEmployees, settings, currentUser, selectedCoordinatorId]);
-
-    if (!settings || !allEmployees || !allNonEmployees) {
+    if (!rawHousingData) {
         return <Card><CardHeader><Skeleton className="h-8 w-1/3" /></CardHeader><CardContent><Skeleton className="h-64 w-full" /></CardContent></Card>;
     }
+
+    const renderSortableHeader = (key: keyof HousingData, label: string) => (
+        <TableHead className="text-center">
+            <Button variant="ghost" onClick={() => requestSort(key)} className="px-2">
+                {label}
+                <ArrowUpDown className="ml-2 h-4 w-4" />
+            </Button>
+        </TableHead>
+    )
 
 
     return (
@@ -130,23 +193,47 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                 <CardDescription>
                     Szczegółowy widok obłożenia adresów i pokoi z podziałem na narodowość i płeć.
                 </CardDescription>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pt-4">
+                    <div className="grid w-full max-w-sm items-center gap-1.5">
+                        <Label htmlFor="search-address">Szukaj adresu</Label>
+                        <Input 
+                            id="search-address"
+                            placeholder="Wpisz nazwę adresu..."
+                            value={filters.name}
+                            onChange={e => setFilters(prev => ({ ...prev, name: e.target.value }))}
+                        />
+                    </div>
+                    <div className="flex items-center space-x-2 pt-4 sm:pt-0">
+                        <Switch 
+                            id="show-available" 
+                            checked={filters.showOnlyAvailable}
+                            onCheckedChange={checked => setFilters(prev => ({...prev, showOnlyAvailable: checked}))}
+                        />
+                        <Label htmlFor="show-available">Tylko z wolnymi miejscami</Label>
+                    </div>
+                </div>
             </CardHeader>
             <CardContent>
-                <ScrollArea className="h-[calc(100vh-16rem)]">
+                <ScrollArea className="h-[calc(100vh-22rem)]">
                     <Table className="whitespace-nowrap">
                         <TableHeader>
                             <TableRow>
                                 <TableHead className="w-8"></TableHead>
-                                <TableHead>Adres / Pokój</TableHead>
-                                <TableHead className="text-center">Mieszkańcy</TableHead>
-                                <TableHead className="text-center">Miejsca</TableHead>
-                                <TableHead className="text-center">Wolne</TableHead>
+                                <TableHead>
+                                     <Button variant="ghost" onClick={() => requestSort('name')} className="px-2">
+                                        Adres / Pokój
+                                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                                    </Button>
+                                </TableHead>
+                                {renderSortableHeader('occupantCount', 'Mieszkańcy')}
+                                {renderSortableHeader('capacity', 'Miejsca')}
+                                {renderSortableHeader('available', 'Wolne')}
                                 <TableHead>Narodowość</TableHead>
                                 <TableHead>Płeć</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {housingData.map(address => (
+                            {sortedAndFilteredData.map(address => (
                                 <React.Fragment key={address.id}>
                                     <TableRow className="bg-muted/50 font-semibold" onClick={() => toggleAddress(address.id)}>
                                         <TableCell>
@@ -162,13 +249,13 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                                         </TableCell>
                                         <TableCell className="text-center">{address.occupantCount}</TableCell>
                                         <TableCell className="text-center">{address.capacity}</TableCell>
-                                        <TableCell className={cn("text-center", address.available > 0 ? "text-green-600" : "text-red-600")}>{address.available}</TableCell>
+                                        <TableCell className={cn("text-center font-bold", address.available > 0 ? "text-green-600" : "text-red-600")}>{address.available}</TableCell>
                                         <TableCell><StatsList items={address.nationalities} /></TableCell>
                                         <TableCell><StatsList items={address.genders} /></TableCell>
                                     </TableRow>
                                     {expandedAddresses.has(address.id) && (
                                         <>
-                                            {address.rooms.map(room => (
+                                            {address.rooms.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(room => (
                                                 <TableRow key={room.id} className="hover:bg-muted/20">
                                                     <TableCell></TableCell>
                                                     <TableCell className="pl-12">
@@ -187,7 +274,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                                                     </TableCell>
                                                     <TableCell className="text-center">{room.occupantCount}</TableCell>
                                                     <TableCell className="text-center">{room.capacity}</TableCell>
-                                                    <TableCell className={cn("text-center", room.available > 0 ? "text-green-600" : "text-red-600")}>{room.available}</TableCell>
+                                                    <TableCell className={cn("text-center font-bold", room.available > 0 ? "text-green-600" : "text-red-600")}>{room.available}</TableCell>
                                                     <TableCell><StatsList items={room.nationalities} /></TableCell>
                                                     <TableCell><StatsList items={room.genders} /></TableCell>
                                                 </TableRow>
