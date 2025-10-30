@@ -3,7 +3,6 @@
 
 import DashboardView from '@/components/dashboard-view';
 import EquipmentView from '@/components/equipment-view';
-import InspectionsView from '@/components/inspections-view';
 import { useMainLayout } from '@/components/main-layout';
 import SettingsView from '@/components/settings-view';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -22,8 +21,6 @@ function CurrentView({ activeView, currentUser }: { activeView: View; currentUse
       return <EntityView currentUser={currentUser} />;
     case 'housing':
       return <HousingView currentUser={currentUser} />;
-    case 'inspections':
-        return <InspectionsView currentUser={currentUser} />;
     case 'settings':
       return <SettingsView currentUser={currentUser} />;
     case 'equipment':

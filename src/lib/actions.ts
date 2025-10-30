@@ -1,7 +1,7 @@
 
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Inspection, InspectionCategory, Coordinator } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Coordinator } from '../types';
 import { getSheet } from './sheets';
 import { getAllSheetsData } from './sheets';
 import { format, isPast, isValid, getDaysInMonth, parseISO } from 'date-fns';
@@ -19,8 +19,6 @@ const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_LOCALITIES = 'Localities';
 const SHEET_NAME_EQUIPMENT = 'Equipment';
-const SHEET_NAME_INSPECTIONS = 'Inspections';
-const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 
 
 const serializeDate = (date?: string | null): string => {
@@ -688,81 +686,6 @@ export async function clearAllNotifications(): Promise<void> {
     } catch (e: unknown) {
         console.error("Could not clear notifications:", e);
         throw new Error(e instanceof Error ? e.message : "Failed to clear notifications.");
-    }
-}
-
-export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Promise<void> {
-    try {
-        const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, ['id', 'addressId', 'addressName', 'date', 'coordinatorId', 'coordinatorName', 'standard']);
-        const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, ['id', 'inspectionId', 'addressName', 'date', 'coordinatorName', 'category', 'itemLabel', 'itemValue', 'uwagi', 'photoData']);
-        
-        const inspectionId = `insp-${Date.now()}`;
-        const dateString = inspectionData.date;
-
-        await inspectionsSheet.addRow({
-            id: inspectionId,
-            addressId: inspectionData.addressId,
-            addressName: inspectionData.addressName,
-            date: dateString,
-            coordinatorId: inspectionData.coordinatorId,
-            coordinatorName: inspectionData.coordinatorName,
-            standard: inspectionData.standard || '',
-        }, { raw: false, insert: true });
-
-        const detailRows: Record<string, string>[] = [];
-        inspectionData.categories.forEach((category: InspectionCategory) => {
-            category.items.forEach((item: { label: any; value: any; }) => {
-                detailRows.push({
-                    id: `insp-det-${Date.now()}-${Math.random()}`,
-                    inspectionId,
-                    addressName: inspectionData.addressName,
-                    date: dateString,
-                    coordinatorName: inspectionData.coordinatorName,
-                    category: category.name,
-                    itemLabel: item.label,
-                    itemValue: Array.isArray(item.value) ? JSON.stringify(item.value) : (String(item.value) ?? ''),
-                    uwagi: '',
-                    photoData: '',
-                });
-            });
-
-            if (category.uwagi) {
-                detailRows.push({
-                    id: `insp-det-${Date.now()}-${Math.random()}`,
-                    inspectionId,
-                    addressName: inspectionData.addressName,
-                    date: dateString,
-                    coordinatorName: inspectionData.coordinatorName,
-                    category: category.name,
-                    itemLabel: 'Uwagi', itemValue: '',
-                    uwagi: category.uwagi,
-                    photoData: '',
-                });
-            }
-            
-            (category.photos || []).forEach((photo: string, index: number) => {
-                detailRows.push({
-                    id: `insp-det-${Date.now()}-${Math.random()}`,
-                    inspectionId,
-                    addressName: inspectionData.addressName,
-                    date: dateString,
-                    coordinatorName: inspectionData.coordinatorName,
-                    category: category.name,
-                    itemLabel: `Photo ${index + 1}`,
-                    itemValue: '',
-                    uwagi: '',
-                    photoData: photo,
-                });
-            });
-        });
-
-        if (detailRows.length > 0) {
-            await detailsSheet.addRows(detailRows, { raw: false, insert: true });
-        }
-
-    } catch (e: unknown) {
-        console.error("Error adding inspection:", e);
-        throw new Error(e instanceof Error ? e.message : "Failed to add inspection.");
     }
 }
 
