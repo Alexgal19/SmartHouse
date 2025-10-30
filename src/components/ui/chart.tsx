@@ -2,13 +2,12 @@
 "use client"
 
 import * as React from "react"
+import * as Recharts from "recharts";
 import {
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
-  Label,
-  LabelList,
   Legend,
   Line,
   LineChart,
@@ -27,6 +26,8 @@ import {
   Area,
   XAxis,
   YAxis,
+  Label,
+  LabelList
 } from "recharts"
 import { LegendProps } from "recharts";
 
@@ -93,14 +94,17 @@ const ChartContainer = React.forwardRef<
         )}
         style={
           Object.entries(chartConfig).reduce(
-            (prev, [key, value]) => ({
-              ...prev,
-              ...(typeof value === 'object' && value !== null && 'color' in value && typeof value.color === 'string'
-                ? { [`--color-${key}`]: value.color }
-                : {}),
-            }),
+            (prev, [key, value]) => {
+                if (typeof value === 'object' && value !== null && 'color' in value && typeof value.color === 'string') {
+                    return {
+                        ...prev,
+                        [`--color-${key}`]: value.color,
+                    };
+                }
+                return prev;
+            },
             {}
-          ) as React.CSSProperties
+        ) as React.CSSProperties
         }
         {...props}
       >
@@ -138,7 +142,7 @@ const ChartLegendContent = React.forwardRef<
         {...props}
       >
         {payload.map((item) => {
-          const key = `${item[nameKey]}`
+          const key = String(item[nameKey as keyof typeof item]);
           const itemConfig = config[key]
 
           return (
@@ -171,10 +175,9 @@ ChartLegendContent.displayName = "ChartLegendContent"
 
 // #region Tooltip
 import { TooltipProps } from "recharts";
-const RechartsTooltip = (props: TooltipProps) => <Tooltip {...props} />;
 
 
-type TooltipContentProps = React.ComponentProps<typeof RechartsTooltip> &
+type TooltipContentProps = React.ComponentProps<typeof Recharts.Tooltip> &
   React.ComponentProps<"div"> & {
     hideLabel?: boolean
     hideIndicator?: boolean
@@ -264,7 +267,7 @@ const ChartTooltipContent = React.forwardRef<
         ) : null}
         <div className="grid gap-1.5">
           {payload.map((item, index) => {
-            const key = `${item[nameKey]}`
+            const key = String(item[nameKey as keyof typeof item]);
             const itemConfig = config[key]
             const indicatorColor = item.color || itemConfig?.color
 
@@ -411,10 +414,13 @@ export {
   ChartContainer,
   ChartLegend,
   ChartLegendContent,
-  RechartsTooltip as ChartTooltip,
   ChartTooltipContent,
   ChartPie,
   PieLabel,
 }
 
+export { Tooltip as RechartsTooltip } from "recharts";
+
 export type { ChartConfig }
+
+    
