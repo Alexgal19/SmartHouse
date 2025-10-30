@@ -2,7 +2,33 @@
 "use client"
 
 import * as React from "react"
-import * as Recharts from "recharts"
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
+  RadialBar,
+  RadialBarChart,
+  ResponsiveContainer,
+  Sector,
+  Tooltip as RechartsTooltip,
+  XAxis,
+  YAxis,
+  Area,
+  AreaChart,
+  Label,
+  LabelList,
+} from "recharts"
 
 
 import { cn } from "@/lib/utils"
@@ -10,42 +36,19 @@ import {
   Card
 } from "@/components/ui/card"
 
-export const BarChart = Recharts.BarChart;
-export const LineChart = Recharts.LineChart;
-export const AreaChart = Recharts.AreaChart;
-export const PieChart = Recharts.PieChart;
-export const RadarChart = Recharts.RadarChart;
-export const RadialBarChart = Recharts.RadialBarChart;
-export const ResponsiveContainer = Recharts.ResponsiveContainer;
-export const XAxis = Recharts.XAxis;
-export const YAxis = Recharts.YAxis;
-export const CartesianGrid = Recharts.CartesianGrid;
-export const Bar = Recharts.Bar;
-export const Line = Recharts.Line;
-export const Area = Recharts.Area;
-export const Cell = Recharts.Cell;
-export const Legend = Recharts.Legend;
-export const Sector = Recharts.Sector;
-export const Label = Recharts.Label;
-export const LabelList = Recharts.LabelList;
-export const Pie = Recharts.Pie;
-export const Radar = Recharts.Radar;
-export const RadialBar = Recharts.RadialBar;
-export { Tooltip as RechartsTooltip } from "recharts";
-
-// #region Chart
-
-interface ChartConfig {
-  [key: string]: {
-    label?: React.ReactNode;
+export type ChartConfig = {
+  [key in string]: {
+    label?: React.ReactNode
     color?: string
-    icon?: React.ComponentType;
+    icon?: React.ComponentType
   }
 }
 
-const ChartContext = React.createContext<{
-  config: ChartConfig;
-} | null>(null)
+interface ChartContextProps {
+  config: ChartConfig
+}
+
+const ChartContext = React.createContext<ChartContextProps | null>(null)
 
 function useChart() {
   const context = React.useContext(ChartContext)
@@ -67,13 +70,17 @@ const ChartContainer = React.forwardRef<
   const chartConfig = React.useMemo(
     () =>
       Object.entries(config).reduce(
-        (prev, [key, value]) => ({
-          ...prev,
-          [key]: {
-            ...value,
-            color: value.color ?? `hsl(var(--chart-${Object.keys(prev).length + 1}))`,
-          },
-        }),
+        (prev, [key, value]) => {
+          const newKey = key as keyof typeof config;
+          return {
+            ...prev,
+            [newKey]: {
+              ...value,
+              color:
+                value.color ?? `hsl(var(--chart-${Object.keys(prev).length + 1}))`,
+            },
+          }
+        },
         {}
       ),
     [config]
@@ -111,10 +118,7 @@ const ChartContainer = React.forwardRef<
 })
 ChartContainer.displayName = "Chart"
 
-// #endregion
-
-// #region Legend
-const ChartLegend = Recharts.Legend
+const ChartLegend = Legend
 
 
 const ChartLegendContent = React.forwardRef<
@@ -167,11 +171,8 @@ const ChartLegendContent = React.forwardRef<
   }
 )
 ChartLegendContent.displayName = "ChartLegendContent"
-// #endregion
 
-// #region Tooltip
-
-type TooltipContentProps = React.ComponentProps<typeof Recharts.Tooltip> &
+type TooltipContentProps = React.ComponentProps<typeof RechartsTooltip> &
   React.ComponentProps<"div"> & {
     hideLabel?: boolean
     hideIndicator?: boolean
@@ -223,7 +224,7 @@ const ChartTooltipContent = React.forwardRef<
         }
       }
 
-      if (!payload[0].payload) {
+      if (!payload[0]?.payload) {
         return null
       }
 
@@ -334,9 +335,6 @@ const ChartTooltipContent = React.forwardRef<
 )
 ChartTooltipContent.displayName = "ChartTooltipContent"
 
-// #endregion
-
-// #region Pie Chart
 const ChartPie = (
   props: React.ComponentProps<typeof Pie> & {
     active?: boolean
@@ -382,7 +380,7 @@ const ChartPie = (
           fill={chartConfig[index % chartConfig.length]?.color}
           style={
             {
-              "--color-primary": chartConfig[index % chartConfig.length]?.color,
+              "--color-primary": chartConfig[index % chart-config.length]?.color,
             } as React.CSSProperties
           }
         />
@@ -406,9 +404,7 @@ const PieLabel = (
     />
   )
 }
-// #endregion
 
-// #region Exports
 export {
   ChartContainer,
   ChartLegend,
@@ -416,7 +412,29 @@ export {
   ChartTooltipContent,
   ChartPie,
   PieLabel,
+  BarChart,
+  LineChart,
+  AreaChart,
+  PieChart,
+  RadarChart,
+  RadialBarChart,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Bar,
+  Line,
+  Area,
+  Cell,
+  Sector,
+  Label,
+  LabelList,
+  Pie,
+  Radar,
+  RadialBar,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
 }
 
-export type { ChartConfig }
-
+export { Tooltip as RechartsTooltip } from "recharts";
