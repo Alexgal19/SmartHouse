@@ -57,7 +57,7 @@ const StatsCharts = ({ occupants, chartConfig }: { occupants: Occupant[], chartC
     const statsData = useMemo(() => calculateStats(occupants), [occupants]);
     
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-4">
             <Card className="bg-muted/50">
                 <CardHeader className="pb-2">
                     <CardTitle className="text-sm">Wg narodowości</CardTitle>
