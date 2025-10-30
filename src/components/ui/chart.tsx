@@ -8,6 +8,7 @@ import {
   Pie,
   PieChart as RechartsPieChart,
   Sector,
+  Tooltip,
 } from "recharts"
 
 import { cn } from "@/lib/utils"
@@ -461,6 +462,7 @@ export {
   Cell,
   Legend,
   Sector,
+  Tooltip,
 }
 
 export type { ChartConfig }
