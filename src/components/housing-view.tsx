@@ -52,23 +52,66 @@ const NoDataState = ({ message, className }: { message: string, className?: stri
     </div>
 );
 
-const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData | null; onOccupantClick: (occupant: Occupant) => void; }) => {
-    const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+const AddressDetailView = ({
+  addresses,
+  onOccupantClick,
+  selectedAddressIds,
+  onRoomClick,
+  selectedRoomId
+}: {
+  addresses: HousingData[];
+  onOccupantClick: (occupant: Occupant) => void;
+  selectedAddressIds: string[];
+  onRoomClick: (roomId: string) => void;
+  selectedRoomId: string | null;
+}) => {
+    const { isMobile } = useIsMobile();
+    
+    const selectedData = useMemo(() => {
+        if (selectedAddressIds.length === 0) return null;
+        
+        const selectedAddresses = addresses.filter(a => selectedAddressIds.includes(a.id));
+        if(selectedAddresses.length === 0) return null;
 
-    const handleRoomClick = (roomId: string) => {
-        setSelectedRoomId(prev => prev === roomId ? null : roomId);
-    }
+        if (selectedAddresses.length === 1) {
+            return {
+                isMultiple: false,
+                name: selectedAddresses[0].name,
+                occupants: selectedAddresses[0].occupants,
+                occupantCount: selectedAddresses[0].occupantCount,
+                capacity: selectedAddresses[0].capacity,
+                available: selectedAddresses[0].available,
+                rooms: selectedAddresses[0].rooms,
+            }
+        }
+        
+        // Aggregated data for multiple selections
+        const totalOccupantCount = selectedAddresses.reduce((sum, a) => sum + a.occupantCount, 0);
+        const totalCapacity = selectedAddresses.reduce((sum, a) => sum + a.capacity, 0);
+        const allOccupants = selectedAddresses.flatMap(a => a.occupants);
+
+        return {
+            isMultiple: true,
+            name: `${selectedAddresses.length} wybrane adresy`,
+            occupants: allOccupants,
+            occupantCount: totalOccupantCount,
+            capacity: totalCapacity,
+            available: totalCapacity - totalOccupantCount,
+            rooms: [], // Don't show individual rooms for multi-select
+        }
+    }, [selectedAddressIds, addresses]);
+
 
     const selectedRoom = useMemo(() => {
-        if (!address || !selectedRoomId) return null;
-        return address.rooms.find(r => r.id === selectedRoomId) ?? null;
-    }, [address, selectedRoomId]);
+        if (!selectedData || selectedData.isMultiple || !selectedRoomId) return null;
+        return selectedData.rooms.find(r => r.id === selectedRoomId) ?? null;
+    }, [selectedData, selectedRoomId]);
 
     const statsData = useMemo(() => {
-        if (!address) return { nationalities: [], genders: [] };
-        const occupantsToAnalyze = selectedRoom ? selectedRoom.occupants : address.occupants;
+        if (!selectedData) return { nationalities: [], genders: [] };
+        const occupantsToAnalyze = selectedRoom ? selectedRoom.occupants : selectedData.occupants;
         return calculateStats(occupantsToAnalyze);
-    }, [address, selectedRoom]);
+    }, [selectedData, selectedRoom]);
 
     const chartConfig: ChartConfig = {
         count: { label: "Ilość" },
@@ -77,7 +120,7 @@ const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData 
     };
     
 
-    if (!address) {
+    if (!selectedData) {
         return (
             <Card className="lg:col-span-2 h-full">
                 <CardHeader>
@@ -94,11 +137,11 @@ const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData 
     return (
         <Card className="lg:col-span-2 h-full">
             <CardHeader>
-                <CardTitle>{address.name}</CardTitle>
+                <CardTitle>{selectedData.name}</CardTitle>
                 <CardDescription>
-                    <span className="font-bold">{address.occupantCount}</span> / <span className="font-bold">{address.capacity}</span> mieszkańców
-                    <span className={cn("ml-2 font-bold", address.available > 0 ? "text-green-600" : "text-red-600")}>
-                        ({address.available} wolnych miejsc)
+                    <span className="font-bold">{selectedData.occupantCount}</span> / <span className="font-bold">{selectedData.capacity}</span> mieszkańców
+                    <span className={cn("ml-2 font-bold", selectedData.available > 0 ? "text-green-600" : "text-red-600")}>
+                        ({selectedData.available} wolnych miejsc)
                     </span>
                 </CardDescription>
             </CardHeader>
@@ -107,39 +150,43 @@ const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData 
                   <ChartContainer config={chartConfig} className="w-full h-full p-0 border-0 shadow-none">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-4">
-                            <h3 className="font-semibold">Pokoje</h3>
-                            {address.rooms.length > 0 ? address.rooms.sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(room => (
-                                <div 
-                                    key={room.id} 
-                                    className={cn(
-                                        "rounded-md border p-3 cursor-pointer transition-colors",
-                                        selectedRoomId === room.id ? "bg-primary/10 border-primary" : "hover:bg-muted/50",
-                                        room.available > 0 && selectedRoomId !== room.id && "bg-green-500/10 border-green-500/20"
-                                    )}
-                                    onClick={() => handleRoomClick(room.id)}
-                                >
-                                    <div className="flex justify-between items-center font-medium">
-                                        <div className="flex items-center gap-2">
-                                            <Bed className="h-4 w-4 text-muted-foreground" />
-                                            Pokój {room.name}
-                                        </div>
-                                        <span className="text-sm">
-                                            <span className="font-bold">{room.occupantCount}</span> / <span className="font-bold">{room.capacity}</span>
-                                        </span>
-                                    </div>
-                                    <div className="pl-4 mt-2 space-y-1">
-                                        {room.occupants.map(o => (
-                                            <div key={o.id} onClick={(e) => { e.stopPropagation(); onOccupantClick(o); }} className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-primary">
-                                                <User className="h-3 w-3" />
-                                                {o.fullName}
+                           {!selectedData.isMultiple && (
+                            <>
+                             <h3 className="font-semibold">Pokoje</h3>
+                                {selectedData.rooms.length > 0 ? selectedData.rooms.sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(room => (
+                                    <div 
+                                        key={room.id} 
+                                        className={cn(
+                                            "rounded-md border p-3 cursor-pointer transition-colors",
+                                            selectedRoomId === room.id ? "bg-primary/10 border-primary" : "hover:bg-muted/50",
+                                            room.available > 0 && selectedRoomId !== room.id && "bg-green-500/10 border-green-500/20"
+                                        )}
+                                        onClick={() => onRoomClick(room.id)}
+                                    >
+                                        <div className="flex justify-between items-center font-medium">
+                                            <div className="flex items-center gap-2">
+                                                <Bed className="h-4 w-4 text-muted-foreground" />
+                                                Pokój {room.name}
                                             </div>
-                                        ))}
+                                            <span className="text-sm">
+                                                <span className="font-bold">{room.occupantCount}</span> / <span className="font-bold">{room.capacity}</span>
+                                            </span>
+                                        </div>
+                                        <div className="pl-4 mt-2 space-y-1">
+                                            {room.occupants.map(o => (
+                                                <div key={o.id} onClick={(e) => { e.stopPropagation(); onOccupantClick(o); }} className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-primary">
+                                                    <User className="h-3 w-3" />
+                                                    {o.fullName}
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
-                            )) : <NoDataState message="Brak pokoi dla tego adresu" />}
+                                )) : <NoDataState message="Brak pokoi dla tego adresu" />}
+                            </>
+                           )}
                         </div>
                         <div className="space-y-4">
-                            <h3 className="font-semibold">{selectedRoom ? `Statystyki dla pokoju ${selectedRoom.name}` : "Statystyki dla adresu"}</h3>
+                            <h3 className="font-semibold">{selectedRoom ? `Statystyki dla pokoju ${selectedRoom.name}` : selectedData.isMultiple ? `Statystyki dla wybranych adresów` : "Statystyki dla adresu"}</h3>
                             <Card className="bg-muted/50">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-sm">Wg narodowości</CardTitle>
@@ -387,7 +434,8 @@ const FilterDialog = ({ isOpen, onOpenChange, onApply, initialFilters, settings 
 export default function HousingView({ }: { currentUser: SessionData }) {
     const { settings, handleEditEmployeeClick, handleEditNonEmployeeClick } = useMainLayout();
     const { isMobile } = useIsMobile();
-    const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+    const [selectedAddressIds, setSelectedAddressIds] = useState<string[]>([]);
+    const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
 
     const [filters, setFilters] = useState({
         name: '',
@@ -423,11 +471,22 @@ export default function HousingView({ }: { currentUser: SessionData }) {
 
         return items;
     }, [rawHousingData, filters]);
+    
+    const handleAddressClick = (addressId: string) => {
+        setSelectedRoomId(null);
+        setSelectedAddressIds(prev => {
+            const isSelected = prev.includes(addressId);
+            if(isSelected) {
+                return prev.filter(id => id !== addressId);
+            } else {
+                return [...prev, addressId];
+            }
+        });
+    };
 
-    const selectedAddress = useMemo(() => {
-        if (!selectedAddressId) return null;
-        return filteredData.find(addr => addr.id === selectedAddressId) ?? null;
-    }, [selectedAddressId, filteredData]);
+    const handleRoomClick = (roomId: string) => {
+        setSelectedRoomId(prev => (prev === roomId ? null : roomId));
+    };
     
     if (!rawHousingData || !settings) {
         return <Card><CardHeader><Skeleton className="h-8 w-1/3" /></CardHeader><CardContent><Skeleton className="h-64 w-full" /></CardContent></Card>;
@@ -451,7 +510,7 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                 </CardHeader>
                 <CardContent>
                     <ScrollArea className="h-[calc(100vh-14rem)] -mx-4 px-4">
-                        <Accordion type="single" collapsible className="w-full space-y-3">
+                        <Accordion type="multiple" className="w-full space-y-3">
                             {filteredData.map(address => (
                                 <MobileAddressCard 
                                     key={address.id}
@@ -509,10 +568,10 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                                 key={address.id}
                                 className={cn(
                                     "cursor-pointer transition-colors",
-                                    selectedAddressId === address.id ? "bg-primary/10 border-primary" : "hover:bg-muted/50",
-                                    address.available > 0 && selectedAddressId !== address.id && "bg-green-500/10 border-green-500/20"
+                                    selectedAddressIds.includes(address.id) ? "bg-primary/10 border-primary" : "hover:bg-muted/50",
+                                    address.available > 0 && !selectedAddressIds.includes(address.id) && "bg-green-500/10 border-green-500/20"
                                 )}
-                                onClick={() => setSelectedAddressId(address.id)}
+                                onClick={() => handleAddressClick(address.id)}
                             >
                                 <CardHeader className="p-2">
                                     <div className="flex justify-between items-start">
@@ -534,7 +593,15 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                     </ScrollArea>
                 </CardContent>
             </Card>
-            <AddressDetailView address={selectedAddress} onOccupantClick={handleOccupantClick} />
+            <AddressDetailView 
+                addresses={filteredData}
+                onOccupantClick={handleOccupantClick}
+                selectedAddressIds={selectedAddressIds}
+                onRoomClick={handleRoomClick}
+                selectedRoomId={selectedRoomId}
+            />
         </div>
     );
 }
+
+    
