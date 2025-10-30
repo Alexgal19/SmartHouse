@@ -2,15 +2,36 @@
 "use client"
 
 import * as React from "react"
-import * as Recharts from "recharts";
+import * as Recharts from "recharts"
 
 
 import { cn } from "@/lib/utils"
 import {
   Card
 } from "@/components/ui/card"
-import { BarChart, LineChart, AreaChart, PieChart, RadarChart, RadialBarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Bar, Line, Area, Cell, Legend, Sector, Label, LabelList, Pie, Radar, RadialBar } from "recharts";
-import { Tooltip as RechartsTooltip } from "recharts";
+
+export const BarChart = Recharts.BarChart;
+export const LineChart = Recharts.LineChart;
+export const AreaChart = Recharts.AreaChart;
+export const PieChart = Recharts.PieChart;
+export const RadarChart = Recharts.RadarChart;
+export const RadialBarChart = Recharts.RadialBarChart;
+export const ResponsiveContainer = Recharts.ResponsiveContainer;
+export const XAxis = Recharts.XAxis;
+export const YAxis = Recharts.YAxis;
+export const CartesianGrid = Recharts.CartesianGrid;
+export const Bar = Recharts.Bar;
+export const Line = Recharts.Line;
+export const Area = Recharts.Area;
+export const Cell = Recharts.Cell;
+export const Legend = Recharts.Legend;
+export const Sector = Recharts.Sector;
+export const Label = Recharts.Label;
+export const LabelList = Recharts.LabelList;
+export const Pie = Recharts.Pie;
+export const Radar = Recharts.Radar;
+export const RadialBar = Recharts.RadialBar;
+export { Tooltip as RechartsTooltip } from "recharts";
 
 // #region Chart
 
@@ -149,8 +170,6 @@ ChartLegendContent.displayName = "ChartLegendContent"
 // #endregion
 
 // #region Tooltip
-import { TooltipProps } from "recharts";
-
 
 type TooltipContentProps = React.ComponentProps<typeof Recharts.Tooltip> &
   React.ComponentProps<"div"> & {
@@ -159,7 +178,9 @@ type TooltipContentProps = React.ComponentProps<typeof Recharts.Tooltip> &
     indicator?: "line" | "dot" | "dashed"
     nameKey?: string
     labelKey?: string
-    formatter?: (value: number, name: string, item: any, index: number) => React.ReactNode
+    formatter?: (value: number, name: string, item: any, index: number) => React.ReactNode,
+    labelFormatter?: (label: any, payload: any[]) => React.ReactNode,
+    labelClassName?: string,
   }
 
 const ChartTooltipContent = React.forwardRef<
@@ -398,3 +419,4 @@ export {
 }
 
 export type { ChartConfig }
+
