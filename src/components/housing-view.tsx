@@ -248,93 +248,91 @@ const MobileAddressCard = ({ address, onOccupantClick }: { address: HousingData;
     };
 
     return (
-        <Card className={cn("overflow-hidden", address.available > 0 && "border-green-500/30")}>
-            <Accordion type="single" collapsible>
-                <AccordionItem value={address.id} className="border-b-0">
-                    <AccordionTrigger className="p-4 hover:no-underline">
-                        <div className="w-full">
-                            <div className="flex justify-between items-start">
-                                <CardTitle className="text-base font-semibold flex items-center gap-2">
-                                    <Building className="h-5 w-5 text-primary" />
-                                    {address.name}
-                                </CardTitle>
-                                <span className="text-base">
-                                    <span className="font-bold">{address.occupantCount}</span> / <span className="font-bold">{address.capacity}</span>
-                                </span>
-                            </div>
-                            <CardDescription className="text-xs pt-1 text-left">
-                                Wolne miejsca: <span className={cn("font-bold", address.available > 0 ? "text-green-600" : "text-red-600")}>{address.available}</span>
-                            </CardDescription>
+        <Card asChild className={cn("overflow-hidden", address.available > 0 && "border-green-500/30")}>
+            <AccordionItem value={address.id} className="border-b-0">
+                <AccordionTrigger className="p-4 hover:no-underline">
+                    <div className="w-full">
+                        <div className="flex justify-between items-start">
+                            <CardTitle className="text-base font-semibold flex items-center gap-2">
+                                <Building className="h-5 w-5 text-primary" />
+                                {address.name}
+                            </CardTitle>
+                            <span className="text-base">
+                                <span className="font-bold">{address.occupantCount}</span> / <span className="font-bold">{address.capacity}</span>
+                            </span>
                         </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="p-4 pt-0">
-                        <div className="space-y-4">
-                            <div>
-                                <h4 className="text-sm font-semibold mb-2">Pokoje</h4>
-                                <div className="space-y-2">
-                                    {address.rooms.sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(room => (
-                                        <div key={room.id} className={cn("rounded-md border p-3", room.available > 0 && "bg-green-500/10 border-green-500/20")}>
-                                            <div className="flex justify-between items-center font-medium text-sm">
-                                                <div className="flex items-center gap-2">
-                                                    <Bed className="h-4 w-4 text-muted-foreground" />
-                                                    Pokój {room.name}
+                        <CardDescription className="text-xs pt-1 text-left">
+                            Wolne miejsca: <span className={cn("font-bold", address.available > 0 ? "text-green-600" : "text-red-600")}>{address.available}</span>
+                        </CardDescription>
+                    </div>
+                </AccordionTrigger>
+                <AccordionContent className="p-4 pt-0">
+                    <div className="space-y-4">
+                        <div>
+                            <h4 className="text-sm font-semibold mb-2">Pokoje</h4>
+                            <div className="space-y-2">
+                                {address.rooms.sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(room => (
+                                    <div key={room.id} className={cn("rounded-md border p-3", room.available > 0 && "bg-green-500/10 border-green-500/20")}>
+                                        <div className="flex justify-between items-center font-medium text-sm">
+                                            <div className="flex items-center gap-2">
+                                                <Bed className="h-4 w-4 text-muted-foreground" />
+                                                Pokój {room.name}
+                                            </div>
+                                            <span className="text-sm">
+                                                <span className="font-bold">{room.occupantCount}</span> / <span className="font-bold">{room.capacity}</span>
+                                            </span>
+                                        </div>
+                                         <div className="pl-4 mt-2 space-y-1">
+                                            {room.occupants.map(o => (
+                                                <div key={o.id} onClick={() => onOccupantClick(o)} className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-primary">
+                                                    <User className="h-3 w-3" />
+                                                    {o.fullName}
                                                 </div>
-                                                <span className="text-sm">
-                                                    <span className="font-bold">{room.occupantCount}</span> / <span className="font-bold">{room.capacity}</span>
-                                                </span>
-                                            </div>
-                                             <div className="pl-4 mt-2 space-y-1">
-                                                {room.occupants.map(o => (
-                                                    <div key={o.id} onClick={() => onOccupantClick(o)} className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-primary">
-                                                        <User className="h-3 w-3" />
-                                                        {o.fullName}
-                                                    </div>
-                                                ))}
-                                            </div>
+                                            ))}
                                         </div>
-                                    ))}
-                                </div>
-                            </div>
-                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <h4 className="text-sm font-semibold mb-2">Wg narodowości</h4>
-                                    {statsData.nationalities.length > 0 ? (
-                                        <div style={{ height: `${statsData.nationalities.length * 25 + 20}px` }}>
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <BarChart data={statsData.nationalities} layout="vertical" margin={{ left: 10, right: 30 }}>
-                                                <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
-                                                <XAxis type="number" hide />
-                                                <RechartsTooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
-                                                <Bar dataKey="count" fill={chartConfig.nationalities.color} radius={[0, 4, 4, 0]}>
-                                                    <LabelList dataKey="count" position="right" offset={8} className="fill-foreground text-xs" />
-                                                </Bar>
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                        </div>
-                                    ) : <NoDataState message="Brak danych" className="h-32"/>}
-                                </div>
-                                <div>
-                                    <h4 className="text-sm font-semibold mb-2">Wg płci</h4>
-                                    {statsData.genders.length > 0 ? (
-                                         <div style={{ height: `${statsData.genders.length * 30 + 20}px` }}>
-                                        <ResponsiveContainer width="100%" height="100%">
-                                             <BarChart data={statsData.genders} layout="vertical" margin={{ left: 10, right: 30 }}>
-                                                <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
-                                                <XAxis type="number" hide />
-                                                <RechartsTooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
-                                                <Bar dataKey="count" fill={chartConfig.genders.color} radius={[0, 4, 4, 0]}>
-                                                    <LabelList dataKey="count" position="right" offset={8} className="fill-foreground text-xs" />
-                                                </Bar>
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                        </div>
-                                    ) : <NoDataState message="Brak danych" className="h-32"/>}
-                                </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
+                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <h4 className="text-sm font-semibold mb-2">Wg narodowości</h4>
+                                {statsData.nationalities.length > 0 ? (
+                                    <div style={{ height: `${statsData.nationalities.length * 25 + 20}px` }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={statsData.nationalities} layout="vertical" margin={{ left: 10, right: 30 }}>
+                                            <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
+                                            <XAxis type="number" hide />
+                                            <RechartsTooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
+                                            <Bar dataKey="count" fill={chartConfig.nationalities.color} radius={[0, 4, 4, 0]}>
+                                                <LabelList dataKey="count" position="right" offset={8} className="fill-foreground text-xs" />
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                    </div>
+                                ) : <NoDataState message="Brak danych" className="h-32"/>}
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-semibold mb-2">Wg płci</h4>
+                                {statsData.genders.length > 0 ? (
+                                     <div style={{ height: `${statsData.genders.length * 30 + 20}px` }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                         <BarChart data={statsData.genders} layout="vertical" margin={{ left: 10, right: 30 }}>
+                                            <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
+                                            <XAxis type="number" hide />
+                                            <RechartsTooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
+                                            <Bar dataKey="count" fill={chartConfig.genders.color} radius={[0, 4, 4, 0]}>
+                                                <LabelList dataKey="count" position="right" offset={8} className="fill-foreground text-xs" />
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                    </div>
+                                ) : <NoDataState message="Brak danych" className="h-32"/>}
+                            </div>
+                        </div>
+                    </div>
+                </AccordionContent>
+            </AccordionItem>
         </Card>
     )
 }
@@ -453,15 +451,15 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                 </CardHeader>
                 <CardContent>
                     <ScrollArea className="h-[calc(100vh-14rem)] -mx-4 px-4">
-                        <div className="space-y-3">
-                        {filteredData.map(address => (
-                            <MobileAddressCard 
-                                key={address.id}
-                                address={address}
-                                onOccupantClick={handleOccupantClick}
-                            />
-                        ))}
-                        </div>
+                        <Accordion type="single" collapsible className="w-full space-y-3">
+                            {filteredData.map(address => (
+                                <MobileAddressCard 
+                                    key={address.id}
+                                    address={address}
+                                    onOccupantClick={handleOccupantClick}
+                                />
+                            ))}
+                        </Accordion>
                     </ScrollArea>
                 </CardContent>
             </Card>
