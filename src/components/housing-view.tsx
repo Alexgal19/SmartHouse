@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useMemo } from 'react';
@@ -52,9 +53,17 @@ const NoDataState = ({ message, className }: { message: string, className?: stri
 const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData | null; onOccupantClick: (occupant: Occupant) => void; }) => {
     const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
 
+    const handleRoomClick = (roomId: string) => {
+        setSelectedRoomId(prev => prev === roomId ? null : roomId);
+    }
+
     const selectedRoom = useMemo(() => {
         if (!address || !selectedRoomId) return null;
-        return address.rooms.find(r => r.id === selectedRoomId) ?? null;
+        const room = address.rooms.find(r => r.id === selectedRoomId);
+        if (room) {
+            handleRoomClick(room.id);
+        }
+        return room ?? null;
     }, [address, selectedRoomId]);
 
     const statsData = useMemo(() => {
@@ -69,9 +78,6 @@ const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData 
         genders: { color: "hsl(var(--chart-1))" },
     };
     
-    const handleRoomClick = (roomId: string) => {
-        setSelectedRoomId(prev => prev === roomId ? null : roomId);
-    }
 
     if (!address) {
         return (
@@ -99,7 +105,7 @@ const AddressDetailView = ({ address, onOccupantClick }: { address: HousingData 
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <ScrollArea className="h-[calc(100vh-14rem)]">
+                <ScrollArea className="h-[calc(100vh-12rem)]">
                   <ChartContainer config={chartConfig} className="w-full h-full">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-4">
@@ -331,13 +337,13 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                             >
                                 <CardHeader className="p-2">
                                     <div className="flex justify-between items-start">
-                                        <CardTitle className="text-sm flex items-center gap-2">
+                                        <CardTitle className="text-sm font-medium flex items-center gap-2">
                                             <Building className="h-4 w-4 text-primary" />
                                             {address.name}
                                         </CardTitle>
                                         <span className="text-sm font-bold">{address.occupantCount}/{address.capacity}</span>
                                     </div>
-                                    <CardDescription className="text-xs pt-0.5">
+                                    <CardDescription className="text-xs pt-1">
                                         Wolne miejsca: <span className={cn("font-bold", address.available > 0 ? "text-green-600" : "text-red-600")}>{address.available}</span>
                                     </CardDescription>
                                 </CardHeader>
@@ -351,3 +357,6 @@ export default function HousingView({ }: { currentUser: SessionData }) {
         </div>
     );
 }
+
+
+    
