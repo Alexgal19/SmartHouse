@@ -2,7 +2,33 @@
 "use client"
 
 import * as React from "react"
-import * as Recharts from "recharts"
+import {
+  BarChart,
+  LineChart,
+  AreaChart,
+  PieChart,
+  RadarChart,
+  RadialBarChart,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  Legend,
+  Bar,
+  Line,
+  Area,
+  Pie,
+  Cell,
+  Sector,
+  Label,
+  LabelList,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+  RadialBar,
+} from "recharts"
 
 import { cn } from "@/lib/utils"
 import {
@@ -21,7 +47,7 @@ interface ChartConfig {
 
 const ChartContext = React.createContext<{
   config: ChartConfig
-}> | null>(null)
+} | null>(null)
 
 function useChart() {
   const context = React.useContext(ChartContext)
@@ -37,7 +63,7 @@ const ChartContainer = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & {
     config: ChartConfig
-    children: React.ComponentProps<typeof Recharts.ResponsiveContainer>["children"]
+    children: React.ComponentProps<typeof ResponsiveContainer>["children"]
   }
 >(({ config, children, className, ...props }, ref) => {
   const chartConfig = React.useMemo(
@@ -75,7 +101,7 @@ const ChartContainer = React.forwardRef<
         }
         {...props}
       >
-        <Recharts.ResponsiveContainer>{children}</Recharts.ResponsiveContainer>
+        <ResponsiveContainer>{children}</ResponsiveContainer>
       </div>
     </ChartContext.Provider>
   )
@@ -85,12 +111,12 @@ ChartContainer.displayName = "Chart"
 // #endregion
 
 // #region Legend
-const ChartLegend = Recharts.Legend
+const ChartLegend = Legend
 
 const ChartLegendContent = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> &
-    Pick<React.ComponentProps<typeof Recharts.Legend>, "payload"> & {
+    Pick<React.ComponentProps<typeof Legend>, "payload"> & {
       hideIcon?: boolean
       nameKey?: string
     }
@@ -140,9 +166,9 @@ ChartLegendContent.displayName = "ChartLegendContent"
 // #endregion
 
 // #region Tooltip
-const ChartTooltip = Recharts.Tooltip
+const ChartTooltip = RechartsTooltip
 
-type TooltipContentProps = React.ComponentProps<typeof Recharts.Tooltip> &
+type TooltipContentProps = React.ComponentProps<typeof RechartsTooltip> &
   React.ComponentProps<"div"> & {
     hideLabel?: boolean
     hideIndicator?: boolean
@@ -303,10 +329,8 @@ ChartTooltipContent.displayName = "ChartTooltipContent"
 // #endregion
 
 // #region Pie Chart
-const PieChart = Recharts.PieChart
-
 const ChartPie = (
-  props: React.ComponentProps<typeof Recharts.Pie> & {
+  props: React.ComponentProps<typeof Pie> & {
     active?: boolean
   }
 ) => {
@@ -338,14 +362,14 @@ const ChartPie = (
   }, [setActiveIndex])
 
   return (
-    <Recharts.Pie
+    <Pie
       activeIndex={activeIndex ?? undefined}
       onMouseLeave={active ? onPieLeave : undefined}
       onMouseEnter={active ? onPieEnter : undefined}
       {...rest}
     >
       {props.data?.map((_, index) => (
-        <Recharts.Cell
+        <Cell
           key={`cell-${index}`}
           fill={chartConfig[index % chartConfig.length]?.color}
           style={
@@ -355,20 +379,20 @@ const ChartPie = (
           }
         />
       ))}
-      {active && <Recharts.Sector />}
+      {active && <Sector />}
       {rest.children}
-    </Recharts.Pie>
+    </Pie>
   )
 }
 ChartPie.displayName = "ChartPie"
 
 const PieLabel = (
-  props: React.ComponentProps<typeof Recharts.Label> & {
+  props: React.ComponentProps<typeof Label> & {
     format?: (value: number) => string
   }
 ) => {
   return (
-    <Recharts.Label
+    <Label
       {...props}
       value={props.value ? props.format?.(props.value as number) : undefined}
     />
@@ -378,14 +402,38 @@ const PieLabel = (
 
 // #region Exports
 export {
-  // Chart
   ChartContainer,
-  // Legend
   ChartLegend,
   ChartLegendContent,
-  // Tooltip
   ChartTooltip,
   ChartTooltipContent,
+  ChartPie,
+  PieLabel,
+  // recharts
+  BarChart,
+  LineChart,
+  AreaChart,
+  PieChart,
+  RadarChart,
+  RadialBarChart,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Bar,
+  Line,
+  Area,
+  Cell,
+  Legend,
+  Sector,
+  Label,
+  LabelList,
+  Pie,
+  Radar,
+  RadialBar,
 }
 
 
