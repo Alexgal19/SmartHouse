@@ -137,7 +137,6 @@ const AddressDetailView = ({
             }
         }
         
-        // Aggregated data for multiple selections
         const totalOccupantCount = selectedAddressesData.reduce((sum, a) => sum + a.occupantCount, 0);
         const totalCapacity = selectedAddressesData.reduce((sum, a) => sum + a.capacity, 0);
         const allOccupants = selectedAddressesData.flatMap(a => a.occupants);
@@ -337,9 +336,9 @@ const MobileAddressCard = ({ address, onOccupantClick }: { address: HousingData;
                                 {address.name}
                             </CardTitle>
                             <span className="text-base">
-                                <span className="font-semibold text-red-500">{address.occupantCount}</span>
+                                <span className="font-semibold">{address.occupantCount}</span>
                                 <span className="text-muted-foreground"> / </span>
-                                <span className="font-semibold text-blue-500">{address.capacity}</span>
+                                <span className="font-semibold">{address.capacity}</span>
                             </span>
                         </div>
                         <CardDescription className="text-xs pt-1 text-left">
@@ -360,9 +359,9 @@ const MobileAddressCard = ({ address, onOccupantClick }: { address: HousingData;
                                                 Pokój {room.name}
                                             </div>
                                             <span className="text-sm">
-                                                <span className="font-semibold text-red-500">{room.occupantCount}</span>
+                                                <span className="font-semibold">{room.occupantCount}</span>
                                                 <span className="text-muted-foreground"> / </span>
-                                                <span className="font-semibold text-blue-500">{room.capacity}</span>
+                                                <span className="font-semibold">{room.capacity}</span>
                                             </span>
                                         </div>
                                          <div className="pl-4 mt-2 space-y-1">
@@ -588,9 +587,9 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                                             {address.name}
                                         </CardTitle>
                                         <span className="text-sm">
-                                            <span className="font-semibold text-red-500">{address.occupantCount}</span>
+                                            <span className="font-semibold">{address.occupantCount}</span>
                                             <span className="text-muted-foreground"> / </span>
-                                            <span className="font-semibold text-blue-500">{address.capacity}</span>
+                                            <span className="font-semibold">{address.capacity}</span>
                                         </span>
                                     </div>
                                     <CardDescription className="text-xs pt-1">
