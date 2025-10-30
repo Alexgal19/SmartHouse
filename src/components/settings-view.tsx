@@ -401,7 +401,7 @@ const ReportsGenerator = ({ settings, currentUser }: { settings: Settings; curre
     };
     
     const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
-    const months = Array.from({ length: 12 }, (value, i) => + 1);
+    const months = Array.from({ length: 12 }, (value, i) => i + 1);
 
     return (
         <Card>
