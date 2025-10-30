@@ -136,7 +136,7 @@ const CoordinatorManager = ({ form, fields, append, remove }: { form:  ReturnTyp
                 name={`coordinators.${field.originalIndex}.password`}
                 render={({ field: passField }) => (
                     <FormItem>
-                    <FormLabel>Hasło (pozostaw puste, aby не zmieniać)</FormLabel>
+                    <FormLabel>Hasło (pozostaw puste, aby nie zmieniać)</FormLabel>
                     <FormControl><Input type="password" {...passField} placeholder="Nowe hasło" /></FormControl>
                     <FormMessage />
                     </FormItem>
@@ -562,16 +562,23 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     mode: 'onChange',
+    defaultValues: {
+        nationalities: [],
+        departments: [],
+        genders: [],
+        localities: [],
+        addresses: [],
+        coordinators: [],
+    }
   });
 
   React.useEffect(() => {
     if (settings) {
-      const uniqueLocalities = Array.from(new Set(settings.addresses.map(a => a.locality).filter(Boolean)));
       form.reset({
         nationalities: settings.nationalities.map(n => ({ value: n })),
         departments: settings.departments.map(d => ({ value: d })),
         genders: settings.genders.map(g => ({ value: g })),
-        localities: uniqueLocalities.map(l => ({ value: l })),
+        localities: settings.localities.map(l => ({ value: l })),
         addresses: settings.addresses,
         coordinators: settings.coordinators.map(c => ({...c, password: ''})), // Clear password on load
       });
@@ -626,5 +633,3 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     </div>
   );
 }
-
-    
