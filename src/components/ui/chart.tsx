@@ -412,8 +412,6 @@ export const LabelList = Recharts.LabelList;
 export const Pie = Recharts.Pie;
 export const Radar = Recharts.Radar;
 export const RadialBar = Recharts.RadialBar;
-export const Tooltip = Recharts.Tooltip;
+export { Tooltip as RechartsTooltip } from 'recharts';
 
 export type { ChartConfig }
-
-    
