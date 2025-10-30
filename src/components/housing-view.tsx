@@ -108,20 +108,20 @@ const AddressDetailView = ({
   onOccupantClick,
   selectedAddressIds,
   onRoomClick,
-  selectedRoomId
+  selectedRoomIds
 }: {
   addresses: HousingData[];
   onOccupantClick: (occupant: Occupant) => void;
   selectedAddressIds: string[];
   onRoomClick: (roomId: string) => void;
-  selectedRoomId: string | null;
+  selectedRoomIds: string[];
 }) => {
     
     const selectedAddressesData = useMemo(() => {
         return addresses.filter(a => selectedAddressIds.includes(a.id));
     }, [addresses, selectedAddressIds]);
     
-    const aggregatedData = useMemo(() => {
+    const aggregatedAddressesData = useMemo(() => {
         if (selectedAddressesData.length === 0) return null;
 
         if (selectedAddressesData.length === 1) {
@@ -153,10 +153,26 @@ const AddressDetailView = ({
     }, [selectedAddressesData]);
 
 
-    const selectedRoom = useMemo(() => {
-        if (!aggregatedData || aggregatedData.isMultiple || !selectedRoomId) return null;
-        return aggregatedData.rooms.find(r => r.id === selectedRoomId) ?? null;
-    }, [aggregatedData, selectedRoomId]);
+    const selectedRoomsData = useMemo(() => {
+        if (!aggregatedAddressesData || aggregatedAddressesData.isMultiple || selectedRoomIds.length === 0) return null;
+        
+        const rooms = aggregatedAddressesData.rooms.filter(r => selectedRoomIds.includes(r.id));
+        if (rooms.length === 0) return null;
+
+        const totalOccupantCount = rooms.reduce((sum, r) => sum + r.occupantCount, 0);
+        const totalCapacity = rooms.reduce((sum, r) => sum + r.capacity, 0);
+        const allOccupants = rooms.flatMap(r => r.occupants);
+
+        return {
+            isMultiple: rooms.length > 1,
+            name: rooms.length > 1 ? `${rooms.length} wybrane pokoje` : `Pokój ${rooms[0].name}`,
+            occupants: allOccupants,
+            occupantCount: totalOccupantCount,
+            capacity: totalCapacity,
+            available: totalCapacity - totalOccupantCount,
+            rooms: rooms,
+        }
+    }, [aggregatedAddressesData, selectedRoomIds]);
 
     const chartConfig: ChartConfig = {
         count: { label: "Ilość" },
@@ -164,7 +180,7 @@ const AddressDetailView = ({
         genders: { label: "Genders", color: "hsl(var(--chart-1))" },
     };
     
-    if (!aggregatedData) {
+    if (!aggregatedAddressesData) {
         return (
             <Card className="lg:col-span-2 h-full">
                 <CardHeader>
@@ -181,21 +197,23 @@ const AddressDetailView = ({
     return (
         <Card className="lg:col-span-2 h-full">
             <CardHeader>
-                <CardTitle>{aggregatedData.name}</CardTitle>
+                <CardTitle>{selectedRoomsData ? selectedRoomsData.name : aggregatedAddressesData.name}</CardTitle>
                 <CardDescription>
-                    <span>{aggregatedData.occupantCount} / {aggregatedData.capacity} mieszkańców</span>
-                    <span className={cn("ml-2 font-bold", aggregatedData.available > 0 ? "text-green-600" : "text-red-600")}>
-                        ({aggregatedData.available} wolnych miejsc)
+                    <span>
+                      {(selectedRoomsData || aggregatedAddressesData).occupantCount} / {(selectedRoomsData || aggregatedAddressesData).capacity} mieszkańców
+                    </span>
+                    <span className={cn("ml-2 font-bold", (selectedRoomsData || aggregatedAddressesData).available > 0 ? "text-green-600" : "text-red-600")}>
+                        ({(selectedRoomsData || aggregatedAddressesData).available} wolnych miejsc)
                     </span>
                 </CardDescription>
             </CardHeader>
             <CardContent>
                 <ScrollArea className="h-[calc(100vh - 16rem)]">
-                    {aggregatedData.isMultiple ? (
+                    {aggregatedAddressesData.isMultiple ? (
                         <div className="space-y-6">
                             <div>
                                 <h3 className="font-semibold mb-4">Statystyki łączne</h3>
-                                <StatsCharts occupants={aggregatedData.occupants} chartConfig={chartConfig} />
+                                <StatsCharts occupants={aggregatedAddressesData.occupants} chartConfig={chartConfig} />
                             </div>
                             <div>
                                 <h3 className="font-semibold mb-4">Statystyki indywidualne</h3>
@@ -231,13 +249,13 @@ const AddressDetailView = ({
                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
                             <div className="space-y-4">
                                 <h3 className="font-semibold">Pokoje</h3>
-                                {aggregatedData.rooms.length > 0 ? aggregatedData.rooms.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(room => (
+                                {aggregatedAddressesData.rooms.length > 0 ? aggregatedAddressesData.rooms.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(room => (
                                     <div
                                         key={room.id}
                                         className={cn(
                                             "rounded-md border p-3 cursor-pointer transition-colors",
-                                            selectedRoomId === room.id ? "bg-primary/10 border-primary" : "hover:bg-muted/50",
-                                            room.available > 0 && selectedRoomId !== room.id && "bg-green-500/10 border-green-500/20"
+                                            selectedRoomIds.includes(room.id) ? "bg-primary/10 border-primary" : "hover:bg-muted/50",
+                                            room.available > 0 && !selectedRoomIds.includes(room.id) && "bg-green-500/10 border-green-500/20"
                                         )}
                                         onClick={() => onRoomClick(room.id)}
                                     >
@@ -262,8 +280,55 @@ const AddressDetailView = ({
                                 )) : <NoDataState message="Brak pokoi dla tego adresu" />}
                             </div>
                             <div className="space-y-4">
-                                <h3 className="font-semibold">{selectedRoom ? `Statystyki dla pokoju ${selectedRoom.name}` : "Statystyki dla adresu"}</h3>
-                                <StatsCharts occupants={selectedRoom ? selectedRoom.occupants : aggregatedData.occupants} chartConfig={chartConfig} />
+                                {selectedRoomsData ? (
+                                    selectedRoomsData.isMultiple ? (
+                                        <div className="space-y-6">
+                                            <div>
+                                                <h3 className="font-semibold mb-4">Statystyki łączne dla pokoi</h3>
+                                                <StatsCharts occupants={selectedRoomsData.occupants} chartConfig={chartConfig} />
+                                            </div>
+                                            <div>
+                                                <h3 className="font-semibold mb-4">Statystyki indywidualne dla pokoi</h3>
+                                                <Accordion type="multiple" className="w-full space-y-3">
+                                                    {selectedRoomsData.rooms.map(room => (
+                                                        <Card asChild key={room.id} className="overflow-hidden">
+                                                            <AccordionItem value={room.id} className="border-b-0">
+                                                                <AccordionTrigger className="p-4 hover:no-underline">
+                                                                    <div className="w-full">
+                                                                        <div className="flex justify-between items-start">
+                                                                            <CardTitle className="text-base font-semibold flex items-center gap-2">
+                                                                                Pokój {room.name}
+                                                                            </CardTitle>
+                                                                            <span className="text-base">
+                                                                                <span>{room.occupantCount} / {room.capacity}</span>
+                                                                            </span>
+                                                                        </div>
+                                                                        <CardDescription className="text-xs pt-1 text-left">
+                                                                            Wolne miejsca: <span className={cn("font-bold", room.available > 0 ? "text-green-600" : "text-red-600")}>{room.available}</span>
+                                                                        </CardDescription>
+                                                                    </div>
+                                                                </AccordionTrigger>
+                                                                <AccordionContent className="p-4 pt-0">
+                                                                    <StatsCharts occupants={room.occupants} chartConfig={chartConfig} />
+                                                                </AccordionContent>
+                                                            </AccordionItem>
+                                                        </Card>
+                                                    ))}
+                                                </Accordion>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                          <h3 className="font-semibold">Statystyki dla pokoju {selectedRoomsData.rooms[0].name}</h3>
+                                          <StatsCharts occupants={selectedRoomsData.occupants} chartConfig={chartConfig} />
+                                        </>
+                                    )
+                                ) : (
+                                    <>
+                                        <h3 className="font-semibold">Statystyki dla adresu</h3>
+                                        <StatsCharts occupants={aggregatedAddressesData.occupants} chartConfig={chartConfig} />
+                                    </>
+                                )}
                             </div>
                         </div>
                     )}
@@ -336,9 +401,7 @@ const MobileAddressCard = ({ address, onOccupantClick }: { address: HousingData;
                                 {address.name}
                             </CardTitle>
                             <span className="text-base">
-                                <span className="font-semibold">{address.occupantCount}</span>
-                                <span className="text-muted-foreground"> / </span>
-                                <span className="font-semibold">{address.capacity}</span>
+                                <span>{address.occupantCount} / {address.capacity}</span>
                             </span>
                         </div>
                         <CardDescription className="text-xs pt-1 text-left">
@@ -359,9 +422,7 @@ const MobileAddressCard = ({ address, onOccupantClick }: { address: HousingData;
                                                 Pokój {room.name}
                                             </div>
                                             <span className="text-sm">
-                                                <span className="font-semibold">{room.occupantCount}</span>
-                                                <span className="text-muted-foreground"> / </span>
-                                                <span className="font-semibold">{room.capacity}</span>
+                                                <span>{room.occupantCount} / {room.capacity}</span>
                                             </span>
                                         </div>
                                          <div className="pl-4 mt-2 space-y-1">
@@ -442,7 +503,7 @@ export default function HousingView({ }: { currentUser: SessionData }) {
     const { settings, handleEditEmployeeClick, handleEditNonEmployeeClick } = useMainLayout();
     const { isMobile } = useIsMobile();
     const [selectedAddressIds, setSelectedAddressIds] = useState<string[]>([]);
-    const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+    const [selectedRoomIds, setSelectedRoomIds] = useState<string[]>([]);
 
     const [filters, setFilters] = useState({
         name: '',
@@ -480,7 +541,7 @@ export default function HousingView({ }: { currentUser: SessionData }) {
     }, [rawHousingData, filters]);
     
     const handleAddressClick = (addressId: string) => {
-        setSelectedRoomId(null);
+        setSelectedRoomIds([]);
         setSelectedAddressIds(prev => {
             const isSelected = prev.includes(addressId);
             if(isSelected) {
@@ -492,7 +553,14 @@ export default function HousingView({ }: { currentUser: SessionData }) {
     };
 
     const handleRoomClick = (roomId: string) => {
-        setSelectedRoomId(prev => (prev === roomId ? null : roomId));
+        setSelectedRoomIds(prev => {
+            const isSelected = prev.includes(roomId);
+            if (isSelected) {
+                return prev.filter(id => id !== roomId);
+            } else {
+                return [...prev, roomId];
+            }
+        });
     };
     
     if (!rawHousingData || !settings) {
@@ -587,9 +655,7 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                                             {address.name}
                                         </CardTitle>
                                         <span className="text-sm">
-                                            <span className="font-semibold">{address.occupantCount}</span>
-                                            <span className="text-muted-foreground"> / </span>
-                                            <span className="font-semibold">{address.capacity}</span>
+                                            <span>{address.occupantCount} / {address.capacity}</span>
                                         </span>
                                     </div>
                                     <CardDescription className="text-xs pt-1">
@@ -607,9 +673,8 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                 onOccupantClick={handleOccupantClick}
                 selectedAddressIds={selectedAddressIds}
                 onRoomClick={handleRoomClick}
-                selectedRoomId={selectedRoomId}
+                selectedRoomIds={selectedRoomIds}
             />
         </div>
     );
 }
-
