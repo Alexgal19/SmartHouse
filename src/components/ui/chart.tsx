@@ -3,13 +3,6 @@
 
 import * as React from "react"
 import * as Recharts from "recharts"
-import {
-  Label,
-  Pie,
-  PieChart as RechartsPieChart,
-  Sector,
-  Tooltip,
-} from "recharts"
 
 import { cn } from "@/lib/utils"
 import {
@@ -309,23 +302,11 @@ ChartTooltipContent.displayName = "ChartTooltipContent"
 
 // #endregion
 
-// #region Bar Chart
-const BarChart = Recharts.BarChart
-// #endregion
-
-// #region Line Chart
-const LineChart = Recharts.LineChart
-// #endregion
-
-// #region Area Chart
-const AreaChart = Recharts.AreaChart
-// #endregion
-
 // #region Pie Chart
 const PieChart = Recharts.PieChart
 
 const ChartPie = (
-  props: React.ComponentProps<typeof Pie> & {
+  props: React.ComponentProps<typeof Recharts.Pie> & {
     active?: boolean
   }
 ) => {
@@ -357,7 +338,7 @@ const ChartPie = (
   }, [setActiveIndex])
 
   return (
-    <Pie
+    <Recharts.Pie
       activeIndex={activeIndex ?? undefined}
       onMouseLeave={active ? onPieLeave : undefined}
       onMouseEnter={active ? onPieEnter : undefined}
@@ -374,20 +355,20 @@ const ChartPie = (
           }
         />
       ))}
-      {active && <Sector />}
+      {active && <Recharts.Sector />}
       {rest.children}
-    </Pie>
+    </Recharts.Pie>
   )
 }
 ChartPie.displayName = "ChartPie"
 
 const PieLabel = (
-  props: React.ComponentProps<typeof Label> & {
+  props: React.ComponentProps<typeof Recharts.Label> & {
     format?: (value: number) => string
   }
 ) => {
   return (
-    <Label
+    <Recharts.Label
       {...props}
       value={props.value ? props.format?.(props.value as number) : undefined}
     />
@@ -395,34 +376,7 @@ const PieLabel = (
 }
 // #endregion
 
-// #region Radar Chart
-const RadarChart = Recharts.RadarChart
-
-const ChartRadar = Recharts.Radar
-// #endregion
-
-// #region Radial Chart
-const RadialChart = Recharts.RadialBarChart
-
-const ChartRadial = Recharts.RadialBar
-// #endregion
-
 // #region Exports
-const {
-    ResponsiveContainer,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    PolarGrid,
-    PolarAngleAxis,
-    PolarRadiusAxis,
-    Bar,
-    Line,
-    Area,
-    Cell,
-    Legend,
-} = Recharts;
-
 export {
   // Chart
   ChartContainer,
@@ -432,37 +386,34 @@ export {
   // Tooltip
   ChartTooltip,
   ChartTooltipContent,
-  // Bar Chart
-  BarChart,
-  // Line Chart
-  LineChart,
-  // Area Chart
-  AreaChart,
-  // Pie Chart
-  PieChart,
-  ChartPie,
-  PieLabel,
-  // Radar Chart
-  RadarChart,
-  ChartRadar,
-  // Radial Chart
-  RadialChart,
-  ChartRadial,
-  // Recharts
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Bar,
-  Line,
-  Area,
-  Cell,
-  Legend,
-  Sector,
-  Tooltip,
 }
 
+// Export recharts components
+export const BarChart = Recharts.BarChart;
+export const LineChart = Recharts.LineChart;
+export const AreaChart = Recharts.AreaChart;
+export const RadarChart = Recharts.RadarChart;
+export const RadialBarChart = Recharts.RadialBarChart;
+export const ResponsiveContainer = Recharts.ResponsiveContainer;
+export const XAxis = Recharts.XAxis;
+export const YAxis = Recharts.YAxis;
+export const CartesianGrid = Recharts.CartesianGrid;
+export const PolarGrid = Recharts.PolarGrid;
+export const PolarAngleAxis = Recharts.PolarAngleAxis;
+export const PolarRadiusAxis = Recharts.PolarRadiusAxis;
+export const Bar = Recharts.Bar;
+export const Line = Recharts.Line;
+export const Area = Recharts.Area;
+export const Cell = Recharts.Cell;
+export const Legend = Recharts.Legend;
+export const Sector = Recharts.Sector;
+export const Label = Recharts.Label;
+export const LabelList = Recharts.LabelList;
+export const Pie = Recharts.Pie;
+export const Radar = Recharts.Radar;
+export const RadialBar = Recharts.RadialBar;
+export const Tooltip = Recharts.Tooltip;
+
 export type { ChartConfig }
+
+    
