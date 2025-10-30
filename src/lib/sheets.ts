@@ -434,5 +434,3 @@ export const getAllSheetsData = async () => {
         throw new Error(`Could not fetch all data from sheets. Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
 }
-
-    
