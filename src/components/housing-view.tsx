@@ -318,7 +318,7 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                             <Label htmlFor="show-available">Tylko z wolnymi miejscami</Label>
                         </div>
                     </div>
-                    <ScrollArea className="h-[calc(100vh-18rem)]">
+                    <ScrollArea className="h-[calc(100vh-22rem)]">
                         <div className="space-y-2">
                         {filteredData.map(address => (
                             <Card 
@@ -329,15 +329,15 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                                 )}
                                 onClick={() => setSelectedAddressId(address.id)}
                             >
-                                <CardHeader className="p-3">
+                                <CardHeader className="p-2">
                                     <div className="flex justify-between items-start">
-                                        <CardTitle className="text-base flex items-center gap-2">
+                                        <CardTitle className="text-sm flex items-center gap-2">
                                             <Building className="h-4 w-4 text-primary" />
                                             {address.name}
                                         </CardTitle>
                                         <span className="text-sm font-bold">{address.occupantCount}/{address.capacity}</span>
                                     </div>
-                                    <CardDescription className="text-xs pt-1">
+                                    <CardDescription className="text-xs pt-0.5">
                                         Wolne miejsca: <span className={cn("font-bold", address.available > 0 ? "text-green-600" : "text-red-600")}>{address.available}</span>
                                     </CardDescription>
                                 </CardHeader>
