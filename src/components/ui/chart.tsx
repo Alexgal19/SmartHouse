@@ -196,7 +196,10 @@ const ChartTooltipContent = React.forwardRef<
       }
 
       if (labelFormatter) {
-        return labelFormatter(payload[0].value, payload)
+        const payloadValue = payload[0];
+        if (payloadValue && typeof payloadValue === 'object' && 'value' in payloadValue) {
+            return labelFormatter(payloadValue.value, payload);
+        }
       }
 
       if (!payload[0].payload) {
@@ -212,7 +215,7 @@ const ChartTooltipContent = React.forwardRef<
 
       if (
         typeof value === "number" &&
-        typeof payload[0].value === "number" &&
+        payload[0].value && typeof payload[0].value === "number" &&
         isFinite(payload[0].value)
       ) {
         return new Date(value).toLocaleDateString("en-US", {
@@ -295,8 +298,8 @@ const ChartTooltipContent = React.forwardRef<
                     {itemConfig?.label || item.name}
                   </div>
                   <div className={cn("font-medium")}>
-                    {formatter
-                      ? formatter(item.value as number, item.name, item, index)
+                    {formatter && typeof item.value === 'number'
+                      ? formatter(item.value, item.name as string, item, index)
                       : `${item.value}`}
                   </div>
                 </div>
