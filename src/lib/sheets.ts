@@ -17,7 +17,6 @@ const SHEET_NAME_DEPARTMENTS = 'Departments';
 const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_LOCALITIES = 'Localities';
-const SHEET_NAME_EQUIPMENT = 'Equipment';
 
 let docPromise: Promise<GoogleSpreadsheet> | null = null;
 
@@ -222,22 +221,6 @@ const deserializeNotification = (row: Record<string, unknown>): Notification | n
     return newNotification;
 };
 
-const deserializeEquipmentItem = (row: Record<string, unknown>): EquipmentItem | null => {
-    const plainObject = row;
-    const id = plainObject.id;
-    if (!id) return null;
-
-    return {
-        id: id as string,
-        inventoryNumber: (plainObject.inventoryNumber || '') as string,
-        name: (plainObject.name || '') as string,
-        quantity: Number(plainObject.quantity) || 0,
-        description: (plainObject.description || '') as string,
-        addressId: (plainObject.addressId || '') as string,
-        addressName: (plainObject.addressName || '') as string,
-    };
-};
-
 const getSheetData = async (doc: GoogleSpreadsheet, title: string, limit = 2000): Promise<Record<string, string>[]> => {
     const sheet = doc.sheetsByTitle[title];
     if (!sheet) {
@@ -269,7 +252,6 @@ export const getAllSheetsData = async () => {
             getSheet(SHEET_NAME_COORDINATORS, []),
             getSheet(SHEET_NAME_GENDERS, ['name']),
             getSheet(SHEET_NAME_LOCALITIES, ['name']),
-            getSheet(SHEET_NAME_EQUIPMENT, []),
         ]);
 
 
@@ -277,7 +259,6 @@ export const getAllSheetsData = async () => {
             employeesSheet,
             settingsSheets,
             nonEmployeesSheet,
-            equipmentSheet,
             notificationsSheet,
         ] = await Promise.all([
             getSheetData(doc, SHEET_NAME_EMPLOYEES, 3000),
@@ -294,7 +275,6 @@ export const getAllSheetsData = async () => {
                 return { addressRows, roomRows, nationalityRows, departmentRows, coordinatorRows, genderRows, localityRows };
             })(),
             getSheetData(doc, SHEET_NAME_NON_EMPLOYEES),
-            getSheetData(doc, SHEET_NAME_EQUIPMENT, 2000),
             getSheetData(doc, SHEET_NAME_NOTIFICATIONS, 200),
         ]);
 
@@ -330,7 +310,6 @@ export const getAllSheetsData = async () => {
 
         const employees = employeesSheet.map(row => deserializeEmployee(row)).filter((e): e is Employee => e !== null);
         const nonEmployees = nonEmployeesSheet.map(row => deserializeNonEmployee(row)).filter((e): e is NonEmployee => e !== null);
-        const equipment = equipmentSheet.map(row => deserializeEquipmentItem(row)).filter((item): item is EquipmentItem => item !== null);
 
         const notifications = notificationsSheet
             .map(row => deserializeNotification(row))
@@ -338,7 +317,7 @@ export const getAllSheetsData = async () => {
             .sort((a: Notification, b: Notification) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         
 
-        return { employees, settings, nonEmployees, equipment, notifications };
+        return { employees, settings, nonEmployees, notifications };
 
     } catch (error: unknown) {
         console.error("Error fetching all sheets data:", error);

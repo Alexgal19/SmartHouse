@@ -168,7 +168,7 @@ const ChartLegendContent = React.forwardRef<
       className={cn("flex items-center justify-center gap-4", className)}
       {...props}
     >
-      {payload.map((item) => {
+      {payload.map((item: { value: any }) => {
         const key = `${item.value}`
         const entry = config[key]
         const color = entry?.color

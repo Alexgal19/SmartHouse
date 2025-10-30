@@ -2,7 +2,6 @@
 "use client";
 
 import DashboardView from '@/components/dashboard-view';
-import EquipmentView from '@/components/equipment-view';
 import { useMainLayout } from '@/components/main-layout';
 import SettingsView from '@/components/settings-view';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -23,8 +22,6 @@ function CurrentView({ activeView, currentUser }: { activeView: View; currentUse
       return <HousingView currentUser={currentUser} />;
     case 'settings':
       return <SettingsView currentUser={currentUser} />;
-    case 'equipment':
-        return <EquipmentView currentUser={currentUser} />;
     default:
       return (
         <DashboardView currentUser={currentUser} />

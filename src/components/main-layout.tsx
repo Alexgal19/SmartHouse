@@ -16,7 +16,7 @@ import {
 import Header from './header';
 import { MobileNav } from './mobile-nav';
 import type { View, Notification, Employee, Settings, NonEmployee, EquipmentItem, SessionData, Address } from '@/types';
-import { Home, Settings as SettingsIcon, Users, Archive, Building } from 'lucide-react';
+import { Home, Settings as SettingsIcon, Users, Building } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     clearAllNotifications,
@@ -78,7 +78,6 @@ const HouseLoader = () => {
 type MainLayoutContextType = {
     allEmployees: Employee[] | null;
     allNonEmployees: NonEmployee[] | null;
-    allEquipment: EquipmentItem[] | null;
     settings: Settings | null;
     currentUser: SessionData | null;
     selectedCoordinatorId: string;
@@ -91,9 +90,6 @@ type MainLayoutContextType = {
     handleAddNonEmployeeClick: () => void;
     handleEditNonEmployeeClick: (nonEmployee: NonEmployee) => void;
     handleDeleteNonEmployee: (id: string) => Promise<void>;
-    handleAddEquipment: (itemData: Omit<EquipmentItem, 'id' | 'addressName'>) => Promise<void>;
-    handleUpdateEquipment: (id: string, itemData: Partial<EquipmentItem>) => Promise<void>;
-    handleDeleteEquipment: (id: string) => Promise<void>;
     handleRefreshStatuses: (showNoChangesToast?: boolean) => Promise<void>;
     handleAddressFormOpen: (address: Address | null) => void;
     handleDismissEmployee: (employeeId: string) => Promise<void>;
@@ -127,7 +123,6 @@ export default function MainLayout({
         { view: 'dashboard', icon: Home, label: 'Pulpit' },
         { view: 'employees', icon: Users, label: 'Pracownicy' },
         { view: 'housing', icon: Building, label: 'Zakwaterowanie' },
-        { view: 'equipment', icon: Archive, label: 'Wyposażenie' },
         { view: 'settings', icon: SettingsIcon, label: 'Ustawienia' },
     ], [])  as { view: View; icon: React.ElementType; label: string }[];
 
@@ -142,7 +137,6 @@ export default function MainLayout({
     
     const [rawEmployees, setRawEmployees] = useState<Employee[] | null>(null);
     const [rawNonEmployees, setRawNonEmployees] = useState<NonEmployee[] | null>(null);
-    const [rawEquipment, setRawEquipment] = useState<EquipmentItem[] | null>(null);
     const [settings, setSettings] = useState<Settings | null>(null);
     
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -180,18 +174,6 @@ export default function MainLayout({
         return rawNonEmployees.filter(ne => coordinatorAddresses.has(ne.address));
     }, [rawNonEmployees, settings, currentUser, selectedCoordinatorId]);
 
-    const allEquipment = useMemo(() => {
-        if (!rawEquipment || !settings || !currentUser) return null;
-        if (currentUser.isAdmin && selectedCoordinatorId === 'all') {
-            return rawEquipment;
-        }
-        const coordinatorAddresses = new Set(
-            settings.addresses
-                .filter(a => a.coordinatorIds.includes(selectedCoordinatorId))
-                .map(a => a.id)
-        );
-        return rawEquipment.filter(eq => coordinatorAddresses.has(eq.addressId));
-    }, [rawEquipment, settings, currentUser, selectedCoordinatorId]);
     
     const setSelectedCoordinatorId = useCallback((value: React.SetStateAction<string>) => {
         _setSelectedCoordinatorId(value);
@@ -254,14 +236,12 @@ export default function MainLayout({
                 employees,
                 settings,
                 nonEmployees,
-                equipment,
                 notifications,
             } = await getAllSheetsData();
 
             setRawEmployees(employees);
             setSettings(settings);
             setRawNonEmployees(nonEmployees);
-            setRawEquipment(equipment);
             setAllNotifications(notifications);
             
             if(showToast) {
@@ -395,36 +375,6 @@ export default function MainLayout({
         }
     }, [settings, currentUser, toast, refreshData]);
 
-    const handleAddEquipment = useCallback(async (itemData: Omit<EquipmentItem, 'id' | 'addressName'>) => {
-        try {
-            await addEquipment(itemData);
-            toast({ title: "Sukces", description: "Dodano nowy sprzęt." });
-            await refreshData(false);
-        } catch (e) {
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się dodać sprzętu." });
-        }
-    }, [refreshData, toast]);
-
-    const handleUpdateEquipment = useCallback(async (id: string, itemData: Partial<EquipmentItem>) => {
-        try {
-            await updateEquipment(id, itemData);
-            toast({ title: "Sukces", description: "Zaktualizowano sprzęt." });
-            await refreshData(false);
-        } catch (e) {
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zaktualizować sprzętu." });
-        }
-    }, [refreshData, toast]);
-
-    const handleDeleteEquipment = useCallback(async (id: string) => {
-        try {
-            await deleteEquipment(id);
-            toast({ title: "Sukces", description: "Usunięto sprzęt." });
-            await refreshData(false);
-        } catch (e) {
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć sprzętu." });
-        }
-    }, [refreshData, toast]);
-
     const handleAddEmployeeClick = useCallback(() => {
         setEditingEmployee(null);
         setIsFormOpen(true);
@@ -547,7 +497,6 @@ export default function MainLayout({
     const contextValue: MainLayoutContextType = useMemo(() => ({
         allEmployees,
         allNonEmployees,
-        allEquipment,
         settings,
         currentUser,
         selectedCoordinatorId,
@@ -560,9 +509,6 @@ export default function MainLayout({
         handleAddNonEmployeeClick,
         handleEditNonEmployeeClick,
         handleDeleteNonEmployee,
-        handleAddEquipment,
-        handleUpdateEquipment,
-        handleDeleteEquipment,
         handleRefreshStatuses,
         handleAddressFormOpen,
         handleDismissEmployee,
@@ -572,7 +518,6 @@ export default function MainLayout({
     } ), [
         allEmployees,
         allNonEmployees,
-        allEquipment,
         settings,
         currentUser,
         selectedCoordinatorId,
@@ -585,9 +530,6 @@ export default function MainLayout({
         handleAddNonEmployeeClick,
         handleEditNonEmployeeClick,
         handleDeleteNonEmployee,
-        handleAddEquipment,
-        handleUpdateEquipment,
-        handleDeleteEquipment,
         handleRefreshStatuses,
         handleAddressFormOpen,
         handleDismissEmployee,
@@ -596,7 +538,7 @@ export default function MainLayout({
         handleImportEmployees,
     ]);
 
-    if (!settings || !allEmployees || !allNonEmployees || !allEquipment) {
+    if (!settings || !allEmployees || !allNonEmployees) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
                 <HouseLoader />

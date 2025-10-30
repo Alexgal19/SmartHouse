@@ -18,8 +18,6 @@ const SHEET_NAME_DEPARTMENTS = 'Departments';
 const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_LOCALITIES = 'Localities';
-const SHEET_NAME_EQUIPMENT = 'Equipment';
-
 
 const serializeDate = (date?: string | null): string => {
     if (!date) {
@@ -94,24 +92,8 @@ const serializeNotification = (notification: Omit<Notification, 'changes'> & { c
     };
 };
 
-const serializeEquipment = (item: Partial<EquipmentItem>): Record<string, string | number> => {
-    return {
-        id: item.id || '',
-        inventoryNumber: item.inventoryNumber || '',
-        name: item.name || '',
-        quantity: item.quantity || 0,
-        description: item.description || '',
-        addressId: item.addressId || '',
-        addressName: item.addressName || '',
-    };
-};
-
 const NON_EMPLOYEE_HEADERS = [
     'id', 'fullName', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'comments'
-];
-
-const EQUIPMENT_HEADERS = [
-    'id', 'inventoryNumber', 'name', 'quantity', 'description', 'addressId', 'addressName'
 ];
 
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
@@ -446,55 +428,19 @@ export async function deleteNonEmployee(id: string): Promise<void> {
 }
 
 export async function addEquipment(itemData: Omit<EquipmentItem, 'id' | 'addressName'>): Promise<void> {
-    try {
-        const sheet = await getSheet(SHEET_NAME_EQUIPMENT, EQUIPMENT_HEADERS);
-        const { settings } = await getAllSheetsData();
-        const addressName = settings.addresses.find((a: { id: any; }) => a.id === itemData.addressId)?.name || 'Nieznany';
-        
-        const newItem: EquipmentItem = {
-            id: `equip-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-            ...itemData,
-            addressName
-        };
-        const serialized = serializeEquipment(newItem);
-        await sheet.addRow(serialized, { raw: false, insert: true });
-    } catch (e: unknown) {
-        console.error("Error adding equipment:", e);
-        throw new Error(e instanceof Error ? e.message : "Failed to add equipment.");
-    }
+    // This function is now a no-op but is kept to avoid breaking changes if it was called somewhere.
+    // In a real scenario, you might want to remove this function and its calls.
+     console.warn("addEquipment is called, but the equipment feature is removed.");
 }
 
 export async function updateEquipment(id: string, updates: Partial<EquipmentItem>): Promise<void> {
-    try {
-        const sheet = await getSheet(SHEET_NAME_EQUIPMENT, EQUIPMENT_HEADERS);
-        const rows = await sheet.getRows({ limit: 2000 });
-        const row = rows.find((r) => r.get('id') === id);
-        if (!row) throw new Error("Equipment not found");
-        
-        for (const key in updates) {
-            row.set(key, (updates as Record<string, any>)[key]);
-        }
-        await row.save();
-    } catch (e: unknown) {
-        console.error("Error updating equipment:", e);
-        throw new Error(e instanceof Error ? e.message : "Failed to update equipment.");
-    }
+    // This function is now a no-op.
+     console.warn(`updateEquipment is called for id ${id}, but the equipment feature is removed.`);
 }
 
 export async function deleteEquipment(id: string): Promise<void> {
-    try {
-        const sheet = await getSheet(SHEET_NAME_EQUIPMENT, EQUIPMENT_HEADERS);
-        const rows = await sheet.getRows({ limit: 2000 });
-        const row = rows.find((r) => r.get('id') === id);
-        if (row) {
-            await row.delete();
-        } else {
-            throw new Error("Equipment not found");
-        }
-    } catch (e: unknown) {
-        console.error("Error deleting equipment:", e);
-        throw new Error(e instanceof Error ? e.message : "Failed to delete equipment.");
-    }
+    // This function is now a no-op.
+     console.warn(`deleteEquipment is called for id ${id}, but the equipment feature is removed.`);
 }
 
 
