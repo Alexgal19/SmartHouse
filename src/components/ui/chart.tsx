@@ -44,7 +44,7 @@ function useChart() {
   const context = React.useContext(ChartContext)
 
   if (!context) {
-    throw new Error("useChart must be used within a <ChartContainer />")
+    return null;
   }
 
   return context
@@ -80,17 +80,18 @@ const ChartContainer = React.forwardRef<
 
   return (
     <ChartContext.Provider value={{ config: chartConfig }}>
-      <Card
+      <div
         ref={ref}
         id={id}
+        data-chart={id}
         className={cn(
-          "flex flex-col justify-between p-6",
+          "flex flex-col justify-between rounded-lg border",
           className
         )}
         {...props}
       >
         {children}
-      </Card>
+      </div>
     </ChartContext.Provider>
   )
 })
@@ -155,7 +156,7 @@ const ChartLegendContent = React.forwardRef<
       getLabel?: (value: string) => React.ReactNode
     }
 >(({ className, hideIcon, payload, getLabel, ...props }, ref) => {
-  const { config } = useChart()
+  const { config } = useChart()!
 
   if (!payload?.length) {
     return null
@@ -229,8 +230,8 @@ const ChartTooltipContent = React.forwardRef<
     },
     ref
   ) => {
-    const { config: contextConfig } = useChart()
-    const config = propConfig || contextConfig
+    const context = useChart()
+    const config = propConfig || context?.config || {}
 
 
     const tooltipLabel = React.useMemo(() => {
@@ -239,7 +240,7 @@ const ChartTooltipContent = React.forwardRef<
       }
 
       const [item] = payload
-      const key = `${labelKey && "payload" in item && item.payload ? item.payload[labelKey as keyof typeof item.payload] : item.name}`
+      const key = `${labelKey && item.payload ? item.payload[labelKey] : item.name}`
 
       if (labelFormatter) {
         return labelFormatter(key, payload)
@@ -267,7 +268,7 @@ const ChartTooltipContent = React.forwardRef<
         ) : null}
         <div className="grid gap-1.5">
           {payload.map((item, i) => {
-            const key = `${nameKey && "payload" in item && item.payload ? item.payload[nameKey as keyof typeof item.payload] : item.name}`
+            const key = `${nameKey && item.payload ? item.payload[nameKey] : item.name}`
             const entry = config[key]
             const color = entry?.color
 
@@ -291,7 +292,7 @@ const ChartTooltipContent = React.forwardRef<
                   />
                 ) : null}
                 <div className="flex flex-1 justify-between">
-                  <div className="text-muted-foreground">{entry?.label}</div>
+                  <div className="text-muted-foreground">{entry?.label || key}</div>
                   <div>{`${"value" in item ? item.value : ''}`}</div>
                 </div>
               </div>
@@ -312,7 +313,7 @@ const ChartPie = (
   }
 ) => {
   const { active, ...rest } = props
-  const { config } = useChart()
+  const { config } = useChart()!
   const [activeIndex, setActiveIndex] = React.useState<number | null>(
     active ? 0 : null
   )
@@ -413,5 +414,3 @@ export const RadialBar = Recharts.RadialBar;
 export { Tooltip as RechartsTooltip } from "recharts";
 
 export type { ChartConfig }
-
-    
