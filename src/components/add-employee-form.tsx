@@ -33,7 +33,7 @@ import {
   SelectLabel,
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { Employee, Settings } from '@/types';
+import type { Employee, Settings, Address } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, Info, X } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
@@ -46,6 +46,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 const formSchema = z.object({
   fullName: z.string().min(3, "Imię i nazwisko musi mieć co najmniej 3 znaki."),
   coordinatorId: z.string().min(1, "Koordynator jest wymagany."),
+  locality: z.string().min(1, "Miejscowość jest wymagana."),
   address: z.string().min(1, "Adres jest wymagany."),
   roomNumber: z.string().min(1, "Numer pokoju jest wymagany."),
   zaklad: z.string().nullable(),
@@ -70,7 +71,7 @@ const formSchema = z.object({
   })).optional(),
 });
 
-export type EmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate' | 'contractStartDate' | 'contractEndDate' | 'departureReportDate'> & {
+export type EmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate' | 'contractStartDate' | 'contractEndDate' | 'departureReportDate' | 'locality'> & {
   checkInDate: string | null;
   checkOutDate?: string | null;
   contractStartDate?: string | null;
@@ -191,6 +192,7 @@ export function AddEmployeeForm({
     defaultValues: {
       fullName: '',
       coordinatorId: '',
+      locality: '',
       address: '',
       roomNumber: '',
       zaklad: null,
@@ -216,14 +218,13 @@ export function AddEmployeeForm({
     },
   });
   
+  const selectedLocality = form.watch('locality');
   const selectedAddress = form.watch('address');
-  
-  const addressesByLocality = useMemo(() => {
-    return settings.addresses.reduce((acc, address) => {
-        (acc[address.locality] = acc[address.locality] || []).push(address);
-        return acc;
-    }, {} as Record<string, typeof settings.addresses>);
-  }, [settings.addresses]);
+
+  const availableAddresses = useMemo(() => {
+    if (!selectedLocality) return [];
+    return settings.addresses.filter(a => a.locality === selectedLocality);
+  }, [settings.addresses, selectedLocality]);
 
   const availableRooms = settings.addresses.find(a => a.name === selectedAddress)?.rooms || [];
 
@@ -239,10 +240,14 @@ export function AddEmployeeForm({
                 checked: existing?.checked ?? false,
             }
         });
+        
+        const employeeAddress = settings.addresses.find(a => a.name === employee.address);
+        const employeeLocality = employeeAddress ? employeeAddress.locality : '';
 
         form.reset({
             fullName: employee.fullName ?? '',
             coordinatorId: employee.coordinatorId ?? '',
+            locality: employeeLocality,
             address: employee.address ?? '',
             roomNumber: employee.roomNumber ?? '',
             zaklad: employee.zaklad ?? null,
@@ -265,6 +270,7 @@ export function AddEmployeeForm({
         form.reset({
           fullName: '',
           coordinatorId: '',
+          locality: '',
           address: '',
           roomNumber: '',
           zaklad: null,
@@ -289,7 +295,7 @@ export function AddEmployeeForm({
           }))
         });
     }
-  }, [employee, isOpen, form]);
+  }, [employee, isOpen, form, settings.addresses]);
   
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     const formatDate = (date: Date | null | undefined): string | null | undefined => {
@@ -297,8 +303,10 @@ export function AddEmployeeForm({
         return format(date, 'yyyy-MM-dd');
     }
 
+    const { locality, ...restOfValues } = values;
+
     const formData: EmployeeFormData = {
-        ...values,
+        ...restOfValues,
         checkInDate: formatDate(values.checkInDate),
         checkOutDate: formatDate(values.checkOutDate),
         contractStartDate: formatDate(values.contractStartDate),
@@ -310,6 +318,12 @@ export function AddEmployeeForm({
     onOpenChange(false);
   };
   
+  const handleLocalityChange = (value: string) => {
+    form.setValue('locality', value);
+    form.setValue('address', '');
+    form.setValue('roomNumber', '');
+  }
+
   const handleAddressChange = (value: string) => {
     form.setValue('address', value);
     form.setValue('roomNumber', '');
@@ -400,19 +414,30 @@ export function AddEmployeeForm({
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                              <FormField
                                 control={form.control}
+                                name="locality"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Miejscowość</FormLabel>
+                                    <Select onValueChange={handleLocalityChange} value={field.value}>
+                                        <FormControl><SelectTrigger><SelectValue placeholder="Wybierz miejscowość" /></SelectTrigger></FormControl>
+                                        <SelectContent>
+                                            {settings.localities.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                             <FormField
+                                control={form.control}
                                 name="address"
                                 render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Adres</FormLabel>
-                                    <Select onValueChange={handleAddressChange} value={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue placeholder="Wybierz adres" /></SelectTrigger></FormControl>
+                                    <Select onValueChange={handleAddressChange} value={field.value} disabled={!selectedLocality}>
+                                        <FormControl><SelectTrigger><SelectValue placeholder={!selectedLocality ? "Najpierw wybierz miejscowość" : "Wybierz adres"} /></SelectTrigger></FormControl>
                                         <SelectContent>
-                                            {Object.entries(addressesByLocality).map(([locality, addresses]) => (
-                                                <SelectGroup key={locality}>
-                                                    <SelectLabel>{locality}</SelectLabel>
-                                                    {addresses.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
-                                                </SelectGroup>
-                                            ))}
+                                            {availableAddresses.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                     <FormMessage />
@@ -426,7 +451,7 @@ export function AddEmployeeForm({
                                 <FormItem>
                                     <FormLabel>Pokój</FormLabel>
                                     <Select onValueChange={field.onChange} value={field.value} disabled={!selectedAddress}>
-                                    <FormControl><SelectTrigger><SelectValue placeholder="Wybierz pokój" /></SelectTrigger></FormControl>
+                                    <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : "Wybierz pokój"} /></SelectTrigger></FormControl>
                                     <SelectContent>
                                         {availableRooms.map(r => <SelectItem key={r.id} value={r.name}>{r.name} (Pojemność: {r.capacity})</SelectItem>)}
                                     </SelectContent>
@@ -693,3 +718,4 @@ export function AddEmployeeForm({
     </Dialog>
   );
 }
+
