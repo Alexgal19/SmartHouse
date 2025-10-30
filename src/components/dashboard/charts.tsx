@@ -8,7 +8,7 @@ import { BarChart2 } from "lucide-react";
 import type { Employee, Settings, ChartConfig } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useMainLayout } from '@/components/main-layout';
-import { format, getYear, eachDayOfInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, eachMonthOfInterval } from 'date-fns';
+import { format, getYear, eachDayOfInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, eachMonthOfInterval, parseISO } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { pl } from 'date-fns/locale';
 
@@ -76,7 +76,7 @@ export function DashboardCharts({
         
         const departuresByDate = employees.reduce((acc, employee) => {
             if (employee.checkOutDate) {
-                const checkOut = new Date(employee.checkOutDate);
+                const checkOut = parseISO(employee.checkOutDate);
                 const dateKey = format(checkOut, 'yyyy-MM-dd');
                  if (!acc[dateKey]) {
                     acc[dateKey] = { departures: 0 };
@@ -123,7 +123,7 @@ export function DashboardCharts({
                                      (employee.deductionReason || []).reduce((sum, reason) => sum + (reason.checked && reason.amount ? reason.amount : 0), 0);
 
                 if (totalDeduction > 0) {
-                    const dateKey = format(new Date(employee.checkOutDate), 'yyyy-MM-dd');
+                    const dateKey = format(parseISO(employee.checkOutDate), 'yyyy-MM-dd');
                     if (!acc[dateKey]) {
                         acc[dateKey] = { deductions: 0 };
                     }
@@ -172,7 +172,7 @@ export function DashboardCharts({
 
     const showCoordinatorChart = currentUser?.isAdmin && selectedCoordinatorId === 'all';
     
-    const availableYears = useMemo(() => Array.from(new Set(employees.filter(e => e.checkOutDate).map(e => getYear(new Date(e.checkOutDate!))))).sort((a,b) => b-a), [employees]);
+    const availableYears = useMemo(() => Array.from(new Set(employees.filter(e => e.checkOutDate).map(e => getYear(parseISO(e.checkOutDate!))))).sort((a,b) => b-a), [employees]);
     const months = Array.from({ length: 12 }, (_, i) => i + 1);
 
     return (
