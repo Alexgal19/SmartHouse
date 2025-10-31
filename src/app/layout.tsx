@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import '@/app/globals.css'
 import { Toaster } from '@/components/ui/toaster'
+import { PWAInstaller } from '@/components/pwa-installer';
 
 
 const inter = Inter({ subsets: ['latin'] })
@@ -34,7 +35,9 @@ export default function RootLayout({
         <meta name="theme-color" content="#FFFFFF" />
       </head>
       <body className={inter.className}>
-        {children}
+        <PWAInstaller>
+            {children}
+        </PWAInstaller>
         <Toaster />
       </body>
     </html>
