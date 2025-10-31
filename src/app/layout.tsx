@@ -35,6 +35,21 @@ export default function RootLayout({
         <meta name="theme-color" content="#FFFFFF" />
       </head>
       <body className={inter.className}>
+        <script
+            dangerouslySetInnerHTML={{
+              __html: `
+                if ('serviceWorker' in navigator) {
+                  window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/sw.js').then(registration => {
+                      console.log('SW registered: ', registration);
+                    }).catch(registrationError => {
+                      console.log('SW registration failed: ', registrationError);
+                    });
+                  });
+                }
+              `,
+            }}
+        />
         <PWAInstaller>
             {children}
         </PWAInstaller>
