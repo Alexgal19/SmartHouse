@@ -4,7 +4,7 @@
 import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Coordinator } from '../types';
 import { getSheet } from './sheets';
 import { getAllSheetsData } from './sheets';
-import { format, isPast, isValid, getDaysInMonth, parseISO } from 'date-fns';
+import { format, isPast, isValid, getDaysInMonth, parseISO, startOfDay } from 'date-fns';
 import * as XLSX from 'xlsx';
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
@@ -497,34 +497,40 @@ export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows({ limit: 3000 });
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const today = startOfDay(new Date()); 
 
         let updatedCount = 0;
         const rowsToUpdate = [];
+        const notificationsToCreate = [];
 
         for (const row of rows) {
-            const status = String(row.get('status'));
-            const checkOutDateString = String(row.get('checkOutDate'));
+            const status = row.get('status');
+            const checkOutDateString = row.get('checkOutDate') as string | undefined;
 
             if (status === 'active' && checkOutDateString) {
-                const checkOutDate = new Date(checkOutDateString);
-                if (isValid(checkOutDate) && isPast(checkOutDate)) {
+                const checkOutDate = parseISO(checkOutDateString);
+                
+                if (isValid(checkOutDate) && checkOutDate < today) {
                     row.set('status', 'dismissed');
-                    rowsToUpdate.push(row.save()); // Pushing promise to array
+                    rowsToUpdate.push(row);
                     updatedCount++;
 
                     const originalEmployee = deserializeEmployee(row.toObject());
                     if (originalEmployee) {
-                       await createNotification(actorUid, 'automatycznie zwolnił', originalEmployee, [
-                            { field: 'status', oldValue: 'active', newValue: 'dismissed' }
-                       ]);
+                        notificationsToCreate.push(
+                            createNotification(actorUid, 'automatycznie zwolnił', originalEmployee, [
+                                { field: 'status', oldValue: 'active', newValue: 'dismissed' }
+                            ])
+                        );
                     }
                 }
             }
         }
         
-        await Promise.all(rowsToUpdate);
+        if (rowsToUpdate.length > 0) {
+            await sheet.saveUpdatedCells(rowsToUpdate);
+            await Promise.all(notificationsToCreate);
+        }
 
         return { updated: updatedCount };
     } catch (e: unknown) {
@@ -844,3 +850,5 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
         throw new Error(e instanceof Error ? e.message : "Failed to import employees from Excel.");
     }
 }
+
+    
