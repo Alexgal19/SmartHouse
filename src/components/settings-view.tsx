@@ -20,6 +20,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { generateMonthlyReport, generateAccommodationReport, transferEmployees } from '@/lib/actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
+import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 
 const coordinatorSchema = z.object({
     uid: z.string(),
@@ -37,8 +39,46 @@ const formSchema = z.object({
   coordinators: z.array(coordinatorSchema),
 });
 
-const ListManager = ({ name, title, fields, append, remove, control }: { name: string; title: string; fields: Record<"id", string>[]; append: (obj: { value: string}) => void; remove: (index: number) => void; control: any }) => {
+const AddMultipleDialog = ({ open, onOpenChange, onAdd, listTitle }: { open: boolean; onOpenChange: (open: boolean) => void; onAdd: (items: string[]) => void; listTitle: string; }) => {
+    const [text, setText] = useState('');
+
+    const handleAdd = () => {
+        const items = text.split('\n').map(item => item.trim()).filter(item => item.length > 0);
+        if (items.length > 0) {
+            onAdd(items);
+        }
+        setText('');
+        onOpenChange(false);
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Dodaj wiele do: {listTitle}</DialogTitle>
+                    <DialogDescription>
+                        Wklej lub wpisz listę elementów, każdy w nowej linii.
+                    </DialogDescription>
+                </DialogHeader>
+                <Textarea
+                    placeholder="Element 1&#10;Element 2&#10;Element 3"
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    className="h-48"
+                />
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>Anuluj</Button>
+                    <Button onClick={handleAdd}>Dodaj z listy</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+
+const ListManager = ({ name, title, fields, append, remove, control }: { name: string; title: string; fields: Record<"id", string>[]; append: (obj: { value: string} | {value: string}[]) => void; remove: (index: number) => void; control: any }) => {
     const [searchTerm, setSearchTerm] = useState('');
+    const [isAddMultipleOpen, setIsAddMultipleOpen] = useState(false);
     const watchedValues = useWatch({ control, name });
 
     const filteredFields = useMemo(() => {
@@ -48,6 +88,12 @@ const ListManager = ({ name, title, fields, append, remove, control }: { name: s
             .map((field, index) => ({ ...field, originalIndex: index, value: watchedValues[index]?.value }))
             .filter(field => field.value?.toLowerCase().includes(searchTerm.toLowerCase()));
     }, [fields, watchedValues, searchTerm]);
+
+    const handleAddMultiple = (items: string[]) => {
+        const newItems = items.map(item => ({ value: item }));
+        append(newItems);
+    };
+
 
     return (
         <div className="space-y-2 rounded-md border p-4">
@@ -59,7 +105,7 @@ const ListManager = ({ name, title, fields, append, remove, control }: { name: s
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="h-9"
                 />
-                <Button type="button" variant="outline" size="sm" onClick={() => append({ value: '' })} className="shrink-0">
+                <Button type="button" variant="outline" size="sm" onClick={() => setIsAddMultipleOpen(true)} className="shrink-0">
                     <PlusCircle className="mr-2 h-4 w-4" /> Dodaj
                 </Button>
             </div>
@@ -80,6 +126,12 @@ const ListManager = ({ name, title, fields, append, remove, control }: { name: s
                 />
             ))}
             {filteredFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Brak pozycji pasujących do wyszukiwania.</p>}
+             <AddMultipleDialog 
+                open={isAddMultipleOpen}
+                onOpenChange={setIsAddMultipleOpen}
+                onAdd={handleAddMultiple}
+                listTitle={title}
+            />
         </div>
     );
 };
