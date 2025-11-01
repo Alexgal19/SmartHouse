@@ -16,6 +16,7 @@ const SHEET_NAME_NATIONALITIES = 'Nationalities';
 const SHEET_NAME_DEPARTMENTS = 'Departments';
 const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_GENDERS = 'Genders';
+const SHEET_NAME_LOCALITIES = 'Localities';
 const SHEET_NAME_EQUIPMENT = 'Equipment';
 const SHEET_NAME_INSPECTIONS = 'Inspections';
 const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
@@ -115,7 +116,7 @@ const EQUIPMENT_HEADERS = [
 ];
 
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
-const ADDRESS_HEADERS = ['id', 'name', 'coordinatorId'];
+const ADDRESS_HEADERS = ['id', 'locality', 'name', 'coordinatorIds'];
 const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targetType', 'targetId', 'details'];
 
 const safeFormat = (dateStr: unknown): string | null => {
@@ -147,7 +148,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     if (!id) return null;
 
     const checkInDate = safeFormat(plainObject.checkInDate);
-    if (!checkInDate) return null;
+    // if (!checkInDate) return null;
 
     let deductionReason: DeductionReason[] | undefined;
     if (plainObject.deductionReason && typeof plainObject.deductionReason === 'string') {
@@ -171,7 +172,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         gender: String(plainObject.gender || ''),
         address: String(plainObject.address || ''),
         roomNumber: String(plainObject.roomNumber || ''),
-        zaklad: String(plainObject.zaklad || ''),
+        zaklad: (plainObject.zaklad as string | null) || null,
         checkInDate: checkInDate,
         checkOutDate: safeFormat(plainObject.checkOutDate),
         contractStartDate: safeFormat(plainObject.contractStartDate),
@@ -613,6 +614,9 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
         if (newSettings.genders) {
             await updateSimpleList(SHEET_NAME_GENDERS, newSettings.genders);
         }
+        if (newSettings.localities) {
+            await updateSimpleList(SHEET_NAME_LOCALITIES, newSettings.localities);
+        }
         if (newSettings.addresses) {
             const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ADDRESS_HEADERS);
             const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity']);
@@ -621,14 +625,15 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
             await roomsSheet.clearRows();
 
             const allRooms: (Room & {addressId: string})[] = [];
-            const addressesData = newSettings.addresses.map((addr: { rooms: any[]; id: any; name: any; coordinatorId: any; }) => {
+            const addressesData = newSettings.addresses.map(addr => {
                 addr.rooms.forEach(room => {
                     allRooms.push({ ...room, addressId: addr.id });
                 });
                 return { 
                     id: addr.id, 
+                    locality: addr.locality,
                     name: addr.name, 
-                    coordinatorId: addr.coordinatorId 
+                    coordinatorIds: addr.coordinatorIds.join(',') 
                 };
             });
 
@@ -833,12 +838,12 @@ export async function generateAccommodationReport(year: number, month: number, c
         
         let filteredAddresses = settings.addresses;
         if (coordinatorId !== 'all') {
-            filteredAddresses = settings.addresses.filter((a: { coordinatorId: string; }) => a.coordinatorId === coordinatorId);
+            filteredAddresses = settings.addresses.filter((a: { coordinatorIds: string | string[]; }) => a.coordinatorIds.includes(coordinatorId));
         }
 
         const reportData: Record<string, string | number>[] = [];
 
-        filteredAddresses.forEach((address: { name: any; rooms: any[]; coordinatorId: unknown; }) => {
+        filteredAddresses.forEach((address: { name: any; rooms: any[]; coordinatorIds: any[]; }) => {
             const addressRow: Record<string, string | number> = { "Adres": address.name };
             
             for (let day = 1; day <= daysInMonth; day++) {
@@ -856,7 +861,7 @@ export async function generateAccommodationReport(year: number, month: number, c
 
             const totalCapacity = address.rooms.reduce((sum, room) => sum + room.capacity, 0);
             addressRow["Pojemność"] = totalCapacity;
-            addressRow["Koordynator"] = coordinatorMap.get(address.coordinatorId) || 'N/A';
+            addressRow["Koordynator"] = address.coordinatorIds.map(id => coordinatorMap.get(id) || 'N/A').join(', ');
             
             reportData.push(addressRow);
         });

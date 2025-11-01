@@ -3,7 +3,7 @@
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, Address, Coordinator, Inspection, InspectionTemplateCategory } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, Address, Coordinator, Inspection, InspectionTemplateCategory, EquipmentItem } from '../types';
 import { format, isValid, parse, parseISO } from 'date-fns';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
@@ -253,7 +253,7 @@ export async function getEmployeesFromSheet(coordinatorId?: string): Promise<Emp
         const plainRows = rows.map(r => r.toObject());
         const filteredRows = coordinatorId ? plainRows.filter(row => row.coordinatorId === coordinatorId) : plainRows;
 
-        return filteredRows.map(deserializeEmployee).filter((e): e is Employee => e !== null);
+        return filteredRows.map(deserializeEmployee).filter((e): e is Employee => e !== null && e.checkInDate !== null);
 
     } catch (error: unknown) {
         console.error("Error fetching employees from sheet:", error instanceof Error ? error.message : "Unknown error", error instanceof Error ? error.stack : "");
@@ -281,7 +281,7 @@ export async function getEquipmentFromSheet(coordinatorId?: string): Promise<Equ
 
     if (coordinatorId) {
         const settings = await getSettingsFromSheet();
-        const coordinatorAddresses = new Set(settings.addresses.filter((a: { coordinatorId: string; }) => a.coordinatorId === coordinatorId).map((a: { id: any; }) => a.id));
+        const coordinatorAddresses = new Set(settings.addresses.filter((a: { coordinatorIds: string[]; }) => a.coordinatorIds.includes(coordinatorId)).map((a: { id: any; }) => a.id));
         equipment = equipment.filter(item => coordinatorAddresses.has(item.addressId));
     }
     
@@ -299,6 +299,7 @@ const getSheetData = async (doc: GoogleSpreadsheet, title: string): Promise<Reco
         return [];
     }
     try {
+        await sheet.loadHeaderRow(); // Ensure headers are loaded
         const rows = await sheet.getRows({ limit: 500 });
         return rows.map(r => r.toObject());
     } catch (e) {
@@ -348,7 +349,8 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             return {
                 id: rowObj.id,
                 name: rowObj.name,
-                coordinatorId: rowObj.coordinatorId,
+                locality: rowObj.locality,
+                coordinatorIds: (rowObj.coordinatorIds || '').split(',').filter(Boolean),
                 rooms: roomsByAddressId.get(rowObj.id) || [],
             }
         });
@@ -388,6 +390,7 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             departments: departmentRows.map(row => row.name).filter(Boolean),
             coordinators,
             genders: genderRows.map(row => row.name).filter(Boolean),
+            localities: [],
             inspectionTemplate,
         };
     } catch (error: unknown) {

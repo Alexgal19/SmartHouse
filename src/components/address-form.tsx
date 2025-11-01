@@ -95,16 +95,12 @@ export function AddressForm({
   }, [address, isOpen, form]);
   
   const onSubmit = (values: z.infer<typeof addressSchema>) => {
-    const dataToSave: Address = {
-        ...values,
-        coordinatorIds: values.coordinatorIds.map((item: any) => item.id || item)
-    }
-    onSave(dataToSave);
+    onSave(values);
     onOpenChange(false);
   };
   
   const availableCoordinators = settings.coordinators.filter(
-      c => !(form.watch('coordinatorIds') || []).some((assigned: any) => (assigned.id || assigned) === c.uid)
+      c => !(form.watch('coordinatorIds') || []).includes(c.uid)
   );
 
   return (
@@ -183,6 +179,7 @@ export function AddressForm({
                             size="sm"
                             className="mt-2 w-full"
                             onClick={() => appendCoord('')}
+                            disabled={availableCoordinators.length === 0}
                         >
                             <PlusCircle className="mr-2 h-4 w-4" />
                             Dodaj koordynatora
@@ -244,5 +241,3 @@ export function AddressForm({
     </Dialog>
   );
 }
-
-    
