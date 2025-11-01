@@ -538,7 +538,7 @@ export default function MainLayout({
         handleImportEmployees,
     ]);
 
-    if (!settings || !allEmployees || !allNonEmployees) {
+    if (!settings || !rawEmployees || !rawNonEmployees) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
                 <HouseLoader />
