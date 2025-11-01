@@ -37,6 +37,7 @@ const formSchema = z.object({
   localities: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
   addresses: z.array(z.any()), // Simplified for top-level form, validation will be in the dialog
   coordinators: z.array(coordinatorSchema),
+  temporaryAccess: z.array(z.any()),
 });
 
 const AddMultipleDialog = ({ open, onOpenChange, onAdd, listTitle }: { open: boolean; onOpenChange: (open: boolean) => void; onAdd: (items: string[]) => void; listTitle: string; }) => {
@@ -61,7 +62,7 @@ const AddMultipleDialog = ({ open, onOpenChange, onAdd, listTitle }: { open: boo
                     </DialogDescription>
                 </DialogHeader>
                 <Textarea
-                    placeholder="Element 1&#10;Element 2&#10;Element 3"
+                    placeholder="Element 1\nElement 2\nElement 3"
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     className="h-48"
@@ -151,66 +152,79 @@ const CoordinatorManager = ({ form, fields, append, remove }: { form:  ReturnTyp
 
     return (
         <div className="space-y-4 rounded-md border p-4">
-            <h3 className="font-medium">Koordynatorzy</h3>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-                <Input 
-                    placeholder="Szukaj koordynatora..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full sm:w-64 h-9"
-                />
-                <Button type="button" variant="outline" size="sm" onClick={() => append({ uid: `coord-${Date.now()}`, name: '', password: '', isAdmin: false })}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Dodaj koordynatora
-                </Button>
-            </div>
-
-            {filteredFields.map((field) => (
-            <div key={field.id} className="space-y-2 rounded-lg border p-3">
-                <div className="flex items-center justify-between">
-                    <p className="font-semibold">{form.getValues(`coordinators.${field.originalIndex}.name`) || `Nowy koordynator`}</p>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(field.originalIndex)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                 <h3 className="font-medium">Koordynatorzy</h3>
+                 <div className="flex w-full sm:w-auto items-center gap-2 flex-wrap">
+                    <Input 
+                        placeholder="Szukaj koordynatora..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full sm:w-64 h-9"
+                    />
+                    <Button type="button" variant="outline" size="sm" onClick={() => append({ uid: `coord-${Date.now()}`, name: '', password: '', isAdmin: false })}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Dodaj koordynatora
                     </Button>
                 </div>
-                <FormField
-                control={form.control}
-                name={`coordinators.${field.originalIndex}.name`}
-                render={({ field: nameField }) => (
-                    <FormItem>
-                    <FormLabel>Imię</FormLabel>
-                    <FormControl><Input {...nameField} /></FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-                <FormField
-                control={form.control}
-                name={`coordinators.${field.originalIndex}.password`}
-                render={({ field: passField }) => (
-                    <FormItem>
-                    <FormLabel>Hasło (pozostaw puste, aby nie zmieniać)</FormLabel>
-                    <FormControl><Input type="password" {...passField} placeholder="Nowe hasło" /></FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-                <FormField
-                control={form.control}
-                name={`coordinators.${field.originalIndex}.isAdmin`}
-                render={({ field: adminField }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                        <div className="space-y-0.5">
-                            <FormLabel>Administrator</FormLabel>
-                            <FormMessage />
-                        </div>
-                        <FormControl>
-                            <Switch checked={adminField.value} onCheckedChange={adminField.onChange} />
-                        </FormControl>
-                    </FormItem>
-                )}
-                />
             </div>
-            ))}
+
+            <Accordion type="multiple" className="w-full space-y-2">
+                {filteredFields.map((field, index) => (
+                    <AccordionItem value={field.id} key={field.id} className="border rounded-md px-4">
+                        <AccordionTrigger>
+                            <div className="flex items-center justify-between w-full pr-4">
+                                <span className="font-semibold">{form.getValues(`coordinators.${field.originalIndex}.name`) || `Nowy koordynator`}</span>
+                                <span className="text-sm text-muted-foreground">{form.getValues(`coordinators.${field.originalIndex}.isAdmin`) ? 'Admin' : 'Koordynator'}</span>
+                            </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                             <div className="space-y-4 pt-2">
+                                <FormField
+                                    control={form.control}
+                                    name={`coordinators.${field.originalIndex}.name`}
+                                    render={({ field: nameField }) => (
+                                        <FormItem>
+                                        <FormLabel>Imię</FormLabel>
+                                        <FormControl><Input {...nameField} /></FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name={`coordinators.${field.originalIndex}.password`}
+                                    render={({ field: passField }) => (
+                                        <FormItem>
+                                        <FormLabel>Hasło (pozostaw puste, aby nie zmieniać)</FormLabel>
+                                        <FormControl><Input type="password" {...passField} placeholder="Nowe hasło" /></FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <div className="flex justify-between items-center">
+                                    <FormField
+                                        control={form.control}
+                                        name={`coordinators.${field.originalIndex}.isAdmin`}
+                                        render={({ field: adminField }) => (
+                                            <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                                                <FormControl>
+                                                     <Switch checked={adminField.value} onCheckedChange={adminField.onChange} />
+                                                </FormControl>
+                                                <FormLabel className="font-normal">
+                                                    Uprawnienia administratora
+                                                </FormLabel>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                     <Button type="button" variant="ghost" size="icon" onClick={() => remove(field.originalIndex)}>
+                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                    </Button>
+                                </div>
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                ))}
+            </Accordion>
             {filteredFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Brak koordynatorów pasujących do wyszukiwania.</p>}
         </div>
     );
@@ -513,6 +527,98 @@ const ReportsGenerator = ({ settings, currentUser }: { settings: Settings; curre
     );
 };
 
+const TemporaryAccessManager = ({ form, settings }: { form: ReturnType<typeof useForm<z.infer<typeof formSchema>>>, settings: Settings }) => {
+    const { fields, append, remove } = useFieldArray({
+        control: form.control,
+        name: 'temporaryAccess'
+    });
+
+    const handleAddAccess = () => {
+        append({
+            token: `token-${Date.now()}`,
+            providerId: '',
+            receiverId: '',
+            expires: ''
+        });
+    };
+
+    const coordinatorMap = useMemo(() => new Map(settings.coordinators.map(c => [c.uid, c.name])), [settings.coordinators]);
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Dostęp tymczasowy</CardTitle>
+                <CardDescription>Udziel tymczasowego dostępu jednemu koordynatorowi do danych innego.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                 {fields.map((field, index) => (
+                    <div key={field.id} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end p-4 border rounded-lg">
+                        <FormField
+                            control={form.control}
+                            name={`temporaryAccess.${index}.providerId`}
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Dostęp od</FormLabel>
+                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Wybierz koordynatora" />
+                                        </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name={`temporaryAccess.${index}.receiverId`}
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Dostęp dla</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Wybierz koordynatora" />
+                                        </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name={`temporaryAccess.${index}.expires`}
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Wygasa</FormLabel>
+                                    <FormControl>
+                                        <Input type="date" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <Button type="button" variant="destructive" onClick={() => remove(index)}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Usuń
+                        </Button>
+                    </div>
+                ))}
+                <Button type="button" variant="outline" onClick={handleAddAccess}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Udziel nowego dostępu
+                </Button>
+            </CardContent>
+        </Card>
+    );
+};
+
 function SettingsManager({ form, handleUpdateSettings, handleAddressFormOpen }: { settings: Settings, form: ReturnType<typeof useForm<z.infer<typeof formSchema>>>, handleUpdateSettings: (newSettings: Partial<Settings>) => Promise<void>, handleAddressFormOpen: (address: Address | null) => void }) {
     const { fields: natFields, append: appendNat, remove: removeNat } = useFieldArray({ control: form.control, name: 'nationalities' });
     const { fields: depFields, append: appendDep, remove: removeDep } = useFieldArray({ control: form.control, name: 'departments' });
@@ -532,6 +638,7 @@ function SettingsManager({ form, handleUpdateSettings, handleAddressFormOpen }: 
             localities: values.localities.map((l) => l.value),
             addresses: values.addresses,
             coordinators: values.coordinators,
+            temporaryAccess: values.temporaryAccess,
         };
         await handleUpdateSettings(newSettings);
         form.reset(values); // Resets the dirty state
@@ -621,6 +728,7 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
         localities: [],
         addresses: [],
         coordinators: [],
+        temporaryAccess: [],
     }
   });
 
@@ -633,6 +741,7 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
         localities: settings.localities.map(l => ({ value: l })),
         addresses: settings.addresses,
         coordinators: settings.coordinators.map(c => ({...c, password: ''})), // Clear password on load
+        temporaryAccess: settings.temporaryAccess || [],
       });
     }
   }, [settings, form]);
@@ -680,9 +789,11 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
   return (
     <div className="space-y-6">
       <SettingsManager settings={settings} form={form} handleUpdateSettings={handleUpdateSettings} handleAddressFormOpen={handleAddressFormOpen} />
+      <TemporaryAccessManager form={form} settings={settings} />
       <ReportsGenerator settings={settings} currentUser={currentUser} />
       <BulkActions currentUser={currentUser} />
     </div>
   );
 }
 
+    
