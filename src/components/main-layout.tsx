@@ -124,6 +124,8 @@ export default function MainLayout({
         { view: 'settings', icon: SettingsIcon, label: 'Ustawienia' },
     ], [])  as { view: View; icon: React.ElementType; label: string }[];
 
+    const mobileNavItems = useMemo(() => navItems.filter(item => item.view !== 'inspections'), [navItems]);
+
     const activeView = useMemo(() => {
         return (searchParams.get('view') as View) || 'dashboard';
     }, [searchParams]);
@@ -591,7 +593,7 @@ export default function MainLayout({
                     </main>
                 </div>
                 
-                {currentUser && <MobileNav activeView={activeView} navItems={visibleNavItems} currentUser={currentUser}/>}
+                {currentUser && <MobileNav activeView={activeView} navItems={mobileNavItems} currentUser={currentUser}/>}
             </div>
             
             {settings && (
