@@ -18,6 +18,8 @@ const SHEET_NAME_DEPARTMENTS = 'Departments';
 const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_LOCALITIES = 'Localities';
+const SHEET_NAME_TEMPORARY_ACCESS = 'TemporaryAccess';
+
 
 const serializeDate = (date?: string | null): string => {
     if (!date) {
@@ -98,6 +100,7 @@ const NON_EMPLOYEE_HEADERS = [
 
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
 const ADDRESS_HEADERS = ['id', 'name', 'locality', 'coordinatorIds'];
+const TEMP_ACCESS_HEADERS = ['token', 'providerId', 'receiverId', 'expires'];
 const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targetType', 'targetId', 'details'];
 
 const safeFormat = (dateStr: unknown): string | null => {
@@ -609,6 +612,13 @@ export async function updateSettings(newSettings: Partial<Omit<Settings, 'tempor
                  await sheet.addRows(coordinatorsToSave, { raw: false, insert: true });
              }
         }
+        if (newSettings.temporaryAccess) {
+            const sheet = await getSheet(SHEET_NAME_TEMPORARY_ACCESS, TEMP_ACCESS_HEADERS);
+            await sheet.clearRows();
+            if (newSettings.temporaryAccess.length > 0) {
+                await sheet.addRows(newSettings.temporaryAccess);
+            }
+        }
 
     } catch (error: unknown) {
         console.error("Error updating settings:", error);
@@ -780,7 +790,7 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
         let importedCount = 0;
         const coordinatorMap = new Map(settings.coordinators.map(c => [c.name.toLowerCase(), c.uid]));
 
-        const columnMap: Record<string, keyof Employee> = {
+        const columnMap: Record<string, keyof Employee | 'miejscowosc'> = {
             'Imię i nazwisko': 'fullName',
             'Koordynator': 'coordinatorId',
             'Narodowość': 'nationality',
@@ -794,6 +804,7 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
             'Umowa do': 'contractEndDate',
             'Data zgłoszenia wyjazdu': 'departureReportDate',
             'Komentarze': 'comments',
+            'Miejscowość': 'miejscowosc',
         };
         
         const requiredColumns = ['Imię i nazwisko'];
@@ -802,6 +813,9 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
                 throw new Error(`Brak wymaganej kolumny w pliku Excel: "${col}"`);
             }
         }
+        
+        const existingLocalities = new Set(settings.localities.map(l => l.toLowerCase()));
+        const newLocalitiesToSave = new Set<string>();
 
         for (const row of rows) {
             const rowData = (row as (string | number | null)[]).reduce((acc, cell, index) => {
@@ -816,17 +830,24 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
                 const employeeData: Partial<Employee> = {};
                 for(const excelHeader in columnMap) {
                     if (headers.includes(excelHeader)) {
-                        const employeeKey = columnMap[excelHeader];
+                        const internalKey = columnMap[excelHeader];
                         const value = rowData[excelHeader];
-
-                        if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate'].includes(employeeKey)) {
-                            (employeeData as any)[employeeKey] = value ? safeFormat(value) : null;
-                        } else if (employeeKey === 'coordinatorId') {
+                        
+                        if (internalKey === 'miejscowosc') {
+                             if (value) {
+                                const locality = String(value).trim();
+                                if (locality && !existingLocalities.has(locality.toLowerCase())) {
+                                    newLocalitiesToSave.add(locality);
+                                }
+                            }
+                        } else if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate'].includes(internalKey)) {
+                            (employeeData as any)[internalKey] = value ? safeFormat(value) : null;
+                        } else if (internalKey === 'coordinatorId') {
                              const coordinatorName = String(value || '').toLowerCase();
                              employeeData.coordinatorId = coordinatorMap.get(coordinatorName) || '';
                         }
                         else {
-                            (employeeData as any)[employeeKey] = value ? String(value) : null;
+                            (employeeData as any)[internalKey] = value ? String(value) : null;
                         }
                     }
                 }
@@ -841,6 +862,11 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
             } catch (rowError) {
                 console.error('Error processing row:', rowData, rowError);
             }
+        }
+        
+        if (newLocalitiesToSave.size > 0) {
+            const updatedLocalities = [...settings.localities, ...Array.from(newLocalitiesToSave)];
+            await updateSettings({ localities: updatedLocalities });
         }
         
         return { importedCount, totalRows: rows.length };
