@@ -10,7 +10,6 @@
     "lint:fix": "eslint \"**/*.{js,jsx,ts,tsx,vue}\" --fix"
   },
   "dependencies": {
-    "@google-cloud/storage": "^7.11.0",
     "@hookform/resolvers": "^3.9.0",
     "@radix-ui/react-accordion": "^1.2.0",
     "@radix-ui/react-alert-dialog": "^1.1.1",
@@ -32,8 +31,6 @@
     "@radix-ui/react-tabs": "^1.1.0",
     "@radix-ui/react-toast": "^1.2.1",
     "@radix-ui/react-tooltip": "^1.1.2",
-    "ai": "^5.0.78",
-    "axios": "^1.7.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
@@ -41,7 +38,6 @@
     "embla-carousel-react": "^8.1.6",
     "google-auth-library": "^9.11.0",
     "google-spreadsheet": "^4.1.2",
-    "iron-session": "^8.0.2",
     "lucide-react": "^0.400.0",
     "next": "^14.2.33",
     "react": "^18.3.1",
