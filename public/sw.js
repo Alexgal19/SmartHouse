@@ -1,50 +1,67 @@
-// This is a basic service worker.
+// This is a basic Service Worker with a Network First caching strategy for navigation.
 
-const CACHE_NAME = 'smarthouse-cache-v1';
-const urlsToCache = [
-  '/',
-  '/dashboard?view=dashboard',
-  '/manifest.json',
-  '/icon-192x192.png',
-  '/icon-512x512.png'
-];
+// Check if Workbox is loaded
+if (typeof importScripts === 'function') {
+  importScripts('https://storage.googleapis.com/workbox-cdn/releases/6.4.1/workbox-sw.js');
 
-self.addEventListener('install', event => {
-  // Perform install steps
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
+  if (workbox) {
+    console.log(`Workbox is loaded`);
+
+    // --- Caching Strategies ---
+
+    // 1. Navigation Requests: Network First
+    // This is crucial for handling redirects correctly.
+    // The browser will try the network first. If it fails (e.g., offline), it will fall back to the cache.
+    workbox.routing.registerRoute(
+      ({ request }) => request.mode === 'navigate',
+      new workbox.strategies.NetworkFirst({
+        cacheName: 'pages-cache',
+        plugins: [
+          new workbox.expiration.ExpirationPlugin({
+            maxEntries: 50,
+            maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
+          }),
+        ],
       })
-  );
-});
+    );
 
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Cache hit - return response
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
-      }
-    )
-  );
-});
+    // 2. Static Assets: Cache First
+    // For CSS, JS, and Workers, serve from cache first for performance.
+    workbox.routing.registerRoute(
+      ({ request }) =>
+        request.destination === 'style' ||
+        request.destination === 'script' ||
+        request.destination === 'worker',
+      new workbox.strategies.StaleWhileRevalidate({
+        cacheName: 'assets-cache',
+        plugins: [
+          new workbox.expiration.ExpirationPlugin({
+            maxEntries: 60,
+            maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
+          }),
+        ],
+      })
+    );
 
-self.addEventListener('activate', event => {
-  const cacheWhitelist = [CACHE_NAME];
-  event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
-  );
-});
+    // 3. Images: Cache First
+    // Serve images from cache, but update them in the background.
+    workbox.routing.registerRoute(
+      ({ request }) => request.destination === 'image',
+      new workbox.strategies.CacheFirst({
+        cacheName: 'images-cache',
+        plugins: [
+          new workbox.expiration.ExpirationPlugin({
+            maxEntries: 60,
+            maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
+          }),
+          new workbox.cacheableResponse.CacheableResponsePlugin({
+            statuses: [0, 200], // Cache opaque responses (e.g., for cross-origin images)
+          }),
+        ],
+      })
+    );
+
+  } else {
+    console.log(`Workbox didn't load`);
+  }
+}
