@@ -163,7 +163,7 @@ export function DashboardCharts({
 
 
         return {
-            employeesPerCoordinator: Object.values(employeesPerCoordinator),
+            employeesPerCoordinator: Object.values(employeesPerCoordinator).sort((a, b) => a.coordinator.localeCompare(b.coordinator)),
             employeesByNationality: Object.values(employeesByNationality).sort((a, b) => b.employees - a.employees),
             departuresByMonth: departuresData,
             deductionsByDate: deductionsData,
@@ -353,5 +353,3 @@ export function DashboardCharts({
         </div>
     );
 }
-
-    

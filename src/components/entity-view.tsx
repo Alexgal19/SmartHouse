@@ -250,6 +250,11 @@ const FilterDialog = ({ isOpen, onOpenChange, settings, onApply, initialFilters 
         onApply(filters);
         onOpenChange(false);
     }
+    
+    const sortedCoordinators = useMemo(() => [...settings.coordinators].sort((a, b) => a.name.localeCompare(b.name)), [settings.coordinators]);
+    const sortedAddresses = useMemo(() => [...settings.addresses].sort((a, b) => a.name.localeCompare(b.name)), [settings.addresses]);
+    const sortedDepartments = useMemo(() => [...settings.departments].sort((a, b) => a.localeCompare(b)), [settings.departments]);
+    const sortedNationalities = useMemo(() => [...settings.nationalities].sort((a, b) => a.localeCompare(b)), [settings.nationalities]);
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -266,7 +271,7 @@ const FilterDialog = ({ isOpen, onOpenChange, settings, onApply, initialFilters 
                         <SelectTrigger><SelectValue placeholder="Filtruj wg koordynatora" /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
-                            {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                            {sortedCoordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                         </SelectContent>
                         </Select>
                       </div>
@@ -276,7 +281,7 @@ const FilterDialog = ({ isOpen, onOpenChange, settings, onApply, initialFilters 
                         <SelectTrigger><SelectValue placeholder="Filtruj wg adresu" /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Wszystkie adresy</SelectItem>
-                            {settings.addresses.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
+                            {sortedAddresses.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
                         </SelectContent>
                         </Select>
                       </div>
@@ -286,7 +291,7 @@ const FilterDialog = ({ isOpen, onOpenChange, settings, onApply, initialFilters 
                         <SelectTrigger><SelectValue placeholder="Filtruj wg zakładu" /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Wszystkie zakłady</SelectItem>
-                            {settings.departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                            {sortedDepartments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
                         </SelectContent>
                         </Select>
                       </div>
@@ -296,7 +301,7 @@ const FilterDialog = ({ isOpen, onOpenChange, settings, onApply, initialFilters 
                         <SelectTrigger><SelectValue placeholder="Filtruj wg narodowości" /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Wszystkie narodowości</SelectItem>
-                            {settings.nationalities.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                            {sortedNationalities.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
                         </SelectContent>
                         </Select>
                       </div>

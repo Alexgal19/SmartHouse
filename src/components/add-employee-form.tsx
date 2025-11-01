@@ -223,10 +223,13 @@ export function AddEmployeeForm({
 
   const availableAddresses = useMemo(() => {
     if (!selectedLocality) return [];
-    return settings.addresses.filter(a => a.locality === selectedLocality);
+    return [...settings.addresses.filter(a => a.locality === selectedLocality)].sort((a, b) => a.name.localeCompare(b.name));
   }, [settings.addresses, selectedLocality]);
 
-  const availableRooms = settings.addresses.find(a => a.name === selectedAddress)?.rooms || [];
+  const availableRooms = useMemo(() => {
+    const rooms = settings.addresses.find(a => a.name === selectedAddress)?.rooms || [];
+    return [...rooms].sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+  }, [settings.addresses, selectedAddress]);
 
   useEffect(() => {
     if (employee) {
@@ -328,6 +331,12 @@ export function AddEmployeeForm({
     form.setValue('address', value);
     form.setValue('roomNumber', '');
   };
+  
+  const sortedCoordinators = useMemo(() => [...settings.coordinators].sort((a, b) => a.name.localeCompare(b.name)), [settings.coordinators]);
+  const sortedNationalities = useMemo(() => [...settings.nationalities].sort((a, b) => a.localeCompare(b)), [settings.nationalities]);
+  const sortedGenders = useMemo(() => [...settings.genders].sort((a, b) => a.localeCompare(b)), [settings.genders]);
+  const sortedLocalities = useMemo(() => [...settings.localities].sort((a, b) => a.localeCompare(b)), [settings.localities]);
+  const sortedDepartments = useMemo(() => [...settings.departments].sort((a, b) => a.localeCompare(b)), [settings.departments]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -370,7 +379,7 @@ export function AddEmployeeForm({
                                     <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl><SelectTrigger><SelectValue placeholder="Wybierz koordynatora" /></SelectTrigger></FormControl>
                                     <SelectContent>
-                                        {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                                        {sortedCoordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                                     </SelectContent>
                                     </Select>
                                     <FormMessage />
@@ -386,7 +395,7 @@ export function AddEmployeeForm({
                                     <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl><SelectTrigger><SelectValue placeholder="Wybierz narodowość" /></SelectTrigger></FormControl>
                                     <SelectContent>
-                                        {settings.nationalities.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                                        {sortedNationalities.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
                                     </SelectContent>
                                     </Select>
                                     <FormMessage />
@@ -402,7 +411,7 @@ export function AddEmployeeForm({
                                     <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl><SelectTrigger><SelectValue placeholder="Wybierz płeć" /></SelectTrigger></FormControl>
                                     <SelectContent>
-                                        {settings.genders.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                                        {sortedGenders.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
                                     </SelectContent>
                                     </Select>
                                     <FormMessage />
@@ -421,7 +430,7 @@ export function AddEmployeeForm({
                                     <Select onValueChange={handleLocalityChange} value={field.value}>
                                         <FormControl><SelectTrigger><SelectValue placeholder="Wybierz miejscowość" /></SelectTrigger></FormControl>
                                         <SelectContent>
-                                            {settings.localities.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                                            {sortedLocalities.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                     <FormMessage />
@@ -469,7 +478,7 @@ export function AddEmployeeForm({
                                     <Select onValueChange={field.onChange} value={field.value || ''}>
                                     <FormControl><SelectTrigger><SelectValue placeholder="Wybierz zakład" /></SelectTrigger></FormControl>
                                     <SelectContent>
-                                        {settings.departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                                        {sortedDepartments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
                                     </SelectContent>
                                     </Select>
                                     <FormMessage />
@@ -718,4 +727,3 @@ export function AddEmployeeForm({
     </Dialog>
   );
 }
-

@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useMemo } from 'react';
 import { useMainLayout } from '@/components/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -8,6 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export function CoordinatorFilter() {
     const { settings, selectedCoordinatorId, setSelectedCoordinatorId } = useMainLayout();
+
+    const sortedCoordinators = useMemo(() => {
+        if (!settings) return [];
+        return [...settings.coordinators].sort((a, b) => a.name.localeCompare(b.name));
+    }, [settings]);
 
     return (
         <Card className="animate-in fade-in-0 slide-in-from-bottom-4">
@@ -25,7 +31,7 @@ export function CoordinatorFilter() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">Wszyscy Koordynatorzy</SelectItem>
-                                {settings?.coordinators.map(c => (
+                                {sortedCoordinators.map(c => (
                                     <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>
                                 ))}
                             </SelectContent>

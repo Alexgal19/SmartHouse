@@ -235,6 +235,7 @@ const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { 
     const [searchTerm, setSearchTerm] = useState('');
     
     const coordinatorMap = useMemo(() => new Map(coordinators.map(c => [c.uid, c.name])), [coordinators]);
+    const sortedCoordinators = useMemo(() => [...coordinators].sort((a,b) => a.name.localeCompare(b.name)), [coordinators]);
 
     const filteredAddresses = useMemo(() => {
         if (!addresses) return [];
@@ -246,8 +247,9 @@ const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { 
         if (searchTerm) {
             tempAddresses = tempAddresses.filter(a => a.name.toLowerCase().includes(searchTerm.toLowerCase()));
         }
+        
+        return tempAddresses.sort((a, b) => a.name.localeCompare(b.name));
 
-        return tempAddresses;
     }, [addresses, filterCoordinatorId, searchTerm]);
 
     return (
@@ -267,7 +269,7 @@ const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { 
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
-                            {coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                            {sortedCoordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
                     <Button type="button" variant="outline" size="sm" onClick={() => onAdd(filterCoordinatorId)}>
@@ -312,6 +314,11 @@ const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
     const [transferFrom, setTransferFrom] = useState('');
     const [transferTo, setTransferTo] = useState('');
     const { toast } = useToast();
+    
+    const sortedCoordinators = useMemo(() => {
+      if (!settings?.coordinators) return [];
+      return [...settings.coordinators].sort((a,b) => a.name.localeCompare(b.name));
+    }, [settings?.coordinators]);
 
     const handleBulkDelete = async (status: 'active' | 'dismissed') => {
         if(status === 'active') setIsDeletingActive(true);
@@ -408,7 +415,7 @@ const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
                                 <Select value={transferFrom} onValueChange={setTransferFrom}>
                                     <SelectTrigger><SelectValue placeholder="Wybierz koordynatora" /></SelectTrigger>
                                     <SelectContent>
-                                        {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                                        {sortedCoordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -417,7 +424,7 @@ const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
                                 <Select value={transferTo} onValueChange={setTransferTo}>
                                     <SelectTrigger><SelectValue placeholder="Wybierz koordynatora" /></SelectTrigger>
                                     <SelectContent>
-                                        {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                                        {sortedCoordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -440,6 +447,11 @@ const ReportsGenerator = ({ settings, currentUser }: { settings: Settings; curre
     const [month, setMonth] = useState(new Date().getMonth() + 1);
     const [coordinatorId, setCoordinatorId] = useState<string>(currentUser.isAdmin ? 'all' : currentUser.uid);
     const { toast } = useToast();
+    
+    const sortedCoordinators = useMemo(() => {
+      if (!settings?.coordinators) return [];
+      return [...settings.coordinators].sort((a,b) => a.name.localeCompare(b.name));
+    }, [settings?.coordinators]);
 
     const handleGenerate = async () => {
         setIsLoading(true);
@@ -512,7 +524,7 @@ const ReportsGenerator = ({ settings, currentUser }: { settings: Settings; curre
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
-                                    {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                                    {sortedCoordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -542,7 +554,7 @@ const TemporaryAccessManager = ({ form, settings }: { form: ReturnType<typeof us
         });
     };
 
-    const coordinatorMap = useMemo(() => new Map(settings.coordinators.map(c => [c.uid, c.name])), [settings.coordinators]);
+    const sortedCoordinators = useMemo(() => [...settings.coordinators].sort((a,b) => a.name.localeCompare(b.name)), [settings.coordinators]);
 
     return (
         <Card>
@@ -566,7 +578,7 @@ const TemporaryAccessManager = ({ form, settings }: { form: ReturnType<typeof us
                                         </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                            {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                                            {sortedCoordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                     <FormMessage />
@@ -586,7 +598,7 @@ const TemporaryAccessManager = ({ form, settings }: { form: ReturnType<typeof us
                                         </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                            {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                                            {sortedCoordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                     <FormMessage />
@@ -632,12 +644,12 @@ function SettingsManager({ form, handleUpdateSettings, handleAddressFormOpen }: 
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         const newSettings: Partial<Settings> = {
-            nationalities: values.nationalities.map((n) => n.value),
-            departments: values.departments.map((d) => d.value),
-            genders: values.genders.map((d) => d.value),
-            localities: values.localities.map((l) => l.value),
+            nationalities: values.nationalities.map((n) => n.value).sort((a, b) => a.localeCompare(b)),
+            departments: values.departments.map((d) => d.value).sort((a, b) => a.localeCompare(b)),
+            genders: values.genders.map((d) => d.value).sort((a, b) => a.localeCompare(b)),
+            localities: values.localities.map((l) => l.value).sort((a, b) => a.localeCompare(b)),
             addresses: values.addresses,
-            coordinators: values.coordinators,
+            coordinators: values.coordinators.sort((a,b) => a.name.localeCompare(b.name)),
             temporaryAccess: values.temporaryAccess,
         };
         await handleUpdateSettings(newSettings);
@@ -735,12 +747,12 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
   React.useEffect(() => {
     if (settings) {
       form.reset({
-        nationalities: settings.nationalities.map(n => ({ value: n })),
-        departments: settings.departments.map(d => ({ value: d })),
-        genders: settings.genders.map(g => ({ value: g })),
-        localities: settings.localities.map(l => ({ value: l })),
-        addresses: settings.addresses,
-        coordinators: settings.coordinators.map(c => ({...c, password: ''})), // Clear password on load
+        nationalities: settings.nationalities.map(n => ({ value: n })).sort((a,b) => a.value.localeCompare(b.value)),
+        departments: settings.departments.map(d => ({ value: d })).sort((a,b) => a.value.localeCompare(b.value)),
+        genders: settings.genders.map(g => ({ value: g })).sort((a,b) => a.value.localeCompare(b.value)),
+        localities: settings.localities.map(l => ({ value: l })).sort((a,b) => a.value.localeCompare(b.value)),
+        addresses: [...settings.addresses].sort((a, b) => a.name.localeCompare(b.name)),
+        coordinators: [...settings.coordinators].sort((a, b) => a.name.localeCompare(b.name)).map(c => ({...c, password: ''})), // Clear password on load
         temporaryAccess: settings.temporaryAccess || [],
       });
     }
@@ -795,5 +807,3 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     </div>
   );
 }
-
-    

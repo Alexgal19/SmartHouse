@@ -162,14 +162,25 @@ export function AddNonEmployeeForm({
   });
 
   const selectedAddress = form.watch('address');
-  const availableRooms = settings.addresses.find(a => a.name === selectedAddress)?.rooms || [];
+  const availableRooms = useMemo(() => {
+    const rooms = settings.addresses.find(a => a.name === selectedAddress)?.rooms || [];
+    return [...rooms].sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+  }, [settings.addresses, selectedAddress]);
   
   const addressesByLocality = useMemo(() => {
-    return settings.addresses.reduce((acc, address) => {
+    const grouped = settings.addresses.reduce((acc, address) => {
         (acc[address.locality] = acc[address.locality] || []).push(address);
         return acc;
     }, {} as Record<string, typeof settings.addresses>);
+
+    Object.keys(grouped).forEach(locality => {
+        grouped[locality].sort((a, b) => a.name.localeCompare(b.name));
+    });
+
+    return grouped;
   }, [settings.addresses]);
+
+  const sortedLocalities = useMemo(() => Object.keys(addressesByLocality).sort((a, b) => a.localeCompare(b)), [addressesByLocality]);
 
   useEffect(() => {
     if (nonEmployee) {
@@ -246,10 +257,10 @@ export function AddNonEmployeeForm({
                             <Select onValueChange={handleAddressChange} value={field.value}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="Wybierz adres" /></SelectTrigger></FormControl>
                                 <SelectContent>
-                                    {Object.entries(addressesByLocality).map(([locality, addresses]) => (
+                                    {sortedLocalities.map((locality) => (
                                         <SelectGroup key={locality}>
                                             <SelectLabel>{locality}</SelectLabel>
-                                            {addresses.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
+                                            {addressesByLocality[locality].map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
                                         </SelectGroup>
                                     ))}
                                 </SelectContent>
