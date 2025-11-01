@@ -37,7 +37,6 @@ const formSchema = z.object({
   localities: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
   addresses: z.array(z.any()), // Simplified for top-level form, validation will be in the dialog
   coordinators: z.array(coordinatorSchema),
-  temporaryAccess: z.array(z.any()),
 });
 
 const AddMultipleDialog = ({ open, onOpenChange, onAdd, listTitle }: { open: boolean; onOpenChange: (open: boolean) => void; onAdd: (items: string[]) => void; listTitle: string; }) => {
@@ -539,98 +538,6 @@ const ReportsGenerator = ({ settings, currentUser }: { settings: Settings; curre
     );
 };
 
-const TemporaryAccessManager = ({ form, settings }: { form: ReturnType<typeof useForm<z.infer<typeof formSchema>>>, settings: Settings }) => {
-    const { fields, append, remove } = useFieldArray({
-        control: form.control,
-        name: 'temporaryAccess'
-    });
-
-    const handleAddAccess = () => {
-        append({
-            token: `token-${Date.now()}`,
-            providerId: '',
-            receiverId: '',
-            expires: ''
-        });
-    };
-
-    const sortedCoordinators = useMemo(() => [...settings.coordinators].sort((a,b) => a.name.localeCompare(b.name)), [settings.coordinators]);
-
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Dostęp tymczasowy</CardTitle>
-                <CardDescription>Udziel tymczasowego dostępu jednemu koordynatorowi do danych innego.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                 {fields.map((field, index) => (
-                    <div key={field.id} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end p-4 border rounded-lg">
-                        <FormField
-                            control={form.control}
-                            name={`temporaryAccess.${index}.providerId`}
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Dostęp od</FormLabel>
-                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Wybierz koordynatora" />
-                                        </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            {sortedCoordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                         <FormField
-                            control={form.control}
-                            name={`temporaryAccess.${index}.receiverId`}
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Dostęp dla</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Wybierz koordynatora" />
-                                        </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            {sortedCoordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name={`temporaryAccess.${index}.expires`}
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Wygasa</FormLabel>
-                                    <FormControl>
-                                        <Input type="date" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <Button type="button" variant="destructive" onClick={() => remove(index)}>
-                            <Trash2 className="mr-2 h-4 w-4" /> Usuń
-                        </Button>
-                    </div>
-                ))}
-                <Button type="button" variant="outline" onClick={handleAddAccess}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Udziel nowego dostępu
-                </Button>
-            </CardContent>
-        </Card>
-    );
-};
-
 function SettingsManager({ form, handleUpdateSettings, handleAddressFormOpen }: { settings: Settings, form: ReturnType<typeof useForm<z.infer<typeof formSchema>>>, handleUpdateSettings: (newSettings: Partial<Settings>) => Promise<void>, handleAddressFormOpen: (address: Address | null) => void }) {
     const { fields: natFields, append: appendNat, remove: removeNat } = useFieldArray({ control: form.control, name: 'nationalities' });
     const { fields: depFields, append: appendDep, remove: removeDep } = useFieldArray({ control: form.control, name: 'departments' });
@@ -650,7 +557,6 @@ function SettingsManager({ form, handleUpdateSettings, handleAddressFormOpen }: 
             localities: values.localities.map((l) => l.value).sort((a, b) => a.localeCompare(b)),
             addresses: values.addresses,
             coordinators: values.coordinators.sort((a,b) => a.name.localeCompare(b.name)),
-            temporaryAccess: values.temporaryAccess,
         };
         await handleUpdateSettings(newSettings);
         form.reset(values); // Resets the dirty state
@@ -740,7 +646,6 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
         localities: [],
         addresses: [],
         coordinators: [],
-        temporaryAccess: [],
     }
   });
 
@@ -753,7 +658,6 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
         localities: settings.localities.map(l => ({ value: l })).sort((a,b) => a.value.localeCompare(b.value)),
         addresses: [...settings.addresses].sort((a, b) => a.name.localeCompare(b.name)),
         coordinators: [...settings.coordinators].sort((a, b) => a.name.localeCompare(b.name)).map(c => ({...c, password: ''})), // Clear password on load
-        temporaryAccess: settings.temporaryAccess || [],
       });
     }
   }, [settings, form]);
@@ -801,7 +705,6 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
   return (
     <div className="space-y-6">
       <SettingsManager settings={settings} form={form} handleUpdateSettings={handleUpdateSettings} handleAddressFormOpen={handleAddressFormOpen} />
-      <TemporaryAccessManager form={form} settings={settings} />
       <ReportsGenerator settings={settings} currentUser={currentUser} />
       <BulkActions currentUser={currentUser} />
     </div>

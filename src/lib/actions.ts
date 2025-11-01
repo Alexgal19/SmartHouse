@@ -1,10 +1,9 @@
 
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Coordinator } from '../types';
-import { getSheet } from './sheets';
-import { getAllSheetsData } from './sheets';
-import { format, isPast, isValid, getDaysInMonth, parseISO, startOfDay } from 'date-fns';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Inspection, InspectionCategory } from '../types';
+import { getSheet, getAllSheetsData } from './sheets';
+import { format, isPast, isValid, getDaysInMonth, parseISO } from 'date-fns';
 import * as XLSX from 'xlsx';
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
@@ -17,8 +16,9 @@ const SHEET_NAME_NATIONALITIES = 'Nationalities';
 const SHEET_NAME_DEPARTMENTS = 'Departments';
 const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_GENDERS = 'Genders';
-const SHEET_NAME_LOCALITIES = 'Localities';
-const SHEET_NAME_TEMPORARY_ACCESS = 'TemporaryAccess';
+const SHEET_NAME_EQUIPMENT = 'Equipment';
+const SHEET_NAME_INSPECTIONS = 'Inspections';
+const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 
 
 const serializeDate = (date?: string | null): string => {
@@ -94,17 +94,32 @@ const serializeNotification = (notification: Omit<Notification, 'changes'> & { c
     };
 };
 
+const serializeEquipment = (item: Partial<EquipmentItem>): Record<string, string | number> => {
+    return {
+        id: item.id || '',
+        inventoryNumber: item.inventoryNumber || '',
+        name: item.name || '',
+        quantity: item.quantity || 0,
+        description: item.description || '',
+        addressId: item.addressId || '',
+        addressName: item.addressName || '',
+    };
+};
+
 const NON_EMPLOYEE_HEADERS = [
     'id', 'fullName', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'comments'
 ];
 
+const EQUIPMENT_HEADERS = [
+    'id', 'inventoryNumber', 'name', 'quantity', 'description', 'addressId', 'addressName'
+];
+
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
-const ADDRESS_HEADERS = ['id', 'name', 'locality', 'coordinatorIds'];
-const TEMP_ACCESS_HEADERS = ['token', 'providerId', 'receiverId', 'expires'];
+const ADDRESS_HEADERS = ['id', 'name', 'coordinatorId'];
 const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targetType', 'targetId', 'details'];
 
 const safeFormat = (dateStr: unknown): string | null => {
-    if (dateStr === null || dateStr === undefined || dateStr === '') return null;
+    if (!dateStr) return null;
     
     // Handle Excel's numeric date format
     if (typeof dateStr === 'number' && dateStr > 0) {
@@ -131,6 +146,9 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     const id = String(plainObject.id || '');
     if (!id) return null;
 
+    const checkInDate = safeFormat(plainObject.checkInDate);
+    if (!checkInDate) return null;
+
     let deductionReason: DeductionReason[] | undefined;
     if (plainObject.deductionReason && typeof plainObject.deductionReason === 'string') {
         try {
@@ -153,8 +171,8 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         gender: String(plainObject.gender || ''),
         address: String(plainObject.address || ''),
         roomNumber: String(plainObject.roomNumber || ''),
-        zaklad: (plainObject.zaklad as string | null) || null,
-        checkInDate: safeFormat(plainObject.checkInDate),
+        zaklad: String(plainObject.zaklad || ''),
+        checkInDate: checkInDate,
         checkOutDate: safeFormat(plainObject.checkOutDate),
         contractStartDate: safeFormat(plainObject.contractStartDate),
         contractEndDate: safeFormat(plainObject.contractEndDate),
@@ -173,6 +191,16 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     
     return newEmployee;
 };
+
+export async function getAllData() {
+    try {
+        const allData = await getAllSheetsData();
+        return allData;
+    } catch (error: unknown) {
+        console.error("Error in getAllData (actions):", error);
+        throw new Error(error instanceof Error ? error.message : "Failed to get all data.");
+    }
+}
 
 const writeToAuditLog = async (actorId: string, actorName: string, action: string, targetType: string, targetId: string, details: unknown) => {
     try {
@@ -243,8 +271,8 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
             gender: employeeData.gender || '',
             address: employeeData.address || '',
             roomNumber: employeeData.roomNumber || '',
-            zaklad: employeeData.zaklad || null,
-            checkInDate: employeeData.checkInDate || null,
+            zaklad: employeeData.zaklad || '',
+            checkInDate: employeeData.checkInDate || '',
             checkOutDate: employeeData.checkOutDate,
             contractStartDate: employeeData.contractStartDate ?? null,
             contractEndDate: employeeData.contractEndDate ?? null,
@@ -274,7 +302,7 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
 export async function updateEmployee(employeeId: string, updates: Partial<Employee>, actorUid: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows({ limit: 3000 });
+        const rows = await sheet.getRows({ limit: 2000 });
         const rowIndex = rows.findIndex((row) => row.get('id') === employeeId);
 
         if (rowIndex === -1) {
@@ -291,47 +319,43 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         const changes: NotificationChange[] = [];
         const updatedEmployeeData: Employee = { ...originalEmployee, ...updates };
 
-        for (const key of Object.keys(updates) as Array<keyof Employee>) {
-            const oldValue = originalEmployee[key];
-            const newValue = updatedEmployeeData[key];
+        for (const key in updates) {
+            const typedKey = key as keyof Employee;
+            const oldValue = originalEmployee[typedKey];
+            const newValue = updates[typedKey];
             
-            const oldIsEmpty = oldValue === null || oldValue === undefined || oldValue === '';
-            const newIsEmpty = newValue === null || newValue === undefined || newValue === '';
+            const areDates = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'addressChangeDate'].includes(key);
 
-            if (oldIsEmpty && newIsEmpty) {
-                continue; 
+            let oldValStr: string | null = null;
+            if (oldValue !== null && oldValue !== undefined) {
+                 if (key === 'deductionReason' && Array.isArray(oldValue)) {
+                    oldValStr = JSON.stringify(oldValue);
+                } else if (areDates && isValid(new Date(oldValue as string))) {
+                    oldValStr = format(new Date(oldValue as string), 'dd-MM-yyyy');
+                } else {
+                    oldValStr = String(oldValue);
+                }
             }
 
-            if (String(oldValue) !== String(newValue)) {
-                 let oldValStr: string | null = null;
-                if (oldValue !== null && oldValue !== undefined) {
-                     if (key === 'deductionReason' && Array.isArray(oldValue)) {
-                        oldValStr = JSON.stringify(oldValue);
-                    } else if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'addressChangeDate'].includes(key) && isValid(new Date(oldValue as string))) {
-                        oldValStr = format(new Date(oldValue as string), 'dd-MM-yyyy');
-                    } else {
-                        oldValStr = String(oldValue);
-                    }
+            let newValStr: string | null = null;
+            if (newValue !== null && newValue !== undefined) {
+                 if (key === 'deductionReason' && Array.isArray(newValue)) {
+                    newValStr = JSON.stringify(newValue);
+                } else if (areDates && isValid(new Date(newValue as string))) {
+                    newValStr = format(new Date(newValue as string), 'dd-MM-yyyy');
+                } else {
+                    newValStr = String(newValue);
                 }
-
-                let newValStr: string | null = null;
-                if (newValue !== null && newValue !== undefined) {
-                     if (key === 'deductionReason' && Array.isArray(newValue)) {
-                        newValStr = JSON.stringify(newValue);
-                    } else if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'addressChangeDate'].includes(key) && isValid(new Date(newValue as string))) {
-                        newValStr = format(new Date(newValue as string), 'dd-MM-yyyy');
-                    } else {
-                        newValStr = String(newValue);
-                    }
-                }
-
-                changes.push({ field: key, oldValue: oldValStr || 'Brak', newValue: newValStr || 'Brak' });
+            }
+            
+            if (oldValStr !== newValStr) {
+                changes.push({ field: typedKey, oldValue: oldValStr || 'Brak', newValue: newValStr || 'Brak' });
             }
         }
         
         const serialized = serializeEmployee(updatedEmployeeData);
         for(const header of EMPLOYEE_HEADERS) {
-             row.set(header, serialized[header] === null || serialized[header] === undefined ? '' : serialized[header]);
+            row.set(header, serialized[header]);
         }
 
         await row.save();
@@ -349,7 +373,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
 export async function deleteEmployee(employeeId: string, actorUid: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows({ limit: 3000 });
+        const rows = await sheet.getRows({ limit: 2000 });
         const row = rows.find((r) => r.get('id') === employeeId);
 
         if (!row) {
@@ -431,35 +455,70 @@ export async function deleteNonEmployee(id: string): Promise<void> {
 }
 
 export async function addEquipment(itemData: Omit<EquipmentItem, 'id' | 'addressName'>): Promise<void> {
-    // This function is now a no-op but is kept to avoid breaking changes if it was called somewhere.
-    // In a real scenario, you might want to remove this function and its calls.
-     console.warn("addEquipment is called, but the equipment feature is removed.");
+    try {
+        const sheet = await getSheet(SHEET_NAME_EQUIPMENT, EQUIPMENT_HEADERS);
+        const { settings } = await getAllData();
+        const addressName = settings.addresses.find((a: { id: any; }) => a.id === itemData.addressId)?.name || 'Nieznany';
+        
+        const newItem: EquipmentItem = {
+            id: `equip-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            ...itemData,
+            addressName
+        };
+        const serialized = serializeEquipment(newItem);
+        await sheet.addRow(serialized, { raw: false, insert: true });
+    } catch (e: unknown) {
+        console.error("Error adding equipment:", e);
+        throw new Error(e instanceof Error ? e.message : "Failed to add equipment.");
+    }
 }
 
 export async function updateEquipment(id: string, updates: Partial<EquipmentItem>): Promise<void> {
-    // This function is now a no-op.
-     console.warn(`updateEquipment is called for id ${id}, but the equipment feature is removed.`);
+    try {
+        const sheet = await getSheet(SHEET_NAME_EQUIPMENT, EQUIPMENT_HEADERS);
+        const rows = await sheet.getRows({ limit: 2000 });
+        const row = rows.find((r) => r.get('id') === id);
+        if (!row) throw new Error("Equipment not found");
+        
+        for (const key in updates) {
+            row.set(key, (updates as Record<string,unknown>)[key]);
+        }
+        await row.save();
+    } catch (e: unknown) {
+        console.error("Error updating equipment:", e);
+        throw new Error(e instanceof Error ? e.message : "Failed to update equipment.");
+    }
 }
 
 export async function deleteEquipment(id: string): Promise<void> {
-    // This function is now a no-op.
-     console.warn(`deleteEquipment is called for id ${id}, but the equipment feature is removed.`);
+    try {
+        const sheet = await getSheet(SHEET_NAME_EQUIPMENT, EQUIPMENT_HEADERS);
+        const rows = await sheet.getRows({ limit: 2000 });
+        const row = rows.find((r) => r.get('id') === id);
+        if (row) {
+            await row.delete();
+        } else {
+            throw new Error("Equipment not found");
+        }
+    } catch (e: unknown) {
+        console.error("Error deleting equipment:", e);
+        throw new Error(e instanceof Error ? e.message : "Failed to delete equipment.");
+    }
 }
 
 
 export async function bulkDeleteEmployees(status: 'active' | 'dismissed', _actorUid: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows({ limit: 3000 });
+        const rows = await sheet.getRows({ limit: 2000 });
         const rowsToDelete = rows.filter((row) => row.get('status') === status);
         
         if (rowsToDelete.length === 0) {
             return;
         }
-        
-        for (let i = rowsToDelete.length - 1; i >= 0; i--) {
-            await rowsToDelete[i].delete();
-        }
+
+        const deletedRowIndexes = rowsToDelete.map(r => r.rowNumber - 1);
+        await sheet.deleteRows(deletedRowIndexes);
 
     } catch (e: unknown) {
         console.error("Error bulk deleting employees:", e);
@@ -470,14 +529,14 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', _actor
 export async function transferEmployees(fromCoordinatorId: string, toCoordinatorId: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows({ limit: 3000 });
+        const rows = await sheet.getRows({ limit: 2000 });
         const rowsToTransfer = rows.filter((row) => row.get('coordinatorId') === fromCoordinatorId);
 
         if (rowsToTransfer.length === 0) {
             return;
         }
 
-        const { settings } = await getAllSheetsData();
+        const { settings } = await getAllData();
         const toCoordinator = settings.coordinators.find((c: { uid: string; }) => c.uid === toCoordinatorId);
         if (!toCoordinator) {
             throw new Error("Target coordinator not found.");
@@ -486,9 +545,8 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
         for (const row of rowsToTransfer) {
             row.set('coordinatorId', toCoordinatorId);
         }
-        
-        const promises = rowsToTransfer.map(row => row.save());
-        await Promise.all(promises);
+
+        await sheet.saveUpdatedCells();
 
     } catch (e: unknown) {
         console.error("Error transferring employees:", e);
@@ -499,41 +557,35 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
 export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<{ updated: number }> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows({ limit: 3000 });
-        const today = startOfDay(new Date()); 
+        const rows = await sheet.getRows({ limit: 2000 });
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
 
         let updatedCount = 0;
         const rowsToUpdate = [];
-        const notificationsToCreate = [];
 
         for (const row of rows) {
-            const status = row.get('status');
-            const checkOutDateString = row.get('checkOutDate') as string | undefined;
+            const status = String(row.get('status'));
+            const checkOutDateString = String(row.get('checkOutDate'));
 
             if (status === 'active' && checkOutDateString) {
-                const checkOutDate = parseISO(checkOutDateString);
-                
-                if (isValid(checkOutDate) && checkOutDate < today) {
+                const checkOutDate = new Date(checkOutDateString);
+                if (isValid(checkOutDate) && isPast(checkOutDate)) {
                     row.set('status', 'dismissed');
-                    rowsToUpdate.push(row);
+                    rowsToUpdate.push(row.save()); // Pushing promise to array
                     updatedCount++;
 
                     const originalEmployee = deserializeEmployee(row.toObject());
                     if (originalEmployee) {
-                        notificationsToCreate.push(
-                            createNotification(actorUid, 'automatycznie zwolnił', originalEmployee, [
-                                { field: 'status', oldValue: 'active', newValue: 'dismissed' }
-                            ])
-                        );
+                       await createNotification(actorUid, 'automatycznie zwolnił', originalEmployee, [
+                            { field: 'status', oldValue: 'active', newValue: 'dismissed' }
+                       ]);
                     }
                 }
             }
         }
         
-        if (rowsToUpdate.length > 0) {
-            await sheet.saveUpdatedCells(rowsToUpdate);
-            await Promise.all(notificationsToCreate);
-        }
+        await Promise.all(rowsToUpdate);
 
         return { updated: updatedCount };
     } catch (e: unknown) {
@@ -542,7 +594,7 @@ export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<
     }
 }
 
-export async function updateSettings(newSettings: Partial<Omit<Settings, 'temporaryAccess'>>): Promise<void> {
+export async function updateSettings(newSettings: Partial<Settings>): Promise<void> {
     const updateSimpleList = async (sheetName: string, items: string[]) => {
         const sheet = await getSheet(sheetName, ['name']);
         await sheet.clearRows();
@@ -561,9 +613,6 @@ export async function updateSettings(newSettings: Partial<Omit<Settings, 'tempor
         if (newSettings.genders) {
             await updateSimpleList(SHEET_NAME_GENDERS, newSettings.genders);
         }
-        if (newSettings.localities) {
-            await updateSimpleList(SHEET_NAME_LOCALITIES, newSettings.localities);
-        }
         if (newSettings.addresses) {
             const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ADDRESS_HEADERS);
             const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity']);
@@ -572,15 +621,14 @@ export async function updateSettings(newSettings: Partial<Omit<Settings, 'tempor
             await roomsSheet.clearRows();
 
             const allRooms: (Room & {addressId: string})[] = [];
-            const addressesData = newSettings.addresses.map((addr) => {
+            const addressesData = newSettings.addresses.map((addr: { rooms: any[]; id: any; name: any; coordinatorId: any; }) => {
                 addr.rooms.forEach(room => {
                     allRooms.push({ ...room, addressId: addr.id });
                 });
                 return { 
                     id: addr.id, 
-                    name: addr.name,
-                    locality: addr.locality,
-                    coordinatorIds: addr.coordinatorIds.join(',') 
+                    name: addr.name, 
+                    coordinatorId: addr.coordinatorId 
                 };
             });
 
@@ -593,31 +641,13 @@ export async function updateSettings(newSettings: Partial<Omit<Settings, 'tempor
         }
         if (newSettings.coordinators) {
              const sheet = await getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS);
-             const { settings: currentSettings } = await getAllSheetsData();
-             const existingPasswords = new Map(currentSettings.coordinators.map(c => [c.uid, c.password]));
-
              await sheet.clearRows();
-
              if (newSettings.coordinators.length > 0) {
-                 const coordinatorsToSave = newSettings.coordinators.map((c: Coordinator) => {
-                     const newPassword = c.password;
-                     // If new password is empty or not provided, keep the old one if it exists
-                     const finalPassword = (newPassword && newPassword.trim() !== '') ? newPassword : (existingPasswords.get(c.uid) || '');
-                     return {
-                        ...c,
-                        password: finalPassword,
-                        isAdmin: String(c.isAdmin).toUpperCase(),
-                     }
-                 });
-                 await sheet.addRows(coordinatorsToSave, { raw: false, insert: true });
+                 await sheet.addRows(newSettings.coordinators.map((c: { isAdmin: any; }) => ({
+                     ...c,
+                     isAdmin: String(c.isAdmin).toUpperCase()
+                 })), { raw: false, insert: true });
              }
-        }
-        if (newSettings.temporaryAccess) {
-            const sheet = await getSheet(SHEET_NAME_TEMPORARY_ACCESS, TEMP_ACCESS_HEADERS);
-            await sheet.clearRows();
-            if (newSettings.temporaryAccess.length > 0) {
-                await sheet.addRows(newSettings.temporaryAccess);
-            }
         }
 
     } catch (error: unknown) {
@@ -651,9 +681,84 @@ export async function clearAllNotifications(): Promise<void> {
     }
 }
 
+export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Promise<void> {
+    try {
+        const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, ['id', 'addressId', 'addressName', 'date', 'coordinatorId', 'coordinatorName', 'standard']);
+        const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, ['id', 'inspectionId', 'addressName', 'date', 'coordinatorName', 'category', 'itemLabel', 'itemValue', 'uwagi', 'photoData']);
+        
+        const inspectionId = `insp-${Date.now()}`;
+        const dateString = inspectionData.date;
+
+        await inspectionsSheet.addRow({
+            id: inspectionId,
+            addressId: inspectionData.addressId,
+            addressName: inspectionData.addressName,
+            date: dateString,
+            coordinatorId: inspectionData.coordinatorId,
+            coordinatorName: inspectionData.coordinatorName,
+            standard: inspectionData.standard || '',
+        }, { raw: false, insert: true });
+
+        const detailRows: Record<string, string>[] = [];
+        inspectionData.categories.forEach((category: InspectionCategory) => {
+            category.items.forEach((item: { label: any; value: any; }) => {
+                detailRows.push({
+                    id: `insp-det-${Date.now()}-${Math.random()}`,
+                    inspectionId,
+                    addressName: inspectionData.addressName,
+                    date: dateString,
+                    coordinatorName: inspectionData.coordinatorName,
+                    category: category.name,
+                    itemLabel: item.label,
+                    itemValue: Array.isArray(item.value) ? JSON.stringify(item.value) : (String(item.value) ?? ''),
+                    uwagi: '',
+                    photoData: '',
+                });
+            });
+
+            if (category.uwagi) {
+                detailRows.push({
+                    id: `insp-det-${Date.now()}-${Math.random()}`,
+                    inspectionId,
+                    addressName: inspectionData.addressName,
+                    date: dateString,
+                    coordinatorName: inspectionData.coordinatorName,
+                    category: category.name,
+                    itemLabel: 'Uwagi', itemValue: '',
+                    uwagi: category.uwagi,
+                    photoData: '',
+                });
+            }
+            
+            (category.photos || []).forEach((photo: string, index: number) => {
+                detailRows.push({
+                    id: `insp-det-${Date.now()}-${Math.random()}`,
+                    inspectionId,
+                    addressName: inspectionData.addressName,
+                    date: dateString,
+                    coordinatorName: inspectionData.coordinatorName,
+                    category: category.name,
+                    itemLabel: `Photo ${index + 1}`,
+                    itemValue: '',
+                    uwagi: '',
+                    photoData: photo,
+                });
+            });
+        });
+
+        if (detailRows.length > 0) {
+            await detailsSheet.addRows(detailRows, { raw: false, insert: true });
+        }
+
+    } catch (e: unknown) {
+        console.error("Error adding inspection:", e);
+        throw new Error(e instanceof Error ? e.message : "Failed to add inspection.");
+    }
+}
+
 export async function generateMonthlyReport(year: number, month: number, coordinatorId: string): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
     try {
-        const { employees, settings } = await getAllSheetsData();
+        const { employees, settings } = await getAllData();
         const coordinatorMap = new Map(settings.coordinators.map((c: { uid: any; name: any; }) => [c.uid, c.name]));
 
         const reportStart = new Date(year, month - 1, 1);
@@ -703,7 +808,7 @@ export async function generateMonthlyReport(year: number, month: number, coordin
         
         if (reportData.length > 0) {
             const cols = Object.keys(reportData[0] || {}).map(key => ({
-                wch: Math.max(key.length, ...reportData.map(row => String((row as any)[key] ?? '').length))
+                wch: Math.max(key.length, ...reportData.map(row => String(row[key as keyof typeof row] ?? '').length))
             }));
             worksheet["!cols"] = cols;
         }
@@ -721,19 +826,19 @@ export async function generateMonthlyReport(year: number, month: number, coordin
 
 export async function generateAccommodationReport(year: number, month: number, coordinatorId: string): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
     try {
-        const { employees, settings } = await getAllSheetsData();
+        const { employees, settings } = await getAllData();
         
         const daysInMonth = getDaysInMonth(new Date(year, month - 1));
         const coordinatorMap = new Map(settings.coordinators.map((c: { uid: any; name: any; }) => [c.uid, c.name]));
         
         let filteredAddresses = settings.addresses;
         if (coordinatorId !== 'all') {
-             filteredAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(coordinatorId));
+            filteredAddresses = settings.addresses.filter((a: { coordinatorId: string; }) => a.coordinatorId === coordinatorId);
         }
 
         const reportData: Record<string, string | number>[] = [];
 
-        filteredAddresses.forEach((address) => {
+        filteredAddresses.forEach((address: { name: any; rooms: any[]; coordinatorId: unknown; }) => {
             const addressRow: Record<string, string | number> = { "Adres": address.name };
             
             for (let day = 1; day <= daysInMonth; day++) {
@@ -751,7 +856,7 @@ export async function generateAccommodationReport(year: number, month: number, c
 
             const totalCapacity = address.rooms.reduce((sum, room) => sum + room.capacity, 0);
             addressRow["Pojemność"] = totalCapacity;
-            addressRow["Koordynator"] = address.coordinatorIds.map(id => coordinatorMap.get(id) || 'N/A').join(', ');
+            addressRow["Koordynator"] = coordinatorMap.get(address.coordinatorId) || 'N/A';
             
             reportData.push(addressRow);
         });
@@ -775,106 +880,50 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
     try {
         const workbook = XLSX.read(fileContent, { type: 'base64', cellDates: true });
         const sheetName = workbook.SheetNames[0];
-        if(!sheetName) throw new Error("Nie znaleziono arkusza w pliku Excel.");
+        if(!sheetName) throw new Error("Nie znaleziono arkusza в pliku Excel.");
 
         const worksheet = workbook.Sheets[sheetName];
-        const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { header: 1 });
-        
-        if (data.length <= 1) {
-             throw new Error("Plik Excel jest pusty lub zawiera tylko nagłówki.");
-        }
-        
-        const headers = data[0] as string[];
-        const rows = data.slice(1);
-        
+        const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet);
+
         let importedCount = 0;
-        const coordinatorMap = new Map(settings.coordinators.map(c => [c.name.toLowerCase(), c.uid]));
 
-        const columnMap: Record<string, keyof Employee | 'miejscowosc'> = {
-            'Imię i nazwisko': 'fullName',
-            'Koordynator': 'coordinatorId',
-            'Narodowość': 'nationality',
-            'Płeć': 'gender',
-            'Adres': 'address',
-            'Pokój': 'roomNumber',
-            'Zakład': 'zaklad',
-            'Data zameldowania': 'checkInDate',
-            'Data wymeldowania': 'checkOutDate',
-            'Umowa od': 'contractStartDate',
-            'Umowa do': 'contractEndDate',
-            'Data zgłoszenia wyjazdu': 'departureReportDate',
-            'Komentarze': 'comments',
-            'Miejscowość': 'miejscowosc',
-        };
-        
-        const requiredColumns = ['Imię i nazwisko'];
-        for (const col of requiredColumns) {
-            if (!headers.includes(col)) {
-                throw new Error(`Brak wymaganej kolumny w pliku Excel: "${col}"`);
-            }
-        }
-        
-        const existingLocalities = new Set(settings.localities.map(l => l.toLowerCase()));
-        const newLocalitiesToSave = new Set<string>();
-
-        for (const row of rows) {
-            const rowData = (row as (string | number | null)[]).reduce((acc, cell, index) => {
-                const header = headers[index];
-                if(header) {
-                   acc[header] = cell;
-                }
-                return acc;
-            }, {} as Record<string, unknown>);
-
+        for (const row of data) {
             try {
-                const employeeData: Partial<Employee> = {};
-                for(const excelHeader in columnMap) {
-                    if (headers.includes(excelHeader)) {
-                        const internalKey = columnMap[excelHeader];
-                        const value = rowData[excelHeader];
-                        
-                        if (internalKey === 'miejscowosc') {
-                             if (value) {
-                                const locality = String(value).trim();
-                                if (locality && !existingLocalities.has(locality.toLowerCase())) {
-                                    newLocalitiesToSave.add(locality);
-                                }
-                            }
-                        } else if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate'].includes(internalKey)) {
-                            (employeeData as any)[internalKey] = value ? safeFormat(value) : null;
-                        } else if (internalKey === 'coordinatorId') {
-                             const coordinatorName = String(value || '').toLowerCase();
-                             employeeData.coordinatorId = coordinatorMap.get(coordinatorName) || '';
-                        }
-                        else {
-                            (employeeData as any)[internalKey] = value ? String(value) : null;
-                        }
-                    }
-                }
+                // Map Excel columns to Employee properties
+                const employeeData: Partial<Employee> = {
+                    fullName: row['Imię i nazwisko'] as string,
+                    coordinatorId: row['Koordynator'] as string, // This is coordinator NAME, needs mapping
+                    nationality: row['Narodowość'] as string,
+                    gender: row['Płeć'] as string,
+                    address: row['Adres'] as string,
+                    roomNumber: String(row['Pokój'] || ''),
+                    zaklad: row['Zakład'] as string,
+                    checkInDate: row['Data zameldowania'] ? safeFormat(row['Data zameldowania']) : '',
+                    checkOutDate: row['Data wymeldowania'] ? safeFormat(row['Data wymeldowania']) : undefined,
+                    contractStartDate: row['Umowa od'] ? safeFormat(row['Umowa od']) : undefined,
+                    contractEndDate: row['Umowa do'] ? safeFormat(row['Umowa do']) : undefined,
+                    comments: row['Komentarze'] as string,
+                };
                 
-                if (!employeeData.fullName) {
-                    console.warn('Skipping row due to missing full name:', rowData);
+                if (!employeeData.fullName || !employeeData.checkInDate) {
+                    console.warn('Skipping row due to missing full name or check-in date:', row);
                     continue;
                 }
+                
+                const coordinator = settings.coordinators.find((c: { name: string; }) => c.name.toLowerCase() === (employeeData.coordinatorId || '').toLowerCase());
+                employeeData.coordinatorId = coordinator ? coordinator.uid : '';
 
                 await addEmployee(employeeData, actorUid);
                 importedCount++;
             } catch (rowError) {
-                console.error('Error processing row:', rowData, rowError);
+                console.error('Error processing row:', row, rowError);
             }
         }
         
-        if (newLocalitiesToSave.size > 0) {
-            const updatedLocalities = [...settings.localities, ...Array.from(newLocalitiesToSave)];
-            await updateSettings({ localities: updatedLocalities });
-        }
-        
-        return { importedCount, totalRows: rows.length };
+        return { importedCount, totalRows: data.length };
 
     } catch (e) {
         console.error("Error importing from Excel:", e);
         throw new Error(e instanceof Error ? e.message : "Failed to import employees from Excel.");
     }
 }
-
-    

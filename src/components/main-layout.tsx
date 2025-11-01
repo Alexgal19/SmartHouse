@@ -15,8 +15,8 @@ import {
 } from './ui/sidebar';
 import Header from './header';
 import { MobileNav } from './mobile-nav';
-import type { View, Notification, Employee, Settings, NonEmployee, EquipmentItem, SessionData, Address } from '@/types';
-import { Home, Settings as SettingsIcon, Users, Building } from 'lucide-react';
+import type { View, Notification, Employee, Settings, NonEmployee, Address, SessionData } from '@/types';
+import { Home, Settings as SettingsIcon, Users, Building, ShieldCheck } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     clearAllNotifications,
@@ -29,9 +29,6 @@ import {
     deleteNonEmployee,
     deleteEmployee,
     checkAndUpdateEmployeeStatuses,
-    addEquipment,
-    updateEquipment,
-    deleteEquipment,
     importEmployeesFromExcel,
     bulkDeleteEmployees,
 } from '@/lib/actions';
@@ -123,6 +120,7 @@ export default function MainLayout({
         { view: 'dashboard', icon: Home, label: 'Pulpit' },
         { view: 'employees', icon: Users, label: 'Pracownicy' },
         { view: 'housing', icon: Building, label: 'Zakwaterowanie' },
+        { view: 'inspections', icon: ShieldCheck, label: 'Inspekcje' },
         { view: 'settings', icon: SettingsIcon, label: 'Ustawienia' },
     ], [])  as { view: View; icon: React.ElementType; label: string }[];
 

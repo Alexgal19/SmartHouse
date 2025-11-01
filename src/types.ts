@@ -1,6 +1,6 @@
 // This file contains all the TypeScript type definitions for the application's data structures.
 
-export type View = 'dashboard' | 'employees' | 'settings' | 'housing';
+export type View = 'dashboard' | 'employees' | 'settings' | 'housing' | 'inspections';
 
 export type Address = {
     id: string;
@@ -23,13 +23,6 @@ export type Coordinator = {
     password?: string;
 }
 
-export interface TemporaryAccess {
-  token: string;
-  coordinatorId: string;
-  coordinatorName: string;
-  expires: string; // ISO date string
-}
-
 export type Settings = {
     id: 'global-settings';
     addresses: Address[];
@@ -38,7 +31,7 @@ export type Settings = {
     coordinators: Coordinator[];
     genders: string[];
     localities: string[];
-    temporaryAccess: TemporaryAccess[];
+    inspectionTemplate: InspectionTemplateCategory[];
 }
 
 export type ChartConfig = {
@@ -125,12 +118,32 @@ export type SessionData = {
   isAdmin: boolean;
 }
 
-export type EquipmentItem = {
-    id: string;
-    inventoryNumber: string;
+export type InspectionTemplateCategory = {
     name: string;
-    quantity: number;
-    description: string;
+    items: {
+        label: string;
+        type: 'rating' | 'yes_no' | 'text' | 'checkbox_group' | 'select' | 'number';
+        options?: string[];
+    }[];
+}
+
+export type InspectionCategory = {
+    name: string;
+    items: {
+        label: string;
+        value: any;
+    }[];
+    uwagi: string;
+    photos: string[]; // base64 encoded images
+}
+
+export type Inspection = {
+    id: string;
     addressId: string;
     addressName: string;
+    date: string; // ISO date string
+    coordinatorId: string;
+    coordinatorName: string;
+    standard: 'Wysoki' | 'Normalny' | 'Niski' | null;
+    categories: InspectionCategory[];
 }
