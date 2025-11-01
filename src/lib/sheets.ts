@@ -79,7 +79,8 @@ export async function getSheet(title: string, headers: string[]): Promise<Google
             sheet = await doc.addSheet({ title, headerValues: headers });
         } else {
             // Ensure headers are up-to-date
-            const currentHeaders = sheet.headerValues;
+            await sheet.loadHeaderRow();
+            const currentHeaders = sheet.headerValues || [];
             const missingHeaders = headers.filter(h => !currentHeaders.includes(h));
             if(missingHeaders.length > 0) {
                 await sheet.setHeaderRow([...currentHeaders, ...missingHeaders]);
@@ -244,15 +245,19 @@ const deserializeNotification = (row: Record<string, unknown>): Notification | n
 const getSheetData = async (doc: GoogleSpreadsheet, title: string, limit = 2000): Promise<Record<string, string>[]> => {
     const sheet = doc.sheetsByTitle[title];
     if (!sheet) {
-        // This is expected if the sheet doesn't exist yet. `getSheet` will create it.
         console.warn(`Sheet "${title}" not found. Returning empty array.`);
         return [];
     }
     try {
+        await sheet.loadHeaderRow(); // Ensure headers are loaded before getting rows
         const rows = await sheet.getRows({ limit });
         return rows.map(r => r.toObject());
     } catch (e) {
          console.warn(`Could not get rows from sheet: ${title}. It might be empty or missing headers.`);
+         // Rethrow specific header error
+         if (e instanceof Error && e.message.includes("Header values are not yet loaded")) {
+             throw new Error(`Failed to load header row for sheet: ${title}. ${e.message}`);
+         }
         return [];
     }
 };
@@ -349,3 +354,5 @@ export const getAllSheetsData = async () => {
         throw new Error(`Could not fetch all data from sheets. Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
 }
+
+    
