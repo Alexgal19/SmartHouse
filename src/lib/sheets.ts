@@ -3,7 +3,7 @@
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Address, Coordinator } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, Address, Coordinator } from '../types';
 import { format, isValid, parse, parseISO } from 'date-fns';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
@@ -63,7 +63,7 @@ export async function getSheet(title: string, headers: string[]): Promise<Google
         if (!sheet) {
             sheet = await doc.addSheet({ title, headerValues: headers });
         } else {
-            await sheet.loadHeaderRow();
+            // Ensure headers are up-to-date
             const currentHeaders = sheet.headerValues;
             const missingHeaders = headers.filter(h => !currentHeaders.includes(h));
             if(missingHeaders.length > 0) {
@@ -85,6 +85,7 @@ const safeFormat = (dateValue: unknown): string | null => {
     let date: Date;
 
     if (typeof dateValue === 'number' && dateValue > 0) {
+        // Excel's epoch starts on 1900-01-01, but it has a bug treating 1900 as a leap year.
         const excelEpoch = new Date(1899, 11, 30);
         date = new Date(excelEpoch.getTime() + dateValue * 24 * 60 * 60 * 1000);
         if (isValid(date)) {
@@ -94,11 +95,13 @@ const safeFormat = (dateValue: unknown): string | null => {
 
     const dateString = String(dateValue);
 
+    // Attempt to parse ISO string first (most reliable)
     date = parseISO(dateString);
     if (isValid(date)) {
         return format(date, 'yyyy-MM-dd');
     }
 
+    // Attempt to parse a specific format like dd-MM-yyyy or dd.MM.yyyy
     date = parse(dateString, 'dd-MM-yyyy', new Date());
      if (isValid(date)) {
         return format(date, 'yyyy-MM-dd');
@@ -108,11 +111,13 @@ const safeFormat = (dateValue: unknown): string | null => {
         return format(date, 'yyyy-MM-dd');
     }
 
+    // Try a more general Date constructor for other formats
     date = new Date(dateValue as string | number);
     if (isValid(date)) {
         return format(date, 'yyyy-MM-dd');
     }
     
+    // If all else fails, return null
     return null;
 };
 
@@ -225,6 +230,7 @@ const getSheetData = async (doc: GoogleSpreadsheet, title: string, limit = 2000)
     const sheet = doc.sheetsByTitle[title];
     if (!sheet) {
         // This is expected if the sheet doesn't exist yet. `getSheet` will create it.
+        console.warn(`Sheet "${title}" not found. Returning empty array.`);
         return [];
     }
     try {
@@ -240,46 +246,49 @@ export const getAllSheetsData = async () => {
     try {
         const doc = await getDoc();
 
+        const sheetTitles = [
+            SHEET_NAME_EMPLOYEES,
+            SHEET_NAME_NON_EMPLOYEES,
+            SHEET_NAME_NOTIFICATIONS,
+            SHEET_NAME_ADDRESSES,
+            SHEET_NAME_ROOMS,
+            SHEET_NAME_NATIONALITIES,
+            SHEET_NAME_DEPARTMENTS,
+            SHEET_NAME_COORDINATORS,
+            SHEET_NAME_GENDERS,
+            SHEET_NAME_LOCALITIES
+        ];
+
         // Ensure sheets exist before trying to fetch data from them
-        await Promise.all([
-            getSheet(SHEET_NAME_EMPLOYEES, []),
-            getSheet(SHEET_NAME_NON_EMPLOYEES, []),
-            getSheet(SHEET_NAME_NOTIFICATIONS, []),
-            getSheet(SHEET_NAME_ADDRESSES, []),
-            getSheet(SHEET_NAME_ROOMS, []),
-            getSheet(SHEET_NAME_NATIONALITIES, ['name']),
-            getSheet(SHEET_NAME_DEPARTMENTS, ['name']),
-            getSheet(SHEET_NAME_COORDINATORS, []),
-            getSheet(SHEET_NAME_GENDERS, ['name']),
-            getSheet(SHEET_NAME_LOCALITIES, ['name']),
-        ]);
+        await Promise.all(sheetTitles.map(title => getSheet(title, [])));
 
 
         const [
             employeesSheet,
-            settingsSheets,
             nonEmployeesSheet,
             notificationsSheet,
+            addressRows, 
+            roomRows, 
+            nationalityRows, 
+            departmentRows, 
+            coordinatorRows, 
+            genderRows, 
+            localityRows
         ] = await Promise.all([
             getSheetData(doc, SHEET_NAME_EMPLOYEES, 3000),
-            (async () => {
-                const [addressRows, roomRows, nationalityRows, departmentRows, coordinatorRows, genderRows, localityRows] = await Promise.all([
-                    getSheetData(doc, SHEET_NAME_ADDRESSES),
-                    getSheetData(doc, SHEET_NAME_ROOMS),
-                    getSheetData(doc, SHEET_NAME_NATIONALITIES),
-                    getSheetData(doc, SHEET_NAME_DEPARTMENTS),
-                    getSheetData(doc, SHEET_NAME_COORDINATORS),
-                    getSheetData(doc, SHEET_NAME_GENDERS),
-                    getSheetData(doc, SHEET_NAME_LOCALITIES),
-                ]);
-                return { addressRows, roomRows, nationalityRows, departmentRows, coordinatorRows, genderRows, localityRows };
-            })(),
             getSheetData(doc, SHEET_NAME_NON_EMPLOYEES),
             getSheetData(doc, SHEET_NAME_NOTIFICATIONS, 200),
+            getSheetData(doc, SHEET_NAME_ADDRESSES),
+            getSheetData(doc, SHEET_NAME_ROOMS),
+            getSheetData(doc, SHEET_NAME_NATIONALITIES),
+            getSheetData(doc, SHEET_NAME_DEPARTMENTS),
+            getSheetData(doc, SHEET_NAME_COORDINATORS),
+            getSheetData(doc, SHEET_NAME_GENDERS),
+            getSheetData(doc, SHEET_NAME_LOCALITIES),
         ]);
 
         const roomsByAddressId = new Map<string, Room[]>();
-        settingsSheets.roomRows.forEach(rowObj => {
+        roomRows.forEach(rowObj => {
             const addressId = rowObj.addressId;
             if (addressId) {
                 if (!roomsByAddressId.has(addressId)) {
@@ -288,24 +297,25 @@ export const getAllSheetsData = async () => {
                 roomsByAddressId.get(addressId)!.push({ id: rowObj.id, name: rowObj.name, capacity: Number(rowObj.capacity) || 0 });
             }
         });
-        const addresses: Address[] = settingsSheets.addressRows.map(rowObj => ({
+        const addresses: Address[] = addressRows.map(rowObj => ({
             id: rowObj.id,
             locality: rowObj.locality,
             name: rowObj.name,
-            coordinatorIds: (rowObj.coordinatorIds || rowObj.coordinatorId || '').split(',').filter(Boolean),
+            coordinatorIds: (rowObj.coordinatorIds || '').split(',').filter(Boolean),
             rooms: roomsByAddressId.get(rowObj.id) || []
         }));
-        const coordinators: Coordinator[] = settingsSheets.coordinatorRows.map(rowObj => ({ uid: rowObj.uid, name: rowObj.name, isAdmin: rowObj.isAdmin === 'TRUE', password: rowObj.password }));
+        
+        const coordinators: Coordinator[] = coordinatorRows.map(rowObj => ({ uid: rowObj.uid, name: rowObj.name, isAdmin: rowObj.isAdmin === 'TRUE', password: rowObj.password }));
         
         const settings: Settings = {
             id: 'global-settings',
             addresses,
-            nationalities: settingsSheets.nationalityRows.map(row => row.name).filter(Boolean),
-            departments: settingsSheets.departmentRows.map(row => row.name).filter(Boolean),
+            nationalities: nationalityRows.map(row => row.name).filter(Boolean),
+            departments: departmentRows.map(row => row.name).filter(Boolean),
             coordinators,
-            genders: settingsSheets.genderRows.map(row => row.name).filter(Boolean),
-            localities: settingsSheets.localityRows.map(row => row.name).filter(Boolean),
-            temporaryAccess: [],
+            genders: genderRows.map(row => row.name).filter(Boolean),
+            localities: localityRows.map(row => row.name).filter(Boolean),
+            temporaryAccess: [], // This will be handled by its own sheet/logic if needed
         };
 
         const employees = employeesSheet.map(row => deserializeEmployee(row)).filter((e): e is Employee => e !== null);
@@ -324,3 +334,5 @@ export const getAllSheetsData = async () => {
         throw new Error(`Could not fetch all data from sheets. Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
 }
+
+    
