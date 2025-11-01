@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 // Define an interface for the BeforeInstallPromptEvent
 interface BeforeInstallPromptEvent extends Event {
@@ -11,6 +11,15 @@ interface BeforeInstallPromptEvent extends Event {
     platform: string;
   }>;
   prompt(): Promise<void>;
+}
+
+// Extend the Window interface to include our custom property
+declare global {
+  interface Window {
+    pwaInstallHandler: {
+      event?: BeforeInstallPromptEvent;
+    };
+  }
 }
 
 interface PWAInstallerContextType {
@@ -28,51 +37,40 @@ export const usePWAInstaller = () => {
     return context;
 }
 
-// A global variable to hold the event.
-let deferredPrompt: BeforeInstallPromptEvent | null = null;
-
 export const PWAInstaller = ({ children }: { children: React.ReactNode }) => {
-    const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(deferredPrompt);
+    const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+
+    const updateInstallPrompt = useCallback(() => {
+        setInstallPrompt(window.pwaInstallHandler?.event || null);
+    }, []);
 
     useEffect(() => {
-        const handleBeforeInstallPrompt = (e: Event) => {
-            e.preventDefault();
-            const promptEvent = e as BeforeInstallPromptEvent;
-            deferredPrompt = promptEvent;
-            setInstallPrompt(promptEvent);
-        };
+        // Check immediately on mount
+        updateInstallPrompt();
 
-        // If the event has already been captured, use it.
-        if (deferredPrompt) {
-            setInstallPrompt(deferredPrompt);
-        }
+        // Listen for our custom event
+        window.addEventListener('pwa-install-ready', updateInstallPrompt);
 
-        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-        // Listen for appinstalled event
+        // Listen for appinstalled event to hide the button
         window.addEventListener('appinstalled', () => {
-            console.log('PWA was installed');
-            deferredPrompt = null;
-            setInstallPrompt(null);
+            window.pwaInstallHandler.event = undefined;
+            updateInstallPrompt();
         });
 
         return () => {
-            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+            window.removeEventListener('pwa-install-ready', updateInstallPrompt);
         };
-    }, []);
+    }, [updateInstallPrompt]);
 
     const handleInstallClick = () => {
-        if (!installPrompt) return;
-        installPrompt.prompt();
-        installPrompt.userChoice.then((choiceResult) => {
-            if (choiceResult.outcome === 'accepted') {
-                console.log('User accepted the install prompt');
-            } else {
-                console.log('User dismissed the install prompt');
-            }
-            // We set deferredPrompt to null because it can't be used again.
-            deferredPrompt = null;
-            setInstallPrompt(null);
+        const promptEvent = window.pwaInstallHandler?.event;
+        if (!promptEvent) return;
+
+        promptEvent.prompt();
+        promptEvent.userChoice.then(() => {
+            window.pwaInstallHandler.event = undefined;
+            document.body.classList.remove('install-ready');
+            updateInstallPrompt();
         });
     };
 

@@ -33,11 +33,17 @@ export default function RootLayout({
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#FFFFFF" />
-      </head>
-      <body className={inter.className}>
-        <script
+         <script
             dangerouslySetInnerHTML={{
               __html: `
+                window.pwaInstallHandler = {};
+                window.addEventListener('beforeinstallprompt', (e) => {
+                  e.preventDefault();
+                  window.pwaInstallHandler.event = e;
+                  document.body.classList.add('install-ready');
+                  window.dispatchEvent(new CustomEvent('pwa-install-ready'));
+                });
+
                 if ('serviceWorker' in navigator) {
                   window.addEventListener('load', () => {
                     navigator.serviceWorker.register('/sw.js').then(registration => {
@@ -50,6 +56,8 @@ export default function RootLayout({
               `,
             }}
         />
+      </head>
+      <body className={inter.className}>
         <PWAInstaller>
             {children}
         </PWAInstaller>

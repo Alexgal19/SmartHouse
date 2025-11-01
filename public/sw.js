@@ -1,12 +1,36 @@
-// This is a basic service worker for PWA functionality.
+// This is a basic service worker file.
+// You can add caching strategies here for your assets.
+
+const CACHE_NAME = 'smarthouse-cache-v1';
+const urlsToCache = [
+  '/',
+  '/dashboard?view=dashboard',
+  '/manifest.json',
+  // Add other important assets here that you want to cache
+  // e.g., '/_next/static/css/...'
+];
 
 self.addEventListener('install', (event) => {
   // Perform install steps
-  console.log('Service Worker installing.');
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => {
+        console.log('Opened cache');
+        return cache.addAll(urlsToCache);
+      })
+  );
 });
 
 self.addEventListener('fetch', (event) => {
-  // This service worker doesn't intercept fetch requests.
-  // It's mainly here for PWA installability criteria.
-  event.respondWith(fetch(event.request));
+  event.respondWith(
+    caches.match(event.request)
+      .then((response) => {
+        // Cache hit - return response
+        if (response) {
+          return response;
+        }
+        return fetch(event.request);
+      }
+    )
+  );
 });
