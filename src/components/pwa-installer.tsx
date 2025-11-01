@@ -28,16 +28,33 @@ export const usePWAInstaller = () => {
     return context;
 }
 
+// A global variable to hold the event.
+let deferredPrompt: BeforeInstallPromptEvent | null = null;
+
 export const PWAInstaller = ({ children }: { children: React.ReactNode }) => {
-    const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+    const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(deferredPrompt);
 
     useEffect(() => {
         const handleBeforeInstallPrompt = (e: Event) => {
             e.preventDefault();
-            setInstallPrompt(e as BeforeInstallPromptEvent);
+            const promptEvent = e as BeforeInstallPromptEvent;
+            deferredPrompt = promptEvent;
+            setInstallPrompt(promptEvent);
         };
 
+        // If the event has already been captured, use it.
+        if (deferredPrompt) {
+            setInstallPrompt(deferredPrompt);
+        }
+
         window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+        // Listen for appinstalled event
+        window.addEventListener('appinstalled', () => {
+            console.log('PWA was installed');
+            deferredPrompt = null;
+            setInstallPrompt(null);
+        });
 
         return () => {
             window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -53,6 +70,8 @@ export const PWAInstaller = ({ children }: { children: React.ReactNode }) => {
             } else {
                 console.log('User dismissed the install prompt');
             }
+            // We set deferredPrompt to null because it can't be used again.
+            deferredPrompt = null;
             setInstallPrompt(null);
         });
     };
