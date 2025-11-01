@@ -45,15 +45,17 @@ export const PWAInstaller = ({ children }: { children: React.ReactNode }) => {
     }, []);
 
     useEffect(() => {
-        // Check immediately on mount
+        // Check immediately on mount in case the event has already fired
         updateInstallPrompt();
 
-        // Listen for our custom event
+        // Listen for our custom event which is dispatched from the script in layout.tsx
         window.addEventListener('pwa-install-ready', updateInstallPrompt);
 
-        // Listen for appinstalled event to hide the button
+        // Also listen for the appinstalled event to clear the prompt
         window.addEventListener('appinstalled', () => {
-            window.pwaInstallHandler.event = undefined;
+            if (window.pwaInstallHandler) {
+              window.pwaInstallHandler.event = undefined;
+            }
             updateInstallPrompt();
         });
 
@@ -68,7 +70,9 @@ export const PWAInstaller = ({ children }: { children: React.ReactNode }) => {
 
         promptEvent.prompt();
         promptEvent.userChoice.then(() => {
-            window.pwaInstallHandler.event = undefined;
+            if (window.pwaInstallHandler) {
+              window.pwaInstallHandler.event = undefined;
+            }
             document.body.classList.remove('install-ready');
             updateInstallPrompt();
         });
