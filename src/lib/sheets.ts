@@ -18,17 +18,23 @@ const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_LOCALITIES = 'Localities';
 
-let docPromise: Promise<GoogleSpreadsheet> | null = null;
+let doc: GoogleSpreadsheet | null = null;
 
+/**
+ * Creates a JWT authentication object for the Google Sheets API using service account credentials.
+ * This is the ONLY authentication method used in this application.
+ * @returns {JWT} The authenticated JWT client.
+ * @throws {Error} If environment variables are not set.
+ */
 function getAuth(): JWT {
     const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
     const key = process.env.GOOGLE_PRIVATE_KEY;
 
     if (!email) {
-        throw new Error('Missing GOOGLE_SERVICE_ACCOUNT_EMAIL. Please add it to your .env.local file.');
+        throw new Error('CRITICAL: Missing GOOGLE_SERVICE_ACCOUNT_EMAIL environment variable.');
     }
     if (!key) {
-        throw new Error('Missing GOOGLE_PRIVATE_KEY. Please add it to your .env.local file.');
+        throw new Error('CRITICAL: Missing GOOGLE_PRIVATE_KEY environment variable.');
     }
 
     return new JWT({
@@ -38,23 +44,32 @@ function getAuth(): JWT {
     });
 }
 
-function getDoc(): Promise<GoogleSpreadsheet> {
-    if (!docPromise) {
-        docPromise = (async () => {
-            try {
-                const auth = getAuth();
-                const doc = new GoogleSpreadsheet(SPREADSHEET_ID, auth);
-                await doc.loadInfo();
-                return doc;
-            } catch (error: unknown) {
-                console.error("Failed to load Google Sheet document:", error);
-                docPromise = null; // Reset promise on error to allow retrying
-                throw new Error(`Could not connect to Google Sheets. Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
-            }
-        })();
+/**
+ * Gets the initialized and authenticated GoogleSpreadsheet instance.
+ * It uses a service account for authentication, ensuring no interactive popups.
+ * The connection is cached in memory for the lifetime of the server instance.
+ * @returns {Promise<GoogleSpreadsheet>} A promise that resolves to the authenticated GoogleSpreadsheet instance.
+ * @throws {Error} If connection or authentication fails.
+ */
+async function getDoc(): Promise<GoogleSpreadsheet> {
+    if (doc) {
+        return doc;
     }
-    return docPromise;
+
+    try {
+        const auth = getAuth();
+        const newDoc = new GoogleSpreadsheet(SPREADSHEET_ID, auth);
+        await newDoc.loadInfo();
+        doc = newDoc;
+        return doc;
+    } catch (error: unknown) {
+        doc = null; // Reset on failure to allow retrying
+        console.error("CRITICAL: Failed to load Google Sheet document with Service Account.", error);
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        throw new Error(`Could not connect to Google Sheets. Please check server credentials and API permissions. Details: ${errorMessage}`);
+    }
 }
+
 
 export async function getSheet(title: string, headers: string[]): Promise<GoogleSpreadsheetWorksheet> {
     try {
