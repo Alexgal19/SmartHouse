@@ -799,6 +799,14 @@ export async function generateAccommodationReport(year: number, month: number, c
         }
 
         const reportData: any[] = [];
+        const formatDateForReport = (dateString: string | null | undefined): string | null => {
+            if (!dateString) return null;
+            try {
+                return format(parseISO(dateString), 'dd-MM-yyyy');
+            } catch {
+                return dateString;
+            }
+        };
 
         filteredEmployees.forEach(e => {
             if (!e.checkInDate) return;
@@ -846,9 +854,9 @@ export async function generateAccommodationReport(year: number, month: number, c
                         "Pokój": e.roomNumber,
                         "Zakład": e.zaklad,
                         "Stary adres": e.oldAddress,
-                        "Data zmiany adresu": e.addressChangeDate ? formatDate(e.addressChangeDate) : null,
-                        "Data zameldowania": formatDate(e.checkInDate),
-                        "Data wymeldowania": formatDate(e.checkOutDate),
+                        "Data zmiany adresu": formatDateForReport(e.addressChangeDate),
+                        "Data zameldowania": formatDateForReport(e.checkInDate),
+                        "Data wymeldowania": formatDateForReport(e.checkOutDate),
                         "Dni w miesiącu": daysInMonth
                     });
                 }
