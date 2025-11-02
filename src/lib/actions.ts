@@ -3,7 +3,7 @@
 
 import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Inspection, InspectionCategory } from '../types';
 import { getSheet, getAllSheetsData } from './sheets';
-import { format, isPast, isValid, getDaysInMonth, parseISO } from 'date-fns';
+import { format, isPast, isValid, getDaysInMonth, parseISO, differenceInDays, max, min } from 'date-fns';
 import * as XLSX from 'xlsx';
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
@@ -785,117 +785,89 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
     }
 }
 
-export async function generateMonthlyReport(year: number, month: number, coordinatorId: string): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
+export async function generateAccommodationReport(year: number, month: number, coordinatorId: string): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
     try {
         const { employees, settings } = await getAllData();
         const coordinatorMap = new Map(settings.coordinators.map((c: { uid: any; name: any; }) => [c.uid, c.name]));
 
         const reportStart = new Date(year, month - 1, 1);
-        const reportEnd = new Date(year, month, 0);
-        
+        const reportEnd = new Date(year, month, 0, 23, 59, 59);
+
         let filteredEmployees = employees;
         if (coordinatorId !== 'all') {
             filteredEmployees = employees.filter(e => e.coordinatorId === coordinatorId);
         }
 
-        const reportData = filteredEmployees
-            .filter(e => {
-                const checkIn = e.checkInDate ? parseISO(e.checkInDate) : null;
-                const checkOut = e.checkOutDate ? parseISO(e.checkOutDate) : null;
+        const reportData: any[] = [];
 
-                if (!checkIn) return false;
+        filteredEmployees.forEach(e => {
+            if (!e.checkInDate) return;
 
-                const startsBeforeReportEnd = checkIn <= reportEnd;
-                const endsAfterReportStart = !checkOut || checkOut >= reportStart;
+            const periods: { address: string, start: Date, end: Date }[] = [];
+            const mainCheckIn = parseISO(e.checkInDate);
+            const mainCheckOut = e.checkOutDate ? parseISO(e.checkOutDate) : null;
+
+            if (e.addressChangeDate && e.oldAddress) {
+                const changeDate = parseISO(e.addressChangeDate);
+                // Period at old address
+                periods.push({
+                    address: e.oldAddress,
+                    start: mainCheckIn,
+                    end: changeDate
+                });
+                // Period at new address
+                periods.push({
+                    address: e.address,
+                    start: changeDate,
+                    end: mainCheckOut || reportEnd
+                });
+            } else {
+                // Single period
+                periods.push({
+                    address: e.address,
+                    start: mainCheckIn,
+                    end: mainCheckOut || reportEnd
+                });
+            }
+
+            periods.forEach(period => {
+                const effectiveStart = max(period.start, reportStart);
+                const effectiveEnd = min(period.end, reportEnd);
+
+                if (effectiveStart > effectiveEnd) return;
+
+                const daysInMonth = differenceInDays(effectiveEnd, effectiveStart) + 1;
                 
-                return startsBeforeReportEnd && endsAfterReportStart;
-            })
-            .map(e => {
-                const checkIn = parseISO(e.checkInDate!);
-                const checkOut = e.checkOutDate ? parseISO(e.checkOutDate) : null;
-
-                const startDateInMonth = checkIn > reportStart ? checkIn : reportStart;
-                const endDateInMonth = checkOut && checkOut < reportEnd ? checkOut : reportEnd;
-
-                const daysInMonth = (endDateInMonth.getTime() - startDateInMonth.getTime()) / (1000 * 3600 * 24) + 1;
-                
-                return {
-                    "Imię i nazwisko": e.fullName,
-                    "Koordynator": coordinatorMap.get(e.coordinatorId) || 'N/A',
-                    "Adres": e.address,
-                    "Pokój": e.roomNumber,
-                    "Zakład": e.zaklad,
-                    "Data zameldowania": e.checkInDate,
-                    "Data wymeldowania": e.checkOutDate,
-                    "Dni w miesiącu": daysInMonth > 0 ? Math.round(daysInMonth) : 0,
+                if (daysInMonth > 0) {
+                    reportData.push({
+                        "Imię i nazwisko": e.fullName,
+                        "Koordynator": coordinatorMap.get(e.coordinatorId) || 'N/A',
+                        "Adres": period.address,
+                        "Pokój": e.roomNumber,
+                        "Zakład": e.zaklad,
+                        "Stary adres": e.oldAddress,
+                        "Data zmiany adresu": e.addressChangeDate ? formatDate(e.addressChangeDate) : null,
+                        "Data zameldowania": formatDate(e.checkInDate),
+                        "Data wymeldowania": formatDate(e.checkOutDate),
+                        "Dni w miesiącu": daysInMonth
+                    });
                 }
             });
+        });
 
         const worksheet = XLSX.utils.json_to_sheet(reportData);
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Raport Miesięczny");
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Raport Zakwaterowania");
         
         if (reportData.length > 0) {
             const cols = Object.keys(reportData[0] || {}).map(key => ({
-                wch: Math.max(key.length, ...reportData.map(row => String(row[key as keyof typeof row] ?? '').length))
+                wch: Math.max(key.length, ...reportData.map(row => String(row[key as keyof typeof row] ?? '').length)) + 2
             }));
             worksheet["!cols"] = cols;
         }
 
         const fileContent = XLSX.write(workbook, { type: 'base64', bookType: 'xlsx' });
-        const fileName = `Raport_Miesieczny_${year}_${month}.xlsx`;
-
-        return { success: true, fileContent, fileName };
-
-    } catch (e) {
-        console.error("Error generating monthly report:", e);
-        return { success: false, message: e instanceof Error ? e.message : "Unknown error" };
-    }
-}
-
-export async function generateAccommodationReport(year: number, month: number, coordinatorId: string): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
-    try {
-        const { employees, settings } = await getAllData();
-        
-        const daysInMonth = getDaysInMonth(new Date(year, month - 1));
-        const coordinatorMap = new Map(settings.coordinators.map((c: { uid: any; name: any; }) => [c.uid, c.name]));
-        
-        let filteredAddresses = settings.addresses;
-        if (coordinatorId !== 'all') {
-            filteredAddresses = settings.addresses.filter((a: { coordinatorIds: string | string[]; }) => a.coordinatorIds.includes(coordinatorId));
-        }
-
-        const reportData: Record<string, string | number>[] = [];
-
-        filteredAddresses.forEach((address: { name: any; rooms: any[]; coordinatorIds: any[]; }) => {
-            const addressRow: Record<string, string | number> = { "Adres": address.name };
-            
-            for (let day = 1; day <= daysInMonth; day++) {
-                const currentDate = new Date(year, month - 1, day);
-                const occupantsOnDate = employees.filter(e => {
-                    const checkIn = e.checkInDate ? parseISO(e.checkInDate) : null;
-                    const checkOut = e.checkOutDate ? parseISO(e.checkOutDate) : null;
-
-                    return e.address === address.name &&
-                           checkIn && checkIn <= currentDate &&
-                           (!checkOut || checkOut >= currentDate);
-                }).length;
-                addressRow[day] = occupantsOnDate;
-            }
-
-            const totalCapacity = address.rooms.reduce((sum, room) => sum + room.capacity, 0);
-            addressRow["Pojemność"] = totalCapacity;
-            addressRow["Koordynator"] = address.coordinatorIds.map(id => coordinatorMap.get(id) || 'N/A').join(', ');
-            
-            reportData.push(addressRow);
-        });
-        
-        const worksheet = XLSX.utils.json_to_sheet(reportData);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Raport Zakwaterowania");
-
-        const fileContent = XLSX.write(workbook, { type: 'base64', bookType: 'xlsx' });
-        const fileName = `Raport_Zakwaterowania_${year}_${month}.xlsx`;
+        const fileName = `Raport_Zakwaterowania_${year}_${String(month).padStart(2, '0')}.xlsx`;
 
         return { success: true, fileContent, fileName };
 
@@ -904,6 +876,7 @@ export async function generateAccommodationReport(year: number, month: number, c
         return { success: false, message: e instanceof Error ? e.message : "Unknown error" };
     }
 }
+
 
 export async function importEmployeesFromExcel(fileContent: string, actorUid: string, settings: Settings): Promise<{ importedCount: number; totalRows: number; }> {
     try {

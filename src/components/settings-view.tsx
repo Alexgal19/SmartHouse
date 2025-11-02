@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { generateMonthlyReport, generateAccommodationReport, transferEmployees } from '@/lib/actions';
+import { generateAccommodationReport, transferEmployees } from '@/lib/actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from '@/components/ui/dialog';
@@ -441,7 +441,6 @@ const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
 
 const ReportsGenerator = ({ settings, currentUser }: { settings: Settings; currentUser: SessionData }) => {
     const [isLoading, setIsLoading] = useState(false);
-    const [reportType, setReportType] = useState<'monthly' | 'accommodation'>('monthly');
     const [year, setYear] = useState(new Date().getFullYear());
     const [month, setMonth] = useState(new Date().getMonth() + 1);
     const [coordinatorId, setCoordinatorId] = useState<string>(currentUser.isAdmin ? 'all' : currentUser.uid);
@@ -455,9 +454,7 @@ const ReportsGenerator = ({ settings, currentUser }: { settings: Settings; curre
     const handleGenerate = async () => {
         setIsLoading(true);
         try {
-            const result = reportType === 'monthly'
-                ? await generateMonthlyReport(year, month, coordinatorId)
-                : await generateAccommodationReport(year, month, coordinatorId);
+            const result = await generateAccommodationReport(year, month, coordinatorId);
             
             if (result.success && result.fileContent) {
                 const link = document.createElement("a");
@@ -483,21 +480,11 @@ const ReportsGenerator = ({ settings, currentUser }: { settings: Settings; curre
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Generowanie raportów</CardTitle>
-                <CardDescription>Wygeneruj raporty w formacie XLSX.</CardDescription>
+                <CardTitle>Generowanie raportu zakwaterowania</CardTitle>
+                <CardDescription>Wygeneruj szczegółowy raport w formacie XLSX.</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-end">
-                    <div className="space-y-2">
-                        <Label>Typ raportu</Label>
-                        <Select value={reportType} onValueChange={(v: 'monthly' | 'accommodation') => setReportType(v)}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="monthly">Raport miesięczny</SelectItem>
-                                <SelectItem value="accommodation">Raport zakwaterowania</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4 items-end">
                      <div className="space-y-2">
                          <Label>Rok</Label>
                         <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
