@@ -589,7 +589,12 @@ export function AddEmployeeForm({
                                     render={({ field }) => (
                                         <FormItem className="flex flex-col">
                                             <FormLabel>Data zmiany adresu</FormLabel>
-                                            <DateInput value={field.value} onChange={field.onChange} />
+                                            <FormControl>
+                                                <Input 
+                                                    value={field.value ? format(field.value, 'dd-MM-yyyy') : ''} 
+                                                    readOnly 
+                                                />
+                                            </FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}
