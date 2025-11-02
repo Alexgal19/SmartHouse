@@ -28,6 +28,7 @@ const coordinatorSchema = z.object({
     name: z.string().min(1, 'Imię jest wymagane.'),
     password: z.string().optional(),
     isAdmin: z.boolean(),
+    department: z.string(),
 });
 
 const formSchema = z.object({
@@ -136,7 +137,7 @@ const ListManager = ({ name, title, fields, append, remove, control }: { name: s
     );
 };
 
-const CoordinatorManager = ({ form, fields, append, remove }: { form:  ReturnType<typeof useForm<z.infer<typeof formSchema>>>; fields: Record<"id", string>[], append: UseFieldArrayAppend<z.infer<typeof formSchema>, "coordinators">, remove: UseFieldArrayRemove }) => {
+const CoordinatorManager = ({ form, fields, append, remove, departments }: { form:  ReturnType<typeof useForm<z.infer<typeof formSchema>>>; fields: Record<"id", string>[], append: UseFieldArrayAppend<z.infer<typeof formSchema>, "coordinators">, remove: UseFieldArrayRemove, departments: string[] }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const watchedCoordinators = useWatch({ control: form.control, name: 'coordinators' });
 
@@ -160,7 +161,7 @@ const CoordinatorManager = ({ form, fields, append, remove }: { form:  ReturnTyp
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full sm:w-64 h-9"
                     />
-                    <Button type="button" variant="outline" size="sm" onClick={() => append({ uid: `coord-${Date.now()}`, name: '', password: '', isAdmin: false })}>
+                    <Button type="button" variant="outline" size="sm" onClick={() => append({ uid: `coord-${Date.now()}`, name: '', password: '', isAdmin: false, department: '' })}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Dodaj koordynatora
                     </Button>
                 </div>
@@ -185,6 +186,26 @@ const CoordinatorManager = ({ form, fields, append, remove }: { form:  ReturnTyp
                                         <FormLabel>Imię</FormLabel>
                                         <FormControl><Input {...nameField} /></FormControl>
                                         <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                 <FormField
+                                    control={form.control}
+                                    name={`coordinators.${field.originalIndex}.department`}
+                                    render={({ field: departmentField }) => (
+                                        <FormItem>
+                                            <FormLabel>Zakład</FormLabel>
+                                            <Select onValueChange={departmentField.onChange} value={departmentField.value}>
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Wybierz zakład" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
                                         </FormItem>
                                     )}
                                 />
@@ -550,6 +571,7 @@ function SettingsManager({ settings, form, handleUpdateSettings, handleAddressFo
     const watchedAddresses = useWatch({ control: form.control, name: 'addresses' });
     const watchedCoordinators = useWatch({ control: form.control, name: 'coordinators' });
     const watchedLocalities = useWatch({ control: form.control, name: 'localities' });
+    const watchedDepartments = useWatch({ control: form.control, name: 'departments' });
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         const newSettings: Partial<Settings> = {
@@ -605,7 +627,7 @@ function SettingsManager({ settings, form, handleUpdateSettings, handleAddressFo
                             <AccordionItem value="coordinators">
                                 <AccordionTrigger>Zarządzanie koordynatorami</AccordionTrigger>
                                 <AccordionContent className="p-2">
-                                    <CoordinatorManager form={form} fields={coordFields} append={appendCoord} remove={removeCoord} />
+                                    <CoordinatorManager form={form} fields={coordFields} append={appendCoord} remove={removeCoord} departments={watchedDepartments.map((d: { value: string}) => d.value)} />
                                 </AccordionContent>
                             </AccordionItem>
                             <AccordionItem value="addresses">

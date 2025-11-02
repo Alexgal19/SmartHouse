@@ -20,6 +20,7 @@ export type Coordinator = {
     uid: string;
     name: string;
     isAdmin: boolean;
+    department: string;
     password?: string;
 }
 

@@ -115,7 +115,7 @@ const EQUIPMENT_HEADERS = [
     'id', 'inventoryNumber', 'name', 'quantity', 'description', 'addressId', 'addressName'
 ];
 
-const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'password'];
+const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'department', 'password'];
 const ADDRESS_HEADERS = ['id', 'locality', 'name', 'coordinatorIds'];
 const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targetType', 'targetId', 'details'];
 
@@ -655,7 +655,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
              const sheet = await getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS);
              await sheet.clearRows();
              if (newSettings.coordinators.length > 0) {
-                 await sheet.addRows(newSettings.coordinators.map((c: { isAdmin: any; }) => ({
+                 await sheet.addRows(newSettings.coordinators.map(c => ({
                      ...c,
                      isAdmin: String(c.isAdmin).toUpperCase()
                  })), { raw: false, insert: true });

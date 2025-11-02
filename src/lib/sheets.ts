@@ -362,6 +362,7 @@ export async function getSettingsFromSheet(): Promise<Settings> {
                 uid: rowObj.uid,
                 name: rowObj.name,
                 isAdmin: rowObj.isAdmin === 'TRUE',
+                department: rowObj.department || '',
                 password: rowObj.password,
             }
         });
@@ -467,7 +468,13 @@ export async function getAllSheetsData() {
             coordinatorIds: (rowObj.coordinatorIds || '').split(',').filter(Boolean),
             rooms: roomsByAddressId.get(rowObj.id) || [],
         }));
-        const coordinators: Coordinator[] = settingsSheets.coordinatorRows.map(rowObj => ({ uid: rowObj.uid, name: rowObj.name, isAdmin: rowObj.isAdmin === 'TRUE', password: rowObj.password }));
+        const coordinators: Coordinator[] = settingsSheets.coordinatorRows.map(rowObj => ({ 
+            uid: rowObj.uid, 
+            name: rowObj.name, 
+            isAdmin: rowObj.isAdmin === 'TRUE', 
+            department: rowObj.department || '', 
+            password: rowObj.password 
+        }));
         
         const inspectionTemplate : InspectionTemplateCategory[] = settingsSheets.inspectionTemplateRows.reduce((acc: InspectionTemplateCategory[], row) => {
             const categoryName = row.category;
