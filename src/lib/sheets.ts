@@ -319,6 +319,7 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             departmentRows,
             coordinatorRows,
             genderRows,
+            localityRows,
             inspectionTemplateRows,
         ] = await Promise.all([
             getSheetData(doc, SHEET_NAME_ADDRESSES),
@@ -327,6 +328,7 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             getSheetData(doc, SHEET_NAME_DEPARTMENTS),
             getSheetData(doc, SHEET_NAME_COORDINATORS),
             getSheetData(doc, SHEET_NAME_GENDERS),
+            getSheetData(doc, SHEET_NAME_LOCALITIES),
             getSheetData(doc, SHEET_NAME_INSPECTION_TEMPLATE),
         ]);
         
@@ -390,7 +392,7 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             departments: departmentRows.map(row => row.name).filter(Boolean),
             coordinators,
             genders: genderRows.map(row => row.name).filter(Boolean),
-            localities: [],
+            localities: localityRows.map(row => row.name).filter(Boolean),
             inspectionTemplate,
         };
     } catch (error: unknown) {

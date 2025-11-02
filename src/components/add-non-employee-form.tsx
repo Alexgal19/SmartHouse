@@ -29,8 +29,6 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  SelectGroup,
-  SelectLabel,
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { NonEmployee, Settings } from '@/types';
@@ -41,6 +39,7 @@ import { format, parse } from 'date-fns';
 
 const formSchema = z.object({
   fullName: z.string().min(3, "Imię i nazwisko musi mieć co najmniej 3 znaki."),
+  locality: z.string().min(1, "Miejscowość jest wymagana."),
   address: z.string().min(1, "Adres jest wymagany."),
   roomNumber: z.string().min(1, "Numer pokoju jest wymagany."),
   checkInDate: z.date({ required_error: "Data zameldowania jest wymagana." }),
@@ -48,7 +47,7 @@ const formSchema = z.object({
   comments: z.string().optional(),
 });
 
-type NonEmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate'> & {
+type NonEmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate' | 'locality'> & {
   checkInDate: string;
   checkOutDate?: string | null;
 };
@@ -153,6 +152,7 @@ export function AddNonEmployeeForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
       fullName: '',
+      locality: '',
       address: '',
       roomNumber: '',
       checkInDate: undefined,
@@ -161,37 +161,36 @@ export function AddNonEmployeeForm({
     },
   });
 
+  const selectedLocality = form.watch('locality');
   const selectedAddress = form.watch('address');
+
+  const availableAddresses = useMemo(() => {
+    if (!selectedLocality) return [];
+    const filtered = settings.addresses.filter(a => a.locality === selectedLocality);
+    return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
+  }, [settings.addresses, selectedLocality]);
+
   const availableRooms = useMemo(() => {
     const rooms = settings.addresses.find(a => a.name === selectedAddress)?.rooms || [];
     return [...rooms].sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
   }, [settings.addresses, selectedAddress]);
-  
-  const addressesByLocality = useMemo(() => {
-    const grouped = settings.addresses.reduce((acc, address) => {
-        (acc[address.locality] = acc[address.locality] || []).push(address);
-        return acc;
-    }, {} as Record<string, typeof settings.addresses>);
 
-    Object.keys(grouped).forEach(locality => {
-        grouped[locality].sort((a, b) => a.name.localeCompare(b.name));
-    });
-
-    return grouped;
-  }, [settings.addresses]);
-
-  const sortedLocalities = useMemo(() => Object.keys(addressesByLocality).sort((a, b) => a.localeCompare(b)), [addressesByLocality]);
+  const sortedLocalities = useMemo(() => [...settings.localities].sort((a,b) => a.localeCompare(b)), [settings.localities]);
 
   useEffect(() => {
     if (nonEmployee) {
+        const neAddress = settings.addresses.find(a => a.name === nonEmployee.address);
+        const neLocality = neAddress ? neAddress.locality : '';
       form.reset({
         ...nonEmployee,
+        locality: neLocality,
         checkInDate: parseDate(nonEmployee.checkInDate),
         checkOutDate: parseDate(nonEmployee.checkOutDate),
       });
     } else {
       form.reset({
         fullName: '',
+        locality: '',
         address: '',
         roomNumber: '',
         checkInDate: new Date(),
@@ -199,16 +198,18 @@ export function AddNonEmployeeForm({
         comments: '',
       });
     }
-  }, [nonEmployee, isOpen, form]);
+  }, [nonEmployee, isOpen, form, settings.addresses]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     const formatDate = (date: Date | null | undefined): string | null | undefined => {
         if (!date) return date;
         return format(date, 'yyyy-MM-dd');
     }
+    
+    const { locality, ...restOfValues } = values;
 
     const formData: NonEmployeeFormData = {
-      ...values,
+      ...restOfValues,
       checkInDate: formatDate(values.checkInDate)!,
       checkOutDate: formatDate(values.checkOutDate),
     };
@@ -217,6 +218,12 @@ export function AddNonEmployeeForm({
     onOpenChange(false);
   };
   
+  const handleLocalityChange = (value: string) => {
+    form.setValue('locality', value);
+    form.setValue('address', '');
+    form.setValue('roomNumber', '');
+  }
+
   const handleAddressChange = (value: string) => {
     form.setValue('address', value);
     form.setValue('roomNumber', '');
@@ -248,21 +255,32 @@ export function AddNonEmployeeForm({
                   />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <FormField
+                        control={form.control}
+                        name="locality"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Miejscowość</FormLabel>
+                            <Select onValueChange={handleLocalityChange} value={field.value}>
+                                <FormControl><SelectTrigger><SelectValue placeholder="Wybierz miejscowość" /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    {sortedLocalities.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
                     <FormField
                         control={form.control}
                         name="address"
                         render={({ field }) => (
                         <FormItem>
                             <FormLabel>Adres</FormLabel>
-                            <Select onValueChange={handleAddressChange} value={field.value}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Wybierz adres" /></SelectTrigger></FormControl>
+                            <Select onValueChange={handleAddressChange} value={field.value} disabled={!selectedLocality}>
+                                <FormControl><SelectTrigger><SelectValue placeholder={!selectedLocality ? "Najpierw wybierz miejscowość" : "Wybierz adres"} /></SelectTrigger></FormControl>
                                 <SelectContent>
-                                    {sortedLocalities.map((locality) => (
-                                        <SelectGroup key={locality}>
-                                            <SelectLabel>{locality}</SelectLabel>
-                                            {addressesByLocality[locality].map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
-                                        </SelectGroup>
-                                    ))}
+                                    {availableAddresses.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                             <FormMessage />
@@ -276,7 +294,7 @@ export function AddNonEmployeeForm({
                         <FormItem>
                             <FormLabel>Pokój</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value} disabled={!selectedAddress}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz pokój" /></SelectTrigger></FormControl>
+                            <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : "Wybierz pokój"} /></SelectTrigger></FormControl>
                             <SelectContent>
                                 {availableRooms.map(r => <SelectItem key={r.id} value={r.name}>{r.name} (Pojemność: {r.capacity})</SelectItem>)}
                             </SelectContent>

@@ -375,6 +375,7 @@ const useHousingData = () => {
             return {
                 id: address.id,
                 name: address.name,
+                locality: address.locality,
                 occupants: occupantsInAddress,
                 occupantCount: occupantCount,
                 capacity: totalCapacity,
@@ -454,6 +455,7 @@ const MobileAddressCard = ({ address, onOccupantClick }: { address: HousingData;
 
 const FilterDialog = ({ isOpen, onOpenChange, onApply, initialFilters, settings }: { isOpen: boolean, onOpenChange: (open: boolean) => void; onApply: (filters: Record<string, string | boolean>) => void; initialFilters: Record<string, string | boolean>, settings: Settings | null }) => {
     const [filters, setFilters] = useState(initialFilters);
+    const sortedLocalities = useMemo(() => [...(settings?.localities || [])].sort((a,b) => a.localeCompare(b)), [settings?.localities]);
 
     const handleFilterChange = (key: string, value: string | boolean) => {
         setFilters(prev => ({...prev, [key]: value}));
@@ -480,13 +482,23 @@ const FilterDialog = ({ isOpen, onOpenChange, onApply, initialFilters, settings 
                             onChange={e => handleFilterChange('name', e.target.value)}
                         />
                     </div>
+                    <div className="grid w-full items-center gap-1.5">
+                        <Label htmlFor="search-locality">Miejscowość</Label>
+                        <Select value={filters.locality as string} onValueChange={(v) => handleFilterChange('locality', v)}>
+                            <SelectTrigger id="search-locality"><SelectValue placeholder="Wszystkie miejscowości" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Wszystkie miejscowości</SelectItem>
+                                {sortedLocalities.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
                      <div className="flex items-center space-x-2 pt-2">
                         <Switch 
                             id="show-available" 
                             checked={filters.showOnlyAvailable as boolean}
                             onCheckedChange={checked => handleFilterChange('showOnlyAvailable', checked)}
                         />
-                        <Label htmlFor="show-available">Tylko z wolnymi miejscami</Label>
+                        <Label htmlFor="show-available">Tylko z wolnymi miejscami</Label>GLHF
                     </div>
                 </div>
                 <DialogFooter>
@@ -507,6 +519,7 @@ export default function HousingView({ }: { currentUser: SessionData }) {
 
     const [filters, setFilters] = useState({
         name: '',
+        locality: 'all',
         showOnlyAvailable: false,
     });
      const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -531,6 +544,9 @@ export default function HousingView({ }: { currentUser: SessionData }) {
         if (filters.name) {
             items = items.filter(item => item.name.toLowerCase().includes(filters.name.toLowerCase()));
         }
+        if (filters.locality !== 'all') {
+            items = items.filter(item => item.locality === filters.locality);
+        }
         if (filters.showOnlyAvailable) {
             items = items.filter(item => item.available > 0);
         }
@@ -539,6 +555,18 @@ export default function HousingView({ }: { currentUser: SessionData }) {
 
         return items;
     }, [rawHousingData, filters]);
+
+    const groupedByLocality = useMemo(() => {
+        const grouped = filteredData.reduce((acc, address) => {
+            const locality = address.locality || 'Inne';
+            if (!acc[locality]) {
+                acc[locality] = [];
+            }
+            acc[locality].push(address);
+            return acc;
+        }, {} as Record<string, HousingData[]>);
+        return Object.entries(grouped).sort((a,b) => a[0].localeCompare(b[0]));
+    }, [filteredData]);
     
     const handleAddressClick = (addressId: string) => {
         setSelectedRoomIds([]);
@@ -586,12 +614,19 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                 <CardContent>
                     <ScrollArea className="h-[calc(100vh-14rem)] -mx-4 px-4">
                         <Accordion type="multiple" className="w-full space-y-3">
-                            {filteredData.map(address => (
-                                <MobileAddressCard 
-                                    key={address.id}
-                                    address={address}
-                                    onOccupantClick={handleOccupantClick}
-                                />
+                            {groupedByLocality.map(([locality, addresses]) => (
+                                <AccordionItem value={locality} key={locality} className="border-b-0">
+                                    <AccordionTrigger className="text-lg font-bold sticky top-0 bg-background py-3">{locality}</AccordionTrigger>
+                                    <AccordionContent className="space-y-3">
+                                        {addresses.map(address => (
+                                            <MobileAddressCard 
+                                                key={address.id}
+                                                address={address}
+                                                onOccupantClick={handleOccupantClick}
+                                            />
+                                        ))}
+                                    </AccordionContent>
+                                </AccordionItem>
                             ))}
                         </Accordion>
                     </ScrollArea>
@@ -618,53 +653,47 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
                     <div className="space-y-4 mb-4">
-                        <div className="grid w-full items-center gap-1.5">
-                            <Label htmlFor="search-address">Szukaj adresu</Label>
-                            <Input 
-                                id="search-address"
-                                placeholder="Wpisz nazwę adresu..."
-                                value={filters.name}
-                                onChange={e => handleFilterChange({ name: e.target.value })}
-                            />
-                        </div>
-                        <div className="flex items-center space-x-2 pt-2">
-                            <Switch 
-                                id="show-available" 
-                                checked={filters.showOnlyAvailable}
-                                onCheckedChange={checked => handleFilterChange({ showOnlyAvailable: checked })}
-                            />
-                            <Label htmlFor="show-available">Tylko z wolnymi miejscami</Label>
-                        </div>
+                         <Button onClick={() => setIsFilterOpen(true)} variant="outline" className="w-full">
+                            <SlidersHorizontal className="h-4 w-4 mr-2"/>
+                            Filtry ({Object.values(filters).filter(v => v && v !== 'all').length})
+                        </Button>
                     </div>
-                    <ScrollArea className="h-[calc(100vh-22rem)] lg:h-[calc(100vh - 22rem)]">
-                        <div className="space-y-2">
-                        {filteredData.map(address => (
-                            <Card 
-                                key={address.id}
-                                className={cn(
-                                    "cursor-pointer transition-colors",
-                                    selectedAddressIds.includes(address.id) ? "bg-primary/10 border-primary" : "hover:bg-muted/50",
-                                    address.available > 0 && !selectedAddressIds.includes(address.id) && "bg-green-500/10 border-green-500/20"
-                                )}
-                                onClick={() => handleAddressClick(address.id)}
-                            >
-                                <CardHeader className="p-2">
-                                    <div className="flex justify-between items-start">
-                                        <CardTitle className="text-sm font-medium flex items-center gap-2">
-                                            <Building className="h-4 w-4 text-primary" />
-                                            {address.name}
-                                        </CardTitle>
-                                        <span className="text-sm">
-                                            <span>{address.occupantCount} / {address.capacity}</span>
-                                        </span>
-                                    </div>
-                                    <CardDescription className="text-xs pt-1">
-                                        Wolne miejsca: <span className={cn("font-bold", address.available > 0 ? "text-green-600" : "text-red-600")}>{address.available}</span>
-                                    </CardDescription>
-                                </CardHeader>
-                            </Card>
-                        ))}
-                        </div>
+                    <ScrollArea className="h-[calc(100vh-22rem)] lg:h-[calc(100vh - 18rem)]">
+                        <Accordion type="multiple" defaultValue={groupedByLocality.map(g => g[0])} className="w-full">
+                             {groupedByLocality.map(([locality, addresses]) => (
+                                <AccordionItem value={locality} key={locality}>
+                                    <AccordionTrigger className="text-md font-semibold">{locality}</AccordionTrigger>
+                                    <AccordionContent className="space-y-2">
+                                        {addresses.map(address => (
+                                            <Card 
+                                                key={address.id}
+                                                className={cn(
+                                                    "cursor-pointer transition-colors",
+                                                    selectedAddressIds.includes(address.id) ? "bg-primary/10 border-primary" : "hover:bg-muted/50",
+                                                    address.available > 0 && !selectedAddressIds.includes(address.id) && "bg-green-500/10 border-green-500/20"
+                                                )}
+                                                onClick={() => handleAddressClick(address.id)}
+                                            >
+                                                <CardHeader className="p-2">
+                                                    <div className="flex justify-between items-start">
+                                                        <CardTitle className="text-sm font-medium flex items-center gap-2">
+                                                            <Building className="h-4 w-4 text-primary" />
+                                                            {address.name}
+                                                        </CardTitle>
+                                                        <span className="text-sm">
+                                                            <span>{address.occupantCount} / {address.capacity}</span>
+                                                        </span>
+                                                    </div>
+                                                    <CardDescription className="text-xs pt-1">
+                                                        Wolne miejsca: <span className={cn("font-bold", address.available > 0 ? "text-green-600" : "text-red-600")}>{address.available}</span>
+                                                    </CardDescription>
+                                                </CardHeader>
+                                            </Card>
+                                        ))}
+                                    </AccordionContent>
+                                </AccordionItem>
+                             ))}
+                        </Accordion>
                     </ScrollArea>
                 </CardContent>
             </Card>
@@ -674,6 +703,13 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                 selectedAddressIds={selectedAddressIds}
                 onRoomClick={handleRoomClick}
                 selectedRoomIds={selectedRoomIds}
+            />
+             <FilterDialog
+                isOpen={isFilterOpen}
+                onOpenChange={setIsFilterOpen}
+                initialFilters={filters}
+                onApply={handleFilterChange}
+                settings={settings}
             />
         </div>
     );

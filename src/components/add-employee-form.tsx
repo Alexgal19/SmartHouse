@@ -29,8 +29,6 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  SelectGroup,
-  SelectLabel,
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { Employee, Settings, Address } from '@/types';
@@ -768,5 +766,3 @@ export function AddEmployeeForm({
     </Dialog>
   );
 }
-
-    
