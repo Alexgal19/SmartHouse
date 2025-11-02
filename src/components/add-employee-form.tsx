@@ -327,6 +327,15 @@ export function AddEmployeeForm({
         });
     }
   }, [employee, isOpen, form, settings.addresses]);
+  
+  useEffect(() => {
+    if (selectedCoordinator) {
+        form.setValue('zaklad', selectedCoordinator.department || null);
+    } else {
+        form.setValue('zaklad', null);
+    }
+}, [selectedCoordinator, form]);
+
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     const formatDate = (date: Date | null | undefined): string | null | undefined => {
@@ -344,7 +353,6 @@ export function AddEmployeeForm({
         contractEndDate: formatDate(values.contractEndDate),
         departureReportDate: formatDate(values.departureReportDate),
         addressChangeDate: formatDate(values.addressChangeDate),
-        zaklad: selectedCoordinator?.department || null,
     };
 
     onSave(formData);
@@ -509,12 +517,18 @@ export function AddEmployeeForm({
                                 </FormItem>
                                 )}
                             />
-                            <FormItem className="flex flex-col">
-                                <FormLabel>Zakład</FormLabel>
-                                <FormControl>
-                                    <Input value={selectedCoordinator?.department || ''} readOnly disabled />
-                                </FormControl>
-                            </FormItem>
+                             <FormField
+                                control={form.control}
+                                name="zaklad"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-col">
+                                        <FormLabel>Zakład</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} value={field.value || ''} readOnly disabled />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -787,4 +801,3 @@ export function AddEmployeeForm({
     </Dialog>
   );
 }
-
