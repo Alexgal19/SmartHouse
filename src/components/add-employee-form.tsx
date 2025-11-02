@@ -371,6 +371,7 @@ export function AddEmployeeForm({
 
   const coordinatorOptions = useMemo(() => sortedCoordinators.map(c => ({ value: c.uid, label: c.name })), [sortedCoordinators]);
   const nationalityOptions = useMemo(() => sortedNationalities.map(n => ({ value: n, label: n })), [sortedNationalities]);
+  const departmentOptions = useMemo(() => sortedDepartments.map(d => ({ value: d, label: d })), [sortedDepartments]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -509,14 +510,15 @@ export function AddEmployeeForm({
                                 control={form.control}
                                 name="zaklad"
                                 render={({ field }) => (
-                                <FormItem>
+                                <FormItem className="flex flex-col">
                                     <FormLabel>Zakład</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value || ''}>
-                                    <FormControl><SelectTrigger><SelectValue placeholder="Wybierz zakład" /></SelectTrigger></FormControl>
-                                    <SelectContent>
-                                        {sortedDepartments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                                    </SelectContent>
-                                    </Select>
+                                    <Combobox
+                                        options={departmentOptions}
+                                        value={field.value ?? ''}
+                                        onChange={field.onChange}
+                                        placeholder="Wybierz zakład"
+                                        searchPlaceholder="Szukaj zakładu..."
+                                    />
                                     <FormMessage />
                                 </FormItem>
                                 )}
