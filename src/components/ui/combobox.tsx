@@ -63,9 +63,12 @@ export function Combobox({
               {options.map((option) => (
                 <CommandItem
                   key={option.value}
-                  value={option.value}
-                  onSelect={(currentValue) => {
-                    onChange(currentValue.toLowerCase() === value?.toLowerCase() ? "" : option.value)
+                  value={option.label}
+                  onSelect={(currentLabel) => {
+                    const selected = options.find(opt => opt.label.toLowerCase() === currentLabel.toLowerCase());
+                    if (selected) {
+                        onChange(selected.value.toLowerCase() === value?.toLowerCase() ? "" : selected.value);
+                    }
                     setOpen(false)
                   }}
                 >
