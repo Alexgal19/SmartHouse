@@ -228,6 +228,10 @@ export function AddEmployeeForm({
   const selectedLocality = form.watch('locality');
   const selectedAddress = form.watch('address');
 
+  const selectedCoordinator = useMemo(() => {
+    return settings.coordinators.find(c => c.uid === selectedCoordinatorId);
+  }, [selectedCoordinatorId, settings.coordinators]);
+
   const availableLocalities = useMemo(() => {
     if (!selectedCoordinatorId || !settings.addresses) return [];
     
@@ -323,17 +327,6 @@ export function AddEmployeeForm({
         });
     }
   }, [employee, isOpen, form, settings.addresses]);
-  
-  useEffect(() => {
-    if (selectedCoordinatorId) {
-        const coordinator = settings.coordinators.find(c => c.uid === selectedCoordinatorId);
-        if (coordinator) {
-            form.setValue('zaklad', coordinator.department);
-        }
-    } else {
-        form.setValue('zaklad', null);
-    }
-  }, [selectedCoordinatorId, settings.coordinators, form]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     const formatDate = (date: Date | null | undefined): string | null | undefined => {
@@ -351,6 +344,7 @@ export function AddEmployeeForm({
         contractEndDate: formatDate(values.contractEndDate),
         departureReportDate: formatDate(values.departureReportDate),
         addressChangeDate: formatDate(values.addressChangeDate),
+        zaklad: selectedCoordinator?.department || null,
     };
 
     onSave(formData);
@@ -515,19 +509,12 @@ export function AddEmployeeForm({
                                 </FormItem>
                                 )}
                             />
-                            <FormField
-                                control={form.control}
-                                name="zaklad"
-                                render={({ field }) => (
-                                <FormItem className="flex flex-col">
-                                    <FormLabel>Zakład</FormLabel>
-                                    <FormControl>
-                                        <Input {...field} value={field.value ?? ''} readOnly disabled />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                                )}
-                            />
+                            <FormItem className="flex flex-col">
+                                <FormLabel>Zakład</FormLabel>
+                                <FormControl>
+                                    <Input value={selectedCoordinator?.department || ''} readOnly disabled />
+                                </FormControl>
+                            </FormItem>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -800,3 +787,4 @@ export function AddEmployeeForm({
     </Dialog>
   );
 }
+
