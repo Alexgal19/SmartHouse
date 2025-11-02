@@ -21,25 +21,34 @@ import { MobileSidebarToggle } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import { ModernHouseIcon } from './icons/modern-house-icon';
 
-const NotificationItem = ({ n, onClick }: {n: Notification, onClick: (n: Notification) => void}) => (
+const NotificationItem = ({ n, onClick, onDelete }: {n: Notification, onClick: (n: Notification) => void, onDelete: (notificationId: string) => void}) => (
     <div 
         className={cn(
-            "p-3 rounded-lg -mx-2 flex items-start gap-4 transition-colors",
-            n.isRead ? 'opacity-70' : 'bg-primary/5',
-            n.employeeId && 'cursor-pointer hover:bg-primary/10'
+            "p-3 rounded-lg -mx-2 flex items-start gap-4 transition-colors group",
+            n.isRead ? 'opacity-70' : 'bg-primary/5'
         )}
-        onClick={() => n.employeeId && onClick(n)}
         role={n.employeeId ? "button" : "status"}
     >
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0" onClick={() => n.employeeId && onClick(n)}>
              <div className={cn('h-2.5 w-2.5 rounded-full mt-1.5', n.isRead ? 'bg-muted-foreground' : 'bg-primary animate-pulse' )}></div>
         </div>
-        <div>
+        <div className="flex-1" onClick={() => n.employeeId && onClick(n)}>
             <p className="text-sm font-medium leading-tight">{n.message}</p>
             <p className="text-xs text-muted-foreground mt-1">
                  {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true, locale: pl })}
             </p>
         </div>
+        <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => {
+                e.stopPropagation();
+                onDelete(n.id);
+            }}
+        >
+            <Trash2 className="h-4 w-4" />
+        </Button>
     </div>
 )
 
@@ -49,6 +58,7 @@ export default function Header({
   notifications,
   onNotificationClick,
   onClearNotifications,
+  onDeleteNotification,
 }: {
   user: SessionData;
   activeView: View;
@@ -56,6 +66,7 @@ export default function Header({
   onNotificationClick: (notification: Notification) => void;
   onLogout: () => Promise<void>;
   onClearNotifications: () => void;
+  onDeleteNotification: (notificationId: string) => void;
 }) {
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
@@ -90,7 +101,7 @@ export default function Header({
                 <ScrollArea className="h-[calc(100vh-8rem)] pr-6">
                     <div className="space-y-4 py-4">
                     {notifications.length > 0 ? (
-                        notifications.map(n => <NotificationItem key={n.id} n={n} onClick={onNotificationClick} />)
+                        notifications.map(n => <NotificationItem key={n.id} n={n} onClick={onNotificationClick} onDelete={onDeleteNotification} />)
                     ) : (
                         <div className="text-center text-muted-foreground py-12">Brak nowych powiadomień.</div>
                     )}

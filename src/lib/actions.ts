@@ -686,6 +686,23 @@ export async function clearAllNotifications(): Promise<void> {
     }
 }
 
+export async function deleteNotification(notificationId: string): Promise<void> {
+    try {
+        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id']);
+        const rows = await sheet.getRows({ limit: 200 });
+        const rowToDelete = rows.find(row => row.get('id') === notificationId);
+        if (rowToDelete) {
+            await rowToDelete.delete();
+        } else {
+            throw new Error('Notification not found');
+        }
+    } catch (e: unknown) {
+        console.error("Could not delete notification:", e);
+        throw new Error(e instanceof Error ? e.message : "Failed to delete notification.");
+    }
+}
+
+
 export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Promise<void> {
     try {
         const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, ['id', 'addressId', 'addressName', 'date', 'coordinatorId', 'coordinatorName', 'standard']);

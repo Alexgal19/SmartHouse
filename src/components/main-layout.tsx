@@ -16,7 +16,7 @@ import {
 import Header from './header';
 import { MobileNav } from './mobile-nav';
 import type { View, Notification, Employee, Settings, NonEmployee, Address, SessionData } from '@/types';
-import { Home, Settings as SettingsIcon, Users, Building, ShieldCheck } from 'lucide-react';
+import { Home, Settings as SettingsIcon, Users, Building } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     clearAllNotifications,
@@ -31,6 +31,7 @@ import {
     checkAndUpdateEmployeeStatuses,
     importEmployeesFromExcel,
     bulkDeleteEmployees,
+    deleteNotification,
 } from '@/lib/actions';
 import { getAllSheetsData } from '@/lib/sheets';
 import { logout } from '../lib/auth';
@@ -218,6 +219,19 @@ export default function MainLayout({
              toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć powiadomienia." });
         }
     }, [currentUser, toast]);
+
+    const handleDeleteNotification = useCallback(async (notificationId: string) => {
+        const originalNotifications = allNotifications;
+        setAllNotifications(prev => prev.filter(n => n.id !== notificationId));
+
+        try {
+            await deleteNotification(notificationId);
+            toast({ title: "Sukces", description: "Powiadomienie zostało usunięte." });
+        } catch (e: unknown) {
+            setAllNotifications(originalNotifications); // Revert
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć powiadomienia." });
+        }
+    }, [allNotifications, toast]);
 
 
     const filteredNotifications = useMemo(() => {
@@ -586,6 +600,7 @@ export default function MainLayout({
                         onNotificationClick={(n) => handleNotificationClick(n, n.employeeId)} 
                         onLogout={handleLogout} 
                         onClearNotifications={handleClearNotifications}
+                        onDeleteNotification={handleDeleteNotification}
                     />}
                     <main className="flex-1 overflow-y-auto px-2 sm:px-6 pb-20 sm:pb-6 pt-4">
                         {children}
