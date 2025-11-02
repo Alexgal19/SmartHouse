@@ -633,8 +633,8 @@ function SettingsManager({ form, handleUpdateSettings, handleAddressFormOpen }: 
     )
 }
 
-export default function SettingsView({ currentUser }: { currentUser: SessionData }) {
-  const { settings, handleUpdateSettings, handleAddressFormOpen } = useMainLayout();
+export default function SettingsView({ currentUser: userFromProps }: { currentUser: SessionData }) {
+  const { settings, handleUpdateSettings, handleAddressFormOpen, currentUser } = useMainLayout();
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -662,20 +662,7 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     }
   }, [settings, form]);
   
-  if (!currentUser.isAdmin) {
-      return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center text-destructive"><FileWarning className="mr-2"/>Brak uprawnień</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <p>Nie masz uprawnień do przeglądania tej strony.</p>
-            </CardContent>
-        </Card>
-      )
-  }
-
-  if (!settings) {
+  if (!settings || !currentUser) {
        return (
             <div className="space-y-6">
                 <Card>
@@ -700,6 +687,19 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
                 </Card>
             </div>
         );
+  }
+  
+  if (!currentUser.isAdmin) {
+      return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center text-destructive"><FileWarning className="mr-2"/>Brak uprawnień</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p>Nie masz uprawnień do przeglądania tej strony.</p>
+            </CardContent>
+        </Card>
+      )
   }
 
   return (
