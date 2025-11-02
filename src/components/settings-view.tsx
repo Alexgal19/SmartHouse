@@ -229,12 +229,14 @@ const CoordinatorManager = ({ form, fields, append, remove }: { form:  ReturnTyp
     );
 };
 
-const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { addresses: Address[]; coordinators:  Coordinator[]; onEdit: (address: Address) => void; onRemove: (addressId: string) => void; onAdd: (coordinatorId: string) => void; }) => {
+const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove, onAdd }: { addresses: Address[]; coordinators: Coordinator[]; localities: string[]; onEdit: (address: Address) => void; onRemove: (addressId: string) => void; onAdd: (coordinatorId: string) => void; }) => {
     const [filterCoordinatorId, setFilterCoordinatorId] = useState('all');
+    const [filterLocality, setFilterLocality] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
     
     const coordinatorMap = useMemo(() => new Map(coordinators.map(c => [c.uid, c.name])), [coordinators]);
     const sortedCoordinators = useMemo(() => [...coordinators].sort((a,b) => a.name.localeCompare(b.name)), [coordinators]);
+    const sortedLocalities = useMemo(() => [...localities].sort((a, b) => a.localeCompare(b)), [localities]);
 
     const filteredAddresses = useMemo(() => {
         if (!addresses) return [];
@@ -243,13 +245,16 @@ const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { 
         if (filterCoordinatorId !== 'all') {
             tempAddresses = tempAddresses.filter(a => a.coordinatorIds.includes(filterCoordinatorId));
         }
+        if (filterLocality !== 'all') {
+            tempAddresses = tempAddresses.filter(a => a.locality === filterLocality);
+        }
         if (searchTerm) {
             tempAddresses = tempAddresses.filter(a => a.name.toLowerCase().includes(searchTerm.toLowerCase()));
         }
         
         return tempAddresses.sort((a, b) => a.name.localeCompare(b.name));
 
-    }, [addresses, filterCoordinatorId, searchTerm]);
+    }, [addresses, filterCoordinatorId, filterLocality, searchTerm]);
 
     return (
         <div className="space-y-4 rounded-md border p-4">
@@ -262,6 +267,15 @@ const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { 
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="h-9 w-full sm:w-48"
                     />
+                    <Select value={filterLocality} onValueChange={setFilterLocality}>
+                        <SelectTrigger className="w-full sm:w-[180px] h-9">
+                            <SelectValue placeholder="Filtruj wg miejscowości" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Wszystkie miejscowości</SelectItem>
+                            {sortedLocalities.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
                     <Select value={filterCoordinatorId} onValueChange={setFilterCoordinatorId}>
                         <SelectTrigger className="w-full sm:w-[200px] h-9">
                             <SelectValue placeholder="Filtruj wg koordynatora" />
@@ -281,7 +295,7 @@ const AddressManager = ({ addresses, coordinators, onEdit, onRemove, onAdd }: { 
                     {filteredAddresses.map((address: Address) => (
                         <div key={address.id} className="flex items-center justify-between rounded-lg border p-3">
                             <div>
-                                <p className="font-semibold">{address.name}</p>
+                                <p className="font-semibold">{address.name} <span className="text-sm text-muted-foreground font-normal">({address.locality})</span></p>
                                 <p className="text-sm text-muted-foreground">
                                     {address.coordinatorIds.map(id => coordinatorMap.get(id) || 'B/D').join(', ')}, {address.rooms.length} pokoi
                                 </p>
@@ -525,7 +539,7 @@ const ReportsGenerator = ({ settings, currentUser }: { settings: Settings; curre
     );
 };
 
-function SettingsManager({ form, handleUpdateSettings, handleAddressFormOpen }: { settings: Settings, form: ReturnType<typeof useForm<z.infer<typeof formSchema>>>, handleUpdateSettings: (newSettings: Partial<Settings>) => Promise<void>, handleAddressFormOpen: (address: Address | null) => void }) {
+function SettingsManager({ settings, form, handleUpdateSettings, handleAddressFormOpen }: { settings: Settings, form: ReturnType<typeof useForm<z.infer<typeof formSchema>>>, handleUpdateSettings: (newSettings: Partial<Settings>) => Promise<void>, handleAddressFormOpen: (address: Address | null) => void }) {
     const { fields: natFields, append: appendNat, remove: removeNat } = useFieldArray({ control: form.control, name: 'nationalities' });
     const { fields: depFields, append: appendDep, remove: removeDep } = useFieldArray({ control: form.control, name: 'departments' });
     const { fields: genFields, append: appendGen, remove: removeGen } = useFieldArray({ control: form.control, name: 'genders' });
@@ -535,6 +549,7 @@ function SettingsManager({ form, handleUpdateSettings, handleAddressFormOpen }: 
 
     const watchedAddresses = useWatch({ control: form.control, name: 'addresses' });
     const watchedCoordinators = useWatch({ control: form.control, name: 'coordinators' });
+    const watchedLocalities = useWatch({ control: form.control, name: 'localities' });
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         const newSettings: Partial<Settings> = {
@@ -599,6 +614,7 @@ function SettingsManager({ form, handleUpdateSettings, handleAddressFormOpen }: 
                                     <AddressManager 
                                         addresses={watchedAddresses}
                                         coordinators={watchedCoordinators}
+                                        localities={watchedLocalities.map((l: { value: string; }) => l.value)}
                                         onEdit={(address) => handleAddressFormOpen(address)}
                                         onAdd={handleAddAddress}
                                         onRemove={handleRemoveAddress}
