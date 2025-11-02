@@ -228,7 +228,8 @@ export function AddEmployeeForm({
 
   const availableAddresses = useMemo(() => {
     if (!selectedLocality) return [];
-    return [...settings.addresses.filter(a => a.locality === selectedLocality)].sort((a, b) => a.name.localeCompare(b.name));
+    const filtered = settings.addresses.filter(a => a.locality === selectedLocality);
+    return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
   }, [settings.addresses, selectedLocality]);
 
   const availableRooms = useMemo(() => {
@@ -707,7 +708,7 @@ export function AddEmployeeForm({
                                                 Wybierz powody dodatkowych potrąceń.
                                             </p>
                                         </div>
-                                        {form.getValues('deductionReason')?.map((reason, index) => (
+                                        {(form.getValues('deductionReason') || []).map((reason, index) => (
                                         <FormField
                                             key={reason.id}
                                             control={form.control}
@@ -767,3 +768,5 @@ export function AddEmployeeForm({
     </Dialog>
   );
 }
+
+    
