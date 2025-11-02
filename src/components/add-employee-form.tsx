@@ -334,7 +334,7 @@ export function AddEmployeeForm({
     } else {
         form.setValue('zaklad', null);
     }
-}, [selectedCoordinator, form]);
+  }, [selectedCoordinator, form]);
 
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
