@@ -41,6 +41,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Combobox } from '@/components/ui/combobox';
 
 const formSchema = z.object({
   fullName: z.string().min(3, "Imię i nazwisko musi mieć co najmniej 3 znaki."),
@@ -368,6 +369,9 @@ export function AddEmployeeForm({
   const sortedGenders = useMemo(() => [...settings.genders].sort((a, b) => a.localeCompare(b)), [settings.genders]);
   const sortedDepartments = useMemo(() => [...settings.departments].sort((a, b) => a.localeCompare(b)), [settings.departments]);
 
+  const coordinatorOptions = useMemo(() => sortedCoordinators.map(c => ({ value: c.uid, label: c.name })), [sortedCoordinators]);
+  const nationalityOptions = useMemo(() => sortedNationalities.map(n => ({ value: n, label: n })), [sortedNationalities]);
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
@@ -404,14 +408,15 @@ export function AddEmployeeForm({
                                 control={form.control}
                                 name="coordinatorId"
                                 render={({ field }) => (
-                                <FormItem>
+                                <FormItem className="flex flex-col">
                                     <FormLabel>Koordynator</FormLabel>
-                                    <Select onValueChange={handleCoordinatorChange} value={field.value}>
-                                    <FormControl><SelectTrigger><SelectValue placeholder="Wybierz koordynatora" /></SelectTrigger></FormControl>
-                                    <SelectContent>
-                                        {sortedCoordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
-                                    </SelectContent>
-                                    </Select>
+                                    <Combobox
+                                        options={coordinatorOptions}
+                                        value={field.value}
+                                        onChange={handleCoordinatorChange}
+                                        placeholder="Wybierz koordynatora"
+                                        searchPlaceholder="Szukaj koordynatora..."
+                                    />
                                     <FormMessage />
                                 </FormItem>
                                 )}
@@ -420,14 +425,15 @@ export function AddEmployeeForm({
                                 control={form.control}
                                 name="nationality"
                                 render={({ field }) => (
-                                <FormItem>
+                                <FormItem className="flex flex-col">
                                     <FormLabel>Narodowość</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl><SelectTrigger><SelectValue placeholder="Wybierz narodowość" /></SelectTrigger></FormControl>
-                                    <SelectContent>
-                                        {sortedNationalities.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
-                                    </SelectContent>
-                                    </Select>
+                                     <Combobox
+                                        options={nationalityOptions}
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                        placeholder="Wybierz narodowość"
+                                        searchPlaceholder="Szukaj narodowości..."
+                                    />
                                     <FormMessage />
                                 </FormItem>
                                 )}
