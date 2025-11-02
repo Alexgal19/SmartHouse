@@ -270,6 +270,7 @@ export function AddEmployeeForm({
         
         const employeeAddress = settings.addresses.find(a => a.name === employee.address);
         const employeeLocality = employeeAddress ? employeeAddress.locality : '';
+        const coordinator = settings.coordinators.find(c => c.uid === employee.coordinatorId);
 
         form.reset({
             fullName: employee.fullName ?? '',
@@ -277,7 +278,7 @@ export function AddEmployeeForm({
             locality: employeeLocality,
             address: employee.address ?? '',
             roomNumber: employee.roomNumber ?? '',
-            zaklad: employee.zaklad ?? null,
+            zaklad: coordinator?.department ?? null,
             nationality: employee.nationality ?? '',
             gender: employee.gender ?? '',
             checkInDate: parseDate(employee.checkInDate) ?? null,
@@ -326,14 +327,10 @@ export function AddEmployeeForm({
           }))
         });
     }
-  }, [employee, isOpen, form, settings.addresses]);
+  }, [employee, isOpen, form, settings.addresses, settings.coordinators]);
   
   useEffect(() => {
-    if (selectedCoordinator) {
-        form.setValue('zaklad', selectedCoordinator.department || null);
-    } else {
-        form.setValue('zaklad', null);
-    }
+    form.setValue('zaklad', selectedCoordinator?.department || null);
   }, [selectedCoordinator, form]);
 
 
