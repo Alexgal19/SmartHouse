@@ -223,14 +223,27 @@ export function AddEmployeeForm({
     },
   });
   
+  const selectedCoordinatorId = form.watch('coordinatorId');
   const selectedLocality = form.watch('locality');
   const selectedAddress = form.watch('address');
 
+  const availableLocalities = useMemo(() => {
+    if (!selectedCoordinatorId || !settings.addresses) return [];
+    
+    const coordinatorAddresses = settings.addresses.filter(addr => 
+        addr.coordinatorIds.includes(selectedCoordinatorId)
+    );
+    const localities = [...new Set(coordinatorAddresses.map(addr => addr.locality))];
+    return localities.sort((a, b) => a.localeCompare(b));
+  }, [settings.addresses, selectedCoordinatorId]);
+
   const availableAddresses = useMemo(() => {
-    if (!selectedLocality) return [];
-    const filtered = settings.addresses.filter(a => a.locality === selectedLocality);
+    if (!selectedLocality || !selectedCoordinatorId) return [];
+    const filtered = settings.addresses.filter(a => 
+        a.locality === selectedLocality && a.coordinatorIds.includes(selectedCoordinatorId)
+    );
     return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
-  }, [settings.addresses, selectedLocality]);
+  }, [settings.addresses, selectedLocality, selectedCoordinatorId]);
 
   const availableRooms = useMemo(() => {
     const rooms = settings.addresses.find(a => a.name === selectedAddress)?.rooms || [];
@@ -332,6 +345,13 @@ export function AddEmployeeForm({
     onOpenChange(false);
   };
   
+  const handleCoordinatorChange = (value: string) => {
+    form.setValue('coordinatorId', value);
+    form.setValue('locality', '');
+    form.setValue('address', '');
+    form.setValue('roomNumber', '');
+  }
+
   const handleLocalityChange = (value: string) => {
     form.setValue('locality', value);
     form.setValue('address', '');
@@ -346,7 +366,6 @@ export function AddEmployeeForm({
   const sortedCoordinators = useMemo(() => [...settings.coordinators].sort((a, b) => a.name.localeCompare(b.name)), [settings.coordinators]);
   const sortedNationalities = useMemo(() => [...settings.nationalities].sort((a, b) => a.localeCompare(b)), [settings.nationalities]);
   const sortedGenders = useMemo(() => [...settings.genders].sort((a, b) => a.localeCompare(b)), [settings.genders]);
-  const sortedLocalities = useMemo(() => [...settings.localities].sort((a, b) => a.localeCompare(b)), [settings.localities]);
   const sortedDepartments = useMemo(() => [...settings.departments].sort((a, b) => a.localeCompare(b)), [settings.departments]);
 
   return (
@@ -387,7 +406,7 @@ export function AddEmployeeForm({
                                 render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Koordynator</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
+                                    <Select onValueChange={handleCoordinatorChange} value={field.value}>
                                     <FormControl><SelectTrigger><SelectValue placeholder="Wybierz koordynatora" /></SelectTrigger></FormControl>
                                     <SelectContent>
                                         {sortedCoordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
@@ -438,10 +457,10 @@ export function AddEmployeeForm({
                                 render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Miejscowość</FormLabel>
-                                    <Select onValueChange={handleLocalityChange} value={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue placeholder="Wybierz miejscowość" /></SelectTrigger></FormControl>
+                                    <Select onValueChange={handleLocalityChange} value={field.value} disabled={!selectedCoordinatorId}>
+                                        <FormControl><SelectTrigger><SelectValue placeholder={!selectedCoordinatorId ? "Najpierw wybierz koordynatora" : "Wybierz miejscowość"} /></SelectTrigger></FormControl>
                                         <SelectContent>
-                                            {sortedLocalities.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                                            {availableLocalities.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                     <FormMessage />
