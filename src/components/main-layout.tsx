@@ -120,7 +120,6 @@ export default function MainLayout({
         { view: 'dashboard', icon: Home, label: 'Pulpit' },
         { view: 'employees', icon: Users, label: 'Pracownicy' },
         { view: 'housing', icon: Building, label: 'Zakwaterowanie' },
-        { view: 'inspections', icon: ShieldCheck, label: 'Inspekcje' },
         { view: 'settings', icon: SettingsIcon, label: 'Ustawienia' },
     ], [])  as { view: View; icon: React.ElementType; label: string }[];
 

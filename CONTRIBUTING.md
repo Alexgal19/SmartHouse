@@ -1,135 +1,192 @@
-# Wytyczne dotyczące współtworzenia
+Ten dokument definiuje standardy pracy dla ludzi i AI (Gemini w Firebase Studio) w tym repozytorium. Celem jest maksymalna stabilność, bezpieczeństwo, dostępność i jakość UI/UX przy minimalnym zakresie zmian.
 
-Dziękujemy za zainteresowanie rozwojem tego projektu. Aby zapewnić najwyższą jakość kodu i stabilność aplikacji, prosimy o przestrzeganie poniższych zasad.
+Spis treści
+1. Zasady ogólne (stabilność i minimalny zakres zmian)
+2. Struktura projektu i odpowiedzialności
+3. Standardy importów (absolutne aliasy vs ścieżki względne)
+4. Zasady dla AI (AI Operating Rules)
+5. Kontrakt wyjściowy AI (AI Output Contract – XML)
+6. TypeScript, Lint, Format i Build (wymogi jakości)
+7. SSR/CSR/Server Actions i bezpieczeństwo sekretów
+8. Integracja z Google Sheets (bezpieczeństwo i niezawodność)
+9. UI/UX, A11y i Tailwind
+10. Wydajność i budżet performance
+11. Testowanie i obserwowalność
+12. Checklisty przed PR i przed wdrożeniem
+13. Minimalne skrypty (zalecane)
 
-## 1. IZOLACJA I TESTOWANIE:
-*   Zawsze zakładaj, że zmieniasz krytyczną część kodu. Przed wprowadzeniem jakiejkolwiek modyfikacji (nawet jeśli jest drobna), wewnętrznie zweryfikuj, że wszystkie istniejące testy jednostkowe i integracyjne, na które wpływa zmiana, przejdą pomyślnie.
+1. Zasady ogólne (stabilność i minimalny zakres zmian)
+• Traktuj każdą zmianę jako krytyczną. Ogranicz zakres do absolutnego minimum wymaganego przez zadanie.
+• Nie modyfikuj niepowiązanych komponentów, konfiguracji ani zależności bez wyraźnej potrzeby.
+• Każda zmiana musi przejść: lint, typecheck, build oraz lokalne uruchomienie dev.
+• Preferuj małe, czytelne PR-y z jasnym opisem i pełnym diffem.
 
-## 2. ZAKRES ZMIAN:
-*   Modyfikuj tylko te pliki, które są absolutnie niezbędne do wykonania zadania.
-*   Nie zmieniaj żadnych innych komponentów, konfiguracji ani zależności, chyba że jest to bezpośrednio i logicznie wymagane przez zleconą funkcję.
+2. Struktura projektu i odpowiedzialności
+• Logika biznesowa:
+   • src/lib/actions.ts – akcje serwerowe (Server Actions/handlers).
+   • src/lib/sheets.ts – integracja z Google Sheets.
+   • Uwaga: te moduły są „server-only” i nie mogą być importowane w kodzie klienckim.
+• UI:
+   • Komponenty ogólne: src/components/ui
+   • Komponenty funkcyjne: src/components
+• Globalny stan:
+   • src/components/main-layout.tsx – MainLayoutContext (dostarczanie danych i operacji, np. handleUpdateSettings, handleAddEmployee).
+• Routing:
+   • Zgodnie z Next.js (app/ lub pages/ – dopasuj do faktycznej struktury repo).
 
-## 3. BEZPIECZEŃSTWO KONTROLI WERSJI I WERYFIKACJA TYPÓW:
-*   **KONTROLA WERSJI:** Zawsze wprowadzaj zmiany w sposób, który umożliwi łatwe cofnięcie. Wyświetl całe Git Diff dla wprowadzonych zmian, aby ułatwić mi inspekcję i ewentualne cofnięcie.
-*   **WERYFIKACJA TYPÓW (TypeScript Safety):** Po każdej modyfikacji kodu bezwzględnie i wewnętrznie zweryfikuj, czy nie zostały wprowadzone żadne błędy kompilacji TypeScript. Kod musi przejść bezbłędnie komendę `npm run build` lub `npm run typecheck` (jeśli taka istnieje w projekcie). Wszelkie nowe funkcje muszą używać jawnych i ścisłych typów (strict mode).
+3. Standardy importów (absolutne aliasy vs ścieżki względne)
+Priorytety
+   1. Absolutne aliasy (preferowane): np. import { Foo } from '@/utils/Foo'
+   2. Względne (lokalne): tylko dla importów z tego samego folderu lub bliskiego sąsiedztwa (max 1–2 poziomy ../)
+   3. Nigdy: długie łańcuchy ../../../ – w takim wypadku użyj aliasów.
 
-## 4. STRUKTURA PROJEKTU:
-*   **Logika biznesowa** jest oddzielona od interfejsu użytkownika. Znajduje się głównie w `src/lib/actions.ts` (akcje serwerowe) oraz `src/lib/sheets.ts` (interakcja z Google Sheets).
-*   **Komponenty interfejsu** są podzielone na ogólne (`src/components/ui`) i funkcyjne (`src/components`).
-*   **Główny layout** aplikacji (`src/components/main-layout.tsx`) zarządza globalnym stanem i dostarcza dane do komponentów podrzędnych.
+Zasady czystości
+• Jeśli istnieje index.ts/tsx w katalogu, importuj katalog (bez /index).
+• Pomijaj rozszerzenia plików, jeśli bundler na to pozwala.
+• Zmieniaj ścieżki importu tylko, gdy to konieczne (np. przenoszenie pliku). Zweryfikuj, że docelowy plik istnieje i że wszystkie testy przechodzą.
 
-## 5. ZARZĄDZANIE STANEM:
-*   Aplikacja używa `MainLayoutContext` do zarządzania globalnym stanem (dane użytkowników, ustawienia itp.).
-*   Wszelkie operacje modyfikujące dane (dodawanie, edycja, usuwanie) powinny być realizowane przez funkcje dostarczane przez ten kontekst (np. `handleUpdateSettings`, `handleAddEmployee`).
+4. Zasady dla AI (AI Operating Rules)
+• Minimalny zakres zmian:
+   • Nie dotykaj plików spoza zakresu zadania.
+   • Nie refaktoryzuj szeroko bez wyraźnej prośby.
+• Pełne pliki:
+   • Gdy zmieniasz plik, zwróć całą finalną zawartość pliku (bez diffów), w formacie XML opisanym w sekcji 5.
+• Brak błędów importów:
+   • Nie generuj kodu, który spowoduje „Module not found” lub błędy rozwiązywania typów.
+• Walidacja lokalna (wewnętrzna):
+   • Przed wysłaniem odpowiedzi mentalnie „uruchom” npm run lint, npm run typecheck, npm run build. Kod musi przejść.
+• Ścisłe typy:
+   • Używaj jawnych typów i interfejsów. Unikaj any, chyba że to świadoma, uzasadniona decyzja z komentarzem.
+• Granica klient/serwer:
+   • Nie importuj bibliotek serwerowych (google-auth-library, google-spreadsheet) w komponentach klienckich („use client”).
+   • Wszelka praca z sekretami – wyłącznie na serwerze.
+• Stabilność i zgodność:
+   • Szanuj istniejące API komponentów i kontrakty typów. Zmiany łamiące wprowadzaj tylko po uzasadnieniu i z migracją.
+• Performance-first:
+   • Dla ciężkich bibliotek (np. recharts, xlsx) używaj dynamic import i ładuj je tylko na kliencie, gdy są potrzebne.
+• A11y-first:
+   • Korzystaj z semantycznego HTML, poprawnych ról ARIA, focus management (szczególnie przy użyciu Radix UI).
 
-## 6. KONWENCJE NAZEWNICTWA:
-*   Nazwy komponentów pisz w formacie `PascalCase` (np. `EntityView`).
-*   Nazwy funkcji i zmiennych pisz w formacie `camelCase` (np. `handleSaveEmployee`).
-
-## 7. FORMUŁOWANIE PROŚB O ZMIANY:
-*   Bądź jak najbardziej precyzyjny. Zamiast "popraw wygląd", spróbuj "zmień kolor tła przycisku 'Zapisz' na niebieski".
-*   Jeśli to możliwe, podawaj nazwy plików, które mam zmodyfikować.
-*   Jeżeli chcesz dodać nową funkcjonalność, opisz krótko, jak ma ona działać i gdzie powinna się znajdować.
-
-## Standardy Importowania Modułów (Import Paths)
-Aby utrzymać czystość, stabilność i łatwość refaktoryzacji kodu, prosimy o przestrzeganie następujących zasad podczas importowania modułów:
-
-### 1. Typy Ścieżek i Priorytety
-
-| Priorytet | Typ Ścieżki | Forma | Kiedy używać |
-|---|---|---|---|
-| 🥇 | **Absolutna (Aliasy)** | Używa skonfigurowanych aliasów (np. `@/`, `~`) lub głównego katalogu. `import { Foo } from '@/utils/Foo';` | **Zawsze preferowane** dla importów między głównymi podkatalogami projektu (np. z `src/components` do `src/utils`). Zapewnia stabilność przy przenoszeniu plików. |
-| 🥈 | **Relatywna (Względna)** | Ścieżka względem bieżącego pliku (`./`, `../`). `import { Bar } from './Bar';` | **Wyłącznie** dla importów z tego samego katalogu lub z jego bezpośredniego sąsiedztwa (max 1-2 poziomy `../`). |
-| ❌ | **Unikaj** | Długie, zagnieżdżone ścieżki relatywne. `import { Baz } from '../../../../core/Baz';` | Kategorycznie unikaj "łańcuchów" typu `../../../`. W takich przypadkach należy użyć ścieżki absolutnej (aliasu). |
-
-### 2. Konfiguracja Aliasów (Jeśli dotyczy)
-Jeśli projekt wykorzystuje aliasy (np. poprzez `tsconfig.json`, `jsconfig.json`, Webpack/Vite):
-*   **Weryfikacja:** Zawsze sprawdź, czy w konfiguracji istnieje odpowiedni alias (np. `@/`, `@components`, `src/`).
-*   **Zastosowanie:** Używaj tych aliasów, aby skrócić ścieżki i przechodzić na ścieżki absolutne.
-
-### 3. Czystość i Upraszczanie
-*   **Pominięcie Indexu:** Jeśli katalog zawiera plik `index.js/index.ts`, importuj tylko katalog:
-    ```javascript
-    // Dobre:
-    import { Button } from '@/components/Button'; 
-    // Zamiast:
-    import { Button } from '@/components/Button/index.js';
-    ```
-*   **Pominięcie Rozszerzenia:** W miarę możliwości (zgodnie z konfiguracją bundlera), pomijaj rozszerzenia plików (`.js`, `.ts`, `.jsx`, etc.).
-
-### 4. Wymogi Jakości i Bezpieczeństwa (Tylko dla AI/Narzędzi)
-⚠️ **Minimalna Zmiana:** Zmieniaj ścieżki importu tylko wtedy, gdy jest to absolutnie niezbędne do wykonania zadania (np. podczas przenoszenia pliku). Nie zmieniaj istniejących, poprawnie działających importów tylko w celu dostosowania ich do nowego standardu, jeśli nie jest to częścią refaktoryzacji na pełną skalę.
-*   **Walidacja:** Upewnij się, że zaimportowany plik istnieje pod nową ścieżką i że wszystkie powiązane testy jednostkowe/integracyjne przechodzą pomyślnie po zmianie (zgodnie z zasadami bezpieczeństwa dla zmian krytyчних).
-
-## Linter i Formatter
-Aby zapewnić spójność kodu w całym projekcie, używamy ESLint do analizy kodu i Prettier do jego formatowania.
-
-### Uruchamianie
-*   **Sprawdzanie błędów:** Uruchom `npm run lint`, aby sprawdzić, czy w kodzie nie ma błędów.
-*   **Automatyczne poprawki:** Uruchom `npm run lint:fix`, aby automatycznie poprawić większość problemów ze stylem i formatowaniem.
-
-Wszelkie zmiany w kodzie muszą przechodzić pomyślnie testy lintera przed ich zatwierdzeniem.
-
-## NAJNOWSZE SPECYFIKACJE DESIGNU I BUDOWY WEBOWEJ ✨
-*   **WYDAJNOŚĆ (PERFORMANCE):** Optymalizuj kod pod kątem szybkości ładowania. Stosuj leniwego ładowania (lazy loading) dla komponentów i obrazów poza widocznym obszarem (above-the-fold), a także minimalizację i drzewo potrząsania (tree-shaking) w zależnościach.
-*   **DOSTĘPNOŚĆ (ACCESSIBILITY – A11y):** Buduj interfejsy z myślą o dostępności. Zawsze używaj poprawnej semantyki HTML5 (np. tagi `<header>`, `<main>`, `<nav>`) i prawidłowych atrybutów ARIA tam, gdzie jest to wymagane.
-*   **RESPONSYWNOŚĆ I STYLOWANIE:** Stosuj metodę Mobile-First w stylach CSS. Wykorzystuj nowoczesne mechanizmy layoutu, takie jak CSS Grid i Flexbox, a nie starsze metody pozycjonowania.
-*   **CZYSZCZENIE KODU:** Utrzymuj komponenty jako czyste i jednozadaniowe (Single Responsibility Principle). Używaj nowoczesnego JavaScriptu (ESM/ES2022+), unikając przestarzałych wzorców.
-
-## C. ARCHITEKTURA, UX I STYLISTYKA (Wymagania Seniora) 👨‍💻
-*   **ARCHITEKTURA KOMPONENTÓW:** Wszelkie nowe funkcje muszą być budowane przy użyciu wzorców kompozycji i zasady odpowiedzialności pojedynczej (SRP). Komponenty muszą być łatwe do ponownego użycia i utrzymania.
-*   **TECHNICZNA BUDOWA UI:** Budowa kluczowych elementów interaktywnych (okna dialogowe, formularze, modalne) musi być zgodna z wytycznymi WAI-ARIA (dla dostępności) oraz stosować natywne mechanizmy przeglądarki tam, gdzie to możliwe.
-*   **WIZUALNA JAKOŚĆ (UI/Stylistyka):**
-    *   **Stylizacja:** Używaj nowoczesnych metod zarządzania stylami (np. CSS Modules, CSS-in-JS, lub Tailwind CSS, jeśli jest w projekcie) dla izolacji stylów.
-    *   **Animacje:** Animacje muszą być wydajne (hardware-accelerated), używając właściwości `transform` i `opacity`. Animacje interaktywne powinny być płynne i wspierać koncepcję Micro-Interactions, by poprawić UX.
-    *   **Kolory/Design System:** Stylizacja powinna być spójna z istniejącym designem/paletą kolorów projektu.
-
-## Potok Importu Danych Excel (Architektura Seniora)
-Podzielimy zadanie na trzy warstwy, z których każda musi spełniać Twoje wymagania.
-
-### Warstwa 1: Frontend (Interfejs Użytkownika i UX)
-Ta warstwa odpowiada za płynność działania i interakcję z użytkownikiem.
-
-| Krok | Wymagania Seniora/Zasady | Opis Implementacji |
-|---|---|---|
-| **Komponent Uploadu** | SRP (Single Responsibility Principle), Mobile-First | Stwórz dedykowany, czysty komponent (np. `ExcelUploadForm.tsx`). Używaj semantyki i atrybutów ARIA dla przycisku wyboru pliku (A11y). |
-| **Walidacja Wstępna** | TypeScript Safety | Sprawdź typ pliku (np. `file.type` lub rozszerzenie) po stronie klienta. Zapewnij natychmiastową informację zwrotną, jeśli plik nie jest Excelem (poprawia UX). |
-| **Obsługa > 1 MB** | Performance (CWV), UX | Po wybraniu pliku: zablokuj interfejs (np. za pomocą modalnego okna dialogowego - UX) i natychmiast wyślij plik do serwera. |
-| **Śledzenie Postępu**| UX, Architektura Komponentów | Zamiast czekać na odpowiedź serwera, po wysłaniu pliku, klient powinien otrzymać `Job ID` (ID zadania w tle). Następnie użyj WebSockets lub Polling (co 5-10 sekund) do serwera, aby śledzić status przetwarzania. Pokaż płynny progress bar lub status oczekiwania (Animacje/Stylistyka). |
-
-### Warstwa 2: Serwer/API (Brama wejściowa i Bezpieczeństwo)
-Ta warstwa zajmuje się przyjęciem pliku i delegowaniem pracy.
-
-| Krok | Wymagania Seniora/Zasady | Opis Implementacji |
-|---|---|---|
-| **Ustalenie Limitu** | Bezpieczeństwo/Limity | Potwierdź, że limit wielkości ciała żądania (np. w `next.config.js` dla Server Actions) jest podniesiony do bezpiecznej, akceptowalnej wartości (np. 10MB), aby w ogóle przyjąć plik. |
-| **Zapis Pliku** | Performance, Architektura | Natychmiast zapisz otrzymany plik do usługi przechowywania obiektów (np. Firebase Storage / Google Cloud Storage). To chroni pamięć serwera API przed przepełnieniem. |
-| **Uruchomienie Asynchroniczne** | Architektura Komponentów (SRP) | Zamiast przetwarzać dane w handlerze API, uruchom dedykowane, długotrwałe zadanie w tle (np. Firebase Cloud Function dedykowaną tylko do przetwarzania Excela). Zwróć klientowi `Job ID` i kod statusu `202 Accepted`. |
-| **Bezpieczeństwo Danych** | Zabezpieczenia | Zawsze filtruj i czyść nazwę pliku, ścieżkę i inne metadane przed użyciem ich w systemie plików (ochrona przed atakami typu Path Traversal). |
-
-### Warstwa 3: Przetwarzanie Danych (Senior Logic i TypeScript Safety)
-Ta warstwa jest kluczowa dla jakości danych.
-
-| Krok | Wymagania Seniora/Zasady | Opis Implementacji |
-|---|---|---|
-| **Strumieniowe Czytanie** | Performance (> 10 MB) | Użyj biblioteki, która obsługuje strumieniowe czytanie plików Excel (np. SheetJS/xlsx w trybie strumieniowym). Pozwala to na przetwarzanie dużych plików w małych kawałkach, oszczędzając pamięć serwera/funkcji w tle. |
-| **Jawne Typowanie** | TypeScript Safety | Zdefiniuj ścisłe interfejsy TypeScript dla każdej przetwarzanej kolumny danych (np. `interface ImportedUser { name: string; age: number; startDate: Date; }`). |
-| **Weryfikacja i Konwersja** | TypeScript Safety, Architektura | W trakcie strumieniowego czytania: Weryfikuj każdą komórkę pod kątem typu (np. czy pole numeryczne to faktycznie liczba). Wymuszaj konwersję (np. daty z formatu Excela na obiekt `Date`). Wszystkie błędy walidacji raportuj, zamiast rzucać błędem i przerywać całe zadanie. |
-| **Zapis do Bazy** | Architektura/Wydajność | Wstaw dane do bazy danych w transakcjach lub paczkach (batching), aby zoptymalizować wydajność I/O i zapewnić spójność danych. |
-| **Finalizacja** | UX | Po zakończeniu przetwarzania (sukces lub błędy), zaktualizuj status `Job ID` w systemie powiadomień (np. Firestore), co automatycznie poinformuje klienta o zakończeniu. |
-
-"Пам'ятай про необхідність дотримання стандартів якості коду: щоразу, коли я прошу тебе згенерувати або модифікувати код (особливо з використанням JavaScript/TypeScript):
-
-Завжди дотримуйся правил, які зазвичай використовуються у TypeScript (правильне оголошення типів, інтерфейсів тощо).
-
-Завжди перевіряй код на потенційні помилки, які б виявив ESLint (особливо щодо правильного імпорту, відсутності невикористаних змінних та коректного синтаксису).
-
-Ніколи не генеруй код, який містить очевидні проблеми з імпортами (Module not found), оскільки це спричиняє збої під час збірки (build).
-
-Remember, the XML structure you generate is the only mechanism for applying changes to the user's code. Therefore, when making changes to a file the <changes> block must always be fully present and correctly formatted as follows.
+5. Kontrakt wyjściowy AI (AI Output Contract – XML)
+Każda propozycja zmiany pliku MUSI być zwrócona w formacie XML poniżej. Każdy zmieniany plik to oddzielny węzeł <change>. Zawartość pliku musi być kompletna (pełny plik), umieszczona w CDATA.
 
 <changes>
-  <description>[Provide a concise summary of the overall changes being made]</description>
+
+<description>[Krótki opis wprowadzanych zmian]</description>
   <change>
-    <file>[Provide the ABSOLUTE, FULL path to the file being modified]</file>
-    <content><![CDATA[Provide the ENTIRE, FINAL, intended content of the file here. Do NOT provide diffs or partial snippets. Ensure all code is properly escaped within the CDATA section.
+
+<file>[ABSOLUTNA, PEŁNA ścieżka do pliku, np. /src/lib/sheets.ts]</file>
+
+<content><![CDATA[
+
+[TUTAJ PEŁNA, FINALNA ZAWARTOŚĆ PLIKU – bez skrótów, bez diffów]
+]]></content>
+  </change>
+
+  <!-- kolejne <change> w razie potrzeby -->
+
+</changes>
+
+
+Wymogi:
+• Używaj absolutnych ścieżek od katalogu repo (np. /CONTRIBUTING.md, /src/components/Button.tsx).
+• Nie pomijaj fragmentów (no elisions). Zawsze pełna zawartość.
+• Nie dodawaj komentarzy poza strukturą XML, które mogłyby zaburzyć parser.
+
+6. TypeScript, Lint, Format i Build (wymogi jakości)
+• TypeScript:
+   • Preferuj: "strict": true, noImplicitAny, noUncheckedIndexedAccess, exactOptionalPropertyTypes.
+   • Dodaj typy dla środowiska (np. env.d.ts) i dla server-only modułów, jeśli użyte.
+• ESLint:
+   • Zgodność z eslint-config-next i @typescript-eslint.
+   • Wyklucz .next, node_modules, dist, .turbo, coverage.
+   • Skrypty (zalecane):
+      • "typecheck": "tsc --noEmit"
+      • "format": "prettier . --write"
+      • "format:check": "prettier . --check"
+      • "lint:ci": "eslint . --max-warnings=0"
+• Build:
+   • Kod musi przejść npm run build bez błędów i krytycznych ostrzeżeń.
+   • Nie dopuszczaj do importu serwerowych bibliotek po stronie klienta.
+
+7. SSR/CSR/Server Actions i bezpieczeństwo sekretów
+• Sekrety i biblioteki serwerowe (google-auth-library, google-spreadsheet) – tylko w środowisku serwerowym (API routes, Server Actions, route handlers).
+• Nigdy nie używaj NEXT_PUBLIC_* dla sekretów.
+• Waliduj dane wejściowe po stronie serwera (zod) i zwracaj kontrolowane błędy (status, message).
+• Rozważ retry/backoff dla 429/5xx. Loguj błędy z kontekstem (bez wrażliwych danych).
+
+8. Integracja z Google Sheets (bezpieczeństwo i niezawodność)
+• Uwierzytelnianie:
+   • Preferuj Service Account. Poświadczenia w zmiennych środowiska (np. JSON base64 dekodowany na serwerze).
+   • Upewnij się, że Service Account ma dostęp do odpowiednich arkuszy.
+• Izolacja:
+   • Moduł src/lib/sheets.ts nie może być importowany w komponentach klienckich.
+• Obsługa błędów:
+   • Zawijaj wywołania w try/catch, rozróżniaj błędy 4xx/5xx, stosuj ostrożny retry/backoff.
+   • Zwracaj czytelne komunikaty dla UI; loguj szczegóły po stronie serwera.
+• Walidacja:
+   • Wszelki input waliduj schematami zod. Odrzucaj nieprawidłowe dane, nie ufaj klientowi.
+
+9. UI/UX, A11y i Tailwind
+• A11y:
+   • Semantyczne HTML5 (header, main, nav, footer).
+   • ARIA tylko tam, gdzie konieczne; aria-live dla komunikatów (toast/status).
+   • Radix UI: dbaj o role, aria-* i focus management. Używaj dostępnych wzorców.
+• Tailwind:
+   • Mobile-first, sensowne breakpoints, unikanie FOUC/CLS.
+   • Upewnij się, że tailwind.config content zawiera wszystkie źródła (app//*, src//, components/**/).
+   • Stosuj utility-first, ale utrzymuj SRP i czytelność komponentów.
+• Animacje:
+   • Używaj transform/opacity (GPU-friendly). Animacje subtelne, wspierające UX (micro-interactions).
+• Formularze:
+   • react-hook-form + zodResolver na kliencie; walidacja powtórzona na serwerze.
+
+10. Wydajność i budżet performance
+• Code splitting i dynamic import dla ciężkich bibliotek (recharts, xlsx) oraz rzadko odwiedzanych widoków.
+• Lazy-load obrazów i komponentów poza viewportem.
+• Unikaj niepotrzebnych re-renderów (memo, useCallback/useMemo tam, gdzie ma to sens).
+• Kontroluj wagę bundla. Eliminuj nieużywane zależności i importy.
+• Preload/preconnect krytycznych zasobów, gdy uzasadnione.
+
+11. Testowanie i obserwowalność
+• Testy:
+   • Co najmniej smoke tests dla krytycznych komponentów i kluczowych flow (np. upload pliku, główne formularze).
+   • Walidacja schematów zod – testuj przykładowe payloady (dobry/zły).
+• Obserwowalność:
+   • Logowanie po stronie serwera z kontekstem (request id, user id – jeśli istnieje).
+   • Spójny format błędów API (code, message, details?).
+   • Uważaj, by nie logować sekretów.
+
+12. Checklisty
+
+Przed wysłaniem PR
+• [ ] Zmiany ograniczone do wymaganych plików.
+• [ ] Kod przechodzi npm run lint, npm run typecheck, npm run build.
+• [ ] Brak importów serwerowych w kliencie.
+• [ ] Zgodność ze standardami importów (aliasy > relatywne).
+• [ ] Walidacja danych (zod) dla endpointów/API.
+• [ ] UI/A11y sprawdzone (klawiatura, aria, kontrasty).
+• [ ] Dynamic import dla ciężkich modułów, jeśli dotyczy.
+
+Przed wdrożeniem
+• [ ] Zmienne środowiskowe ustawione (bez sekretów w NEXT_PUBLIC_*).
+• [ ] Dostępy Service Account do Google Sheets zweryfikowane.
+• [ ] Monitoring/logi działają, błędy raportują się poprawnie.
+• [ ] Brak ostrzeżeń krytycznych w buildzie.
+• [ ] Wydajność i rozmiar bundla akceptowalne.
+
+13. Minimalne skrypty (zalecane w package.json)
+• "typecheck": "tsc --noEmit"
+• "format": "prettier . --write"
+• "format:check": "prettier . --check"
+• "lint:ci": "eslint . --max-warnings=0"
+
+Uwagi końcowe
+• Jeśli zadanie wymaga zmiany struktur danych lub API, opisz migrację i wpływ na istniejące ekrany/komponenty.
+• Preferuj przejrzystość nad „sprytem”. Kod ma być łatwy w utrzymaniu przez zespół.
+
+]]></content>
+  </change>
+
+</changes>
+
