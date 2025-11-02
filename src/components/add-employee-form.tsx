@@ -228,10 +228,6 @@ export function AddEmployeeForm({
   const selectedLocality = form.watch('locality');
   const selectedAddress = form.watch('address');
 
-  const selectedCoordinator = useMemo(() => {
-    return settings.coordinators.find(c => c.uid === selectedCoordinatorId);
-  }, [selectedCoordinatorId, settings.coordinators]);
-
   const availableLocalities = useMemo(() => {
     if (!selectedCoordinatorId || !settings.addresses) return [];
     
@@ -270,7 +266,6 @@ export function AddEmployeeForm({
         
         const employeeAddress = settings.addresses.find(a => a.name === employee.address);
         const employeeLocality = employeeAddress ? employeeAddress.locality : '';
-        const coordinator = settings.coordinators.find(c => c.uid === employee.coordinatorId);
 
         form.reset({
             fullName: employee.fullName ?? '',
@@ -278,7 +273,7 @@ export function AddEmployeeForm({
             locality: employeeLocality,
             address: employee.address ?? '',
             roomNumber: employee.roomNumber ?? '',
-            zaklad: coordinator?.department ?? null,
+            zaklad: employee.zaklad ?? null,
             nationality: employee.nationality ?? '',
             gender: employee.gender ?? '',
             checkInDate: parseDate(employee.checkInDate) ?? null,
@@ -328,11 +323,6 @@ export function AddEmployeeForm({
         });
     }
   }, [employee, isOpen, form, settings.addresses, settings.coordinators]);
-  
-  useEffect(() => {
-    form.setValue('zaklad', selectedCoordinator?.department || null);
-  }, [selectedCoordinator, form]);
-
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     const formatDate = (date: Date | null | undefined): string | null | undefined => {
@@ -377,9 +367,11 @@ export function AddEmployeeForm({
   const sortedCoordinators = useMemo(() => [...settings.coordinators].sort((a, b) => a.name.localeCompare(b.name)), [settings.coordinators]);
   const sortedNationalities = useMemo(() => [...settings.nationalities].sort((a, b) => a.localeCompare(b)), [settings.nationalities]);
   const sortedGenders = useMemo(() => [...settings.genders].sort((a, b) => a.localeCompare(b)), [settings.genders]);
-  
+  const sortedDepartments = useMemo(() => [...settings.departments].sort((a, b) => a.localeCompare(b)), [settings.departments]);
+
   const coordinatorOptions = useMemo(() => sortedCoordinators.map(c => ({ value: c.uid, label: c.name })), [sortedCoordinators]);
   const nationalityOptions = useMemo(() => sortedNationalities.map(n => ({ value: n, label: n })), [sortedNationalities]);
+  const departmentOptions = useMemo(() => sortedDepartments.map(d => ({ value: d, label: d })), [sortedDepartments]);
   
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -518,12 +510,17 @@ export function AddEmployeeForm({
                                 control={form.control}
                                 name="zaklad"
                                 render={({ field }) => (
-                                    <FormItem className="flex flex-col">
-                                        <FormLabel>Zakład</FormLabel>
-                                        <FormControl>
-                                            <Input {...field} value={field.value || ''} readOnly disabled />
-                                        </FormControl>
-                                    </FormItem>
+                                <FormItem className="flex flex-col">
+                                    <FormLabel>Zakład</FormLabel>
+                                    <Combobox
+                                        options={departmentOptions}
+                                        value={field.value || ''}
+                                        onChange={field.onChange}
+                                        placeholder="Wybierz zakład"
+                                        searchPlaceholder="Szukaj zakładu..."
+                                    />
+                                    <FormMessage />
+                                </FormItem>
                                 )}
                             />
                         </div>
@@ -798,3 +795,5 @@ export function AddEmployeeForm({
     </Dialog>
   );
 }
+
+    
