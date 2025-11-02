@@ -831,8 +831,8 @@ export async function generateAccommodationReport(year: number, month: number, c
             }
 
             periods.forEach(period => {
-                const effectiveStart = max(period.start, reportStart);
-                const effectiveEnd = min(period.end, reportEnd);
+                const effectiveStart = max([period.start, reportStart]);
+                const effectiveEnd = min([period.end, reportEnd]);
 
                 if (effectiveStart > effectiveEnd) return;
 
@@ -929,3 +929,5 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
         throw new Error(e instanceof Error ? e.message : "Failed to import employees from Excel.");
     }
 }
+
+    
