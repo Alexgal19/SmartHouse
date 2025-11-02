@@ -58,6 +58,8 @@ const formSchema = z.object({
   contractEndDate: z.date().nullable().optional(),
   departureReportDate: z.date().nullable().optional(),
   comments: z.string().optional(),
+  oldAddress: z.string().optional(),
+  addressChangeDate: z.date().nullable().optional(),
   depositReturned: z.enum(['Tak', 'Nie', 'Nie dotyczy']).nullable().optional(),
   depositReturnAmount: z.number().nullable().optional(),
   deductionRegulation: z.number().nullable().optional(),
@@ -71,12 +73,13 @@ const formSchema = z.object({
   })).optional(),
 });
 
-export type EmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate' | 'contractStartDate' | 'contractEndDate' | 'departureReportDate' | 'locality'> & {
+export type EmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate' | 'contractStartDate' | 'contractEndDate' | 'departureReportDate' | 'addressChangeDate' | 'locality'> & {
   checkInDate: string | null;
   checkOutDate?: string | null;
   contractStartDate?: string | null;
   contractEndDate?: string | null;
   departureReportDate?: string | null;
+  addressChangeDate?: string | null;
 };
 
 const defaultDeductionReasons: { label: string }[] = [
@@ -204,6 +207,8 @@ export function AddEmployeeForm({
       contractEndDate: null,
       departureReportDate: null,
       comments: '',
+      oldAddress: '',
+      addressChangeDate: null,
       depositReturned: null,
       depositReturnAmount: null,
       deductionRegulation: null,
@@ -262,6 +267,8 @@ export function AddEmployeeForm({
             contractEndDate: parseDate(employee.contractEndDate) ?? null,
             departureReportDate: parseDate(employee.departureReportDate) ?? null,
             comments: employee.comments ?? '',
+            oldAddress: employee.oldAddress ?? '',
+            addressChangeDate: parseDate(employee.addressChangeDate) ?? null,
             depositReturned: employee.depositReturned ?? null,
             depositReturnAmount: employee.depositReturnAmount ?? null,
             deductionRegulation: employee.deductionRegulation ?? null,
@@ -285,6 +292,8 @@ export function AddEmployeeForm({
           contractEndDate: null,
           departureReportDate: null,
           comments: '',
+          oldAddress: '',
+          addressChangeDate: null,
           depositReturned: null,
           depositReturnAmount: null,
           deductionRegulation: null,
@@ -315,6 +324,7 @@ export function AddEmployeeForm({
         contractStartDate: formatDate(values.contractStartDate),
         contractEndDate: formatDate(values.contractEndDate),
         departureReportDate: formatDate(values.departureReportDate),
+        addressChangeDate: formatDate(values.addressChangeDate),
     };
 
     onSave(formData);
@@ -561,6 +571,31 @@ export function AddEmployeeForm({
                             </FormItem>
                             )}
                         />
+                         {employee?.oldAddress && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-md border p-4 bg-muted/50">
+                                <FormField
+                                    control={form.control}
+                                    name="oldAddress"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Poprzedni adres</FormLabel>
+                                            <FormControl><Input {...field} readOnly /></FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="addressChangeDate"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-col">
+                                            <FormLabel>Data zmiany adresu</FormLabel>
+                                            <DateInput value={field.value} onChange={field.onChange} />
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                        )}
                         </div>
                     </TabsContent>
                     <TabsContent value="finance">

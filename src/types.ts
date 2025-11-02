@@ -118,6 +118,16 @@ export type SessionData = {
   isAdmin: boolean;
 }
 
+export type EquipmentItem = {
+    id: string;
+    inventoryNumber: string;
+    name: string;
+    quantity: number;
+    description: string;
+    addressId: string;
+    addressName: string;
+}
+
 export type InspectionTemplateCategory = {
     name: string;
     items: {

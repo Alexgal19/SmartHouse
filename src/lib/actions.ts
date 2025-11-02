@@ -316,9 +316,16 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         if (!originalEmployee) {
             throw new Error('Could not deserialize original employee data.');
         }
+
+        const updatedEmployeeData: Employee = { ...originalEmployee, ...updates };
+        
+        // Handle address change logic
+        if (updates.address && updates.address !== originalEmployee.address) {
+            updatedEmployeeData.oldAddress = originalEmployee.address;
+            updatedEmployeeData.addressChangeDate = format(new Date(), 'yyyy-MM-dd');
+        }
         
         const changes: NotificationChange[] = [];
-        const updatedEmployeeData: Employee = { ...originalEmployee, ...updates };
 
         for (const key in updates) {
             const typedKey = key as keyof Employee;

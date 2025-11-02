@@ -28,7 +28,11 @@ const ITEMS_PER_PAGE = 20;
 const formatDate = (dateString?: string | null) => {
     if (!dateString) return 'N/A';
     try {
-        return format(new Date(dateString + 'T00:00:00'), 'dd-MM-yyyy');
+        // Use regex to check for YYYY-MM-DD format and add time to avoid timezone issues
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+            return format(new Date(dateString + 'T00:00:00'), 'dd-MM-yyyy');
+        }
+        return format(new Date(dateString), 'dd-MM-yyyy');
     } catch {
         return 'Invalid Date';
     }
@@ -149,6 +153,8 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
               <TableHead>Koordynator</TableHead>
               <TableHead>Narodowość</TableHead>
               <TableHead>Adres</TableHead>
+              <TableHead>Stary adres</TableHead>
+              <TableHead>Data zmiany adresu</TableHead>
               <TableHead>Pokój</TableHead>
               <TableHead>Zakład</TableHead>
               <TableHead>Data zameldowania</TableHead>
@@ -169,6 +175,8 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
                   <TableCell>{isEmployee(entity) ? getCoordinatorName(entity.coordinatorId) : "N/A"}</TableCell>
                   <TableCell>{isEmployee(entity) ? entity.nationality : "N/A"}</TableCell>
                   <TableCell>{entity.address}</TableCell>
+                  <TableCell>{isEmployee(entity) ? entity.oldAddress : "N/A"}</TableCell>
+                  <TableCell>{isEmployee(entity) ? formatDate(entity.addressChangeDate) : "N/A"}</TableCell>
                   <TableCell>{entity.roomNumber}</TableCell>
                   <TableCell>{isEmployee(entity) ? entity.zaklad : "N/A"}</TableCell>
                   <TableCell>{formatDate(entity.checkInDate)}</TableCell>
@@ -184,7 +192,7 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={14} className="text-center">Brak danych do wyświetlenia.</TableCell>
+                <TableCell colSpan={16} className="text-center">Brak danych do wyświetlenia.</TableCell>
               </TableRow>
             )}
           </TableBody>
