@@ -14,6 +14,10 @@ Spis treści
 11. Testowanie i obserwowalność
 12. Checklisty przed PR i przed wdrożeniem
 13. Minimalne skrypty (zalecane)
+14. Standard pracy z datami (Date Handling) i Excel Export
+Cel: Ujednolicić formatowanie i parsowanie dat w całym projekcie oraz uniknąć błędów typu „formatDate is not defined”.
+15. Zasady obsługi pustych pól (Empty/Nullable Handling)
+Cel: Puste komórki/pola (null, undefined, "", " ") w danych nie są błędem – są stanem dozwolonym i powinny być konsekwentnie obsługiwane w UI, API i podczas eksportu do Excela.
 
 1. Zasady ogólne (stabilność i minimalny zakres zmian)
 • Traktuj każdą zmianę jako krytyczną. Ogranicz zakres do absolutnego minimum wymaganego przez zadanie.
@@ -180,6 +184,122 @@ Przed wdrożeniem
 • "format": "prettier . --write"
 • "format:check": "prettier . --check"
 • "lint:ci": "eslint . --max-warnings=0"
+
+14.1 Zasady ogólne
+• Centralizacja: Wszystkie operacje na datach wykonuj przez wspólne helpery w module: /src/lib/date.ts.
+• Zakazane: Wywoływanie nieistniejących/niezaimportowanych funkcji typu formatDate w plikach eksportu Excela lub komponentach. Jeśli potrzebujesz formatowania – użyj funkcji z /src/lib/date.ts.
+• Biblioteka: Używamy date-fns. Nie wywołuj funkcji, których nie ma w date-fns (np. formatDate – to nie jest funkcja date-fns). Zamiast tego używaj format z date-fns lub helperów z /src/lib/date.ts.
+• Typy: Zawsze operuj na Date lub bezpiecznie parsuj string/number do Date przed formatowaniem.
+
+14.2 Kontrakt helperów (musi istnieć plik /src/lib/date.ts)
+W module /src/lib/date.ts muszą istnieć co najmniej:
+• formatDate(input: Date | string | number, pattern?: string): string
+   • Domyślny pattern: "yyyy-MM-dd"
+   • Zasady: jeśli input jest stringiem – spróbuj parseISO, w pozostałych przypadkach new Date(input). W razie nieprawidłowej daty zwróć pusty string lub rzuć kontrolowany błąd (w zależności od przypadku użycia).
+• formatDateTime(input: Date | string | number, pattern?: string): string
+   • Domyślny pattern: "yyyy-MM-dd HH:mm"
+• parseMaybeDate(input: Date | string | number): Date | null
+   • Zwraca Date lub null, bez rzucania wyjątków.
+• isValidDate(input: unknown): boolean
+   • true, jeśli to poprawny obiekt Date (i nie NaN).
+
+Wszyscy konsumenci (UI, API, export do Excela) importują wyłącznie z "@/lib/date".
+
+14.3 Zasady użycia w Excel Export (xlsx)
+• Formatowanie przed zapisem:
+   • Daty do Excela zapisuj jako sformatowane stringi przez formatDate lub formatDateTime. Zalecane formaty UI: "dd.MM.yyyy" dla dat, "dd.MM.yyyy HH:mm" dla dat z czasem.
+• Walidacja wejścia:
+   • Jeśli źródło dat jest stringowe (np. z Google Sheets/API), zawsze użyj parseMaybeDate i sprawdź isValidDate przed formatowaniem. W przypadku nieprawidłowej daty – wpisz pusty string lub oznacz w raporcie „Nieprawidłowa data”.
+• Importy:
+   • Zabronione: lokalne definiowanie funkcji o nazwie formatDate w plikach eksportu. Zawsze importuj z "@/lib/date".
+• Spójność kolumn:
+   • Kolumny dat w raporcie muszą korzystać z jednego spójnego formatu (np. "dd.MM.yyyy").
+
+14.4 Reguły dla AI (dot. dat i Excela)
+• Jeśli widzisz wywołanie formatDate, a nie ma importu z "@/lib/date", dodaj poprawny import i użyj helpera.
+• Jeśli helper nie istnieje – najpierw utwórz /src/lib/date.ts zgodnie z kontraktem z pkt 14.2, a dopiero potem modyfikuj pliki eksportu.
+• Nie zamieniaj formatDate na nieistniejące funkcje date-fns. date-fns używa funkcji format. Helpery wrapują format i parsowanie.
+• Zanim zwrócisz zmiany, mentalnie zweryfikuj, że import "@/lib/date" jest poprawny (aliasy), a kod przejdzie lint/typecheck/build.
+
+14.5 Checklist (daty/Excel)
+• [ ] Plik /src/lib/date.ts istnieje i eksportuje: formatDate, formatDateTime, parseMaybeDate, isValidDate.
+• [ ] Wszędzie, gdzie formatuję daty (UI, API, Excel), używam helperów z "@/lib/date".
+• [ ] Stringowe daty zawsze parsuję (parseMaybeDate), a nieprzetwarzalne traktuję jako puste.
+• [ ] W Excelu stosuję spójny format ("dd.MM.yyyy" lub "dd.MM.yyyy HH:mm").
+• [ ] Brak lokalnych, ad-hoc funkcji formatDate w innych plikach.
+
+Co jeszcze warto dodać do repo (opcjonalne, ale polecane)
+• ESLint rule/grep w CI:
+   • Blokuj użycie „formatDate(” bez importu z "@/lib/date".
+   • Blokuj redefinicję „function formatDate(” poza /src/lib/date.ts.
+• Testy jednostkowe dla /src/lib/date.ts:
+   • Poprawne formatowanie dat ISO/string/number.
+   • Zachowanie na niepoprawnych datach (null, "abc", NaN).
+• Dokumentacja przykładów użycia w README (krótkie snippet’y, jak formatować daty i jak importować helpery).
+
+5.1 Definicje i ogólne zasady
+• Dozwolone stany puste: null, undefined, pusty string "" (po trim: "" traktujemy jako puste).
+• Brak błędu: Puste pole nie generuje błędu walidacji, chyba że pole jest oznaczone jako wymagane (required).
+• Normalizacja: Przed dalszym przetwarzaniem każde pole tekstowe trimujemy. Wartości puste normalizujemy do null lub "" zgodnie z kontekstem.
+• Konsekwencja: Ten sam atrybut (np. nazwisko, data) musi mieć spójne zasady pustości w całej aplikacji (UI, API, Excel).
+
+15.2 Walidacja (zod) – kontrakt
+• Pola opcjonalne:
+   • Używaj z.string().optional().transform(v => (v?.trim() ? v.trim() : "")) gdy chcesz przechowywać "".
+   • Lub z.string().optional().transform(v => (v?.trim() ? v.trim() : null)) gdy chcesz przechowywać null.
+• Pola wymagane:
+   • Używaj z.string().min(1, "Pole wymagane"), ale wcześniej zastosuj transform/trim.
+• Daty opcjonalne:
+   • Używaj z.union([z.string(), z.date()]).optional().transform(v => {
+  if (!v) return null;
+
+  // string → spróbuj parseISO/new Date; jeśli niepoprawne, zwróć null
+
+})
+
+• Nigdy nie rzucaj błędu tylko dlatego, że pole jest puste, jeśli w schemacie jest oznaczone jako optional.
+
+15.3 UI (formularze i widoki)
+• Formularze:
+   • Dla pól opcjonalnych nie pokazuj błędu walidacji przy pustej wartości.
+   • Puste wartości wyświetlaj jako placeholder lub pusty input.
+• Tabela/listy:
+   • Puste wartości renderuj jako "—", "Brak", lub pustą komórkę, zgodnie z design systemem.
+   • Nie używaj czerwonych toasts/alertów tylko z powodu braku wartości.
+• A11y:
+   • Dla elementów opisowych (np. aria-label) nie wstawiaj "undefined" lub "null". Używaj sensownych fallbacków, np. "Brak danych".
+
+15.4 Excel Export (xlsx) – puste pola
+• Tekst:
+   • Jeśli po normalizacji wartość jest pusta → zapisz "" (pusta komórka) lub "—" (jeśli wymagany jest wizualny placeholder).
+• Daty:
+   • Jeśli parseMaybeDate zwróci null → zapisz pusty string "" (nie formatuj).
+   • Nie rzucaj błędu; eksport ma być stabilny przy mieszanych/niekompletnych danych.
+• Liczby:
+   • Jeśli pole jest opcjonalne i brak wartości → zapisz "" (nie 0, chyba że domena wymaga 0 jako domyślne).
+• Kolumny wymagane:
+   • Jeśli dana kolumna jest wymagana domenowo, a wartość jest pusta → nie przerywaj eksportu. Zapisz "" i dołącz do raportu ostrzeżenia (np. lista w logach/console lub metadane raportu), ale nie traktuj tego jako błąd krytyczny.
+
+15.5 Backend/API
+• W endpointach i Server Actions:
+   • Normalizuj puste wejścia: puste stringi → "", null/undefined → null (zgodnie z modelem).
+   • Waliduj schematem zod: opcjonalne pola nie generują błędów.
+   • Nie zwracaj 4xx tylko dlatego, że pole opcjonalne jest puste.
+• Logowanie:
+   • Loguj tylko nieoczekiwane błędy (np. typ niezgodny z kontraktem, błąd parsowania w polu wymaganym). Puste pola nie są błędem.
+
+15.6 Reguły dla AI (Empty Handling)
+• Jeśli widzisz błąd generowany przez puste pole, a pole nie jest wymagane – usuń błąd i zastosuj normalizację + cichy fallback ("" lub null).
+• Przy formacie dat: jeśli wartość pusta lub nieparsowalna → zwróć "" bez błędu toast. W UI możesz pokazać subtelny badge „Brak”.
+• W eksporcie Excela nigdy nie przerywaj procesu z powodu pustych pól. Zastosuj fallbacky i kontynuuj.
+• Przed odpowiedzią zweryfikuj, że schematy zod pozwalają na pustość dla pól oznaczonych jako optional.
+
+15.7 Checklist (Empty/Nullable)
+• [ ] Schematy zod rozróżniają required vs optional i nie zwracają błędów dla pustych optional.
+• [ ] UI nie pokazuje błędów toasts dla pustych optional – używa placeholderów.
+• [ ] Excel Export zapisuje "" dla pustych optional (teksty/liczby/daty).
+• [ ] parseMaybeDate zwraca null dla pustych/nieparsowalnych wartości; formatDate zwraca "" dla null.
+• [ ] Brak przerywania flow (import/eksport/submit) z powodu pustych optional.
 
 Uwagi końcowe
 • Jeśli zadanie wymaga zmiany struktur danych lub API, opisz migrację i wpływ na istniejące ekrany/komponenty.
