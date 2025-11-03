@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, PlusCircle, SlidersHorizontal, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, X, Users, UserX, LayoutGrid, List, Trash2, FileUp, UploadCloud } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, SlidersHorizontal, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, X, Users, UserX, LayoutGrid, List, Trash2, FileUp, UploadCloud, Copy } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
@@ -22,6 +22,7 @@ import { useMainLayout } from '@/components/main-layout';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -57,6 +58,18 @@ const EntityActions = ({
   onPermanentDelete: (id: string, type: 'employee' | 'non-employee') => void;
   isDismissed: boolean;
 }) => {
+    const { copyToClipboard } = useCopyToClipboard();
+
+    const handleCopy = () => {
+        const dataToCopy = [
+            entity.fullName,
+            entity.address,
+            `pok. ${entity.roomNumber}`,
+            `zameld. ${formatDate(entity.checkInDate)}`
+        ].join(', ');
+        copyToClipboard(dataToCopy, 'Skopiowano dane mieszkańca.');
+    }
+
   return (
     <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -67,6 +80,10 @@ const EntityActions = ({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => onEdit(entity)}>Edytuj</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleCopy}>
+                <Copy className="mr-2 h-4 w-4" />
+                Kopiuj dane
+            </DropdownMenuItem>
             {isEmployee(entity) && (
                 isDismissed 
                 ? <DropdownMenuItem onClick={() => onRestore?.(entity.id)}>Przywróć</DropdownMenuItem>

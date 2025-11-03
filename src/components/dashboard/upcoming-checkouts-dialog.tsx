@@ -8,6 +8,24 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
 import { useMainLayout } from '@/components/main-layout';
 import { differenceInDays, parseISO } from 'date-fns';
+import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
+import { Button } from '../ui/button';
+import { Copy } from 'lucide-react';
+import {format} from 'date-fns'
+
+
+const formatDate = (dateString?: string | null) => {
+    if (!dateString) return 'N/A';
+    try {
+        // Use regex to check for YYYY-MM-DD format and add time to avoid timezone issues
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+            return format(new Date(dateString + 'T00:00:00'), 'dd-MM-yyyy');
+        }
+        return format(new Date(dateString), 'dd-MM-yyyy');
+    } catch {
+        return 'Invalid Date';
+    }
+}
 
 export function UpcomingCheckoutsDialog({
     isOpen,
@@ -19,6 +37,7 @@ export function UpcomingCheckoutsDialog({
     employees: Employee[];
 }) {
     const { handleEditEmployeeClick } = useMainLayout();
+    const { copyToClipboard } = useCopyToClipboard();
 
     const upcomingCheckoutsEmployees = useMemo(() => {
         return employees
@@ -33,6 +52,11 @@ export function UpcomingCheckoutsDialog({
             })
             .sort((a, b) => a.checkOutDateObj.getTime() - b.checkOutDateObj.getTime());
     }, [employees]);
+    
+    const handleCopy = (employee: Employee) => {
+        const textToCopy = `${employee.fullName}, wykwaterowanie: ${formatDate(employee.checkOutDate)}`;
+        copyToClipboard(textToCopy, `Skopiowano dane: ${employee.fullName}`);
+    }
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -47,19 +71,33 @@ export function UpcomingCheckoutsDialog({
                             upcomingCheckoutsEmployees.map(employee => (
                             <Card 
                                 key={employee.id} 
-                                className="p-4 cursor-pointer hover:bg-muted/50 shadow-sm"
-                                onClick={() => {
-                                    handleEditEmployeeClick(employee);
-                                    onOpenChange(false);
-                                }}
+                                className="p-4 group shadow-sm"
                             >
                                 <div className="flex justify-between items-start">
-                                    <span className="font-semibold">{employee.fullName}</span>
-                                    <span className="text-sm text-primary font-bold whitespace-nowrap">{employee.checkOutDate}</span>
-                                </div>
-                                <div className="text-sm text-muted-foreground mt-1">
-                                    <p>{employee.zaklad}</p>
-                                    <p>{employee.address || ''} {employee.roomNumber ? `, pokój ${employee.roomNumber}` : ''}</p>
+                                    <div 
+                                        className="flex-1 cursor-pointer"
+                                        onClick={() => {
+                                            handleEditEmployeeClick(employee);
+                                            onOpenChange(false);
+                                        }}
+                                    >
+                                        <span className="font-semibold group-hover:text-primary">{employee.fullName}</span>
+                                        <div className="text-sm text-muted-foreground mt-1">
+                                            <p>{employee.zaklad}</p>
+                                            <p>{employee.address || ''} {employee.roomNumber ? `, pokój ${employee.roomNumber}` : ''}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm text-primary font-bold whitespace-nowrap">{formatDate(employee.checkOutDate)}</span>
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="h-8 w-8"
+                                            onClick={() => handleCopy(employee)}
+                                        >
+                                            <Copy className="h-4 w-4" />
+                                        </Button>
+                                    </div>
                                 </div>
                             </Card>
                             ))

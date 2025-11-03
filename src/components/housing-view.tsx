@@ -6,7 +6,7 @@ import React, { useState, useMemo } from 'react';
 import type { Employee, NonEmployee, SessionData, Address, Room } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, Bed, Building, User, BarChart2, SlidersHorizontal } from "lucide-react";
+import { Users, Bed, Building, User, BarChart2, SlidersHorizontal, Copy } from "lucide-react";
 import { useMainLayout } from '@/components/main-layout';
 import { cn } from '@/lib/utils';
 import { Skeleton } from './ui/skeleton';
@@ -20,6 +20,7 @@ import { ChartConfig, ChartContainer, ChartTooltipContent } from "@/components/u
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from '@/components/ui/dialog';
+import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 
 type Occupant = Employee | NonEmployee;
 type RoomWithOccupants = Room & { occupants: Occupant[]; occupantCount: number; available: number; };
@@ -116,6 +117,7 @@ const AddressDetailView = ({
   onRoomClick: (roomId: string) => void;
   selectedRoomIds: string[];
 }) => {
+    const { copyToClipboard } = useCopyToClipboard();
     
     const selectedAddressesData = useMemo(() => {
         return addresses.filter(a => selectedAddressIds.includes(a.id));
@@ -270,9 +272,11 @@ const AddressDetailView = ({
                                         </div>
                                         <div className="pl-4 mt-2 space-y-1">
                                             {room.occupants.map(o => (
-                                                <div key={o.id} onClick={(e) => { e.stopPropagation(); onOccupantClick(o); }} className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-primary">
-                                                    <User className="h-3 w-3" />
-                                                    {o.fullName}
+                                                <div key={o.id} className="flex items-center justify-between text-xs text-muted-foreground group">
+                                                    <span onClick={(e) => { e.stopPropagation(); onOccupantClick(o); }} className="cursor-pointer hover:text-primary flex-1">{o.fullName}</span>
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); copyToClipboard(o.fullName, `Skopiowano: ${o.fullName}`)}}>
+                                                        <Copy className="h-3 w-3" />
+                                                    </Button>
                                                 </div>
                                             ))}
                                         </div>
@@ -390,6 +394,7 @@ const useHousingData = () => {
 
 
 const MobileAddressCard = ({ address, onOccupantClick }: { address: HousingData; onOccupantClick: (occupant: Occupant) => void }) => {
+    const { copyToClipboard } = useCopyToClipboard();
 
     return (
         <Card asChild className={cn("overflow-hidden", address.available > 0 && "border-green-500/30")}>
@@ -428,9 +433,11 @@ const MobileAddressCard = ({ address, onOccupantClick }: { address: HousingData;
                                         </div>
                                          <div className="pl-4 mt-2 space-y-1">
                                             {room.occupants.map(o => (
-                                                <div key={o.id} onClick={() => onOccupantClick(o)} className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-primary">
-                                                    <User className="h-3 w-3" />
-                                                    {o.fullName}
+                                                <div key={o.id} className="flex items-center justify-between text-xs text-muted-foreground group">
+                                                    <span onClick={() => onOccupantClick(o)} className="cursor-pointer hover:text-primary">{o.fullName}</span>
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); copyToClipboard(o.fullName, `Skopiowano: ${o.fullName}`)}}>
+                                                        <Copy className="h-3 w-3" />
+                                                    </Button>
                                                 </div>
                                             ))}
                                         </div>

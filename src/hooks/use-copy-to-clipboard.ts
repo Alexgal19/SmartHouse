@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -13,7 +14,7 @@ export const useCopyToClipboard = () => {
             toast({
                 variant: 'destructive',
                 title: 'Błąd',
-                description: 'Twoja przeglądarka не obsługuje schowka.',
+                description: 'Twoja przeglądarka nie obsługuje schowka.',
             });
             return false;
         }
