@@ -224,9 +224,19 @@ const createNotification = async (
     actorUid: string,
     action: string,
     employee: { id: string, fullName: string },
-    changes: NotificationChange[] = []
+    changes: NotificationChange[] = [],
+    isUpdate: boolean = false
 ) => {
     try {
+        if (isUpdate) {
+            const importantChanges = changes.filter(c => 
+                ['address', 'checkOutDate', 'departureReportDate'].includes(c.field)
+            );
+            if (importantChanges.length === 0) {
+                return; 
+            }
+        }
+
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
         const coordSheet = await getSheet(SHEET_NAME_COORDINATORS, ['uid', 'name']);
         const coordRows = await coordSheet.getRows({ limit: 100 });
@@ -369,7 +379,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         await row.save();
         
         if (changes.length > 0) {
-            await createNotification(actorUid, 'zaktualizował', originalEmployee, changes);
+            await createNotification(actorUid, 'zaktualizował', originalEmployee, changes, true);
         }
 
     } catch (e: unknown) {
