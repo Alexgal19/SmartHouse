@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import React, { useState, useMemo, useTransition, useRef } from 'react';
@@ -556,7 +557,7 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
         return allNonEmployees.filter(person => {
             const searchMatch = search === '' || person.fullName.toLowerCase().includes(search.toLowerCase());
             const addressMatch = filters.address === 'all' || person.address === filters.address;
-            const coordinatorMatch = filters.coordinator === 'all' || person.coordinatorId === filters.coordinator;
+            const coordinatorMatch = filters.coordinator === 'all' || !person.coordinatorId || person.coordinatorId === filters.coordinator;
             return searchMatch && addressMatch && coordinatorMatch;
         });
     }, [allNonEmployees, search, filters]);
