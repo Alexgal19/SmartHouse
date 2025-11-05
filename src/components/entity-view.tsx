@@ -41,7 +41,7 @@ const formatDate = (dateString?: string | null) => {
 
 type Entity = Employee | NonEmployee;
 
-const isEmployee = (entity: Entity): entity is Employee => 'coordinatorId' in entity;
+const isEmployee = (entity: Entity): entity is Employee => 'zaklad' in entity;
 
 const EntityActions = ({
   entity,
@@ -189,7 +189,7 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
                 <TableRow key={entity.id} onClick={() => onEdit(entity)} className="cursor-pointer">
                   <TableCell className="font-medium">{entity.fullName}</TableCell>
                    <TableCell>{isEmployee(entity) ? entity.gender : "N/A"}</TableCell>
-                  <TableCell>{isEmployee(entity) ? getCoordinatorName(entity.coordinatorId) : "N/A"}</TableCell>
+                  <TableCell>{getCoordinatorName(entity.coordinatorId)}</TableCell>
                   <TableCell>{isEmployee(entity) ? entity.nationality : "N/A"}</TableCell>
                   <TableCell>{entity.address}</TableCell>
                   <TableCell>{isEmployee(entity) ? entity.oldAddress : "N/A"}</TableCell>
@@ -200,8 +200,8 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
                   <TableCell>{formatDate(entity.checkOutDate)}</TableCell>
                   <TableCell>{isEmployee(entity) ? formatDate(entity.contractStartDate) : "N/A"}</TableCell>
                   <TableCell>{isEmployee(entity) ? formatDate(entity.contractEndDate) : "N/A"}</TableCell>
-                  <TableCell>{isEmployee(entity) ? formatDate(entity.departureReportDate) : "N/A"}</TableCell>
-                  <TableCell className="max-w-xs truncate">{isEmployee(entity) ? entity.comments : entity.comments}</TableCell>
+                  <TableCell>{formatDate(entity.departureReportDate)}</TableCell>
+                  <TableCell className="max-w-xs truncate">{entity.comments}</TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <EntityActions {...{ entity, onEdit, onDismiss, onRestore, onPermanentDelete, isDismissed }} />
                   </TableCell>
@@ -230,7 +230,7 @@ const EntityCardList = ({ entities, onEdit, onDismiss, onRestore, isDismissed, s
                            <div>
                              <CardTitle className="text-base">{entity.fullName}</CardTitle>
                              <CardDescription>
-                                {isEmployee(entity) ? getCoordinatorName(entity.coordinatorId) : "Mieszkaniec (NZ)"}
+                                {getCoordinatorName(entity.coordinatorId)}
                              </CardDescription>
                            </div>
                            <div onClick={(e) => e.stopPropagation()}>
@@ -556,7 +556,8 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
         return allNonEmployees.filter(person => {
             const searchMatch = search === '' || person.fullName.toLowerCase().includes(search.toLowerCase());
             const addressMatch = filters.address === 'all' || person.address === filters.address;
-            return searchMatch && addressMatch;
+            const coordinatorMatch = filters.coordinator === 'all' || person.coordinatorId === filters.coordinator;
+            return searchMatch && addressMatch && coordinatorMatch;
         });
     }, [allNonEmployees, search, filters]);
 

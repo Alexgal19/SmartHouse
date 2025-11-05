@@ -70,7 +70,7 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
 const serializeNonEmployee = (nonEmployee: Partial<NonEmployee>): Record<string, string | number | boolean> => {
     const serialized: Record<string, string> = {};
     for (const [key, value] of Object.entries(nonEmployee)) {
-        if (['checkInDate', 'checkOutDate'].includes(key)) {
+        if (['checkInDate', 'checkOutDate', 'departureReportDate'].includes(key)) {
             serialized[key] = serializeDate(value as string);
         } else if (value !== null && value !== undefined) {
             serialized[key] = String(value);
@@ -108,7 +108,7 @@ const serializeEquipment = (item: Partial<EquipmentItem>): Record<string, string
 };
 
 const NON_EMPLOYEE_HEADERS = [
-    'id', 'fullName', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'comments'
+    'id', 'fullName', 'coordinatorId', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'departureReportDate', 'comments'
 ];
 
 const EQUIPMENT_HEADERS = [
@@ -228,6 +228,13 @@ const createNotification = async (
     isUpdate: boolean = false
 ) => {
     try {
+        const { settings } = await getAllData();
+        const actor = settings.coordinators.find(c => c.uid === actorUid);
+        if (!actor) {
+            console.error(`Could not find actor with uid ${actorUid} to create notification.`);
+            return;
+        }
+
         if (isUpdate) {
             const importantChanges = changes.filter(c => 
                 ['address', 'checkOutDate', 'departureReportDate'].includes(c.field)
@@ -236,30 +243,15 @@ const createNotification = async (
                 return; 
             }
         }
-
-        const { settings } = await getAllData();
-        const actor = settings.coordinators.find(c => c.uid === actorUid);
-        if (!actor) {
-            console.error(`Could not find actor with uid ${actorUid} to create notification.`);
-            return;
-        }
-
-        let responsibleCoordinator;
-        if ('coordinatorId' in entity) { // It's an Employee
-            responsibleCoordinator = settings.coordinators.find(c => c.uid === entity.coordinatorId);
-        } else { // It's a NonEmployee
-            const address = settings.addresses.find(a => a.name === entity.address);
-            if (address && address.coordinatorIds.length > 0) {
-                responsibleCoordinator = settings.coordinators.find(c => c.uid === address.coordinatorIds[0]);
-            }
-        }
+        
+        const responsibleCoordinator = settings.coordinators.find(c => c.uid === entity.coordinatorId);
 
         if (!responsibleCoordinator) {
              console.error(`Could not find responsible coordinator for entity ${entity.fullName}.`);
-             responsibleCoordinator = actor; // Fallback to actor if no one is responsible
+             return;
         }
 
-        const message = `${actor.name} ${action} ${'coordinatorId' in entity ? 'pracownika' : 'mieszkańca'} ${entity.fullName}.`;
+        const message = `${actor.name} ${action} ${'zaklad' in entity ? 'pracownika' : 'mieszkańca'} ${entity.fullName}.`;
         
         const newNotification: Notification = {
             id: `notif-${Date.now()}`,
@@ -276,7 +268,7 @@ const createNotification = async (
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'entityId', 'entityName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
         await sheet.addRow(serializeNotification(newNotification), { raw: false, insert: true });
         
-        await writeToAuditLog(actor.uid, actor.name, action, 'coordinatorId' in entity ? 'employee' : 'non-employee', entity.id, changes);
+        await writeToAuditLog(actor.uid, actor.name, action, 'zaklad' in entity ? 'employee' : 'non-employee', entity.id, changes);
 
     } catch (e: unknown) {
         console.error("Could not create notification:", e instanceof Error ? e.message : "Unknown error");
@@ -437,10 +429,12 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>, a
         const newNonEmployee: NonEmployee = {
             id: `nonemp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
             fullName: nonEmployeeData.fullName,
+            coordinatorId: nonEmployeeData.coordinatorId,
             address: nonEmployeeData.address,
             roomNumber: nonEmployeeData.roomNumber,
             checkInDate: nonEmployeeData.checkInDate || '',
             checkOutDate: nonEmployeeData.checkOutDate,
+            departureReportDate: nonEmployeeData.departureReportDate,
             comments: nonEmployeeData.comments || '',
         };
 
@@ -453,7 +447,7 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>, a
     }
 }
 
-export async function updateNonEmployee(id: string, updates: Partial<NonEmployee>): Promise<void> {
+export async function updateNonEmployee(id: string, updates: Partial<NonEmployee>, actorUid: string): Promise<void> {
      try {
          const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
          const rows = await sheet.getRows({ limit: 1000 });
@@ -464,11 +458,43 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
          }
 
          const row = rows[rowIndex];
+         const originalNonEmployee = await getAllData().then(d => d.nonEmployees.find(ne => ne.id === id));
+         if (!originalNonEmployee) throw new Error("Couldn't find original non-employee");
+
+         const updatedData = { ...originalNonEmployee, ...updates };
          
+         const changes: NotificationChange[] = [];
          for (const key in updates) {
-             row.set(key, serializeNonEmployee({ [key]: updates[key as keyof NonEmployee] })[key]);
+            const typedKey = key as keyof NonEmployee;
+            const oldValue = originalNonEmployee[typedKey];
+            const newValue = updates[typedKey];
+            
+            const areDates = ['checkInDate', 'checkOutDate', 'departureReportDate'].includes(key);
+
+            let oldValStr: string | null = oldValue ? String(oldValue) : null;
+            if (areDates && oldValue && isValid(new Date(oldValue as string))) {
+                oldValStr = format(new Date(oldValue as string), 'dd-MM-yyyy');
+            }
+            
+            let newValStr: string | null = newValue ? String(newValue) : null;
+             if (areDates && newValue && isValid(new Date(newValue as string))) {
+                newValStr = format(new Date(newValue as string), 'dd-MM-yyyy');
+            }
+            
+            if (oldValStr !== newValStr) {
+                changes.push({ field: typedKey, oldValue: oldValStr || 'Brak', newValue: newValStr || 'Brak' });
+            }
+        }
+         
+         const serialized = serializeNonEmployee(updatedData);
+         for (const header of NON_EMPLOYEE_HEADERS) {
+            row.set(header, serialized[header]);
          }
          await row.save();
+         
+         if (changes.length > 0) {
+            await createNotification(actorUid, 'zaktualizował', updatedData, changes, true);
+        }
 
      } catch (e: unknown) {
          console.error("Error updating non-employee:", e);
@@ -486,6 +512,7 @@ export async function deleteNonEmployee(id: string, actorUid: string): Promise<v
                 id: row.get('id'),
                 fullName: row.get('fullName'),
                 address: row.get('address'),
+                coordinatorId: row.get('coordinatorId')
             } as NonEmployee;
             await row.delete();
             await createNotification(actorUid, 'usunął', nonEmployeeToDelete);

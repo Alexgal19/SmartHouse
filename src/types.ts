@@ -1,3 +1,4 @@
+
 // This file contains all the TypeScript type definitions for the application's data structures.
 
 export type View = 'dashboard' | 'employees' | 'settings' | 'housing';
@@ -87,15 +88,17 @@ export type Employee = {
 export type NonEmployee = {
     id: string;
     fullName: string;
+    coordinatorId: string;
     address: string;
     roomNumber: string;
     checkInDate: string; // YYYY-MM-DD
     checkOutDate?: string | null; // YYYY-MM-DD
+    departureReportDate?: string | null; // YYYY-MM-DD
     comments: string;
 };
 
 export type NotificationChange = {
-    field: keyof Employee;
+    field: keyof Employee | keyof NonEmployee;
     oldValue: string;
     newValue: string;
 }

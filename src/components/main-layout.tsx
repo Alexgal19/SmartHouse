@@ -119,7 +119,7 @@ export default function MainLayout({
     
     const navItems = useMemo(() => [
         { view: 'dashboard', icon: Home, label: 'Pulpit' },
-        { view: 'employees', icon: Users, label: 'Pracownicy' },
+        { view: 'employees', icon: Users, label: 'Mieszkańcy' },
         { view: 'housing', icon: Building, label: 'Zakwaterowanie' },
         { view: 'settings', icon: SettingsIcon, label: 'Ustawienia' },
     ], [])  as { view: View; icon: React.ElementType; label: string }[];
@@ -164,12 +164,7 @@ export default function MainLayout({
         if (currentUser.isAdmin && selectedCoordinatorId === 'all') {
             return rawNonEmployees;
         }
-        const coordinatorAddresses = new Set(
-            settings.addresses
-                .filter(a => a.coordinatorIds.includes(selectedCoordinatorId))
-                .map(a => a.name)
-        );
-        return rawNonEmployees.filter(ne => coordinatorAddresses.has(ne.address));
+        return rawNonEmployees.filter(ne => ne.coordinatorId === selectedCoordinatorId);
     }, [rawNonEmployees, settings, currentUser, selectedCoordinatorId]);
 
     
@@ -340,7 +335,7 @@ export default function MainLayout({
         if (!currentUser) return;
         if (editingNonEmployee) {
             try {
-                await updateNonEmployee(editingNonEmployee.id, data);
+                await updateNonEmployee(editingNonEmployee.id, data, currentUser.uid);
                 toast({ title: "Sukces", description: "Dane mieszkańca zostały zaktualizowane." });
             } catch(e) {
                 toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać mieszkańca." });

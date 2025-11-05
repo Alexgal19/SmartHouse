@@ -36,20 +36,24 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon, X } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parse } from 'date-fns';
+import { Combobox } from './ui/combobox';
 
 const formSchema = z.object({
   fullName: z.string().min(3, "Imię i nazwisko musi mieć co najmniej 3 znaki."),
+  coordinatorId: z.string().min(1, "Koordynator jest wymagany."),
   locality: z.string().min(1, "Miejscowość jest wymagana."),
   address: z.string().min(1, "Adres jest wymagany."),
   roomNumber: z.string().min(1, "Numer pokoju jest wymagany."),
   checkInDate: z.date({ required_error: "Data zameldowania jest wymagana." }),
   checkOutDate: z.date().nullable().optional(),
+  departureReportDate: z.date().nullable().optional(),
   comments: z.string().optional(),
 });
 
-type NonEmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate' | 'locality'> & {
+type NonEmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate' | 'locality' | 'departureReportDate'> & {
   checkInDate: string;
   checkOutDate?: string | null;
+  departureReportDate?: string | null;
 };
 
 const parseDate = (dateString: string | null | undefined): Date | undefined => {
@@ -64,7 +68,7 @@ const DateInput = ({
   disabled,
 }: {
   value?: Date | null;
-  onChange: (date?: Date) => void;
+  onChange: (date?: Date | null) => void;
   disabled?: (date: Date) => boolean;
 }) => {
   const [inputValue, setInputValue] = useState('');
@@ -86,20 +90,20 @@ const DateInput = ({
     }
   };
 
-  const handleDateSelect = (date?: Date) => {
+  const handleDateSelect = (date?: Date | null) => {
     if (date) {
       onChange(date);
       setInputValue(format(date, 'dd-MM-yyyy'));
       setIsPopoverOpen(false);
     } else {
-      onChange(undefined);
+      onChange(null);
       setInputValue('');
     }
   };
 
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
-    handleDateSelect(undefined);
+    handleDateSelect(null);
   }
 
   return (
@@ -126,7 +130,7 @@ const DateInput = ({
         <Calendar
           mode="single"
           selected={value || undefined}
-          onSelect={handleDateSelect}
+          onSelect={d => handleDateSelect(d)}
           disabled={disabled}
           initialFocus
         />
@@ -154,30 +158,42 @@ export function AddNonEmployeeForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
       fullName: '',
+      coordinatorId: '',
       locality: '',
       address: '',
       roomNumber: '',
       checkInDate: undefined,
       checkOutDate: null,
+      departureReportDate: null,
       comments: '',
     },
   });
 
+  const selectedCoordinatorId = form.watch('coordinatorId');
   const selectedLocality = form.watch('locality');
   const selectedAddress = form.watch('address');
+
+  const coordinatorOptions = useMemo(() => 
+    settings.coordinators
+      .map(c => ({ value: c.uid, label: c.name }))
+      .sort((a,b) => a.label.localeCompare(b.label)),
+  [settings.coordinators]);
 
   const availableAddresses = useMemo(() => {
     if (!settings) return [];
     
     let userAddresses = settings.addresses;
-    if (!currentUser.isAdmin) {
+    if (selectedCoordinatorId) {
+        userAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
+    } else if (!currentUser.isAdmin) {
         userAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(currentUser.uid));
     }
+    
     if (!selectedLocality) return userAddresses;
 
     const filtered = userAddresses.filter(a => a.locality === selectedLocality);
     return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
-  }, [settings, selectedLocality, currentUser]);
+  }, [settings, selectedLocality, currentUser, selectedCoordinatorId]);
 
   const availableRooms = useMemo(() => {
     const rooms = settings.addresses.find(a => a.name === selectedAddress)?.rooms || [];
@@ -187,12 +203,14 @@ export function AddNonEmployeeForm({
   const availableLocalities = useMemo(() => {
     if (!settings) return [];
     let userAddresses = settings.addresses;
-     if (!currentUser.isAdmin) {
+     if (selectedCoordinatorId) {
+        userAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
+    } else if (!currentUser.isAdmin) {
         userAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(currentUser.uid));
     }
     const localities = [...new Set(userAddresses.map(a => a.locality))];
     return localities.sort((a,b) => a.localeCompare(b));
-  }, [settings, currentUser]);
+  }, [settings, currentUser, selectedCoordinatorId]);
 
   useEffect(() => {
     if (nonEmployee) {
@@ -203,19 +221,22 @@ export function AddNonEmployeeForm({
         locality: neLocality,
         checkInDate: parseDate(nonEmployee.checkInDate),
         checkOutDate: parseDate(nonEmployee.checkOutDate),
+        departureReportDate: parseDate(nonEmployee.departureReportDate),
       });
     } else {
       form.reset({
         fullName: '',
+        coordinatorId: currentUser.uid,
         locality: '',
         address: '',
         roomNumber: '',
         checkInDate: new Date(),
         checkOutDate: null,
+        departureReportDate: null,
         comments: '',
       });
     }
-  }, [nonEmployee, isOpen, form, settings.addresses]);
+  }, [nonEmployee, isOpen, form, settings.addresses, currentUser]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     const formatDate = (date: Date | null | undefined): string | null | undefined => {
@@ -229,12 +250,20 @@ export function AddNonEmployeeForm({
       ...restOfValues,
       checkInDate: formatDate(values.checkInDate)!,
       checkOutDate: formatDate(values.checkOutDate),
+      departureReportDate: formatDate(values.departureReportDate),
     };
 
     onSave(formData);
     onOpenChange(false);
   };
   
+  const handleCoordinatorChange = (value: string) => {
+    form.setValue('coordinatorId', value);
+    form.setValue('locality', '');
+    form.setValue('address', '');
+    form.setValue('roomNumber', '');
+  }
+
   const handleLocalityChange = (value: string) => {
     form.setValue('locality', value);
     form.setValue('address', '');
@@ -270,6 +299,24 @@ export function AddNonEmployeeForm({
                       </FormItem>
                     )}
                   />
+                  
+                 <FormField
+                    control={form.control}
+                    name="coordinatorId"
+                    render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                        <FormLabel>Koordynator</FormLabel>
+                        <Combobox
+                            options={coordinatorOptions}
+                            value={field.value}
+                            onChange={handleCoordinatorChange}
+                            placeholder="Wybierz koordynatora"
+                            searchPlaceholder="Szukaj koordynatora..."
+                        />
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                      <FormField
@@ -332,7 +379,6 @@ export function AddNonEmployeeForm({
                                 <DateInput 
                                     value={field.value} 
                                     onChange={field.onChange}
-                                    disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
                                 />
                                 <FormMessage />
                             </FormItem>
@@ -344,7 +390,18 @@ export function AddNonEmployeeForm({
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
                                 <FormLabel>Data wymeldowania</FormLabel>
-                                <DateInput value={field.value} onChange={field.onChange} />
+                                <DateInput value={field.value} onChange={d => field.onChange(d)} />
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                     <FormField
+                        control={form.control}
+                        name="departureReportDate"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                                <FormLabel>Data zgłoszenia wyjazdu</FormLabel>
+                                <DateInput value={field.value} onChange={d => field.onChange(d)} />
                                 <FormMessage />
                             </FormItem>
                         )}

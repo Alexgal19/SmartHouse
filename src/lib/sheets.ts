@@ -187,10 +187,12 @@ const deserializeNonEmployee = (row: Record<string, unknown>): NonEmployee | nul
     const newNonEmployee: NonEmployee = {
         id: id as string,
         fullName: fullName as string,
+        coordinatorId: (plainObject.coordinatorId || '') as string,
         address: (plainObject.address || '') as string,
         roomNumber: (plainObject.roomNumber || '') as string,
         checkInDate: checkInDate,
         checkOutDate: safeFormat(plainObject.checkOutDate),
+        departureReportDate: safeFormat(plainObject.departureReportDate),
         comments: (plainObject.comments || '') as string,
     };
     return newNonEmployee;
@@ -218,8 +220,8 @@ const deserializeNotification = (row: Record<string, unknown>): Notification | n
     const newNotification: Notification = {
         id: id as string,
         message: (plainObject.message || '') as string,
-        employeeId: (plainObject.employeeId || '') as string,
-        employeeName: (plainObject.employeeName || '') as string,
+        entityId: (plainObject.entityId || '') as string,
+        entityName: (plainObject.entityName || '') as string,
         coordinatorId: (plainObject.coordinatorId || '') as string,
         coordinatorName: (plainObject.coordinatorName || '') as string,
         createdAt: createdAt,
