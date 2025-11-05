@@ -1,7 +1,7 @@
 
 "use client";
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Bell, LogOut, Trash2 } from 'lucide-react';
-import type { SessionData, View, Notification } from '@/types';
+import type { SessionData, View, Notification, Settings } from '@/types';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatDistanceToNow } from 'date-fns';
@@ -20,6 +20,8 @@ import { pl } from 'date-fns/locale';
 import { MobileSidebarToggle } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import { ModernHouseIcon } from './icons/modern-house-icon';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Label } from './ui/label';
 
 const NotificationItem = ({ n, onClick, onDelete }: {n: Notification, onClick: (n: Notification) => void, onDelete: (notificationId: string) => void}) => (
     <div 
@@ -35,7 +37,7 @@ const NotificationItem = ({ n, onClick, onDelete }: {n: Notification, onClick: (
         <div className="flex-1" onClick={() => n.employeeId && onClick(n)}>
             <p className="text-sm font-medium leading-tight">{n.message}</p>
             <p className="text-xs text-muted-foreground mt-1">
-                 {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true, locale: pl })}
+                 przez {n.coordinatorName} &middot; {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true, locale: pl })}
             </p>
         </div>
         <Button 
@@ -56,6 +58,7 @@ export default function Header({
   user,
   onLogout,
   notifications,
+  settings,
   onNotificationClick,
   onClearNotifications,
   onDeleteNotification,
@@ -63,12 +66,27 @@ export default function Header({
   user: SessionData;
   activeView: View;
   notifications: Notification[];
+  settings: Settings | null;
   onNotificationClick: (notification: Notification) => void;
   onLogout: () => Promise<void>;
   onClearNotifications: () => void;
   onDeleteNotification: (notificationId: string) => void;
 }) {
+    const [selectedCoordinator, setSelectedCoordinator] = useState('all');
     const unreadCount = notifications.filter(n => !n.isRead).length;
+
+    const sortedCoordinators = useMemo(() => {
+        if (!settings) return [];
+        return [...settings.coordinators].sort((a,b) => a.name.localeCompare(b.name));
+    }, [settings]);
+
+    const filteredNotifications = useMemo(() => {
+        if (selectedCoordinator === 'all' || !user.isAdmin) {
+            return notifications;
+        }
+        return notifications.filter(n => n.coordinatorId === selectedCoordinator);
+    }, [notifications, selectedCoordinator, user.isAdmin]);
+
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/95 px-4 backdrop-blur-sm sm:px-6">
@@ -98,10 +116,26 @@ export default function Header({
                         </Button>
                      )}
                 </SheetHeader>
+                {user.isAdmin && settings && (
+                    <div className="py-4 space-y-2">
+                        <Label>Filtruj wg koordynatora</Label>
+                        <Select value={selectedCoordinator} onValueChange={setSelectedCoordinator}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Wybierz koordynatora" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
+                                {sortedCoordinators.map(c => (
+                                    <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                )}
                 <ScrollArea className="h-[calc(100vh-8rem)] pr-6">
                     <div className="space-y-4 py-4">
-                    {notifications.length > 0 ? (
-                        notifications.map(n => <NotificationItem key={n.id} n={n} onClick={onNotificationClick} onDelete={onDeleteNotification} />)
+                    {filteredNotifications.length > 0 ? (
+                        filteredNotifications.map(n => <NotificationItem key={n.id} n={n} onClick={onNotificationClick} onDelete={onDeleteNotification} />)
                     ) : (
                         <div className="text-center text-muted-foreground py-12">Brak nowych powiadomień.</div>
                     )}

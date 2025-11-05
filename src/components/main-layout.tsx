@@ -588,7 +588,8 @@ export default function MainLayout({
                     {currentUser && <Header 
                         user={currentUser} 
                         activeView={activeView} 
-                        notifications={filteredNotifications} 
+                        notifications={filteredNotifications}
+                        settings={settings}
                         onNotificationClick={handleNotificationClick} 
                         onLogout={handleLogout} 
                         onClearNotifications={handleClearNotifications}
