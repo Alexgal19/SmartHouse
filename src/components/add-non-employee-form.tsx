@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { NonEmployee, Settings } from '@/types';
+import type { NonEmployee, Settings, SessionData } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, X } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
@@ -141,12 +141,14 @@ export function AddNonEmployeeForm({
   onSave,
   settings,
   nonEmployee,
+  currentUser,
 }: {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onSave: (data: NonEmployeeFormData) => void;
   settings: Settings;
   nonEmployee: NonEmployee | null;
+  currentUser: SessionData;
 }) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -165,17 +167,32 @@ export function AddNonEmployeeForm({
   const selectedAddress = form.watch('address');
 
   const availableAddresses = useMemo(() => {
-    if (!selectedLocality) return [];
-    const filtered = settings.addresses.filter(a => a.locality === selectedLocality);
+    if (!settings) return [];
+    
+    let userAddresses = settings.addresses;
+    if (!currentUser.isAdmin) {
+        userAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(currentUser.uid));
+    }
+    if (!selectedLocality) return userAddresses;
+
+    const filtered = userAddresses.filter(a => a.locality === selectedLocality);
     return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
-  }, [settings.addresses, selectedLocality]);
+  }, [settings, selectedLocality, currentUser]);
 
   const availableRooms = useMemo(() => {
     const rooms = settings.addresses.find(a => a.name === selectedAddress)?.rooms || [];
     return [...rooms].sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
   }, [settings.addresses, selectedAddress]);
 
-  const sortedLocalities = useMemo(() => [...settings.localities].sort((a,b) => a.localeCompare(b)), [settings.localities]);
+  const availableLocalities = useMemo(() => {
+    if (!settings) return [];
+    let userAddresses = settings.addresses;
+     if (!currentUser.isAdmin) {
+        userAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(currentUser.uid));
+    }
+    const localities = [...new Set(userAddresses.map(a => a.locality))];
+    return localities.sort((a,b) => a.localeCompare(b));
+  }, [settings, currentUser]);
 
   useEffect(() => {
     if (nonEmployee) {
@@ -264,7 +281,7 @@ export function AddNonEmployeeForm({
                             <Select onValueChange={handleLocalityChange} value={field.value}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="Wybierz miejscowość" /></SelectTrigger></FormControl>
                                 <SelectContent>
-                                    {sortedLocalities.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                                    {availableLocalities.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                             <FormMessage />

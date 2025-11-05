@@ -103,8 +103,8 @@ export type NotificationChange = {
 export type Notification = {
     id: string;
     message: string;
-    employeeId: string;
-    employeeName: string;
+    entityId: string;
+    entityName: string;
     coordinatorId: string;
     coordinatorName: string;
     createdAt: string; // ISO date string

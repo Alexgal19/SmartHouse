@@ -85,8 +85,8 @@ const serializeNotification = (notification: Omit<Notification, 'changes'> & { c
     return {
         id: notification.id,
         message: notification.message,
-        employeeId: notification.employeeId,
-        employeeName: notification.employeeName,
+        entityId: notification.entityId,
+        entityName: notification.entityName,
         coordinatorId: notification.coordinatorId,
         coordinatorName: notification.coordinatorName,
         createdAt: notification.createdAt,
@@ -223,7 +223,7 @@ const writeToAuditLog = async (actorId: string, actorName: string, action: strin
 const createNotification = async (
     actorUid: string,
     action: string,
-    employee: { id: string, fullName: string, coordinatorId: string },
+    entity: (Employee | NonEmployee),
     changes: NotificationChange[] = [],
     isUpdate: boolean = false
 ) => {
@@ -237,39 +237,46 @@ const createNotification = async (
             }
         }
 
-        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
-        const coordSheet = await getSheet(SHEET_NAME_COORDINATORS, ['uid', 'name']);
-        const coordRows = await coordSheet.getRows({ limit: 100 });
-        
-        const actor = coordRows.find((r) => r.get('uid') === actorUid)?.toObject();
+        const { settings } = await getAllData();
+        const actor = settings.coordinators.find(c => c.uid === actorUid);
         if (!actor) {
             console.error(`Could not find actor with uid ${actorUid} to create notification.`);
             return;
         }
 
-        const employeeCoordinator = coordRows.find((r) => r.get('uid') === employee.coordinatorId)?.toObject();
-        if (!employeeCoordinator) {
-            console.error(`Could not find coordinator with uid ${employee.coordinatorId} for employee ${employee.fullName}.`);
-            return;
+        let responsibleCoordinator;
+        if ('coordinatorId' in entity) { // It's an Employee
+            responsibleCoordinator = settings.coordinators.find(c => c.uid === entity.coordinatorId);
+        } else { // It's a NonEmployee
+            const address = settings.addresses.find(a => a.name === entity.address);
+            if (address && address.coordinatorIds.length > 0) {
+                responsibleCoordinator = settings.coordinators.find(c => c.uid === address.coordinatorIds[0]);
+            }
         }
 
-        const message = `${String(actor.name)} ${action} pracownika ${employee.fullName}.`;
+        if (!responsibleCoordinator) {
+             console.error(`Could not find responsible coordinator for entity ${entity.fullName}.`);
+             responsibleCoordinator = actor; // Fallback to actor if no one is responsible
+        }
+
+        const message = `${actor.name} ${action} ${'coordinatorId' in entity ? 'pracownika' : 'mieszkańca'} ${entity.fullName}.`;
         
         const newNotification: Notification = {
             id: `notif-${Date.now()}`,
             message,
-            employeeId: employee.id,
-            employeeName: employee.fullName,
-            coordinatorId: String(employeeCoordinator.uid || ''),
-            coordinatorName: String(employeeCoordinator.name || ''),
+            entityId: entity.id,
+            entityName: entity.fullName,
+            coordinatorId: responsibleCoordinator.uid,
+            coordinatorName: responsibleCoordinator.name,
             createdAt: new Date().toISOString(),
             isRead: false,
             changes
         };
-
+        
+        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'entityId', 'entityName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
         await sheet.addRow(serializeNotification(newNotification), { raw: false, insert: true });
         
-        await writeToAuditLog(String(actor.uid), String(actor.name), action, 'employee', employee.id, changes);
+        await writeToAuditLog(actor.uid, actor.name, action, 'coordinatorId' in entity ? 'employee' : 'non-employee', entity.id, changes);
 
     } catch (e: unknown) {
         console.error("Could not create notification:", e instanceof Error ? e.message : "Unknown error");
@@ -424,7 +431,7 @@ export async function deleteEmployee(employeeId: string, actorUid: string): Prom
     }
 }
 
-export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>): Promise<void> {
+export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>, actorUid: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
         const newNonEmployee: NonEmployee = {
@@ -439,6 +446,7 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>): 
 
         const serialized = serializeNonEmployee(newNonEmployee);
         await sheet.addRow(serialized, { raw: false, insert: true });
+        await createNotification(actorUid, 'dodał', newNonEmployee);
     } catch (e: unknown) {
         console.error("Error adding non-employee:", e);
         throw new Error(e instanceof Error ? e.message : "Failed to add non-employee.");
@@ -468,13 +476,19 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
      }
 }
 
-export async function deleteNonEmployee(id: string): Promise<void> {
+export async function deleteNonEmployee(id: string, actorUid: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
         const rows = await sheet.getRows({ limit: 1000 });
         const row = rows.find((row) => row.get('id') === id);
         if (row) {
+            const nonEmployeeToDelete = {
+                id: row.get('id'),
+                fullName: row.get('fullName'),
+                address: row.get('address'),
+            } as NonEmployee;
             await row.delete();
+            await createNotification(actorUid, 'usunął', nonEmployeeToDelete);
         } else {
             throw new Error('Non-employee not found');
         }
@@ -693,7 +707,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
 
 export async function markNotificationAsRead(notificationId: string): Promise<void> {
     try {
-        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
+        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'entityId', 'entityName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
         const rows = await sheet.getRows({ limit: 200 });
         const row = rows.find((r) => r.get('id') === notificationId);
         if (row) {
@@ -707,7 +721,7 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
 
 export async function clearAllNotifications(): Promise<void> {
     try {
-        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
+        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'entityId', 'entityName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
         await sheet.clearRows();
     } catch (e: unknown) {
         console.error("Could not clear notifications:", e);
@@ -959,5 +973,3 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
         throw new Error(e instanceof Error ? e.message : "Failed to import employees from Excel.");
     }
 }
-
-    

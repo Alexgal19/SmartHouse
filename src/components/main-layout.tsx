@@ -128,7 +128,7 @@ export default function MainLayout({
         return (searchParams.get('view') as View) || 'dashboard';
     }, [searchParams]);
 
-    const editEmployeeId = searchParams.get('edit');
+    const editEntityId = searchParams.get('edit');
 
     const [currentUser] = useState<SessionData | null>(initialSession);
     const [allNotifications, setAllNotifications] = useState<Notification[]>([]);
@@ -190,12 +190,12 @@ export default function MainLayout({
     }, []);
 
     const handleNotificationClick = useCallback(async (notification: Notification) => {
-        const employeeId = notification.employeeId;
+        const entityId = notification.entityId;
         const pathname = window.location.pathname;
-        if (employeeId) {
+        if (entityId) {
              const currentSearchParams = new URLSearchParams(window.location.search);
              currentSearchParams.set('view', 'employees');
-             currentSearchParams.set('edit', employeeId);
+             currentSearchParams.set('edit', entityId);
              routerRef.current.push(`${pathname}?${currentSearchParams.toString()}`);
         }
         
@@ -235,9 +235,11 @@ export default function MainLayout({
 
     const filteredNotifications = useMemo(() => {
         if (!currentUser) return [];
+        // Admin sees notifications for all coordinators unless a filter is applied in the header
         if (currentUser.isAdmin) {
             return allNotifications;
         }
+        // Regular user sees only notifications for their employees
         return allNotifications.filter(n => n.coordinatorId === currentUser.uid);
     }, [currentUser, allNotifications]);
 
@@ -297,18 +299,24 @@ export default function MainLayout({
 
     useEffect(() => {
         const pathname = window.location.pathname;
-        if (editEmployeeId && rawEmployees) {
-            const employeeToEdit = rawEmployees.find(e => e.id === editEmployeeId);
+        if (editEntityId && (rawEmployees || rawNonEmployees)) {
+            const employeeToEdit = rawEmployees?.find(e => e.id === editEntityId);
             if (employeeToEdit) {
                 setEditingEmployee(employeeToEdit);
                 setIsFormOpen(true);
-                
-                const currentSearchParams = new URLSearchParams(window.location.search);
-                currentSearchParams.delete('edit');
-                routerRef.current.replace(`${pathname}?${currentSearchParams.toString()}`, { scroll: false });
+            } else {
+                const nonEmployeeToEdit = rawNonEmployees?.find(e => e.id === editEntityId);
+                if (nonEmployeeToEdit) {
+                    setEditingNonEmployee(nonEmployeeToEdit);
+                    setIsNonEmployeeFormOpen(true);
+                }
             }
+            
+            const currentSearchParams = new URLSearchParams(window.location.search);
+            currentSearchParams.delete('edit');
+            routerRef.current.replace(`${pathname}?${currentSearchParams.toString()}`, { scroll: false });
         }
-    }, [editEmployeeId, rawEmployees]);
+    }, [editEntityId, rawEmployees, rawNonEmployees]);
 
     const handleSaveEmployee = useCallback(async (data: EmployeeFormData) => {
         if (!currentUser) return;
@@ -329,6 +337,7 @@ export default function MainLayout({
     }, [currentUser, editingEmployee, refreshData, toast]);
 
     const handleSaveNonEmployee = useCallback(async (data: Omit<NonEmployee, 'id'>) => {
+        if (!currentUser) return;
         if (editingNonEmployee) {
             try {
                 await updateNonEmployee(editingNonEmployee.id, data);
@@ -338,28 +347,29 @@ export default function MainLayout({
             }
         } else {
              try {
-                await addNonEmployee(data);
+                await addNonEmployee(data, currentUser.uid);
                 toast({ title: "Sukces", description: "Nowy mieszkaniec został dodany." });
             } catch (e) {
                 toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się dodać mieszkańca." });
             }
         }
         await refreshData(false);
-    }, [editingNonEmployee, refreshData, toast]);
+    }, [editingNonEmployee, currentUser, refreshData, toast]);
     
     const handleDeleteNonEmployee = useCallback(async (id: string) => {
+        if (!currentUser) return;
         const originalNonEmployees = rawNonEmployees;
         
         setRawNonEmployees(prev => prev!.filter(ne => ne.id !== id));
         
         try {
-            await deleteNonEmployee(id);
+            await deleteNonEmployee(id, currentUser.uid);
             toast({ title: "Sukces", description: "Mieszkaniec został usunięty." });
         } catch(e) {
             setRawNonEmployees(originalNonEmployees); // Revert
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć mieszkańca." });
         }
-    }, [rawNonEmployees, toast]);
+    }, [rawNonEmployees, currentUser, toast]);
     
     const handleUpdateSettings = useCallback(async (newSettings: Partial<Settings>) => {
         if (!settings || !currentUser?.isAdmin) {
@@ -612,7 +622,7 @@ export default function MainLayout({
                     employee={editingEmployee}
                 />
             )}
-            {settings && (
+            {settings && currentUser && (
                 <AddNonEmployeeForm
                     isOpen={isNonEmployeeFormOpen}
                     onOpenChange={setIsNonEmployeeFormOpen}
@@ -624,6 +634,7 @@ export default function MainLayout({
                     }
                     settings={settings}
                     nonEmployee={editingNonEmployee}
+                    currentUser={currentUser}
                 />
             )}
             {settings && currentUser && (
