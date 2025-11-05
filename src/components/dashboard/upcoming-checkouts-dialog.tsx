@@ -2,7 +2,7 @@
 "use client";
 
 import { useMemo } from 'react';
-import type { Employee } from "@/types";
+import type { Employee, NonEmployee } from "@/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
@@ -13,6 +13,9 @@ import { Button } from '../ui/button';
 import { Copy } from 'lucide-react';
 import {format} from 'date-fns'
 
+type Occupant = Employee | NonEmployee;
+
+const isEmployee = (occupant: Occupant): occupant is Employee => 'coordinatorId' in occupant;
 
 const formatDate = (dateString?: string | null) => {
     if (!dateString) return 'N/A';
@@ -30,32 +33,48 @@ const formatDate = (dateString?: string | null) => {
 export function UpcomingCheckoutsDialog({
     isOpen,
     onOpenChange,
-    employees
+    employees,
+    nonEmployees
 }: {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     employees: Employee[];
+    nonEmployees: NonEmployee[];
 }) {
-    const { handleEditEmployeeClick } = useMainLayout();
+    const { handleEditEmployeeClick, handleEditNonEmployeeClick } = useMainLayout();
     const { copyToClipboard } = useCopyToClipboard();
 
-    const upcomingCheckoutsEmployees = useMemo(() => {
-        return employees
-            .filter(e => e.status === 'active' && e.checkOutDate)
-            .map(e => ({
-                ...e,
-                checkOutDateObj: parseISO(e.checkOutDate!),
+    const upcomingCheckouts = useMemo(() => {
+        const allOccupants: Occupant[] = [
+            ...employees.filter(e => e.status === 'active'), 
+            ...nonEmployees
+        ];
+
+        return allOccupants
+            .filter(o => o.checkOutDate)
+            .map(o => ({
+                ...o,
+                checkOutDateObj: parseISO(o.checkOutDate!),
             }))
-            .filter(e => {
-                const diff = differenceInDays(e.checkOutDateObj, new Date());
+            .filter(o => {
+                const diff = differenceInDays(o.checkOutDateObj, new Date());
                 return diff >= 0 && diff <= 30;
             })
             .sort((a, b) => a.checkOutDateObj.getTime() - b.checkOutDateObj.getTime());
-    }, [employees]);
+    }, [employees, nonEmployees]);
     
-    const handleCopy = (employee: Employee) => {
-        const textToCopy = `${employee.fullName}, wykwaterowanie: ${formatDate(employee.checkOutDate)}`;
-        copyToClipboard(textToCopy, `Skopiowano dane: ${employee.fullName}`);
+    const handleCopy = (occupant: Occupant) => {
+        const textToCopy = `${occupant.fullName}, wykwaterowanie: ${formatDate(occupant.checkOutDate)}`;
+        copyToClipboard(textToCopy, `Skopiowano dane: ${occupant.fullName}`);
+    }
+
+    const handleOccupantClick = (occupant: Occupant) => {
+        if(isEmployee(occupant)) {
+            handleEditEmployeeClick(occupant);
+        } else {
+            handleEditNonEmployeeClick(occupant);
+        }
+        onOpenChange(false);
     }
 
     return (
@@ -63,37 +82,34 @@ export function UpcomingCheckoutsDialog({
             <DialogContent className="flex flex-col h-screen sm:h-[90vh] sm:max-w-3xl">
                 <DialogHeader>
                     <DialogTitle>Nadchodzące wykwaterowania</DialogTitle>
-                    <DialogDescription>Pracownicy, którzy wykwaterują się w ciągu najbliższych 30 dni.</DialogDescription>
+                    <DialogDescription>Osoby, które wykwaterują się w ciągu najbliższych 30 dni.</DialogDescription>
                 </DialogHeader>
                 <ScrollArea className="flex-1 min-h-0 -mr-6 pr-6">
                     <div className="space-y-2 p-1">
-                        {upcomingCheckoutsEmployees.length > 0 ? (
-                            upcomingCheckoutsEmployees.map(employee => (
+                        {upcomingCheckouts.length > 0 ? (
+                            upcomingCheckouts.map(occupant => (
                             <Card 
-                                key={employee.id} 
+                                key={occupant.id} 
                                 className="p-4 group shadow-sm"
                             >
                                 <div className="flex justify-between items-start">
                                     <div 
                                         className="flex-1 cursor-pointer"
-                                        onClick={() => {
-                                            handleEditEmployeeClick(employee);
-                                            onOpenChange(false);
-                                        }}
+                                        onClick={() => handleOccupantClick(occupant)}
                                     >
-                                        <span className="font-semibold group-hover:text-primary">{employee.fullName}</span>
+                                        <span className="font-semibold group-hover:text-primary">{occupant.fullName}</span>
                                         <div className="text-sm text-muted-foreground mt-1">
-                                            <p>{employee.zaklad}</p>
-                                            <p>{employee.address || ''} {employee.roomNumber ? `, pokój ${employee.roomNumber}` : ''}</p>
+                                            {isEmployee(occupant) ? <p>{occupant.zaklad}</p> : <p>Mieszkaniec (NZ)</p>}
+                                            <p>{occupant.address || ''} {occupant.roomNumber ? `, pokój ${occupant.roomNumber}` : ''}</p>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-sm text-primary font-bold whitespace-nowrap">{formatDate(employee.checkOutDate)}</span>
+                                        <span className="text-sm text-primary font-bold whitespace-nowrap">{formatDate(occupant.checkOutDate)}</span>
                                         <Button 
                                             variant="ghost" 
                                             size="icon" 
                                             className="h-8 w-8"
-                                            onClick={() => handleCopy(employee)}
+                                            onClick={() => handleCopy(occupant)}
                                         >
                                             <Copy className="h-4 w-4" />
                                         </Button>

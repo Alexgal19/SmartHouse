@@ -55,10 +55,12 @@ export function DashboardKPIs({
 
     const stats = useMemo(() => {
         const activeEmployees = employees.filter(e => e.status === 'active');
-        const upcomingCheckoutsList = activeEmployees.filter(e => {
-            if (!e.checkOutDate) return false;
+        const allActiveOccupants = [...activeEmployees, ...nonEmployees];
+
+        const upcomingCheckoutsList = allActiveOccupants.filter(o => {
+            if (!o.checkOutDate) return false;
             const today = new Date();
-            const date = parseISO(e.checkOutDate);
+            const date = parseISO(o.checkOutDate);
             const diff = differenceInDays(date, today);
             return diff >= 0 && diff <= 30;
         });

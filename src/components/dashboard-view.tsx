@@ -71,6 +71,7 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
         isOpen={isUpcomingCheckoutsModalOpen}
         onOpenChange={setIsUpcomingCheckoutsModalOpen}
         employees={allEmployees}
+        nonEmployees={allNonEmployees}
       />
     </>
   );
