@@ -223,7 +223,7 @@ const writeToAuditLog = async (actorId: string, actorName: string, action: strin
 const createNotification = async (
     actorUid: string,
     action: string,
-    employee: { id: string, fullName: string },
+    employee: { id: string, fullName: string, coordinatorId: string },
     changes: NotificationChange[] = [],
     isUpdate: boolean = false
 ) => {
@@ -240,10 +240,16 @@ const createNotification = async (
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'employeeId', 'employeeName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
         const coordSheet = await getSheet(SHEET_NAME_COORDINATORS, ['uid', 'name']);
         const coordRows = await coordSheet.getRows({ limit: 100 });
-        const actor = coordRows.find((r) => r.get('uid') === actorUid)?.toObject();
         
+        const actor = coordRows.find((r) => r.get('uid') === actorUid)?.toObject();
         if (!actor) {
             console.error(`Could not find actor with uid ${actorUid} to create notification.`);
+            return;
+        }
+
+        const employeeCoordinator = coordRows.find((r) => r.get('uid') === employee.coordinatorId)?.toObject();
+        if (!employeeCoordinator) {
+            console.error(`Could not find coordinator with uid ${employee.coordinatorId} for employee ${employee.fullName}.`);
             return;
         }
 
@@ -254,8 +260,8 @@ const createNotification = async (
             message,
             employeeId: employee.id,
             employeeName: employee.fullName,
-            coordinatorId: String(actor.uid || ''),
-            coordinatorName: String(actor.name || ''),
+            coordinatorId: String(employeeCoordinator.uid || ''),
+            coordinatorName: String(employeeCoordinator.name || ''),
             createdAt: new Date().toISOString(),
             isRead: false,
             changes
@@ -379,7 +385,13 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         await row.save();
         
         if (changes.length > 0) {
-            await createNotification(actorUid, 'zaktualizował', originalEmployee, changes, true);
+            // If coordinator is changed, notify both old and new coordinator
+            if (updates.coordinatorId && updates.coordinatorId !== originalEmployee.coordinatorId) {
+                await createNotification(actorUid, 'przeniósł', { ...updatedEmployeeData, coordinatorId: originalEmployee.coordinatorId }, changes, true);
+                await createNotification(actorUid, 'przeniósł', updatedEmployeeData, changes, true);
+            } else {
+                await createNotification(actorUid, 'zaktualizował', updatedEmployeeData, changes, true);
+            }
         }
 
     } catch (e: unknown) {

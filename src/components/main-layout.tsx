@@ -189,7 +189,8 @@ export default function MainLayout({
         routerRef.current.push('/');
     }, []);
 
-    const handleNotificationClick = useCallback(async (notification: Notification, employeeId?: string) => {
+    const handleNotificationClick = useCallback(async (notification: Notification) => {
+        const employeeId = notification.employeeId;
         const pathname = window.location.pathname;
         if (employeeId) {
              const currentSearchParams = new URLSearchParams(window.location.search);
@@ -315,13 +316,6 @@ export default function MainLayout({
         try {
             if (editingEmployee) {
                 const updatedData: Partial<Employee> = { ...data };
-                const initialAddress = rawEmployees?.find(e => e.id === editingEmployee.id)?.address;
-                if (data.address !== initialAddress) {
-                  updatedData.oldAddress = initialAddress;
-                } else if (editingEmployee) {
-                  updatedData.oldAddress = editingEmployee.oldAddress;
-                }
-                
                 await updateEmployee(editingEmployee.id, updatedData, currentUser.uid)
                 toast({ title: "Sukces", description: "Dane pracownika zostały zaktualizowane." });
             } else {
@@ -332,7 +326,7 @@ export default function MainLayout({
         } catch (e: unknown) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać pracownika." });
         }
-    }, [currentUser, editingEmployee, rawEmployees, refreshData, toast]);
+    }, [currentUser, editingEmployee, refreshData, toast]);
 
     const handleSaveNonEmployee = useCallback(async (data: Omit<NonEmployee, 'id'>) => {
         if (editingNonEmployee) {
@@ -595,7 +589,7 @@ export default function MainLayout({
                         user={currentUser} 
                         activeView={activeView} 
                         notifications={filteredNotifications} 
-                        onNotificationClick={(n) => handleNotificationClick(n, n.employeeId)} 
+                        onNotificationClick={handleNotificationClick} 
                         onLogout={handleLogout} 
                         onClearNotifications={handleClearNotifications}
                         onDeleteNotification={handleDeleteNotification}
