@@ -959,6 +959,21 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
         const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet);
 
         let importedCount = 0;
+        
+        // --- Start: New logic for localities ---
+        const importedLocalities = new Set(
+            data.map(row => row['Miejscowość'] as string).filter(Boolean)
+        );
+        const existingLocalities = new Set(settings.localities);
+        const newLocalities = [...importedLocalities].filter(l => !existingLocalities.has(l));
+
+        if (newLocalities.length > 0) {
+            await updateSettings({
+                ...settings,
+                localities: [...settings.localities, ...newLocalities]
+            });
+        }
+        // --- End: New logic for localities ---
 
         for (const row of data) {
             try {
