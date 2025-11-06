@@ -1024,7 +1024,6 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
 
         let importedCount = 0;
         
-        // --- Start: New logic for localities ---
         const importedLocalities = new Set(
             data.map(row => row['Miejscowość'] as string).filter(Boolean)
         );
@@ -1033,11 +1032,9 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
 
         if (newLocalities.length > 0) {
             await updateSettings({
-                ...settings,
                 localities: [...settings.localities, ...newLocalities]
             });
         }
-        // --- End: New logic for localities ---
 
         for (const row of data) {
             try {

@@ -1,4 +1,5 @@
 
+
 "use server";
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
@@ -129,7 +130,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     const plainObject = row;
     
     const id = plainObject.id;
-    if (!id) return null;
+    if (!id) return null; // The only hard requirement is an ID.
 
     let deductionReason: DeductionReason[] | undefined = undefined;
     if (plainObject.deductionReason && typeof plainObject.deductionReason === 'string') {
@@ -177,20 +178,15 @@ const deserializeNonEmployee = (row: Record<string, unknown>): NonEmployee | nul
     const plainObject = row;
 
     const id = plainObject.id;
-    const fullName = plainObject.fullName;
-    
-    if (!id || !fullName) return null;
-    
-    const checkInDate = safeFormat(plainObject.checkInDate);
-    if (!checkInDate) return null;
+    if (!id) return null;
     
     const newNonEmployee: NonEmployee = {
         id: id as string,
-        fullName: fullName as string,
+        fullName: (plainObject.fullName || '') as string,
         coordinatorId: (plainObject.coordinatorId || '') as string,
         address: (plainObject.address || '') as string,
         roomNumber: (plainObject.roomNumber || '') as string,
-        checkInDate: checkInDate,
+        checkInDate: safeFormat(plainObject.checkInDate) || '',
         checkOutDate: safeFormat(plainObject.checkOutDate),
         departureReportDate: safeFormat(plainObject.departureReportDate),
         comments: (plainObject.comments || '') as string,
