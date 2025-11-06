@@ -115,7 +115,7 @@ const EQUIPMENT_HEADERS = [
     'id', 'inventoryNumber', 'name', 'quantity', 'description', 'addressId', 'addressName'
 ];
 
-const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'department', 'password'];
+const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'departments', 'password'];
 const ADDRESS_HEADERS = ['id', 'locality', 'name', 'coordinatorIds'];
 const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targetType', 'targetId', 'details'];
 
@@ -720,6 +720,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
              if (newSettings.coordinators.length > 0) {
                  await sheet.addRows(newSettings.coordinators.map(c => ({
                      ...c,
+                     departments: c.departments.join(','),
                      isAdmin: String(c.isAdmin).toUpperCase()
                  })), { raw: false, insert: true });
              }

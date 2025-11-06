@@ -1,4 +1,3 @@
-
 // This file contains all the TypeScript type definitions for the application's data structures.
 
 export type View = 'dashboard' | 'employees' | 'settings' | 'housing';
@@ -21,7 +20,7 @@ export type Coordinator = {
     uid: string;
     name: string;
     isAdmin: boolean;
-    department: string;
+    departments: string[];
     password?: string;
 }
 
@@ -120,6 +119,7 @@ export type SessionData = {
   uid: string;
   name: string;
   isAdmin: boolean;
+  role: 'Admin' | 'Edytor' | 'Obserwator';
 }
 
 export type EquipmentItem = {

@@ -28,7 +28,7 @@ const coordinatorSchema = z.object({
     name: z.string().min(1, 'Imię jest wymagane.'),
     password: z.string().optional(),
     isAdmin: z.boolean(),
-    department: z.string(),
+    departments: z.array(z.string()),
 });
 
 const formSchema = z.object({
@@ -161,14 +161,14 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full sm:w-64 h-9"
                     />
-                    <Button type="button" variant="outline" size="sm" onClick={() => append({ uid: `coord-${Date.now()}`, name: '', password: '', isAdmin: false, department: '' })}>
+                    <Button type="button" variant="outline" size="sm" onClick={() => append({ uid: `coord-${Date.now()}`, name: '', password: '', isAdmin: false, departments: [] })}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Dodaj koordynatora
                     </Button>
                 </div>
             </div>
 
             <Accordion type="multiple" className="w-full space-y-2">
-                {filteredFields.map((field, index) => (
+                {filteredFields.map((field) => (
                     <AccordionItem value={field.id} key={field.id} className="border rounded-md px-4">
                         <AccordionTrigger>
                             <div className="flex items-center justify-between w-full pr-4">
@@ -189,26 +189,6 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                         </FormItem>
                                     )}
                                 />
-                                 <FormField
-                                    control={form.control}
-                                    name={`coordinators.${field.originalIndex}.department`}
-                                    render={({ field: departmentField }) => (
-                                        <FormItem>
-                                            <FormLabel>Zakład</FormLabel>
-                                            <Select onValueChange={departmentField.onChange} value={departmentField.value}>
-                                                <FormControl>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Wybierz zakład" />
-                                                    </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    {departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                                                </SelectContent>
-                                            </Select>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
                                 <FormField
                                     control={form.control}
                                     name={`coordinators.${field.originalIndex}.password`}
@@ -220,6 +200,66 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                         </FormItem>
                                     )}
                                 />
+
+                                <FormField
+                                    control={form.control}
+                                    name={`coordinators.${field.originalIndex}.departments`}
+                                    render={() => (
+                                        <FormItem>
+                                            <FormLabel>Zakłady</FormLabel>
+                                            <div className="space-y-2">
+                                                {(form.getValues(`coordinators.${field.originalIndex}.departments`) || []).map((dept, deptIndex) => (
+                                                     <div key={deptIndex} className="flex items-center gap-2">
+                                                         <FormField
+                                                             control={form.control}
+                                                             name={`coordinators.${field.originalIndex}.departments.${deptIndex}`}
+                                                             render={({ field: deptField }) => (
+                                                                <FormItem className="flex-1">
+                                                                     <Select onValueChange={deptField.onChange} value={deptField.value}>
+                                                                        <FormControl>
+                                                                            <SelectTrigger>
+                                                                                <SelectValue placeholder="Wybierz zakład" />
+                                                                            </SelectTrigger>
+                                                                        </FormControl>
+                                                                        <SelectContent>
+                                                                            {departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                         <Button 
+                                                            type="button" 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            onClick={() => {
+                                                                const currentDepts = form.getValues(`coordinators.${field.originalIndex}.departments`);
+                                                                form.setValue(`coordinators.${field.originalIndex}.departments`, currentDepts.filter((_, i) => i !== deptIndex));
+                                                            }}
+                                                        >
+                                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                                        </Button>
+                                                     </div>
+                                                ))}
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="w-full"
+                                                    onClick={() => {
+                                                        const currentDepts = form.getValues(`coordinators.${field.originalIndex}.departments`);
+                                                        form.setValue(`coordinators.${field.originalIndex}.departments`, [...currentDepts, '']);
+                                                    }}
+                                                >
+                                                    <PlusCircle className="h-4 w-4 mr-2"/>
+                                                    Dodaj zakład
+                                                </Button>
+                                            </div>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
                                 <div className="flex justify-between items-center">
                                     <FormField
                                         control={form.control}

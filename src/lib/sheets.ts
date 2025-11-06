@@ -364,7 +364,7 @@ export async function getSettingsFromSheet(): Promise<Settings> {
                 uid: rowObj.uid,
                 name: rowObj.name,
                 isAdmin: rowObj.isAdmin === 'TRUE',
-                department: rowObj.department || '',
+                departments: (rowObj.departments || '').split(',').filter(Boolean),
                 password: rowObj.password,
             }
         });
@@ -474,7 +474,7 @@ export async function getAllSheetsData() {
             uid: rowObj.uid, 
             name: rowObj.name, 
             isAdmin: rowObj.isAdmin === 'TRUE', 
-            department: rowObj.department || '', 
+            departments: (rowObj.departments || '').split(',').filter(Boolean), 
             password: rowObj.password 
         }));
         
