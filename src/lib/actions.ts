@@ -125,8 +125,6 @@ const safeFormat = (dateValue: unknown): string | null => {
         return null;
     }
 
-    let date: Date;
-
     if (dateValue instanceof Date) {
         if (isValid(dateValue)) {
             return format(dateValue, 'yyyy-MM-dd');
@@ -134,40 +132,34 @@ const safeFormat = (dateValue: unknown): string | null => {
     }
 
     if (typeof dateValue === 'number' && dateValue > 0) {
-        // Excel's epoch starts on 1900-01-01, but it has a bug treating 1900 as a leap year.
         const excelEpoch = new Date(1899, 11, 30);
-        date = new Date(excelEpoch.getTime() + dateValue * 24 * 60 * 60 * 1000);
+        const date = new Date(excelEpoch.getTime() + dateValue * 24 * 60 * 60 * 1000);
         if (isValid(date)) {
             return format(date, 'yyyy-MM-dd');
         }
     }
 
     const dateString = String(dateValue).trim();
-
-    // Attempt to parse ISO string first (most reliable)
-    date = parseISO(dateString);
-    if (isValid(date)) {
-        return format(date, 'yyyy-MM-dd');
+    if (!dateString) {
+        return null;
     }
 
-    // Attempt to parse a specific format like dd.MM.yyyy or yyyy-MM-dd
     const formatsToTry = ['dd.MM.yyyy', 'yyyy-MM-dd', 'dd/MM/yyyy'];
     for (const fmt of formatsToTry) {
-        date = dateFnsParse(dateString, fmt, new Date());
+        const date = dateFnsParse(dateString, fmt, new Date());
         if (isValid(date)) {
             return format(date, 'yyyy-MM-dd');
         }
     }
     
-    // Try a more general Date constructor for other formats
-    date = new Date(dateValue as string | number);
+    const date = new Date(dateString);
     if (isValid(date)) {
         return format(date, 'yyyy-MM-dd');
     }
 
-    // If all else fails, return null
     return null;
 };
+
 
 const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     const plainObject = row;
@@ -249,11 +241,11 @@ const createNotification = async (
     actorUid: string,
     action: string,
     entity: (Employee | NonEmployee),
+    settings: Settings,
     changes: NotificationChange[] = [],
     isUpdate: boolean = false
 ) => {
     try {
-        const { settings } = await getAllData();
         const actor = settings.coordinators.find(c => c.uid === actorUid);
         if (!actor) {
             console.error(`Could not find actor with uid ${actorUid} to create notification.`);
@@ -296,11 +288,11 @@ const createNotification = async (
         await writeToAuditLog(actor.uid, actor.name, action, 'zaklad' in entity ? 'employee' : 'non-employee', entity.id, changes);
 
     } catch (e: unknown) {
-        console.error("Could not create notification:", e instanceof Error ? e.message : "Unknown error");
+        console.error("Could not create notification:", e);
     }
 };
 
-export async function addEmployee(employeeData: Partial<Employee>, actorUid: string): Promise<void> {
+export async function addEmployee(employeeData: Partial<Employee>, actorUid: string, settings: Settings): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const newEmployee: Employee = {
@@ -312,7 +304,7 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
             gender: employeeData.gender || '',
             address: employeeData.address || '',
             roomNumber: employeeData.roomNumber || '',
-            zaklad: employeeData.zaklad || '',
+            zaklad: employeeData.zaklad || null,
             checkInDate: employeeData.checkInDate || null,
             checkOutDate: employeeData.checkOutDate,
             contractStartDate: employeeData.contractStartDate ?? null,
@@ -332,7 +324,7 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
         const serialized = serializeEmployee(newEmployee);
         await sheet.addRow(serialized, { raw: false, insert: true });
         
-        await createNotification(actorUid, 'dodał', newEmployee);
+        await createNotification(actorUid, 'dodał', newEmployee, settings);
     } catch (e: unknown) {
         console.error("Error adding employee:", e);
         throw new Error(e instanceof Error ? e.message : "Failed to add employee.");
@@ -409,12 +401,13 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         await row.save();
         
         if (changes.length > 0) {
+            const { settings } = await getAllData();
             // If coordinator is changed, notify both old and new coordinator
             if (updates.coordinatorId && updates.coordinatorId !== originalEmployee.coordinatorId) {
-                await createNotification(actorUid, 'przeniósł', { ...updatedEmployeeData, coordinatorId: originalEmployee.coordinatorId }, changes, true);
-                await createNotification(actorUid, 'przeniósł', updatedEmployeeData, changes, true);
+                await createNotification(actorUid, 'przeniósł', { ...updatedEmployeeData, coordinatorId: originalEmployee.coordinatorId }, settings, changes, true);
+                await createNotification(actorUid, 'przeniósł', updatedEmployeeData, settings, changes, true);
             } else {
-                await createNotification(actorUid, 'zaktualizował', updatedEmployeeData, changes, true);
+                await createNotification(actorUid, 'zaktualizował', updatedEmployeeData, settings, changes, true);
             }
         }
 
@@ -439,7 +432,8 @@ export async function deleteEmployee(employeeId: string, actorUid: string): Prom
         await row.delete();
 
         if (employeeToDelete) {
-             await createNotification(actorUid, 'trwale usunął', employeeToDelete);
+             const { settings } = await getAllData();
+             await createNotification(actorUid, 'trwale usunął', employeeToDelete, settings);
         }
 
     } catch (e: unknown) {
@@ -465,7 +459,8 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>, a
 
         const serialized = serializeNonEmployee(newNonEmployee);
         await sheet.addRow(serialized, { raw: false, insert: true });
-        await createNotification(actorUid, 'dodał', newNonEmployee);
+        const { settings } = await getAllData();
+        await createNotification(actorUid, 'dodał', newNonEmployee, settings);
     } catch (e: unknown) {
         console.error("Error adding non-employee:", e);
         throw new Error(e instanceof Error ? e.message : "Failed to add non-employee.");
@@ -518,7 +513,8 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
          await row.save();
          
          if (changes.length > 0) {
-            await createNotification(actorUid, 'zaktualizował', updatedData, changes, true);
+            const { settings } = await getAllData();
+            await createNotification(actorUid, 'zaktualizował', updatedData, settings, changes, true);
         }
 
      } catch (e: unknown) {
@@ -540,7 +536,8 @@ export async function deleteNonEmployee(id: string, actorUid: string): Promise<v
                 coordinatorId: row.get('coordinatorId')
             } as NonEmployee;
             await row.delete();
-            await createNotification(actorUid, 'usunął', nonEmployeeToDelete);
+            const { settings } = await getAllData();
+            await createNotification(actorUid, 'usunął', nonEmployeeToDelete, settings);
         } else {
             throw new Error('Non-employee not found');
         }
@@ -691,6 +688,7 @@ export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<
 
         let updatedCount = 0;
         const rowsToUpdate = [];
+        const { settings } = await getAllData();
 
         for (const row of rows) {
             const status = String(row.get('status'));
@@ -706,7 +704,7 @@ export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<
 
                         const originalEmployee = deserializeEmployee(row.toObject());
                         if (originalEmployee) {
-                           await createNotification(actorUid, 'automatycznie zwolnił', originalEmployee, [
+                           await createNotification(actorUid, 'automatycznie zwolnił', originalEmployee, settings, [
                                 { field: 'status', oldValue: 'active', newValue: 'dismissed' }
                            ]);
                         }
@@ -1033,70 +1031,108 @@ export async function generateAccommodationReport(year: number, month: number, c
 }
 
 
-export async function importEmployeesFromExcel(fileContent: string, actorUid: string, settings: Settings): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
+export async function importEmployeesFromExcel(fileContent: string, actorUid: string): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
     try {
+        const { settings } = await getAllData();
         const workbook = XLSX.read(fileContent, { type: 'base64', cellDates: true });
         const sheetName = workbook.SheetNames[0];
         if (!sheetName) throw new Error("Nie znaleziono arkusza w pliku Excel.");
 
         const worksheet = workbook.Sheets[sheetName];
-        // Use `defval: null` to ensure empty cells are read as null, not inherited from previous rows.
+        
+        const header = (XLSX.utils.sheet_to_json(worksheet, { header: 1 })[0] as string[]).map(h => h.trim().toLowerCase());
         const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: null });
+
+        const keyMap: Record<string, keyof Employee> = {
+            'imię i nazwisko': 'fullName',
+            'koordynator': 'coordinatorId',
+            'narodowość': 'nationality',
+            'płeć': 'gender',
+            'adres': 'address',
+            'pokój': 'roomNumber',
+            'zakład': 'zaklad',
+            'data zameldowania': 'checkInDate',
+            'data wymeldowania': 'checkOutDate',
+            'umowa od': 'contractStartDate',
+            'umowa do': 'contractEndDate',
+            'komentarze': 'comments'
+        };
 
         let importedCount = 0;
         const errors: string[] = [];
-        
-        const importedLocalities = new Set(
-            data.map(row => (row['Miejscowość'] as string)?.trim()).filter(Boolean)
-        );
-        const existingLocalities = new Set(settings.localities);
-        const newLocalities = [...importedLocalities].filter(l => !existingLocalities.has(l));
-
-        if (newLocalities.length > 0) {
-            await updateSettings({
-                localities: [...settings.localities, ...newLocalities]
-            });
-        }
+        const employeesToAdd: Partial<Employee>[] = [];
         
         const coordinatorMap = new Map(
             settings.coordinators.map(c => [c.name.toLowerCase().trim(), c.uid])
         );
 
         for (const [index, row] of data.entries()) {
-            const rowNum = index + 2; // Excel rows are 1-based, and we have a header
+            const rowNum = index + 2;
             try {
-                const fullName = (row['Imię i nazwisko'] as string)?.trim();
+                const normalizedRow: Record<string, any> = {};
+                for (const key in row) {
+                    normalizedRow[key.trim().toLowerCase()] = row[key];
+                }
+                
+                const fullName = (normalizedRow['imię i nazwisko'] as string)?.trim();
                 if (!fullName) {
                     errors.push(`Wiersz ${rowNum}: Brak imienia i nazwiska.`);
                     continue;
                 }
                 
-                const coordinatorName = (row['Koordynator'] as string)?.toLowerCase().trim();
+                const coordinatorName = (normalizedRow['koordynator'] as string)?.toLowerCase().trim();
                 const coordinatorId = coordinatorName ? coordinatorMap.get(coordinatorName) : '';
                 if (!coordinatorId) {
-                     errors.push(`Wiersz ${rowNum}: Nie znaleziono koordynatora '${row['Koordynator']}'.`);
+                     errors.push(`Wiersz ${rowNum} (${fullName}): Nie znaleziono koordynatora '${normalizedRow['koordynator']}'.`);
                      continue;
                 }
 
                 const employeeData: Partial<Employee> = {
+                    id: `emp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                    status: 'active',
                     fullName: fullName,
                     coordinatorId: coordinatorId,
-                    nationality: (row['Narodowość'] as string)?.trim(),
-                    gender: (row['Płeć'] as string)?.trim(),
-                    address: (row['Adres'] as string)?.trim(),
-                    roomNumber: String(row['Pokój'] || '').trim(),
-                    zaklad: (row['Zakład'] as string)?.trim(),
-                    checkInDate: safeFormat(row['Data zameldowania']),
-                    checkOutDate: safeFormat(row['Data wymeldowania']),
-                    contractStartDate: safeFormat(row['Umowa od']),
-                    contractEndDate: safeFormat(row['Umowa do']),
-                    comments: (row['Komentarze'] as string)?.trim(),
+                    nationality: (normalizedRow['narodowość'] as string)?.trim(),
+                    gender: (normalizedRow['płeć'] as string)?.trim(),
+                    address: (normalizedRow['adres'] as string)?.trim(),
+                    roomNumber: String(normalizedRow['pokój'] || '').trim(),
+                    zaklad: (normalizedRow['zakład'] as string)?.trim() || null,
+                    checkInDate: safeFormat(normalizedRow['data zameldowania']),
+                    checkOutDate: safeFormat(normalizedRow['data wymeldowania']),
+                    contractStartDate: safeFormat(normalizedRow['umowa od']),
+                    contractEndDate: safeFormat(normalizedRow['umowa do']),
+                    comments: (normalizedRow['komentarze'] as string)?.trim(),
                 };
                 
-                await addEmployee(employeeData, actorUid);
-                importedCount++;
+                employeesToAdd.push(employeeData);
+
             } catch (rowError) {
                 errors.push(`Wiersz ${rowNum} (${(row['Imię i nazwisko'] as string) || 'Brak Imienia'}): ${rowError instanceof Error ? rowError.message : 'Nieznany błąd'}.`);
+            }
+        }
+
+        if (employeesToAdd.length > 0) {
+            const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
+            const serializedRows = employeesToAdd.map(emp => serializeEmployee(emp));
+            await sheet.addRows(serializedRows, { raw: false, insert: true });
+            importedCount = employeesToAdd.length;
+
+            const notificationSheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'entityId', 'entityName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
+            const actor = settings.coordinators.find(c => c.uid === actorUid);
+            const notificationsToAdd = employeesToAdd.map(emp => serializeNotification({
+                id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+                message: `${actor?.name || 'System'} dodał pracownika ${emp.fullName} przez import.`,
+                entityId: emp.id!,
+                entityName: emp.fullName!,
+                coordinatorId: emp.coordinatorId!,
+                coordinatorName: settings.coordinators.find(c => c.uid === emp.coordinatorId)?.name || 'Nieznany',
+                createdAt: new Date().toISOString(),
+                isRead: false,
+                changes: [],
+            }));
+
+            if(notificationsToAdd.length > 0) {
+                await notificationSheet.addRows(notificationsToAdd, { raw: false, insert: true });
             }
         }
         
@@ -1104,6 +1140,9 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
 
     } catch (e) {
         console.error("Error importing from Excel:", e);
-        throw new Error(e instanceof Error ? e.message : "Failed to import employees from Excel.");
+        if (e instanceof Error) {
+            return { importedCount: 0, totalRows: 0, errors: [e.message] };
+        }
+        return { importedCount: 0, totalRows: 0, errors: ["Wystąpił nieznany błąd podczas importu."] };
     }
 }

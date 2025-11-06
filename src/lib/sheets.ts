@@ -88,6 +88,12 @@ const safeFormat = (dateValue: unknown): string | null => {
 
     let date: Date;
 
+    if (dateValue instanceof Date) {
+        if (isValid(dateValue)) {
+            return format(dateValue, 'yyyy-MM-dd');
+        }
+    }
+
     if (typeof dateValue === 'number' && dateValue > 0) {
         // Excel's epoch starts on 1900-01-01, but it has a bug treating 1900 as a leap year.
         const excelEpoch = new Date(1899, 11, 30);
@@ -97,7 +103,9 @@ const safeFormat = (dateValue: unknown): string | null => {
         }
     }
 
-    const dateString = String(dateValue);
+    const dateString = String(dateValue).trim();
+    if (!dateString) return null;
+
 
     // Attempt to parse ISO string first (most reliable)
     date = parseISO(dateString);
@@ -130,7 +138,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     const plainObject = row;
     
     const id = plainObject.id;
-    if (!id) return null; // The only hard requirement is an ID.
+    if (!id) return null;
 
     let deductionReason: DeductionReason[] | undefined = undefined;
     if (plainObject.deductionReason && typeof plainObject.deductionReason === 'string') {
