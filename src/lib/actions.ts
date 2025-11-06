@@ -149,7 +149,6 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     if (!id) return null;
 
     const checkInDate = safeFormat(plainObject.checkInDate);
-    // if (!checkInDate) return null;
 
     let deductionReason: DeductionReason[] | undefined;
     if (plainObject.deductionReason && typeof plainObject.deductionReason === 'string') {
@@ -289,7 +288,7 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
             address: employeeData.address || '',
             roomNumber: employeeData.roomNumber || '',
             zaklad: employeeData.zaklad || '',
-            checkInDate: employeeData.checkInDate || '',
+            checkInDate: employeeData.checkInDate || null,
             checkOutDate: employeeData.checkOutDate,
             contractStartDate: employeeData.contractStartDate ?? null,
             contractEndDate: employeeData.contractEndDate ?? null,
@@ -1051,15 +1050,15 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
                     address: row['Adres'] as string,
                     roomNumber: String(row['Pokój'] || ''),
                     zaklad: row['Zakład'] as string,
-                    checkInDate: row['Data zameldowania'] ? safeFormat(row['Data zameldowania']) : '',
+                    checkInDate: row['Data zameldowania'] ? safeFormat(row['Data zameldowania']) : null,
                     checkOutDate: row['Data wymeldowania'] ? safeFormat(row['Data wymeldowania']) : undefined,
                     contractStartDate: row['Umowa od'] ? safeFormat(row['Umowa od']) : undefined,
                     contractEndDate: row['Umowa do'] ? safeFormat(row['Umowa do']) : undefined,
                     comments: row['Komentarze'] as string,
                 };
                 
-                if (!employeeData.fullName || !employeeData.checkInDate) {
-                    console.warn('Skipping row due to missing full name or check-in date:', row);
+                if (!employeeData.fullName) {
+                    console.warn('Skipping row due to missing full name:', row);
                     continue;
                 }
                 

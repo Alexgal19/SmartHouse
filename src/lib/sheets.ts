@@ -255,7 +255,7 @@ export async function getEmployeesFromSheet(coordinatorId?: string): Promise<Emp
         const plainRows = rows.map(r => r.toObject());
         const filteredRows = coordinatorId ? plainRows.filter(row => row.coordinatorId === coordinatorId) : plainRows;
 
-        return filteredRows.map(deserializeEmployee).filter((e): e is Employee => e !== null && e.checkInDate !== null);
+        return filteredRows.map(deserializeEmployee).filter((e): e is Employee => e !== null);
 
     } catch (error: unknown) {
         console.error("Error fetching employees from sheet:", error instanceof Error ? error.message : "Unknown error", error instanceof Error ? error.stack : "");
