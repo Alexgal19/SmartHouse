@@ -4,7 +4,7 @@
 
 import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Inspection, InspectionCategory } from '../types';
 import { getSheet, getAllSheetsData } from './sheets';
-import { format, isPast, isValid, getDaysInMonth, parseISO, differenceInDays, max, min } from 'date-fns';
+import { format, isPast, isValid, getDaysInMonth, parseISO, differenceInDays, max, min, parse as dateFnsParse } from 'date-fns';
 import * as XLSX from 'xlsx';
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
@@ -120,26 +120,53 @@ const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'departments', 'password'
 const ADDRESS_HEADERS = ['id', 'locality', 'name', 'coordinatorIds'];
 const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targetType', 'targetId', 'details'];
 
-const safeFormat = (dateStr: unknown): string | null => {
-    if (!dateStr) return null;
-    
-    // Handle Excel's numeric date format
-    if (typeof dateStr === 'number' && dateStr > 0) {
+const safeFormat = (dateValue: unknown): string | null => {
+    if (dateValue === null || dateValue === undefined || dateValue === '') {
+        return null;
+    }
+
+    let date: Date;
+
+    if (dateValue instanceof Date) {
+        if (isValid(dateValue)) {
+            return format(dateValue, 'yyyy-MM-dd');
+        }
+    }
+
+    if (typeof dateValue === 'number' && dateValue > 0) {
         // Excel's epoch starts on 1900-01-01, but it has a bug treating 1900 as a leap year.
         const excelEpoch = new Date(1899, 11, 30);
-        const date = new Date(excelEpoch.getTime() + dateStr * 24 * 60 * 60 * 1000);
+        date = new Date(excelEpoch.getTime() + dateValue * 24 * 60 * 60 * 1000);
         if (isValid(date)) {
             return format(date, 'yyyy-MM-dd');
         }
     }
 
-    const date = new Date(dateStr as string | number);
-    if (!isValid(date)) return null;
-    try {
+    const dateString = String(dateValue).trim();
+
+    // Attempt to parse ISO string first (most reliable)
+    date = parseISO(dateString);
+    if (isValid(date)) {
         return format(date, 'yyyy-MM-dd');
-    } catch {
-        return null;
     }
+
+    // Attempt to parse a specific format like dd.MM.yyyy or yyyy-MM-dd
+    const formatsToTry = ['dd.MM.yyyy', 'yyyy-MM-dd', 'dd/MM/yyyy'];
+    for (const fmt of formatsToTry) {
+        date = dateFnsParse(dateString, fmt, new Date());
+        if (isValid(date)) {
+            return format(date, 'yyyy-MM-dd');
+        }
+    }
+    
+    // Try a more general Date constructor for other formats
+    date = new Date(dateValue as string | number);
+    if (isValid(date)) {
+        return format(date, 'yyyy-MM-dd');
+    }
+
+    // If all else fails, return null
+    return null;
 };
 
 const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
@@ -147,8 +174,6 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     
     const id = String(plainObject.id || '');
     if (!id) return null;
-
-    const checkInDate = safeFormat(plainObject.checkInDate);
 
     let deductionReason: DeductionReason[] | undefined;
     if (plainObject.deductionReason && typeof plainObject.deductionReason === 'string') {
@@ -173,7 +198,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         address: String(plainObject.address || ''),
         roomNumber: String(plainObject.roomNumber || ''),
         zaklad: (plainObject.zaklad as string | null) || null,
-        checkInDate: checkInDate,
+        checkInDate: safeFormat(plainObject.checkInDate),
         checkOutDate: safeFormat(plainObject.checkOutDate),
         contractStartDate: safeFormat(plainObject.contractStartDate),
         contractEndDate: safeFormat(plainObject.contractEndDate),
@@ -751,42 +776,37 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
             }
         }
         if (newSettings.coordinators) {
-            const sheet = await getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS);
-            const currentRows = await sheet.getRows();
-            const currentCoords = currentRows.map(r => r.toObject());
-            const newCoords = newSettings.coordinators;
-
-            const toAdd = newCoords.filter(nc => !currentCoords.some(cc => cc.uid === nc.uid));
-            const toDeleteRows = currentRows.filter(cr => !newCoords.some(nc => nc.uid === cr.get('uid')));
-            const toUpdate = newCoords.filter(nc => currentCoords.some(cc => cc.uid === nc.uid));
-            
-            // Delete
-             for (const row of toDeleteRows.reverse()) { // reverse to avoid index issues
-                await row.delete();
-            }
-
-            // Add
-            if (toAdd.length > 0) {
-                await sheet.addRows(toAdd.map(c => ({
-                    ...c,
-                    departments: c.departments.join(','),
-                    isAdmin: String(c.isAdmin).toUpperCase()
-                })), { raw: false, insert: true });
-            }
-            
-            // Update
-            for (const coord of toUpdate) {
-                const row = currentRows.find(r => r.get('uid') === coord.uid);
-                if (row) {
-                    row.set('name', coord.name);
-                    row.set('isAdmin', String(coord.isAdmin).toUpperCase());
-                    row.set('departments', coord.departments.join(','));
-                    if (coord.password) { // Only update password if it's not empty
-                        row.set('password', coord.password);
-                    }
-                    await row.save();
-                }
-            }
+             const sheet = await getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS);
+             const currentRows = await sheet.getRows();
+             
+             const toUpdate = newSettings.coordinators.filter(c => currentRows.some(r => r.get('uid') === c.uid));
+             const toAdd = newSettings.coordinators.filter(c => !currentRows.some(r => r.get('uid') === c.uid));
+             const toDelete = currentRows.filter(r => !newSettings.coordinators.some(c => c.uid === r.get('uid')));
+ 
+             for (const row of toDelete.reverse()) {
+                 await row.delete();
+             }
+ 
+             for (const coord of toUpdate) {
+                 const row = currentRows.find(r => r.get('uid') === coord.uid);
+                 if (row) {
+                     row.set('name', coord.name);
+                     row.set('isAdmin', String(coord.isAdmin).toUpperCase());
+                     row.set('departments', coord.departments.join(','));
+                     if (coord.password) {
+                         row.set('password', coord.password);
+                     }
+                     await row.save();
+                 }
+             }
+ 
+             if (toAdd.length > 0) {
+                 await sheet.addRows(toAdd.map(c => ({
+                     ...c,
+                     departments: c.departments.join(','),
+                     isAdmin: String(c.isAdmin).toUpperCase()
+                 })));
+             }
         }
 
     } catch (error: unknown) {
@@ -1013,19 +1033,21 @@ export async function generateAccommodationReport(year: number, month: number, c
 }
 
 
-export async function importEmployeesFromExcel(fileContent: string, actorUid: string, settings: Settings): Promise<{ importedCount: number; totalRows: number; }> {
+export async function importEmployeesFromExcel(fileContent: string, actorUid: string, settings: Settings): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
     try {
         const workbook = XLSX.read(fileContent, { type: 'base64', cellDates: true });
         const sheetName = workbook.SheetNames[0];
-        if(!sheetName) throw new Error("Nie znaleziono arkusza в pliku Excel.");
+        if (!sheetName) throw new Error("Nie znaleziono arkusza w pliku Excel.");
 
         const worksheet = workbook.Sheets[sheetName];
-        const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet);
+        // Use `defval: null` to ensure empty cells are read as null, not inherited from previous rows.
+        const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: null });
 
         let importedCount = 0;
+        const errors: string[] = [];
         
         const importedLocalities = new Set(
-            data.map(row => row['Miejscowość'] as string).filter(Boolean)
+            data.map(row => (row['Miejscowość'] as string)?.trim()).filter(Boolean)
         );
         const existingLocalities = new Set(settings.localities);
         const newLocalities = [...importedLocalities].filter(l => !existingLocalities.has(l));
@@ -1035,41 +1057,50 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
                 localities: [...settings.localities, ...newLocalities]
             });
         }
+        
+        const coordinatorMap = new Map(
+            settings.coordinators.map(c => [c.name.toLowerCase().trim(), c.uid])
+        );
 
-        for (const row of data) {
+        for (const [index, row] of data.entries()) {
+            const rowNum = index + 2; // Excel rows are 1-based, and we have a header
             try {
-                // Map Excel columns to Employee properties
+                const fullName = (row['Imię i nazwisko'] as string)?.trim();
+                if (!fullName) {
+                    errors.push(`Wiersz ${rowNum}: Brak imienia i nazwiska.`);
+                    continue;
+                }
+                
+                const coordinatorName = (row['Koordynator'] as string)?.toLowerCase().trim();
+                const coordinatorId = coordinatorName ? coordinatorMap.get(coordinatorName) : '';
+                if (!coordinatorId) {
+                     errors.push(`Wiersz ${rowNum}: Nie znaleziono koordynatora '${row['Koordynator']}'.`);
+                     continue;
+                }
+
                 const employeeData: Partial<Employee> = {
-                    fullName: row['Imię i nazwisko'] as string,
-                    coordinatorId: row['Koordynator'] as string, // This is coordinator NAME, needs mapping
-                    nationality: row['Narodowość'] as string,
-                    gender: row['Płeć'] as string,
-                    address: row['Adres'] as string,
-                    roomNumber: String(row['Pokój'] || ''),
-                    zaklad: row['Zakład'] as string,
+                    fullName: fullName,
+                    coordinatorId: coordinatorId,
+                    nationality: (row['Narodowość'] as string)?.trim(),
+                    gender: (row['Płeć'] as string)?.trim(),
+                    address: (row['Adres'] as string)?.trim(),
+                    roomNumber: String(row['Pokój'] || '').trim(),
+                    zaklad: (row['Zakład'] as string)?.trim(),
                     checkInDate: safeFormat(row['Data zameldowania']),
                     checkOutDate: safeFormat(row['Data wymeldowania']),
                     contractStartDate: safeFormat(row['Umowa od']),
                     contractEndDate: safeFormat(row['Umowa do']),
-                    comments: row['Komentarze'] as string,
+                    comments: (row['Komentarze'] as string)?.trim(),
                 };
                 
-                if (!employeeData.fullName) {
-                    console.warn('Skipping row due to missing full name:', row);
-                    continue;
-                }
-                
-                const coordinator = settings.coordinators.find((c: { name: string; }) => c.name.toLowerCase() === (employeeData.coordinatorId || '').toLowerCase());
-                employeeData.coordinatorId = coordinator ? coordinator.uid : '';
-
                 await addEmployee(employeeData, actorUid);
                 importedCount++;
             } catch (rowError) {
-                console.error('Error processing row:', row, rowError);
+                errors.push(`Wiersz ${rowNum} (${(row['Imię i nazwisko'] as string) || 'Brak Imienia'}): ${rowError instanceof Error ? rowError.message : 'Nieznany błąd'}.`);
             }
         }
         
-        return { importedCount, totalRows: data.length };
+        return { importedCount, totalRows: data.length, errors };
 
     } catch (e) {
         console.error("Error importing from Excel:", e);

@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback, createContext, useContext, useRef } from 'react';
@@ -515,9 +516,16 @@ export default function MainLayout({
         const fileContent = await promise;
 
         const result = await importEmployeesFromExcel(fileContent, currentUser.uid, settings);
+        
+        let description = `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} wierszy.`;
+        if (result.errors.length > 0) {
+            description += ` Błędy: ${result.errors.join('; ')}`;
+        }
+        
         toast({
             title: "Import zakończony",
-            description: `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} wierszy.`,
+            description: description,
+            duration: result.errors.length > 0 ? 10000 : 5000,
         });
         await refreshData(false);
 
