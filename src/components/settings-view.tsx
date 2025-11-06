@@ -381,12 +381,16 @@ const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove,
 
 
 const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
-    const { handleBulkDeleteEmployees, settings } = useMainLayout();
+    const { handleBulkDeleteEmployees, handleBulkDeleteEmployeesByCoordinator, settings } = useMainLayout();
     const [isDeletingActive, setIsDeletingActive] = useState(false);
     const [isDeletingDismissed, setIsDeletingDismissed] = useState(false);
+    const [isDeletingByCoord, setIsDeletingByCoord] = useState(false);
     const [isTransferring, setIsTransferring] = useState(false);
+    
     const [transferFrom, setTransferFrom] = useState('');
     const [transferTo, setTransferTo] = useState('');
+    const [deleteCoordinatorId, setDeleteCoordinatorId] = useState('');
+
     const { toast } = useToast();
     
     const sortedCoordinators = useMemo(() => {
@@ -403,6 +407,19 @@ const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
         if(status === 'active') setIsDeletingActive(false);
         else setIsDeletingDismissed(false);
         return success
+    };
+
+    const handleCoordinatorDelete = async () => {
+        if (!deleteCoordinatorId) {
+            toast({ variant: 'destructive', title: 'Błąd', description: 'Wybierz koordynatora.' });
+            return;
+        }
+        setIsDeletingByCoord(true);
+        const success = await handleBulkDeleteEmployeesByCoordinator(deleteCoordinatorId);
+        if (success) {
+            setDeleteCoordinatorId('');
+        }
+        setIsDeletingByCoord(false);
     };
     
     const handleTransfer = async () => {
@@ -432,7 +449,7 @@ const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
                 <CardDescription>Zarządzaj danymi pracowników hurtowo.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-lg border border-destructive/50 bg-destructive/10 p-4 gap-4">
+                  <div className="flex flex-col sm:flex-row items-start justify-between rounded-lg border border-destructive/50 bg-destructive/10 p-4 gap-4">
                     <div className="flex-1">
                         <h3 className="font-medium text-destructive">Masowe usuwanie</h3>
                         <p className="text-sm text-destructive/80">Te akcje są nieodwracalne.</p>
@@ -442,7 +459,7 @@ const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
                             <AlertDialogTrigger asChild>
                                 <Button variant="destructive" disabled={isDeletingActive} className="w-full">
                                     {isDeletingActive ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Trash2 className="mr-2 h-4 w-4" />}
-                                    Usuń aktywnych
+                                    Usuń wszystkich aktywnych
                                 </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
@@ -460,7 +477,7 @@ const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
                             <AlertDialogTrigger asChild>
                                 <Button variant="destructive" disabled={isDeletingDismissed} className="w-full">
                                      {isDeletingDismissed ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Trash2 className="mr-2 h-4 w-4" />}
-                                    Usuń zwolnionych
+                                    Usuń wszystkich zwolnionych
                                 </Button>
                             </AlertDialogTrigger>
                              <AlertDialogContent>
@@ -506,6 +523,45 @@ const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
                                 {isTransferring ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
                                 Przenieś
                             </Button>
+                        </div>
+                     </div>
+                 )}
+                 {currentUser.isAdmin && settings?.coordinators && (
+                     <div className="rounded-lg border p-4 space-y-4 border-destructive/50 bg-destructive/10">
+                         <div className="flex-1">
+                            <h3 className="font-medium text-destructive">Usuwanie pracowników koordynatora</h3>
+                            <p className="text-sm text-destructive/80">Trwale usuwa wszystkich pracowników (aktywnych i zwolnionych) przypisanych do wybranego koordynatora. Ta akcja jest nieodwracalna.</p>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                            <div className="space-y-2">
+                                <Label>Koordynator</Label>
+                                <Select value={deleteCoordinatorId} onValueChange={setDeleteCoordinatorId}>
+                                    <SelectTrigger><SelectValue placeholder="Wybierz koordynatora" /></SelectTrigger>
+                                    <SelectContent>
+                                        {sortedCoordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" disabled={isDeletingByCoord || !deleteCoordinatorId}>
+                                        {isDeletingByCoord ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Trash2 className="mr-2 h-4 w-4" />}
+                                        Usuń pracowników
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Czy na pewno chcesz usunąć WSZYSTKICH pracowników tego koordynatora?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Ta operacja jest nieodwracalna. Wszyscy pracownicy przypisani do <span className="font-bold">{sortedCoordinators.find(c=>c.uid === deleteCoordinatorId)?.name}</span> zostaną trwale usunięci.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                                        <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleCoordinatorDelete}>Potwierdź i usuń</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                         </div>
                      </div>
                  )}

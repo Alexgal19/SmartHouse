@@ -600,6 +600,37 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', _actor
     }
 }
 
+export async function bulkDeleteEmployeesByCoordinator(coordinatorId: string, actorUid: string): Promise<void> {
+    try {
+        const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
+        const rows = await sheet.getRows({ limit: 5000 }); // Increased limit
+        const rowsToDelete = rows.filter((row) => row.get('coordinatorId') === coordinatorId);
+        
+        if (rowsToDelete.length === 0) {
+            return;
+        }
+
+        for (let i = rowsToDelete.length - 1; i >= 0; i--) {
+            await rowsToDelete[i].delete();
+        }
+        
+        // Audit logging
+        const { settings } = await getAllData();
+        const actor = settings.coordinators.find(c => c.uid === actorUid);
+        const deletedForCoordinator = settings.coordinators.find(c => c.uid === coordinatorId);
+        if (actor) {
+            await writeToAuditLog(actor.uid, actor.name, 'bulk-delete-by-coordinator', 'employee', coordinatorId, {
+                deletedCount: rowsToDelete.length,
+                deletedForCoordinatorName: deletedForCoordinator?.name || coordinatorId
+            });
+        }
+
+    } catch (e: unknown) {
+        console.error("Error bulk deleting employees by coordinator:", e);
+        throw new Error(e instanceof Error ? e.message : "Failed to bulk delete employees by coordinator.");
+    }
+}
+
 export async function transferEmployees(fromCoordinatorId: string, toCoordinatorId: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);

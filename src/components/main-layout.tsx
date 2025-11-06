@@ -32,6 +32,7 @@ import {
     importEmployeesFromExcel,
     bulkDeleteEmployees,
     deleteNotification,
+    bulkDeleteEmployeesByCoordinator,
 } from '@/lib/actions';
 import { getAllSheetsData } from '@/lib/sheets';
 import { logout } from '../lib/auth';
@@ -81,6 +82,7 @@ type MainLayoutContextType = {
     selectedCoordinatorId: string;
     setSelectedCoordinatorId: React.Dispatch<React.SetStateAction<string>>;
     handleBulkDeleteEmployees: (entityType: 'employee' | 'non-employee', status: 'active' | 'dismissed') => Promise<boolean>;
+    handleBulkDeleteEmployeesByCoordinator: (coordinatorId: string) => Promise<boolean>;
     handleAddEmployeeClick: () => void;
     handleEditEmployeeClick: (employee: Employee) => void;
     handleUpdateSettings: (newSettings: Partial<Settings>) => Promise<void>;
@@ -439,6 +441,23 @@ export default function MainLayout({
             return false;
         }
     }, [currentUser, refreshData, toast]);
+
+    const handleBulkDeleteEmployeesByCoordinator = useCallback(async (coordinatorId: string) => {
+        if (!currentUser || !currentUser.isAdmin) {
+            toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administratorzy mogą wykonać tę akcję." });
+            return false;
+        }
+        
+        try {
+            await bulkDeleteEmployeesByCoordinator(coordinatorId, currentUser.uid);
+            toast({ title: "Sukces", description: `Wszyscy pracownicy wybranego koordynatora zostali usunięci.` });
+            await refreshData(false);
+            return true;
+        } catch(e) {
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć pracowników." });
+            return false;
+        }
+    }, [currentUser, refreshData, toast]);
     
     const handleDismissEmployee = useCallback(async (employeeId: string) => {
         if (!currentUser) return;
@@ -513,6 +532,7 @@ export default function MainLayout({
         setSelectedCoordinatorId,
         handleEditEmployeeClick,
         handleBulkDeleteEmployees,
+        handleBulkDeleteEmployeesByCoordinator,
         handleAddEmployeeClick,
         handleUpdateSettings,
         refreshData,
@@ -534,6 +554,7 @@ export default function MainLayout({
         setSelectedCoordinatorId,
         handleEditEmployeeClick,
         handleBulkDeleteEmployees,
+        handleBulkDeleteEmployeesByCoordinator,
         handleAddEmployeeClick,
         handleUpdateSettings,
         refreshData,
