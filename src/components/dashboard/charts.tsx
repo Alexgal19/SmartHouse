@@ -49,6 +49,10 @@ export function DashboardCharts({
         label: "Deductions",
         color: "hsl(var(--chart-5))",
       },
+      departments: {
+        label: "Zakłady",
+        color: "hsl(var(--chart-3))",
+      }
     } satisfies ChartConfig
 
     const chartData = useMemo(() => {
@@ -73,6 +77,15 @@ export function DashboardCharts({
             }
             return acc;
         }, {} as Record<string, { nationality: string, employees: number }>);
+
+        const employeesByDepartment = activeEmployees.reduce((acc, employee) => {
+            const department = employee.zaklad || "Brak zakładu";
+            if (!acc[department]) {
+                acc[department] = { department, employees: 0 };
+            }
+            acc[department].employees++;
+            return acc;
+        }, {} as Record<string, { department: string, employees: number}>)
         
         const departuresByDate = employees.reduce((acc, employee) => {
             if (employee.checkOutDate) {
@@ -165,6 +178,7 @@ export function DashboardCharts({
         return {
             employeesPerCoordinator: Object.values(employeesPerCoordinator).sort((a, b) => a.coordinator.localeCompare(b.coordinator)),
             employeesByNationality: Object.values(employeesByNationality).sort((a, b) => b.employees - a.employees),
+            employeesByDepartment: Object.values(employeesByDepartment).sort((a, b) => b.employees - a.employees),
             departuresByMonth: departuresData,
             deductionsByDate: deductionsData,
         }
@@ -183,6 +197,37 @@ export function DashboardCharts({
 
     return (
         <div className="grid gap-6">
+             {chartData.employeesByDepartment.length > 0 && (
+                <Card>
+                    <CardHeader className='pb-2'>
+                        <CardTitle className="text-lg">Pracownicy wg zakładu</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <ResponsiveContainer width="100%" height={chartData.employeesByDepartment.length * 35 + 50}>
+                            <BarChart 
+                                data={chartData.employeesByDepartment}
+                                layout="vertical"
+                                margin={{ top: 5, right: 20, bottom: 5, left: 10 }}
+                                barCategoryGap="20%"
+                            >
+                                <defs>
+                                    <linearGradient id="chart-department-gradient" x1="0" y1="0" x2="1" y2="0">
+                                        <stop offset="5%" stopColor="hsl(var(--chart-3))" stopOpacity={0.8}/>
+                                        <stop offset="95%" stopColor="hsl(var(--chart-3))" stopOpacity={0.1}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50" />
+                                <YAxis dataKey="department" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
+                                <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
+                                <Tooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
+                                <Bar dataKey="employees" radius={[0, 4, 4, 0]} fill="url(#chart-department-gradient)">
+                                    <LabelList dataKey="employees" position="right" offset={8} className="fill-foreground text-xs" />
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+            )}
             {showCoordinatorChart && chartData.employeesPerCoordinator.length > 0 && (
                 <Card>
                     <CardHeader className='pb-2'>
