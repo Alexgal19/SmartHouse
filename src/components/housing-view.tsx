@@ -32,16 +32,19 @@ const calculateStats = (occupants: Occupant[]) => {
     const stats = {
         nationalities: new Map<string, number>(),
         genders: new Map<string, number>(),
+        departments: new Map<string, number>(),
     };
     occupants.forEach(occ => {
         if (isEmployee(occ)) {
             stats.nationalities.set(occ.nationality || 'Brak', (stats.nationalities.get(occ.nationality || 'Brak') || 0) + 1);
             stats.genders.set(occ.gender || 'Brak', (stats.genders.get(occ.gender || 'Brak') || 0) + 1);
+            stats.departments.set(occ.zaklad || 'Brak', (stats.departments.get(occ.zaklad || 'Brak') || 0) + 1);
         }
     });
     return {
         nationalities: Array.from(stats.nationalities.entries()).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
         genders: Array.from(stats.genders.entries()).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
+        departments: Array.from(stats.departments.entries()).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
     };
 };
 
@@ -59,6 +62,26 @@ const StatsCharts = ({ occupants, chartConfig }: { occupants: Occupant[], chartC
     
     return (
         <div className="space-y-4">
+             <Card className="bg-muted/50">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Wg zakładu</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    {statsData.departments.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={statsData.departments.length * 25 + 20}>
+                            <BarChart data={statsData.departments} layout="vertical" margin={{ left: 10, right: 30 }}>
+                                <CartesianGrid horizontal={false} strokeDasharray="3 3" />
+                                <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
+                                <XAxis type="number" hide />
+                                <RechartsTooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
+                                <Bar dataKey="count" fill={chartConfig.departments.color} radius={[0, 4, 4, 0]}>
+                                    <LabelList dataKey="count" position="right" offset={8} className="fill-foreground text-xs" />
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    ) : <NoDataState message="Brak danych" />}
+                </CardContent>
+            </Card>
             <Card className="bg-muted/50">
                 <CardHeader className="pb-2">
                     <CardTitle className="text-sm">Wg narodowości</CardTitle>
@@ -180,6 +203,7 @@ const AddressDetailView = ({
         count: { label: "Ilość" },
         nationalities: { label: "Nationalities", color: "hsl(var(--chart-2))" },
         genders: { label: "Genders", color: "hsl(var(--chart-1))" },
+        departments: { label: "Zakłady", color: "hsl(var(--chart-3))" }
     };
     
     if (!aggregatedAddressesData) {
@@ -451,6 +475,7 @@ const MobileAddressCard = ({ address, onOccupantClick }: { address: HousingData;
                                 count: { label: "Ilość" },
                                 nationalities: { label: "Nationalities", color: "hsl(var(--chart-2))" },
                                 genders: { label: "Genders", color: "hsl(var(--chart-1))" },
+                                departments: { label: "Zakłady", color: "hsl(var(--chart-3))" }
                             }} />
                         </div>
                     </div>
