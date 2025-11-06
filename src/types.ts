@@ -119,7 +119,6 @@ export type SessionData = {
   uid: string;
   name: string;
   isAdmin: boolean;
-  role: 'Admin' | 'Edytor' | 'Obserwator';
 }
 
 export type EquipmentItem = {

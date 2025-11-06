@@ -1047,10 +1047,10 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
                     address: row['Adres'] as string,
                     roomNumber: String(row['Pokój'] || ''),
                     zaklad: row['Zakład'] as string,
-                    checkInDate: row['Data zameldowania'] ? safeFormat(row['Data zameldowania']) : null,
-                    checkOutDate: row['Data wymeldowania'] ? safeFormat(row['Data wymeldowania']) : undefined,
-                    contractStartDate: row['Umowa od'] ? safeFormat(row['Umowa od']) : undefined,
-                    contractEndDate: row['Umowa do'] ? safeFormat(row['Umowa do']) : undefined,
+                    checkInDate: safeFormat(row['Data zameldowania']),
+                    checkOutDate: safeFormat(row['Data wymeldowania']),
+                    contractStartDate: safeFormat(row['Umowa od']),
+                    contractEndDate: safeFormat(row['Umowa do']),
                     comments: row['Komentarze'] as string,
                 };
                 
