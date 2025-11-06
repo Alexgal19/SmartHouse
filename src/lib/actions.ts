@@ -1,4 +1,5 @@
 
+
 "use server";
 
 import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Inspection, InspectionCategory } from '../types';
@@ -588,8 +589,10 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', _actor
             return;
         }
 
-        const deletedRowIndexes = rowsToDelete.map(r => r.rowNumber - 1);
-        await sheet.deleteRows(deletedRowIndexes);
+        // Deleting rows in reverse order to avoid index shifting issues
+        for (let i = rowsToDelete.length - 1; i >= 0; i--) {
+            await rowsToDelete[i].delete();
+        }
 
     } catch (e: unknown) {
         console.error("Error bulk deleting employees:", e);
@@ -615,9 +618,8 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
 
         for (const row of rowsToTransfer) {
             row.set('coordinatorId', toCoordinatorId);
+            await row.save();
         }
-
-        await sheet.saveUpdatedCells();
 
     } catch (e: unknown) {
         console.error("Error transferring employees:", e);
@@ -640,18 +642,22 @@ export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<
             const checkOutDateString = String(row.get('checkOutDate'));
 
             if (status === 'active' && checkOutDateString) {
-                const checkOutDate = new Date(checkOutDateString);
-                if (isValid(checkOutDate) && isPast(checkOutDate)) {
-                    row.set('status', 'dismissed');
-                    rowsToUpdate.push(row.save()); // Pushing promise to array
-                    updatedCount++;
+                try {
+                    const checkOutDate = parseISO(checkOutDateString);
+                     if (isValid(checkOutDate) && isPast(checkOutDate)) {
+                        row.set('status', 'dismissed');
+                        rowsToUpdate.push(row.save()); // Pushing promise to array
+                        updatedCount++;
 
-                    const originalEmployee = deserializeEmployee(row.toObject());
-                    if (originalEmployee) {
-                       await createNotification(actorUid, 'automatycznie zwolnił', originalEmployee, [
-                            { field: 'status', oldValue: 'active', newValue: 'dismissed' }
-                       ]);
+                        const originalEmployee = deserializeEmployee(row.toObject());
+                        if (originalEmployee) {
+                           await createNotification(actorUid, 'automatycznie zwolnił', originalEmployee, [
+                                { field: 'status', oldValue: 'active', newValue: 'dismissed' }
+                           ]);
+                        }
                     }
+                } catch(e) {
+                    console.warn(`Invalid checkout date for employee ${row.get('id')}: ${checkOutDateString}`);
                 }
             }
         }
@@ -715,15 +721,42 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
             }
         }
         if (newSettings.coordinators) {
-             const sheet = await getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS);
-             await sheet.clearRows();
-             if (newSettings.coordinators.length > 0) {
-                 await sheet.addRows(newSettings.coordinators.map(c => ({
-                     ...c,
-                     departments: c.departments.join(','),
-                     isAdmin: String(c.isAdmin).toUpperCase()
-                 })), { raw: false, insert: true });
-             }
+            const sheet = await getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS);
+            const currentRows = await sheet.getRows();
+            const currentCoords = currentRows.map(r => r.toObject());
+            const newCoords = newSettings.coordinators;
+
+            const toAdd = newCoords.filter(nc => !currentCoords.some(cc => cc.uid === nc.uid));
+            const toDeleteRows = currentRows.filter(cr => !newCoords.some(nc => nc.uid === cr.get('uid')));
+            const toUpdate = newCoords.filter(nc => currentCoords.some(cc => cc.uid === nc.uid));
+            
+            // Delete
+             for (const row of toDeleteRows.reverse()) { // reverse to avoid index issues
+                await row.delete();
+            }
+
+            // Add
+            if (toAdd.length > 0) {
+                await sheet.addRows(toAdd.map(c => ({
+                    ...c,
+                    departments: c.departments.join(','),
+                    isAdmin: String(c.isAdmin).toUpperCase()
+                })), { raw: false, insert: true });
+            }
+            
+            // Update
+            for (const coord of toUpdate) {
+                const row = currentRows.find(r => r.get('uid') === coord.uid);
+                if (row) {
+                    row.set('name', coord.name);
+                    row.set('isAdmin', String(coord.isAdmin).toUpperCase());
+                    row.set('departments', coord.departments.join(','));
+                    if (coord.password) { // Only update password if it's not empty
+                        row.set('password', coord.password);
+                    }
+                    await row.save();
+                }
+            }
         }
 
     } catch (error: unknown) {
