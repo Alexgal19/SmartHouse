@@ -317,7 +317,7 @@ export default function MainLayout({
     }, [editEntityId, rawEmployees, rawNonEmployees]);
 
     const handleSaveEmployee = useCallback(async (data: EmployeeFormData) => {
-        if (!currentUser) return;
+        if (!currentUser || !settings) return;
         
         try {
             if (editingEmployee) {
@@ -325,14 +325,14 @@ export default function MainLayout({
                 await updateEmployee(editingEmployee.id, updatedData, currentUser.uid)
                 toast({ title: "Sukces", description: "Dane pracownika zostały zaktualizowane." });
             } else {
-                await addEmployee(data, currentUser.uid);
+                await addEmployee(data, currentUser.uid, settings);
                 toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
             }
             await refreshData(false);
         } catch (e: unknown) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać pracownika." });
         }
-    }, [currentUser, editingEmployee, refreshData, toast]);
+    }, [currentUser, editingEmployee, refreshData, toast, settings]);
 
     const handleSaveNonEmployee = useCallback(async (data: Omit<NonEmployee, 'id'>) => {
         if (!currentUser) return;
@@ -515,7 +515,7 @@ export default function MainLayout({
         reader.readAsDataURL(file);
         const fileContent = await promise;
 
-        const result = await importEmployeesFromExcel(fileContent, currentUser.uid, settings);
+        const result = await importEmployeesFromExcel(fileContent, currentUser.uid);
         
         let description = `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} wierszy.`;
         if (result.errors.length > 0) {
@@ -650,12 +650,7 @@ export default function MainLayout({
                 <AddNonEmployeeForm
                     isOpen={isNonEmployeeFormOpen}
                     onOpenChange={setIsNonEmployeeFormOpen}
-                    onSave={(data) =>
-                        handleSaveNonEmployee({
-                            ...data,
-                            comments: data.comments ?? '',
-                        })
-                    }
+                    onSave={(data) => handleSaveNonEmployee(data)}
                     settings={settings}
                     nonEmployee={editingNonEmployee}
                     currentUser={currentUser}

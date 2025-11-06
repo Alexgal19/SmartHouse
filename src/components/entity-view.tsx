@@ -189,9 +189,9 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
               entities.map((entity) => (
                 <TableRow key={entity.id} onClick={() => onEdit(entity)} className="cursor-pointer">
                   <TableCell className="font-medium">{entity.fullName}</TableCell>
-                   <TableCell>{isEmployee(entity) ? entity.gender : "N/A"}</TableCell>
+                   <TableCell>{entity.gender || "N/A"}</TableCell>
                   <TableCell>{getCoordinatorName(entity.coordinatorId)}</TableCell>
-                  <TableCell>{isEmployee(entity) ? entity.nationality : "N/A"}</TableCell>
+                  <TableCell>{entity.nationality || "N/A"}</TableCell>
                   <TableCell>{entity.address}</TableCell>
                   <TableCell>{isEmployee(entity) ? entity.oldAddress : "N/A"}</TableCell>
                   <TableCell>{isEmployee(entity) ? formatDate(entity.addressChangeDate) : "N/A"}</TableCell>
@@ -241,7 +241,7 @@ const EntityCardList = ({ entities, onEdit, onDismiss, onRestore, isDismissed, s
                         <CardContent className="text-sm space-y-2">
                             <p><span className="font-semibold text-muted-foreground">Adres:</span> {entity.address}, pok. {entity.roomNumber}</p>
                             {isEmployee(entity) && <p><span className="font-semibold text-muted-foreground">Zakład:</span> {entity.zaklad}</p>}
-                            {isEmployee(entity) && <p><span className="font-semibold text-muted-foreground">Narodowość:</span> {entity.nationality}</p>}
+                            <p><span className="font-semibold text-muted-foreground">Narodowość:</span> {entity.nationality}</p>
                             <p><span className="font-semibold text-muted-foreground">Zameldowanie:</span> {formatDate(entity.checkInDate)}</p>
                         </CardContent>
                     </Card>
@@ -558,7 +558,8 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
             const searchMatch = search === '' || person.fullName.toLowerCase().includes(search.toLowerCase());
             const addressMatch = filters.address === 'all' || person.address === filters.address;
             const coordinatorMatch = filters.coordinator === 'all' || !person.coordinatorId || person.coordinatorId === filters.coordinator;
-            return searchMatch && addressMatch && coordinatorMatch;
+            const nationalityMatch = filters.nationality === 'all' || person.nationality === filters.nationality;
+            return searchMatch && addressMatch && coordinatorMatch && nationalityMatch;
         });
     }, [allNonEmployees, search, filters]);
 

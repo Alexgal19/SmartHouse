@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -44,14 +45,16 @@ const formSchema = z.object({
   locality: z.string().min(1, "Miejscowość jest wymagana."),
   address: z.string().min(1, "Adres jest wymagany."),
   roomNumber: z.string().min(1, "Numer pokoju jest wymagany."),
-  checkInDate: z.date({ required_error: "Data zameldowania jest wymagana." }),
+  nationality: z.string().min(1, "Narodowość jest wymagana."),
+  gender: z.string().min(1, "Płeć jest wymagana."),
+  checkInDate: z.date({ required_error: "Data zameldowania jest wymagana." }).nullable(),
   checkOutDate: z.date().nullable().optional(),
   departureReportDate: z.date().nullable().optional(),
   comments: z.string().optional(),
 });
 
 type NonEmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate' | 'locality' | 'departureReportDate'> & {
-  checkInDate: string;
+  checkInDate: string | null;
   checkOutDate?: string | null;
   departureReportDate?: string | null;
 };
@@ -162,7 +165,9 @@ export function AddNonEmployeeForm({
       locality: '',
       address: '',
       roomNumber: '',
-      checkInDate: undefined,
+      nationality: '',
+      gender: '',
+      checkInDate: null,
       checkOutDate: null,
       departureReportDate: null,
       comments: '',
@@ -178,6 +183,14 @@ export function AddNonEmployeeForm({
       .map(c => ({ value: c.uid, label: c.name }))
       .sort((a,b) => a.label.localeCompare(b.label)),
   [settings.coordinators]);
+  
+  const nationalityOptions = useMemo(() => 
+    settings.nationalities.map(n => ({ value: n, label: n })).sort((a, b) => a.label.localeCompare(b.label)),
+  [settings.nationalities]);
+  
+  const genderOptions = useMemo(() => 
+    settings.genders.sort((a, b) => a.localeCompare(b)),
+  [settings.genders]);
 
   const availableAddresses = useMemo(() => {
     if (!settings) return [];
@@ -230,6 +243,8 @@ export function AddNonEmployeeForm({
         locality: '',
         address: '',
         roomNumber: '',
+        nationality: '',
+        gender: '',
         checkInDate: new Date(),
         checkOutDate: null,
         departureReportDate: null,
@@ -239,8 +254,8 @@ export function AddNonEmployeeForm({
   }, [nonEmployee, isOpen, form, settings.addresses, currentUser]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    const formatDate = (date: Date | null | undefined): string | null | undefined => {
-        if (!date) return date;
+    const formatDate = (date: Date | null | undefined): string | null => {
+        if (!date) return null;
         return format(date, 'yyyy-MM-dd');
     }
     
@@ -248,7 +263,7 @@ export function AddNonEmployeeForm({
 
     const formData: NonEmployeeFormData = {
       ...restOfValues,
-      checkInDate: formatDate(values.checkInDate)!,
+      checkInDate: formatDate(values.checkInDate),
       checkOutDate: formatDate(values.checkOutDate),
       departureReportDate: formatDate(values.departureReportDate),
     };
@@ -317,6 +332,42 @@ export function AddNonEmployeeForm({
                     </FormItem>
                     )}
                 />
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                        control={form.control}
+                        name="nationality"
+                        render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                            <FormLabel>Narodowość</FormLabel>
+                            <Combobox
+                                options={nationalityOptions}
+                                value={field.value}
+                                onChange={field.onChange}
+                                placeholder="Wybierz narodowość"
+                                searchPlaceholder="Szukaj narodowości..."
+                            />
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name="gender"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Płeć</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz płeć" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                                {genderOptions.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                            </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                </div>
+
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                      <FormField

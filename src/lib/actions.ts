@@ -109,7 +109,7 @@ const serializeEquipment = (item: Partial<EquipmentItem>): Record<string, string
 };
 
 const NON_EMPLOYEE_HEADERS = [
-    'id', 'fullName', 'coordinatorId', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'departureReportDate', 'comments'
+    'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'departureReportDate', 'comments'
 ];
 
 const EQUIPMENT_HEADERS = [
@@ -447,14 +447,8 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>, a
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
         const newNonEmployee: NonEmployee = {
             id: `nonemp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-            fullName: nonEmployeeData.fullName,
-            coordinatorId: nonEmployeeData.coordinatorId,
-            address: nonEmployeeData.address,
-            roomNumber: nonEmployeeData.roomNumber,
-            checkInDate: nonEmployeeData.checkInDate || '',
-            checkOutDate: nonEmployeeData.checkOutDate,
-            departureReportDate: nonEmployeeData.departureReportDate,
-            comments: nonEmployeeData.comments || '',
+            ...nonEmployeeData,
+            checkInDate: nonEmployeeData.checkInDate || null
         };
 
         const serialized = serializeNonEmployee(newNonEmployee);
@@ -1034,33 +1028,18 @@ export async function generateAccommodationReport(year: number, month: number, c
 export async function importEmployeesFromExcel(fileContent: string, actorUid: string): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
     try {
         const { settings } = await getAllData();
-        const workbook = XLSX.read(fileContent, { type: 'base64', cellDates: true });
+        const workbook = XLSX.read(fileContent, { type: 'base64', cellDates: false, dateNF: 'dd.mm.yyyy' });
         const sheetName = workbook.SheetNames[0];
         if (!sheetName) throw new Error("Nie znaleziono arkusza w pliku Excel.");
 
         const worksheet = workbook.Sheets[sheetName];
         
-        const header = (XLSX.utils.sheet_to_json(worksheet, { header: 1 })[0] as string[]).map(h => h.trim().toLowerCase());
         const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: null });
-
-        const keyMap: Record<string, keyof Employee> = {
-            'imię i nazwisko': 'fullName',
-            'koordynator': 'coordinatorId',
-            'narodowość': 'nationality',
-            'płeć': 'gender',
-            'adres': 'address',
-            'pokój': 'roomNumber',
-            'zakład': 'zaklad',
-            'data zameldowania': 'checkInDate',
-            'data wymeldowania': 'checkOutDate',
-            'umowa od': 'contractStartDate',
-            'umowa do': 'contractEndDate',
-            'komentarze': 'comments'
-        };
 
         let importedCount = 0;
         const errors: string[] = [];
         const employeesToAdd: Partial<Employee>[] = [];
+        const newLocalities = new Set<string>();
         
         const coordinatorMap = new Map(
             settings.coordinators.map(c => [c.name.toLowerCase().trim(), c.uid])
@@ -1076,8 +1055,8 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
                 
                 const fullName = (normalizedRow['imię i nazwisko'] as string)?.trim();
                 if (!fullName) {
-                    errors.push(`Wiersz ${rowNum}: Brak imienia i nazwiska.`);
-                    continue;
+                    // errors.push(`Wiersz ${rowNum}: Brak imienia i nazwiska.`);
+                    continue; // Skip row if full name is missing
                 }
                 
                 const coordinatorName = (normalizedRow['koordynator'] as string)?.toLowerCase().trim();
@@ -1085,6 +1064,11 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
                 if (!coordinatorId) {
                      errors.push(`Wiersz ${rowNum} (${fullName}): Nie znaleziono koordynatora '${normalizedRow['koordynator']}'.`);
                      continue;
+                }
+                
+                const locality = (normalizedRow['miejscowość'] as string)?.trim();
+                if (locality && !settings.localities.includes(locality)) {
+                    newLocalities.add(locality);
                 }
 
                 const employeeData: Partial<Employee> = {
@@ -1134,6 +1118,11 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
             if(notificationsToAdd.length > 0) {
                 await notificationSheet.addRows(notificationsToAdd, { raw: false, insert: true });
             }
+        }
+        
+        if (newLocalities.size > 0) {
+            const updatedLocalities = [...new Set([...settings.localities, ...Array.from(newLocalities)])];
+            await updateSettings({ localities: updatedLocalities });
         }
         
         return { importedCount, totalRows: data.length, errors };

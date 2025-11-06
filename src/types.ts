@@ -88,9 +88,11 @@ export type NonEmployee = {
     id: string;
     fullName: string;
     coordinatorId: string;
+    nationality: string;
+    gender: string;
     address: string;
     roomNumber: string;
-    checkInDate: string; // YYYY-MM-DD
+    checkInDate: string | null; // YYYY-MM-DD
     checkOutDate?: string | null; // YYYY-MM-DD
     departureReportDate?: string | null; // YYYY-MM-DD
     comments: string;
