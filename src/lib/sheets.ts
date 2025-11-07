@@ -23,8 +23,6 @@ const SHEET_NAME_INSPECTIONS = 'Inspections';
 const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 const SHEET_NAME_INSPECTION_TEMPLATE = 'InspectionTemplate';
 
-let doc: GoogleSpreadsheet | null = null;
-
 function getAuth(): JWT {
     const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
     const key = process.env.GOOGLE_PRIVATE_KEY;
@@ -44,17 +42,12 @@ function getAuth(): JWT {
 }
 
 async function getDoc(): Promise<GoogleSpreadsheet> {
-    if (doc) {
-        return doc;
-    }
     try {
         const auth = getAuth();
-        const newDoc = new GoogleSpreadsheet(SPREADSHEET_ID, auth);
-        await newDoc.loadInfo();
-        doc = newDoc;
+        const doc = new GoogleSpreadsheet(SPREADSHEET_ID, auth);
+        await doc.loadInfo();
         return doc;
     } catch (error: unknown) {
-        doc = null; 
         console.error("Failed to load Google Sheet document:", error);
         throw new Error(`Could not connect to Google Sheets. Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
