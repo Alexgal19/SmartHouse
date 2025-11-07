@@ -4,7 +4,7 @@
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, Address, Coordinator, Inspection, InspectionTemplateCategory, EquipmentItem } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, Address, Coordinator, Inspection, InspectionTemplateCategory, EquipmentItem, NotificationType } from '../types';
 import { format, isValid, parse, parseISO } from 'date-fns';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
@@ -225,6 +225,7 @@ const deserializeNotification = (row: Record<string, unknown>): Notification | n
         coordinatorName: (plainObject.coordinatorName || '') as string,
         createdAt: createdAt,
         isRead: plainObject.isRead === 'TRUE',
+        type: (plainObject.type as NotificationType) || 'info',
         changes: changes,
     };
     return newNotification;
@@ -406,7 +407,7 @@ export async function getSettingsFromSheet(): Promise<Settings> {
 
 export async function getNotificationsFromSheet(): Promise<Notification[]> {
     try {
-        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id']);
+        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'entityId', 'entityName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'type', 'changes']);
         const rows = await sheet.getRows({ limit: 200 });
         const plainRows = rows.map(r => r.toObject());
         return plainRows.map(deserializeNotification)

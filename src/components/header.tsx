@@ -23,19 +23,38 @@ import { ModernHouseIcon } from './icons/modern-house-icon';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Label } from './ui/label';
 
-const NotificationItem = ({ n, onClick, onDelete }: {n: Notification, onClick: (n: Notification) => void, onDelete: (notificationId: string) => void}) => (
+const NotificationItem = ({ n, onClick, onDelete }: {n: Notification, onClick: (n: Notification) => void, onDelete: (notificationId: string) => void}) => {
+    
+    const itemClasses = cn(
+        "p-3 rounded-lg -mx-2 flex items-start gap-4 transition-colors group border-l-4",
+        n.isRead ? 'opacity-70 border-transparent' : 'font-semibold',
+        n.type === 'success' && 'bg-green-500/10 border-green-500',
+        n.type === 'destructive' && 'bg-red-500/10 border-red-500',
+        n.type === 'warning' && 'bg-yellow-500/10 border-yellow-500',
+        n.type === 'info' && 'border-blue-500',
+        !n.type && 'border-transparent'
+    );
+    
+    const iconClasses = cn(
+        'h-2.5 w-2.5 rounded-full mt-1.5',
+        n.isRead ? 'bg-muted-foreground' : 'bg-primary animate-pulse',
+        n.type === 'success' && !n.isRead && 'bg-green-500',
+        n.type === 'destructive' && !n.isRead && 'bg-red-500',
+        n.type === 'warning' && !n.isRead && 'bg-yellow-500',
+        n.type === 'info' && !n.isRead && 'bg-blue-500'
+    );
+
+
+    return (
     <div 
-        className={cn(
-            "p-3 rounded-lg -mx-2 flex items-start gap-4 transition-colors group",
-            n.isRead ? 'opacity-70' : 'bg-primary/5'
-        )}
-        role={n.employeeId ? "button" : "status"}
+        className={itemClasses}
+        role={n.entityId ? "button" : "status"}
     >
-        <div className="flex-shrink-0" onClick={() => n.employeeId && onClick(n)}>
-             <div className={cn('h-2.5 w-2.5 rounded-full mt-1.5', n.isRead ? 'bg-muted-foreground' : 'bg-primary animate-pulse' )}></div>
+        <div className="flex-shrink-0" onClick={() => n.entityId && onClick(n)}>
+             <div className={iconClasses}></div>
         </div>
-        <div className="flex-1" onClick={() => n.employeeId && onClick(n)}>
-            <p className="text-sm font-medium leading-tight">{n.message}</p>
+        <div className="flex-1" onClick={() => n.entityId && onClick(n)}>
+            <p className="text-sm leading-tight">{n.message}</p>
             <p className="text-xs text-muted-foreground mt-1">
                  przez {n.coordinatorName} &middot; {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true, locale: pl })}
             </p>
@@ -53,6 +72,7 @@ const NotificationItem = ({ n, onClick, onDelete }: {n: Notification, onClick: (
         </Button>
     </div>
 )
+}
 
 export default function Header({
   user,

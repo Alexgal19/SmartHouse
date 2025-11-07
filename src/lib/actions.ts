@@ -2,7 +2,7 @@
 
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Inspection, InspectionCategory } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Inspection, InspectionCategory, NotificationType } from '../types';
 import { getSheet, getAllSheetsData } from './sheets';
 import { format, isPast, isValid, getDaysInMonth, parseISO, differenceInDays, max, min, parse as dateFnsParse } from 'date-fns';
 import * as XLSX from 'xlsx';
@@ -92,6 +92,7 @@ const serializeNotification = (notification: Omit<Notification, 'changes'> & { c
         coordinatorName: notification.coordinatorName,
         createdAt: notification.createdAt,
         isRead: String(notification.isRead).toUpperCase(),
+        type: notification.type,
         changes: JSON.stringify(notification.changes || []),
     };
 };
@@ -251,13 +252,19 @@ const createNotification = async (
             return;
         }
 
-        const isAddOrDelete = action === 'dodał' || action === 'trwale usunął';
+        const isAddAction = action === 'dodał';
+        const isDeleteAction = action === 'trwale usunął';
         const isImportantUpdate = changes.some(c => ['address', 'roomNumber'].includes(c.field));
         
+        let notificationType: NotificationType = 'info';
+        if (isAddAction) notificationType = 'success';
+        if (isDeleteAction) notificationType = 'destructive';
+        if (isImportantUpdate) notificationType = 'warning';
+
         // Admin gets notifications only on specific events
         if (actor.isAdmin) {
-             if (action === 'zaktualizował' && !isImportantUpdate) {
-                return; // Admin doesn't get minor update notifications
+             if (!isAddAction && !isDeleteAction && !isImportantUpdate) {
+                return; // Admin doesn't get minor update/auto-dismiss notifications
              }
         }
 
@@ -279,10 +286,11 @@ const createNotification = async (
             coordinatorName: responsibleCoordinator.name,
             createdAt: new Date().toISOString(),
             isRead: false,
+            type: notificationType,
             changes
         };
         
-        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'entityId', 'entityName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
+        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'entityId', 'entityName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'type', 'changes']);
         await sheet.addRow(serializeNotification(newNotification), { raw: false, insert: true });
         
         await writeToAuditLog(actor.uid, actor.name, action, 'zaklad' in entity ? 'employee' : 'non-employee', entity.id, changes);
@@ -514,7 +522,7 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
      } catch (e: unknown) {
          console.error("Error updating non-employee:", e);
          throw new Error(e instanceof Error ? e.message : "Failed to update non-employee.");
-     }
+    }
 }
 
 export async function deleteNonEmployee(id: string, actorUid: string): Promise<void> {
@@ -810,7 +818,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
 
 export async function markNotificationAsRead(notificationId: string): Promise<void> {
     try {
-        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'entityId', 'entityName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
+        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'entityId', 'entityName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'type', 'changes']);
         const rows = await sheet.getRows({ limit: 200 });
         const row = rows.find((r) => r.get('id') === notificationId);
         if (row) {
@@ -824,7 +832,7 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
 
 export async function clearAllNotifications(): Promise<void> {
     try {
-        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'entityId', 'entityName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
+        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'entityId', 'entityName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'type', 'changes']);
         await sheet.clearRows();
     } catch (e: unknown) {
         console.error("Could not clear notifications:", e);
@@ -1036,7 +1044,6 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
         
         const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: null });
 
-        let importedCount = 0;
         const errors: string[] = [];
         const employeesToAdd: Partial<Employee>[] = [];
         const newLocalities = new Set<string>();
@@ -1055,8 +1062,7 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
                 
                 const fullName = (normalizedRow['imię i nazwisko'] as string)?.trim();
                 if (!fullName) {
-                    // errors.push(`Wiersz ${rowNum}: Brak imienia i nazwiska.`);
-                    continue; // Skip row if full name is missing
+                    continue; // Skip row if full name is missing, don't add to errors
                 }
                 
                 const coordinatorName = (normalizedRow['koordynator'] as string)?.toLowerCase().trim();
@@ -1099,9 +1105,9 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
             const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
             const serializedRows = employeesToAdd.map(emp => serializeEmployee(emp));
             await sheet.addRows(serializedRows, { raw: false, insert: true });
-            importedCount = employeesToAdd.length;
 
-            const notificationSheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'entityId', 'entityName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'changes']);
+            // Bulk add notifications
+            const notificationSheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'entityId', 'entityName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'type', 'changes']);
             const actor = settings.coordinators.find(c => c.uid === actorUid);
             const notificationsToAdd = employeesToAdd.map(emp => serializeNotification({
                 id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
@@ -1112,6 +1118,7 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
                 coordinatorName: settings.coordinators.find(c => c.uid === emp.coordinatorId)?.name || 'Nieznany',
                 createdAt: new Date().toISOString(),
                 isRead: false,
+                type: 'success',
                 changes: [],
             }));
 
@@ -1125,7 +1132,7 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
             await updateSettings({ localities: updatedLocalities });
         }
         
-        return { importedCount, totalRows: data.length, errors };
+        return { importedCount: employeesToAdd.length, totalRows: data.length, errors };
 
     } catch (e) {
         console.error("Error importing from Excel:", e);

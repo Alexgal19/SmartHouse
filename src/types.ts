@@ -104,6 +104,8 @@ export type NotificationChange = {
     newValue: string;
 }
 
+export type NotificationType = 'success' | 'destructive' | 'warning' | 'info';
+
 export type Notification = {
     id: string;
     message: string;
@@ -113,6 +115,7 @@ export type Notification = {
     coordinatorName: string;
     createdAt: string; // ISO date string
     isRead: boolean;
+    type: NotificationType;
     changes: NotificationChange[];
 }
 
