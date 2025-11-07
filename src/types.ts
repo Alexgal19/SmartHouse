@@ -111,8 +111,7 @@ export type Notification = {
     message: string;
     entityId: string;
     entityName: string;
-    coordinatorId: string;
-    coordinatorName: string;
+    recipientId: string;
     createdAt: string; // ISO date string
     isRead: boolean;
     type: NotificationType;

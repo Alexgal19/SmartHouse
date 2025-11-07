@@ -234,17 +234,6 @@ export default function MainLayout({
         }
     }, [allNotifications, toast]);
 
-
-    const filteredNotifications = useMemo(() => {
-        if (!currentUser) return [];
-        // Admin sees notifications for all coordinators unless a filter is applied in the header
-        if (currentUser.isAdmin) {
-            return allNotifications;
-        }
-        // Regular user sees only notifications for their employees
-        return allNotifications.filter(n => n.coordinatorId === currentUser.uid);
-    }, [currentUser, allNotifications]);
-
     const refreshData = useCallback(async (showToast = true) => {
         if (!currentUser) return;
         try {
@@ -253,7 +242,7 @@ export default function MainLayout({
                 settings,
                 nonEmployees,
                 notifications,
-            } = await getAllSheetsData();
+            } = await getAllSheetsData(currentUser);
 
             setRawEmployees(employees);
             setSettings(settings);
@@ -340,7 +329,7 @@ export default function MainLayout({
     }, [editEntityId, rawEmployees, rawNonEmployees]);
 
     const handleSaveEmployee = useCallback(async (data: EmployeeFormData) => {
-        if (!currentUser || !settings) return;
+        if (!currentUser) return;
         
         try {
             if (editingEmployee) {
@@ -348,14 +337,14 @@ export default function MainLayout({
                 await updateEmployee(editingEmployee.id, updatedData, currentUser.uid)
                 toast({ title: "Sukces", description: "Dane pracownika zostały zaktualizowane." });
             } else {
-                await addEmployee(data, currentUser.uid, settings);
+                await addEmployee(data, currentUser.uid);
                 toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
             }
             await refreshData(false);
         } catch (e: unknown) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać pracownika." });
         }
-    }, [currentUser, editingEmployee, refreshData, toast, settings]);
+    }, [currentUser, editingEmployee, refreshData, toast]);
 
     const handleSaveNonEmployee = useCallback(async (data: Omit<NonEmployee, 'id'>) => {
         if (!currentUser) return;
@@ -517,8 +506,8 @@ export default function MainLayout({
     }, [currentUser, refreshData, toast]);
     
     const handleImportEmployees = useCallback(async (file: File) => {
-        if (!currentUser || !settings) {
-            throw new Error("Brak danych użytkownika lub ustawień do przeprowadzenia importu.");
+        if (!currentUser) {
+            throw new Error("Brak danych użytkownika do przeprowadzenia importu.");
         }
 
         const reader = new FileReader();
@@ -538,7 +527,7 @@ export default function MainLayout({
         reader.readAsDataURL(file);
         const fileContent = await promise;
 
-        const result = await importEmployeesFromExcel(fileContent, currentUser.uid);
+        const result = await importEmployeesFromExcel(fileContent);
         
         let description = `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} wierszy.`;
         if (result.errors.length > 0) {
@@ -552,7 +541,7 @@ export default function MainLayout({
         });
         await refreshData(false);
 
-    }, [currentUser, settings, refreshData, toast]);
+    }, [currentUser, refreshData, toast]);
 
     const contextValue: MainLayoutContextType = useMemo(() => ({
         allEmployees,
@@ -649,7 +638,7 @@ export default function MainLayout({
                     {currentUser && <Header 
                         user={currentUser} 
                         activeView={activeView} 
-                        notifications={filteredNotifications}
+                        notifications={allNotifications}
                         settings={settings}
                         onNotificationClick={handleNotificationClick} 
                         onLogout={handleLogout} 

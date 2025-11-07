@@ -221,8 +221,7 @@ const deserializeNotification = (row: Record<string, unknown>): Notification | n
         message: (plainObject.message || '') as string,
         entityId: (plainObject.entityId || '') as string,
         entityName: (plainObject.entityName || '') as string,
-        coordinatorId: (plainObject.coordinatorId || '') as string,
-        coordinatorName: (plainObject.coordinatorName || '') as string,
+        recipientId: (plainObject.recipientId || '') as string,
         createdAt: createdAt,
         isRead: plainObject.isRead === 'TRUE',
         type: (plainObject.type as NotificationType) || 'info',
@@ -405,21 +404,34 @@ export async function getSettingsFromSheet(): Promise<Settings> {
 }
 
 
-export async function getNotificationsFromSheet(): Promise<Notification[]> {
+export async function getNotificationsFromSheet(recipientId: string, isAdmin: boolean): Promise<Notification[]> {
     try {
-        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id', 'message', 'entityId', 'entityName', 'coordinatorId', 'coordinatorName', 'createdAt', 'isRead', 'type', 'changes']);
+        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id']);
         const rows = await sheet.getRows({ limit: 200 });
-        const plainRows = rows.map(r => r.toObject());
-        return plainRows.map(deserializeNotification)
-            .filter((n): n is Notification => n !== null)
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+        const allNotifications = rows
+            .map(r => deserializeNotification(r.toObject()))
+            .filter((n): n is Notification => n !== null);
+
+        const filtered = allNotifications.filter(n => {
+            if (isAdmin) {
+                // Admins see notifications for critical events, or if they are the recipient
+                 const isImportant = ['success', 'destructive', 'warning'].includes(n.type);
+                 return isImportant || n.recipientId === recipientId;
+            } else {
+                // Coordinators only see notifications where they are the recipient
+                return n.recipientId === recipientId;
+            }
+        });
+        
+        return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } catch (error: unknown) {
         console.error("Error fetching notifications from sheet:", error instanceof Error ? error.message : "Unknown error", error instanceof Error ? error.stack : "");
         throw new Error(`Could not fetch notifications. Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
 }
 
-export async function getAllSheetsData() {
+export async function getAllSheetsData(session: {uid: string; isAdmin: boolean}) {
     try {
         const doc = await getDoc();
 
@@ -512,9 +524,18 @@ export async function getAllSheetsData() {
         const nonEmployees = nonEmployeesSheet.map(row => deserializeNonEmployee(row)).filter((e): e is NonEmployee => e !== null);
         const equipment = equipmentSheet.map(row => deserializeEquipmentItem(row)).filter((item): item is EquipmentItem => item !== null);
 
-        const notifications = notificationsSheet
+        const allNotifications = notificationsSheet
             .map(row => deserializeNotification(row))
-            .filter((n): n is Notification => n !== null)
+            .filter((n): n is Notification => n !== null);
+        
+        const notifications = allNotifications
+            .filter(n => {
+                if (session.isAdmin) {
+                    const isImportant = ['success', 'destructive', 'warning'].includes(n.type);
+                    return isImportant || n.recipientId === session.uid;
+                }
+                return n.recipientId === session.uid;
+             })
             .sort((a: Notification, b: Notification) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         
         const detailsByInspectionId = new Map<string, Record<string, string>[]>();

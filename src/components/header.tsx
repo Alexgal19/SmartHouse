@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Bell, LogOut, Trash2 } from 'lucide-react';
-import type { SessionData, View, Notification, Settings } from '@/types';
+import type { SessionData, View, Notification, Settings, Coordinator } from '@/types';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatDistanceToNow } from 'date-fns';
@@ -44,6 +44,7 @@ const NotificationItem = ({ n, onClick, onDelete }: {n: Notification, onClick: (
         n.type === 'info' && !n.isRead && 'bg-blue-500'
     );
 
+    const responsibleCoordinatorName = n.recipientId ? 'dla ' + n.recipientId : '';
 
     return (
     <div 
@@ -56,7 +57,7 @@ const NotificationItem = ({ n, onClick, onDelete }: {n: Notification, onClick: (
         <div className="flex-1" onClick={() => n.entityId && onClick(n)}>
             <p className="text-sm leading-tight">{n.message}</p>
             <p className="text-xs text-muted-foreground mt-1">
-                 przez {n.coordinatorName} &middot; {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true, locale: pl })}
+                 {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true, locale: pl })} {responsibleCoordinatorName}
             </p>
         </div>
         <Button 
@@ -92,7 +93,7 @@ export default function Header({
   onClearNotifications: () => void;
   onDeleteNotification: (notificationId: string) => void;
 }) {
-    const [selectedCoordinator, setSelectedCoordinator] = useState('all');
+    const [selectedCoordinatorId, setSelectedCoordinatorId] = useState('all');
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
     const sortedCoordinators = useMemo(() => {
@@ -101,11 +102,11 @@ export default function Header({
     }, [settings]);
 
     const filteredNotifications = useMemo(() => {
-        if (selectedCoordinator === 'all' || !user.isAdmin) {
+        if (selectedCoordinatorId === 'all') {
             return notifications;
         }
-        return notifications.filter(n => n.coordinatorId === selectedCoordinator);
-    }, [notifications, selectedCoordinator, user.isAdmin]);
+        return notifications.filter(n => n.recipientId === selectedCoordinatorId);
+    }, [notifications, selectedCoordinatorId]);
 
 
   return (
@@ -139,7 +140,7 @@ export default function Header({
                 {user.isAdmin && settings && (
                     <div className="py-4 space-y-2">
                         <Label>Filtruj wg koordynatora</Label>
-                        <Select value={selectedCoordinator} onValueChange={setSelectedCoordinator}>
+                        <Select value={selectedCoordinatorId} onValueChange={setSelectedCoordinatorId}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Wybierz koordynatora" />
                             </SelectTrigger>
