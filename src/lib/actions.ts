@@ -1034,8 +1034,10 @@ export async function generateAccommodationReport(year: number, month: number, c
 
 
 export async function importEmployeesFromExcel(fileContent: string, actorUid: string): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
+    let settings;
     try {
-        const { settings } = await getAllData();
+        const allData = await getAllData();
+        settings = allData.settings;
         const workbook = XLSX.read(fileContent, { type: 'base64', cellDates: false, dateNF: 'dd.mm.yyyy' });
         const sheetName = workbook.SheetNames[0];
         if (!sheetName) throw new Error("Nie znaleziono arkusza w pliku Excel.");
