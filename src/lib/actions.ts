@@ -239,11 +239,10 @@ const writeToAuditLog = async (actorId: string, actorName: string, action: strin
 
 const createNotification = async (
     actorUid: string,
-    action: string,
+    action: 'dodał' | 'zaktualizował' | 'trwale usunął' | 'automatycznie zwolnił' | 'przeniósł',
     entity: (Employee | NonEmployee),
     settings: Settings,
-    changes: NotificationChange[] = [],
-    isUpdate: boolean = false
+    changes: NotificationChange[] = []
 ) => {
     try {
         const actor = settings.coordinators.find(c => c.uid === actorUid);
@@ -252,15 +251,16 @@ const createNotification = async (
             return;
         }
 
-        if (isUpdate) {
-            const importantChanges = changes.filter(c => 
-                ['address', 'checkOutDate', 'departureReportDate'].includes(c.field)
-            );
-            if (importantChanges.length === 0) {
-                return; 
-            }
-        }
+        const isAddOrDelete = action === 'dodał' || action === 'trwale usunął';
+        const isImportantUpdate = changes.some(c => ['address', 'roomNumber'].includes(c.field));
         
+        // Admin gets notifications only on specific events
+        if (actor.isAdmin) {
+             if (action === 'zaktualizował' && !isImportantUpdate) {
+                return; // Admin doesn't get minor update notifications
+             }
+        }
+
         const responsibleCoordinator = settings.coordinators.find(c => c.uid === entity.coordinatorId);
 
         if (!responsibleCoordinator) {
@@ -404,10 +404,10 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
             const { settings } = await getAllData();
             // If coordinator is changed, notify both old and new coordinator
             if (updates.coordinatorId && updates.coordinatorId !== originalEmployee.coordinatorId) {
-                await createNotification(actorUid, 'przeniósł', { ...updatedEmployeeData, coordinatorId: originalEmployee.coordinatorId }, settings, changes, true);
-                await createNotification(actorUid, 'przeniósł', updatedEmployeeData, settings, changes, true);
+                await createNotification(actorUid, 'przeniósł', { ...updatedEmployeeData, coordinatorId: originalEmployee.coordinatorId }, settings, changes);
+                await createNotification(actorUid, 'przeniósł', updatedEmployeeData, settings, changes);
             } else {
-                await createNotification(actorUid, 'zaktualizował', updatedEmployeeData, settings, changes, true);
+                await createNotification(actorUid, 'zaktualizował', updatedEmployeeData, settings, changes);
             }
         }
 
@@ -508,7 +508,7 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
          
          if (changes.length > 0) {
             const { settings } = await getAllData();
-            await createNotification(actorUid, 'zaktualizował', updatedData, settings, changes, true);
+            await createNotification(actorUid, 'zaktualizował', updatedData, settings, changes);
         }
 
      } catch (e: unknown) {
@@ -531,7 +531,7 @@ export async function deleteNonEmployee(id: string, actorUid: string): Promise<v
             } as NonEmployee;
             await row.delete();
             const { settings } = await getAllData();
-            await createNotification(actorUid, 'usunął', nonEmployeeToDelete, settings);
+            await createNotification(actorUid, 'trwale usunął', nonEmployeeToDelete, settings);
         } else {
             throw new Error('Non-employee not found');
         }
