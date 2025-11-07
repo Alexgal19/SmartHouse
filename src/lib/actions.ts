@@ -256,11 +256,6 @@ const createNotification = async (
         const isDeleteAction = action === 'trwale usunął';
         const isImportantUpdate = changes.some(c => ['address', 'roomNumber'].includes(c.field));
         
-        let notificationType: NotificationType = 'info';
-        if (isAddAction) notificationType = 'success';
-        if (isDeleteAction) notificationType = 'destructive';
-        if (isImportantUpdate) notificationType = 'warning';
-
         // Admin gets notifications only on specific events
         if (actor.isAdmin) {
              if (!isAddAction && !isDeleteAction && !isImportantUpdate) {
@@ -268,6 +263,11 @@ const createNotification = async (
              }
         }
 
+        let notificationType: NotificationType = 'info';
+        if (isAddAction) notificationType = 'success';
+        if (isDeleteAction) notificationType = 'destructive';
+        if (isImportantUpdate) notificationType = 'warning';
+        
         const responsibleCoordinator = settings.coordinators.find(c => c.uid === entity.coordinatorId);
 
         if (!responsibleCoordinator) {
@@ -1034,10 +1034,8 @@ export async function generateAccommodationReport(year: number, month: number, c
 
 
 export async function importEmployeesFromExcel(fileContent: string, actorUid: string): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
-    let settings;
+    const { settings } = await getAllData();
     try {
-        const allData = await getAllData();
-        settings = allData.settings;
         const workbook = XLSX.read(fileContent, { type: 'base64', cellDates: false, dateNF: 'dd.mm.yyyy' });
         const sheetName = workbook.SheetNames[0];
         if (!sheetName) throw new Error("Nie znaleziono arkusza w pliku Excel.");
