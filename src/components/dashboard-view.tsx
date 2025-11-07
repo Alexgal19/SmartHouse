@@ -11,12 +11,15 @@ import { DashboardCharts } from './dashboard/charts';
 import { UpcomingCheckoutsDialog } from './dashboard/upcoming-checkouts-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader } from './ui/card';
+import { differenceInDays, parseISO } from 'date-fns';
 
 export default function DashboardView({ currentUser }: { currentUser: SessionData}) {
   const { 
     allEmployees, 
     allNonEmployees,
     settings,
+    hasNewCheckouts,
+    setHasNewCheckouts
   } = useMainLayout();
 
   const [isUpcomingCheckoutsModalOpen, setIsUpcomingCheckoutsModalOpen] = useState(false);
@@ -51,6 +54,24 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
       );
   }
   
+  const handleUpcomingCheckoutsClick = () => {
+    setIsUpcomingCheckoutsModalOpen(true);
+    setHasNewCheckouts(false);
+    
+    if (allEmployees && allNonEmployees) {
+        const upcomingIds = [...allEmployees, ...allNonEmployees]
+            .filter(o => {
+                if (!o.checkOutDate) return false;
+                const today = new Date();
+                const date = parseISO(o.checkOutDate);
+                const diff = differenceInDays(date, today);
+                return diff >= 0 && diff <= 30;
+            })
+            .map(o => o.id);
+        localStorage.setItem('upcomingCheckouts', JSON.stringify(upcomingIds));
+    }
+  };
+  
   return (
     <>
       <div className="space-y-6">
@@ -58,7 +79,8 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
           <DashboardKPIs 
               employees={allEmployees}
               nonEmployees={allNonEmployees}
-              onUpcomingCheckoutsClick={() => setIsUpcomingCheckoutsModalOpen(true)}
+              onUpcomingCheckoutsClick={handleUpcomingCheckoutsClick}
+              hasNewCheckouts={currentUser.isAdmin && hasNewCheckouts}
           />
           <DashboardCharts 
               employees={allEmployees}

@@ -43,6 +43,7 @@ import { AddNonEmployeeForm } from './add-non-employee-form';
 import { cn } from '../lib/utils';
 import { AddressForm } from './address-form';
 import { ModernHouseIcon } from './icons/modern-house-icon';
+import { differenceInDays, parseISO } from 'date-fns';
 
 const HouseLoader = () => {
     return (
@@ -81,6 +82,8 @@ type MainLayoutContextType = {
     settings: Settings | null;
     currentUser: SessionData | null;
     selectedCoordinatorId: string;
+    hasNewCheckouts: boolean;
+    setHasNewCheckouts: React.Dispatch<React.SetStateAction<boolean>>;
     setSelectedCoordinatorId: React.Dispatch<React.SetStateAction<string>>;
     handleBulkDeleteEmployees: (entityType: 'employee' | 'non-employee', status: 'active' | 'dismissed') => Promise<boolean>;
     handleBulkDeleteEmployeesByCoordinator: (coordinatorId: string) => Promise<boolean>;
@@ -139,6 +142,7 @@ export default function MainLayout({
     const [rawEmployees, setRawEmployees] = useState<Employee[] | null>(null);
     const [rawNonEmployees, setRawNonEmployees] = useState<NonEmployee[] | null>(null);
     const [settings, setSettings] = useState<Settings | null>(null);
+    const [hasNewCheckouts, setHasNewCheckouts] = useState(false);
     
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isNonEmployeeFormOpen, setIsNonEmployeeFormOpen] = useState(false);
@@ -255,6 +259,25 @@ export default function MainLayout({
             setSettings(settings);
             setRawNonEmployees(nonEmployees);
             setAllNotifications(notifications);
+
+            if (currentUser.isAdmin) {
+                const upcoming = [...employees, ...nonEmployees]
+                    .filter(o => {
+                        if (!o.checkOutDate) return false;
+                        const today = new Date();
+                        const date = parseISO(o.checkOutDate);
+                        const diff = differenceInDays(date, today);
+                        return diff >= 0 && diff <= 30;
+                    })
+                    .map(o => o.id);
+
+                const storedUpcoming = localStorage.getItem('upcomingCheckouts');
+                const storedUpcomingIds = storedUpcoming ? JSON.parse(storedUpcoming) : [];
+                
+                if (JSON.stringify(upcoming.sort()) !== JSON.stringify(storedUpcomingIds.sort())) {
+                    setHasNewCheckouts(true);
+                }
+            }
             
             if(showToast) {
                 toast({ title: "Sukces", description: "Dane zostały odświeżone." });
@@ -537,6 +560,8 @@ export default function MainLayout({
         settings,
         currentUser,
         selectedCoordinatorId,
+        hasNewCheckouts,
+        setHasNewCheckouts,
         setSelectedCoordinatorId,
         handleEditEmployeeClick,
         handleBulkDeleteEmployees,
@@ -559,6 +584,8 @@ export default function MainLayout({
         settings,
         currentUser,
         selectedCoordinatorId,
+        hasNewCheckouts,
+        setHasNewCheckouts,
         setSelectedCoordinatorId,
         handleEditEmployeeClick,
         handleBulkDeleteEmployees,

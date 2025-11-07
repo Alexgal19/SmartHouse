@@ -22,14 +22,16 @@ type KpiCardProps = {
     icon: React.ReactNode;
     onClick?: () => void;
     description?: string;
+    isHighlighted?: boolean;
 }
 
-const KpiCard = ({ title, value, icon, onClick, description }: KpiCardProps) => (
+const KpiCard = ({ title, value, icon, onClick, description, isHighlighted }: KpiCardProps) => (
     <Card 
         onClick={onClick} 
         className={cn(
             "transition-all duration-300 animate-in fade-in-0 scale-95",
-            onClick && "cursor-pointer hover:shadow-primary/20 hover:shadow-lg hover:-translate-y-1 hover:scale-100"
+            onClick && "cursor-pointer hover:shadow-primary/20 hover:shadow-lg hover:-translate-y-1 hover:scale-100",
+            isHighlighted && "animate-pulse-green"
         )}
     >
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -46,11 +48,13 @@ const KpiCard = ({ title, value, icon, onClick, description }: KpiCardProps) => 
 export function DashboardKPIs({
     employees,
     nonEmployees,
-    onUpcomingCheckoutsClick
+    onUpcomingCheckoutsClick,
+    hasNewCheckouts
 }: {
     employees: Employee[],
     nonEmployees: NonEmployee[],
-    onUpcomingCheckoutsClick: () => void
+    onUpcomingCheckoutsClick: () => void,
+    hasNewCheckouts: boolean
 }) {
 
     const stats = useMemo(() => {
@@ -84,6 +88,7 @@ export function DashboardKPIs({
           value: stats.upcomingCheckouts.toString(), 
           icon: kpiIcons.upcomingCheckouts, 
           onClick: onUpcomingCheckoutsClick,
+          isHighlighted: hasNewCheckouts
         },
     ];
 
