@@ -242,7 +242,7 @@ export default function MainLayout({
                 settings,
                 nonEmployees,
                 notifications,
-            } = await getAllSheetsData(currentUser);
+            } = await getAllSheetsData(currentUser.uid, currentUser.isAdmin);
 
             setRawEmployees(employees);
             setSettings(settings);

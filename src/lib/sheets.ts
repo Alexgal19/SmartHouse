@@ -23,6 +23,9 @@ const SHEET_NAME_INSPECTIONS = 'Inspections';
 const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 const SHEET_NAME_INSPECTION_TEMPLATE = 'InspectionTemplate';
 
+let docPromise: Promise<GoogleSpreadsheet> | null = null;
+
+
 function getAuth(): JWT {
     const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
     const key = process.env.GOOGLE_PRIVATE_KEY;
@@ -431,7 +434,7 @@ export async function getNotificationsFromSheet(recipientId: string, isAdmin: bo
     }
 }
 
-export async function getAllSheetsData(session: {uid: string; isAdmin: boolean}) {
+export async function getAllSheetsData(userId?: string, userIsAdmin?: boolean) {
     try {
         const doc = await getDoc();
 
@@ -530,11 +533,11 @@ export async function getAllSheetsData(session: {uid: string; isAdmin: boolean})
         
         const notifications = allNotifications
             .filter(n => {
-                if (session.isAdmin) {
+                if (userIsAdmin) {
                     const isImportant = ['success', 'destructive', 'warning'].includes(n.type);
-                    return isImportant || n.recipientId === session.uid;
-                }
-                return n.recipientId === session.uid;
+                    return isImportant || n.recipientId === userId;
+                 }
+                return n.recipientId === userId;
              })
             .sort((a: Notification, b: Notification) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         
