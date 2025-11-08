@@ -218,7 +218,7 @@ export function DashboardCharts({
                                 </defs>
                                 <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50" />
                                 <YAxis dataKey="department" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
-                                <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
+                                <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} hide={true} />
                                 <Tooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
                                 <Bar dataKey="employees" radius={[0, 4, 4, 0]} fill="url(#chart-department-gradient)">
                                     <LabelList dataKey="employees" position="right" offset={8} className="fill-foreground text-xs" />
@@ -249,7 +249,7 @@ export function DashboardCharts({
                                 </defs>
                                 <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50" />
                                 <YAxis dataKey="coordinator" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
-                                <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
+                                <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} hide={true} />
                                 <Tooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
                                 <Bar dataKey="employees" radius={[0, 4, 4, 0]} fill="url(#chart-coordinator-gradient)">
                                     <LabelList dataKey="employees" position="right" offset={8} className="fill-foreground text-xs" />
@@ -280,7 +280,7 @@ export function DashboardCharts({
                                 </defs>
                                 <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50"/>
                                 <YAxis dataKey="nationality" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
-                                <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} />
+                                <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} hide={true} />
                                 <Tooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
                                 <Bar dataKey="employees" radius={[0, 4, 4, 0]} fill="url(#chart-nationality-gradient)">
                                     <LabelList dataKey="employees" position="right" offset={8} className="fill-foreground text-xs" />

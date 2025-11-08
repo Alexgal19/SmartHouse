@@ -72,7 +72,7 @@ const StatsCharts = ({ occupants, chartConfig }: { occupants: Occupant[], chartC
                             <BarChart data={statsData.nationalities} layout="vertical" margin={{ left: 10, right: 30 }}>
                                 <CartesianGrid horizontal={false} strokeDasharray="3 3" />
                                 <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
-                                <XAxis type="number" hide />
+                                <XAxis type="number" hide={true} />
                                 <RechartsTooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
                                 <Bar dataKey="count" fill={chartConfig.nationalities.color} radius={[0, 4, 4, 0]}>
                                     <LabelList dataKey="count" position="right" offset={8} className="fill-foreground text-xs" />
@@ -92,7 +92,7 @@ const StatsCharts = ({ occupants, chartConfig }: { occupants: Occupant[], chartC
                             <BarChart data={statsData.genders} layout="vertical" margin={{ left: 10, right: 30 }}>
                                 <CartesianGrid horizontal={false} strokeDasharray="3 3" />
                                 <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
-                                <XAxis type="number" hide />
+                                <XAxis type="number" hide={true} />
                                 <RechartsTooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
                                 <Bar dataKey="count" fill={chartConfig.genders.color} radius={[0, 4, 4, 0]}>
                                     <LabelList dataKey="count" position="right" offset={8} className="fill-foreground text-xs" />
