@@ -62,26 +62,6 @@ const StatsCharts = ({ occupants, chartConfig }: { occupants: Occupant[], chartC
     
     return (
         <div className="space-y-4">
-             <Card className="bg-muted/50">
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Wg zakładu</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {statsData.departments.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={statsData.departments.length * 25 + 20}>
-                            <BarChart data={statsData.departments} layout="vertical" margin={{ left: 10, right: 30 }}>
-                                <CartesianGrid horizontal={false} strokeDasharray="3 3" />
-                                <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
-                                <XAxis type="number" hide />
-                                <RechartsTooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
-                                <Bar dataKey="count" fill={chartConfig.departments.color} radius={[0, 4, 4, 0]}>
-                                    <LabelList dataKey="count" position="right" offset={8} className="fill-foreground text-xs" />
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
-                    ) : <NoDataState message="Brak danych" />}
-                </CardContent>
-            </Card>
             <Card className="bg-muted/50">
                 <CardHeader className="pb-2">
                     <CardTitle className="text-sm">Wg narodowości</CardTitle>
