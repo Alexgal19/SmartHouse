@@ -494,7 +494,7 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
     const page = Number(searchParams.get('page') || '1');
     const search = searchParams.get('search') || '';
     const viewMode = (searchParams.get('viewMode') as 'list' | 'grid') || (isMobile ? 'grid' : 'list');
-    const filters = useMemo(() => ({
+    const filtersFromUrl = useMemo(() => ({
         coordinator: (searchParams.get('coordinator')) || 'all',
         address: (searchParams.get('address')) || 'all',
         department: (searchParams.get('department')) || 'all',
@@ -522,31 +522,25 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
             router.push(`${pathname}?${current.toString()}`);
         });
     };
-
-    const applyFilters = (items: Employee[]) => {
-        return items.filter(employee => {
+    
+    const filteredData = useMemo(() => {
+        if (!allEmployees) return [];
+        return allEmployees.filter(employee => {
             const searchMatch = search === '' || employee.fullName.toLowerCase().includes(search.toLowerCase());
-            const coordinatorMatch = filters.coordinator === 'all' || employee.coordinatorId === filters.coordinator;
-            const addressMatch = filters.address === 'all' || employee.address === filters.address;
-            const nationalityMatch = filters.nationality === 'all' || employee.nationality === filters.nationality;
-            const departmentMatch = filters.department === 'all' || !employee.zaklad || employee.zaklad === filters.department;
+            const coordinatorMatch = filtersFromUrl.coordinator === 'all' || employee.coordinatorId === filtersFromUrl.coordinator;
+            const addressMatch = filtersFromUrl.address === 'all' || employee.address === filtersFromUrl.address;
+            const nationalityMatch = filtersFromUrl.nationality === 'all' || employee.nationality === filtersFromUrl.nationality;
+            const departmentMatch = filtersFromUrl.department === 'all' || employee.zaklad === filtersFromUrl.department;
             
             return searchMatch && coordinatorMatch && addressMatch && nationalityMatch && departmentMatch;
         });
-    };
-    
-    // Derived data
-    const baseEmployees = useMemo(() => allEmployees?.filter(e => e.zaklad !== null) || [], [allEmployees]);
-    const baseNonEmployees = useMemo(() => allEmployees?.filter(e => e.zaklad === null) || [], [allEmployees]);
-
-    const filteredEmployees = useMemo(() => applyFilters(baseEmployees), [baseEmployees, search, filters]);
-    const filteredNonEmployees = useMemo(() => applyFilters(baseNonEmployees), [baseNonEmployees, search, filters]);
+    }, [allEmployees, search, filtersFromUrl]);
     
     const dataMap = useMemo(() => ({
-        active: filteredEmployees.filter(e => e.status === 'active'),
-        dismissed: filteredEmployees.filter(e => e.status === 'dismissed'),
-        'non-employees': filteredNonEmployees.filter(e => e.status === 'active'),
-    }), [filteredEmployees, filteredNonEmployees]);
+        active: filteredData.filter(e => e.status === 'active' && e.zaklad !== null),
+        dismissed: filteredData.filter(e => e.status === 'dismissed' && e.zaklad !== null),
+        'non-employees': filteredData.filter(e => e.status === 'active' && e.zaklad === null),
+    }), [filteredData]);
 
     const currentData = dataMap[tab];
     const totalPages = Math.ceil((currentData?.length || 0) / ITEMS_PER_PAGE);
@@ -556,7 +550,7 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
         return currentData?.slice(start, end) || [];
     }, [currentData, page]);
 
-    const isFilterActive = Object.values(filters).some(v => v !== 'all') || search !== '';
+    const isFilterActive = Object.values(filtersFromUrl).some(v => v !== 'all') || search !== '';
     
     const filterDialogSettings = useMemo(() => {
         if (!settings) return null;
@@ -678,7 +672,7 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
                 isOpen={isFilterOpen}
                 onOpenChange={setIsFilterOpen}
                 settings={filterDialogSettings}
-                initialFilters={filters}
+                initialFilters={filtersFromUrl}
                 onApply={(f) => updateSearchParams({ ...f, page: 1 })}
             />
             <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
@@ -687,5 +681,3 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
         </Card>
     )
 }
-
-    
