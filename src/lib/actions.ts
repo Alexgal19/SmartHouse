@@ -1,4 +1,5 @@
 
+
 "use server";
 
 import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Inspection, InspectionCategory, NotificationType, Coordinator } from '../types';
@@ -81,7 +82,7 @@ const serializeNonEmployee = (nonEmployee: Partial<NonEmployee>): Record<string,
     return serialized;
 };
 
-const serializeNotification = (notification: Omit<Notification, 'changes'> & { changes?: NotificationChange[] }): Record<string, string> => {
+const serializeNotification = (notification: Omit<Notification, 'id'> & { id: string }): Record<string, string> => {
     return {
         id: notification.id,
         message: notification.message,
@@ -250,27 +251,21 @@ const createNotification = async (
 ) => {
     try {
         const responsibleCoordinator = settings.coordinators.find(c => c.uid === entity.coordinatorId);
-        if (!responsibleCoordinator) {
-            console.error(`Could not find responsible coordinator for entity ${entity.fullName}.`);
-            return;
-        }
-
+        
+        let notificationType: NotificationType = 'info';
         const isAddAction = action === 'dodał';
         const isDeleteAction = action === 'trwale usunął';
         const isImportantUpdate = changes.some(c => ['address', 'roomNumber'].includes(c.field));
         
-        let notificationType: NotificationType = 'info';
         if (isAddAction) notificationType = 'success';
         if (isDeleteAction) notificationType = 'destructive';
         if (isImportantUpdate) notificationType = 'warning';
-
+        
         const message = `${actor.name} ${action} ${'zaklad' in entity ? 'pracownika' : 'mieszkańca'} ${entity.fullName}.`;
         
-        const notificationsToAdd: Omit<Notification, 'id'>[] = [];
-
-        // 1. Create notification for the responsible coordinator (if they are not the actor)
-        if (actor.uid !== responsibleCoordinator.uid) {
-            notificationsToAdd.push({
+        // 1. Create notification for the responsible coordinator
+        if (responsibleCoordinator) {
+            const responsibleNotification: Omit<Notification, 'id'> = {
                 message,
                 entityId: entity.id,
                 entityName: entity.fullName,
@@ -279,20 +274,25 @@ const createNotification = async (
                 isRead: false,
                 type: notificationType,
                 changes
-            });
+            };
+            const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
+            await sheet.addRow(serializeNotification({ ...responsibleNotification, id: `notif-${Date.now()}-${Math.random()}` }));
         }
-        
-        // 2. If it's a critical event, notify all admins (who are not the actor or the responsible coordinator if they are also an admin)
+
+        // 2. If it's a critical event, notify all admins
         const shouldNotifyAdmins = isAddAction || isDeleteAction || isImportantUpdate;
-        
         if (shouldNotifyAdmins) {
-            const admins = settings.coordinators.filter(c => 
-                c.isAdmin && 
-                c.uid !== actor.uid && 
-                c.uid !== responsibleCoordinator.uid
-            );
+            const admins = settings.coordinators.filter(c => c.isAdmin);
+            const adminNotifications: (Omit<Notification, 'id'> & { id: string })[] = [];
+            
             for (const admin of admins) {
-                notificationsToAdd.push({
+                // Avoid duplicating notification if the responsible coordinator is an admin
+                if (responsibleCoordinator && admin.uid === responsibleCoordinator.uid) continue;
+                // Avoid duplicating notification for the actor if they are an admin
+                if (admin.uid === actor.uid) continue;
+
+                adminNotifications.push({
+                    id: `notif-admin-${Date.now()}-${Math.random()}`,
                     message,
                     entityId: entity.id,
                     entityName: entity.fullName,
@@ -303,12 +303,12 @@ const createNotification = async (
                     changes
                 });
             }
-        }
-        
-        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
-        if (notificationsToAdd.length > 0) {
-            const serializedNotifications = notificationsToAdd.map(n => serializeNotification({ ...n, id: `notif-${Date.now()}-${Math.random()}` }));
-            await sheet.addRows(serializedNotifications);
+
+            if (adminNotifications.length > 0) {
+                const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
+                const serializedNotifications = adminNotifications.map(serializeNotification);
+                await sheet.addRows(serializedNotifications);
+            }
         }
         
         await writeToAuditLog(actor.uid, actor.name, action, 'zaklad' in entity ? 'employee' : 'non-employee', entity.id, changes);
@@ -331,7 +331,7 @@ const findActor = (actorUid: string, settings: Settings): Coordinator => {
 
 export async function addEmployee(employeeData: Partial<Employee>, actorUid: string): Promise<void> {
     try {
-        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded' || findActor(actorUid, await getAllData().then(d => d.settings)).isAdmin);
+        const { settings } = await getAllData(actorUid, true);
         const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
@@ -374,7 +374,7 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
 
 export async function updateEmployee(employeeId: string, updates: Partial<Employee>, actorUid: string): Promise<void> {
     try {
-        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded' || findActor(actorUid, await getAllData().then(d => d.settings)).isAdmin);
+        const { settings } = await getAllData(actorUid, true);
         const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
@@ -455,7 +455,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
 
 export async function deleteEmployee(employeeId: string, actorUid: string): Promise<void> {
     try {
-        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded' || findActor(actorUid, await getAllData().then(d => d.settings)).isAdmin);
+        const { settings } = await getAllData(actorUid, true);
         const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
@@ -482,7 +482,7 @@ export async function deleteEmployee(employeeId: string, actorUid: string): Prom
 
 export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>, actorUid: string): Promise<void> {
     try {
-        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded' || findActor(actorUid, await getAllData().then(d => d.settings)).isAdmin);
+        const { settings } = await getAllData(actorUid, true);
         const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
@@ -503,7 +503,7 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>, a
 
 export async function updateNonEmployee(id: string, updates: Partial<NonEmployee>, actorUid: string): Promise<void> {
      try {
-        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded' || findActor(actorUid, await getAllData().then(d => d.settings)).isAdmin);
+        const { settings } = await getAllData(actorUid, true);
         const actor = findActor(actorUid, settings);
 
          const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
@@ -561,7 +561,7 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
 
 export async function deleteNonEmployee(id: string, actorUid: string): Promise<void> {
     try {
-        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded' || findActor(actorUid, await getAllData().then(d => d.settings)).isAdmin);
+        const { settings } = await getAllData(actorUid, true);
         const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
@@ -674,7 +674,7 @@ export async function bulkDeleteEmployeesByCoordinator(coordinatorId: string, ac
         }
         
         // Audit logging
-        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded' || findActor(actorUid, await getAllData().then(d => d.settings)).isAdmin);
+        const { settings } = await getAllData(actorUid, true);
         const actor = findActor(actorUid, settings);
         const deletedForCoordinator = settings.coordinators.find(c => c.uid === coordinatorId);
         if (actor) {
@@ -726,7 +726,7 @@ export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<
 
         let updatedCount = 0;
         const rowsToUpdate = [];
-        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded' || findActor(actorUid, await getAllData().then(d => d.settings)).isAdmin);
+        const { settings } = await getAllData(actorUid, true);
         const actor = findActor(actorUid, settings);
 
         for (const row of rows) {
@@ -735,7 +735,7 @@ export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<
 
             if (status === 'active' && checkOutDateString) {
                 try {
-                    const checkOutDate = parseISO(checkOutDateString);
+                    const checkOutDate = new Date(checkOutDateString);
                      if (isValid(checkOutDate) && checkOutDate < today) {
                         row.set('status', 'dismissed');
                         rowsToUpdate.push(row.save()); // Pushing promise to array
