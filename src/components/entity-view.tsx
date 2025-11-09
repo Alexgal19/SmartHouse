@@ -25,7 +25,11 @@ const ITEMS_PER_PAGE = 20;
 const formatDate = (dateString?: string | null) => {
     if (!dateString) return 'N/A';
     try {
-        return format(new Date(dateString + 'T00:00:00'), 'dd-MM-yyyy');
+        // Use regex to check for YYYY-MM-DD format and add time to avoid timezone issues
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+            return format(new Date(dateString + 'T00:00:00'), 'dd-MM-yyyy');
+        }
+        return format(new Date(dateString), 'dd-MM-yyyy');
     } catch {
         return 'Invalid Date';
     }
@@ -369,8 +373,8 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         handleRestoreEmployee,
         handleDeleteEmployee,
         handleEditEmployeeClick,
-        handleEditNonEmployeeClick,
         handleAddEmployeeClick,
+        handleEditNonEmployeeClick,
         handleAddNonEmployeeClick,
         handleDeleteNonEmployee
     } = useMainLayout();
@@ -420,12 +424,18 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
             
             if (isEmployee(entity)) {
                 const coordinatorMatch = localFilters.coordinator === 'all' || entity.coordinatorId === localFilters.coordinator;
-                const departmentMatch = localFilters.department === 'all' || entity.zaklad === localFilters.department;
+                // For Employees, department filter applies. For NonEmployees, this check is skipped.
+                const departmentMatch = isEmployee(entity) 
+                    ? (localFilters.department === 'all' || entity.zaklad === localFilters.department)
+                    : true;
                 const nationalityMatch = localFilters.nationality === 'all' || entity.nationality === localFilters.nationality;
                 return searchMatch && coordinatorMatch && addressMatch && departmentMatch && nationalityMatch;
+            } else { // NonEmployee
+                 const coordinatorMatch = localFilters.coordinator === 'all' || entity.coordinatorId === localFilters.coordinator;
+                 const nationalityMatch = localFilters.nationality === 'all' || entity.nationality === localFilters.nationality;
+                 // Department filter should not apply to NonEmployees
+                 return searchMatch && addressMatch && coordinatorMatch && nationalityMatch;
             }
-            
-            return searchMatch && addressMatch;
         });
     }
 
