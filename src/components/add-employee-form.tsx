@@ -42,6 +42,7 @@ import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Combobox } from '@/components/ui/combobox';
+import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
   fullName: z.string().min(3, "Imię i nazwisko musi mieć co najmniej 3 znaki."),
@@ -191,6 +192,7 @@ export function AddEmployeeForm({
   settings: Settings;
   employee: Employee | null;
 }) {
+  const { toast } = useToast();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -325,6 +327,22 @@ export function AddEmployeeForm({
   }, [employee, isOpen, form, settings.addresses, settings.coordinators]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
+    
+    if (employee) { // Check only on edit
+        const addressChanged = values.address !== employee.address;
+        const roomChanged = values.roomNumber !== employee.roomNumber;
+        const checkInDateChanged = values.checkInDate?.getTime() !== parseDate(employee.checkInDate)?.getTime();
+
+        if ((addressChanged || roomChanged) && !checkInDateChanged) {
+            toast({
+                variant: 'destructive',
+                title: 'Uwaga',
+                description: 'Zmień datę zameldowania.',
+            });
+            return; // Stop submission
+        }
+    }
+
     const formatDate = (date: Date | null | undefined): string | null | undefined => {
         if (!date) return null;
         return format(date, 'yyyy-MM-dd');
@@ -795,5 +813,3 @@ export function AddEmployeeForm({
     </Dialog>
   );
 }
-
-    
