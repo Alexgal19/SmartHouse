@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { Employee, Settings, Address } from '@/types';
+import type { Employee, Settings, Address, SessionData } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, Info, X } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
@@ -185,12 +185,14 @@ export function AddEmployeeForm({
   onSave,
   settings,
   employee,
+  currentUser
 }: {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onSave: (data: EmployeeFormData) => void;
   settings: Settings;
   employee: Employee | null;
+  currentUser: SessionData;
 }) {
   const { toast } = useToast();
   const form = useForm<z.infer<typeof formSchema>>({
@@ -253,6 +255,12 @@ export function AddEmployeeForm({
     return [...rooms].sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
   }, [settings.addresses, selectedAddress]);
 
+  const availableDepartments = useMemo(() => {
+    if (!selectedCoordinatorId) return [];
+    const coordinator = settings.coordinators.find(c => c.uid === selectedCoordinatorId);
+    return coordinator ? coordinator.departments.sort((a, b) => a.localeCompare(b)) : [];
+  }, [settings.coordinators, selectedCoordinatorId]);
+
   useEffect(() => {
     if (employee) {
         const currentDeductions = employee.deductionReason || [];
@@ -296,7 +304,7 @@ export function AddEmployeeForm({
     } else {
         form.reset({
           fullName: '',
-          coordinatorId: '',
+          coordinatorId: !currentUser.isAdmin ? currentUser.uid : '',
           locality: '',
           address: '',
           roomNumber: '',
@@ -324,7 +332,7 @@ export function AddEmployeeForm({
           }))
         });
     }
-  }, [employee, isOpen, form, settings.addresses, settings.coordinators]);
+  }, [employee, isOpen, form, settings.addresses, settings.coordinators, currentUser]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     
@@ -368,6 +376,7 @@ export function AddEmployeeForm({
     form.setValue('locality', '');
     form.setValue('address', '');
     form.setValue('roomNumber', '');
+    form.setValue('zaklad', null);
   }
 
   const handleLocalityChange = (value: string) => {
@@ -384,11 +393,10 @@ export function AddEmployeeForm({
   const sortedCoordinators = useMemo(() => [...settings.coordinators].sort((a, b) => a.name.localeCompare(b.name)), [settings.coordinators]);
   const sortedNationalities = useMemo(() => [...settings.nationalities].sort((a, b) => a.localeCompare(b)), [settings.nationalities]);
   const sortedGenders = useMemo(() => [...settings.genders].sort((a, b) => a.localeCompare(b)), [settings.genders]);
-  const sortedDepartments = useMemo(() => [...settings.departments].sort((a, b) => a.localeCompare(b)), [settings.departments]);
 
   const coordinatorOptions = useMemo(() => sortedCoordinators.map(c => ({ value: c.uid, label: c.name })), [sortedCoordinators]);
   const nationalityOptions = useMemo(() => sortedNationalities.map(n => ({ value: n, label: n })), [sortedNationalities]);
-  const departmentOptions = useMemo(() => sortedDepartments.map(d => ({ value: d, label: d })), [sortedDepartments]);
+  const departmentOptions = useMemo(() => availableDepartments.map(d => ({ value: d, label: d })), [availableDepartments]);
   
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -533,7 +541,7 @@ export function AddEmployeeForm({
                                         options={departmentOptions}
                                         value={field.value || ''}
                                         onChange={field.onChange}
-                                        placeholder="Wybierz zakład"
+                                        placeholder={!selectedCoordinatorId ? "Najpierw wybierz koordynatora" : "Wybierz zakład"}
                                         searchPlaceholder="Szukaj zakładu..."
                                     />
                                     <FormMessage />
@@ -812,3 +820,5 @@ export function AddEmployeeForm({
     </Dialog>
   );
 }
+
+    
