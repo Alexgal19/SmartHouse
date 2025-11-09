@@ -149,15 +149,21 @@ const safeFormat = (dateValue: unknown): string | null => {
         return null;
     }
 
-    const formatsToTry = ['dd.MM.yyyy', 'yyyy-MM-dd', 'dd/MM/yyyy'];
+    // This is now the priority format
+    let date = parseISO(dateString);
+    if (isValid(date)) {
+        return format(date, 'yyyy-MM-dd');
+    }
+
+    const formatsToTry = ['dd.MM.yyyy', 'dd-MM-yyyy', 'dd/MM/yyyy'];
     for (const fmt of formatsToTry) {
-        const date = dateFnsParse(dateString, fmt, new Date());
+        date = dateFnsParse(dateString, fmt, new Date());
         if (isValid(date)) {
             return format(date, 'yyyy-MM-dd');
         }
     }
     
-    const date = new Date(dateString);
+    date = new Date(dateString);
     if (isValid(date)) {
         return format(date, 'yyyy-MM-dd');
     }
@@ -215,6 +221,28 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     return newEmployee;
 };
 
+const deserializeNonEmployee = (row: Record<string, unknown>): NonEmployee | null => {
+    const plainObject = row;
+
+    const id = plainObject.id;
+    if (!id) return null;
+    
+    return {
+        id: id as string,
+        fullName: (plainObject.fullName || '') as string,
+        coordinatorId: (plainObject.coordinatorId || '') as string,
+        nationality: (plainObject.nationality || '') as string,
+        gender: (plainObject.gender || '') as string,
+        address: (plainObject.address || '') as string,
+        roomNumber: (plainObject.roomNumber || '') as string,
+        checkInDate: safeFormat(plainObject.checkInDate),
+        checkOutDate: safeFormat(plainObject.checkOutDate),
+        departureReportDate: safeFormat(plainObject.departureReportDate),
+        comments: (plainObject.comments || '') as string,
+    };
+};
+
+
 export async function getAllData(uid?: string, isAdmin?: boolean) {
     try {
         const allData = await getAllSheetsData(uid, isAdmin);
@@ -245,7 +273,7 @@ const writeToAuditLog = async (actorId: string, actorName: string, action: strin
 const createNotification = async (
     actor: Coordinator,
     action: 'dodał' | 'zaktualizował' | 'trwale usunął' | 'automatycznie zwolnił' | 'przeniósł',
-    entity: (Employee | NonEmployee),
+    entity: (Employee),
     settings: Settings,
     changes: NotificationChange[] = []
 ) => {
@@ -261,7 +289,7 @@ const createNotification = async (
         if (isDeleteAction) notificationType = 'destructive';
         if (isImportantUpdate) notificationType = 'warning';
         
-        const message = `${actor.name} ${action} ${'zaklad' in entity ? 'pracownika' : 'mieszkańca'} ${entity.fullName}.`;
+        const message = `${actor.name} ${action} ${entity.zaklad ? 'pracownika' : 'mieszkańca'} ${entity.fullName}.`;
         
         // 1. Create notification for the responsible coordinator
         if (responsibleCoordinator) {
@@ -311,16 +339,16 @@ const createNotification = async (
             }
         }
         
-        await writeToAuditLog(actor.uid, actor.name, action, 'zaklad' in entity ? 'employee' : 'non-employee', entity.id, changes);
+        await writeToAuditLog(actor.uid, actor.name, action, 'employee', entity.id, changes);
 
     } catch (e: unknown) {
         console.error("Could not create notification:", e);
     }
 };
 
-const findActor = (actorUid: string, settings: Settings): Coordinator => {
-    if (actorUid === 'admin-hardcoded') {
-        return { uid: 'admin-hardcoded', name: 'System', isAdmin: true, departments: [] };
+const findActor = (actorUid: string | undefined, settings: Settings): Coordinator => {
+    if (actorUid === 'system' || !actorUid) {
+        return { uid: 'system', name: 'System', isAdmin: true, departments: [] };
     }
     const actor = settings.coordinators.find(c => c.uid === actorUid);
     if (!actor) {
@@ -482,19 +510,7 @@ export async function deleteEmployee(employeeId: string, actorUid: string): Prom
 
 export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>, actorUid: string): Promise<void> {
     try {
-        const { settings } = await getAllData(actorUid, true);
-        const actor = findActor(actorUid, settings);
-
-        const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
-        const newNonEmployee: NonEmployee = {
-            id: `nonemp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-            ...nonEmployeeData,
-            checkInDate: nonEmployeeData.checkInDate || null
-        };
-
-        const serialized = serializeNonEmployee(newNonEmployee);
-        await sheet.addRow(serialized, { raw: false, insert: true });
-        await createNotification(actor, 'dodał', newNonEmployee, settings);
+        await addEmployee({ ...nonEmployeeData, zaklad: null }, actorUid);
     } catch (e: unknown) {
         console.error("Error adding non-employee:", e);
         throw new Error(e instanceof Error ? e.message : "Failed to add non-employee.");
@@ -503,56 +519,7 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>, a
 
 export async function updateNonEmployee(id: string, updates: Partial<NonEmployee>, actorUid: string): Promise<void> {
      try {
-        const { settings } = await getAllData(actorUid, true);
-        const actor = findActor(actorUid, settings);
-
-         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
-         const rows = await sheet.getRows({ limit: 1000 });
-         const rowIndex = rows.findIndex((row) => row.get('id') === id);
-
-         if (rowIndex === -1) {
-             throw new Error('Non-employee not found');
-         }
-
-         const row = rows[rowIndex];
-         const originalNonEmployee = settings.nonEmployees.find(ne => ne.id === id);
-         if (!originalNonEmployee) throw new Error("Couldn't find original non-employee");
-
-         const updatedData = { ...originalNonEmployee, ...updates };
-         
-         const changes: NotificationChange[] = [];
-         for (const key in updates) {
-            const typedKey = key as keyof NonEmployee;
-            const oldValue = originalNonEmployee[typedKey];
-            const newValue = updates[typedKey];
-            
-            const areDates = ['checkInDate', 'checkOutDate', 'departureReportDate'].includes(key);
-
-            let oldValStr: string | null = oldValue ? String(oldValue) : null;
-            if (areDates && oldValue && isValid(new Date(oldValue as string))) {
-                oldValStr = format(new Date(oldValue as string), 'dd-MM-yyyy');
-            }
-            
-            let newValStr: string | null = newValue ? String(newValue) : null;
-             if (areDates && newValue && isValid(new Date(newValue as string))) {
-                newValStr = format(new Date(newValue as string), 'dd-MM-yyyy');
-            }
-            
-            if (oldValStr !== newValStr) {
-                changes.push({ field: typedKey, oldValue: oldValStr || 'Brak', newValue: newValStr || 'Brak' });
-            }
-        }
-         
-         const serialized = serializeNonEmployee(updatedData);
-         for (const header of NON_EMPLOYEE_HEADERS) {
-            row.set(header, serialized[header]);
-         }
-         await row.save();
-         
-         if (changes.length > 0) {
-            await createNotification(actor, 'zaktualizował', updatedData, settings, changes);
-        }
-
+        await updateEmployee(id, updates, actorUid);
      } catch (e: unknown) {
          console.error("Error updating non-employee:", e);
          throw new Error(e instanceof Error ? e.message : "Failed to update non-employee.");
@@ -561,24 +528,7 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
 
 export async function deleteNonEmployee(id: string, actorUid: string): Promise<void> {
     try {
-        const { settings } = await getAllData(actorUid, true);
-        const actor = findActor(actorUid, settings);
-
-        const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows({ limit: 1000 });
-        const row = rows.find((row) => row.get('id') === id);
-        if (row) {
-            const nonEmployeeToDelete = {
-                id: row.get('id'),
-                fullName: row.get('fullName'),
-                address: row.get('address'),
-                coordinatorId: row.get('coordinatorId')
-            } as NonEmployee;
-            await row.delete();
-            await createNotification(actor, 'trwale usunął', nonEmployeeToDelete, settings);
-        } else {
-            throw new Error('Non-employee not found');
-        }
+        await deleteEmployee(id, actorUid);
     } catch (e: unknown) {
         console.error("Error deleting non-employee:", e);
         throw new Error(e instanceof Error ? e.message : "Failed to delete non-employee.");
@@ -717,7 +667,7 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
     }
 }
 
-export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<{ updated: number }> {
+export async function checkAndUpdateEmployeeStatuses(actorUid?: string): Promise<{ updated: number }> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows({ limit: 2000 });
@@ -731,7 +681,7 @@ export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<
         for (const row of rows) {
             const status = String(row.get('status'));
             const checkOutDateString = String(row.get('checkOutDate'));
-
+            
             if (status === 'active' && checkOutDateString) {
                 const checkOutDate = parseISO(checkOutDateString);
                 if (isValid(checkOutDate) && checkOutDate < today) {

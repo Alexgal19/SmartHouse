@@ -87,7 +87,7 @@ type MainLayoutContextType = {
     setSelectedCoordinatorId: React.Dispatch<React.SetStateAction<string>>;
     handleBulkDeleteEmployees: (entityType: 'employee' | 'non-employee', status: 'active' | 'dismissed') => Promise<boolean>;
     handleBulkDeleteEmployeesByCoordinator: (coordinatorId: string) => Promise<boolean>;
-    handleAddEmployeeClick: () => void;
+    handleAddEmployeeClick: (isNonEmployee?: boolean) => void;
     handleEditEmployeeClick: (employee: Employee) => void;
     handleUpdateSettings: (newSettings: Partial<Settings>) => Promise<void>;
     refreshData: (showToast?: boolean) => Promise<void>;
@@ -140,7 +140,6 @@ export default function MainLayout({
     const [allNotifications, setAllNotifications] = useState<Notification[]>([]);
     
     const [rawEmployees, setRawEmployees] = useState<Employee[] | null>(null);
-    const [rawNonEmployees, setRawNonEmployees] = useState<NonEmployee[] | null>(null);
     const [settings, setSettings] = useState<Settings | null>(null);
     const [hasNewCheckouts, setHasNewCheckouts] = useState(false);
     
@@ -160,19 +159,21 @@ export default function MainLayout({
     // Filtered data based on selected coordinator
     const allEmployees = useMemo(() => {
         if (!rawEmployees || !currentUser) return null;
+        const employeesOnly = rawEmployees.filter(e => e.zaklad !== null);
         if (currentUser.isAdmin && selectedCoordinatorId === 'all') {
-            return rawEmployees;
+            return employeesOnly;
         }
-        return rawEmployees.filter(e => e.coordinatorId === selectedCoordinatorId);
+        return employeesOnly.filter(e => e.coordinatorId === selectedCoordinatorId);
     }, [rawEmployees, currentUser, selectedCoordinatorId]);
 
     const allNonEmployees = useMemo(() => {
-        if (!rawNonEmployees || !settings || !currentUser) return null;
-        if (currentUser.isAdmin && selectedCoordinatorId === 'all') {
-            return rawNonEmployees;
+        if (!rawEmployees || !currentUser) return null;
+        const nonEmployeesOnly = rawEmployees.filter(e => e.zaklad === null);
+         if (currentUser.isAdmin && selectedCoordinatorId === 'all') {
+            return nonEmployeesOnly;
         }
-        return rawNonEmployees.filter(ne => ne.coordinatorId === selectedCoordinatorId);
-    }, [rawNonEmployees, settings, currentUser, selectedCoordinatorId]);
+        return nonEmployeesOnly.filter(ne => ne.coordinatorId === selectedCoordinatorId);
+    }, [rawEmployees, currentUser, selectedCoordinatorId]);
 
     
     const setSelectedCoordinatorId = useCallback((value: React.SetStateAction<string>) => {
@@ -240,17 +241,15 @@ export default function MainLayout({
             const {
                 employees,
                 settings,
-                nonEmployees,
                 notifications,
             } = await getAllSheetsData(currentUser.uid, currentUser.isAdmin);
 
             setRawEmployees(employees);
             setSettings(settings);
-            setRawNonEmployees(nonEmployees);
             setAllNotifications(notifications);
 
             if (currentUser.isAdmin) {
-                const upcoming = [...employees, ...nonEmployees]
+                const upcoming = employees
                     .filter(o => {
                         if (!o.checkOutDate) return false;
                         const today = new Date();
@@ -282,9 +281,8 @@ export default function MainLayout({
     }, [currentUser, toast]);
 
     const handleRefreshStatuses = useCallback(async (showNoChangesToast = false) => {
-        if (!currentUser) return;
         try {
-            const { updated } = await checkAndUpdateEmployeeStatuses(currentUser.uid);
+            const { updated } = await checkAndUpdateEmployeeStatuses();
             if (updated > 0) {
                 toast({ title: "Sukces", description: `Zaktualizowano statusy dla ${updated} pracowników.` });
                 await refreshData(false);
@@ -294,7 +292,7 @@ export default function MainLayout({
         } catch (e) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się odświeżyć statusów." });
         }
-    }, [currentUser, refreshData, toast]);
+    }, [refreshData, toast]);
 
     useEffect(() => {
         if (currentUser) {
@@ -309,24 +307,18 @@ export default function MainLayout({
 
     useEffect(() => {
         const pathname = window.location.pathname;
-        if (editEntityId && (rawEmployees || rawNonEmployees)) {
-            const employeeToEdit = rawEmployees?.find(e => e.id === editEntityId);
+        if (editEntityId && rawEmployees) {
+            const employeeToEdit = rawEmployees.find(e => e.id === editEntityId);
             if (employeeToEdit) {
                 setEditingEmployee(employeeToEdit);
                 setIsFormOpen(true);
-            } else {
-                const nonEmployeeToEdit = rawNonEmployees?.find(e => e.id === editEntityId);
-                if (nonEmployeeToEdit) {
-                    setEditingNonEmployee(nonEmployeeToEdit);
-                    setIsNonEmployeeFormOpen(true);
-                }
             }
             
             const currentSearchParams = new URLSearchParams(window.location.search);
             currentSearchParams.delete('edit');
             routerRef.current.replace(`${pathname}?${currentSearchParams.toString()}`, { scroll: false });
         }
-    }, [editEntityId, rawEmployees, rawNonEmployees]);
+    }, [editEntityId, rawEmployees]);
 
     const handleSaveEmployee = useCallback(async (data: EmployeeFormData) => {
         if (!currentUser) return;
@@ -368,18 +360,15 @@ export default function MainLayout({
     
     const handleDeleteNonEmployee = useCallback(async (id: string) => {
         if (!currentUser) return;
-        const originalNonEmployees = rawNonEmployees;
-        
-        setRawNonEmployees(prev => prev!.filter(ne => ne.id !== id));
         
         try {
             await deleteNonEmployee(id, currentUser.uid);
             toast({ title: "Sukces", description: "Mieszkaniec został usunięty." });
+            await refreshData(false);
         } catch(e) {
-            setRawNonEmployees(originalNonEmployees); // Revert
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć mieszkańca." });
         }
-    }, [rawNonEmployees, currentUser, toast]);
+    }, [currentUser, refreshData, toast]);
     
     const handleUpdateSettings = useCallback(async (newSettings: Partial<Settings>) => {
         if (!settings || !currentUser?.isAdmin) {
@@ -400,8 +389,11 @@ export default function MainLayout({
         }
     }, [settings, currentUser, toast, refreshData]);
 
-    const handleAddEmployeeClick = useCallback(() => {
+    const handleAddEmployeeClick = useCallback((isNonEmployee: boolean = false) => {
         setEditingEmployee(null);
+        // Pass a flag or different default values if it's a non-employee
+        const defaultValues = isNonEmployee ? { zaklad: null, fullName: '', status: 'active' } : { fullName: '', status: 'active' };
+        setEditingEmployee(defaultValues as Employee);
         setIsFormOpen(true);
     }, []);
 
@@ -506,10 +498,6 @@ export default function MainLayout({
     }, [currentUser, refreshData, toast]);
     
     const handleImportEmployees = useCallback(async (file: File) => {
-        if (!currentUser) {
-            throw new Error("Brak danych użytkownika do przeprowadzenia importu.");
-        }
-
         const reader = new FileReader();
         const promise = new Promise<string>((resolve, reject) => {
             reader.onload = (e) => {
@@ -541,7 +529,7 @@ export default function MainLayout({
         });
         await refreshData(false);
 
-    }, [currentUser, refreshData, toast]);
+    }, [refreshData, toast]);
 
     const contextValue: MainLayoutContextType = useMemo(() => ({
         allEmployees,
@@ -593,7 +581,7 @@ export default function MainLayout({
         handleImportEmployees,
     ]);
 
-    if (!settings || !rawEmployees || !rawNonEmployees) {
+    if (!settings || !rawEmployees) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
                 <HouseLoader />
@@ -662,7 +650,7 @@ export default function MainLayout({
                     employee={editingEmployee}
                 />
             )}
-            {settings && currentUser && (
+            {settings && currentUser && allNonEmployees && (
                 <AddNonEmployeeForm
                     isOpen={isNonEmployeeFormOpen}
                     onOpenChange={setIsNonEmployeeFormOpen}
