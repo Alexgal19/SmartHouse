@@ -215,9 +215,9 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     return newEmployee;
 };
 
-export async function getAllData() {
+export async function getAllData(uid?: string, isAdmin?: boolean) {
     try {
-        const allData = await getAllSheetsData();
+        const allData = await getAllSheetsData(uid, isAdmin);
         return allData;
     } catch (error: unknown) {
         console.error("Error in getAllData (actions):", error);
@@ -281,7 +281,7 @@ const createNotification = async (
             changes
         });
         
-        // 2. If the actor is not an admin, or if it's a critical event, notify all admins too.
+        // 2. If it's a critical event, notify all admins too.
         const shouldNotifyAdmins = isAddAction || isDeleteAction || isImportantUpdate;
         
         if (shouldNotifyAdmins) {
@@ -314,12 +314,21 @@ const createNotification = async (
     }
 };
 
+const findActor = (actorUid: string, settings: Settings): Coordinator => {
+    if (actorUid === 'admin-hardcoded') {
+        return { uid: 'admin-hardcoded', name: 'Admin', isAdmin: true, departments: [] };
+    }
+    const actor = settings.coordinators.find(c => c.uid === actorUid);
+    if (!actor) {
+        throw new Error("Could not find acting user.");
+    }
+    return actor;
+}
 
 export async function addEmployee(employeeData: Partial<Employee>, actorUid: string): Promise<void> {
     try {
-        const { settings } = await getAllData();
-        const actor = settings.coordinators.find(c => c.uid === actorUid);
-        if (!actor) throw new Error("Could not find acting user.");
+        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded');
+        const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const newEmployee: Employee = {
@@ -361,9 +370,8 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
 
 export async function updateEmployee(employeeId: string, updates: Partial<Employee>, actorUid: string): Promise<void> {
     try {
-        const { settings } = await getAllData();
-        const actor = settings.coordinators.find(c => c.uid === actorUid);
-        if (!actor) throw new Error("Could not find acting user.");
+        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded');
+        const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows({ limit: 2000 });
@@ -448,9 +456,8 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
 
 export async function deleteEmployee(employeeId: string, actorUid: string): Promise<void> {
     try {
-        const { settings } = await getAllData();
-        const actor = settings.coordinators.find(c => c.uid === actorUid);
-        if (!actor) throw new Error("Could not find acting user.");
+        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded');
+        const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows({ limit: 2000 });
@@ -476,9 +483,8 @@ export async function deleteEmployee(employeeId: string, actorUid: string): Prom
 
 export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>, actorUid: string): Promise<void> {
     try {
-        const { settings } = await getAllData();
-        const actor = settings.coordinators.find(c => c.uid === actorUid);
-        if (!actor) throw new Error("Could not find acting user.");
+        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded');
+        const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
         const newNonEmployee: NonEmployee = {
@@ -498,9 +504,8 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>, a
 
 export async function updateNonEmployee(id: string, updates: Partial<NonEmployee>, actorUid: string): Promise<void> {
      try {
-         const { settings } = await getAllData();
-         const actor = settings.coordinators.find(c => c.uid === actorUid);
-         if (!actor) throw new Error("Could not find acting user.");
+         const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded');
+         const actor = findActor(actorUid, settings);
 
          const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
          const rows = await sheet.getRows({ limit: 1000 });
@@ -557,9 +562,8 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
 
 export async function deleteNonEmployee(id: string, actorUid: string): Promise<void> {
     try {
-        const { settings } = await getAllData();
-        const actor = settings.coordinators.find(c => c.uid === actorUid);
-        if (!actor) throw new Error("Could not find acting user.");
+        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded');
+        const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
         const rows = await sheet.getRows({ limit: 1000 });
@@ -671,8 +675,8 @@ export async function bulkDeleteEmployeesByCoordinator(coordinatorId: string, ac
         }
         
         // Audit logging
-        const { settings } = await getAllData();
-        const actor = settings.coordinators.find(c => c.uid === actorUid);
+        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded');
+        const actor = findActor(actorUid, settings);
         const deletedForCoordinator = settings.coordinators.find(c => c.uid === coordinatorId);
         if (actor) {
             await writeToAuditLog(actor.uid, actor.name, 'bulk-delete-by-coordinator', 'employee', coordinatorId, {
@@ -723,9 +727,8 @@ export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<
 
         let updatedCount = 0;
         const rowsToUpdate = [];
-        const { settings } = await getAllData();
-        const actor = settings.coordinators.find(c => c.uid === actorUid);
-        if (!actor) throw new Error("Could not find acting user for status update.");
+        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded');
+        const actor = findActor(actorUid, settings);
 
         for (const row of rows) {
             const status = String(row.get('status'));
