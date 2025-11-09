@@ -330,10 +330,9 @@ export function AddEmployeeForm({
     
     if (employee) { // Check only on edit
         const addressChanged = values.address !== employee.address;
-        const roomChanged = values.roomNumber !== employee.roomNumber;
         const checkInDateChanged = values.checkInDate?.getTime() !== parseDate(employee.checkInDate)?.getTime();
 
-        if ((addressChanged || roomChanged) && !checkInDateChanged) {
+        if (addressChanged && !checkInDateChanged) {
             toast({
                 variant: 'destructive',
                 title: 'Uwaga',
