@@ -35,7 +35,7 @@ const formatDate = (dateString?: string | null) => {
     }
 }
 
-const isEmployee = (entity: Employee): boolean => entity.zaklad !== null;
+const isEmployee = (entity: Employee): boolean => !!entity.zaklad;
 
 const EntityActions = ({
   entity,
@@ -304,7 +304,6 @@ const ControlPanel = ({
     viewMode,
     isFilterActive,
     onResetFilters,
-    tab
 }: {
     search: string;
     onSearch: (value: string) => void;
@@ -314,7 +313,6 @@ const ControlPanel = ({
     viewMode: 'list' | 'grid';
     isFilterActive: boolean;
     onResetFilters: () => void;
-    tab: 'active' | 'dismissed' | 'non-employees';
 }) => {
     const { isMobile } = useIsMobile();
     return (
@@ -336,10 +334,18 @@ const ControlPanel = ({
                             <X className="h-4 w-4" />
                         </Button>
                     )}
-                    <Button size={isMobile ? "icon" : "default"} onClick={() => onAdd(tab === 'non-employees')}>
-                        <PlusCircle className={isMobile ? "h-5 w-5" : "mr-2 h-4 w-4"} />
-                        <span className="hidden sm:inline">Dodaj</span>
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button size={isMobile ? "icon" : "default"}>
+                                <PlusCircle className={isMobile ? "h-5 w-5" : "mr-2 h-4 w-4"} />
+                                <span className="hidden sm:inline">Dodaj</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            <DropdownMenuItem onClick={() => onAdd(false)}>Dodaj pracownika</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onAdd(true)}>Dodaj mieszkańca (NZ)</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     {!isMobile && (
                         <>
                             <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => onViewChange('list')}>
@@ -412,7 +418,9 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
             const coordinatorMatch = filters.coordinator === 'all' || entity.coordinatorId === filters.coordinator;
             const addressMatch = filters.address === 'all' || entity.address === filters.address;
             const nationalityMatch = filters.nationality === 'all' || entity.nationality === filters.nationality;
-            const departmentMatch = filters.department === 'all' || (isEmployee(entity) && entity.zaklad === filters.department);
+            
+            // Department filter only applies to employees, not NZ residents
+            const departmentMatch = !isEmployee(entity) || filters.department === 'all' || entity.zaklad === filters.department;
 
             return searchMatch && coordinatorMatch && addressMatch && nationalityMatch && departmentMatch;
         });
@@ -486,7 +494,6 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                     onViewChange={(mode) => updateSearchParams({ viewMode: mode })}
                     isFilterActive={isFilterActive}
                     onResetFilters={() => updateSearchParams({ search: '', page: 1, coordinator: '', address: '', department: '', nationality: ''})}
-                    tab={tab}
                 />
             </CardHeader>
             <CardContent>
