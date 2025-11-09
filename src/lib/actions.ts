@@ -733,10 +733,10 @@ export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<
             const checkOutDateString = String(row.get('checkOutDate'));
 
             if (status === 'active' && checkOutDateString) {
-                const checkOutDate = new Date(checkOutDateString);
+                const checkOutDate = parseISO(checkOutDateString); // Expect YYYY-MM-DD
                 if (isValid(checkOutDate) && checkOutDate < today) {
                     row.set('status', 'dismissed');
-                    await row.save(); // Save each row individually and await it
+                    await row.save();
                     updatedCount++;
 
                     const originalEmployee = deserializeEmployee(row.toObject());

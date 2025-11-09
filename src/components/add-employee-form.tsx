@@ -35,11 +35,11 @@ import type { Employee, Settings, Address } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, Info, X } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
-import { format, parse } from 'date-fns';
+import { format, parse, isValid, parseISO } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Combobox } from '@/components/ui/combobox';
 import { useToast } from '@/hooks/use-toast';
@@ -92,8 +92,8 @@ const defaultDeductionReasons: { label: string }[] = [
 
 const parseDate = (dateString: string | null | undefined): Date | undefined => {
     if (!dateString) return undefined;
-    const date = new Date(dateString + 'T00:00:00'); // Treat as local date
-    return isNaN(date.getTime()) ? undefined : date;
+    const date = parseISO(dateString); // Expect YYYY-MM-DD
+    return isValid(date) ? date : undefined;
 };
 
 const DateInput = ({
@@ -109,8 +109,8 @@ const DateInput = ({
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   useEffect(() => {
-    if (value) {
-      setInputValue(format(value, 'dd-MM-yyyy'));
+    if (value && isValid(value)) {
+      setInputValue(format(value, 'yyyy-MM-dd'));
     } else {
       setInputValue('');
     }
@@ -122,16 +122,16 @@ const DateInput = ({
         onChange(null);
         return;
     }
-    const parsedDate = parse(e.target.value, 'dd-MM-yyyy', new Date());
-    if (!isNaN(parsedDate.getTime())) {
+    const parsedDate = parse(e.target.value, 'yyyy-MM-dd', new Date());
+    if (isValid(parsedDate)) {
       onChange(parsedDate);
     }
   };
 
   const handleDateSelect = (date?: Date | null) => {
-    if (date) {
+    if (date && isValid(date)) {
       onChange(date);
-      setInputValue(format(date, 'dd-MM-yyyy'));
+      setInputValue(format(date, 'yyyy-MM-dd'));
       setIsPopoverOpen(false);
     } else {
       onChange(null);
@@ -152,7 +152,7 @@ const DateInput = ({
             type="text"
             value={inputValue}
             onChange={handleInputChange}
-            placeholder="dd-mm-rrrr"
+            placeholder="rrrr-mm-dd"
             className="pr-10"
           />
            <div className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 flex items-center">
@@ -168,7 +168,7 @@ const DateInput = ({
         <Calendar
           locale={pl}
           mode="single"
-          selected={value || undefined}
+          selected={value && isValid(value) ? value : undefined}
           onSelect={(d) => handleDateSelect(d)}
           disabled={disabled}
           initialFocus
@@ -636,7 +636,7 @@ export function AddEmployeeForm({
                                             <FormLabel>Data zmiany adresu</FormLabel>
                                             <FormControl>
                                                 <Input 
-                                                    value={field.value ? format(field.value, 'dd-MM-yyyy') : ''} 
+                                                    value={field.value ? format(field.value, 'yyyy-MM-dd') : ''} 
                                                     readOnly 
                                                 />
                                             </FormControl>
