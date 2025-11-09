@@ -84,22 +84,10 @@ export type Employee = {
     deductionReason: DeductionReason[] | undefined;
 };
 
-export type NonEmployee = {
-    id: string;
-    fullName: string;
-    coordinatorId: string;
-    nationality: string;
-    gender: string;
-    address: string;
-    roomNumber: string;
-    checkInDate: string | null; // YYYY-MM-DD
-    checkOutDate?: string | null; // YYYY-MM-DD
-    departureReportDate?: string | null; // YYYY-MM-DD
-    comments: string;
-};
+export type NonEmployee = Employee; // NonEmployee is now an alias for Employee
 
 export type NotificationChange = {
-    field: keyof Employee | keyof NonEmployee;
+    field: keyof Employee;
     oldValue: string;
     newValue: string;
 }

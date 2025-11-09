@@ -4,7 +4,7 @@
 
 import React, { useState, useMemo, useTransition, useRef } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import type { Employee, Settings, NonEmployee, SessionData } from '@/types';
+import type { Employee, Settings, SessionData } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -40,9 +40,7 @@ const formatDate = (dateString?: string | null) => {
     }
 }
 
-type Entity = Employee | NonEmployee;
-
-const isEmployee = (entity: Entity): entity is Employee => 'zaklad' in entity;
+type Entity = Employee;
 
 const EntityActions = ({
   entity,
@@ -56,7 +54,7 @@ const EntityActions = ({
   onEdit: (entity: Entity) => void;
   onDismiss?: (id: string) => void;
   onRestore?: (id: string) => void;
-  onPermanentDelete: (id: string, type: 'employee' | 'non-employee') => void;
+  onPermanentDelete: (id: string) => void;
   isDismissed: boolean;
 }) => {
     const { copyToClipboard } = useCopyToClipboard();
@@ -85,11 +83,11 @@ const EntityActions = ({
                 <Copy className="mr-2 h-4 w-4" />
                 Kopiuj dane
             </DropdownMenuItem>
-            {isEmployee(entity) && (
+            {
                 isDismissed 
                 ? <DropdownMenuItem onClick={() => onRestore?.(entity.id)}>Przywróć</DropdownMenuItem>
                 : <DropdownMenuItem onClick={() => onDismiss?.(entity.id)}>Zwolnij</DropdownMenuItem>
-            )}
+            }
              <DropdownMenuSeparator />
              <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -112,7 +110,7 @@ const EntityActions = ({
                         <AlertDialogCancel>Anuluj</AlertDialogCancel>
                         <AlertDialogAction
                             className="bg-destructive hover:bg-destructive/90"
-                             onClick={() => onPermanentDelete(entity.id, isEmployee(entity) ? 'employee' : 'non-employee')}
+                             onClick={() => onPermanentDelete(entity.id)}
                         >
                             Potwierdź i usuń
                         </AlertDialogAction>
@@ -158,7 +156,7 @@ const PaginationControls = ({
     );
 };
 
-const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, settings, onPermanentDelete }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onDismiss?: (id: string) => void; onRestore?: (id: string) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee') => void; }) => {
+const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, settings, onPermanentDelete }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onDismiss?: (id: string) => void; onRestore?: (id: string) => void; onPermanentDelete: (id: string) => void; }) => {
   const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
   
   return (
@@ -193,14 +191,14 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
                   <TableCell>{getCoordinatorName(entity.coordinatorId)}</TableCell>
                   <TableCell>{entity.nationality || "N/A"}</TableCell>
                   <TableCell>{entity.address}</TableCell>
-                  <TableCell>{isEmployee(entity) ? entity.oldAddress : "N/A"}</TableCell>
-                  <TableCell>{isEmployee(entity) ? formatDate(entity.addressChangeDate) : "N/A"}</TableCell>
+                  <TableCell>{entity.oldAddress || "N/A"}</TableCell>
+                  <TableCell>{formatDate(entity.addressChangeDate)}</TableCell>
                   <TableCell>{entity.roomNumber}</TableCell>
-                  <TableCell>{isEmployee(entity) ? entity.zaklad : "N/A"}</TableCell>
+                  <TableCell>{entity.zaklad || "N/A"}</TableCell>
                   <TableCell>{formatDate(entity.checkInDate)}</TableCell>
                   <TableCell>{formatDate(entity.checkOutDate)}</TableCell>
-                  <TableCell>{isEmployee(entity) ? formatDate(entity.contractStartDate) : "N/A"}</TableCell>
-                  <TableCell>{isEmployee(entity) ? formatDate(entity.contractEndDate) : "N/A"}</TableCell>
+                  <TableCell>{formatDate(entity.contractStartDate)}</TableCell>
+                  <TableCell>{formatDate(entity.contractEndDate)}</TableCell>
                   <TableCell>{formatDate(entity.departureReportDate)}</TableCell>
                   <TableCell className="max-w-xs truncate">{entity.comments}</TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
@@ -219,7 +217,7 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
   );
 };
 
-const EntityCardList = ({ entities, onEdit, onDismiss, onRestore, isDismissed, settings, onPermanentDelete }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onDismiss?: (id: string) => void; onRestore?: (id: string) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee') => void; }) => {
+const EntityCardList = ({ entities, onEdit, onDismiss, onRestore, isDismissed, settings, onPermanentDelete }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onDismiss?: (id: string) => void; onRestore?: (id: string) => void; onPermanentDelete: (id: string) => void; }) => {
     const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
     
     return (
@@ -240,7 +238,7 @@ const EntityCardList = ({ entities, onEdit, onDismiss, onRestore, isDismissed, s
                         </CardHeader>
                         <CardContent className="text-sm space-y-2">
                             <p><span className="font-semibold text-muted-foreground">Adres:</span> {entity.address}, pok. {entity.roomNumber}</p>
-                            {isEmployee(entity) && <p><span className="font-semibold text-muted-foreground">Zakład:</span> {entity.zaklad}</p>}
+                            <p><span className="font-semibold text-muted-foreground">Zakład:</span> {entity.zaklad || 'Mieszkaniec (NZ)'}</p>
                             <p><span className="font-semibold text-muted-foreground">Narodowość:</span> {entity.nationality}</p>
                             <p><span className="font-semibold text-muted-foreground">Zameldowanie:</span> {formatDate(entity.checkInDate)}</p>
                         </CardContent>
@@ -414,7 +412,7 @@ const ControlPanel = ({
 }: {
     search: string;
     onSearch: (value: string) => void;
-    onAdd: (type: 'employee' | 'non-employee') => void;
+    onAdd: (isNonEmployee: boolean) => void;
     onFilter: () => void;
     onViewChange: (mode: 'list' | 'grid') => void;
     viewMode: 'list' | 'grid';
@@ -457,8 +455,8 @@ const ControlPanel = ({
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                            <DropdownMenuItem onClick={() => onAdd('employee')}>Dodaj pracownika</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onAdd('non-employee')}>Dodaj mieszkańca (NZ)</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onAdd(false)}>Dodaj pracownika</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onAdd(true)}>Dodaj mieszkańca (NZ)</DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                     {!isMobile && (
@@ -480,7 +478,6 @@ const ControlPanel = ({
 export default function EntityView({ currentUser: _currentUser }: { currentUser: SessionData }) {
     const {
         allEmployees,
-        allNonEmployees,
         settings,
         currentUser,
         selectedCoordinatorId,
@@ -488,10 +485,7 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
         handleRestoreEmployee,
         handleDeleteEmployee,
         handleEditEmployeeClick,
-        handleEditNonEmployeeClick,
         handleAddEmployeeClick,
-        handleAddNonEmployeeClick,
-        handleDeleteNonEmployee,
         handleImportEmployees,
     } = useMainLayout();
 
@@ -545,29 +539,26 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
             const addressMatch = filters.address === 'all' || employee.address === filters.address;
             const departmentMatch = filters.department === 'all' || employee.zaklad === filters.department;
             const nationalityMatch = filters.nationality === 'all' || employee.nationality === filters.nationality;
-            return searchMatch && coordinatorMatch && addressMatch && departmentMatch && nationalityMatch;
-        });
-    }, [allEmployees, search, filters]);
+            
+            const isNonEmployee = employee.zaklad === null;
+            
+            if (tab === 'non-employees') {
+                 return isNonEmployee && searchMatch && coordinatorMatch && addressMatch && nationalityMatch;
+            }
 
-    const activeEmployees = useMemo(() => filteredEmployees.filter(e => e.status === 'active'), [filteredEmployees]);
-    const dismissedEmployees = useMemo(() => filteredEmployees.filter(e => e.status === 'dismissed'), [filteredEmployees]);
+            return !isNonEmployee && searchMatch && coordinatorMatch && addressMatch && departmentMatch && nationalityMatch;
+        });
+    }, [allEmployees, search, filters, tab]);
     
-    const filteredNonEmployees = useMemo(() => {
-        if (!allNonEmployees) return [];
-        return allNonEmployees.filter(person => {
-            const searchMatch = search === '' || person.fullName.toLowerCase().includes(search.toLowerCase());
-            const addressMatch = filters.address === 'all' || person.address === filters.address;
-            const coordinatorMatch = filters.coordinator === 'all' || !person.coordinatorId || person.coordinatorId === filters.coordinator;
-            const nationalityMatch = filters.nationality === 'all' || person.nationality === filters.nationality;
-            return searchMatch && addressMatch && coordinatorMatch && nationalityMatch;
-        });
-    }, [allNonEmployees, search, filters]);
-
+    const activeEntities = useMemo(() => filteredEmployees.filter(e => e.status === 'active'), [filteredEmployees]);
+    const dismissedEntities = useMemo(() => filteredEmployees.filter(e => e.status === 'dismissed'), [filteredEmployees]);
+    const nonEmployees = useMemo(() => allEmployees?.filter(e => e.zaklad === null && e.status === 'active') || [], [allEmployees]);
+    
     const dataMap = useMemo(() => ({
-        active: activeEmployees,
-        dismissed: dismissedEmployees,
-        'non-employees': filteredNonEmployees,
-    }), [activeEmployees, dismissedEmployees, filteredNonEmployees]);
+        active: activeEntities.filter(e => e.zaklad !== null),
+        dismissed: dismissedEntities.filter(e => e.zaklad !== null),
+        'non-employees': activeEntities.filter(e => e.zaklad === null),
+    }), [activeEntities, dismissedEntities]);
 
     const currentData = dataMap[tab];
     const totalPages = Math.ceil((currentData?.length || 0) / ITEMS_PER_PAGE);
@@ -593,7 +584,7 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
         };
     }, [settings, selectedCoordinatorId]);
 
-    if (!settings || !allEmployees || !allNonEmployees || !filterDialogSettings || !currentUser) {
+    if (!settings || !allEmployees || !filterDialogSettings || !currentUser) {
         return (
             <Card>
                 <CardHeader>
@@ -618,21 +609,9 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
         }
     };
 
-    const handlePermanentDelete = async (id: string, type: 'employee' | 'non-employee') => {
-        if (type === 'employee') {
-            await handleDeleteEmployee(id);
-        } else {
-            await handleDeleteNonEmployee(id);
-        }
+    const handlePermanentDelete = async (id: string) => {
+        await handleDeleteEmployee(id);
     };
-
-    const handleEdit = (entity: Entity) => {
-        if(isEmployee(entity)) {
-            handleEditEmployeeClick(entity);
-        } else {
-            handleEditNonEmployeeClick(entity);
-        }
-    }
     
     const onFileSelect = async (file: File) => {
         setIsImporting(true);
@@ -653,30 +632,20 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
     const EntityListComponent = viewMode === 'grid' || isMobile ? EntityCardList : EntityTable;
 
     const renderContent = () => {
-        const isEmployeeTab = tab === 'active' || tab === 'dismissed';
-
-        const listProps: Record<string, unknown> = {
+        const listProps = {
             entities: paginatedData,
             settings: settings,
-            onEdit: handleEdit,
+            onEdit: handleEditEmployeeClick,
             onPermanentDelete: handlePermanentDelete,
             isDismissed: tab === 'dismissed',
+            onDismiss: (id: string) => handleAction('dismiss', id),
+            onRestore: (id: string) => handleAction('restore', id),
         };
-        
-        if (isEmployeeTab) {
-            listProps.onDismiss = (id: string) => handleAction('dismiss', id);
-            listProps.onRestore = (id: string) => handleAction('restore', id);
-        }
 
         return (
             <>
                 <ScrollArea className="h-[calc(100vh-22rem)] sm:h-[55vh] overflow-x-auto" style={{ opacity: isPending ? 0.6 : 1 }}>
-                    {isMounted ? <EntityListComponent 
-                        entities={paginatedData}
-                        settings={settings} 
-                        isDismissed={tab === 'dismissed'}
-                        onEdit={handleEdit} 
-                        onPermanentDelete={handlePermanentDelete} {...listProps} /> : <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
+                    {isMounted ? <EntityListComponent {...listProps} /> : <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
                 </ScrollArea>
                  <PaginationControls currentPage={page} totalPages={totalPages} onPageChange={(p) => updateSearchParams({ page: p })} isDisabled={isPending} />
             </>
@@ -689,7 +658,7 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
                 <ControlPanel 
                     search={search}
                     onSearch={(val) => updateSearchParams({ search: val, page: 1 })}
-                    onAdd={(type) => type === 'employee' ? handleAddEmployeeClick() : handleAddNonEmployeeClick()}
+                    onAdd={(isNonEmployee) => handleAddEmployeeClick(isNonEmployee)}
                     onFilter={() => setIsFilterOpen(true)}
                     viewMode={viewMode}
                     onViewChange={(mode) => updateSearchParams({ viewMode: mode })}
@@ -703,13 +672,13 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
                  <Tabs value={tab} onValueChange={(v) => updateSearchParams({ tab: v, page: 1 })}>
                     <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="active" disabled={isPending}>
-                            <Users className="mr-2 h-4 w-4" />Aktywni ({activeEmployees.length})
+                            <Users className="mr-2 h-4 w-4" />Aktywni ({dataMap.active.length})
                         </TabsTrigger>
                         <TabsTrigger value="dismissed" disabled={isPending}>
-                            <UserX className="mr-2 h-4 w-4" />Zwolnieni ({dismissedEmployees.length})
+                            <UserX className="mr-2 h-4 w-4" />Zwolnieni ({dataMap.dismissed.length})
                         </TabsTrigger>
                         <TabsTrigger value="non-employees" disabled={isPending}>
-                            <UserX className="mr-2 h-4 w-4" />NZ ({filteredNonEmployees.length})
+                            <UserX className="mr-2 h-4 w-4" />NZ ({dataMap['non-employees'].length})
                         </TabsTrigger>
                     </TabsList>
                     <TabsContent value="active" className="mt-4">{renderContent()}</TabsContent>
