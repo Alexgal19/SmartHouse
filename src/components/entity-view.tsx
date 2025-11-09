@@ -33,7 +33,7 @@ const formatDate = (dateString?: string | null) => {
 
 type Entity = Employee | NonEmployee;
 
-const isEmployee = (entity: Entity): entity is Employee => 'coordinatorId' in entity && 'zaklad' in entity;
+const isEmployee = (entity: Entity): entity is Employee => 'coordinatorId' in entity;
 
 const EntityActions = ({
   entity,
@@ -142,7 +142,6 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
           <TableHeader>
             <TableRow>
               <TableHead>Imię i nazwisko</TableHead>
-              <TableHead>Typ</TableHead>
               <TableHead>Koordynator</TableHead>
               <TableHead>Adres</TableHead>
               <TableHead>Pokój</TableHead>
@@ -156,7 +155,6 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
               entities.map((entity) => (
                 <TableRow key={entity.id} onClick={() => onEdit(entity)} className="cursor-pointer">
                   <TableCell className="font-medium">{entity.fullName}</TableCell>
-                  <TableCell>{isEmployee(entity) ? "Pracownik" : "Mieszkaniec (NZ)"}</TableCell>
                   <TableCell>{isEmployee(entity) ? getCoordinatorName(entity.coordinatorId) : "N/A"}</TableCell>
                   <TableCell>{entity.address}</TableCell>
                   <TableCell>{entity.roomNumber}</TableCell>
@@ -169,7 +167,7 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={8} className="text-center">Brak danych do wyświetlenia.</TableCell>
+                <TableCell colSpan={7} className="text-center">Brak danych do wyświetlenia.</TableCell>
               </TableRow>
             )}
           </TableBody>
