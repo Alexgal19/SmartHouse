@@ -523,18 +523,22 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
         });
     };
     
-    const filteredData = useMemo(() => {
-        if (!allEmployees) return [];
-        return allEmployees.filter(employee => {
-            const searchMatch = search === '' || employee.fullName.toLowerCase().includes(search.toLowerCase());
-            const coordinatorMatch = filtersFromUrl.coordinator === 'all' || employee.coordinatorId === filtersFromUrl.coordinator;
-            const addressMatch = filtersFromUrl.address === 'all' || employee.address === filtersFromUrl.address;
-            const nationalityMatch = filtersFromUrl.nationality === 'all' || employee.nationality === filtersFromUrl.nationality;
-            const departmentMatch = filtersFromUrl.department === 'all' || employee.zaklad === filtersFromUrl.department;
+    const applyFilters = (employees: Employee[], filters: typeof filtersFromUrl, searchTerm: string) => {
+        return employees.filter(employee => {
+            const searchMatch = searchTerm === '' || employee.fullName.toLowerCase().includes(searchTerm.toLowerCase());
+            const coordinatorMatch = filters.coordinator === 'all' || employee.coordinatorId === filters.coordinator;
+            const addressMatch = filters.address === 'all' || employee.address === filters.address;
+            const nationalityMatch = filters.nationality === 'all' || employee.nationality === filters.nationality;
+            const departmentMatch = filters.department === 'all' || employee.zaklad === filters.department;
             
             return searchMatch && coordinatorMatch && addressMatch && nationalityMatch && departmentMatch;
         });
-    }, [allEmployees, search, filtersFromUrl]);
+    };
+
+    const filteredData = useMemo(() => {
+        if (!allEmployees) return [];
+        return applyFilters(allEmployees, filtersFromUrl, search);
+    }, [allEmployees, filtersFromUrl, search]);
     
     const dataMap = useMemo(() => ({
         active: filteredData.filter(e => e.status === 'active' && e.zaklad !== null),
