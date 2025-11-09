@@ -1,5 +1,4 @@
 
-
 "use server";
 
 import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Inspection, InspectionCategory, NotificationType, Coordinator } from '../types';
@@ -250,48 +249,54 @@ const createNotification = async (
     changes: NotificationChange[] = []
 ) => {
     try {
-        const isAddAction = action === 'dodał';
-        const isDeleteAction = action === 'trwale usunął';
-        const isImportantUpdate = changes.some(c => ['address', 'roomNumber'].includes(c.field));
-
-        let notificationType: NotificationType = 'info';
-        if (isAddAction) notificationType = 'success';
-        if (isDeleteAction) notificationType = 'destructive';
-        if (isImportantUpdate) notificationType = 'warning';
-        
         const responsibleCoordinator = settings.coordinators.find(c => c.uid === entity.coordinatorId);
         if (!responsibleCoordinator) {
             console.error(`Could not find responsible coordinator for entity ${entity.fullName}.`);
             return;
         }
 
+        const isAddAction = action === 'dodał';
+        const isDeleteAction = action === 'trwale usunął';
+        const isImportantUpdate = changes.some(c => ['address', 'roomNumber'].includes(c.field));
+        
+        let notificationType: NotificationType = 'info';
+        if (isAddAction) notificationType = 'success';
+        if (isDeleteAction) notificationType = 'destructive';
+        if (isImportantUpdate) notificationType = 'warning';
+
         const message = `${actor.name} ${action} ${'zaklad' in entity ? 'pracownika' : 'mieszkańca'} ${entity.fullName}.`;
         
         const notificationsToAdd: Omit<Notification, 'id'>[] = [];
 
-        // 1. Create notification for the responsible coordinator (always)
-        notificationsToAdd.push({
-            message,
-            entityId: entity.id,
-            entityName: entity.fullName,
-            recipientId: responsibleCoordinator.uid,
-            createdAt: new Date().toISOString(),
-            isRead: false,
-            type: notificationType,
-            changes
-        });
+        // 1. Create notification for the responsible coordinator (if they are not the actor)
+        if (actor.uid !== responsibleCoordinator.uid) {
+            notificationsToAdd.push({
+                message,
+                entityId: entity.id,
+                entityName: entity.fullName,
+                recipientId: responsibleCoordinator.uid,
+                createdAt: new Date().toISOString(),
+                isRead: false,
+                type: notificationType,
+                changes
+            });
+        }
         
-        // 2. If it's a critical event, notify all admins too.
+        // 2. If it's a critical event, notify all admins (who are not the actor or the responsible coordinator if they are also an admin)
         const shouldNotifyAdmins = isAddAction || isDeleteAction || isImportantUpdate;
         
         if (shouldNotifyAdmins) {
-            const admins = settings.coordinators.filter(c => c.isAdmin && c.uid !== responsibleCoordinator.uid);
+            const admins = settings.coordinators.filter(c => 
+                c.isAdmin && 
+                c.uid !== actor.uid && 
+                c.uid !== responsibleCoordinator.uid
+            );
             for (const admin of admins) {
                 notificationsToAdd.push({
                     message,
                     entityId: entity.id,
                     entityName: entity.fullName,
-                    recipientId: admin.uid, // Different recipient
+                    recipientId: admin.uid,
                     createdAt: new Date().toISOString(),
                     isRead: false,
                     type: notificationType,
@@ -301,9 +306,8 @@ const createNotification = async (
         }
         
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
-        const serializedNotifications = notificationsToAdd.map(n => serializeNotification({ ...n, id: `notif-${Date.now()}-${Math.random()}` }));
-        
-        if (serializedNotifications.length > 0) {
+        if (notificationsToAdd.length > 0) {
+            const serializedNotifications = notificationsToAdd.map(n => serializeNotification({ ...n, id: `notif-${Date.now()}-${Math.random()}` }));
             await sheet.addRows(serializedNotifications);
         }
         
@@ -316,7 +320,7 @@ const createNotification = async (
 
 const findActor = (actorUid: string, settings: Settings): Coordinator => {
     if (actorUid === 'admin-hardcoded') {
-        return { uid: 'admin-hardcoded', name: 'Admin', isAdmin: true, departments: [] };
+        return { uid: 'admin-hardcoded', name: 'System', isAdmin: true, departments: [] };
     }
     const actor = settings.coordinators.find(c => c.uid === actorUid);
     if (!actor) {
@@ -327,7 +331,7 @@ const findActor = (actorUid: string, settings: Settings): Coordinator => {
 
 export async function addEmployee(employeeData: Partial<Employee>, actorUid: string): Promise<void> {
     try {
-        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded');
+        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded' || findActor(actorUid, await getAllData().then(d => d.settings)).isAdmin);
         const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
@@ -370,7 +374,7 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
 
 export async function updateEmployee(employeeId: string, updates: Partial<Employee>, actorUid: string): Promise<void> {
     try {
-        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded');
+        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded' || findActor(actorUid, await getAllData().then(d => d.settings)).isAdmin);
         const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
@@ -440,12 +444,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         await row.save();
         
         if (changes.length > 0) {
-            if (updates.coordinatorId && updates.coordinatorId !== originalEmployee.coordinatorId) {
-                await createNotification(actor, 'przeniósł', { ...updatedEmployeeData, coordinatorId: originalEmployee.coordinatorId }, settings, changes);
-                await createNotification(actor, 'przeniósł', updatedEmployeeData, settings, changes);
-            } else {
-                await createNotification(actor, 'zaktualizował', updatedEmployeeData, settings, changes);
-            }
+            await createNotification(actor, 'zaktualizował', updatedEmployeeData, settings, changes);
         }
 
     } catch (e: unknown) {
@@ -456,7 +455,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
 
 export async function deleteEmployee(employeeId: string, actorUid: string): Promise<void> {
     try {
-        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded');
+        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded' || findActor(actorUid, await getAllData().then(d => d.settings)).isAdmin);
         const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
@@ -483,7 +482,7 @@ export async function deleteEmployee(employeeId: string, actorUid: string): Prom
 
 export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>, actorUid: string): Promise<void> {
     try {
-        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded');
+        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded' || findActor(actorUid, await getAllData().then(d => d.settings)).isAdmin);
         const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
@@ -504,8 +503,8 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>, a
 
 export async function updateNonEmployee(id: string, updates: Partial<NonEmployee>, actorUid: string): Promise<void> {
      try {
-         const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded');
-         const actor = findActor(actorUid, settings);
+        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded' || findActor(actorUid, await getAllData().then(d => d.settings)).isAdmin);
+        const actor = findActor(actorUid, settings);
 
          const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
          const rows = await sheet.getRows({ limit: 1000 });
@@ -562,7 +561,7 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
 
 export async function deleteNonEmployee(id: string, actorUid: string): Promise<void> {
     try {
-        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded');
+        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded' || findActor(actorUid, await getAllData().then(d => d.settings)).isAdmin);
         const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
@@ -675,7 +674,7 @@ export async function bulkDeleteEmployeesByCoordinator(coordinatorId: string, ac
         }
         
         // Audit logging
-        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded');
+        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded' || findActor(actorUid, await getAllData().then(d => d.settings)).isAdmin);
         const actor = findActor(actorUid, settings);
         const deletedForCoordinator = settings.coordinators.find(c => c.uid === coordinatorId);
         if (actor) {
@@ -727,7 +726,7 @@ export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<
 
         let updatedCount = 0;
         const rowsToUpdate = [];
-        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded');
+        const { settings } = await getAllData(actorUid, actorUid === 'admin-hardcoded' || findActor(actorUid, await getAllData().then(d => d.settings)).isAdmin);
         const actor = findActor(actorUid, settings);
 
         for (const row of rows) {
@@ -737,7 +736,7 @@ export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<
             if (status === 'active' && checkOutDateString) {
                 try {
                     const checkOutDate = parseISO(checkOutDateString);
-                     if (isValid(checkOutDate) && isPast(checkOutDate)) {
+                     if (isValid(checkOutDate) && checkOutDate < today) {
                         row.set('status', 'dismissed');
                         rowsToUpdate.push(row.save()); // Pushing promise to array
                         updatedCount++;
@@ -1076,7 +1075,7 @@ export async function importEmployeesFromExcel(fileContent: string): Promise<{ i
     try {
         const workbook = XLSX.read(fileContent, { type: 'base64', cellDates: false, dateNF: 'dd.mm.yyyy' });
         const sheetName = workbook.SheetNames[0];
-        if (!sheetName) throw new Error("Nie znaleziono arkusza w pliku Excel.");
+        if (!sheetName) throw new Error("Nie znaleziono arkуша в pliku Excel.");
 
         const worksheet = workbook.Sheets[sheetName];
         
@@ -1160,3 +1159,5 @@ export async function importEmployeesFromExcel(fileContent: string): Promise<{ i
         return { importedCount: 0, totalRows: 0, errors: ["Wystąpił nieznany błąd podczas importu."] };
     }
 }
+
+    
