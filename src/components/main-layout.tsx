@@ -16,7 +16,7 @@ import {
 } from './ui/sidebar';
 import Header from './header';
 import { MobileNav } from './mobile-nav';
-import type { View, Notification, Employee, Settings, NonEmployee, Address, SessionData } from '@/types';
+import type { View, Notification, Employee, Settings, Address, SessionData } from '@/types';
 import { Home, Settings as SettingsIcon, Users, Building } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -25,9 +25,6 @@ import {
     addEmployee,
     updateEmployee,
     updateSettings,
-    addNonEmployee,
-    updateNonEmployee,
-    deleteNonEmployee,
     deleteEmployee,
     checkAndUpdateEmployeeStatuses,
     importEmployeesFromExcel,
@@ -78,7 +75,8 @@ const HouseLoader = () => {
 
 type MainLayoutContextType = {
     allEmployees: Employee[] | null;
-    allNonEmployees: NonEmployee[] | null;
+    allNonEmployees: Employee[] | null;
+    allFilteredPeople: Employee[] | null;
     settings: Settings | null;
     currentUser: SessionData | null;
     selectedCoordinatorId: string;
@@ -92,7 +90,7 @@ type MainLayoutContextType = {
     handleUpdateSettings: (newSettings: Partial<Settings>) => Promise<void>;
     refreshData: (showToast?: boolean) => Promise<void>;
     handleAddNonEmployeeClick: () => void;
-    handleEditNonEmployeeClick: (nonEmployee: NonEmployee) => void;
+    handleEditNonEmployeeClick: (nonEmployee: Employee) => void;
     handleDeleteNonEmployee: (id: string) => Promise<void>;
     handleRefreshStatuses: (showNoChangesToast?: boolean) => Promise<void>;
     handleAddressFormOpen: (address: Address | null) => void;
@@ -147,34 +145,31 @@ export default function MainLayout({
     const [isNonEmployeeFormOpen, setIsNonEmployeeFormOpen] = useState(false);
     const [isAddressFormOpen, setIsAddressFormOpen] = useState(false);
     
-
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-    const [editingNonEmployee, setEditingNonEmployee] = useState<NonEmployee | null>(null);
+    const [editingNonEmployee, setEditingNonEmployee] = useState<Employee | null>(null);
     const [editingAddress, setEditingAddress] = useState<Address | null>(null);
     
     const [selectedCoordinatorId, _setSelectedCoordinatorId] = useState(initialSession.isAdmin ? 'all' : initialSession.uid);
     
     const { toast } = useToast();
 
-    // Filtered data based on selected coordinator
-    const allEmployees = useMemo(() => {
+    const allFilteredPeople = useMemo(() => {
         if (!rawEmployees || !currentUser) return null;
-        const employeesOnly = rawEmployees.filter(e => e.zaklad !== null);
         if (currentUser.isAdmin && selectedCoordinatorId === 'all') {
-            return employeesOnly;
+            return rawEmployees;
         }
-        return employeesOnly.filter(e => e.coordinatorId === selectedCoordinatorId);
+        return rawEmployees.filter(e => e.coordinatorId === selectedCoordinatorId);
     }, [rawEmployees, currentUser, selectedCoordinatorId]);
+
+    const allEmployees = useMemo(() => {
+        if (!allFilteredPeople) return null;
+        return allFilteredPeople.filter(e => e.zaklad !== null);
+    }, [allFilteredPeople]);
 
     const allNonEmployees = useMemo(() => {
-        if (!rawEmployees || !currentUser) return null;
-        const nonEmployeesOnly = rawEmployees.filter(e => e.zaklad === null);
-         if (currentUser.isAdmin && selectedCoordinatorId === 'all') {
-            return nonEmployeesOnly;
-        }
-        return nonEmployeesOnly.filter(ne => ne.coordinatorId === selectedCoordinatorId);
-    }, [rawEmployees, currentUser, selectedCoordinatorId]);
-
+        if (!allFilteredPeople) return null;
+        return allFilteredPeople.filter(e => e.zaklad === null && e.status === 'active');
+    }, [allFilteredPeople]);
     
     const setSelectedCoordinatorId = useCallback((value: React.SetStateAction<string>) => {
         _setSelectedCoordinatorId(value);
@@ -338,18 +333,19 @@ export default function MainLayout({
         }
     }, [currentUser, editingEmployee, refreshData, toast]);
 
-    const handleSaveNonEmployee = useCallback(async (data: Omit<NonEmployee, 'id'>) => {
+    const handleSaveNonEmployee = useCallback(async (data: Omit<Employee, 'id' | 'zaklad'>) => {
         if (!currentUser) return;
+        const dataToSave = { ...data, zaklad: null };
         if (editingNonEmployee) {
             try {
-                await updateNonEmployee(editingNonEmployee.id, data, currentUser.uid);
+                await updateEmployee(editingNonEmployee.id, dataToSave, currentUser.uid);
                 toast({ title: "Sukces", description: "Dane mieszkańca zostały zaktualizowane." });
             } catch(e) {
                 toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać mieszkańca." });
             }
         } else {
              try {
-                await addNonEmployee(data, currentUser.uid);
+                await addEmployee(dataToSave, currentUser.uid);
                 toast({ title: "Sukces", description: "Nowy mieszkaniec został dodany." });
             } catch (e) {
                 toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się dodać mieszkańca." });
@@ -360,9 +356,8 @@ export default function MainLayout({
     
     const handleDeleteNonEmployee = useCallback(async (id: string) => {
         if (!currentUser) return;
-        
         try {
-            await deleteNonEmployee(id, currentUser.uid);
+            await deleteEmployee(id, currentUser.uid);
             toast({ title: "Sukces", description: "Mieszkaniec został usunięty." });
             await refreshData(false);
         } catch(e) {
@@ -391,23 +386,32 @@ export default function MainLayout({
 
     const handleAddEmployeeClick = useCallback((isNonEmployee: boolean = false) => {
         setEditingEmployee(null);
-        // Pass a flag or different default values if it's a non-employee
-        const defaultValues = isNonEmployee ? { zaklad: null, fullName: '', status: 'active' } : { fullName: '', status: 'active' };
-        setEditingEmployee(defaultValues as Employee);
-        setIsFormOpen(true);
+        setEditingNonEmployee(null);
+
+        if (isNonEmployee) {
+            setIsNonEmployeeFormOpen(true);
+        } else {
+            setIsFormOpen(true);
+        }
     }, []);
 
     const handleAddNonEmployeeClick = useCallback(() => {
-      setEditingNonEmployee(null);
-      setIsNonEmployeeFormOpen(true);
+        setEditingEmployee(null);
+        setEditingNonEmployee(null);
+        setIsNonEmployeeFormOpen(true);
     }, []);
 
     const handleEditEmployeeClick = useCallback((employee: Employee) => {
-        setEditingEmployee(employee);
-        setIsFormOpen(true);
+        if (employee.zaklad === null) {
+            setEditingNonEmployee(employee);
+            setIsNonEmployeeFormOpen(true);
+        } else {
+            setEditingEmployee(employee);
+            setIsFormOpen(true);
+        }
     }, []);
 
-    const handleEditNonEmployeeClick = useCallback((nonEmployee: NonEmployee) => {
+    const handleEditNonEmployeeClick = useCallback((nonEmployee: Employee) => {
       setEditingNonEmployee(nonEmployee);
       setIsNonEmployeeFormOpen(true);
     }, []);
@@ -534,6 +538,7 @@ export default function MainLayout({
     const contextValue: MainLayoutContextType = useMemo(() => ({
         allEmployees,
         allNonEmployees,
+        allFilteredPeople,
         settings,
         currentUser,
         selectedCoordinatorId,
@@ -558,6 +563,7 @@ export default function MainLayout({
     } ), [
         allEmployees,
         allNonEmployees,
+        allFilteredPeople,
         settings,
         currentUser,
         selectedCoordinatorId,
@@ -650,7 +656,7 @@ export default function MainLayout({
                     employee={editingEmployee}
                 />
             )}
-            {settings && currentUser && allNonEmployees && (
+            {settings && currentUser && (
                 <AddNonEmployeeForm
                     isOpen={isNonEmployeeFormOpen}
                     onOpenChange={setIsNonEmployeeFormOpen}
@@ -664,7 +670,6 @@ export default function MainLayout({
                 <AddressForm
                     isOpen={isAddressFormOpen}
                     onOpenChange={setIsAddressFormOpen}
-                    onSave={handleSaveAddress}
                     settings={settings}
                     address={editingAddress}
                 />
