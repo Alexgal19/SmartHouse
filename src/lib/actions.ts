@@ -676,8 +676,8 @@ export async function bulkDeleteEmployeesByCoordinator(coordinatorId: string, ac
         // Audit logging
         const { settings } = await getAllData(actorUid, true);
         const actor = findActor(actorUid, settings);
-        const deletedForCoordinator = settings.coordinators.find(c => c.uid === coordinatorId);
         if (actor) {
+            const deletedForCoordinator = settings.coordinators.find(c => c.uid === coordinatorId);
             await writeToAuditLog(actor.uid, actor.name, 'bulk-delete-by-coordinator', 'employee', coordinatorId, {
                 deletedCount: rowsToDelete.length,
                 deletedForCoordinatorName: deletedForCoordinator?.name || coordinatorId
@@ -725,7 +725,6 @@ export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<
         today.setHours(0, 0, 0, 0);
 
         let updatedCount = 0;
-        const rowsToUpdate = [];
         const { settings } = await getAllData(actorUid, true);
         const actor = findActor(actorUid, settings);
 
@@ -734,34 +733,29 @@ export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<
             const checkOutDateString = String(row.get('checkOutDate'));
 
             if (status === 'active' && checkOutDateString) {
-                try {
-                    const checkOutDate = new Date(checkOutDateString);
-                     if (isValid(checkOutDate) && checkOutDate < today) {
-                        row.set('status', 'dismissed');
-                        rowsToUpdate.push(row.save()); // Pushing promise to array
-                        updatedCount++;
+                const checkOutDate = new Date(checkOutDateString);
+                if (isValid(checkOutDate) && checkOutDate < today) {
+                    row.set('status', 'dismissed');
+                    await row.save(); // Save each row individually and await it
+                    updatedCount++;
 
-                        const originalEmployee = deserializeEmployee(row.toObject());
-                        if (originalEmployee) {
-                           await createNotification(actor, 'automatycznie zwolnił', originalEmployee, settings, [
-                                { field: 'status', oldValue: 'active', newValue: 'dismissed' }
-                           ]);
-                        }
+                    const originalEmployee = deserializeEmployee(row.toObject());
+                    if (originalEmployee) {
+                        await createNotification(actor, 'automatycznie zwolnił', originalEmployee, settings, [
+                            { field: 'status', oldValue: 'active', newValue: 'dismissed' }
+                        ]);
                     }
-                } catch(e) {
-                    console.warn(`Invalid checkout date for employee ${row.get('id')}: ${checkOutDateString}`);
                 }
             }
         }
         
-        await Promise.all(rowsToUpdate);
-
         return { updated: updatedCount };
     } catch (e: unknown) {
         console.error("Error updating statuses:", e);
         throw new Error(e instanceof Error ? e.message : "Failed to update statuses.");
     }
 }
+
 
 export async function updateSettings(newSettings: Partial<Settings>): Promise<void> {
     const updateSimpleList = async (sheetName: string, items: string[]) => {
