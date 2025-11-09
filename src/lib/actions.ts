@@ -733,7 +733,7 @@ export async function checkAndUpdateEmployeeStatuses(actorUid: string): Promise<
             const checkOutDateString = String(row.get('checkOutDate'));
 
             if (status === 'active' && checkOutDateString) {
-                const checkOutDate = parseISO(checkOutDateString); // Expect YYYY-MM-DD
+                const checkOutDate = parseISO(checkOutDateString);
                 if (isValid(checkOutDate) && checkOutDate < today) {
                     row.set('status', 'dismissed');
                     await row.save();
@@ -1153,5 +1153,3 @@ export async function importEmployeesFromExcel(fileContent: string): Promise<{ i
         return { importedCount: 0, totalRows: 0, errors: ["Wystąpił nieznany błąd podczas importu."] };
     }
 }
-
-    

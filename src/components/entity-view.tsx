@@ -1,15 +1,13 @@
 
-
 "use client"
-
-import React, { useState, useMemo, useTransition, useRef } from 'react';
+import React, { useState, useMemo, useTransition } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import type { Employee, Settings, SessionData } from '@/types';
+import type { Employee, Settings, NonEmployee, SessionData } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, PlusCircle, SlidersHorizontal, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, X, Users, UserX, LayoutGrid, List, Trash2, FileUp, UploadCloud, Copy } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, SlidersHorizontal, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, X, Users, UserX, LayoutGrid, List, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
@@ -21,26 +19,21 @@ import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, Di
 import { Label } from '@/components/ui/label';
 import { useMainLayout } from '@/components/main-layout';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
-import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 
 const ITEMS_PER_PAGE = 20;
 
 const formatDate = (dateString?: string | null) => {
     if (!dateString) return 'N/A';
     try {
-        // Use regex to check for YYYY-MM-DD format and add time to avoid timezone issues
-        if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-            return format(new Date(dateString + 'T00:00:00'), 'dd-MM-yyyy');
-        }
-        return format(new Date(dateString), 'dd-MM-yyyy');
+        return format(new Date(dateString + 'T00:00:00'), 'dd-MM-yyyy');
     } catch {
         return 'Invalid Date';
     }
 }
 
-type Entity = Employee;
+type Entity = Employee | NonEmployee;
+
+const isEmployee = (entity: Entity): entity is Employee => 'coordinatorId' in entity && 'zaklad' in entity;
 
 const EntityActions = ({
   entity,
@@ -54,21 +47,9 @@ const EntityActions = ({
   onEdit: (entity: Entity) => void;
   onDismiss?: (id: string) => void;
   onRestore?: (id: string) => void;
-  onPermanentDelete: (id: string) => void;
+  onPermanentDelete: (id: string, type: 'employee' | 'non-employee') => void;
   isDismissed: boolean;
 }) => {
-    const { copyToClipboard } = useCopyToClipboard();
-
-    const handleCopy = () => {
-        const dataToCopy = [
-            entity.fullName,
-            entity.address,
-            `pok. ${entity.roomNumber}`,
-            `zameld. ${formatDate(entity.checkInDate)}`
-        ].join(', ');
-        copyToClipboard(dataToCopy, 'Skopiowano dane mieszkańca.');
-    }
-
   return (
     <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -79,15 +60,11 @@ const EntityActions = ({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => onEdit(entity)}>Edytuj</DropdownMenuItem>
-            <DropdownMenuItem onClick={handleCopy}>
-                <Copy className="mr-2 h-4 w-4" />
-                Kopiuj dane
-            </DropdownMenuItem>
-            {
+            {isEmployee(entity) && (
                 isDismissed 
                 ? <DropdownMenuItem onClick={() => onRestore?.(entity.id)}>Przywróć</DropdownMenuItem>
                 : <DropdownMenuItem onClick={() => onDismiss?.(entity.id)}>Zwolnij</DropdownMenuItem>
-            }
+            )}
              <DropdownMenuSeparator />
              <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -110,7 +87,7 @@ const EntityActions = ({
                         <AlertDialogCancel>Anuluj</AlertDialogCancel>
                         <AlertDialogAction
                             className="bg-destructive hover:bg-destructive/90"
-                             onClick={() => onPermanentDelete(entity.id)}
+                             onClick={() => onPermanentDelete(entity.id, isEmployee(entity) ? 'employee' : 'non-employee')}
                         >
                             Potwierdź i usuń
                         </AlertDialogAction>
@@ -156,7 +133,7 @@ const PaginationControls = ({
     );
 };
 
-const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, settings, onPermanentDelete }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onDismiss?: (id: string) => void; onRestore?: (id: string) => void; onPermanentDelete: (id: string) => void; }) => {
+const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, settings, onPermanentDelete }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onDismiss?: (id: string) => void; onRestore?: (id: string) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee') => void; }) => {
   const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
   
   return (
@@ -165,20 +142,12 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
           <TableHeader>
             <TableRow>
               <TableHead>Imię i nazwisko</TableHead>
-              <TableHead>Płeć</TableHead>
+              <TableHead>Typ</TableHead>
               <TableHead>Koordynator</TableHead>
-              <TableHead>Narodowość</TableHead>
               <TableHead>Adres</TableHead>
-              <TableHead>Stary adres</TableHead>
-              <TableHead>Data zmiany adresu</TableHead>
               <TableHead>Pokój</TableHead>
-              <TableHead>Zakład</TableHead>
               <TableHead>Data zameldowania</TableHead>
               <TableHead>Data wymeldowania</TableHead>
-              <TableHead>Umowa od</TableHead>
-              <TableHead>Umowa do</TableHead>
-              <TableHead>Zgłosz. wyjazdu</TableHead>
-              <TableHead>Komentarze</TableHead>
               <TableHead><span className="sr-only">Akcje</span></TableHead>
             </TableRow>
           </TableHeader>
@@ -187,20 +156,12 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
               entities.map((entity) => (
                 <TableRow key={entity.id} onClick={() => onEdit(entity)} className="cursor-pointer">
                   <TableCell className="font-medium">{entity.fullName}</TableCell>
-                   <TableCell>{entity.gender || "N/A"}</TableCell>
-                  <TableCell>{getCoordinatorName(entity.coordinatorId)}</TableCell>
-                  <TableCell>{entity.nationality || "N/A"}</TableCell>
+                  <TableCell>{isEmployee(entity) ? "Pracownik" : "Mieszkaniec (NZ)"}</TableCell>
+                  <TableCell>{isEmployee(entity) ? getCoordinatorName(entity.coordinatorId) : "N/A"}</TableCell>
                   <TableCell>{entity.address}</TableCell>
-                  <TableCell>{entity.oldAddress || "N/A"}</TableCell>
-                  <TableCell>{formatDate(entity.addressChangeDate)}</TableCell>
                   <TableCell>{entity.roomNumber}</TableCell>
-                  <TableCell>{entity.zaklad || "Mieszkaniec (NZ)"}</TableCell>
                   <TableCell>{formatDate(entity.checkInDate)}</TableCell>
                   <TableCell>{formatDate(entity.checkOutDate)}</TableCell>
-                  <TableCell>{formatDate(entity.contractStartDate)}</TableCell>
-                  <TableCell>{formatDate(entity.contractEndDate)}</TableCell>
-                  <TableCell>{formatDate(entity.departureReportDate)}</TableCell>
-                  <TableCell className="max-w-xs truncate">{entity.comments}</TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <EntityActions {...{ entity, onEdit, onDismiss, onRestore, onPermanentDelete, isDismissed }} />
                   </TableCell>
@@ -208,7 +169,7 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={16} className="text-center">Brak danych do wyświetlenia.</TableCell>
+                <TableCell colSpan={8} className="text-center">Brak danych do wyświetlenia.</TableCell>
               </TableRow>
             )}
           </TableBody>
@@ -217,7 +178,7 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
   );
 };
 
-const EntityCardList = ({ entities, onEdit, onDismiss, onRestore, isDismissed, settings, onPermanentDelete }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onDismiss?: (id: string) => void; onRestore?: (id: string) => void; onPermanentDelete: (id: string) => void; }) => {
+const EntityCardList = ({ entities, onEdit, onDismiss, onRestore, isDismissed, settings, onPermanentDelete }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onDismiss?: (id: string) => void; onRestore?: (id: string) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee') => void; }) => {
     const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
     
     return (
@@ -229,7 +190,7 @@ const EntityCardList = ({ entities, onEdit, onDismiss, onRestore, isDismissed, s
                            <div>
                              <CardTitle className="text-base">{entity.fullName}</CardTitle>
                              <CardDescription>
-                                {getCoordinatorName(entity.coordinatorId)}
+                                {isEmployee(entity) ? getCoordinatorName(entity.coordinatorId) : "Mieszkaniec (NZ)"}
                              </CardDescription>
                            </div>
                            <div onClick={(e) => e.stopPropagation()}>
@@ -238,8 +199,7 @@ const EntityCardList = ({ entities, onEdit, onDismiss, onRestore, isDismissed, s
                         </CardHeader>
                         <CardContent className="text-sm space-y-2">
                             <p><span className="font-semibold text-muted-foreground">Adres:</span> {entity.address}, pok. {entity.roomNumber}</p>
-                            <p><span className="font-semibold text-muted-foreground">Zakład:</span> {entity.zaklad || 'Mieszkaniec (NZ)'}</p>
-                            <p><span className="font-semibold text-muted-foreground">Narodowość:</span> {entity.nationality}</p>
+                            {isEmployee(entity) && <p><span className="font-semibold text-muted-foreground">Narodowość:</span> {entity.nationality}</p>}
                             <p><span className="font-semibold text-muted-foreground">Zameldowanie:</span> {formatDate(entity.checkInDate)}</p>
                         </CardContent>
                     </Card>
@@ -274,11 +234,6 @@ const FilterDialog = ({ isOpen, onOpenChange, settings, onApply, initialFilters 
         onApply(filters);
         onOpenChange(false);
     }
-    
-    const sortedCoordinators = useMemo(() => [...settings.coordinators].sort((a, b) => a.name.localeCompare(b.name)), [settings.coordinators]);
-    const sortedAddresses = useMemo(() => [...settings.addresses].sort((a, b) => a.name.localeCompare(b.name)), [settings.addresses]);
-    const sortedDepartments = useMemo(() => [...settings.departments].sort((a, b) => a.localeCompare(b)), [settings.departments]);
-    const sortedNationalities = useMemo(() => [...settings.nationalities].sort((a, b) => a.localeCompare(b)), [settings.nationalities]);
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -295,7 +250,7 @@ const FilterDialog = ({ isOpen, onOpenChange, settings, onApply, initialFilters 
                         <SelectTrigger><SelectValue placeholder="Filtruj wg koordynatora" /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
-                            {sortedCoordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                            {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                         </SelectContent>
                         </Select>
                       </div>
@@ -305,7 +260,7 @@ const FilterDialog = ({ isOpen, onOpenChange, settings, onApply, initialFilters 
                         <SelectTrigger><SelectValue placeholder="Filtruj wg adresu" /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Wszystkie adresy</SelectItem>
-                            {sortedAddresses.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
+                            {settings.addresses.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
                         </SelectContent>
                         </Select>
                       </div>
@@ -315,7 +270,7 @@ const FilterDialog = ({ isOpen, onOpenChange, settings, onApply, initialFilters 
                         <SelectTrigger><SelectValue placeholder="Filtruj wg zakładu" /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Wszystkie zakłady</SelectItem>
-                            {sortedDepartments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                            {settings.departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
                         </SelectContent>
                         </Select>
                       </div>
@@ -325,7 +280,7 @@ const FilterDialog = ({ isOpen, onOpenChange, settings, onApply, initialFilters 
                         <SelectTrigger><SelectValue placeholder="Filtruj wg narodowości" /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Wszystkie narodowości</SelectItem>
-                            {sortedNationalities.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                            {settings.nationalities.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
                         </SelectContent>
                         </Select>
                       </div>
@@ -340,64 +295,6 @@ const FilterDialog = ({ isOpen, onOpenChange, settings, onApply, initialFilters 
     )
 }
 
-const FileUploader = ({ onFileUpload, isImporting }: { onFileUpload: (file: File) => void; isImporting: boolean }) => {
-    const [dragActive, setDragActive] = useState(false);
-    const inputRef = useRef<HTMLInputElement>(null);
-
-    const handleDrag = (e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (e.type === 'dragenter' || e.type === 'dragover') {
-            setDragActive(true);
-        } else if (e.type === 'dragleave') {
-            setDragActive(false);
-        }
-    };
-
-    const handleDrop = (e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setDragActive(false);
-        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            onFileUpload(e.dataTransfer.files[0]);
-        }
-    };
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        e.preventDefault();
-        if (e.target.files && e.target.files[0]) {
-            onFileUpload(e.target.files[0]);
-        }
-    };
-
-    return (
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Importuj pracowników z Excela</DialogTitle>
-                <DialogDescription>
-                    Przeciągnij i upuść plik .xlsx lub .xls tutaj, aby zaimportować dane pracowników. Upewnij się, że plik ma odpowiednie kolumny.
-                </DialogDescription>
-            </DialogHeader>
-            <form id="form-file-upload" onDragEnter={handleDrag} onSubmit={(e) => e.preventDefault()} className="relative flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
-                <input ref={inputRef} type="file" id="input-file-upload" multiple={false} accept=".xlsx, .xls" className="hidden" onChange={handleChange} />
-                <label htmlFor="input-file-upload" className={cn("flex flex-col items-center justify-center w-full h-full", { 'bg-muted/50': dragActive })}>
-                    <UploadCloud className="w-10 h-10 text-muted-foreground" />
-                    <p className="mt-2 text-sm text-muted-foreground">
-                        <span className="font-semibold">Kliknij, aby wybrać</span> lub przeciągnij i upuść plik
-                    </p>
-                </label>
-                {dragActive && <div className="absolute w-full h-full" onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}></div>}
-            </form>
-             {isImporting && (
-                <div className="w-full flex items-center justify-center p-4">
-                    <p className="text-sm text-muted-foreground animate-pulse">Trwa importowanie...</p>
-                </div>
-            )}
-        </DialogContent>
-    );
-};
-
-
 const ControlPanel = ({
     search,
     onSearch,
@@ -407,19 +304,15 @@ const ControlPanel = ({
     viewMode,
     isFilterActive,
     onResetFilters,
-    onImport,
-    showImport
 }: {
     search: string;
     onSearch: (value: string) => void;
-    onAdd: () => void;
+    onAdd: (type: 'employee' | 'non-employee') => void;
     onFilter: () => void;
     onViewChange: (mode: 'list' | 'grid') => void;
     viewMode: 'list' | 'grid';
     isFilterActive: boolean;
     onResetFilters: () => void;
-    onImport: () => void;
-    showImport: boolean;
 }) => {
     const { isMobile } = useIsMobile();
     return (
@@ -441,17 +334,18 @@ const ControlPanel = ({
                             <X className="h-4 w-4" />
                         </Button>
                     )}
-                    {showImport && (
-                        <Button variant="outline" onClick={onImport}>
-                            <FileUp className="mr-2 h-4 w-4" />
-                            Importuj
-                        </Button>
-                    )}
-                    <Button size={isMobile ? "icon" : "default"} onClick={onAdd}>
-                        <PlusCircle className={isMobile ? "h-5 w-5" : "mr-2 h-4 w-4"} />
-                        <span className="hidden sm:inline">Dodaj</span>
-                    </Button>
-                    
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button size={isMobile ? "icon" : "default"}>
+                                <PlusCircle className={isMobile ? "h-5 w-5" : "mr-2 h-4 w-4"} />
+                                <span className="hidden sm:inline">Dodaj</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            <DropdownMenuItem onClick={() => onAdd('employee')}>Dodaj pracownika</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onAdd('non-employee')}>Dodaj mieszkańca (NZ)</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     {!isMobile && (
                         <>
                             <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => onViewChange('list')}>
@@ -468,18 +362,19 @@ const ControlPanel = ({
     )
 }
 
-export default function EntityView({ currentUser: _currentUser }: { currentUser: SessionData }) {
+export default function EntityView({ currentUser }: { currentUser: SessionData }) {
     const {
         allEmployees,
+        allNonEmployees,
         settings,
-        currentUser,
-        selectedCoordinatorId,
         handleDismissEmployee,
         handleRestoreEmployee,
         handleDeleteEmployee,
         handleEditEmployeeClick,
+        handleEditNonEmployeeClick,
         handleAddEmployeeClick,
-        handleImportEmployees,
+        handleAddNonEmployeeClick,
+        handleDeleteNonEmployee
     } = useMainLayout();
 
     const router = useRouter();
@@ -487,14 +382,13 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
     const searchParams = useSearchParams();
     const [isPending, startTransition] = useTransition();
     const { isMobile, isMounted } = useIsMobile();
-    const { toast } = useToast();
     
     // Params from URL
     const tab = (searchParams.get('tab') as 'active' | 'dismissed' | 'non-employees') || 'active';
     const page = Number(searchParams.get('page') || '1');
     const search = searchParams.get('search') || '';
     const viewMode = (searchParams.get('viewMode') as 'list' | 'grid') || (isMobile ? 'grid' : 'list');
-    const filtersFromUrl = useMemo(() => ({
+    const filters = useMemo(() => ({
         coordinator: (searchParams.get('coordinator')) || 'all',
         address: (searchParams.get('address')) || 'all',
         department: (searchParams.get('department')) || 'all',
@@ -502,8 +396,6 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
     }), [searchParams]);
 
     const [isFilterOpen, setIsFilterOpen] = useState(false);
-    const [isImportOpen, setIsImportOpen] = useState(false);
-    const [isImporting, setIsImporting] = useState(false);
 
     const updateSearchParams = (newParams: Record<string, string | number>) => {
         startTransition(() => {
@@ -522,29 +414,41 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
             router.push(`${pathname}?${current.toString()}`);
         });
     };
-    
-    const applyFilters = (employees: Employee[], filters: typeof filtersFromUrl, searchTerm: string) => {
-        return employees.filter(employee => {
-            const searchMatch = searchTerm === '' || employee.fullName.toLowerCase().includes(searchTerm.toLowerCase());
-            const coordinatorMatch = filters.coordinator === 'all' || employee.coordinatorId === filters.coordinator;
-            const addressMatch = filters.address === 'all' || employee.address === filters.address;
-            const nationalityMatch = filters.nationality === 'all' || employee.nationality === filters.nationality;
-            const departmentMatch = filters.department === 'all' || employee.zaklad === filters.department;
-            
-            return searchMatch && coordinatorMatch && addressMatch && nationalityMatch && departmentMatch;
-        });
-    };
 
-    const filteredData = useMemo(() => {
+    const applyFilters = (data: Entity[], localFilters: typeof filters, searchTerm: string) => {
+        return data.filter(entity => {
+            const searchMatch = searchTerm === '' || entity.fullName.toLowerCase().includes(searchTerm.toLowerCase());
+            const addressMatch = localFilters.address === 'all' || entity.address === localFilters.address;
+            
+            if (isEmployee(entity)) {
+                const coordinatorMatch = localFilters.coordinator === 'all' || entity.coordinatorId === localFilters.coordinator;
+                const departmentMatch = localFilters.department === 'all' || entity.zaklad === localFilters.department;
+                const nationalityMatch = localFilters.nationality === 'all' || entity.nationality === localFilters.nationality;
+                return searchMatch && coordinatorMatch && addressMatch && departmentMatch && nationalityMatch;
+            }
+            
+            return searchMatch && addressMatch;
+        });
+    }
+
+    const filteredEmployees = useMemo(() => {
         if (!allEmployees) return [];
-        return applyFilters(allEmployees, filtersFromUrl, search);
-    }, [allEmployees, filtersFromUrl, search]);
+        return applyFilters(allEmployees, filters, search);
+    }, [allEmployees, filters, search]);
+    
+    const filteredNonEmployees = useMemo(() => {
+        if (!allNonEmployees) return [];
+        return applyFilters(allNonEmployees, filters, search);
+    }, [allNonEmployees, filters, search]);
+
+    const activeEmployees = useMemo(() => filteredEmployees.filter(e => e.status === 'active'), [filteredEmployees]);
+    const dismissedEmployees = useMemo(() => filteredEmployees.filter(e => e.status === 'dismissed'), [filteredEmployees]);
     
     const dataMap = useMemo(() => ({
-        active: filteredData.filter(e => e.status === 'active' && e.zaklad !== null),
-        dismissed: filteredData.filter(e => e.status === 'dismissed' && e.zaklad !== null),
-        'non-employees': filteredData.filter(e => e.status === 'active' && e.zaklad === null),
-    }), [filteredData]);
+        active: activeEmployees,
+        dismissed: dismissedEmployees,
+        'non-employees': filteredNonEmployees,
+    }), [activeEmployees, dismissedEmployees, filteredNonEmployees]);
 
     const currentData = dataMap[tab];
     const totalPages = Math.ceil((currentData?.length || 0) / ITEMS_PER_PAGE);
@@ -554,23 +458,9 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
         return currentData?.slice(start, end) || [];
     }, [currentData, page]);
 
-    const isFilterActive = Object.values(filtersFromUrl).some(v => v !== 'all') || search !== '';
-    
-    const filterDialogSettings = useMemo(() => {
-        if (!settings) return null;
-        
-        let availableAddresses = settings.addresses;
-        if (selectedCoordinatorId !== 'all') {
-            availableAddresses = settings.addresses.filter(addr => addr.coordinatorIds.includes(selectedCoordinatorId));
-        }
+    const isFilterActive = Object.values(filters).some(v => v !== 'all') || search !== '';
 
-        return {
-            ...settings,
-            addresses: availableAddresses,
-        };
-    }, [settings, selectedCoordinatorId]);
-
-    if (!settings || !allEmployees || !filterDialogSettings || !currentUser) {
+    if (!settings || !allEmployees || !allNonEmployees) {
         return (
             <Card>
                 <CardHeader>
@@ -595,48 +485,40 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
         }
     };
 
-    const handlePermanentDelete = async (id: string) => {
-        await handleDeleteEmployee(id);
-    };
-    
-    const onFileSelect = async (file: File) => {
-        setIsImporting(true);
-        try {
-            await handleImportEmployees(file);
-            setIsImportOpen(false);
-        } catch (e: unknown) {
-             toast({
-                variant: "destructive",
-                title: "Błąd importu",
-                description: e instanceof Error ? e.message : "Wystąpił nieznany błąd.",
-            });
-        } finally {
-            setIsImporting(false);
+    const handlePermanentDelete = async (id: string, type: 'employee' | 'non-employee') => {
+        if (type === 'employee') {
+            await handleDeleteEmployee(id);
+        } else {
+            await handleDeleteNonEmployee(id);
         }
     };
 
-    const EntityListComponent = viewMode === 'grid' || isMobile ? EntityCardList : EntityTable;
+    const handleEdit = (entity: Entity) => {
+        if(isEmployee(entity)) {
+            handleEditEmployeeClick(entity);
+        } else {
+            handleEditNonEmployeeClick(entity);
+        }
+    }
 
-    const renderContent = () => {
-        const listProps = {
-            entities: paginatedData,
-            settings: settings,
-            onEdit: handleEditEmployeeClick,
-            onPermanentDelete: handlePermanentDelete,
-            isDismissed: tab === 'dismissed',
-            onDismiss: (id: string) => handleAction('dismiss', id),
-            onRestore: (id: string) => handleAction('restore', id),
-        };
+    const EntityListComponent = viewMode === 'grid' ? EntityCardList : EntityTable;
 
-        return (
-            <>
-                <ScrollArea className="h-[calc(100vh-22rem)] sm:h-[55vh] overflow-x-auto" style={{ opacity: isPending ? 0.6 : 1 }}>
-                    {isMounted ? <EntityListComponent {...listProps} /> : <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
-                </ScrollArea>
-                 <PaginationControls currentPage={page} totalPages={totalPages} onPageChange={(p) => updateSearchParams({ page: p })} isDisabled={isPending} />
-            </>
-        );
-    };
+    const renderContent = () => (
+        <>
+            <ScrollArea className="h-[55vh] overflow-x-auto" style={{ opacity: isPending ? 0.6 : 1 }}>
+                {isMounted ? <EntityListComponent 
+                    entities={paginatedData}
+                    settings={settings}
+                    onEdit={handleEdit}
+                    onDismiss={(id) => handleAction('dismiss', id)}
+                    onRestore={(id) => handleAction('restore', id)}
+                    onPermanentDelete={handlePermanentDelete}
+                    isDismissed={tab === 'dismissed'}
+                /> : <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
+            </ScrollArea>
+             <PaginationControls currentPage={page} totalPages={totalPages} onPageChange={(p) => updateSearchParams({ page: p })} isDisabled={isPending} />
+        </>
+    );
 
     return (
         <Card>
@@ -644,27 +526,25 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
                 <ControlPanel 
                     search={search}
                     onSearch={(val) => updateSearchParams({ search: val, page: 1 })}
-                    onAdd={() => handleAddEmployeeClick(tab === 'non-employees')}
+                    onAdd={(type) => type === 'employee' ? handleAddEmployeeClick() : handleAddNonEmployeeClick()}
                     onFilter={() => setIsFilterOpen(true)}
                     viewMode={viewMode}
                     onViewChange={(mode) => updateSearchParams({ viewMode: mode })}
                     isFilterActive={isFilterActive}
                     onResetFilters={() => updateSearchParams({ search: '', page: 1, coordinator: '', address: '', department: '', nationality: ''})}
-                    onImport={() => setIsImportOpen(true)}
-                    showImport={currentUser.isAdmin}
                 />
             </CardHeader>
             <CardContent>
                  <Tabs value={tab} onValueChange={(v) => updateSearchParams({ tab: v, page: 1 })}>
                     <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="active" disabled={isPending}>
-                            <Users className="mr-2 h-4 w-4" />Aktywni ({dataMap.active.length})
+                            <Users className="mr-2 h-4 w-4" />Aktywni ({activeEmployees.length})
                         </TabsTrigger>
                         <TabsTrigger value="dismissed" disabled={isPending}>
-                            <UserX className="mr-2 h-4 w-4" />Zwolnieni ({dataMap.dismissed.length})
+                            <UserX className="mr-2 h-4 w-4" />Zwolnieni ({dismissedEmployees.length})
                         </TabsTrigger>
                         <TabsTrigger value="non-employees" disabled={isPending}>
-                            <UserX className="mr-2 h-4 w-4" />NZ ({dataMap['non-employees'].length})
+                            <UserX className="mr-2 h-4 w-4" />NZ ({filteredNonEmployees.length})
                         </TabsTrigger>
                     </TabsList>
                     <TabsContent value="active" className="mt-4">{renderContent()}</TabsContent>
@@ -675,13 +555,10 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
             <FilterDialog
                 isOpen={isFilterOpen}
                 onOpenChange={setIsFilterOpen}
-                settings={filterDialogSettings}
-                initialFilters={filtersFromUrl}
+                settings={settings}
+                initialFilters={filters}
                 onApply={(f) => updateSearchParams({ ...f, page: 1 })}
             />
-            <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
-                <FileUploader onFileUpload={onFileSelect} isImporting={isImporting} />
-            </Dialog>
         </Card>
     )
 }
