@@ -531,34 +531,37 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
     };
 
     // Derived data
+    const baseEmployees = useMemo(() => allEmployees?.filter(e => e.zaklad !== null) || [], [allEmployees]);
+    const baseNonEmployees = useMemo(() => allEmployees?.filter(e => e.zaklad === null) || [], [allEmployees]);
+
     const filteredEmployees = useMemo(() => {
-        if (!allEmployees) return [];
-        return allEmployees.filter(employee => {
+        if (!baseEmployees) return [];
+        return baseEmployees.filter(employee => {
             const searchMatch = search === '' || employee.fullName.toLowerCase().includes(search.toLowerCase());
             const coordinatorMatch = filters.coordinator === 'all' || employee.coordinatorId === filters.coordinator;
             const addressMatch = filters.address === 'all' || employee.address === filters.address;
             const departmentMatch = filters.department === 'all' || employee.zaklad === filters.department;
             const nationalityMatch = filters.nationality === 'all' || employee.nationality === filters.nationality;
-            
-            const isNonEmployee = employee.zaklad === null;
-            
-            if (tab === 'non-employees') {
-                 return isNonEmployee && searchMatch && coordinatorMatch && addressMatch && nationalityMatch;
-            }
-
-            return !isNonEmployee && searchMatch && coordinatorMatch && addressMatch && departmentMatch && nationalityMatch;
+            return searchMatch && coordinatorMatch && addressMatch && departmentMatch && nationalityMatch;
         });
-    }, [allEmployees, search, filters, tab]);
-    
-    const activeEntities = useMemo(() => filteredEmployees.filter(e => e.status === 'active'), [filteredEmployees]);
-    const dismissedEntities = useMemo(() => filteredEmployees.filter(e => e.status === 'dismissed'), [filteredEmployees]);
-    const nonEmployees = useMemo(() => allEmployees?.filter(e => e.zaklad === null && e.status === 'active') || [], [allEmployees]);
+    }, [baseEmployees, search, filters]);
+
+    const filteredNonEmployees = useMemo(() => {
+        if (!baseNonEmployees) return [];
+        return baseNonEmployees.filter(employee => {
+            const searchMatch = search === '' || employee.fullName.toLowerCase().includes(search.toLowerCase());
+            const coordinatorMatch = filters.coordinator === 'all' || employee.coordinatorId === filters.coordinator;
+            const addressMatch = filters.address === 'all' || employee.address === filters.address;
+            const nationalityMatch = filters.nationality === 'all' || employee.nationality === filters.nationality;
+            return searchMatch && coordinatorMatch && addressMatch && nationalityMatch;
+        });
+    }, [baseNonEmployees, search, filters]);
     
     const dataMap = useMemo(() => ({
-        active: activeEntities.filter(e => e.zaklad !== null),
-        dismissed: dismissedEntities.filter(e => e.zaklad !== null),
-        'non-employees': activeEntities.filter(e => e.zaklad === null),
-    }), [activeEntities, dismissedEntities]);
+        active: filteredEmployees.filter(e => e.status === 'active'),
+        dismissed: filteredEmployees.filter(e => e.status === 'dismissed'),
+        'non-employees': filteredNonEmployees.filter(e => e.status === 'active'),
+    }), [filteredEmployees, filteredNonEmployees]);
 
     const currentData = dataMap[tab];
     const totalPages = Math.ceil((currentData?.length || 0) / ITEMS_PER_PAGE);
