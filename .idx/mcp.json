@@ -2,11 +2,28 @@
   "mcpServers": {
     "firebase": {
       "command": "npx",
-      "args": ["-y", "firebase-tools@latest", "mcp"]
+      "args": [
+        "-y",
+        "firebase-tools@latest",
+        "mcp"
+      ]
     },
     "next-devtools": {
       "command": "npx",
-      "args": ["next-devtools-mcp@latest"]
+      "args": [
+        "next-devtools-mcp@latest"
+      ]
     }
+  },
+  "enabledTools": {
+    "firebase": [],
+    "next-devtools": [
+      "browser_eval",
+      "enable_cache_components",
+      "nextjs_docs",
+      "nextjs_runtime",
+      "upgrade_nextjs_16",
+      "init"
+    ]
   }
 }

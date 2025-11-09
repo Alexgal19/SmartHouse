@@ -194,7 +194,7 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
                   <TableCell>{entity.oldAddress || "N/A"}</TableCell>
                   <TableCell>{formatDate(entity.addressChangeDate)}</TableCell>
                   <TableCell>{entity.roomNumber}</TableCell>
-                  <TableCell>{entity.zaklad || "N/A"}</TableCell>
+                  <TableCell>{entity.zaklad || "Mieszkaniec (NZ)"}</TableCell>
                   <TableCell>{formatDate(entity.checkInDate)}</TableCell>
                   <TableCell>{formatDate(entity.checkOutDate)}</TableCell>
                   <TableCell>{formatDate(entity.contractStartDate)}</TableCell>
@@ -412,7 +412,7 @@ const ControlPanel = ({
 }: {
     search: string;
     onSearch: (value: string) => void;
-    onAdd: (isNonEmployee: boolean) => void;
+    onAdd: () => void;
     onFilter: () => void;
     onViewChange: (mode: 'list' | 'grid') => void;
     viewMode: 'list' | 'grid';
@@ -447,18 +447,11 @@ const ControlPanel = ({
                             Importuj
                         </Button>
                     )}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button size={isMobile ? "icon" : "default"}>
-                                <PlusCircle className={isMobile ? "h-5 w-5" : "mr-2 h-4 w-4"} />
-                                <span className="hidden sm:inline">Dodaj</span>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                            <DropdownMenuItem onClick={() => onAdd(false)}>Dodaj pracownika</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onAdd(true)}>Dodaj mieszkańca (NZ)</DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    <Button size={isMobile ? "icon" : "default"} onClick={onAdd}>
+                        <PlusCircle className={isMobile ? "h-5 w-5" : "mr-2 h-4 w-4"} />
+                        <span className="hidden sm:inline">Dodaj</span>
+                    </Button>
+                    
                     {!isMobile && (
                         <>
                             <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => onViewChange('list')}>
@@ -530,32 +523,28 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
         });
     };
 
+    const applyFilters = (items: Employee[], isNonEmployee: boolean) => {
+        return items.filter(employee => {
+            const searchMatch = search === '' || employee.fullName.toLowerCase().includes(search.toLowerCase());
+            const coordinatorMatch = filters.coordinator === 'all' || employee.coordinatorId === filters.coordinator;
+            const addressMatch = filters.address === 'all' || employee.address === filters.address;
+            const nationalityMatch = filters.nationality === 'all' || employee.nationality === filters.nationality;
+            
+            if (isNonEmployee) {
+                return searchMatch && coordinatorMatch && addressMatch && nationalityMatch;
+            }
+
+            const departmentMatch = filters.department === 'all' || employee.zaklad === filters.department;
+            return searchMatch && coordinatorMatch && addressMatch && nationalityMatch && departmentMatch;
+        });
+    };
+    
     // Derived data
     const baseEmployees = useMemo(() => allEmployees?.filter(e => e.zaklad !== null) || [], [allEmployees]);
     const baseNonEmployees = useMemo(() => allEmployees?.filter(e => e.zaklad === null) || [], [allEmployees]);
 
-    const filteredEmployees = useMemo(() => {
-        if (!baseEmployees) return [];
-        return baseEmployees.filter(employee => {
-            const searchMatch = search === '' || employee.fullName.toLowerCase().includes(search.toLowerCase());
-            const coordinatorMatch = filters.coordinator === 'all' || employee.coordinatorId === filters.coordinator;
-            const addressMatch = filters.address === 'all' || employee.address === filters.address;
-            const departmentMatch = filters.department === 'all' || employee.zaklad === filters.department;
-            const nationalityMatch = filters.nationality === 'all' || employee.nationality === filters.nationality;
-            return searchMatch && coordinatorMatch && addressMatch && departmentMatch && nationalityMatch;
-        });
-    }, [baseEmployees, search, filters]);
-
-    const filteredNonEmployees = useMemo(() => {
-        if (!baseNonEmployees) return [];
-        return baseNonEmployees.filter(employee => {
-            const searchMatch = search === '' || employee.fullName.toLowerCase().includes(search.toLowerCase());
-            const coordinatorMatch = filters.coordinator === 'all' || employee.coordinatorId === filters.coordinator;
-            const addressMatch = filters.address === 'all' || employee.address === filters.address;
-            const nationalityMatch = filters.nationality === 'all' || employee.nationality === filters.nationality;
-            return searchMatch && coordinatorMatch && addressMatch && nationalityMatch;
-        });
-    }, [baseNonEmployees, search, filters]);
+    const filteredEmployees = useMemo(() => applyFilters(baseEmployees, false), [baseEmployees, search, filters]);
+    const filteredNonEmployees = useMemo(() => applyFilters(baseNonEmployees, true), [baseNonEmployees, search, filters]);
     
     const dataMap = useMemo(() => ({
         active: filteredEmployees.filter(e => e.status === 'active'),
@@ -661,7 +650,7 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
                 <ControlPanel 
                     search={search}
                     onSearch={(val) => updateSearchParams({ search: val, page: 1 })}
-                    onAdd={(isNonEmployee) => handleAddEmployeeClick(isNonEmployee)}
+                    onAdd={() => handleAddEmployeeClick(tab === 'non-employees')}
                     onFilter={() => setIsFilterOpen(true)}
                     viewMode={viewMode}
                     onViewChange={(mode) => updateSearchParams({ viewMode: mode })}
