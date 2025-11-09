@@ -4,13 +4,17 @@
 import { useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList } from "recharts";
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
-import { BarChart2 } from "lucide-react";
+import { BarChart2, Copy, Users } from "lucide-react";
 import type { Employee, Settings, ChartConfig } from "@/types";
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useMainLayout } from '@/components/main-layout';
 import { format, getYear, eachDayOfInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, eachMonthOfInterval, parseISO } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { pl } from 'date-fns/locale';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 
 const NoDataState = ({ message }: { message: string }) => (
     <div className="flex h-64 w-full items-center justify-center rounded-lg border border-dashed border-border/50">
@@ -20,6 +24,54 @@ const NoDataState = ({ message }: { message: string }) => (
         </div>
     </div>
 );
+
+const EmployeeListDialog = ({
+    isOpen,
+    onOpenChange,
+    departmentName,
+    employees
+}: {
+    isOpen: boolean;
+    onOpenChange: (open: boolean) => void;
+    departmentName: string;
+    employees: Employee[];
+}) => {
+    const { copyToClipboard } = useCopyToClipboard();
+
+    const handleCopy = () => {
+        const textToCopy = employees.map(e => e.fullName).join('\n');
+        copyToClipboard(textToCopy, `Skopiowano listę pracowników z zakładu ${departmentName}.`);
+    }
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Pracownicy w: {departmentName}</DialogTitle>
+                    <DialogDescription>
+                        Lista pracowników przypisanych do tego zakładu.
+                    </DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="h-72">
+                    <div className="space-y-2 pr-6">
+                        {employees.map(employee => (
+                            <div key={employee.id} className="flex items-center justify-between text-sm p-2 rounded-md hover:bg-muted/50">
+                               <div className="flex items-center gap-2">
+                                 <Users className="h-4 w-4 text-muted-foreground" />
+                                 <span>{employee.fullName}</span>
+                               </div>
+                            </div>
+                        ))}
+                    </div>
+                </ScrollArea>
+                 <Button onClick={handleCopy} className="mt-4 w-full">
+                    <Copy className="mr-2 h-4 w-4" />
+                    Kopiuj listę
+                </Button>
+            </DialogContent>
+        </Dialog>
+    )
+}
 
 export function DashboardCharts({
     employees,
@@ -35,6 +87,9 @@ export function DashboardCharts({
     const [departureMonth, setDepartureMonth] = useState<number | 'all'>('all');
     const [deductionYear, setDeductionYear] = useState(new Date().getFullYear());
     const [deductionMonth, setDeductionMonth] = useState<number | 'all'>('all');
+    const [isEmployeeListDialogOpen, setIsEmployeeListDialogOpen] = useState(false);
+    const [selectedDepartment, setSelectedDepartment] = useState<{name: string, employees: Employee[]}>({name: '', employees: []});
+
 
     const chartConfig = {
       employees: {
@@ -195,7 +250,15 @@ export function DashboardCharts({
     }, [employees]);
     const months = Array.from({ length: 12 }, (_, i) => i + 1);
 
+    const handleDepartmentClick = (data: any) => {
+        const departmentName = data.department;
+        const departmentEmployees = employees.filter(e => (e.zaklad || "Brak zakładu") === departmentName && e.status === 'active');
+        setSelectedDepartment({ name: departmentName, employees: departmentEmployees });
+        setIsEmployeeListDialogOpen(true);
+    };
+
     return (
+        <>
         <div className="grid gap-6">
              {chartData.employeesByDepartment.length > 0 && (
                 <Card>
@@ -218,9 +281,9 @@ export function DashboardCharts({
                                 </defs>
                                 <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50" />
                                 <YAxis dataKey="department" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
-                                <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} hide={true} />
-                                <Tooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
-                                <Bar dataKey="employees" radius={[0, 4, 4, 0]} fill="url(#chart-department-gradient)">
+                                <XAxis type="number" allowDecimals={false} hide={true} />
+                                <Tooltip cursor={{fill: 'hsl(var(--muted))'}} content={<ChartTooltipContent config={chartConfig} />} />
+                                <Bar dataKey="employees" radius={[0, 4, 4, 0]} fill="url(#chart-department-gradient)" className="cursor-pointer" onClick={handleDepartmentClick}>
                                     <LabelList dataKey="employees" position="right" offset={8} className="fill-foreground text-xs" />
                                 </Bar>
                             </BarChart>
@@ -249,7 +312,7 @@ export function DashboardCharts({
                                 </defs>
                                 <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50" />
                                 <YAxis dataKey="coordinator" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
-                                <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} hide={true} />
+                                <XAxis type="number" allowDecimals={false} hide={true} />
                                 <Tooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
                                 <Bar dataKey="employees" radius={[0, 4, 4, 0]} fill="url(#chart-coordinator-gradient)">
                                     <LabelList dataKey="employees" position="right" offset={8} className="fill-foreground text-xs" />
@@ -280,7 +343,7 @@ export function DashboardCharts({
                                 </defs>
                                 <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50"/>
                                 <YAxis dataKey="nationality" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
-                                <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} hide={true} />
+                                <XAxis type="number" allowDecimals={false} hide={true} />
                                 <Tooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
                                 <Bar dataKey="employees" radius={[0, 4, 4, 0]} fill="url(#chart-nationality-gradient)">
                                     <LabelList dataKey="employees" position="right" offset={8} className="fill-foreground text-xs" />
@@ -330,7 +393,7 @@ export function DashboardCharts({
                                     </defs>
                                     <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border/50"/>
                                     <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} className="text-xs" />
-                                    <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
+                                    <YAxis allowDecimals={false} tickLine={false} axisLine={false} hide={true} />
                                     <Tooltip cursor={false} content={<ChartTooltipContent config={chartConfig} />} />
                                     <Bar dataKey="departures" radius={[4, 4, 0, 0]} fill="url(#chart-departures-gradient)">
                                        <LabelList dataKey="departures" position="top" offset={8} className="fill-foreground text-xs" formatter={(value: number) => value > 0 ? `${value}` : ''}/>
@@ -382,7 +445,7 @@ export function DashboardCharts({
                                     </defs>
                                     <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border/50"/>
                                     <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} className="text-xs" />
-                                    <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
+                                    <YAxis allowDecimals={false} tickLine={false} axisLine={false} hide={true} />
                                     <Tooltip cursor={false} content={<ChartTooltipContent config={chartConfig} labelFormatter={(value) => `${value} PLN`}/>} />
                                     <Bar dataKey="deductions" radius={[4, 4, 0, 0]} fill="url(#chart-deductions-gradient)">
                                        <LabelList dataKey="deductions" position="top" offset={8} className="fill-foreground text-xs" formatter={(value: number) => value > 0 ? `${value}` : ''}/>
@@ -396,5 +459,12 @@ export function DashboardCharts({
                 </CardContent>
             </Card>
         </div>
+        <EmployeeListDialog 
+            isOpen={isEmployeeListDialogOpen}
+            onOpenChange={setIsEmployeeListDialogOpen}
+            departmentName={selectedDepartment.name}
+            employees={selectedDepartment.employees}
+        />
+        </>
     );
 }
