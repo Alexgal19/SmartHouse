@@ -523,18 +523,14 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
         });
     };
 
-    const applyFilters = (items: Employee[], isNonEmployee: boolean) => {
+    const applyFilters = (items: Employee[]) => {
         return items.filter(employee => {
             const searchMatch = search === '' || employee.fullName.toLowerCase().includes(search.toLowerCase());
             const coordinatorMatch = filters.coordinator === 'all' || employee.coordinatorId === filters.coordinator;
             const addressMatch = filters.address === 'all' || employee.address === filters.address;
             const nationalityMatch = filters.nationality === 'all' || employee.nationality === filters.nationality;
+            const departmentMatch = filters.department === 'all' || !employee.zaklad || employee.zaklad === filters.department;
             
-            if (isNonEmployee) {
-                return searchMatch && coordinatorMatch && addressMatch && nationalityMatch;
-            }
-
-            const departmentMatch = filters.department === 'all' || employee.zaklad === filters.department;
             return searchMatch && coordinatorMatch && addressMatch && nationalityMatch && departmentMatch;
         });
     };
@@ -543,8 +539,8 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
     const baseEmployees = useMemo(() => allEmployees?.filter(e => e.zaklad !== null) || [], [allEmployees]);
     const baseNonEmployees = useMemo(() => allEmployees?.filter(e => e.zaklad === null) || [], [allEmployees]);
 
-    const filteredEmployees = useMemo(() => applyFilters(baseEmployees, false), [baseEmployees, search, filters]);
-    const filteredNonEmployees = useMemo(() => applyFilters(baseNonEmployees, true), [baseNonEmployees, search, filters]);
+    const filteredEmployees = useMemo(() => applyFilters(baseEmployees), [baseEmployees, search, filters]);
+    const filteredNonEmployees = useMemo(() => applyFilters(baseNonEmployees), [baseNonEmployees, search, filters]);
     
     const dataMap = useMemo(() => ({
         active: filteredEmployees.filter(e => e.status === 'active'),
@@ -691,3 +687,5 @@ export default function EntityView({ currentUser: _currentUser }: { currentUser:
         </Card>
     )
 }
+
+    
