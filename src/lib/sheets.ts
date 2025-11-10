@@ -1,5 +1,4 @@
 
-
 "use server";
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
@@ -311,7 +310,7 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
                 id: rowObj.id,
                 name: rowObj.name,
                 locality: rowObj.locality,
-                coordinatorIds: (rowObj?.coordinatorIds || rowObj?.coordinatorlds || '').split(',').filter(Boolean),
+                coordinatorIds: (rowObj?.coordinatorIds || '').split(',').filter(Boolean),
                 rooms: roomsByAddressId.get(rowObj.id) || [],
             }
         });

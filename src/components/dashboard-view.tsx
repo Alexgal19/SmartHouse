@@ -7,11 +7,22 @@ import { useMainLayout } from '@/components/main-layout';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { DashboardKPIs } from './dashboard/kpi-cards';
 import { CoordinatorFilter } from './dashboard/coordinator-filter';
-import { DashboardCharts } from './dashboard/charts';
 import { UpcomingCheckoutsDialog } from './dashboard/upcoming-checkouts-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader } from './ui/card';
 import { differenceInDays, parseISO } from 'date-fns';
+import dynamic from 'next/dynamic';
+
+const DynamicDashboardCharts = dynamic(() => import('./dashboard/charts').then(mod => mod.DashboardCharts), {
+  loading: () => (
+    <Card>
+      <CardHeader><Skeleton className="h-8 w-1/3" /></CardHeader>
+      <CardContent><Skeleton className="h-64 w-full" /></CardContent>
+    </Card>
+  ),
+  ssr: false
+});
+
 
 export default function DashboardView({ currentUser }: { currentUser: SessionData}) {
   const { 
@@ -82,7 +93,7 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
               onUpcomingCheckoutsClick={handleUpcomingCheckoutsClick}
               hasNewCheckouts={currentUser.isAdmin && hasNewCheckouts}
           />
-          <DashboardCharts 
+          <DynamicDashboardCharts
               employees={allEmployees}
               settings={settings}
               isMobile={isMobile}
