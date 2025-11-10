@@ -210,7 +210,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                         <FormItem>
                                             <FormLabel>Zakłady</FormLabel>
                                             <div className="space-y-2">
-                                                {(form.getValues(`coordinators.${field.originalIndex}.departments`) || []).map((dept, deptIndex) => (
+                                                {(form.getValues(`coordinators.${field.originalIndex}.departments`) || []).map((_dept, deptIndex) => (
                                                      <div key={deptIndex} className="flex items-center gap-2">
                                                          <FormField
                                                              control={form.control}
@@ -235,7 +235,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                                             variant="ghost" 
                                                             size="icon" 
                                                             onClick={() => {
-                                                                const currentDepts = form.getValues(`coordinators.${field.originalIndex}.departments`);
+                                                                const currentDepts = form.getValues(`coordinators.${field.originalIndex}.departments`) || [];
                                                                 form.setValue(`coordinators.${field.originalIndex}.departments`, currentDepts.filter((_, i) => i !== deptIndex));
                                                             }}
                                                         >
@@ -249,7 +249,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                                     size="sm"
                                                     className="w-full"
                                                     onClick={() => {
-                                                        const currentDepts = form.getValues(`coordinators.${field.originalIndex}.departments`);
+                                                        const currentDepts = form.getValues(`coordinators.${field.originalIndex}.departments`) || [];
                                                         form.setValue(`coordinators.${field.originalIndex}.departments`, [...currentDepts, '']);
                                                     }}
                                                 >
@@ -819,7 +819,7 @@ function SettingsManager({ rawSettings, form, handleAddressFormOpen }: { rawSett
 }
 
 export default function SettingsView({ currentUser }: { currentUser: SessionData }) {
-    const { handleAddressFormOpen } = useMainLayout();
+    const { handleAddressFormOpen, handleUpdateSettings } = useMainLayout();
     const [rawSettings, setRawSettings] = useState<Settings | null>(null);
   
     const form = useForm<z.infer<typeof formSchema>>({
@@ -834,7 +834,7 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
                     const settings = await getOnlySettings();
                     setRawSettings(settings);
                 } catch(e) {
-                    console.error("Failed to fetch settings for settings page:", e)
+                    console.error("Failed to load settings", e);
                 }
              }
         }
