@@ -18,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { generateAccommodationReport, transferEmployees } from '@/lib/actions';
+import { generateAccommodationReport, transferEmployees, updateSettings, importEmployeesFromExcel } from '@/lib/actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from '@/components/ui/dialog';
@@ -382,8 +382,8 @@ const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove,
 };
 
 
-const BulkActions = ({ currentUser }: { currentUser: SessionData }) => {
-    const { handleBulkDeleteEmployees, handleBulkDeleteEmployeesByCoordinator, rawSettings } = useMainLayout();
+const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; rawSettings: Settings | null }) => {
+    const { handleBulkDeleteEmployees, handleBulkDeleteEmployeesByCoordinator } = useMainLayout();
     const [isDeletingActive, setIsDeletingActive] = useState(false);
     const [isDeletingDismissed, setIsDeletingDismissed] = useState(false);
     const [isDeletingByCoord, setIsDeletingByCoord] = useState(false);
@@ -719,7 +719,8 @@ const ExcelImport = () => {
     )
 }
 
-function SettingsManager({ rawSettings, form, handleUpdateSettings, handleAddressFormOpen }: { rawSettings: Settings, form: ReturnType<typeof useForm<z.infer<typeof formSchema>>>; handleUpdateSettings: (newSettings: Partial<Settings>) => Promise<void>, handleAddressFormOpen: (address: Address | null) => void }) {
+function SettingsManager({ rawSettings, form, handleAddressFormOpen }: { rawSettings: Settings, form: ReturnType<typeof useForm<z.infer<typeof formSchema>>>, handleAddressFormOpen: (address: Address | null) => void }) {
+    const { handleUpdateSettings } = useMainLayout();
     const { fields: natFields, append: appendNat, remove: removeNat } = useFieldArray({ control: form.control, name: 'nationalities' });
     const { fields: depFields, append: appendDep, remove: removeDep } = useFieldArray({ control: form.control, name: 'departments' });
     const { fields: genFields, append: appendGen, remove: removeGen } = useFieldArray({ control: form.control, name: 'genders' });
@@ -741,7 +742,7 @@ function SettingsManager({ rawSettings, form, handleUpdateSettings, handleAddres
             addresses: values.addresses,
             coordinators: values.coordinators.sort((a,b) => a.name.localeCompare(b.name)),
         };
-        await handleUpdateSettings(newSettings);
+        await updateSettings(newSettings);
         form.reset(values); // Resets the dirty state
     };
 
@@ -818,7 +819,7 @@ function SettingsManager({ rawSettings, form, handleUpdateSettings, handleAddres
 }
 
 export default function SettingsView({ currentUser }: { currentUser: SessionData }) {
-    const { handleUpdateSettings, handleAddressFormOpen } = useMainLayout();
+    const { handleAddressFormOpen } = useMainLayout();
     const [rawSettings, setRawSettings] = useState<Settings | null>(null);
   
     const form = useForm<z.infer<typeof formSchema>>({
@@ -833,7 +834,7 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
                     const settings = await getOnlySettings();
                     setRawSettings(settings);
                 } catch(e) {
-                    console.error("Failed to load settings", e);
+                    console.error("Failed to fetch settings for settings page:", e)
                 }
              }
         }
@@ -883,10 +884,10 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
 
   return (
     <div className="space-y-6">
-      <SettingsManager rawSettings={rawSettings} form={form} handleUpdateSettings={handleUpdateSettings} handleAddressFormOpen={handleAddressFormOpen} />
+      <SettingsManager rawSettings={rawSettings} form={form} handleAddressFormOpen={handleAddressFormOpen} />
       <ExcelImport />
       <ReportsGenerator rawSettings={rawSettings} currentUser={currentUser} />
-      <BulkActions currentUser={currentUser} />
+      <BulkActions currentUser={currentUser} rawSettings={rawSettings}/>
     </div>
   );
 }
