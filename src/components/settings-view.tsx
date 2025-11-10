@@ -792,8 +792,8 @@ function SettingsManager({ rawSettings, form, handleUpdateSettings, handleAddres
                                 <AccordionTrigger>Zarządzanie adresami</AccordionTrigger>
                                 <AccordionContent className="p-2">
                                     <AddressManager 
-                                        addresses={watchedAddresses}
-                                        coordinators={watchedCoordinators}
+                                        addresses={watchedAddresses || []}
+                                        coordinators={watchedCoordinators || []}
                                         localities={(watchedLocalities || []).map((l: { value: string; }) => l.value)}
                                         onEdit={(address) => handleAddressFormOpen(address)}
                                         onAdd={handleAddAddress}
@@ -890,4 +890,3 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
   );
 }
 
-    
