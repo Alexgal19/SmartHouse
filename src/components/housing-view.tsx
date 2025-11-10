@@ -476,8 +476,8 @@ const FilterControls = ({ filters, onFilterChange, settings }: { filters: any, o
     }
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="grid w-full items-center gap-1.5">
+        <div className="flex flex-wrap items-end gap-4">
+            <div className="grid flex-1 min-w-[150px] items-center gap-1.5">
                 <Label htmlFor="search-address">Szukaj adresu</Label>
                 <Input 
                     id="search-address"
@@ -486,7 +486,7 @@ const FilterControls = ({ filters, onFilterChange, settings }: { filters: any, o
                     onChange={e => handleValueChange('name', e.target.value)}
                 />
             </div>
-            <div className="grid w-full items-center gap-1.5">
+            <div className="grid flex-1 min-w-[150px] items-center gap-1.5">
                 <Label htmlFor="search-locality">Miejscowość</Label>
                 <Select value={filters.locality as string} onValueChange={(v) => handleValueChange('locality', v)}>
                     <SelectTrigger id="search-locality"><SelectValue placeholder="Wszystkie miejscowości" /></SelectTrigger>
@@ -496,15 +496,13 @@ const FilterControls = ({ filters, onFilterChange, settings }: { filters: any, o
                     </SelectContent>
                 </Select>
             </div>
-            <div className="flex items-end pb-2">
-                <div className="flex items-center space-x-2">
-                    <Switch 
-                        id="show-available" 
-                        checked={filters.showOnlyAvailable as boolean}
-                        onCheckedChange={checked => handleValueChange('showOnlyAvailable', checked)}
-                    />
-                    <Label htmlFor="show-available">Tylko z wolnymi miejscami</Label>
-                </div>
+            <div className="flex items-center space-x-2 pb-2">
+                <Switch 
+                    id="show-available" 
+                    checked={filters.showOnlyAvailable as boolean}
+                    onCheckedChange={checked => handleValueChange('showOnlyAvailable', checked)}
+                />
+                <Label htmlFor="show-available">Tylko z wolnymi miejscami</Label>
             </div>
         </div>
     );
@@ -640,10 +638,10 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                         <FilterControls filters={filters} onFilterChange={handleFilterChange} settings={settings} />
                     </div>
                     <ScrollArea className="h-[calc(100vh-25rem)] lg:h-[calc(100vh-24rem)]">
-                        <Accordion type="multiple" className="w-full">
+                        <Accordion type="multiple" className="w-full" >
                              {groupedByLocality.map(([locality, addresses]) => (
-                                <AccordionItem value={locality} key={locality}>
-                                    <AccordionTrigger className="text-lg font-bold sticky top-0 bg-background py-3 z-10">{locality}</AccordionTrigger>
+                                <AccordionItem value={locality} key={locality} className="border-b-0">
+                                    <AccordionTrigger className="text-lg font-bold sticky top-0 bg-background py-3 z-10 hover:no-underline">{locality}</AccordionTrigger>
                                     <AccordionContent className="space-y-2">
                                         {addresses.map(address => (
                                             <Card 
