@@ -26,7 +26,7 @@ type Occupant = Employee | NonEmployee;
 type RoomWithOccupants = Room & { occupants: Occupant[]; occupantCount: number; available: number; };
 type HousingData = ReturnType<typeof useHousingData>[0];
 
-const isEmployee = (occupant: Occupant): occupant is Employee => 'coordinatorId' in occupant;
+const isEmployee = (occupant: Occupant): occupant is Employee => 'zaklad' in occupant && occupant.zaklad !== null;
 
 const calculateStats = (occupants: Occupant[]) => {
     const stats = {
@@ -39,6 +39,10 @@ const calculateStats = (occupants: Occupant[]) => {
             stats.nationalities.set(occ.nationality || 'Brak', (stats.nationalities.get(occ.nationality || 'Brak') || 0) + 1);
             stats.genders.set(occ.gender || 'Brak', (stats.genders.get(occ.gender || 'Brak') || 0) + 1);
             stats.departments.set(occ.zaklad || 'Brak', (stats.departments.get(occ.zaklad || 'Brak') || 0) + 1);
+        } else {
+            // For NonEmployee, we can still count gender and nationality
+             stats.nationalities.set(occ.nationality || 'Brak', (stats.nationalities.get(occ.nationality || 'Brak') || 0) + 1);
+             stats.genders.set(occ.gender || 'Brak', (stats.genders.get(occ.gender || 'Brak') || 0) + 1);
         }
     });
     return {
@@ -355,7 +359,8 @@ const useHousingData = () => {
 
         let addressesToDisplay = settings.addresses;
         if (!currentUser.isAdmin || (currentUser.isAdmin && selectedCoordinatorId !== 'all')) {
-             addressesToDisplay = settings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
+             const coordId = currentUser.isAdmin ? selectedCoordinatorId : currentUser.uid;
+             addressesToDisplay = settings.addresses.filter(a => a.coordinatorIds.includes(coordId));
         }
         
         const allActiveOccupants: Occupant[] = [
@@ -671,7 +676,7 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                         </Button>
                     </div>
                     <ScrollArea className="h-[calc(100vh-22rem)] lg:h-[calc(100vh - 18rem)]">
-                        <Accordion type="multiple" defaultValue={groupedByLocality.map(g => g[0])} className="w-full">
+                        <Accordion type="multiple" className="w-full">
                              {groupedByLocality.map(([locality, addresses]) => (
                                 <AccordionItem value={locality} key={locality}>
                                     <AccordionTrigger className="text-md font-semibold">{locality}</AccordionTrigger>
