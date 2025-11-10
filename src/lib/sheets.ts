@@ -300,7 +300,7 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
                 uid: rowObj.uid,
                 name: rowObj.name,
                 isAdmin: rowObj.isAdmin === 'TRUE',
-                departments: (rowObj.departments || '').split(',').filter(Boolean),
+                departments: (rowObj?.departments || '').split(',').filter(Boolean),
                 password: rowObj.password,
             }
         });
