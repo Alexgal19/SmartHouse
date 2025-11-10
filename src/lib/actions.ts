@@ -243,16 +243,6 @@ const deserializeNonEmployee = (row: Record<string, unknown>): NonEmployee | nul
 };
 
 
-export async function getAllData(uid?: string, isAdmin?: boolean) {
-    try {
-        const allData = await getAllSheetsData(uid, isAdmin);
-        return allData;
-    } catch (error: unknown) {
-        console.error("Error in getAllData (actions):", error);
-        throw new Error(error instanceof Error ? error.message : "Failed to get all data.");
-    }
-}
-
 const writeToAuditLog = async (actorId: string, actorName: string, action: string, targetType: string, targetId: string, details: unknown) => {
     try {
         const sheet = await getSheet(SHEET_NAME_AUDIT_LOG, AUDIT_LOG_HEADERS);
@@ -359,7 +349,7 @@ const findActor = (actorUid: string | undefined, settings: Settings): Coordinato
 
 export async function addEmployee(employeeData: Partial<Employee>, actorUid: string): Promise<void> {
     try {
-        const { settings } = await getAllData(actorUid, true);
+        const { settings } = await getAllSheetsData(actorUid, true);
         const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
@@ -402,7 +392,7 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
 
 export async function updateEmployee(employeeId: string, updates: Partial<Employee>, actorUid: string): Promise<void> {
     try {
-        const { settings } = await getAllData(actorUid, true);
+        const { settings } = await getAllSheetsData(actorUid, true);
         const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
@@ -483,7 +473,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
 
 export async function deleteEmployee(employeeId: string, actorUid: string): Promise<void> {
     try {
-        const { settings } = await getAllData(actorUid, true);
+        const { settings } = await getAllSheetsData(actorUid, true);
         const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
@@ -538,7 +528,7 @@ export async function deleteNonEmployee(id: string, actorUid: string): Promise<v
 export async function addEquipment(itemData: Omit<EquipmentItem, 'id' | 'addressName'>): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_EQUIPMENT, EQUIPMENT_HEADERS);
-        const { settings } = await getAllData();
+        const { settings } = await getAllSheetsData();
         const addressName = settings.addresses.find((a: { id: any; }) => a.id === itemData.addressId)?.name || 'Nieznany';
         
         const newItem: EquipmentItem = {
@@ -624,7 +614,7 @@ export async function bulkDeleteEmployeesByCoordinator(coordinatorId: string, ac
         }
         
         // Audit logging
-        const { settings } = await getAllData(actorUid, true);
+        const { settings } = await getAllSheetsData(actorUid, true);
         const actor = findActor(actorUid, settings);
         if (actor) {
             const deletedForCoordinator = settings.coordinators.find(c => c.uid === coordinatorId);
@@ -650,7 +640,7 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
             return;
         }
 
-        const { settings } = await getAllData();
+        const { settings } = await getAllSheetsData();
         const toCoordinator = settings.coordinators.find((c: { uid: string; }) => c.uid === toCoordinatorId);
         if (!toCoordinator) {
             throw new Error("Target coordinator not found.");
@@ -675,7 +665,7 @@ export async function checkAndUpdateEmployeeStatuses(actorUid?: string): Promise
         today.setHours(0, 0, 0, 0);
 
         let updatedCount = 0;
-        const { settings } = await getAllData(actorUid, true);
+        const { settings } = await getAllSheetsData(actorUid, true);
         const actor = findActor(actorUid, settings);
 
         for (const row of rows) {
@@ -915,7 +905,7 @@ export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Pro
 
 export async function generateAccommodationReport(year: number, month: number, coordinatorId: string): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
     try {
-        const { employees, settings } = await getAllData();
+        const { employees, settings } = await getAllSheetsData();
         const coordinatorMap = new Map(settings.coordinators.map((c: { uid: any; name: any; }) => [c.uid, c.name]));
 
         const reportStart = new Date(year, month - 1, 1);
@@ -1015,7 +1005,7 @@ export async function generateAccommodationReport(year: number, month: number, c
 
 
 export async function importEmployeesFromExcel(fileContent: string): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
-    const { settings } = await getAllData();
+    const { settings } = await getAllSheetsData();
     try {
         const workbook = XLSX.read(fileContent, { type: 'base64', cellDates: false, dateNF: 'dd.mm.yyyy' });
         const sheetName = workbook.SheetNames[0];

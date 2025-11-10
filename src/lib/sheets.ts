@@ -440,106 +440,25 @@ export async function getAllSheetsData(userId?: string, userIsAdmin?: boolean) {
 
         const [
             employeesSheet,
-            settingsSheets,
+            settings,
             nonEmployeesSheet,
             equipmentSheet,
-            notificationsSheet,
+            notifications,
             inspectionsSheet,
             inspectionDetailsSheet,
         ] = await Promise.all([
             getSheetData(doc, SHEET_NAME_EMPLOYEES),
-            (async () => {
-                const [addressRows, roomRows, nationalityRows, departmentRows, coordinatorRows, genderRows, localityRows, inspectionTemplateRows] = await Promise.all([
-                    getSheetData(doc, SHEET_NAME_ADDRESSES),
-                    getSheetData(doc, SHEET_NAME_ROOMS),
-                    getSheetData(doc, SHEET_NAME_NATIONALITIES),
-                    getSheetData(doc, SHEET_NAME_DEPARTMENTS),
-                    getSheetData(doc, SHEET_NAME_COORDINATORS),
-                    getSheetData(doc, SHEET_NAME_GENDERS),
-                    getSheetData(doc, SHEET_NAME_LOCALITIES),
-                    getSheetData(doc, SHEET_NAME_INSPECTION_TEMPLATE),
-                ]);
-                return { addressRows, roomRows, nationalityRows, departmentRows, coordinatorRows, genderRows, localityRows, inspectionTemplateRows };
-            })(),
+            getSettingsFromSheet(),
             getSheetData(doc, SHEET_NAME_NON_EMPLOYEES),
             getSheetData(doc, SHEET_NAME_EQUIPMENT),
-            getSheetData(doc, SHEET_NAME_NOTIFICATIONS),
+            userId ? getNotificationsFromSheet(userId, userIsAdmin || false) : Promise.resolve([]),
             getSheetData(doc, SHEET_NAME_INSPECTIONS),
             getSheetData(doc, SHEET_NAME_INSPECTION_DETAILS)
         ]);
 
-        const roomsByAddressId = new Map<string, Room[]>();
-        settingsSheets.roomRows.forEach(rowObj => {
-            const addressId = rowObj.addressId;
-            if (addressId) {
-                if (!roomsByAddressId.has(addressId)) {
-                    roomsByAddressId.set(addressId, []);
-                }
-                roomsByAddressId.get(addressId)!.push({ id: rowObj.id, name: rowObj.name, capacity: Number(rowObj.capacity) || 0 });
-            }
-        });
-        const addresses: Address[] = settingsSheets.addressRows.map(rowObj => ({
-            id: rowObj.id,
-            locality: rowObj.locality,
-            name: rowObj.name,
-            coordinatorIds: (rowObj.coordinatorIds || '').split(',').filter(Boolean),
-            rooms: roomsByAddressId.get(rowObj.id) || [],
-        }));
-        const coordinators: Coordinator[] = settingsSheets.coordinatorRows.map(rowObj => ({ 
-            uid: rowObj.uid, 
-            name: rowObj.name, 
-            isAdmin: rowObj.isAdmin === 'TRUE', 
-            departments: (rowObj.departments || '').split(',').filter(Boolean), 
-            password: rowObj.password 
-        }));
-        
-        const inspectionTemplate : InspectionTemplateCategory[] = settingsSheets.inspectionTemplateRows.reduce((acc: InspectionTemplateCategory[], row) => {
-            const categoryName = row.category;
-            if (!categoryName) return acc;
-
-            let category = acc.find(c => c.name === categoryName);
-            if (!category) {
-                category = { name: categoryName, items: [] };
-                acc.push(category);
-            }
-
-            category.items.push({
-                label: row.label,
-                type: row.type as InspectionTemplateCategory['items'][number]['type'],
-                options: row.options ? row.options.split(',').map((s: string) => s.trim()) : [],
-            });
-
-            return acc;
-        }, []);
-        
-        const settings: Settings = {
-            id: 'global-settings',
-            addresses,
-            nationalities: settingsSheets.nationalityRows.map(row => row.name).filter(Boolean),
-            departments: settingsSheets.departmentRows.map(row => row.name).filter(Boolean),
-            coordinators,
-            genders: settingsSheets.genderRows.map(row => row.name).filter(Boolean),
-            localities: settingsSheets.localityRows.map(row => row.name).filter(Boolean),
-            inspectionTemplate,
-        };
-
         const employees = employeesSheet.map(row => deserializeEmployee(row)).filter((e): e is Employee => e !== null);
         const nonEmployees = nonEmployeesSheet.map(row => deserializeNonEmployee(row)).filter((e): e is NonEmployee => e !== null);
         const equipment = equipmentSheet.map(row => deserializeEquipmentItem(row)).filter((item): item is EquipmentItem => item !== null);
-
-        const allNotifications = notificationsSheet
-            .map(row => deserializeNotification(row))
-            .filter((n): n is Notification => n !== null);
-        
-        const notifications = allNotifications
-            .filter(n => {
-                if (userIsAdmin) {
-                    const isImportant = ['success', 'destructive', 'warning'].includes(n.type);
-                    return isImportant || n.recipientId === userId;
-                 }
-                return n.recipientId === userId;
-             })
-            .sort((a: Notification, b: Notification) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         
         const detailsByInspectionId = new Map<string, Record<string, string>[]>();
         inspectionDetailsSheet.forEach(row => {

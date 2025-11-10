@@ -44,8 +44,6 @@ export async function login(name: string, password_input: string) {
     session.name = user.name;
     session.isAdmin = user.isAdmin;
     await session.save();
-    // Re-fetch data with the correct user context
-    await getAllSheetsData(user.uid, user.isAdmin);
     return { success: true, user: { uid: user.uid, name: user.name, isAdmin: user.isAdmin } };
   }
   
