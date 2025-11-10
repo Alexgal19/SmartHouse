@@ -239,7 +239,7 @@ const writeToAuditLog = async (actorId: string, actorName: string, action: strin
 const createNotification = async (
     actor: Coordinator,
     action: 'dodał' | 'zaktualizował' | 'trwale usunął' | 'automatycznie zwolnił' | 'przeniósł',
-    entity: (Employee),
+    entity: (Employee | NonEmployee),
     settings: Settings,
     changes: NotificationChange[] = []
 ) => {
@@ -255,7 +255,8 @@ const createNotification = async (
         if (isDeleteAction) notificationType = 'destructive';
         if (isImportantUpdate) notificationType = 'warning';
         
-        const message = `${actor.name} ${action} ${entity.zaklad ? 'pracownika' : 'mieszkańca'} ${entity.fullName}.`;
+        const entityType = 'zaklad' in entity && entity.zaklad ? 'pracownika' : 'mieszkańca';
+        const message = `${actor.name} ${action} ${entityType} ${entity.fullName}.`;
         
         // 1. Create notification for the responsible coordinator
         if (responsibleCoordinator) {
@@ -305,7 +306,7 @@ const createNotification = async (
             }
         }
         
-        await writeToAuditLog(actor.uid, actor.name, action, 'employee', entity.id, changes);
+        await writeToAuditLog(actor.uid, actor.name, action, entityType, entity.id, changes);
 
     } catch (e: unknown) {
         console.error("Could not create notification:", e);
@@ -476,7 +477,20 @@ export async function deleteEmployee(employeeId: string, actorUid: string): Prom
 
 export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>, actorUid: string): Promise<void> {
     try {
-        await addEmployee({ ...nonEmployeeData, zaklad: null }, actorUid);
+        const { settings } = await getAllSheetsData(actorUid, true);
+        const actor = findActor(actorUid, settings);
+
+        const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
+        const newNonEmployee: NonEmployee = {
+            id: `nonemp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            ...nonEmployeeData
+        };
+
+        const serialized = serializeNonEmployee(newNonEmployee);
+        await sheet.addRow(serialized, { raw: false, insert: true });
+        
+        await createNotification(actor, 'dodał', newNonEmployee, settings);
+
     } catch (e: unknown) {
         console.error("Error adding non-employee:", e);
         throw new Error(e instanceof Error ? e.message : "Failed to add non-employee.");
@@ -485,16 +499,60 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>, a
 
 export async function updateNonEmployee(id: string, updates: Partial<NonEmployee>, actorUid: string): Promise<void> {
      try {
-        await updateEmployee(id, updates, actorUid);
+        const { settings } = await getAllSheetsData(actorUid, true);
+        const actor = findActor(actorUid, settings);
+
+        const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
+        const rows = await sheet.getRows({ limit: 1000 });
+        const rowIndex = rows.findIndex((row) => row.get('id') === id);
+
+        if (rowIndex === -1) {
+            throw new Error('Non-employee not found');
+        }
+
+        const row = rows[rowIndex];
+        const originalNonEmployee = row.toObject() as NonEmployee;
+        
+        const changes: NotificationChange[] = [];
+        
+        for (const key in updates) {
+            const typedKey = key as keyof NonEmployee;
+            if (originalNonEmployee[typedKey] !== updates[typedKey]) {
+                changes.push({
+                    field: typedKey,
+                    oldValue: String(originalNonEmployee[typedKey] || 'Brak'),
+                    newValue: String(updates[typedKey] || 'Brak')
+                });
+            }
+            row.set(key, serializeNonEmployee({ [key]: updates[typedKey] })[key]);
+        }
+        await row.save();
+        
+        if (changes.length > 0) {
+            await createNotification(actor, 'zaktualizował', { ...originalNonEmployee, ...updates }, settings, changes);
+        }
+
      } catch (e: unknown) {
          console.error("Error updating non-employee:", e);
          throw new Error(e instanceof Error ? e.message : "Failed to update non-employee.");
-    }
+     }
 }
 
 export async function deleteNonEmployee(id: string, actorUid: string): Promise<void> {
     try {
-        await deleteEmployee(id, actorUid);
+        const { settings } = await getAllSheetsData(actorUid, true);
+        const actor = findActor(actorUid, settings);
+
+        const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
+        const rows = await sheet.getRows({ limit: 1000 });
+        const row = rows.find((row) => row.get('id') === id);
+        if (row) {
+            const nonEmployeeToDelete = row.toObject() as NonEmployee;
+            await row.delete();
+            await createNotification(actor, 'trwale usunął', nonEmployeeToDelete, settings);
+        } else {
+            throw new Error('Non-employee not found');
+        }
     } catch (e: unknown) {
         console.error("Error deleting non-employee:", e);
         throw new Error(e instanceof Error ? e.message : "Failed to delete non-employee.");

@@ -37,7 +37,7 @@ const formatDate = (dateString?: string | null) => {
 
 type Entity = Employee | NonEmployee;
 
-const isEmployee = (entity: Entity): entity is Employee => 'zaklad' in entity && entity.zaklad !== null;
+const isEmployee = (entity: Entity): entity is Employee => 'zaklad' in entity;
 
 const EntityActions = ({
   entity,
