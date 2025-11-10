@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -795,7 +794,7 @@ function SettingsManager({ rawSettings, form, handleUpdateSettings, handleAddres
                                     <AddressManager 
                                         addresses={watchedAddresses}
                                         coordinators={watchedCoordinators}
-                                        localities={watchedLocalities.map((l: { value: string; }) => l.value)}
+                                        localities={(watchedLocalities || []).map((l: { value: string; }) => l.value)}
                                         onEdit={(address) => handleAddressFormOpen(address)}
                                         onAdd={handleAddAddress}
                                         onRemove={handleRemoveAddress}
@@ -890,3 +889,5 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     </div>
   );
 }
+
+    
