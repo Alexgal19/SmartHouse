@@ -1,4 +1,8 @@
-Ten dokument definiuje standardy pracy dla ludzi i AI (Gemini w Firebase Studio) w tym repozytorium. Celem jest maksymalna stabilność, bezpieczeństwo, dostępność i jakość UI/UX przy minimalnym zakresie zmian.
+# Contributing to SmartHouse
+
+This document provides guidelines for both human contributors and AI agents working on SmartHouse. For technical context and architecture details, also see `.github/copilot-instructions.md`.
+
+> **Note:** This document defines working standards for stability, security, accessibility, and code quality with minimal scope changes.
 
 Spis treści
 1. Zasady ogólne (stabilność i minimalny zakres zmian)
