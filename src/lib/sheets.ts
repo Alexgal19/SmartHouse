@@ -19,22 +19,6 @@ const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_LOCALITIES = 'Localities';
 const SHEET_NAME_EQUIPMENT = 'Equipment';
 
-async function getAllRowsWithPagination(sheet: GoogleSpreadsheetWorksheet) {
-    const allRows = [];
-    const limit = 1000;
-    let offset = 0;
-    let rows;
-
-    do {
-        rows = await sheet.getRows({ limit, offset });
-        allRows.push(...rows);
-        offset += limit;
-    } while (rows.length === limit);
-    
-    console.log(`Loaded ${allRows.length} rows from sheet "${sheet.title}"`);
-    return allRows.map(r => r.toObject());
-}
-
 
 function getAuth(): JWT {
     const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
@@ -243,14 +227,28 @@ const getSheetData = async (doc: GoogleSpreadsheet, title: string): Promise<Reco
         console.warn(`Sheet "${title}" not found. Returning empty array.`);
         return [];
     }
+
+    const allRows: Record<string, string>[] = [];
+    const limit = 1000;
+    let offset = 0;
+    let rows;
+
     try {
-        await sheet.loadHeaderRow(); // Ensure headers are loaded
-        return await getAllRowsWithPagination(sheet);
+        await sheet.loadHeaderRow(); // Ensure headers are loaded before fetching rows
+
+        do {
+            rows = await sheet.getRows({ limit, offset });
+            allRows.push(...rows.map(r => r.toObject()));
+            offset += limit;
+        } while (rows.length === limit);
+        
+        return allRows;
     } catch (e) {
-         console.warn(`Could not get rows from sheet: ${title}. It might be empty or missing.`);
+        console.warn(`Could not get rows from sheet: ${title}. It might be empty or missing headers.`, e);
         return [];
     }
 };
+
 
 async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
      try {
@@ -288,12 +286,11 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
         });
 
         const addresses: Address[] = addressRows.map(rowObj => {
-            const coordIds = rowObj.coordinatorIds || rowObj.coordinatorlds || '';
             return {
                 id: rowObj.id,
                 name: rowObj.name,
                 locality: rowObj.locality,
-                coordinatorIds: coordIds.split(',').filter(Boolean),
+                coordinatorIds: (rowObj?.coordinatorIds || rowObj?.coordinatorlds || '').split(',').filter(Boolean),
                 rooms: roomsByAddressId.get(rowObj.id) || [],
             }
         });
@@ -329,22 +326,19 @@ export async function getOnlySettings(): Promise<Settings> {
 }
 
 
-export async function getNotificationsFromSheet(recipientId: string, isAdmin: boolean): Promise<Notification[]> {
+async function getNotificationsFromSheet(doc: GoogleSpreadsheet, recipientId: string, isAdmin: boolean): Promise<Notification[]> {
     try {
-        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id']);
-        const rows = await getAllRowsWithPagination(sheet);
+        const allNotificationsRaw = await getSheetData(doc, SHEET_NAME_NOTIFICATIONS);
 
-        const allNotifications = rows
-            .map(deserializeNotification)
+        const allNotifications = allNotificationsRaw
+            .map(row => deserializeNotification(row))
             .filter((n): n is Notification => n !== null);
 
         const filtered = allNotifications.filter(n => {
             if (isAdmin) {
-                // Admins see notifications for critical events, or if they are the recipient
                  const isImportant = ['success', 'destructive', 'warning'].includes(n.type);
                  return isImportant || n.recipientId === recipientId;
             } else {
-                // Coordinators only see notifications where they are the recipient
                 return n.recipientId === recipientId;
             }
         });
@@ -368,7 +362,7 @@ export async function getAllSheetsData(userId?: string, userIsAdmin?: boolean) {
         ] = await Promise.all([
             getSheetData(doc, SHEET_NAME_EMPLOYEES),
             getSettingsFromSheet(doc),
-            userId ? getNotificationsFromSheet(userId, userIsAdmin || false) : Promise.resolve([]),
+            userId ? getNotificationsFromSheet(doc, userId, userIsAdmin || false) : Promise.resolve([]),
             getSheetData(doc, SHEET_NAME_EQUIPMENT),
         ]);
         
@@ -385,10 +379,6 @@ export async function getAllSheetsData(userId?: string, userIsAdmin?: boolean) {
         }).filter((ne): ne is NonEmployee => ne !== null);
 
         const equipment = equipmentSheet.map(row => deserializeEquipmentItem(row)).filter((item): item is EquipmentItem => item !== null);
-        
-        console.log(`Deserialized ${employees.length} employees from ${employeesSheet.length} rows.`);
-        console.log(`Deserialized ${nonEmployees.length} non-employees from ${employeesSheet.length} rows.`);
-
 
         return { employees, settings, nonEmployees, equipment, notifications };
 
