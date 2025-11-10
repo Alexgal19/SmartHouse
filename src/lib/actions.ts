@@ -2,7 +2,7 @@
 
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, Inspection, InspectionCategory, NotificationType, Coordinator } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, EquipmentItem, NotificationType, Coordinator } from '../types';
 import { getSheet, getAllSheetsData } from './sheets';
 import { format, isPast, isValid, getDaysInMonth, parseISO, differenceInDays, max, min, parse as dateFnsParse } from 'date-fns';
 import * as XLSX from 'xlsx';
@@ -19,8 +19,6 @@ const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_LOCALITIES = 'Localities';
 const SHEET_NAME_EQUIPMENT = 'Equipment';
-const SHEET_NAME_INSPECTIONS = 'Inspections';
-const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
 
 
 const serializeDate = (date?: string | null): string => {
@@ -220,28 +218,6 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     
     return newEmployee;
 };
-
-const deserializeNonEmployee = (row: Record<string, unknown>): NonEmployee | null => {
-    const plainObject = row;
-
-    const id = plainObject.id;
-    if (!id) return null;
-    
-    return {
-        id: id as string,
-        fullName: (plainObject.fullName || '') as string,
-        coordinatorId: (plainObject.coordinatorId || '') as string,
-        nationality: (plainObject.nationality || '') as string,
-        gender: (plainObject.gender || '') as string,
-        address: (plainObject.address || '') as string,
-        roomNumber: (plainObject.roomNumber || '') as string,
-        checkInDate: safeFormat(plainObject.checkInDate),
-        checkOutDate: safeFormat(plainObject.checkOutDate),
-        departureReportDate: safeFormat(plainObject.departureReportDate),
-        comments: (plainObject.comments || '') as string,
-    };
-};
-
 
 const writeToAuditLog = async (actorId: string, actorName: string, action: string, targetType: string, targetId: string, details: unknown) => {
     try {
@@ -827,82 +803,6 @@ export async function deleteNotification(notificationId: string): Promise<void> 
     }
 }
 
-
-export async function addInspection(inspectionData: Omit<Inspection, 'id'>): Promise<void> {
-    try {
-        const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, ['id', 'addressId', 'addressName', 'date', 'coordinatorId', 'coordinatorName', 'standard']);
-        const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, ['id', 'inspectionId', 'addressName', 'date', 'coordinatorName', 'category', 'itemLabel', 'itemValue', 'uwagi', 'photoData']);
-        
-        const inspectionId = `insp-${Date.now()}`;
-        const dateString = inspectionData.date;
-
-        await inspectionsSheet.addRow({
-            id: inspectionId,
-            addressId: inspectionData.addressId,
-            addressName: inspectionData.addressName,
-            date: dateString,
-            coordinatorId: inspectionData.coordinatorId,
-            coordinatorName: inspectionData.coordinatorName,
-            standard: inspectionData.standard || '',
-        }, { raw: false, insert: true });
-
-        const detailRows: Record<string, string>[] = [];
-        inspectionData.categories.forEach((category: InspectionCategory) => {
-            category.items.forEach((item: { label: any; value: any; }) => {
-                detailRows.push({
-                    id: `insp-det-${Date.now()}-${Math.random()}`,
-                    inspectionId,
-                    addressName: inspectionData.addressName,
-                    date: dateString,
-                    coordinatorName: inspectionData.coordinatorName,
-                    category: category.name,
-                    itemLabel: item.label,
-                    itemValue: Array.isArray(item.value) ? JSON.stringify(item.value) : (String(item.value) ?? ''),
-                    uwagi: '',
-                    photoData: '',
-                });
-            });
-
-            if (category.uwagi) {
-                detailRows.push({
-                    id: `insp-det-${Date.now()}-${Math.random()}`,
-                    inspectionId,
-                    addressName: inspectionData.addressName,
-                    date: dateString,
-                    coordinatorName: inspectionData.coordinatorName,
-                    category: category.name,
-                    itemLabel: 'Uwagi', itemValue: '',
-                    uwagi: category.uwagi,
-                    photoData: '',
-                });
-            }
-            
-            (category.photos || []).forEach((photo: string, index: number) => {
-                detailRows.push({
-                    id: `insp-det-${Date.now()}-${Math.random()}`,
-                    inspectionId,
-                    addressName: inspectionData.addressName,
-                    date: dateString,
-                    coordinatorName: inspectionData.coordinatorName,
-                    category: category.name,
-                    itemLabel: `Photo ${index + 1}`,
-                    itemValue: '',
-                    uwagi: '',
-                    photoData: photo,
-                });
-            });
-        });
-
-        if (detailRows.length > 0) {
-            await detailsSheet.addRows(detailRows, { raw: false, insert: true });
-        }
-
-    } catch (e: unknown) {
-        console.error("Error adding inspection:", e);
-        throw new Error(e instanceof Error ? e.message : "Failed to add inspection.");
-    }
-}
-
 export async function generateAccommodationReport(year: number, month: number, coordinatorId: string): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
     try {
         const { employees, settings } = await getAllSheetsData();
@@ -1005,11 +905,11 @@ export async function generateAccommodationReport(year: number, month: number, c
 
 
 export async function importEmployeesFromExcel(fileContent: string): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
-    const { settings } = await getAllSheetsData();
     try {
+        const { settings } = await getAllSheetsData();
         const workbook = XLSX.read(fileContent, { type: 'base64', cellDates: false, dateNF: 'dd.mm.yyyy' });
         const sheetName = workbook.SheetNames[0];
-        if (!sheetName) throw new Error("Nie znaleziono arkуша в pliku Excel.");
+        if (!sheetName) throw new Error("Nie znaleziono arkusza w pliku Excel.");
 
         const worksheet = workbook.Sheets[sheetName];
         
@@ -1088,8 +988,8 @@ export async function importEmployeesFromExcel(fileContent: string): Promise<{ i
     } catch (e) {
         console.error("Error importing from Excel:", e);
         if (e instanceof Error) {
-            return { importedCount: 0, totalRows: 0, errors: [e.message] };
+            throw e;
         }
-        return { importedCount: 0, totalRows: 0, errors: ["Wystąpił nieznany błąd podczas importu."] };
+        throw new Error("Wystąpił nieznany błąd podczas importu.");
     }
 }

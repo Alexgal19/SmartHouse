@@ -4,7 +4,7 @@
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, Address, Coordinator, Inspection, InspectionTemplateCategory, EquipmentItem, NotificationType } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, Address, Coordinator, EquipmentItem, NotificationType } from '../types';
 import { format, isValid, parse, parseISO } from 'date-fns';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
@@ -19,11 +19,22 @@ const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_LOCALITIES = 'Localities';
 const SHEET_NAME_EQUIPMENT = 'Equipment';
-const SHEET_NAME_INSPECTIONS = 'Inspections';
-const SHEET_NAME_INSPECTION_DETAILS = 'InspectionDetails';
-const SHEET_NAME_INSPECTION_TEMPLATE = 'InspectionTemplate';
 
-let docPromise: Promise<GoogleSpreadsheet> | null = null;
+async function getAllRowsWithPagination(sheet: GoogleSpreadsheetWorksheet) {
+    const allRows = [];
+    const limit = 1000;
+    let offset = 0;
+    let rows;
+
+    do {
+        rows = await sheet.getRows({ limit, offset });
+        allRows.push(...rows);
+        offset += limit;
+    } while (rows.length === limit);
+    
+    console.log(`Loaded ${allRows.length} rows from sheet "${sheet.title}"`);
+    return allRows.map(r => r.toObject());
+}
 
 
 function getAuth(): JWT {
@@ -249,53 +260,6 @@ const deserializeEquipmentItem = (row: Record<string, unknown>): EquipmentItem |
     };
 };
 
-export async function getEmployeesFromSheet(coordinatorId?: string): Promise<Employee[]> {
-    try {
-        const sheet = await getSheet(SHEET_NAME_EMPLOYEES, ['id']);
-        const rows = await sheet.getRows({ limit: 2000 });
-        
-        const plainRows = rows.map(r => r.toObject());
-        const filteredRows = coordinatorId ? plainRows.filter(row => row.coordinatorId === coordinatorId) : plainRows;
-
-        return filteredRows.map(deserializeEmployee).filter((e): e is Employee => e !== null);
-
-    } catch (error: unknown) {
-        console.error("Error fetching employees from sheet:", error instanceof Error ? error.message : "Unknown error", error instanceof Error ? error.stack : "");
-        throw new Error(`Could not fetch employees from sheet. Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
-    }
-}
-
-export async function getNonEmployeesFromSheet(): Promise<NonEmployee[]> {
-  try {
-    const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, ['id']);
-    const rows = await sheet.getRows({ limit: 1000 });
-    return rows.map(r => r.toObject()).map(deserializeNonEmployee).filter((e): e is NonEmployee => e !== null);
-  } catch (error: unknown) {
-    console.error("Error fetching non-employees from sheet:", error instanceof Error ? error.message : "Unknown error", error instanceof Error ? error.stack : "");
-    throw new Error(`Could not fetch non-employees from sheet. Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
-  }
-}
-
-export async function getEquipmentFromSheet(coordinatorId?: string): Promise<EquipmentItem[]> {
-  try {
-    const equipmentSheet = await getSheet(SHEET_NAME_EQUIPMENT, ['id', 'inventoryNumber', 'name', 'quantity', 'description', 'addressId', 'addressName']);
-    const equipmentRows = await equipmentSheet.getRows({ limit: 2000 });
-    const plainEquipmentRows = equipmentRows.map(r => r.toObject());
-    let equipment = plainEquipmentRows.map(deserializeEquipmentItem).filter((item): item is EquipmentItem => item !== null);
-
-    if (coordinatorId) {
-        const settings = await getSettingsFromSheet();
-        const coordinatorAddresses = new Set(settings.addresses.filter((a: { coordinatorIds: string[]; }) => a.coordinatorIds.includes(coordinatorId)).map((a: { id: any; }) => a.id));
-        equipment = equipment.filter(item => coordinatorAddresses.has(item.addressId));
-    }
-    
-    return equipment;
-  } catch (error: unknown) {
-    console.error("Error fetching equipment from sheet:", error instanceof Error ? error.message : "Unknown error", error instanceof Error ? error.stack : "");
-    throw new Error(`Could not fetch equipment from sheet. Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
-  }
-}
-
 const getSheetData = async (doc: GoogleSpreadsheet, title: string): Promise<Record<string, string>[]> => {
     const sheet = doc.sheetsByTitle[title];
     if (!sheet) {
@@ -304,18 +268,15 @@ const getSheetData = async (doc: GoogleSpreadsheet, title: string): Promise<Reco
     }
     try {
         await sheet.loadHeaderRow(); // Ensure headers are loaded
-        const rows = await sheet.getRows({ limit: 500 });
-        return rows.map(r => r.toObject());
+        return await getAllRowsWithPagination(sheet);
     } catch (e) {
          console.warn(`Could not get rows from sheet: ${title}. It might be empty or missing.`);
         return [];
     }
 };
 
-export async function getSettingsFromSheet(): Promise<Settings> {
+async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
      try {
-        const doc = await getDoc();
-
         const [
             addressRows,
             roomRows,
@@ -324,7 +285,6 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             coordinatorRows,
             genderRows,
             localityRows,
-            inspectionTemplateRows,
         ] = await Promise.all([
             getSheetData(doc, SHEET_NAME_ADDRESSES),
             getSheetData(doc, SHEET_NAME_ROOMS),
@@ -333,7 +293,6 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             getSheetData(doc, SHEET_NAME_COORDINATORS),
             getSheetData(doc, SHEET_NAME_GENDERS),
             getSheetData(doc, SHEET_NAME_LOCALITIES),
-            getSheetData(doc, SHEET_NAME_INSPECTION_TEMPLATE),
         ]);
         
         const roomsByAddressId = new Map<string, Room[]>();
@@ -371,25 +330,6 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             }
         });
         
-        const inspectionTemplate: InspectionTemplateCategory[] = inspectionTemplateRows.reduce((acc: InspectionTemplateCategory[], row) => {
-            const categoryName = row.category;
-            if (!categoryName) return acc;
-
-            let category = acc.find(c => c.name === categoryName);
-            if (!category) {
-                category = { name: categoryName, items: [] };
-                acc.push(category);
-            }
-
-            category.items.push({
-                label: row.label,
-                type: row.type as InspectionTemplateCategory['items'][number]['type'],
-                options: row.options ? row.options.split(',').map((s: string) => s.trim()) : [],
-            });
-
-            return acc;
-        }, []);
-
         return {
             id: 'global-settings',
             addresses,
@@ -398,7 +338,6 @@ export async function getSettingsFromSheet(): Promise<Settings> {
             coordinators,
             genders: genderRows.map(row => row.name).filter(Boolean),
             localities: localityRows.map(row => row.name).filter(Boolean),
-            inspectionTemplate,
         };
     } catch (error: unknown) {
         console.error("Error fetching settings from sheet:", error instanceof Error ? error.message : "Unknown error", error instanceof Error ? error.stack : "");
@@ -406,14 +345,19 @@ export async function getSettingsFromSheet(): Promise<Settings> {
     }
 }
 
+export async function getOnlySettings(): Promise<Settings> {
+    const doc = await getDoc();
+    return await getSettingsFromSheet(doc);
+}
+
 
 export async function getNotificationsFromSheet(recipientId: string, isAdmin: boolean): Promise<Notification[]> {
     try {
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, ['id']);
-        const rows = await sheet.getRows({ limit: 200 });
+        const rows = await getAllRowsWithPagination(sheet);
 
         const allNotifications = rows
-            .map(r => deserializeNotification(r.toObject()))
+            .map(deserializeNotification)
             .filter((n): n is Notification => n !== null);
 
         const filtered = allNotifications.filter(n => {
@@ -444,205 +388,25 @@ export async function getAllSheetsData(userId?: string, userIsAdmin?: boolean) {
             nonEmployeesSheet,
             equipmentSheet,
             notifications,
-            inspectionsSheet,
-            inspectionDetailsSheet,
         ] = await Promise.all([
             getSheetData(doc, SHEET_NAME_EMPLOYEES),
-            getSettingsFromSheet(),
+            getSettingsFromSheet(doc),
             getSheetData(doc, SHEET_NAME_NON_EMPLOYEES),
             getSheetData(doc, SHEET_NAME_EQUIPMENT),
             userId ? getNotificationsFromSheet(userId, userIsAdmin || false) : Promise.resolve([]),
-            getSheetData(doc, SHEET_NAME_INSPECTIONS),
-            getSheetData(doc, SHEET_NAME_INSPECTION_DETAILS)
         ]);
 
-        const employees = employeesSheet.map(row => deserializeEmployee(row)).filter((e): e is Employee => e !== null);
-        const nonEmployees = nonEmployeesSheet.map(row => deserializeNonEmployee(row)).filter((e): e is NonEmployee => e !== null);
-        const equipment = equipmentSheet.map(row => deserializeEquipmentItem(row)).filter((item): item is EquipmentItem => item !== null);
+        const employees = employeesSheet.map(deserializeEmployee).filter((e): e is Employee => e !== null);
+        const nonEmployees = nonEmployeesSheet.map(deserializeNonEmployee).filter((e): e is NonEmployee => e !== null);
+        const equipment = equipmentSheet.map(deserializeEquipmentItem).filter((item): item is EquipmentItem => item !== null);
         
-        const detailsByInspectionId = new Map<string, Record<string, string>[]>();
-        inspectionDetailsSheet.forEach(row => {
-            const inspectionId = row.inspectionId;
-            if (inspectionId) {
-                if (!detailsByInspectionId.has(inspectionId)) {
-                    detailsByInspectionId.set(inspectionId, []);
-                }
-                detailsByInspectionId.get(inspectionId)!.push(row);
-            }
-        });
+        console.log(`Deserialized ${employees.length} employees from ${employeesSheet.length} rows.`);
+        console.log(`Deserialized ${nonEmployees.length} non-employees from ${nonEmployeesSheet.length} rows.`);
 
-        const inspections: Inspection[] = inspectionsSheet.map(row => {
-            const inspectionId = row.id;
-            const details = detailsByInspectionId.get(inspectionId) || [];
-            
-            const categoriesMap = new Map<string, any>();
-
-            details.forEach(detail => {
-                const categoryName = detail.category;
-                if (!categoriesMap.has(categoryName)) {
-                    categoriesMap.set(categoryName, { name: categoryName, items: [], uwagi: '', photos: [] });
-                }
-                const category = categoriesMap.get(categoryName)!;
-
-                const itemLabel = detail.itemLabel;
-                if (itemLabel && !itemLabel.startsWith('Photo') && itemLabel !== 'Uwagi') {
-                    let type: any = 'text';
-                    const rawValue = detail.itemValue;
-                    let value: any = rawValue;
-                    
-                    if (rawValue?.toLowerCase() === 'true' || rawValue?.toLowerCase() === 'false') {
-                        type = 'yes_no';
-                        value = rawValue.toLowerCase() === 'true';
-                    } else if (['Wysoki', 'Normalny', 'Niski', 'Bardzo czysto', 'Czysto', 'Brudno', 'Bardzo brudno', 'Do poprawy'].includes(rawValue)) {
-                        type = 'select';
-                    } else if (rawValue && !isNaN(parseFloat(rawValue)) && isFinite(rawValue as any)) {
-                        const num = parseFloat(rawValue);
-                        if (num >= 1 && num <= 5 && Number.isInteger(num)) {
-                            type = 'rating';
-                            value = num;
-                        } else {
-                            type = 'number';
-                            value = num;
-                        }
-                    } else if (typeof rawValue === 'string' && rawValue.startsWith('[') && rawValue.endsWith(']')) {
-                        try {
-                            value = JSON.parse(rawValue);
-                            type = 'checkbox_group';
-                        // eslint-disable-next-line no-empty
-                        } catch {
-                            
-                        }
-                    }
-
-                    category.items.push({ label: itemLabel, value, type, options: [] });
-                }
-                if (detail.uwagi) {
-                    category.uwagi = detail.uwagi;
-                }
-                if (detail.photoData) {
-                    if (!category.photos) category.photos = [];
-                    category.photos.push(detail.photoData);
-                }
-            });
-
-            const inspectionDate = row.date;
-            return {
-                id: inspectionId,
-                addressId: row.addressId,
-                addressName: row.addressName,
-                date: inspectionDate ? new Date(inspectionDate).toISOString() : new Date().toISOString(),
-                coordinatorId: row.coordinatorId,
-                coordinatorName: row.coordinatorName,
-                standard: row.standard || null,
-                categories: Array.from(categoriesMap.values()),
-            };
-        }).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-        return { employees, settings, nonEmployees, equipment, notifications, inspections };
+        return { employees, settings, nonEmployees, equipment, notifications };
 
     } catch (error: unknown) {
         console.error("Error fetching all sheets data:", error);
         throw new Error(`Could not fetch all data from sheets. Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
-    }
-}
-
-export async function getInspectionsFromSheet(coordinatorId?: string): Promise<Inspection[]> {
-    try {
-        const inspectionsSheet = await getSheet(SHEET_NAME_INSPECTIONS, ['id']);
-        const detailsSheet = await getSheet(SHEET_NAME_INSPECTION_DETAILS, ['id']);
-        
-        let inspectionRowsRaw = await inspectionsSheet.getRows({ limit: 1000 });
-        if (coordinatorId) {
-            inspectionRowsRaw = inspectionRowsRaw.filter(row => row.get('coordinatorId') === coordinatorId);
-        }
-        
-        const inspectionRows = inspectionRowsRaw.map(r => r.toObject());
-        const detailRows = (await detailsSheet.getRows({ limit: 5000 })).map(r => r.toObject());
-
-        const detailsByInspectionId = new Map<string, Record<string, string>[]>();
-        detailRows.forEach(row => {
-            const inspectionId = row.inspectionId;
-            if (inspectionId) {
-                if (!detailsByInspectionId.has(inspectionId)) {
-                    detailsByInspectionId.set(inspectionId, []);
-                }
-                detailsByInspectionId.get(inspectionId)!.push(row);
-            }
-        });
-
-        const inspections: Inspection[] = inspectionRows.map(row => {
-            const inspectionId = row.id;
-            const details = detailsByInspectionId.get(inspectionId) || [];
-            
-            const categoriesMap = new Map<string, any>();
-
-            details.forEach(detail => {
-                const categoryName = detail.category;
-                if (!categoriesMap.has(categoryName)) {
-                    categoriesMap.set(categoryName, { name: categoryName, items: [], uwagi: '', photos: [] });
-                }
-                const category = categoriesMap.get(categoryName)!;
-
-                const itemLabel = detail.itemLabel;
-                const uwagi = detail.uwagi;
-                const photoData = detail.photoData;
-
-                if (itemLabel && !itemLabel.startsWith('Photo') && itemLabel !== 'Uwagi') {
-                    let type: any = 'text';
-                    const rawValue = detail.itemValue;
-                    let value: any = rawValue;
-                    
-                    if (rawValue?.toLowerCase() === 'true' || rawValue?.toLowerCase() === 'false') {
-                        type = 'yes_no';
-                        value = rawValue.toLowerCase() === 'true';
-                    } else if (['Wysoki', 'Normalny', 'Niski', 'Bardzo czysto', 'Czysto', 'Do poprawy', 'Brudno', 'Bardzo brudno'].includes(rawValue)) {
-                        type = 'select';
-                    } else if (rawValue && !isNaN(parseFloat(rawValue)) && isFinite(rawValue as any)) {
-                        const num = parseFloat(rawValue);
-                        if (num >= 1 && num <= 5 && Number.isInteger(num)) {
-                            type = 'rating';
-                            value = num;
-                        } else {
-                            type = 'number';
-                            value = num;
-                        }
-                    } else if (typeof rawValue === 'string' && rawValue.startsWith('[') && rawValue.endsWith(']')) {
-                        try {
-                            value = JSON.parse(rawValue);
-                            type = 'checkbox_group';
-                        } catch {
-                            // keep as text
-                        }
-                    }
-
-                    category.items.push({ label: itemLabel, value, type, options: [] });
-                }
-                if (uwagi) {
-                    category.uwagi = uwagi;
-                }
-                if (photoData) {
-                    if (!category.photos) category.photos = [];
-                    category.photos.push(photoData);
-                }
-            });
-
-            const inspectionDate = row.date;
-            return {
-                id: inspectionId,
-                addressId: row.addressId,
-                addressName: row.addressName,
-                date: inspectionDate ? new Date(inspectionDate).toISOString() : new Date().toISOString(),
-                coordinatorId: row.coordinatorId,
-                coordinatorName: row.coordinatorName,
-                standard: row.standard || null,
-                categories: Array.from(categoriesMap.values()),
-            };
-        }).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-        return inspections;
-
-    } catch (error: unknown) {
-        console.error("Error fetching inspections from sheet:", error instanceof Error ? error.message : "Unknown error", error instanceof Error ? error.stack : "");
-        throw new Error(`Could not fetch inspections. Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
 }

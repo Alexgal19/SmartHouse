@@ -79,7 +79,10 @@ const HouseLoader = () => {
 type MainLayoutContextType = {
     allEmployees: Employee[] | null;
     allNonEmployees: NonEmployee[] | null;
+    rawEmployees: Employee[] | null;
+    rawNonEmployees: NonEmployee[] | null;
     settings: Settings | null;
+    rawSettings: Settings | null;
     currentUser: SessionData | null;
     selectedCoordinatorId: string;
     hasNewCheckouts: boolean;
@@ -141,7 +144,7 @@ export default function MainLayout({
     
     const [rawEmployees, setRawEmployees] = useState<Employee[] | null>(null);
     const [rawNonEmployees, setRawNonEmployees] = useState<NonEmployee[] | null>(null);
-    const [settings, setSettings] = useState<Settings | null>(null);
+    const [rawSettings, setRawSettings] = useState<Settings | null>(null);
     const [hasNewCheckouts, setHasNewCheckouts] = useState(false);
     
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -156,21 +159,31 @@ export default function MainLayout({
     
     const { toast } = useToast();
 
-    const allEmployees = useMemo(() => {
-        if (!rawEmployees || !currentUser) return null;
-        if (currentUser.isAdmin && selectedCoordinatorId === 'all') {
-            return rawEmployees;
+    const filteredData = useMemo(() => {
+        if (!rawEmployees || !rawNonEmployees || !rawSettings || !currentUser) {
+            return { employees: null, nonEmployees: null, settings: null };
         }
-        return rawEmployees.filter(e => e.coordinatorId === selectedCoordinatorId);
-    }, [rawEmployees, currentUser, selectedCoordinatorId]);
 
-    const allNonEmployees = useMemo(() => {
-        if (!rawNonEmployees || !currentUser) return null;
-        if (currentUser.isAdmin && selectedCoordinatorId === 'all') {
-            return rawNonEmployees;
+        const shouldFilter = !currentUser.isAdmin || (currentUser.isAdmin && selectedCoordinatorId !== 'all');
+
+        if (!shouldFilter) {
+            return { employees: rawEmployees, nonEmployees: rawNonEmployees, settings: rawSettings };
         }
-        return rawNonEmployees.filter(e => e.coordinatorId === selectedCoordinatorId);
-    }, [rawNonEmployees, currentUser, selectedCoordinatorId]);
+        
+        const coordinatorAddresses = new Set(rawSettings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId)).map(a => a.name));
+
+        const employees = rawEmployees.filter(e => e.address && coordinatorAddresses.has(e.address));
+        const nonEmployees = rawNonEmployees.filter(ne => ne.address && coordinatorAddresses.has(ne.address));
+        const settings = {
+            ...rawSettings,
+            addresses: rawSettings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId)),
+        };
+
+        return { employees, nonEmployees, settings };
+
+    }, [rawEmployees, rawNonEmployees, rawSettings, currentUser, selectedCoordinatorId]);
+
+    const { employees: allEmployees, nonEmployees: allNonEmployees, settings } = filteredData;
     
     const setSelectedCoordinatorId = useCallback((value: React.SetStateAction<string>) => {
         _setSelectedCoordinatorId(value);
@@ -243,7 +256,7 @@ export default function MainLayout({
 
             setRawEmployees(employees);
             setRawNonEmployees(nonEmployees);
-            setSettings(settings);
+            setRawSettings(settings);
             setAllNotifications(notifications);
 
             if (currentUser.isAdmin) {
@@ -310,11 +323,11 @@ export default function MainLayout({
             const allPeople = [...(rawEmployees || []), ...(rawNonEmployees || [])];
             const entityToEdit = allPeople.find(e => e.id === editEntityId);
             if (entityToEdit) {
-                if ('zaklad' in entityToEdit) { // It's an Employee
+                if ('zaklad' in entityToEdit && entityToEdit.zaklad !== null) {
                     setEditingEmployee(entityToEdit);
                     setIsFormOpen(true);
-                } else { // It's a NonEmployee
-                    setEditingNonEmployee(entityToEdit);
+                } else {
+                    setEditingNonEmployee(entityToEdit as NonEmployee);
                     setIsNonEmployeeFormOpen(true);
                 }
             }
@@ -381,14 +394,14 @@ export default function MainLayout({
         }
 
         const originalSettings = settings;
-        setSettings(prev => ({ ...prev!, ...newSettings }));
+        setRawSettings(prev => ({ ...prev!, ...newSettings }));
 
         try {
             await updateSettings(newSettings);
             toast({ title: "Sukces", description: "Ustawienia zostały zaktualizowane." });
             await refreshData(false);
         } catch(e) {
-            setSettings(originalSettings); // Revert on error
+            setRawSettings(originalSettings); // Revert on error
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać ustawień." });
         }
     }, [settings, currentUser, toast, refreshData]);
@@ -421,8 +434,8 @@ export default function MainLayout({
     }, []);
 
     const handleSaveAddress = useCallback((addressData: Address) => {
-        if (!settings) return;
-        const newAddresses = [...settings.addresses];
+        if (!rawSettings) return;
+        const newAddresses = [...rawSettings.addresses];
         const addressIndex = newAddresses.findIndex(a => a.id === addressData.id);
 
         if (addressIndex > -1) {
@@ -431,7 +444,7 @@ export default function MainLayout({
             newAddresses.push(addressData);
         }
         handleUpdateSettings({ addresses: newAddresses });
-    }, [settings, handleUpdateSettings]);
+    }, [rawSettings, handleUpdateSettings]);
 
     const handleBulkDeleteEmployees = useCallback(async (_entityType: 'employee' | 'non-employee', status: 'active' | 'dismissed') => {
         if (!currentUser || !currentUser.isAdmin) {
@@ -518,26 +531,37 @@ export default function MainLayout({
         reader.readAsDataURL(file);
         const fileContent = await promise;
 
-        const result = await importEmployeesFromExcel(fileContent);
-        
-        let description = `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} wierszy.`;
-        if (result.errors.length > 0) {
-            description += ` Błędy: ${result.errors.join('; ')}`;
+        try {
+            const result = await importEmployeesFromExcel(fileContent);
+            
+            let description = `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} wierszy.`;
+            if (result.errors.length > 0) {
+                description += ` Błędy: ${result.errors.join('; ')}`;
+            }
+            
+            toast({
+                title: "Import zakończony",
+                description: description,
+                duration: result.errors.length > 0 ? 10000 : 5000,
+            });
+            await refreshData(false);
+        } catch (e) {
+             toast({
+                variant: "destructive",
+                title: "Błąd importu",
+                description: e instanceof Error ? e.message : 'Nieznany błąd serwera.'
+            });
         }
-        
-        toast({
-            title: "Import zakończony",
-            description: description,
-            duration: result.errors.length > 0 ? 10000 : 5000,
-        });
-        await refreshData(false);
 
     }, [refreshData, toast]);
 
     const contextValue: MainLayoutContextType = useMemo(() => ({
         allEmployees,
         allNonEmployees,
+        rawEmployees,
+        rawNonEmployees,
         settings,
+        rawSettings,
         currentUser,
         selectedCoordinatorId,
         hasNewCheckouts,
@@ -561,7 +585,10 @@ export default function MainLayout({
     } ), [
         allEmployees,
         allNonEmployees,
+        rawEmployees,
+        rawNonEmployees,
         settings,
+        rawSettings,
         currentUser,
         selectedCoordinatorId,
         hasNewCheckouts,
@@ -663,12 +690,12 @@ export default function MainLayout({
                     currentUser={currentUser}
                 />
             )}
-            {settings && currentUser && (
+            {rawSettings && currentUser && (
                 <AddressForm
                     isOpen={isAddressFormOpen}
                     onOpenChange={setIsAddressFormOpen}
                     onSave={handleSaveAddress}
-                    settings={settings}
+                    settings={rawSettings}
                     address={editingAddress}
                 />
             )}

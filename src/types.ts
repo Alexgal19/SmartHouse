@@ -32,7 +32,6 @@ export type Settings = {
     coordinators: Coordinator[];
     genders: string[];
     localities: string[];
-    inspectionTemplate: InspectionTemplateCategory[];
 }
 
 export type ChartConfig = {
@@ -134,34 +133,4 @@ export type EquipmentItem = {
     description: string;
     addressId: string;
     addressName: string;
-}
-
-export type InspectionTemplateCategory = {
-    name: string;
-    items: {
-        label: string;
-        type: 'rating' | 'yes_no' | 'text' | 'checkbox_group' | 'select' | 'number';
-        options?: string[];
-    }[];
-}
-
-export type InspectionCategory = {
-    name: string;
-    items: {
-        label: string;
-        value: any;
-    }[];
-    uwagi: string;
-    photos: string[]; // base64 encoded images
-}
-
-export type Inspection = {
-    id: string;
-    addressId: string;
-    addressName: string;
-    date: string; // ISO date string
-    coordinatorId: string;
-    coordinatorName: string;
-    standard: 'Wysoki' | 'Normalny' | 'Niski' | null;
-    categories: InspectionCategory[];
 }

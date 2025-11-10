@@ -19,34 +19,48 @@ Spis treści
 12. Checklisty przed PR i przed wdrożeniem
 13. Minimalne skrypty (zalecane)
 14. Standard pracy z datami (Date Handling) i Excel Export
-Cel: Ujednolicić formatowanie i parsowanie dat w całym projekcie oraz uniknąć błędów typu „formatDate is not defined”.
 15. Zasady obsługi pustych pól (Empty/Nullable Handling)
-Cel: Puste komórki/pola (null, undefined, "", " ") w danych nie są błędem – są stanem dozwolonym i powinny być konsekwentnie obsługiwane w UI, API i podczas eksportu do Excela.
+16. Konwencje Git, PR, Commit i Release
+17. CODEOWNERS i odpowiedzialności przeglądu
+18. Pre-commit i CI (husky, lint-staged, GitHub Actions)
+19. Polityka .env, bezpieczeństwo i zarządzanie sekretami
+20. Granice architektoniczne (client/server) i reguły ESLint
+21. API kontrakty, wersjonowanie i deprecje
+22. Error handling i zasady UX komunikatów
+23. i18n/L10n (internacjonalizacja)
+24. Budżety performance i narzędzia CI
+25. Accessibility – checklista i testy a11y
+26. Strategia testów (unit/component/integration/e2e)
+27. Logowanie, obserwowalność i PII/sekrety
+28. Onboarding i DX
+29. Szablony PR i commit (przykłady)
+30. Architektura i budowa aplikacji webowej (guidelines senior)
 
 1. Zasady ogólne (stabilność i minimalny zakres zmian)
 • Traktuj każdą zmianę jako krytyczną. Ogranicz zakres do absolutnego minimum wymaganego przez zadanie.
 • Nie modyfikuj niepowiązanych komponentów, konfiguracji ani zależności bez wyraźnej potrzeby.
 • Każda zmiana musi przejść: lint, typecheck, build oraz lokalne uruchomienie dev.
 • Preferuj małe, czytelne PR-y z jasnym opisem i pełnym diffem.
+• Zachowuj zgodność z istniejącymi kontraktami typów i API.
 
 2. Struktura projektu i odpowiedzialności
 • Logika biznesowa:
-   • src/lib/actions.ts – akcje serwerowe (Server Actions/handlers).
-   • src/lib/sheets.ts – integracja z Google Sheets.
-   • Uwaga: te moduły są „server-only” i nie mogą być importowane w kodzie klienckim.
+• src/lib/actions.ts – akcje serwerowe (Server Actions/handlers).
+• src/lib/sheets.ts – integracja z Google Sheets.
+• Uwaga: te moduły są „server-only” i nie mogą być importowane w kodzie klienckim.
 • UI:
-   • Komponenty ogólne: src/components/ui
-   • Komponenty funkcyjne: src/components
+• Komponenty ogólne: src/components/ui
+• Komponenty funkcyjne: src/components
 • Globalny stan:
-   • src/components/main-layout.tsx – MainLayoutContext (dostarczanie danych i operacji, np. handleUpdateSettings, handleAddEmployee).
+• src/components/main-layout.tsx – MainLayoutContext (dostarczanie danych i operacji, np. handleUpdateSettings, handleAddEmployee).
 • Routing:
-   • Zgodnie z Next.js (app/ lub pages/ – dopasuj do faktycznej struktury repo).
+• Zgodnie z Next.js (app/ lub pages/ – dopasuj do faktycznej struktury repo).
 
 3. Standardy importów (absolutne aliasy vs ścieżki względne)
 Priorytety
-   1. Absolutne aliasy (preferowane): np. import { Foo } from '@/utils/Foo'
-   2. Względne (lokalne): tylko dla importów z tego samego folderu lub bliskiego sąsiedztwa (max 1–2 poziomy ../)
-   3. Nigdy: długie łańcuchy ../../../ – w takim wypadku użyj aliasów.
+1. Absolutne aliasy (preferowane): np. import { Foo } from '@/utils/Foo'
+2. Względne (lokalne): tylko dla importów z tego samego folderu lub bliskiego sąsiedztwa (max 1–2 poziomy ../)
+3. Nigdy: długie łańcuchy ../../../ – w takim wypadku użyj aliasów.
 
 Zasady czystości
 • Jeśli istnieje index.ts/tsx w katalogu, importuj katalog (bez /index).
@@ -55,25 +69,25 @@ Zasady czystości
 
 4. Zasady dla AI (AI Operating Rules)
 • Minimalny zakres zmian:
-   • Nie dotykaj plików spoza zakresu zadania.
-   • Nie refaktoryzuj szeroko bez wyraźnej prośby.
+• Nie dotykaj plików spoza zakresu zadania.
+• Nie refaktoryzuj szeroko bez wyraźnej prośby.
 • Pełne pliki:
-   • Gdy zmieniasz plik, zwróć całą finalną zawartość pliku (bez diffów), w formacie XML opisanym w sekcji 5.
+• Gdy zmieniasz plik, zwróć całą finalną zawartość pliku (bez diffów), w formacie XML opisanym w sekcji 5.
 • Brak błędów importów:
-   • Nie generuj kodu, który spowoduje „Module not found” lub błędy rozwiązywania typów.
+• Nie generuj kodu, który spowoduje „Module not found” lub błędy rozwiązywania typów.
 • Walidacja lokalna (wewnętrzna):
-   • Przed wysłaniem odpowiedzi mentalnie „uruchom” npm run lint, npm run typecheck, npm run build. Kod musi przejść.
+• Przed wysłaniem odpowiedzi mentalnie „uruchom” npm run lint, npm run typecheck, npm run build. Kod musi przejść.
 • Ścisłe typy:
-   • Używaj jawnych typów i interfejsów. Unikaj any, chyba że to świadoma, uzasadniona decyzja z komentarzem.
+• Używaj jawnych typów i interfejsów. Unikaj any, chyba że to świadoma, uzasadniona decyzja z komentarzem.
 • Granica klient/serwer:
-   • Nie importuj bibliotek serwerowych (google-auth-library, google-spreadsheet) w komponentach klienckich („use client”).
-   • Wszelka praca z sekretami – wyłącznie na serwerze.
+• Nie importuj bibliotek serwerowych (google-auth-library, google-spreadsheet) w komponentach klienckich („use client”).
+• Wszelka praca z sekretami – wyłącznie na serwerze.
 • Stabilność i zgodność:
-   • Szanuj istniejące API komponentów i kontrakty typów. Zmiany łamiące wprowadzaj tylko po uzasadnieniu i z migracją.
+• Szanuj istniejące API komponentów i kontrakty typów. Zmiany łamiące wprowadzaj tylko po uzasadnieniu i z migracją.
 • Performance-first:
-   • Dla ciężkich bibliotek (np. recharts, xlsx) używaj dynamic import i ładuj je tylko na kliencie, gdy są potrzebne.
+• Dla ciężkich bibliotek (np. recharts, xlsx) używaj dynamic import i ładuj je tylko na kliencie, gdy są potrzebne.
 • A11y-first:
-   • Korzystaj z semantycznego HTML, poprawnych ról ARIA, focus management (szczególnie przy użyciu Radix UI).
+• Korzystaj z semantycznego HTML, poprawnych ról ARIA, focus management (szczególnie przy użyciu Radix UI).
 
 5. Kontrakt wyjściowy AI (AI Output Contract – XML)
 Każda propozycja zmiany pliku MUSI być zwrócona w formacie XML poniżej. Każdy zmieniany plik to oddzielny węzeł <change>. Zawartość pliku musi być kompletna (pełny plik), umieszczona w CDATA.
@@ -103,19 +117,23 @@ Wymogi:
 
 6. TypeScript, Lint, Format i Build (wymogi jakości)
 • TypeScript:
-   • Preferuj: "strict": true, noImplicitAny, noUncheckedIndexedAccess, exactOptionalPropertyTypes.
-   • Dodaj typy dla środowiska (np. env.d.ts) i dla server-only modułów, jeśli użyte.
+• Preferuj: "strict": true, noImplicitAny, noUncheckedIndexedAccess, exactOptionalPropertyTypes.
+• Dodaj typy dla środowiska (np. env.d.ts) i dla server-only modułów, jeśli użyte.
 • ESLint:
-   • Zgodność z eslint-config-next i @typescript-eslint.
-   • Wyklucz .next, node_modules, dist, .turbo, coverage.
-   • Skrypty (zalecane):
-      • "typecheck": "tsc --noEmit"
-      • "format": "prettier . --write"
-      • "format:check": "prettier . --check"
-      • "lint:ci": "eslint . --max-warnings=0"
+• Zgodność z eslint-config-next i @typescript-eslint.
+• Wyklucz .next, node_modules, dist, .turbo, coverage.
+• Skrypty (zalecane):
+  • "typecheck": "tsc --noEmit"
+
+  • "format": "prettier . --write"
+
+  • "format:check": "prettier . --check"
+
+  • "lint:ci": "eslint . --max-warnings=0"
+
 • Build:
-   • Kod musi przejść npm run build bez błędów i krytycznych ostrzeżeń.
-   • Nie dopuszczaj do importu serwerowych bibliotek po stronie klienta.
+• Kod musi przejść npm run build bez błędów i krytycznych ostrzeżeń.
+• Nie dopuszczaj do importu serwerowych bibliotek po stronie klienta.
 
 7. SSR/CSR/Server Actions i bezpieczeństwo sekretów
 • Sekrety i biblioteki serwerowe (google-auth-library, google-spreadsheet) – tylko w środowisku serwerowym (API routes, Server Actions, route handlers).
@@ -125,29 +143,29 @@ Wymogi:
 
 8. Integracja z Google Sheets (bezpieczeństwo i niezawodność)
 • Uwierzytelnianie:
-   • Preferuj Service Account. Poświadczenia w zmiennych środowiska (np. JSON base64 dekodowany na serwerze).
-   • Upewnij się, że Service Account ma dostęp do odpowiednich arkuszy.
+• Preferuj Service Account. Poświadczenia w zmiennych środowiska (np. JSON base64 dekodowany na serwerze).
+• Upewnij się, że Service Account ma dostęp do odpowiednich arkuszy.
 • Izolacja:
-   • Moduł src/lib/sheets.ts nie może być importowany w komponentach klienckich.
+• Moduł src/lib/sheets.ts nie może być importowany w komponentach klienckich.
 • Obsługa błędów:
-   • Zawijaj wywołania w try/catch, rozróżniaj błędy 4xx/5xx, stosuj ostrożny retry/backoff.
-   • Zwracaj czytelne komunikaty dla UI; loguj szczegóły po stronie serwera.
+• Zawijaj wywołania w try/catch, rozróżniaj błędy 4xx/5xx, stosuj ostrożny retry/backoff.
+• Zwracaj czytelne komunikaty dla UI; loguj szczegóły po stronie serwera.
 • Walidacja:
-   • Wszelki input waliduj schematami zod. Odrzucaj nieprawidłowe dane, nie ufaj klientowi.
+• Wszelki input waliduj schematami zod. Odrzucaj nieprawidłowe dane, nie ufaj klientowi.
 
 9. UI/UX, A11y i Tailwind
 • A11y:
-   • Semantyczne HTML5 (header, main, nav, footer).
-   • ARIA tylko tam, gdzie konieczne; aria-live dla komunikatów (toast/status).
-   • Radix UI: dbaj o role, aria-* i focus management. Używaj dostępnych wzorców.
+• Semantyczne HTML5 (header, main, nav, footer).
+• ARIA tylko tam, gdzie konieczne; aria-live dla komunikatów (toast/status).
+• Radix UI: dbaj o role, aria-* i focus management. Używaj dostępnych wzorców.
 • Tailwind:
-   • Mobile-first, sensowne breakpoints, unikanie FOUC/CLS.
-   • Upewnij się, że tailwind.config content zawiera wszystkie źródła (app//*, src//, components/**/).
-   • Stosuj utility-first, ale utrzymuj SRP i czytelność komponentów.
+• Mobile-first, sensowne breakpoints, unikanie FOUC/CLS.
+• Upewnij się, że tailwind.config content zawiera wszystkie źródła (app//*, src//, components/**/).
+• Stosuj utility-first, ale utrzymuj SRP i czytelność komponentów.
 • Animacje:
-   • Używaj transform/opacity (GPU-friendly). Animacje subtelne, wspierające UX (micro-interactions).
+• Używaj transform/opacity (GPU-friendly). Animacje subtelne, wspierające UX (micro-interactions).
 • Formularze:
-   • react-hook-form + zodResolver na kliencie; walidacja powtórzona na serwerze.
+• react-hook-form + zodResolver na kliencie; walidacja powtórzona na serwerze.
 
 10. Wydajność i budżet performance
 • Code splitting i dynamic import dla ciężkich bibliotek (recharts, xlsx) oraz rzadko odwiedzanych widoków.
@@ -158,12 +176,12 @@ Wymogi:
 
 11. Testowanie i obserwowalność
 • Testy:
-   • Co najmniej smoke tests dla krytycznych komponentów i kluczowych flow (np. upload pliku, główne formularze).
-   • Walidacja schematów zod – testuj przykładowe payloady (dobry/zły).
+• Co najmniej smoke tests dla krytycznych komponentów i kluczowych flow (np. upload pliku, główne formularze).
+• Walidacja schematów zod – testuj przykładowe payloady (dobry/zły).
 • Obserwowalność:
-   • Logowanie po stronie serwera z kontekstem (request id, user id – jeśli istnieje).
-   • Spójny format błędów API (code, message, details?).
-   • Uważaj, by nie logować sekretów.
+• Logowanie po stronie serwera z kontekstem (request id, user id – jeśli istnieje).
+• Spójny format błędów API (code, message, details?).
+• Uważaj, by nie logować sekretów.
 
 12. Checklisty
 
@@ -198,26 +216,26 @@ Przed wdrożeniem
 14.2 Kontrakt helperów (musi istnieć plik /src/lib/date.ts)
 W module /src/lib/date.ts muszą istnieć co najmniej:
 • formatDate(input: Date | string | number, pattern?: string): string
-   • Domyślny pattern: "yyyy-MM-dd"
-   • Zasady: jeśli input jest stringiem – spróbuj parseISO, w pozostałych przypadkach new Date(input). W razie nieprawidłowej daty zwróć pusty string lub rzuć kontrolowany błąd (w zależności od przypadku użycia).
+• Domyślny pattern: "yyyy-MM-dd"
+• Zasady: jeśli input jest stringiem – spróbuj parseISO, w pozostałych przypadkach new Date(input). W razie nieprawidłowej daty zwróć pusty string lub rzuć kontrolowany błąd (w zależności od przypadku użycia).
 • formatDateTime(input: Date | string | number, pattern?: string): string
-   • Domyślny pattern: "yyyy-MM-dd HH:mm"
+• Domyślny pattern: "yyyy-MM-dd HH:mm"
 • parseMaybeDate(input: Date | string | number): Date | null
-   • Zwraca Date lub null, bez rzucania wyjątków.
+• Zwraca Date lub null, bez rzucania wyjątków.
 • isValidDate(input: unknown): boolean
-   • true, jeśli to poprawny obiekt Date (i nie NaN).
+• true, jeśli to poprawny obiekt Date (i nie NaN).
 
 Wszyscy konsumenci (UI, API, export do Excela) importują wyłącznie z "@/lib/date".
 
 14.3 Zasady użycia w Excel Export (xlsx)
 • Formatowanie przed zapisem:
-   • Daty do Excela zapisuj jako sformatowane stringi przez formatDate lub formatDateTime. Zalecane formaty UI: "dd.MM.yyyy" dla dat, "dd.MM.yyyy HH:mm" dla dat z czasem.
+• Daty do Excela zapisuj jako sformatowane stringi przez formatDate lub formatDateTime. Zalecane formaty UI: "dd.MM.yyyy" dla dat, "dd.MM.yyyy HH:mm" dla dat z czasem.
 • Walidacja wejścia:
-   • Jeśli źródło dat jest stringowe (np. z Google Sheets/API), zawsze użyj parseMaybeDate i sprawdź isValidDate przed formatowaniem. W przypadku nieprawidłowej daty – wpisz pusty string lub oznacz w raporcie „Nieprawidłowa data”.
+• Jeśli źródło dat jest stringowe (np. z Google Sheets/API), zawsze użyj parseMaybeDate i sprawdź isValidDate przed formatowaniem. W przypadku nieprawidłowej daty – wpisz pusty string lub oznacz w raporcie „Nieprawidłowa data”.
 • Importy:
-   • Zabronione: lokalne definiowanie funkcji o nazwie formatDate w plikach eksportu. Zawsze importuj z "@/lib/date".
+• Zabronione: lokalne definiowanie funkcji o nazwie formatDate w plikach eksportu. Zawsze importuj z "@/lib/date".
 • Spójność kolumn:
-   • Kolumny dat w raporcie muszą korzystać z jednego spójnego formatu (np. "dd.MM.yyyy").
+• Kolumny dat w raporcie muszą korzystać z jednego spójnego formatu (np. "dd.MM.yyyy").
 
 14.4 Reguły dla AI (dot. dat i Excela)
 • Jeśli widzisz wywołanie formatDate, a nie ma importu z "@/lib/date", dodaj poprawny import i użyj helpera.
@@ -234,11 +252,11 @@ Wszyscy konsumenci (UI, API, export do Excela) importują wyłącznie z "@/lib/d
 
 Co jeszcze warto dodać do repo (opcjonalne, ale polecane)
 • ESLint rule/grep w CI:
-   • Blokuj użycie „formatDate(” bez importu z "@/lib/date".
-   • Blokuj redefinicję „function formatDate(” poza /src/lib/date.ts.
+• Blokuj użycie „formatDate(” bez importu z "@/lib/date".
+• Blokuj redefinicję „function formatDate(” poza /src/lib/date.ts.
 • Testy jednostkowe dla /src/lib/date.ts:
-   • Poprawne formatowanie dat ISO/string/number.
-   • Zachowanie na niepoprawnych datach (null, "abc", NaN).
+• Poprawne formatowanie dat ISO/string/number.
+• Zachowanie na niepoprawnych datach (null, "abc", NaN).
 • Dokumentacja przykładów użycia w README (krótkie snippet’y, jak formatować daty i jak importować helpery).
 
 5.1 Definicje i ogólne zasady
@@ -249,48 +267,43 @@ Co jeszcze warto dodać do repo (opcjonalne, ale polecane)
 
 15.2 Walidacja (zod) – kontrakt
 • Pola opcjonalne:
-   • Używaj z.string().optional().transform(v => (v?.trim() ? v.trim() : "")) gdy chcesz przechowywać "".
-   • Lub z.string().optional().transform(v => (v?.trim() ? v.trim() : null)) gdy chcesz przechowywać null.
+• Używaj z.string().optional().transform(v => (v?.trim() ? v.trim() : "")) gdy chcesz przechowywać "".
+• Lub z.string().optional().transform(v => (v?.trim() ? v.trim() : null)) gdy chcesz przechowywać null.
 • Pola wymagane:
-   • Używaj z.string().min(1, "Pole wymagane"), ale wcześniej zastosuj transform/trim.
+• Używaj z.string().min(1, "Pole wymagane"), ale wcześniej zastosuj transform/trim.
 • Daty opcjonalne:
-   • Używaj z.union([z.string(), z.date()]).optional().transform(v => {
-  if (!v) return null;
-
-  // string → spróbuj parseISO/new Date; jeśli niepoprawne, zwróć null
-
+• Używaj z.union([z.string(), z.date()]).optional().transform(v => {
+if (!v) return null;
+// string → spróbuj parseISO/new Date; jeśli niepoprawne, zwróć null
 })
-
 • Nigdy nie rzucaj błędu tylko dlatego, że pole jest puste, jeśli w schemacie jest oznaczone jako optional.
 
 15.3 UI (formularze i widoki)
 • Formularze:
-   • Dla pól opcjonalnych nie pokazuj błędu walidacji przy pustej wartości.
-   • Puste wartości wyświetlaj jako placeholder lub pusty input.
+• Dla pól opcjonalnych nie pokazuj błędu walidacji przy pustej wartości.
+• Puste wartości wyświetlaj jako placeholder lub pusty input.
 • Tabela/listy:
-   • Puste wartości renderuj jako "—", "Brak", lub pustą komórkę, zgodnie z design systemem.
-   • Nie używaj czerwonych toasts/alertów tylko z powodu braku wartości.
+• Puste wartości renderuj jako "—", "Brak", lub pustą komórkę, zgodnie z design systemem.
 • A11y:
-   • Dla elementów opisowych (np. aria-label) nie wstawiaj "undefined" lub "null". Używaj sensownych fallbacków, np. "Brak danych".
+• Dla elementów opisowych (np. aria-label) nie wstawiaj "undefined" lub "null". Używaj sensownych fallbacków, np. "Brak danych".
 
 15.4 Excel Export (xlsx) – puste pola
 • Tekst:
-   • Jeśli po normalizacji wartość jest pusta → zapisz "" (pusta komórka) lub "—" (jeśli wymagany jest wizualny placeholder).
+• Jeśli po normalizacji wartość jest pusta → zapisz "" (pusta komórka) lub "—" (jeśli wymagany jest wizualny placeholder).
 • Daty:
-   • Jeśli parseMaybeDate zwróci null → zapisz pusty string "" (nie formatuj).
-   • Nie rzucaj błędu; eksport ma być stabilny przy mieszanych/niekompletnych danych.
+• Jeśli parseMaybeDate zwróci null → zapisz pusty string "" (nie formatuj).
 • Liczby:
-   • Jeśli pole jest opcjonalne i brak wartości → zapisz "" (nie 0, chyba że domena wymaga 0 jako domyślne).
+• Jeśli pole jest opcjonalne i brak wartości → zapisz "" (nie 0, chyba że domena wymaga 0 jako domyślne).
 • Kolumny wymagane:
-   • Jeśli dana kolumna jest wymagana domenowo, a wartość jest pusta → nie przerywaj eksportu. Zapisz "" i dołącz do raportu ostrzeżenia (np. lista w logach/console lub metadane raportu), ale nie traktuj tego jako błąd krytyczny.
+• Jeśli dana kolumna jest wymagana domenowo, a wartość jest pusta → nie przerywaj eksportu. Zapisz "" i dołącz do raportu ostrzeżenia, ale nie traktuj tego jako błąd krytyczny.
 
 15.5 Backend/API
 • W endpointach i Server Actions:
-   • Normalizuj puste wejścia: puste stringi → "", null/undefined → null (zgodnie z modelem).
-   • Waliduj schematem zod: opcjonalne pola nie generują błędów.
-   • Nie zwracaj 4xx tylko dlatego, że pole opcjonalne jest puste.
+• Normalizuj puste wejścia: puste stringi → "", null/undefined → null (zgodnie z modelem).
+• Waliduj schematem zod: opcjonalne pola nie generują błędów.
+• Nie zwracaj 4xx tylko dlatego, że pole opcjonalne jest puste.
 • Logowanie:
-   • Loguj tylko nieoczekiwane błędy (np. typ niezgodny z kontraktem, błąd parsowania w polu wymaganym). Puste pola nie są błędem.
+• Loguj tylko nieoczekiwane błędy (np. typ niezgodny z kontraktem, błąd parsowania w polu wymaganym). Puste pola nie są błędem.
 
 15.6 Reguły dla AI (Empty Handling)
 • Jeśli widzisz błąd generowany przez puste pole, a pole nie jest wymagane – usuń błąd i zastosuj normalizację + cichy fallback ("" lub null).
@@ -305,12 +318,195 @@ Co jeszcze warto dodać do repo (opcjonalne, ale polecane)
 • [ ] parseMaybeDate zwraca null dla pustych/nieparsowalnych wartości; formatDate zwraca "" dla null.
 • [ ] Brak przerywania flow (import/eksport/submit) z powodu pustych optional.
 
+16. Konwencje Git, PR, Commit i Release
+• Branch naming: feature/<ticket-id>-krótki-opis, fix/<ticket-id>-..., chore/<opis>, docs/<opis>, refactor/<opis>, perf/<opis>, build/<opis>, ci/<opis>.
+• Commit style: Conventional Commits (feat, fix, chore, refactor, docs, test, perf, build, ci, revert). Dodawaj kontekst (ticket/link) w body.
+• PR:
+• Wymagane min. 1–2 review (CODEOWNERS jeśli dotyczy), zielony CI jako warunek merge.
+• Squash merge domyślny; unikaj merge commitów.
+• Zakaz WIP na main. Draft PR do wczesnej dyskusji.
+• Release:
+• SemVer. Generuj changelog (changesets/conventional-changelog).
+• Taguj releasy (vX.Y.Z). Release PR musi przejść pełny CI.
+
+17. CODEOWNERS i odpowiedzialności przeglądu
+• Utrzymuj plik CODEOWNERS:
+• /src/lib/** – właściciele back-end/server-only
+• /src/components/** – właściciele UI
+• /src/lib/sheets.ts – integracje zewnętrzne
+• /src/lib/date.ts – kontrakt dat
+• /app/** lub /pages/** – routing
+• PR wymagające zmian w tych obszarach muszą mieć review właścicieli.
+
+18. Pre-commit i CI (husky, lint-staged, GitHub Actions)
+• pre-commit: prettier + eslint + szybki typecheck na staged (lint-staged).
+• pre-push: test + lint + typecheck.
+• CI (GitHub Actions):
+• Joby: install + cache, lint, typecheck, build, test (unit), e2e (opcjonalnie), a11y (opcjonalnie), Lighthouse CI (opcjonalnie).
+• Blokuj merge przy czerwonym CI. Maks. ostrzeżenia: 0 w lint.
+
+19. Polityka .env, bezpieczeństwo i zarządzanie sekretami
+• Nigdy nie umieszczaj sekretów w NEXT_PUBLIC_*.
+• Używaj .env.local (lokalnie) i .env.example (szablon bez sekretów).
+• Rotacja sekretów i minimalne uprawnienia (least privilege) dla Service Accounts.
+• Redaction sekretów/PII w logach. Nie loguj access tokens, refresh tokens, kluczy.
+
+20. Granice architektoniczne (client/server) i reguły ESLint
+• Zakaz importów server-only w kodzie klienta („use client”).
+• Wymuś to przez ESLint (import/no-restricted-paths, custom rules).
+• Oddzielne katalogi na „server-only” i „client-only” oraz jasne entrypoints.
+
+21. API kontrakty, wersjonowanie i deprecje
+• zod jako źródło prawdy dla request/response. Eksportuj TS typy przez z.infer.
+• Spójny format błędów: { code, message, details? } + status HTTP.
+• Wersjonuj API (v1, v2). Oznaczaj @deprecated w TS i dokumentacji. Zapewnij okres przejściowy.
+
+22. Error handling i zasady UX komunikatów
+• Błędy walidacji – inline, aria-live="polite". Błędy systemowe – toast/alert zrozumiały dla użytkownika.
+• Nie wyświetlaj alertów dla pustych opcjonalnych pól.
+• Global error boundary, fallback UI i raportowanie na serwerze (bez PII).
+
+23. i18n/L10n (internacjonalizacja)
+• Brak hardcoded tekstów w komponentach – używaj warstwy i18n.
+• Fallbacki językowe, atrybut lang na html, daty/liczby formatowane wg locale jeśli wymagane przez domenę.
+
+24. Budżety performance i narzędzia CI
+• Budżety (orientacyjne, dostosuj do projektu):
+• LCP < 2.5s, CLS < 0.1, TBT < 200ms, rozmiar JS per route < 200kB gz.
+• Narzędzia:
+• Lighthouse CI na PR (raport jako artefakt).
+• next-bundle-analyzer – porównanie rozmiarów bundla między commitami.
+• Anotacje w PR przy przekroczeniach (soft fail).
+
+25. Accessibility – checklista i testy a11y
+• Checklista:
+• Focus visible, skip links, poprawna kolejność fokusa.
+• Semantyczne role, label-associations, alt dla obrazów.
+• Kontrast WCAG AA, aria-live dla statusów.
+• Klawiatura: wszystkie interakcje dostępne bez myszy.
+• Testy a11y:
+• Automatyczne (axe) dla krytycznych widoków w CI (opcjonalnie).
+• Manualne smoke w PR dla nowych komponentów.
+
+26. Strategia testów (unit/component/integration/e2e)
+• Unit: helpery (w tym /src/lib/date.ts), walidacje zod.
+• Component: React Testing Library – zachowania i a11y.
+• Integration: Server Actions/route handlers z mockami zewnętrznych usług.
+• E2E: Playwright/Cypress dla krytycznych flow (logowanie, formularze, eksport).
+• Snapshoty tylko dla stabilnych, mało zmiennych UI.
+
+27. Logowanie, obserwowalność i PII/sekrety
+• Poziomy logów: debug/info/warn/error. Korelacja request id.
+• Redaction sekretów/PII. Sampling dla dużego ruchu.
+• Raportowanie błędów po stronie serwera z kontekstem (bez sekretów).
+
+28. Onboarding i DX
+• Wymagania: wersja Node, menedżer pakietów (npm/yarn/pnpm).
+• Kroki uruchomienia: instalacja, wypełnienie .env.local zgodnie z .env.example, komendy dev/lint/typecheck/build/test.
+• Alias @ i struktura katalogów – krótkie przypomnienie.
+• Jak uruchomić testy i e2e, jak odpalić bundle analyzer.
+
+29. Szablony PR i commit (przykłady)
+• PR:
+• Tytuł: [feat|fix|chore|refactor|perf|docs] Krótki opis (ticket-id)
+• Opis: Cel, Zakres, Zmiany, Jak testować, Checklisty, Ryzyka/Rollback.
+• Commit:
+• feat(ui): dodaj walidację formularza pracownika (ABC-123)
+• fix(api): popraw błędny status w handlerze eksportu (ABC-456)
+• chore(deps): aktualizacja date-fns do 3.x (bez zmian w API)
+
+30. Architektura i budowa aplikacji webowej (guidelines senior) 30.1 Filary
+• Czytelność > spryt; prostota > złożoność; jawne kontrakty > ukryte zależności; bezpieczeństwo i dostępność „by default”.
+• Separacja odpowiedzialności (SoC), odwrócona zależność (DI), kompozycja ponad dziedziczenie, modularność.
+
+30.2 Warstwy i granice
+• Prezentacja (UI): komponenty czyste, bez efektów ubocznych, „client-only” wyłącznie jeśli potrzebne (interakcje, stan).
+• Aplikacja (orchestration): routing, layouty, providers, zarządzanie stanem UI.
+• Domenowa logika: use-cases w /src/lib/usecases/** (czyste funkcje/async), bez zależności od UI.
+• Infrastruktura: integracje (np. /src/lib/sheets.ts), adaptery, dostęp do danych (server-only).
+• Kontrakty: typy, zod schematy, DTO, mapery, adaptery – jako osobne moduły.
+• Zasada: w górę importujemy tylko kontrakty/interfejsy; implementacje wstrzykujemy (DI przez parametry lub fabryki).
+
+30.3 Przepływy danych (Next.js)
+• SSR/SSG/RSC: preferuj server components dla fetch/ciężkich operacji; klient tylko dla interakcji.
+• Server Actions: waliduj wejście (zod), zwracaj ustrukturyzowany wynik; loguj błędy.
+• Route Handlers/API: czyste endpointy, bez logiki UI; 1 miejsce walidacji i mapowania.
+• Client: minimalny global state; preferuj lokalny stan i serwer jako źródło prawdy.
+
+30.4 Kontrakty i walidacja
+• zod jako jedyne źródło prawdy dla request/response; z.infer do typów TS.
+• DTO/mappery: oddzielaj warstwę domeny od transportu (np. Google Sheets -> Domain).
+• Format błędów: { code, message, details? }; nie mieszaj formatów.
+
+30.5 Komponenty UI
+• SRP: 1 komponent = 1 odpowiedzialność; dziel na mniejsze bloki.
+• Komponenty prezentacyjne vs kontenerowe; kontener inicjuje dane/akcje, prezentacyjny renderuje.
+• A11y: role, aria-*, focus management, keyboard-first; testy RTL/axe dla krytycznych.
+• Style: Tailwind utility-first; ekstrakcja powtarzalnych wzorców do klas/komponentów UI.
+
+30.6 Stan i efekty
+• Unikaj globalnego stanu, jeśli nie jest konieczny; preferuj server state (RSC) + lokalny stan.
+• useEffect tylko dla efektów niezbędnych; pamiętaj o deps; unikaj „fetch w efekcie” jeśli możesz użyć server components.
+• Memoizacja: useMemo/useCallback tam, gdzie to mierzalnie poprawia render.
+
+30.7 Integracje i I/O
+• Wszystkie wywołania zewnętrzne izoluj w modułach infrastruktury (server-only).
+• Retry/backoff, timeouts, circuit breaker (jeśli potrzebne).
+• Logowanie zdarzeń z kontekstem (bez PII/sekretów).
+
+30.8 Bezpieczeństwo
+• Least privilege dla kluczy/SA; brak sekretów w kliencie; CSP, nagłówki bezpieczeństwa; walidacja wejść i sanitacja.
+• Ochrona przed SSRF/XSS/CSRF; escapowanie danych; unikanie eval/dynamicznych skryptów.
+
+30.9 Wydajność
+• Krytyczne ścieżki: minimalizuj JS na kliencie; RSC/SSR dla danych; dynamic import dla ciężkich pakietów.
+• Obrazy: optymalizacja, lazy, rozmiary; preconnect do krytycznych originów.
+• Analityka bundla; budżety w CI; regresje performance blokują merge lub wymagają uzasadnienia.
+
+30.10 Decyzje architektoniczne (ADR)
+• Rejestruj kluczowe decyzje (docs/adr/NNN-nazwa.md): kontekst, opcje, decyzja, konsekwencje.
+• Każda zmiana architektury = aktualizacja ADR + migracja.
+
+30.11 Antywzorce – zakazane
+• „God objects”, „utils.ts” jako śmietnik; importy krzyżowe łamiące granice; side-effects w komponentach prezentacyjnych.
+• Ukryte singletony i globalne zmienne; niejawne mutacje; łańcuchy ../../../ zamiast aliasów.
+
+30.12 Przykładowa struktura (do adaptacji)
+• src/
+• app/ lub pages/ – routing, layouty (server-first)
+• components/
+• ui/ – prymitywy UI
+
+• [feature]/ – komponenty feature’owe
+
+• lib/
+• usecases/ – logika domenowa
+
+• adapters/ – mapery/DTO
+
+• infra/ – integracje (server-only, np. sheets.ts)
+
+• date.ts – helpery dat (kontrakt z sekcji 14)
+
+• actions.ts – Server Actions (walidacja zod, obsługa błędów)
+
+• styles/, hooks/, types/
+• tests/ – unit/component/integration
+• e2e/ – testy end-to-end
+• docs/adr/ – decyzje architektoniczne
+
+30.13 Checklist architektoniczny
+• [ ] Czy warstwy są rozdzielone (UI vs domena vs infrastruktura)?
+• [ ] Czy kontrakty (zod/typy) są jedynym źródłem prawdy?
+• [ ] Czy importy respektują granice (client/server, domena/infra)?
+• [ ] Czy błędy są jednolicie formatowane i obsługiwane?
+• [ ] Czy budżety performance i a11y są spełnione?
+• [ ] Czy decyzje są udokumentowane (ADR)?
+
 Uwagi końcowe
 • Jeśli zadanie wymaga zmiany struktur danych lub API, opisz migrację i wpływ na istniejące ekrany/komponenty.
 • Preferuj przejrzystość nad „sprytem”. Kod ma być łatwy w utrzymaniu przez zespół.
-
 ]]></content>
   </change>
 
 </changes>
-
