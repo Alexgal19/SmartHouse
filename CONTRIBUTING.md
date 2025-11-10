@@ -1,8 +1,21 @@
+<<<<<<< HEAD
 # Contributing to SmartHouse
 
 This document provides guidelines for both human contributors and AI agents working on SmartHouse. For technical context and architecture details, also see `.github/copilot-instructions.md`.
 
 > **Note:** This document defines working standards for stability, security, accessibility, and code quality with minimal scope changes.
+=======
+<changes>
+
+<description>Wdrożenie opcji 2: rozszerzony CONTRIBUTING.md􀰓 + egzekwowalność. Dodano sekcje Safe Collections (.map/.filter/.reduce), RHF defaultValues, redirecty w dev, checklisty PR, oraz wskazówki ESLint/CI i grep do wychwytywania niebezpiecznych wzorców. Dokument pozostaje neutralny względem narzędzi, ale zawiera precyzyjne reguły i kontrakty, które AI i zespół muszą spełnić.</description>
+  <change>
+
+<file>/CONTRIBUTING.md</file>
+
+<content><![CDATA[
+
+Ten dokument definiuje standardy pracy dla ludzi i AI (Gemini w Firebase Studio) w tym repozytorium. Celem jest maksymalna stabilność, bezpieczeństwo, dostępność i jakość UI/UX przy minimalnym zakresie zmian.
+>>>>>>> 8f2bca7 (a teraz nadaj odpowiedz czemu z Google sheet wyciagnelo tylko 65 wierszy)
 
 Spis treści
 1. Zasady ogólne (stabilność i minimalny zakres zmian)
@@ -11,20 +24,20 @@ Spis treści
 4. Zasady dla AI (AI Operating Rules)
 5. Kontrakt wyjściowy AI (AI Output Contract – XML)
 6. TypeScript, Lint, Format i Build (wymogi jakości)
-7. SSR/CSR/Server Actions i bezpieczeństwo sekretów
+7. SSR/CSR/Server Actions i bezpieczeństwo sekretów 7.A Redirecty w Next.js (diagnostyka i guardy w dev)
 8. Integracja z Google Sheets (bezpieczeństwo i niezawodność)
 9. UI/UX, A11y i Tailwind
 10. Wydajność i budżet performance
-11. Testowanie i obserwowalność
-12. Checklisty przed PR i przed wdrożeniem
+11. Testowanie i obserwowalność 11.A React Hook Form – defaultValues i puste kolekcje
+12. Checklisty przed PR i przed wdrożeniem 12.A Checklista Safe Collections (.map/.filter/.reduce)
 13. Minimalne skrypty (zalecane)
 14. Standard pracy z datami (Date Handling) i Excel Export
-15. Zasady obsługi pustych pól (Empty/Nullable Handling)
+15. Zasady obsługi pustych pól (Empty/Nullable Handling) 15.A Safe Collections – zasady dla .map/.filter/.reduce
 16. Konwencje Git, PR, Commit i Release
 17. CODEOWNERS i odpowiedzialności przeglądu
 18. Pre-commit i CI (husky, lint-staged, GitHub Actions)
 19. Polityka .env, bezpieczeństwo i zarządzanie sekretami
-20. Granice architektoniczne (client/server) i reguły ESLint
+20. Granice architektoniczne (client/server) i reguły ESLint 20.A ESLint/CI – wykrywanie niebezpiecznych .map i braków defaultValues
 21. API kontrakty, wersjonowanie i deprecje
 22. Error handling i zasady UX komunikatów
 23. i18n/L10n (internacjonalizacja)
@@ -58,7 +71,7 @@ Spis treści
 
 3. Standardy importów (absolutne aliasy vs ścieżki względne)
 Priorytety
-1. Absolutne aliasy (preferowane): np. import { Foo } from '@/utils/Foo'
+1. Absolutne aliasy (preferowane): np. import { Foo } z '@/utils/Foo'
 2. Względne (lokalne): tylko dla importów z tego samego folderu lub bliskiego sąsiedztwa (max 1–2 poziomy ../)
 3. Nigdy: długie łańcuchy ../../../ – w takim wypadku użyj aliasów.
 
@@ -141,6 +154,16 @@ Wymogi:
 • Waliduj dane wejściowe po stronie serwera (zod) i zwracaj kontrolowane błędy (status, message).
 • Rozważ retry/backoff dla 429/5xx. Loguj błędy z kontekstem (bez wrażliwych danych).
 
+7.A Redirecty w Next.js (diagnostyka i guardy w dev)
+• NEXT_REDIRECT w dev to kontrolowany mechanizm Next – nie zawsze błąd.
+• Diagnostyka: DevTools/Network (307/308, Location), middleware.ts, app//page.tsx/layout.tsx (redirect), app/api//route.ts (NextResponse.redirect), Server Actions.
+• Guardy w dev:
+• matcher: ['/((?!_next|static|favicon.ico|robots.txt|sitemap.xml).*)'] w middleware.
+• Rozważ wyłączenie redirectów w dev (NODE_ENV === 'development') lub zawężenie warunków, aby uniknąć pętli.
+• Zasady:
+• Redirecty serwerowe tylko gdy konieczne (autoryzacja, canonical).
+• W komponentach klienckich używaj router.push/replace zamiast redirect().
+
 8. Integracja z Google Sheets (bezpieczeństwo i niezawodność)
 • Uwierzytelnianie:
 • Preferuj Service Account. Poświadczenia w zmiennych środowiska (np. JSON base64 dekodowany na serwerze).
@@ -183,6 +206,13 @@ Wymogi:
 • Spójny format błędów API (code, message, details?).
 • Uważaj, by nie logować sekretów.
 
+11.A React Hook Form – defaultValues i puste kolekcje
+• Zasada: Każde pole tablicowe w RHF musi mieć defaultValues ustawione na [].
+• Przykład: useForm({ defaultValues: { coordinators: [], addresses: [], localities: [] } })
+• useFieldArray: używaj (fieldArray?.fields ?? []) w komponentach.
+• watch: const localities = watch('localities') || []; Nigdy nie wywołuj watched.map bez guardu.
+• Cel: brak „Cannot read properties of undefined (reading 'map')” przy pierwszym renderze i w dev.
+
 12. Checklisty
 
 Przed wysłaniem PR
@@ -193,6 +223,8 @@ Przed wysłaniem PR
 • [ ] Walidacja danych (zod) dla endpointów/API.
 • [ ] UI/A11y sprawdzone (klawiatura, aria, kontrasty).
 • [ ] Dynamic import dla ciężkich modułów, jeśli dotyczy.
+• [ ] Safe Collections: wszystkie .map/.filter/.reduce działają na gwarantowanych tablicach (12.A/15.A).
+• [ ] RHF: defaultValues ustawione, watch/useFieldArray zabezpieczone (11.A).
 
 Przed wdrożeniem
 • [ ] Zmienne środowiskowe ustawione (bez sekretów w NEXT_PUBLIC_*).
@@ -200,6 +232,13 @@ Przed wdrożeniem
 • [ ] Monitoring/logi działają, błędy raportują się poprawnie.
 • [ ] Brak ostrzeżeń krytycznych w buildzie.
 • [ ] Wydajność i rozmiar bundla akceptowalne.
+
+12.A Checklista Safe Collections (.map/.filter/.reduce)
+• [ ] Każda kolekcja używana z .map/.filter/.reduce jest tablicą (Array.isArray(...) === true) lub znormalizowana: arr = arr ?? [].
+• [ ] Props „fields/items/list” mają domyślną wartość [] w definicji komponentu.
+• [ ] Dane z RHF (watch, fieldArray.fields) zabezpieczone (|| [] / ?? []).
+• [ ] Adaptery/mappery danych zwracają [] zamiast undefined/null.
+• [ ] Test smoke: komponent renderuje się bez błędów dla pustych/nieobecnych danych wejściowych.
 
 13. Minimalne skrypty (zalecane w package.json)
 • "typecheck": "tsc --noEmit"
@@ -295,7 +334,7 @@ if (!v) return null;
 • Liczby:
 • Jeśli pole jest opcjonalne i brak wartości → zapisz "" (nie 0, chyba że domena wymaga 0 jako domyślne).
 • Kolumny wymagane:
-• Jeśli dana kolumna jest wymagana domenowo, a wartość jest pusta → nie przerywaj eksportu. Zapisz "" i dołącz do raportu ostrzeżenia, ale nie traktuj tego jako błąd krytyczny.
+• Jeśli dana kolumna jest wymagana domenowo, a wartość jest pusta → nie przerywaj eksportu. Zapisz "" i dołącz do raportu ostrzeżenia (np. lista w logach/console lub metadane raportu), ale nie traktuj tego jako błąd krytyczny.
 
 15.5 Backend/API
 • W endpointach i Server Actions:
@@ -317,6 +356,17 @@ if (!v) return null;
 • [ ] Excel Export zapisuje "" dla pustych optional (teksty/liczby/daty).
 • [ ] parseMaybeDate zwraca null dla pustych/nieparsowalnych wartości; formatDate zwraca "" dla null.
 • [ ] Brak przerywania flow (import/eksport/submit) z powodu pustych optional.
+
+15.A Safe Collections – zasady dla .map/.filter/.reduce
+• Zasada 1 (normalizacja): Zanim użyjesz .map/.filter/.reduce, upewnij się, że operand jest tablicą:
+• const list = Array.isArray(input) ? input : [];
+• Props z listami mają domyślną wartość [] (destrukturyzacja z default).
+• Zasada 2 (adaptery): Adaptery danych (API/Sheets) zwracają [] zamiast undefined/null dla kolekcji.
+• Zasada 3 (RHF): watch(...) i fieldArray.fields zawsze z guardem (|| [] / ?? []) – patrz 11.A.
+• Zasada 4 (antywzorce – zakazane):
+• Bezpośrednie input.map(...) jeśli input może być undefined/null.
+• Łańcuchy ?.map bez fallbacku do [] tam, gdzie input może być nieobecny.
+• Zasada 5 (UX): Puste kolekcje renderują stan pusty; nigdy nie powodują wyjątku.
 
 16. Konwencje Git, PR, Commit i Release
 • Branch naming: feature/<ticket-id>-krótki-opis, fix/<ticket-id>-..., chore/<opis>, docs/<opis>, refactor/<opis>, perf/<opis>, build/<opis>, ci/<opis>.
@@ -355,6 +405,19 @@ if (!v) return null;
 • Zakaz importów server-only w kodzie klienta („use client”).
 • Wymuś to przez ESLint (import/no-restricted-paths, custom rules).
 • Oddzielne katalogi na „server-only” i „client-only” oraz jasne entrypoints.
+
+20.A ESLint/CI – wykrywanie niebezpiecznych .map i braków defaultValues
+• ESLint:
+• Włącz no-unsafe-optional-chaining i rozważ @typescript-eslint/strict-boolean-expressions (ostrożnie).
+• import/no-restricted-paths dla granic client/server.
+• Grep/CI (prosty, skuteczny):
+• Wykrywaj wzorce:
+ • „watch(”.map(” oraz „fieldArray.fields.map(” – wymagany guard „|| []”.
+
+ • „?.map(” bez pobliskiego „?? []” lub wcześniejszej normalizacji (wymaga przeglądu PR).
+
+• RHF:
+• Reviewer sprawdza defaultValues dla wszystkich pól tablicowych.
 
 21. API kontrakty, wersjonowanie i deprecje
 • zod jako źródło prawdy dla request/response. Eksportuj TS typy przez z.infer.
@@ -433,75 +496,10 @@ if (!v) return null;
 • Route Handlers/API: czyste endpointy, bez logiki UI; 1 miejsce walidacji i mapowania.
 • Client: minimalny global state; preferuj lokalny stan i serwer jako źródło prawdy.
 
-30.4 Kontrakty i walidacja
-• zod jako jedyne źródło prawdy dla request/response; z.infer do typów TS.
-• DTO/mappery: oddzielaj warstwę domeny od transportu (np. Google Sheets -> Domain).
-• Format błędów: { code, message, details? }; nie mieszaj formatów.
-
-30.5 Komponenty UI
-• SRP: 1 komponent = 1 odpowiedzialność; dziel na mniejsze bloki.
-• Komponenty prezentacyjne vs kontenerowe; kontener inicjuje dane/akcje, prezentacyjny renderuje.
-• A11y: role, aria-*, focus management, keyboard-first; testy RTL/axe dla krytycznych.
-• Style: Tailwind utility-first; ekstrakcja powtarzalnych wzorców do klas/komponentów UI.
-
-30.6 Stan i efekty
-• Unikaj globalnego stanu, jeśli nie jest konieczny; preferuj server state (RSC) + lokalny stan.
-• useEffect tylko dla efektów niezbędnych; pamiętaj o deps; unikaj „fetch w efekcie” jeśli możesz użyć server components.
-• Memoizacja: useMemo/useCallback tam, gdzie to mierzalnie poprawia render.
-
-30.7 Integracje i I/O
-• Wszystkie wywołania zewnętrzne izoluj w modułach infrastruktury (server-only).
-• Retry/backoff, timeouts, circuit breaker (jeśli potrzebne).
-• Logowanie zdarzeń z kontekstem (bez PII/sekretów).
-
-30.8 Bezpieczeństwo
-• Least privilege dla kluczy/SA; brak sekretów w kliencie; CSP, nagłówki bezpieczeństwa; walidacja wejść i sanitacja.
-• Ochrona przed SSRF/XSS/CSRF; escapowanie danych; unikanie eval/dynamicznych skryptów.
-
-30.9 Wydajność
-• Krytyczne ścieżki: minimalizuj JS na kliencie; RSC/SSR dla danych; dynamic import dla ciężkich pakietów.
-• Obrazy: optymalizacja, lazy, rozmiary; preconnect do krytycznych originów.
-• Analityka bundla; budżety w CI; regresje performance blokują merge lub wymagają uzasadnienia.
-
-30.10 Decyzje architektoniczne (ADR)
-• Rejestruj kluczowe decyzje (docs/adr/NNN-nazwa.md): kontekst, opcje, decyzja, konsekwencje.
-• Każda zmiana architektury = aktualizacja ADR + migracja.
-
-30.11 Antywzorce – zakazane
-• „God objects”, „utils.ts” jako śmietnik; importy krzyżowe łamiące granice; side-effects w komponentach prezentacyjnych.
-• Ukryte singletony i globalne zmienne; niejawne mutacje; łańcuchy ../../../ zamiast aliasów.
-
-30.12 Przykładowa struktura (do adaptacji)
-• src/
-• app/ lub pages/ – routing, layouty (server-first)
-• components/
-• ui/ – prymitywy UI
-
-• [feature]/ – komponenty feature’owe
-
-• lib/
-• usecases/ – logika domenowa
-
-• adapters/ – mapery/DTO
-
-• infra/ – integracje (server-only, np. sheets.ts)
-
-• date.ts – helpery dat (kontrakt z sekcji 14)
-
-• actions.ts – Server Actions (walidacja zod, obsługa błędów)
-
-• styles/, hooks/, types/
-• tests/ – unit/component/integration
-• e2e/ – testy end-to-end
-• docs/adr/ – decyzje architektoniczne
-
-30.13 Checklist architektoniczny
-• [ ] Czy warstwy są rozdzielone (UI vs domena vs infrastruktura)?
-• [ ] Czy kontrakty (zod/typy) są jedynym źródłem prawdy?
-• [ ] Czy importy respektują granice (client/server, domena/infra)?
-• [ ] Czy błędy są jednolicie formatowane i obsługiwane?
-• [ ] Czy budżety performance i a11y są spełnione?
-• [ ] Czy decyzje są udokumentowane (ADR)?
+30.4 Komponenty UI i stan pusty
+• SRP, default props dla kolekcji: [].
+• Nigdy nie używaj .map bez gwarancji tablicy; stosuj normalizację danych wejściowych.
+• A11y i stany puste: komunikaty „Brak danych” zamiast błędów.
 
 Uwagi końcowe
 • Jeśli zadanie wymaga zmiany struktur danych lub API, opisz migrację i wpływ na istniejące ekrany/komponenty.

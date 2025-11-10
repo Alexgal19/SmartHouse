@@ -9,7 +9,6 @@ import { format, isValid, parse, parseISO } from 'date-fns';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
 const SHEET_NAME_EMPLOYEES = 'Employees';
-const SHEET_NAME_NON_EMPLOYEES = 'NonEmployees';
 const SHEET_NAME_NOTIFICATIONS = 'Powiadomienia';
 const SHEET_NAME_ADDRESSES = 'Addresses';
 const SHEET_NAME_ROOMS = 'Rooms';
@@ -189,28 +188,6 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     return newEmployee;
 };
 
-const deserializeNonEmployee = (row: Record<string, unknown>): NonEmployee | null => {
-    const plainObject = row;
-
-    const id = plainObject.id;
-    if (!id) return null;
-    
-    const newNonEmployee: NonEmployee = {
-        id: id as string,
-        fullName: (plainObject.fullName || '') as string,
-        coordinatorId: (plainObject.coordinatorId || '') as string,
-        nationality: (plainObject.nationality || '') as string,
-        gender: (plainObject.gender || '') as string,
-        address: (plainObject.address || '') as string,
-        roomNumber: (plainObject.roomNumber || '') as string,
-        checkInDate: safeFormat(plainObject.checkInDate),
-        checkOutDate: safeFormat(plainObject.checkOutDate),
-        departureReportDate: safeFormat(plainObject.departureReportDate),
-        comments: (plainObject.comments || '') as string,
-    };
-    return newNonEmployee;
-};
-
 const deserializeNotification = (row: Record<string, unknown>): Notification | null => {
     const plainObject = row;
 
@@ -311,11 +288,12 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
         });
 
         const addresses: Address[] = addressRows.map(rowObj => {
+            const coordIds = rowObj.coordinatorIds || rowObj.coordinatorlds || '';
             return {
                 id: rowObj.id,
                 name: rowObj.name,
                 locality: rowObj.locality,
-                coordinatorIds: (rowObj.coordinatorIds || '').split(',').filter(Boolean),
+                coordinatorIds: coordIds.split(',').filter(Boolean),
                 rooms: roomsByAddressId.get(rowObj.id) || [],
             }
         });
@@ -385,23 +363,32 @@ export async function getAllSheetsData(userId?: string, userIsAdmin?: boolean) {
         const [
             employeesSheet,
             settings,
-            nonEmployeesSheet,
-            equipmentSheet,
             notifications,
+            equipmentSheet,
         ] = await Promise.all([
             getSheetData(doc, SHEET_NAME_EMPLOYEES),
             getSettingsFromSheet(doc),
-            getSheetData(doc, SHEET_NAME_NON_EMPLOYEES),
-            getSheetData(doc, SHEET_NAME_EQUIPMENT),
             userId ? getNotificationsFromSheet(userId, userIsAdmin || false) : Promise.resolve([]),
+            getSheetData(doc, SHEET_NAME_EQUIPMENT),
         ]);
+        
+        const employeesAndNonEmployees = employeesSheet.map(row => deserializeEmployee(row)).filter((e): e is Employee => e !== null);
+        
+        const employees = employeesAndNonEmployees.filter(e => e.zaklad !== null);
 
-        const employees = employeesSheet.map(deserializeEmployee).filter((e): e is Employee => e !== null);
-        const nonEmployees = nonEmployeesSheet.map(deserializeNonEmployee).filter((e): e is NonEmployee => e !== null);
-        const equipment = equipmentSheet.map(deserializeEquipmentItem).filter((item): item is EquipmentItem => item !== null);
+        const nonEmployees = employeesAndNonEmployees.map(e => {
+            if (e.zaklad === null) {
+                const { zaklad, ...rest } = e;
+                return rest as NonEmployee;
+            }
+            return null;
+        }).filter((ne): ne is NonEmployee => ne !== null);
+
+        const equipment = equipmentSheet.map(row => deserializeEquipmentItem(row)).filter((item): item is EquipmentItem => item !== null);
         
         console.log(`Deserialized ${employees.length} employees from ${employeesSheet.length} rows.`);
-        console.log(`Deserialized ${nonEmployees.length} non-employees from ${nonEmployeesSheet.length} rows.`);
+        console.log(`Deserialized ${nonEmployees.length} non-employees from ${employeesSheet.length} rows.`);
+
 
         return { employees, settings, nonEmployees, equipment, notifications };
 
