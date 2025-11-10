@@ -16,12 +16,11 @@ import {
 } from './ui/sidebar';
 import Header from './header';
 import { MobileNav } from './mobile-nav';
-import type { View, Notification, Employee, Settings, Address, SessionData, NonEmployee } from '@/types';
+import type { View, Notification, Employee, Settings, Address, SessionData, NonEmployee, Coordinator } from '@/types';
 import { Home, Settings as SettingsIcon, Users, Building } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     addEmployee,
-    addNonEmployee,
     bulkDeleteEmployees,
     bulkDeleteEmployeesByCoordinator,
     checkAndUpdateEmployeeStatuses,
@@ -170,10 +169,18 @@ export default function MainLayout({
             return { employees: rawEmployees, nonEmployees: rawNonEmployees, settings: rawSettings };
         }
         
+        const coordinator = rawSettings.coordinators.find(c => c.uid === selectedCoordinatorId);
         const coordinatorAddresses = new Set(rawSettings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId)).map(a => a.name));
+        const coordinatorDepartments = new Set(coordinator?.departments || []);
 
-        const employees = rawEmployees.filter(e => e.address && coordinatorAddresses.has(e.address));
+        const employees = rawEmployees.filter(e => {
+            const livesInCoordinatorsAddress = e.address && coordinatorAddresses.has(e.address);
+            const worksInCoordinatorsDepartment = e.zaklad && coordinatorDepartments.has(e.zaklad);
+            return livesInCoordinatorsAddress || worksInCoordinatorsDepartment;
+        });
+
         const nonEmployees = rawNonEmployees.filter(ne => ne.address && coordinatorAddresses.has(ne.address));
+        
         const settings = {
             ...rawSettings,
             addresses: rawSettings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId)),
@@ -260,7 +267,7 @@ export default function MainLayout({
             setAllNotifications(notifications);
 
             if (currentUser.isAdmin) {
-                const allActive = [...employees.filter(e => e.status === 'active'), ...nonEmployees];
+                const allActive = [...(employees || []).filter(e => e.status === 'active'), ...(nonEmployees || [])];
                 const upcoming = allActive
                     .filter(o => {
                         if (!o.checkOutDate) return false;
@@ -323,7 +330,7 @@ export default function MainLayout({
             const allPeople = [...(rawEmployees || []), ...(rawNonEmployees || [])];
             const entityToEdit = allPeople.find(e => e.id === editEntityId);
             if (entityToEdit) {
-                if ('zaklad' in entityToEdit && entityToEdit.zaklad !== null) {
+                if (entityToEdit.zaklad !== undefined && entityToEdit.zaklad !== null) {
                     setEditingEmployee(entityToEdit);
                     setIsFormOpen(true);
                 } else {
@@ -388,12 +395,12 @@ export default function MainLayout({
     }, [currentUser, refreshData, toast]);
     
     const handleUpdateSettings = useCallback(async (newSettings: Partial<Settings>) => {
-        if (!settings || !currentUser?.isAdmin) {
+        if (!rawSettings || !currentUser?.isAdmin) {
              toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administrator może zmieniać ustawienia." });
             return;
         }
 
-        const originalSettings = settings;
+        const originalSettings = rawSettings;
         setRawSettings(prev => ({ ...prev!, ...newSettings }));
 
         try {
@@ -404,7 +411,7 @@ export default function MainLayout({
             setRawSettings(originalSettings); // Revert on error
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać ustawień." });
         }
-    }, [settings, currentUser, toast, refreshData]);
+    }, [rawSettings, currentUser, toast, refreshData]);
 
     const handleAddEmployeeClick = useCallback(() => {
         setEditingEmployee(null);
@@ -703,3 +710,5 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
+
+    
