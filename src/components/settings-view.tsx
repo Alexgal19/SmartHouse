@@ -786,7 +786,7 @@ function SettingsManager({ rawSettings, form, handleUpdateSettings, handleAddres
                             <AccordionItem value="coordinators">
                                 <AccordionTrigger>Zarządzanie koordynatorami</AccordionTrigger>
                                 <AccordionContent className="p-2">
-                                    <CoordinatorManager form={form} fields={coordFields} append={appendCoord} remove={removeCoord} departments={watchedDepartments.map((d: { value: string}) => d.value)} />
+                                    <CoordinatorManager form={form} fields={coordFields} append={appendCoord} remove={removeCoord} departments={(watchedDepartments || []).map((d: { value: string}) => d.value)} />
                                 </AccordionContent>
                             </AccordionItem>
                             <AccordionItem value="addresses">
