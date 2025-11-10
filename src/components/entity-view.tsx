@@ -146,6 +146,7 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
           <TableHeader>
             <TableRow>
               <TableHead>Imię i nazwisko</TableHead>
+              <TableHead>Typ</TableHead>
               <TableHead>Koordynator</TableHead>
               <TableHead>Adres</TableHead>
               <TableHead>Pokój</TableHead>
@@ -159,6 +160,7 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
               entities.map((entity) => (
                 <TableRow key={entity.id} onClick={() => onEdit(entity)} className="cursor-pointer">
                   <TableCell className="font-medium">{entity.fullName}</TableCell>
+                  <TableCell>{isEmployee(entity) ? "Pracownik" : "Mieszkaniec (NZ)"}</TableCell>
                   <TableCell>{getCoordinatorName(entity.coordinatorId)}</TableCell>
                   <TableCell>{entity.address}</TableCell>
                   <TableCell>{entity.roomNumber}</TableCell>
@@ -171,7 +173,7 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={7} className="text-center">Brak danych do wyświetlenia.</TableCell>
+                <TableCell colSpan={8} className="text-center">Brak danych do wyświetlenia.</TableCell>
               </TableRow>
             )}
           </TableBody>
@@ -192,7 +194,7 @@ const EntityCardList = ({ entities, onEdit, onDismiss, onRestore, isDismissed, s
                            <div>
                              <CardTitle className="text-base">{entity.fullName}</CardTitle>
                              <CardDescription>
-                                {getCoordinatorName(entity.coordinatorId)}
+                                {isEmployee(entity) ? getCoordinatorName(entity.coordinatorId) : "Mieszkaniec (NZ)"}
                              </CardDescription>
                            </div>
                            <div onClick={(e) => e.stopPropagation()}>
@@ -201,7 +203,7 @@ const EntityCardList = ({ entities, onEdit, onDismiss, onRestore, isDismissed, s
                         </CardHeader>
                         <CardContent className="text-sm space-y-2">
                             <p><span className="font-semibold text-muted-foreground">Adres:</span> {entity.address}, pok. {entity.roomNumber}</p>
-                            <p><span className="font-semibold text-muted-foreground">Narodowość:</span> {entity.nationality}</p>
+                            {isEmployee(entity) && <p><span className="font-semibold text-muted-foreground">Narodowość:</span> {entity.nationality}</p>}
                             <p><span className="font-semibold text-muted-foreground">Zameldowanie:</span> {formatDate(entity.checkInDate)}</p>
                         </CardContent>
                     </Card>

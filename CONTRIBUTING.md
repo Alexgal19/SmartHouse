@@ -1,25 +1,8 @@
-<<<<<<< HEAD
 # Contributing to SmartHouse
 
 This document provides guidelines for both human contributors and AI agents working on SmartHouse. For technical context and architecture details, also see `.github/copilot-instructions.md`.
 
 > **Note:** This document defines working standards for stability, security, accessibility, and code quality with minimal scope changes.
-
-Ten dokument definiuje standardy pracy dla ludzi i AI (Gemini w Firebase Studio) w tym repozytorium. Celem jest maksymalna stabilność, bezpieczeństwo, dostępność i jakość UI/UX przy minimalnym zakresie zmian.
-=======
-<changes>
-
-<description>Dodano operacyjny AI Operating Prompt, doprecyzowano egzekwowalne reguły (ESLint/tsconfig), granice client/server z 'use server'/'use client', taksonomię błędów i retry/backoff, politykę PII/CSP, ADR/Release/feature flags/rollback, budżety performance jako bramki CI, szablon PR, oraz wzmocnienia dla dat i Empty Handling. Utrzymano istniejącą strukturę i sekcje, rozszerzając dokument o praktyczne, egzekwowalne wytyczne.</description>
-  <change>
-
-<file>/CONTRIBUTING.md</file>
-
-<content><![CDATA[
-
-CONTRIBUTING
-
-Ten dokument definiuje standardy pracy dla ludzi i AI (np. Gemini w Firebase Studio) w tym repozytorium. Celem jest maksymalna stabilność, bezpieczeństwo, dostępność i jakość UI/UX przy minimalnym zakresie zmian.
->>>>>>> d03ff35 (wkladka Ustawienia otwierasie zbyt dlugo ja chce 0.2 sec)
 
 Spis treści
 1. Zasady ogólne (stabilność i minimalny zakres zmian)
@@ -96,12 +79,9 @@ Zasady czystości
 Każda propozycja zmiany pliku MUSI być zwrócona w formacie XML poniżej. Każdy zmieniany plik to oddzielny węzeł <change>. Zawartość pliku musi być kompletna (pełny plik), umieszczona w CDATA.
 
 <changes>
-  <description>[Krótki opis wprowadzanych zmian]</description>
+
+<description>[Krótki opis wprowadzanych zmian]</description>
   <change>
-<<<<<<< HEAD
-    <file>[ABSOLUTNA, PEŁNA ścieżka do pliku, np. /src/lib/sheets.ts]</file>
-    <content><![CDATA[[TUTAJ PEŁNA, FINALNA ZAWARTOŚĆ PLIKU – bez skrótów, bez diffów]
-=======
 
 <file>[ABSOLUTNA, PEŁNA ścieżka do pliku, np. /src/lib/sheets.ts]</file>
 
@@ -333,4 +313,4 @@ Uwagi końcowe
   </change>
 
 </changes>
->>>>>>> d03ff35 (wkladka Ustawienia otwierasie zbyt dlugo ja chce 0.2 sec)
+

@@ -370,13 +370,13 @@ export async function getAllSheetsData(userId?: string, userIsAdmin?: boolean) {
         
         const employees = employeesAndNonEmployees.filter(e => e.zaklad !== null);
 
-        const nonEmployees = employeesAndNonEmployees.map(e => {
-            if (e.zaklad === null) {
+        const nonEmployees = employeesAndNonEmployees
+            .filter(e => e.zaklad === null)
+            .map(e => {
                 const { zaklad, ...rest } = e;
                 return rest as NonEmployee;
-            }
-            return null;
-        }).filter((ne): ne is NonEmployee => ne !== null);
+            });
+
 
         const equipment = equipmentSheet.map(row => deserializeEquipmentItem(row)).filter((item): item is EquipmentItem => item !== null);
 

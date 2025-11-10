@@ -29,7 +29,8 @@
       "firebase_update_environment",
       "firebase_init",
       "firebase_get_security_rules",
-      "firebase_read_resources"
+      "firebase_read_resources",
+      "firebase_login"
     ],
     "next-devtools": [
       "browser_eval",
