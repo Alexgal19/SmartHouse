@@ -89,6 +89,8 @@ export function DashboardCharts({
     const [deductionMonth, setDeductionMonth] = useState<number | 'all'>('all');
     const [isEmployeeListDialogOpen, setIsEmployeeListDialogOpen] = useState(false);
     const [selectedDepartment, setSelectedDepartment] = useState<{name: string, employees: Employee[]}>({name: '', employees: []});
+    const [departmentChartFilter, setDepartmentChartFilter] = useState('all');
+    const [departmentChartSort, setDepartmentChartSort] = useState<'count' | 'name'>('count');
 
 
     const chartConfig = {
@@ -133,15 +135,27 @@ export function DashboardCharts({
             return acc;
         }, {} as Record<string, { nationality: string, employees: number }>);
 
-        const employeesByDepartment = activeEmployees.reduce((acc, employee) => {
+        const employeesByDepartmentSource = activeEmployees.reduce((acc, employee) => {
             const department = employee.zaklad || "Brak zakładu";
             if (!acc[department]) {
                 acc[department] = { department, employees: 0 };
             }
             acc[department].employees++;
             return acc;
-        }, {} as Record<string, { department: string, employees: number}>)
+        }, {} as Record<string, { department: string, employees: number}>);
         
+        let employeesByDepartment = Object.values(employeesByDepartmentSource);
+        
+        if (departmentChartFilter !== 'all') {
+            employeesByDepartment = employeesByDepartment.filter(d => d.department === departmentChartFilter);
+        }
+
+        if (departmentChartSort === 'count') {
+            employeesByDepartment.sort((a, b) => b.employees - a.employees);
+        } else {
+            employeesByDepartment.sort((a, b) => a.department.localeCompare(b.department));
+        }
+
         const departuresByDate = employees.reduce((acc, employee) => {
             if (employee.checkOutDate) {
                 const checkOut = parseISO(employee.checkOutDate);
@@ -233,11 +247,11 @@ export function DashboardCharts({
         return {
             employeesPerCoordinator: Object.values(employeesPerCoordinator).sort((a, b) => a.coordinator.localeCompare(b.coordinator)),
             employeesByNationality: Object.values(employeesByNationality).sort((a, b) => b.employees - a.employees),
-            employeesByDepartment: Object.values(employeesByDepartment).sort((a, b) => b.employees - a.employees),
+            employeesByDepartment: employeesByDepartment,
             departuresByMonth: departuresData,
             deductionsByDate: deductionsData,
         }
-    }, [employees, settings, departureYear, departureMonth, deductionYear, deductionMonth]);
+    }, [employees, settings, departureYear, departureMonth, deductionYear, deductionMonth, departmentChartFilter, departmentChartSort]);
 
     const showCoordinatorChart = currentUser?.isAdmin && selectedCoordinatorId === 'all';
     
@@ -262,8 +276,24 @@ export function DashboardCharts({
         <div className="grid gap-6">
              {chartData.employeesByDepartment.length > 0 && (
                 <Card>
-                    <CardHeader className='pb-2'>
+                    <CardHeader className='pb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between'>
                         <CardTitle className="text-lg">Pracownicy wg zakładu</CardTitle>
+                        <div className="flex items-center gap-2 pt-2 sm:pt-0">
+                            <Select value={departmentChartFilter} onValueChange={setDepartmentChartFilter}>
+                                <SelectTrigger className="w-full sm:w-[180px] h-9 text-xs"><SelectValue placeholder="Filtruj" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Wszystkie zakłady</SelectItem>
+                                    {settings.departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                             <Select value={departmentChartSort} onValueChange={(v) => setDepartmentChartSort(v as 'count' | 'name')}>
+                                <SelectTrigger className="w-full sm:w-[140px] h-9 text-xs"><SelectValue placeholder="Sortuj" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="count">Wg ilości</SelectItem>
+                                    <SelectItem value="name">Wg nazwy</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         <ResponsiveContainer width="100%" height={chartData.employeesByDepartment.length * 35 + 50}>
