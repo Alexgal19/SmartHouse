@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import DashboardView from '@/components/dashboard-view';
@@ -48,10 +49,10 @@ function CurrentView({ activeView, currentUser }: { activeView: View; currentUse
 
 export default function DashboardPage() {
     const searchParams = useSearchParams();
-    const { currentUser, allEmployees, settings } = useMainLayout();
+    const { currentUser, settings } = useMainLayout();
     const activeView = (searchParams.get('view') as View) || 'dashboard';
 
-    if (!currentUser || !allEmployees || !settings) {
+    if (!currentUser || !settings) {
         return (
             <div className="space-y-6">
                 <Card>

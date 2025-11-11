@@ -254,17 +254,12 @@ export default function MainLayout({
     const refreshData = useCallback(async (showToast = true) => {
         if (!currentUser) return;
         try {
-            const {
-                employees,
-                nonEmployees,
-                settings,
-                notifications,
-            } = await getAllSheetsData(currentUser.uid, currentUser.isAdmin);
-
-            setRawEmployees(employees);
-            setRawNonEmployees(nonEmployees);
+            // Fetch critical data first
+            const { settings, notifications, nonEmployees, employees } = await getAllSheetsData(currentUser.uid, currentUser.isAdmin);
             setRawSettings(settings);
             setAllNotifications(notifications);
+            setRawNonEmployees(nonEmployees);
+            setRawEmployees(employees);
 
             if (currentUser.isAdmin) {
                 const allActive = [...(employees || []).filter(e => e.status === 'active'), ...(nonEmployees || [])];
@@ -330,7 +325,7 @@ export default function MainLayout({
             const allPeople = [...(rawEmployees || []), ...(rawNonEmployees || [])];
             const entityToEdit = allPeople.find(e => e.id === editEntityId);
             if (entityToEdit) {
-                if (entityToEdit.zaklad !== undefined && entityToEdit.zaklad !== null) {
+                if ('zaklad' in entityToEdit) {
                     setEditingEmployee(entityToEdit);
                     setIsFormOpen(true);
                 } else {
@@ -617,7 +612,7 @@ export default function MainLayout({
         handleImportEmployees,
     ]);
 
-    if (!settings || !allEmployees || !allNonEmployees) {
+    if (!settings || !currentUser) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
                 <HouseLoader />
@@ -710,5 +705,3 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
-
-    
