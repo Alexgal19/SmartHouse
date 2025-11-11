@@ -1,10 +1,11 @@
+
 "use client";
 
 import { useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList } from "recharts";
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart2, Copy, Users } from "lucide-react";
-import type { Employee, Settings, ChartConfig } from "@/types";
+import type { Employee, Settings, ChartConfig, Coordinator } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useMainLayout } from '@/components/main-layout';
 import { format, getYear, eachDayOfInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, eachMonthOfInterval, parseISO } from 'date-fns';
@@ -89,8 +90,15 @@ export function DashboardCharts({
     const [deductionMonth, setDeductionMonth] = useState<number | 'all'>('all');
     const [isEmployeeListDialogOpen, setIsEmployeeListDialogOpen] = useState(false);
     const [selectedDepartment, setSelectedDepartment] = useState<{name: string, employees: Employee[]}>({name: '', employees: []});
+    
     const [departmentChartFilter, setDepartmentChartFilter] = useState('all');
     const [departmentChartSort, setDepartmentChartSort] = useState<'count' | 'name'>('count');
+    
+    const [nationalityChartFilter, setNationalityChartFilter] = useState('all');
+    const [nationalityChartSort, setNationalityChartSort] = useState<'count' | 'name'>('count');
+    
+    const [coordinatorChartFilter, setCoordinatorChartFilter] = useState('all');
+    const [coordinatorChartSort, setCoordinatorChartSort] = useState<'count' | 'name'>('count');
 
 
     const chartConfig = {
@@ -109,13 +117,21 @@ export function DashboardCharts({
       departments: {
         label: "Zakłady",
         color: "hsl(var(--chart-3))",
+      },
+      nationalities: {
+        label: "Nationalities",
+        color: "hsl(var(--chart-2))",
+      },
+      coordinators: {
+          label: "Coordinators",
+          color: "hsl(var(--chart-1))"
       }
     } satisfies ChartConfig
 
     const chartData = useMemo(() => {
         const activeEmployees = employees.filter(e => e.status === 'active');
         
-        const employeesPerCoordinator = activeEmployees.reduce((acc, employee) => {
+        const employeesPerCoordinatorSource = activeEmployees.reduce((acc, employee) => {
             const coordinatorName = settings.coordinators.find(c => c.uid === employee.coordinatorId)?.name || "Unassigned";
             if (!acc[coordinatorName]) {
                 acc[coordinatorName] = { coordinator: coordinatorName, employees: 0 };
@@ -124,7 +140,20 @@ export function DashboardCharts({
             return acc;
         }, {} as Record<string, { coordinator: string, employees: number }>);
         
-        const employeesByNationality = activeEmployees.reduce((acc, occupant) => {
+        let employeesPerCoordinator = Object.values(employeesPerCoordinatorSource);
+        if(coordinatorChartFilter !== 'all') {
+            const selectedCoordinator = settings.coordinators.find(c => c.uid === coordinatorChartFilter);
+            if(selectedCoordinator) {
+                employeesPerCoordinator = employeesPerCoordinator.filter(c => c.coordinator === selectedCoordinator.name);
+            }
+        }
+        if (coordinatorChartSort === 'count') {
+            employeesPerCoordinator.sort((a,b) => b.employees - a.employees);
+        } else {
+            employeesPerCoordinator.sort((a,b) => a.coordinator.localeCompare(b.coordinator));
+        }
+        
+        const employeesByNationalitySource = activeEmployees.reduce((acc, occupant) => {
             const nationality = occupant.nationality;
             if (nationality) {
                 if (!acc[nationality]) {
@@ -134,6 +163,16 @@ export function DashboardCharts({
             }
             return acc;
         }, {} as Record<string, { nationality: string, employees: number }>);
+        
+        let employeesByNationality = Object.values(employeesByNationalitySource);
+        if(nationalityChartFilter !== 'all') {
+            employeesByNationality = employeesByNationality.filter(n => n.nationality === nationalityChartFilter);
+        }
+        if(nationalityChartSort === 'count') {
+            employeesByNationality.sort((a,b) => b.employees - a.employees);
+        } else {
+            employeesByNationality.sort((a,b) => a.nationality.localeCompare(b.nationality));
+        }
 
         const employeesByDepartmentSource = activeEmployees.reduce((acc, employee) => {
             const department = employee.zaklad || "Brak zakładu";
@@ -245,13 +284,13 @@ export function DashboardCharts({
 
 
         return {
-            employeesPerCoordinator: Object.values(employeesPerCoordinator).sort((a, b) => a.coordinator.localeCompare(b.coordinator)),
-            employeesByNationality: Object.values(employeesByNationality).sort((a, b) => b.employees - a.employees),
+            employeesPerCoordinator: employeesPerCoordinator,
+            employeesByNationality: employeesByNationality,
             employeesByDepartment: employeesByDepartment,
             departuresByMonth: departuresData,
             deductionsByDate: deductionsData,
         }
-    }, [employees, settings, departureYear, departureMonth, deductionYear, deductionMonth, departmentChartFilter, departmentChartSort]);
+    }, [employees, settings, departureYear, departureMonth, deductionYear, deductionMonth, departmentChartFilter, departmentChartSort, nationalityChartFilter, nationalityChartSort, coordinatorChartFilter, coordinatorChartSort]);
 
     const showCoordinatorChart = currentUser?.isAdmin && selectedCoordinatorId === 'all';
     
@@ -277,14 +316,26 @@ export function DashboardCharts({
         return options;
     }, [settings.departments]);
 
+    const nationalityOptions = useMemo(() => {
+        const options = settings.nationalities.map(n => ({ value: n, label: n}));
+        options.unshift({ value: 'all', label: 'Wszystkie narodowości'});
+        return options;
+    }, [settings.nationalities]);
+    
+    const coordinatorOptions = useMemo(() => {
+        const options = settings.coordinators.map((c: Coordinator) => ({ value: c.uid, label: c.name}));
+        options.unshift({ value: 'all', label: 'Wszyscy koordynatorzy' });
+        return options;
+    }, [settings.coordinators]);
+
     return (
         <>
         <div className="grid gap-6">
              {chartData.employeesByDepartment.length > 0 && (
                 <Card>
-                    <CardHeader className='pb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between'>
+                    <CardHeader className='pb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between min-h-[74px]'>
                         <CardTitle className="text-lg">Pracownicy wg zakładu</CardTitle>
-                        <div className="flex items-center gap-2 pt-2 sm:pt-0">
+                        <div className="flex flex-wrap items-center gap-2 pt-2 sm:pt-0">
                             <Combobox
                                 options={departmentOptions}
                                 value={departmentChartFilter}
@@ -330,8 +381,25 @@ export function DashboardCharts({
             )}
             {showCoordinatorChart && chartData.employeesPerCoordinator.length > 0 && (
                 <Card>
-                    <CardHeader className='pb-2'>
-                        <CardTitle className="text-lg">Pracownicy wg koordynatora</CardTitle>
+                    <CardHeader className='pb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between min-h-[74px]'>
+                         <CardTitle className="text-lg">Pracownicy wg koordynatora</CardTitle>
+                         <div className="flex flex-wrap items-center gap-2 pt-2 sm:pt-0">
+                            <Combobox
+                                options={coordinatorOptions}
+                                value={coordinatorChartFilter}
+                                onChange={setCoordinatorChartFilter}
+                                placeholder="Filtruj koordynatorów"
+                                searchPlaceholder="Szukaj koordynatora..."
+                                className="w-full sm:w-[180px] h-9 text-xs"
+                            />
+                             <Select value={coordinatorChartSort} onValueChange={(v) => setCoordinatorChartSort(v as 'count' | 'name')}>
+                                <SelectTrigger className="w-full sm:w-[140px] h-9 text-xs"><SelectValue placeholder="Sortuj" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="count">Wg ilości</SelectItem>
+                                    <SelectItem value="name">Wg nazwy</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         <ResponsiveContainer width="100%" height={chartData.employeesPerCoordinator.length * 35 + 50}>
@@ -361,8 +429,25 @@ export function DashboardCharts({
             )}
             {chartData.employeesByNationality.length > 0 && (
                 <Card>
-                    <CardHeader className='pb-2'>
+                    <CardHeader className='pb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between min-h-[74px]'>
                         <CardTitle className="text-lg">Pracownicy wg narodowości</CardTitle>
+                        <div className="flex flex-wrap items-center gap-2 pt-2 sm:pt-0">
+                            <Combobox
+                                options={nationalityOptions}
+                                value={nationalityChartFilter}
+                                onChange={setNationalityChartFilter}
+                                placeholder="Filtruj narodowości"
+                                searchPlaceholder="Szukaj narodowości..."
+                                className="w-full sm:w-[180px] h-9 text-xs"
+                            />
+                             <Select value={nationalityChartSort} onValueChange={(v) => setNationalityChartSort(v as 'count' | 'name')}>
+                                <SelectTrigger className="w-full sm:w-[140px] h-9 text-xs"><SelectValue placeholder="Sortuj" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="count">Wg ilości</SelectItem>
+                                    <SelectItem value="name">Wg nazwy</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         <ResponsiveContainer width="100%" height={chartData.employeesByNationality.length * 35 + 50}>
@@ -392,26 +477,24 @@ export function DashboardCharts({
             )}
            
             <Card>
-                <CardHeader className='pb-2'>
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                         <div>
-                            <CardTitle className="text-lg">Statystyka wyjazdów</CardTitle>
-                         </div>
-                         <div className="flex items-center gap-2 pt-2 sm:pt-0">
-                             <Select value={String(departureYear)} onValueChange={(v) => setDepartureYear(Number(v))}>
-                                <SelectTrigger className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-                                </SelectContent>
-                             </Select>
-                             <Select value={String(departureMonth)} onValueChange={(v) => setDepartureMonth(v === 'all' ? 'all' : Number(v))}>
-                                <SelectTrigger className="w-36 h-8 text-xs"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">Wszystkie miesiące</SelectItem>
-                                    {months.map(m => <SelectItem key={m} value={String(m)}>{format(new Date(departureYear, m-1), 'LLLL', {locale: pl})}</SelectItem>)}
-                                </SelectContent>
-                             </Select>
-                         </div>
+                <CardHeader className='pb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between min-h-[74px]'>
+                    <div>
+                        <CardTitle className="text-lg">Statystyka wyjazdów</CardTitle>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 pt-2 sm:pt-0">
+                        <Select value={String(departureYear)} onValueChange={(v) => setDepartureYear(Number(v))}>
+                            <SelectTrigger className="w-full sm:w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <Select value={String(departureMonth)} onValueChange={(v) => setDepartureMonth(v === 'all' ? 'all' : Number(v))}>
+                            <SelectTrigger className="w-full sm:w-36 h-8 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Wszystkie miesiące</SelectItem>
+                                {months.map(m => <SelectItem key={m} value={String(m)}>{format(new Date(departureYear, m-1), 'LLLL', {locale: pl})}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -444,26 +527,24 @@ export function DashboardCharts({
                 </CardContent>
             </Card>
             <Card>
-                <CardHeader className='pb-2'>
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                         <div>
-                            <CardTitle className="text-lg">Potrącenia</CardTitle>
-                         </div>
-                         <div className="flex items-center gap-2 pt-2 sm:pt-0">
-                             <Select value={String(deductionYear)} onValueChange={(v) => setDeductionYear(Number(v))}>
-                                <SelectTrigger className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-                                </SelectContent>
-                             </Select>
-                             <Select value={String(deductionMonth)} onValueChange={(v) => setDeductionMonth(v === 'all' ? 'all' : Number(v))}>
-                                <SelectTrigger className="w-36 h-8 text-xs"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">Wszystkie miesiące</SelectItem>
-                                    {months.map(m => <SelectItem key={m} value={String(m)}>{format(new Date(deductionYear, m-1), 'LLLL', {locale: pl})}</SelectItem>)}
-                                </SelectContent>
-                             </Select>
-                         </div>
+                <CardHeader className='pb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between min-h-[74px]'>
+                    <div>
+                        <CardTitle className="text-lg">Potrącenia</CardTitle>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 pt-2 sm:pt-0">
+                        <Select value={String(deductionYear)} onValueChange={(v) => setDeductionYear(Number(v))}>
+                            <SelectTrigger className="w-full sm:w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <Select value={String(deductionMonth)} onValueChange={(v) => setDeductionMonth(v === 'all' ? 'all' : Number(v))}>
+                            <SelectTrigger className="w-full sm:w-36 h-8 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Wszystkie miesiące</SelectItem>
+                                {months.map(m => <SelectItem key={m} value={String(m)}>{format(new Date(deductionYear, m-1), 'LLLL', {locale: pl})}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
                     </div>
                 </CardHeader>
                 <CardContent>
