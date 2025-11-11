@@ -861,6 +861,7 @@ export async function deleteNotification(notificationId: string): Promise<void> 
     }
 }
 
+
 export async function generateAccommodationReport(year: number, month: number, coordinatorId: string): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
     try {
         const { employees, settings } = await getAllSheetsData();
@@ -962,10 +963,13 @@ export async function generateAccommodationReport(year: number, month: number, c
 }
 
 
-export async function importEmployeesFromExcel(fileContent: string): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
+export async function importEmployeesFromExcel(file: File): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
+    const arrayBuffer = await file.arrayBuffer();
+    const dataBuffer = new Uint8Array(arrayBuffer);
+    
     try {
         const { settings } = await getAllSheetsData();
-        const workbook = XLSX.read(fileContent, { type: 'base64', cellDates: false, dateNF: 'dd.mm.yyyy' });
+        const workbook = XLSX.read(dataBuffer, { type: 'buffer', cellDates: false, dateNF: 'dd.mm.yyyy' });
         const sheetName = workbook.SheetNames[0];
         if (!sheetName) throw new Error("Nie znaleziono arkusza w pliku Excel.");
 
@@ -1051,3 +1055,4 @@ export async function importEmployeesFromExcel(fileContent: string): Promise<{ i
         throw new Error("Wystąpił nieznany błąd podczas importu.");
     }
 }
+

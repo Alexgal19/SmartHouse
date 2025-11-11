@@ -6,7 +6,6 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useForm, useFieldArray, useWatch, UseFieldArrayAppend, UseFieldArrayRemove } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useMainLayout } from '@/components/main-layout';
 import type { Settings, SessionData, Address, Coordinator } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,12 +17,13 @@ import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { generateAccommodationReport, transferEmployees, updateSettings, importEmployeesFromExcel } from '@/lib/actions';
+import { generateAccommodationReport, transferEmployees, updateSettings, importEmployeesFromExcel, bulkDeleteEmployees, bulkDeleteEmployeesByCoordinator } from '@/lib/actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { getOnlySettings } from '@/lib/sheets';
+import { AddressForm } from './address-form';
 
 const coordinatorSchema = z.object({
     uid: z.string(),
@@ -383,7 +383,6 @@ const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove,
 
 
 const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; rawSettings: Settings | null }) => {
-    const { handleBulkDeleteEmployees, handleBulkDeleteEmployeesByCoordinator } = useMainLayout();
     const [isDeletingActive, setIsDeletingActive] = useState(false);
     const [isDeletingDismissed, setIsDeletingDismissed] = useState(false);
     const [isDeletingByCoord, setIsDeletingByCoord] = useState(false);
@@ -401,14 +400,23 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
     }, [rawSettings?.coordinators]);
 
     const handleBulkDelete = async (status: 'active' | 'dismissed') => {
+        if (!currentUser || !currentUser.isAdmin) {
+            toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administratorzy mogą wykonać tę akcję." });
+            return;
+        }
+
         if(status === 'active') setIsDeletingActive(true);
         else setIsDeletingDismissed(true);
 
-        const success = await handleBulkDeleteEmployees('employee', status);
-        
-        if(status === 'active') setIsDeletingActive(false);
-        else setIsDeletingDismissed(false);
-        return success
+        try {
+            await bulkDeleteEmployees(status, currentUser.uid);
+            toast({ title: "Sukces", description: `Wszyscy ${status === 'active' ? 'aktywni' : 'zwolnieni'} pracownicy zostali usunięci.` });
+        } catch(e) {
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć pracowników." });
+        } finally {
+            if(status === 'active') setIsDeletingActive(false);
+            else setIsDeletingDismissed(false);
+        }
     };
 
     const handleCoordinatorDelete = async () => {
@@ -417,11 +425,15 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
             return;
         }
         setIsDeletingByCoord(true);
-        const success = await handleBulkDeleteEmployeesByCoordinator(deleteCoordinatorId);
-        if (success) {
+        try {
+            await bulkDeleteEmployeesByCoordinator(deleteCoordinatorId, currentUser.uid);
+            toast({ title: "Sukces", description: `Wszyscy pracownicy wybranego koordynatora zostali usunięci.` });
             setDeleteCoordinatorId('');
+        } catch(e) {
+             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć pracowników." });
+        } finally {
+            setIsDeletingByCoord(false);
         }
-        setIsDeletingByCoord(false);
     };
     
     const handleTransfer = async () => {
@@ -658,8 +670,7 @@ const ReportsGenerator = ({ rawSettings, currentUser }: { rawSettings: Settings;
     );
 };
 
-const ExcelImport = () => {
-    const { handleImportEmployees } = useMainLayout();
+const ExcelImport = ({ onImportSuccess }: { onImportSuccess: () => Promise<void>}) => {
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
     const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -670,12 +681,24 @@ const ExcelImport = () => {
 
         setIsLoading(true);
         try {
-            await handleImportEmployees(file);
-        } catch (e) {
+            const result = await importEmployeesFromExcel(file);
+            
+            let description = `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} wierszy.`;
+            if (result.errors.length > 0) {
+                description += ` Błędy: ${result.errors.join('; ')}`;
+            }
+            
             toast({
-                variant: 'destructive',
-                title: 'Błąd importu',
-                description: e instanceof Error ? e.message : 'Nie udało się przetworzyć pliku.',
+                title: "Import zakończony",
+                description: description,
+                duration: result.errors.length > 0 ? 10000 : 5000,
+            });
+            await onImportSuccess();
+        } catch (e) {
+             toast({
+                variant: "destructive",
+                title: "Błąd importu",
+                description: e instanceof Error ? e.message : 'Nieznany błąd serwera.'
             });
         } finally {
             setIsLoading(false);
@@ -719,8 +742,15 @@ const ExcelImport = () => {
     )
 }
 
-function SettingsManager({ rawSettings, form, handleAddressFormOpen }: { rawSettings: Settings, form: ReturnType<typeof useForm<z.infer<typeof formSchema>>>, handleAddressFormOpen: (address: Address | null) => void }) {
-    const { handleUpdateSettings } = useMainLayout();
+function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSettings: Settings, onSettingsChange: (newSettings: Settings) => void; onRefresh: () => void; }) {
+    const { toast } = useToast();
+    const [isAddressFormOpen, setIsAddressFormOpen] = useState(false);
+    const [editingAddress, setEditingAddress] = useState<Address | null>(null);
+
+    const form = useForm<z.infer<typeof formSchema>>({
+        resolver: zodResolver(formSchema),
+        mode: 'onChange',
+    });
     const { fields: natFields, append: appendNat, remove: removeNat } = useFieldArray({ control: form.control, name: 'nationalities' });
     const { fields: depFields, append: appendDep, remove: removeDep } = useFieldArray({ control: form.control, name: 'departments' });
     const { fields: genFields, append: appendGen, remove: removeGen } = useFieldArray({ control: form.control, name: 'genders' });
@@ -733,6 +763,19 @@ function SettingsManager({ rawSettings, form, handleAddressFormOpen }: { rawSett
     const watchedLocalities = useWatch({ control: form.control, name: 'localities' });
     const watchedDepartments = useWatch({ control: form.control, name: 'departments' });
 
+    useEffect(() => {
+        if (rawSettings) {
+        form.reset({
+            nationalities: rawSettings.nationalities.map(n => ({ value: n })).sort((a,b) => a.value.localeCompare(b.value)),
+            departments: rawSettings.departments.map(d => ({ value: d })).sort((a,b) => a.value.localeCompare(b.value)),
+            genders: rawSettings.genders.map(g => ({ value: g })).sort((a,b) => a.value.localeCompare(b.value)),
+            localities: rawSettings.localities.map(l => ({ value: l })).sort((a,b) => a.value.localeCompare(b.value)),
+            addresses: [...rawSettings.addresses].sort((a, b) => a.name.localeCompare(b.name)),
+            coordinators: [...rawSettings.coordinators].sort((a, b) => a.name.localeCompare(b.name)).map(c => ({...c, password: ''})),
+        });
+        }
+    }, [rawSettings, form]);
+
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         const newSettings: Partial<Settings> = {
             nationalities: values.nationalities.map((n) => n.value).sort((a, b) => a.localeCompare(b)),
@@ -742,8 +785,34 @@ function SettingsManager({ rawSettings, form, handleAddressFormOpen }: { rawSett
             addresses: values.addresses,
             coordinators: values.coordinators.sort((a,b) => a.name.localeCompare(b.name)),
         };
-        await updateSettings(newSettings);
-        form.reset(values); // Resets the dirty state
+        try {
+            await updateSettings(newSettings);
+            toast({ title: "Sukces", description: "Ustawienia zostały zaktualizowane." });
+            onSettingsChange(newSettings as Settings);
+            onRefresh();
+            form.reset(values); // Resets the dirty state
+        } catch (e) {
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać ustawień." });
+        }
+    };
+
+    const handleAddressFormOpen = (address: Address | null) => {
+        setEditingAddress(address);
+        setIsAddressFormOpen(true);
+    };
+
+    const handleSaveAddress = (addressData: Address) => {
+        const addresses = form.getValues('addresses');
+        const addressIndex = addresses.findIndex(a => a.id === addressData.id);
+        const newAddresses = [...addresses];
+
+        if (addressIndex > -1) {
+            newAddresses[addressIndex] = addressData;
+        } else {
+            newAddresses.push(addressData);
+        }
+        form.setValue('addresses', newAddresses, { shouldDirty: true });
+        setIsAddressFormOpen(false);
     };
 
     const handleRemoveAddress = (addressId: string) => {
@@ -813,46 +882,39 @@ function SettingsManager({ rawSettings, form, handleAddressFormOpen }: { rawSett
                         </div>
                     </form>
                 </Form>
+                 {rawSettings && (
+                     <AddressForm
+                        isOpen={isAddressFormOpen}
+                        onOpenChange={setIsAddressFormOpen}
+                        onSave={handleSaveAddress}
+                        settings={rawSettings}
+                        address={editingAddress}
+                    />
+                 )}
             </CardContent>
         </Card>
     )
 }
 
 export default function SettingsView({ currentUser }: { currentUser: SessionData }) {
-    const { handleAddressFormOpen, handleUpdateSettings } = useMainLayout();
     const [rawSettings, setRawSettings] = useState<Settings | null>(null);
+    const { toast } = useToast();
   
-    const form = useForm<z.infer<typeof formSchema>>({
-        resolver: zodResolver(formSchema),
-        mode: 'onChange',
-    });
+    const fetchRawSettings = React.useCallback(async () => {
+         if (currentUser.isAdmin) {
+            try {
+                const settings = await getOnlySettings();
+                setRawSettings(settings);
+            } catch(e) {
+                console.error("Failed to load settings", e);
+                toast({ variant: 'destructive', title: 'Błąd', description: 'Nie udało się załadować ustawień.'})
+            }
+         }
+    }, [currentUser.isAdmin, toast]);
 
     useEffect(() => {
-        const fetchRawSettings = async () => {
-             if (currentUser.isAdmin) {
-                try {
-                    const settings = await getOnlySettings();
-                    setRawSettings(settings);
-                } catch(e) {
-                    console.error("Failed to load settings", e);
-                }
-             }
-        }
         fetchRawSettings();
-    }, [currentUser]);
-
-    useEffect(() => {
-        if (rawSettings) {
-        form.reset({
-            nationalities: rawSettings.nationalities.map(n => ({ value: n })).sort((a,b) => a.value.localeCompare(b.value)),
-            departments: rawSettings.departments.map(d => ({ value: d })).sort((a,b) => a.value.localeCompare(b.value)),
-            genders: rawSettings.genders.map(g => ({ value: g })).sort((a,b) => a.value.localeCompare(b.value)),
-            localities: rawSettings.localities.map(l => ({ value: l })).sort((a,b) => a.value.localeCompare(b.value)),
-            addresses: [...rawSettings.addresses].sort((a, b) => a.name.localeCompare(b.name)),
-            coordinators: [...rawSettings.coordinators].sort((a, b) => a.name.localeCompare(b.name)).map(c => ({...c, password: ''})),
-        });
-        }
-    }, [rawSettings, form]);
+    }, [fetchRawSettings]);
   
   if (!currentUser.isAdmin) {
       return (
@@ -884,10 +946,11 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
 
   return (
     <div className="space-y-6">
-      <SettingsManager rawSettings={rawSettings} form={form} handleAddressFormOpen={handleAddressFormOpen} />
-      <ExcelImport />
+      <SettingsManager rawSettings={rawSettings} onSettingsChange={setRawSettings} onRefresh={fetchRawSettings}/>
+      <ExcelImport onImportSuccess={fetchRawSettings} />
       <ReportsGenerator rawSettings={rawSettings} currentUser={currentUser} />
       <BulkActions currentUser={currentUser} rawSettings={rawSettings}/>
     </div>
   );
 }
+
