@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useState } from 'react';
@@ -15,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
+import { Combobox } from '../ui/combobox';
 
 const NoDataState = ({ message }: { message: string }) => (
     <div className="flex h-64 w-full items-center justify-center rounded-lg border border-dashed border-border/50">
@@ -271,6 +271,12 @@ export function DashboardCharts({
         setIsEmployeeListDialogOpen(true);
     };
 
+    const departmentOptions = useMemo(() => {
+        const options = settings.departments.map(d => ({ value: d, label: d }));
+        options.unshift({ value: 'all', label: 'Wszystkie zakłady' });
+        return options;
+    }, [settings.departments]);
+
     return (
         <>
         <div className="grid gap-6">
@@ -279,13 +285,14 @@ export function DashboardCharts({
                     <CardHeader className='pb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between'>
                         <CardTitle className="text-lg">Pracownicy wg zakładu</CardTitle>
                         <div className="flex items-center gap-2 pt-2 sm:pt-0">
-                            <Select value={departmentChartFilter} onValueChange={setDepartmentChartFilter}>
-                                <SelectTrigger className="w-full sm:w-[180px] h-9 text-xs"><SelectValue placeholder="Filtruj" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">Wszystkie zakłady</SelectItem>
-                                    {settings.departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
+                            <Combobox
+                                options={departmentOptions}
+                                value={departmentChartFilter}
+                                onChange={setDepartmentChartFilter}
+                                placeholder="Filtruj zakłady"
+                                searchPlaceholder="Szukaj zakładu..."
+                                className="w-full sm:w-[180px] h-9 text-xs"
+                            />
                              <Select value={departmentChartSort} onValueChange={(v) => setDepartmentChartSort(v as 'count' | 'name')}>
                                 <SelectTrigger className="w-full sm:w-[140px] h-9 text-xs"><SelectValue placeholder="Sortuj" /></SelectTrigger>
                                 <SelectContent>

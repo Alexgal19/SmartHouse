@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -36,7 +34,7 @@ import type { NonEmployee, Settings, SessionData } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, X } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
-import { format, parse } from 'date-fns';
+import { format, parse, isValid, parseISO } from 'date-fns';
 import { Combobox } from './ui/combobox';
 
 const formSchema = z.object({
@@ -61,8 +59,8 @@ type NonEmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'che
 
 const parseDate = (dateString: string | null | undefined): Date | undefined => {
     if (!dateString) return undefined;
-    const date = new Date(dateString + 'T00:00:00');
-    return isNaN(date.getTime()) ? undefined : date;
+    const date = parseISO(dateString);
+    return isValid(date) ? date : undefined;
 };
 
 const DateInput = ({
@@ -79,7 +77,7 @@ const DateInput = ({
 
   useEffect(() => {
     if (value) {
-      setInputValue(format(value, 'dd-MM-yyyy'));
+      setInputValue(format(value, 'yyyy-MM-dd'));
     } else {
       setInputValue('');
     }
@@ -87,7 +85,7 @@ const DateInput = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
-    const parsedDate = parse(e.target.value, 'dd-MM-yyyy', new Date());
+    const parsedDate = parse(e.target.value, 'yyyy-MM-dd', new Date());
     if (!isNaN(parsedDate.getTime())) {
       onChange(parsedDate);
     }
@@ -96,7 +94,7 @@ const DateInput = ({
   const handleDateSelect = (date?: Date | null) => {
     if (date) {
       onChange(date);
-      setInputValue(format(date, 'dd-MM-yyyy'));
+      setInputValue(format(date, 'yyyy-MM-dd'));
       setIsPopoverOpen(false);
     } else {
       onChange(null);
@@ -117,7 +115,7 @@ const DateInput = ({
             type="text"
             value={inputValue}
             onChange={handleInputChange}
-            placeholder="dd-mm-rrrr"
+            placeholder="rrrr-mm-dd"
             className="pr-10"
           />
           <div className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 flex items-center">

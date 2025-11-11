@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -820,5 +819,3 @@ export function AddEmployeeForm({
     </Dialog>
   );
 }
-
-    
