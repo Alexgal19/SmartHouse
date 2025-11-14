@@ -28,6 +28,7 @@ import {
     deleteEmployee,
     deleteNonEmployee,
     importEmployeesFromExcel,
+    importNonEmployeesFromExcel,
     markNotificationAsRead,
     updateEmployee,
     updateNonEmployee,
@@ -102,6 +103,7 @@ type MainLayoutContextType = {
     handleRestoreEmployee: (employeeId: string) => Promise<void>;
     handleDeleteEmployee: (employeeId: string, actorUid: string) => Promise<void>;
     handleImportEmployees: (file: File) => Promise<void>;
+    handleImportNonEmployees: (file: File) => Promise<void>;
 };
 
 const MainLayoutContext = createContext<MainLayoutContextType | null>(null);
@@ -160,7 +162,7 @@ export default function MainLayout({
 
     const filteredData = useMemo(() => {
         if (!rawEmployees || !rawNonEmployees || !rawSettings || !currentUser) {
-            return { employees: null, nonEmployees: null, settings: null };
+            return { employees: [], nonEmployees: [], settings: rawSettings };
         }
 
         const shouldFilter = !currentUser.isAdmin || (currentUser.isAdmin && selectedCoordinatorId !== 'all');
@@ -170,8 +172,12 @@ export default function MainLayout({
         }
         
         const coordinator = rawSettings.coordinators.find(c => c.uid === selectedCoordinatorId);
+        if (!coordinator) {
+            return { employees: [], nonEmployees: [], settings: { ...rawSettings, addresses: [] } };
+        }
+        
         const coordinatorAddresses = new Set(rawSettings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId)).map(a => a.name));
-        const coordinatorDepartments = new Set(coordinator?.departments || []);
+        const coordinatorDepartments = new Set(coordinator.departments || []);
 
         const employees = rawEmployees.filter(e => {
             const livesInCoordinatorsAddress = e.address && coordinatorAddresses.has(e.address);
@@ -516,25 +522,8 @@ export default function MainLayout({
     }, [currentUser, refreshData, toast]);
     
     const handleImportEmployees = useCallback(async (file: File) => {
-        const reader = new FileReader();
-        const promise = new Promise<string>((resolve, reject) => {
-            reader.onload = (e) => {
-                const result = e.target?.result;
-                if (typeof result === 'string') {
-                    const base64 = result.split(',')[1];
-                    resolve(base64);
-                } else {
-                    reject(new Error("Nie udało się odczytać pliku."));
-                }
-            };
-            reader.onerror = (error) => reject(error);
-        });
-        
-        reader.readAsDataURL(file);
-        const fileContent = await promise;
-
         try {
-            const result = await importEmployeesFromExcel(fileContent);
+            const result = await importEmployeesFromExcel(file);
             
             let description = `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} wierszy.`;
             if (result.errors.length > 0) {
@@ -554,7 +543,29 @@ export default function MainLayout({
                 description: e instanceof Error ? e.message : 'Nieznany błąd serwera.'
             });
         }
+    }, [refreshData, toast]);
 
+    const handleImportNonEmployees = useCallback(async (file: File) => {
+        try {
+            const result = await importNonEmployeesFromExcel(file);
+            let description = `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} wierszy.`;
+            if (result.errors.length > 0) {
+                description += ` Błędy: ${result.errors.join('; ')}`;
+            }
+            
+            toast({
+                title: "Import zakończony",
+                description: description,
+                duration: result.errors.length > 0 ? 10000 : 5000,
+            });
+            await refreshData(false);
+        } catch (e) {
+            toast({
+                variant: "destructive",
+                title: "Błąd importu mieszkańców (NZ)",
+                description: e instanceof Error ? e.message : 'Nieznany błąd serwera.'
+            });
+        }
     }, [refreshData, toast]);
 
     const contextValue: MainLayoutContextType = useMemo(() => ({
@@ -584,6 +595,7 @@ export default function MainLayout({
         handleRestoreEmployee,
         handleDeleteEmployee,
         handleImportEmployees,
+        handleImportNonEmployees,
     } ), [
         allEmployees,
         allNonEmployees,
@@ -610,9 +622,10 @@ export default function MainLayout({
         handleRestoreEmployee,
         handleDeleteEmployee,
         handleImportEmployees,
+        handleImportNonEmployees,
     ]);
 
-    if (!settings || !currentUser) {
+    if (!settings || !currentUser || !allEmployees || !allNonEmployees) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
                 <HouseLoader />

@@ -1,316 +1,480 @@
-# Contributing to SmartHouse
+This document provides guidelines for both human contributors and AI agents working on SmartHouse. For technical context and architecture details, also see .github/copilot-instructions.md.
 
-This document provides guidelines for both human contributors and AI agents working on SmartHouse. For technical context and architecture details, also see `.github/copilot-instructions.md`.
+Note: This document defines working standards for stability, security, accessibility, and code quality with minimal scope changes.
 
-> **Note:** This document defines working standards for stability, security, accessibility, and code quality with minimal scope changes.
+Table of Contents
+General Rules (Stability and Minimal Scope)
 
-Spis treści
-1. Zasady ogólne (stabilność i minimalny zakres zmian)
-2. Struktura projektu i odpowiedzialności
-3. Standardy importów (absolutne aliasy vs ścieżki względne)
-4. Zasady dla AI (AI Operating Rules)
-5. Kontrakt wyjściowy AI (AI Output Contract – XML)
-6. TypeScript, Lint, Format i Build (wymogi jakości)
-7. SSR/CSR/Server Actions i bezpieczeństwo sekretów
-8. Integracja z Google Sheets (bezpieczeństwo i niezawodność)
-9. UI/UX, A11y i Tailwind
-10. Wydajność i budżet performance
-11. Testowanie i obserwowalność
-12. Checklisty przed PR i przed wdrożeniem
-13. Minimalne skrypty (zalecane)
-14. Standard pracy z datami (Date Handling) i Excel Export
-Cel: Ujednolicić formatowanie i parsowanie dat w całym projekcie oraz uniknąć błędów typu „formatDate is not defined”.
-15. Zasady obsługi pustych pól (Empty/Nullable Handling)
-Cel: Puste komórki/pola (null, undefined, "", " ") w danych nie są błędem – są stanem dozwolonym i powinny być konsekwentnie obsługiwane w UI, API i podczas eksportu do Excela.
+Project Structure and Responsibilities
 
-1. Zasady ogólne (stabilność i minimalny zakres zmian)
-• Traktuj każdą zmianę jako krytyczną. Ogranicz zakres do absolutnego minimum wymaganego przez zadanie.
-• Nie modyfikuj niepowiązanych komponentów, konfiguracji ani zależności bez wyraźnej potrzeby.
-• Każda zmiana musi przejść: lint, typecheck, build oraz lokalne uruchomienie dev.
-• Preferuj małe, czytelne PR-y z jasnym opisem i pełnym diffem.
+Import Standards (Absolute Aliases vs. Relative Paths)
 
-2. Struktura projektu i odpowiedzialności
-• Logika biznesowa:
-   • src/lib/actions.ts – akcje serwerowe (Server Actions/handlers).
-   • src/lib/sheets.ts – integracja z Google Sheets.
-   • Uwaga: te moduły są „server-only” i nie mogą być importowane w kodzie klienckim.
-• UI:
-   • Komponenty ogólne: src/components/ui
-   • Komponenty funkcyjne: src/components
-• Globalny stan:
-   • src/components/main-layout.tsx – MainLayoutContext (dostarczanie danych i operacji, np. handleUpdateSettings, handleAddEmployee).
-• Routing:
-   • Zgodnie z Next.js (app/ lub pages/ – dopasuj do faktycznej struktury repo).
+AI Operating Rules
 
-3. Standardy importów (absolutne aliasy vs ścieżki względne)
-Priorytety
-   1. Absolutne aliasy (preferowane): np. import { Foo } from '@/utils/Foo'
-   2. Względne (lokalne): tylko dla importów z tego samego folderu lub bliskiego sąsiedztwa (max 1–2 poziomy ../)
-   3. Nigdy: długie łańcuchy ../../../ – w takim wypadku użyj aliasów.
+AI Output Contract (XML)
 
-Zasady czystości
-• Jeśli istnieje index.ts/tsx w katalogu, importuj katalog (bez /index).
-• Pomijaj rozszerzenia plików, jeśli bundler na to pozwala.
-• Zmieniaj ścieżki importu tylko, gdy to konieczne (np. przenoszenie pliku). Zweryfikuj, że docelowy plik istnieje i że wszystkie testy przechodzą.
+TypeScript, Lint, Format, and Build (Quality Requirements)
 
-4. Zasady dla AI (AI Operating Rules)
-• Minimalny zakres zmian:
-   • Nie dotykaj plików spoza zakresu zadania.
-   • Nie refaktoryzuj szeroko bez wyraźnej prośby.
-• Pełne pliki:
-   • Gdy zmieniasz plik, zwróć całą finalną zawartość pliku (bez diffów), w formacie XML opisanym w sekcji 5.
-• Brak błędów importów:
-   • Nie generuj kodu, który spowoduje „Module not found” lub błędy rozwiązywania typów.
-• Walidacja lokalna (wewnętrzna):
-   • Przed wysłaniem odpowiedzi mentalnie „uruchom” npm run lint, npm run typecheck, npm run build. Kod musi przejść.
-• Ścisłe typy:
-   • Używaj jawnych typów i interfejsów. Unikaj any, chyba że to świadoma, uzasadniona decyzja z komentarzem.
-• Granica klient/serwer:
-   • Nie importuj bibliotek serwerowych (google-auth-library, google-spreadsheet) w komponentach klienckich („use client”).
-   • Wszelka praca z sekretami – wyłącznie na serwerze.
-• Stabilność i zgodność:
-   • Szanuj istniejące API komponentów i kontrakty typów. Zmiany łamiące wprowadzaj tylko po uzasadnieniu i z migracją.
-• Performance-first:
-   • Dla ciężkich bibliotek (np. recharts, xlsx) używaj dynamic import i ładuj je tylko na kliencie, gdy są potrzebne.
-• A11y-first:
-   • Korzystaj z semantycznego HTML, poprawnych ról ARIA, focus management (szczególnie przy użyciu Radix UI).
+SSR/CSR/Server Actions and Secret Security
 
-5. Kontrakt wyjściowy AI (AI Output Contract – XML)
-Każda propozycja zmiany pliku MUSI być zwrócona w formacie XML poniżej. Każdy zmieniany plik to oddzielny węzeł <change>. Zawartość pliku musi być kompletna (pełny plik), umieszczona w CDATA.
+Google Sheets Integration (Security and Reliability)
+
+UI/UX, A11y, and Tailwind
+
+Performance and Performance Budget
+
+Testing and Observability
+
+Checklists (Pre-PR and Pre-Deployment)
+
+Minimum Scripts (Recommended)
+
+Date Handling Standard (and Excel Export)
+
+Empty/Nullable Field Handling Rules
+
+1. General Rules (Stability and Minimal Scope)
+Treat every change as critical. Limit the scope to the absolute minimum required by the task.
+
+Do not modify unrelated components, configuration, or dependencies without explicit necessity.
+
+Every change must pass: lint, typecheck, build, and local dev runtime validation.
+
+Prefer small, readable PRs with a clear description and a full diff.
+
+2. Project Structure and Responsibilities
+Business Logic:
+
+src/lib/actions.ts – Server Actions/handlers.
+
+src/lib/sheets.ts – Google Sheets integration.
+
+Note: These modules are "server-only" and must not be imported in client-side code.
+
+UI:
+
+General Components: src/components/ui
+
+Functional Components: src/components
+
+Global State:
+
+src/components/main-layout.tsx – MainLayoutContext (providing data and operations, e.g., handleUpdateSettings, handleAddEmployee).
+
+Routing:
+
+According to Next.js conventions (app/ or pages/ – adjust to the repository's actual structure).
+
+3. Import Standards (Absolute Aliases vs. Relative Paths)
+Priorities:
+
+Absolute Aliases (Preferred): e.g., import { Foo } from '@/utils/Foo'
+
+Relative (Local): Only for imports from the same folder or close proximity (max 1–2 levels ../).
+
+Never: Long chains of ../../../ – use aliases instead.
+
+Clarity Rules:
+
+If an index.ts/tsx exists in a directory, import the directory (without /index).
+
+Omit file extensions if the bundler allows it.
+
+Change import paths only when necessary (e.g., moving a file). Verify that the target file exists and that all tests pass.
+
+4. AI Operating Rules
+Minimal Scope:
+
+Do not touch files outside the task scope.
+
+Do not perform broad refactoring without an explicit request.
+
+Full Files:
+
+When modifying a file, return the entire final content of the file (no diffs), in the XML format described in Section 5.
+
+No Import Errors:
+
+Do not generate code that will cause "Module not found" or type resolution errors.
+
+Internal Validation:
+
+Before sending the response, mentally "run" npm run lint, npm run typecheck, npm run build. The code must pass.
+
+Strict Types:
+
+Use explicit types and interfaces. Avoid any, unless it is a conscious, justified decision with a comment.
+
+Client/Server Boundary:
+
+Do not import server libraries (google-auth-library, google-spreadsheet) in client components ("use client").
+
+All work with secrets—only on the server.
+
+Stability and Compliance:
+
+Respect existing component APIs and type contracts. Introduce breaking changes only with justification and migration steps.
+
+Performance-First:
+
+Use dynamic import for heavy libraries (e.g., recharts, xlsx) and load them only on the client when needed.
+
+A11y-First:
+
+Use semantic HTML, correct ARIA roles, and focus management (especially when using Radix UI).
+
+5. AI Output Contract (XML)
+Every proposed file change MUST be returned in the XML format below. Each modified file is a separate <change> node. The file content must be complete (full file), enclosed in CDATA.
+
+XML
 
 <changes>
-
-<description>[Krótki opis wprowadzanych zmian]</description>
+  <description>[Brief description of the changes being made]</description>
   <change>
-
-<file>[ABSOLUTNA, PEŁNA ścieżka do pliku, np. /src/lib/sheets.ts]</file>
-
-<content><![CDATA[
-
-[TUTAJ PEŁNA, FINALNA ZAWARTOŚĆ PLIKU – bez skrótów, bez diffów]
+    <file>[ABSOLUTE, FULL path to the file, e.g., /src/lib/sheets.ts]</file>
+    <content><![CDATA[
+[FULL, FINAL FILE CONTENT HERE - no abbreviations, no diffs]
 ]]></content>
   </change>
+  </changes>
+Requirements:
 
-  <!-- kolejne <change> w razie potrzeby -->
+Use absolute paths from the repository root (e.g., /CONTRIBUTING.md, /src/components/Button.tsx).
 
-</changes>
+Do not omit fragments (no elisions). Always provide the full content.
 
+Do not add comments outside the XML structure that could disrupt the parser.
 
-Wymogi:
-• Używaj absolutnych ścieżek od katalogu repo (np. /CONTRIBUTING.md, /src/components/Button.tsx).
-• Nie pomijaj fragmentów (no elisions). Zawsze pełna zawartość.
-• Nie dodawaj komentarzy poza strukturą XML, które mogłyby zaburzyć parser.
+6. TypeScript, Lint, Format, and Build (Quality Requirements)
+TypeScript:
 
-6. TypeScript, Lint, Format i Build (wymogi jakości)
-• TypeScript:
-   • Preferuj: "strict": true, noImplicitAny, noUncheckedIndexedAccess, exactOptionalPropertyTypes.
-   • Dodaj typy dla środowiska (np. env.d.ts) i dla server-only modułów, jeśli użyte.
-• ESLint:
-   • Zgodność z eslint-config-next i @typescript-eslint.
-   • Wyklucz .next, node_modules, dist, .turbo, coverage.
-   • Skrypty (zalecane):
-      • "typecheck": "tsc --noEmit"
-      • "format": "prettier . --write"
-      • "format:check": "prettier . --check"
-      • "lint:ci": "eslint . --max-warnings=0"
-• Build:
-   • Kod musi przejść npm run build bez błędów i krytycznych ostrzeżeń.
-   • Nie dopuszczaj do importu serwerowych bibliotek po stronie klienta.
+Prefer: "strict": true, noImplicitAny, noUncheckedIndexedAccess, exactOptionalPropertyTypes.
 
-7. SSR/CSR/Server Actions i bezpieczeństwo sekretów
-• Sekrety i biblioteki serwerowe (google-auth-library, google-spreadsheet) – tylko w środowisku serwerowym (API routes, Server Actions, route handlers).
-• Nigdy nie używaj NEXT_PUBLIC_* dla sekretów.
-• Waliduj dane wejściowe po stronie serwera (zod) i zwracaj kontrolowane błędy (status, message).
-• Rozważ retry/backoff dla 429/5xx. Loguj błędy z kontekstem (bez wrażliwych danych).
+Add types for the environment (e.g., env.d.ts) and for server-only modules, if used.
 
-8. Integracja z Google Sheets (bezpieczeństwo i niezawodność)
-• Uwierzytelnianie:
-   • Preferuj Service Account. Poświadczenia w zmiennych środowiska (np. JSON base64 dekodowany na serwerze).
-   • Upewnij się, że Service Account ma dostęp do odpowiednich arkuszy.
-• Izolacja:
-   • Moduł src/lib/sheets.ts nie może być importowany w komponentach klienckich.
-• Obsługa błędów:
-   • Zawijaj wywołania w try/catch, rozróżniaj błędy 4xx/5xx, stosuj ostrożny retry/backoff.
-   • Zwracaj czytelne komunikaty dla UI; loguj szczegóły po stronie serwera.
-• Walidacja:
-   • Wszelki input waliduj schematami zod. Odrzucaj nieprawidłowe dane, nie ufaj klientowi.
+ESLint:
 
-9. UI/UX, A11y i Tailwind
-• A11y:
-   • Semantyczne HTML5 (header, main, nav, footer).
-   • ARIA tylko tam, gdzie konieczne; aria-live dla komunikatów (toast/status).
-   • Radix UI: dbaj o role, aria-* i focus management. Używaj dostępnych wzorców.
-• Tailwind:
-   • Mobile-first, sensowne breakpoints, unikanie FOUC/CLS.
-   • Upewnij się, że tailwind.config content zawiera wszystkie źródła (app//*, src//, components/**/).
-   • Stosuj utility-first, ale utrzymuj SRP i czytelność komponentów.
-• Animacje:
-   • Używaj transform/opacity (GPU-friendly). Animacje subtelne, wspierające UX (micro-interactions).
-• Formularze:
-   • react-hook-form + zodResolver na kliencie; walidacja powtórzona na serwerze.
+Compliance with eslint-config-next and @typescript-eslint.
 
-10. Wydajność i budżet performance
-• Code splitting i dynamic import dla ciężkich bibliotek (recharts, xlsx) oraz rzadko odwiedzanych widoków.
-• Lazy-load obrazów i komponentów poza viewportem.
-• Unikaj niepotrzebnych re-renderów (memo, useCallback/useMemo tam, gdzie ma to sens).
-• Kontroluj wagę bundla. Eliminuj nieużywane zależności i importy.
-• Preload/preconnect krytycznych zasobów, gdy uzasadnione.
+Exclude .next, node_modules, dist, .turbo, coverage.
 
-11. Testowanie i obserwowalność
-• Testy:
-   • Co najmniej smoke tests dla krytycznych komponentów i kluczowych flow (np. upload pliku, główne formularze).
-   • Walidacja schematów zod – testuj przykładowe payloady (dobry/zły).
-• Obserwowalność:
-   • Logowanie po stronie serwera z kontekstem (request id, user id – jeśli istnieje).
-   • Spójny format błędów API (code, message, details?).
-   • Uważaj, by nie logować sekretów.
+Recommended Scripts:
 
-12. Checklisty
+"typecheck": "tsc --noEmit"
 
-Przed wysłaniem PR
-• [ ] Zmiany ograniczone do wymaganych plików.
-• [ ] Kod przechodzi npm run lint, npm run typecheck, npm run build.
-• [ ] Brak importów serwerowych w kliencie.
-• [ ] Zgodność ze standardami importów (aliasy > relatywne).
-• [ ] Walidacja danych (zod) dla endpointów/API.
-• [ ] UI/A11y sprawdzone (klawiatura, aria, kontrasty).
-• [ ] Dynamic import dla ciężkich modułów, jeśli dotyczy.
+"format": "prettier . --write"
 
-Przed wdrożeniem
-• [ ] Zmienne środowiskowe ustawione (bez sekretów w NEXT_PUBLIC_*).
-• [ ] Dostępy Service Account do Google Sheets zweryfikowane.
-• [ ] Monitoring/logi działają, błędy raportują się poprawnie.
-• [ ] Brak ostrzeżeń krytycznych w buildzie.
-• [ ] Wydajność i rozmiar bundla akceptowalne.
+"format:check": "prettier . --check"
 
-13. Minimalne skrypty (zalecane w package.json)
-• "typecheck": "tsc --noEmit"
-• "format": "prettier . --write"
-• "format:check": "prettier . --check"
-• "lint:ci": "eslint . --max-warnings=0"
+"lint:ci": "eslint . --max-warnings=0"
 
-14.1 Zasady ogólne
-• Centralizacja: Wszystkie operacje na datach wykonuj przez wspólne helpery w module: /src/lib/date.ts.
-• Zakazane: Wywoływanie nieistniejących/niezaimportowanych funkcji typu formatDate w plikach eksportu Excela lub komponentach. Jeśli potrzebujesz formatowania – użyj funkcji z /src/lib/date.ts.
-• Biblioteka: Używamy date-fns. Nie wywołuj funkcji, których nie ma w date-fns (np. formatDate – to nie jest funkcja date-fns). Zamiast tego używaj format z date-fns lub helperów z /src/lib/date.ts.
-• Typy: Zawsze operuj na Date lub bezpiecznie parsuj string/number do Date przed formatowaniem.
+Build:
 
-14.2 Kontrakt helperów (musi istnieć plik /src/lib/date.ts)
-W module /src/lib/date.ts muszą istnieć co najmniej:
-• formatDate(input: Date | string | number, pattern?: string): string
-   • Domyślny pattern: "yyyy-MM-dd"
-   • Zasady: jeśli input jest stringiem – spróbuj parseISO, w pozostałych przypadkach new Date(input). W razie nieprawidłowej daty zwróć pusty string lub rzuć kontrolowany błąd (w zależności od przypadku użycia).
-• formatDateTime(input: Date | string | number, pattern?: string): string
-   • Domyślny pattern: "yyyy-MM-dd HH:mm"
-• parseMaybeDate(input: Date | string | number): Date | null
-   • Zwraca Date lub null, bez rzucania wyjątków.
-• isValidDate(input: unknown): boolean
-   • true, jeśli to poprawny obiekt Date (i nie NaN).
+The code must pass npm run build without errors or critical warnings.
 
-Wszyscy konsumenci (UI, API, export do Excela) importują wyłącznie z "@/lib/date".
+Do not allow the import of server libraries on the client side.
 
-14.3 Zasady użycia w Excel Export (xlsx)
-• Formatowanie przed zapisem:
-   • Daty do Excela zapisuj jako sformatowane stringi przez formatDate lub formatDateTime. Zalecane formaty UI: "dd.MM.yyyy" dla dat, "dd.MM.yyyy HH:mm" dla dat z czasem.
-• Walidacja wejścia:
-   • Jeśli źródło dat jest stringowe (np. z Google Sheets/API), zawsze użyj parseMaybeDate i sprawdź isValidDate przed formatowaniem. W przypadku nieprawidłowej daty – wpisz pusty string lub oznacz w raporcie „Nieprawidłowa data”.
-• Importy:
-   • Zabronione: lokalne definiowanie funkcji o nazwie formatDate w plikach eksportu. Zawsze importuj z "@/lib/date".
-• Spójność kolumn:
-   • Kolumny dat w raporcie muszą korzystać z jednego spójnego formatu (np. "dd.MM.yyyy").
+7. SSR/CSR/Server Actions and Secret Security
+Secrets and server libraries (google-auth-library, google-spreadsheet)—only in the server environment (API routes, Server Actions, route handlers).
 
-14.4 Reguły dla AI (dot. dat i Excela)
-• Jeśli widzisz wywołanie formatDate, a nie ma importu z "@/lib/date", dodaj poprawny import i użyj helpera.
-• Jeśli helper nie istnieje – najpierw utwórz /src/lib/date.ts zgodnie z kontraktem z pkt 14.2, a dopiero potem modyfikuj pliki eksportu.
-• Nie zamieniaj formatDate na nieistniejące funkcje date-fns. date-fns używa funkcji format. Helpery wrapują format i parsowanie.
-• Zanim zwrócisz zmiany, mentalnie zweryfikuj, że import "@/lib/date" jest poprawny (aliasy), a kod przejdzie lint/typecheck/build.
+Never use NEXT_PUBLIC_* for secrets.
 
-14.5 Checklist (daty/Excel)
-• [ ] Plik /src/lib/date.ts istnieje i eksportuje: formatDate, formatDateTime, parseMaybeDate, isValidDate.
-• [ ] Wszędzie, gdzie formatuję daty (UI, API, Excel), używam helperów z "@/lib/date".
-• [ ] Stringowe daty zawsze parsuję (parseMaybeDate), a nieprzetwarzalne traktuję jako puste.
-• [ ] W Excelu stosuję spójny format ("dd.MM.yyyy" lub "dd.MM.yyyy HH:mm").
-• [ ] Brak lokalnych, ad-hoc funkcji formatDate w innych plikach.
+Validate input data on the server side (zod) and return controlled errors (status, message).
 
-Co jeszcze warto dodać do repo (opcjonalne, ale polecane)
-• ESLint rule/grep w CI:
-   • Blokuj użycie „formatDate(” bez importu z "@/lib/date".
-   • Blokuj redefinicję „function formatDate(” poza /src/lib/date.ts.
-• Testy jednostkowe dla /src/lib/date.ts:
-   • Poprawne formatowanie dat ISO/string/number.
-   • Zachowanie na niepoprawnych datach (null, "abc", NaN).
-• Dokumentacja przykładów użycia w README (krótkie snippet’y, jak formatować daty i jak importować helpery).
+Consider retry/backoff for 429/5xx errors. Log errors with context (without sensitive data).
 
-5.1 Definicje i ogólne zasady
-• Dozwolone stany puste: null, undefined, pusty string "" (po trim: "" traktujemy jako puste).
-• Brak błędu: Puste pole nie generuje błędu walidacji, chyba że pole jest oznaczone jako wymagane (required).
-• Normalizacja: Przed dalszym przetwarzaniem każde pole tekstowe trimujemy. Wartości puste normalizujemy do null lub "" zgodnie z kontekstem.
-• Konsekwencja: Ten sam atrybut (np. nazwisko, data) musi mieć spójne zasady pustości w całej aplikacji (UI, API, Excel).
+8. Google Sheets Integration (Security and Reliability)
+Authentication:
 
-15.2 Walidacja (zod) – kontrakt
-• Pola opcjonalne:
-   • Używaj z.string().optional().transform(v => (v?.trim() ? v.trim() : "")) gdy chcesz przechowywać "".
-   • Lub z.string().optional().transform(v => (v?.trim() ? v.trim() : null)) gdy chcesz przechowywać null.
-• Pola wymagane:
-   • Używaj z.string().min(1, "Pole wymagane"), ale wcześniej zastosuj transform/trim.
-• Daty opcjonalne:
-   • Używaj z.union([z.string(), z.date()]).optional().transform(v => {
-  if (!v) return null;
+Prefer a Service Account. Credentials in environment variables (e.g., JSON base64 decoded on the server).
 
-  // string → spróbuj parseISO/new Date; jeśli niepoprawne, zwróć null
+Ensure the Service Account has access to the appropriate sheets.
 
-})
+Isolation:
 
-• Nigdy nie rzucaj błędu tylko dlatego, że pole jest puste, jeśli w schemacie jest oznaczone jako optional.
+The src/lib/sheets.ts module must not be imported in client components.
 
-15.3 UI (formularze i widoki)
-• Formularze:
-   • Dla pól opcjonalnych nie pokazuj błędu walidacji przy pustej wartości.
-   • Puste wartości wyświetlaj jako placeholder lub pusty input.
-• Tabela/listy:
-   • Puste wartości renderuj jako "—", "Brak", lub pustą komórkę, zgodnie z design systemem.
-   • Nie używaj czerwonych toasts/alertów tylko z powodu braku wartości.
-• A11y:
-   • Dla elementów opisowych (np. aria-label) nie wstawiaj "undefined" lub "null". Używaj sensownych fallbacków, np. "Brak danych".
+Error Handling:
 
-15.4 Excel Export (xlsx) – puste pola
-• Tekst:
-   • Jeśli po normalizacji wartość jest pusta → zapisz "" (pusta komórka) lub "—" (jeśli wymagany jest wizualny placeholder).
-• Daty:
-   • Jeśli parseMaybeDate zwróci null → zapisz pusty string "" (nie formatuj).
-   • Nie rzucaj błędu; eksport ma być stabilny przy mieszanych/niekompletnych danych.
-• Liczby:
-   • Jeśli pole jest opcjonalne i brak wartości → zapisz "" (nie 0, chyba że domena wymaga 0 jako domyślne).
-• Kolumny wymagane:
-   • Jeśli dana kolumna jest wymagana domenowo, a wartość jest pusta → nie przerywaj eksportu. Zapisz "" i dołącz do raportu ostrzeżenia (np. lista w logach/console lub metadane raportu), ale nie traktuj tego jako błąd krytyczny.
+Wrap calls in try/catch, differentiate between 4xx/5xx errors, apply cautious retry/backoff.
+
+Return readable messages for the UI; log details on the server side.
+
+Validation:
+
+Validate all input with zod schemas. Reject invalid data; do not trust the client.
+
+9. UI/UX, A11y, and Tailwind
+A11y:
+
+Semantic HTML5 (header, main, nav, footer).
+
+ARIA only where necessary; aria-live for messages (toast/status).
+
+Radix UI: ensure correct roles, aria-*, and focus management. Use available patterns.
+
+Tailwind:
+
+Mobile-first, sensible breakpoints, avoiding FOUC/CLS.
+
+Ensure tailwind.config content includes all sources (app//*, src//, components/**/).
+
+Apply utility-first, but maintain SRP and component readability.
+
+Animations:
+
+Use transform/opacity (GPU-friendly). Subtle animations that support UX (micro-interactions).
+
+Forms:
+
+react-hook-form + zodResolver on the client; validation must be repeated on the server.
+
+10. Performance and Performance Budget
+Code splitting and dynamic import for heavy libraries (recharts, xlsx) and rarely visited views.
+
+Lazy-load images and components outside the viewport.
+
+Avoid unnecessary re-renders (memo, useCallback/useMemo where appropriate).
+
+Control bundle size. Eliminate unused dependencies and imports.
+
+Preload/preconnect critical resources when justified.
+
+11. Testing and Observability
+Tests:
+
+At least smoke tests for critical components and key flows (e.g., file upload, main forms).
+
+Validate zod schemas—test example payloads (good/bad).
+
+Observability:
+
+Server-side logging with context (request id, user id – if available).
+
+Consistent API error format (code, message, details?).
+
+Be careful not to log secrets.
+
+12. Checklists
+Before Sending a PR
+[ ] Changes are limited to the required files.
+
+[ ] Code passes npm run lint, npm run typecheck, npm run build.
+
+[ ] No server imports in client code.
+
+[ ] Compliance with import standards (aliases > relative).
+
+[ ] Data validation (zod) for endpoints/API.
+
+[ ] UI/A11y checked (keyboard, aria, contrasts).
+
+[ ] Dynamic import for heavy modules, if applicable.
+
+Before Deployment
+[ ] Environment variables are set (no secrets in NEXT_PUBLIC_*).
+
+[ ] Service Account access to Google Sheets verified.
+
+[ ] Monitoring/logs are working, errors are reported correctly.
+
+[ ] No critical warnings in the build.
+
+[ ] Performance and bundle size are acceptable.
+
+13. Minimum Scripts (Recommended in package.json)
+"typecheck": "tsc --noEmit"
+
+"format": "prettier . --write"
+
+"format:check": "prettier . --check"
+
+"lint:ci": "eslint . --max-warnings=0"
+
+14. Date Handling Standard (and Excel Export)
+Goal: Unify date formatting and parsing throughout the project and avoid errors like "formatDate is not defined".
+
+14.1 General Rules
+Centralization: All date operations must be performed via common helpers in the module: /src/lib/date.ts.
+
+Prohibited: Calling non-existent/unimported functions like formatDate in Excel export files or components. If formatting is needed—use functions from /src/lib/date.ts.
+
+Library: We use date-fns. Do not call functions that do not exist in date-fns (e.g., formatDate is not a date-fns function). Instead, use format from date-fns or helpers from /src/lib/date.ts.
+
+Types: Always operate on Date objects or safely parse string/number to Date before formatting.
+
+14.2 Helper Contract (File /src/lib/date.ts must exist)
+The /src/lib/date.ts module must export at least the following:
+
+formatDate(input: Date | string | number, pattern?: string): string
+
+Default pattern: "yyyy-MM-dd"
+
+Rules: If input is a string—try parseISO, otherwise new Date(input). If the date is invalid, return an empty string or throw a controlled error (depending on the use case).
+
+formatDateTime(input: Date | string | number, pattern?: string): string
+
+Default pattern: "yyyy-MM-dd HH:mm"
+
+parseMaybeDate(input: Date | string | number): Date | null
+
+Returns Date or null, without throwing exceptions.
+
+isValidDate(input: unknown): boolean
+
+true if it is a valid Date object (and not NaN).
+
+All consumers (UI, API, Excel export) must import exclusively from @/lib/date.
+
+14.3 Usage Rules in Excel Export (xlsx)
+Formatting before saving:
+
+Dates to Excel must be saved as formatted strings using formatDate or formatDateTime. Recommended UI formats: "dd.MM.yyyy" for dates, "dd.MM.yyyy HH:mm" for dates with time.
+
+Input Validation:
+
+If the date source is a string (e.g., from Google Sheets/API), always use parseMaybeDate and check isValidDate before formatting. If the date is invalid—write an empty string or mark it in the report as "Invalid Date".
+
+Imports:
+
+Prohibited: Local definition of a function named formatDate in export files. Always import from @/lib/date.
+
+Column Consistency:
+
+Date columns in the report must use one consistent format (e.g., "dd.MM.yyyy").
+
+14.4 AI Rules (Date and Excel)
+If you see a call to formatDate without an import from @/lib/date, add the correct import and use the helper.
+
+If the helper does not exist—first create /src/lib/date.ts according to the contract in section 14.2, and only then modify the export files.
+
+Do not replace formatDate with non-existent date-fns functions. date-fns uses the format function. Helpers wrap format and parsing.
+
+Before returning changes, mentally verify that the @/lib/date import is correct (aliases) and that the code will pass lint/typecheck/build.
+
+14.5 Checklist (Dates/Excel)
+[ ] File /src/lib/date.ts exists and exports: formatDate, formatDateTime, parseMaybeDate, isValidDate.
+
+[ ] Everywhere I format dates (UI, API, Excel), I use helpers from @/lib/date.
+
+[ ] String dates are always parsed (parseMaybeDate), and unparseable ones are treated as empty.
+
+[ ] A consistent format is used in Excel ("dd.MM.yyyy" or "dd.MM.yyyy HH:mm").
+
+[ ] No local, ad-hoc formatDate functions in other files.
+
+Additional Recommended Items (Optional)
+ESLint rule/grep in CI:
+
+Block the use of “formatDate(” without an import from @/lib/date.
+
+Block the redefinition of “function formatDate(” outside /src/lib/date.ts.
+
+Unit Tests for /src/lib/date.ts:
+
+Correct formatting of ISO/string/number dates.
+
+Behavior with invalid dates (null, "abc", NaN).
+
+Documentation in README: (short snippets on how to format dates and import helpers).
+
+15. Empty/Nullable Field Handling Rules
+15.1 Definitions and General Rules
+Allowed Empty States: null, undefined, empty string "" (after trim: "" is treated as empty).
+
+No Error: An empty field does not generate a validation error, unless the field is marked as required.
+
+Normalization: Before further processing, all text fields are trimmed. Empty values are normalized to null or "" according to context.
+
+Consistency: The same attribute (e.g., last name, date) must have consistent emptiness rules across the entire application (UI, API, Excel).
+
+15.2 Validation (zod) – Contract
+Optional Fields:
+
+Use z.string().optional().transform(v => (v?.trim() ? v.trim() : "")) when you want to store "".
+
+Or z.string().optional().transform(v => (v?.trim() ? v.trim() : null)) when you want to store null.
+
+Required Fields:
+
+Use z.string().min(1, "Required Field"), but apply transform/trim beforehand.
+
+Optional Dates:
+
+Use z.union([z.string(), z.date()]).optional().transform(v => { if (!v) return null; // string → try parseISO/new Date; if invalid, return null // ... })
+
+Never throw an error solely because a field is empty if it is marked as optional in the schema.
+
+15.3 UI (Forms and Views)
+Forms:
+
+For optional fields, do not show a validation error for an empty value.
+
+Display empty values as a placeholder or an empty input.
+
+Table/Lists:
+
+Render empty values as "—", "N/A", or an empty cell, consistent with the design system.
+
+Do not use red toasts/alerts only because of a missing value.
+
+A11y:
+
+For descriptive elements (e.g., aria-label), do not insert "undefined" or "null". Use meaningful fallbacks, e.g., "No data available".
+
+15.4 Excel Export (xlsx) – Empty Fields
+Text:
+
+If the value is empty after normalization → save "" (empty cell) or "—" (if a visual placeholder is required).
+
+Dates:
+
+If parseMaybeDate returns null → save an empty string "" (do not format).
+
+Do not throw an error; the export must be stable with mixed/incomplete data.
+
+Numbers:
+
+If the field is optional and missing a value → save "" (not 0, unless the domain requires 0 as a default).
+
+Required Columns:
+
+If a column is domain-required but the value is empty → do not interrupt the export. Save "" and include warnings in a report (e.g., a list in logs/console or report metadata), but do not treat it as a critical error.
 
 15.5 Backend/API
-• W endpointach i Server Actions:
-   • Normalizuj puste wejścia: puste stringi → "", null/undefined → null (zgodnie z modelem).
-   • Waliduj schematem zod: opcjonalne pola nie generują błędów.
-   • Nie zwracaj 4xx tylko dlatego, że pole opcjonalne jest puste.
-• Logowanie:
-   • Loguj tylko nieoczekiwane błędy (np. typ niezgodny z kontraktem, błąd parsowania w polu wymaganym). Puste pola nie są błędem.
+In Endpoints and Server Actions:
 
-15.6 Reguły dla AI (Empty Handling)
-• Jeśli widzisz błąd generowany przez puste pole, a pole nie jest wymagane – usuń błąd i zastosuj normalizację + cichy fallback ("" lub null).
-• Przy formacie dat: jeśli wartość pusta lub nieparsowalna → zwróć "" bez błędu toast. W UI możesz pokazać subtelny badge „Brak”.
-• W eksporcie Excela nigdy nie przerywaj procesu z powodu pustych pól. Zastosuj fallbacky i kontynuuj.
-• Przed odpowiedzią zweryfikuj, że schematy zod pozwalają na pustość dla pól oznaczonych jako optional.
+Normalize empty inputs: empty strings → "", null/undefined → null (consistent with the model).
+
+Validate with the zod schema: optional fields do not generate errors.
+
+Do not return 4xx solely because an optional field is empty.
+
+Logging:
+
+Log only unexpected errors (e.g., type inconsistent with contract, parsing error in a required field). Empty optional fields are not errors.
+
+15.6 AI Rules (Empty Handling)
+If you see an error generated by an empty field, and the field is not required—remove the error and apply normalization + a quiet fallback ("" or null).
+
+For date format: if the value is empty or unparseable → return "" without a toast error. In the UI, you can show a subtle "Missing" badge.
+
+In Excel export, never interrupt the process due to empty fields. Apply fallbacks and continue.
+
+Before responding, verify that zod schemas allow emptiness for fields marked as optional.
 
 15.7 Checklist (Empty/Nullable)
-• [ ] Schematy zod rozróżniają required vs optional i nie zwracają błędów dla pustych optional.
-• [ ] UI nie pokazuje błędów toasts dla pustych optional – używa placeholderów.
-• [ ] Excel Export zapisuje "" dla pustych optional (teksty/liczby/daty).
-• [ ] parseMaybeDate zwraca null dla pustych/nieparsowalnych wartości; formatDate zwraca "" dla null.
-• [ ] Brak przerywania flow (import/eksport/submit) z powodu pustych optional.
+[ ] Zod schemas differentiate between required vs optional and do not return errors for empty optional fields.
 
-Uwagi końcowe
-• Jeśli zadanie wymaga zmiany struktur danych lub API, opisz migrację i wpływ na istniejące ekrany/komponenty.
-• Preferuj przejrzystość nad „sprytem”. Kod ma być łatwy w utrzymaniu przez zespół.
+[ ] UI does not show toast errors for empty optional fields—it uses placeholders.
 
-]]></content>
-  </change>
+[ ] Excel Export saves "" for empty optional fields (text/numbers/dates).
 
-</changes>
+[ ] parseMaybeDate returns null for empty/unparseable values; formatDate returns "" for null.
 
+[ ] No flow (import/export/submit) interruption due to empty optional fields.
+
+Final Notes
+If the task requires changing data structures or APIs, describe the migration and the impact on existing screens/components.
+
+Prefer clarity over "cleverness." The code must be easy for the team to maintain.
