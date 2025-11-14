@@ -1,4 +1,5 @@
 
+
 "use server";
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
@@ -76,8 +77,6 @@ const safeFormat = (dateValue: unknown): string | null => {
         return null;
     }
 
-    let date: Date;
-
     if (dateValue instanceof Date) {
         if (isValid(dateValue)) {
             return format(dateValue, 'yyyy-MM-dd');
@@ -98,7 +97,7 @@ const safeFormat = (dateValue: unknown): string | null => {
 
 
     // Attempt to parse ISO string first (most reliable)
-    date = parseISO(dateString);
+    let date = parseISO(dateString);
     if (isValid(date)) {
         return format(date, 'yyyy-MM-dd');
     }
@@ -248,23 +247,12 @@ const getSheetData = async (doc: GoogleSpreadsheet, title: string): Promise<Reco
         return [];
     }
 
-    const allRows: Record<string, string>[] = [];
-    const limit = 1000;
-    let offset = 0;
-    let rows;
-
     try {
         await sheet.loadHeaderRow(); // Ensure headers are loaded before fetching rows
-
-        do {
-            rows = await sheet.getRows({ limit, offset });
-            allRows.push(...rows.map(r => r.toObject()));
-            offset += limit;
-        } while (rows.length === limit);
-        
-        return allRows;
+        const rows = await sheet.getRows();
+        return rows.map(r => r.toObject());
     } catch (e) {
-        console.warn(`Could not get rows from sheet: ${title}. It might be empty or missing headers.`, e);
+        console.warn(`Could not get rows from sheet: ${title}. It might be empty or missing headers. Returning empty array.`, e);
         return [];
     }
 };

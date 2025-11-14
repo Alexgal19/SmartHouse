@@ -102,8 +102,8 @@ type MainLayoutContextType = {
     handleDismissEmployee: (employeeId: string) => Promise<void>;
     handleRestoreEmployee: (employeeId: string) => Promise<void>;
     handleDeleteEmployee: (employeeId: string, actorUid: string) => Promise<void>;
-    handleImportEmployees: (file: File) => Promise<void>;
-    handleImportNonEmployees: (file: File) => Promise<void>;
+    handleImportEmployees: (fileContent: string) => Promise<void>;
+    handleImportNonEmployees: (fileContent: string) => Promise<void>;
 };
 
 const MainLayoutContext = createContext<MainLayoutContextType | null>(null);
@@ -521,9 +521,10 @@ export default function MainLayout({
         }
     }, [currentUser, refreshData, toast]);
     
-    const handleImportEmployees = useCallback(async (file: File) => {
+    const handleImportEmployees = useCallback(async (fileContent: string) => {
+        if (!currentUser) return;
         try {
-            const result = await importEmployeesFromExcel(file);
+            const result = await importEmployeesFromExcel(fileContent, currentUser.uid);
             
             let description = `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} wierszy.`;
             if (result.errors.length > 0) {
@@ -543,11 +544,12 @@ export default function MainLayout({
                 description: e instanceof Error ? e.message : 'Nieznany błąd serwera.'
             });
         }
-    }, [refreshData, toast]);
+    }, [currentUser, refreshData, toast]);
 
-    const handleImportNonEmployees = useCallback(async (file: File) => {
+    const handleImportNonEmployees = useCallback(async (fileContent: string) => {
+        if (!currentUser) return;
         try {
-            const result = await importNonEmployeesFromExcel(file);
+            const result = await importNonEmployeesFromExcel(fileContent, currentUser.uid);
             let description = `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} wierszy.`;
             if (result.errors.length > 0) {
                 description += ` Błędy: ${result.errors.join('; ')}`;
@@ -566,7 +568,7 @@ export default function MainLayout({
                 description: e instanceof Error ? e.message : 'Nieznany błąd serwera.'
             });
         }
-    }, [refreshData, toast]);
+    }, [currentUser, refreshData, toast]);
 
     const contextValue: MainLayoutContextType = useMemo(() => ({
         allEmployees,

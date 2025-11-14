@@ -962,28 +962,28 @@ export async function generateAccommodationReport(year: number, month: number, c
     }
 }
 
-
-export async function importEmployeesFromExcel(file: File): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
-    const arrayBuffer = await file.arrayBuffer();
-    const dataBuffer = new Uint8Array(arrayBuffer);
+const processImport = async (
+    fileContent: string, 
+    actorUid: string, 
+    type: 'employee' | 'non-employee'
+): Promise<{ importedCount: number; totalRows: number; errors: string[] }> => {
+    
+    const buffer = Buffer.from(fileContent, 'base64');
     
     try {
-        const { settings } = await getAllSheetsData();
-        const workbook = XLSX.read(dataBuffer, { type: 'buffer', cellDates: false, dateNF: 'dd.mm.yyyy' });
+        const { settings } = await getAllSheetsData(actorUid, true);
+        const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: false, dateNF: 'dd.mm.yyyy' });
         const sheetName = workbook.SheetNames[0];
         if (!sheetName) throw new Error("Nie znaleziono arkusza w pliku Excel.");
 
         const worksheet = workbook.Sheets[sheetName];
-        
         const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: null });
 
         const errors: string[] = [];
-        const employeesToAdd: Partial<Employee>[] = [];
+        const recordsToAdd: (Partial<Employee> | Partial<NonEmployee>)[] = [];
         const newLocalities = new Set<string>();
         
-        const coordinatorMap = new Map(
-            settings.coordinators.map(c => [c.name.toLowerCase().trim(), c.uid])
-        );
+        const coordinatorMap = new Map(settings.coordinators.map(c => [c.name.toLowerCase().trim(), c.uid]));
 
         for (const [index, row] of data.entries()) {
             const rowNum = index + 2;
@@ -995,7 +995,7 @@ export async function importEmployeesFromExcel(file: File): Promise<{ importedCo
                 
                 const fullName = (normalizedRow['imię i nazwisko'] as string)?.trim();
                 if (!fullName) {
-                    continue; // Skip row if full name is missing, don't add to errors
+                    continue; 
                 }
                 
                 const coordinatorName = (normalizedRow['koordynator'] as string)?.toLowerCase().trim();
@@ -1010,33 +1010,40 @@ export async function importEmployeesFromExcel(file: File): Promise<{ importedCo
                     newLocalities.add(locality);
                 }
 
-                const employeeData: Partial<Employee> = {
-                    id: `emp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                    status: 'active',
-                    fullName: fullName,
-                    coordinatorId: coordinatorId,
+                const sharedData = {
+                    id: `${type === 'employee' ? 'emp' : 'nonemp'}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                    fullName,
+                    coordinatorId,
                     nationality: (normalizedRow['narodowość'] as string)?.trim(),
                     gender: (normalizedRow['płeć'] as string)?.trim(),
                     address: (normalizedRow['adres'] as string)?.trim(),
                     roomNumber: String(normalizedRow['pokój'] || '').trim(),
-                    zaklad: (normalizedRow['zakład'] as string)?.trim() || null,
                     checkInDate: safeFormat(normalizedRow['data zameldowania']),
                     checkOutDate: safeFormat(normalizedRow['data wymeldowania']),
-                    contractStartDate: safeFormat(normalizedRow['umowa od']),
-                    contractEndDate: safeFormat(normalizedRow['umowa do']),
+                    departureReportDate: safeFormat(normalizedRow['data zgloszenia wyjazdu']),
                     comments: (normalizedRow['komentarze'] as string)?.trim(),
                 };
-                
-                employeesToAdd.push(employeeData);
+
+                if (type === 'employee') {
+                    recordsToAdd.push({
+                        ...sharedData,
+                        status: 'active',
+                        zaklad: (normalizedRow['zakład'] as string)?.trim() || null,
+                        contractStartDate: safeFormat(normalizedRow['umowa od']),
+                        contractEndDate: safeFormat(normalizedRow['umowa do']),
+                    });
+                } else {
+                     recordsToAdd.push(sharedData);
+                }
 
             } catch (rowError) {
                 errors.push(`Wiersz ${rowNum} (${(row['Imię i nazwisko'] as string) || 'Brak Imienia'}): ${rowError instanceof Error ? rowError.message : 'Nieznany błąd'}.`);
             }
         }
 
-        if (employeesToAdd.length > 0) {
-            const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-            const serializedRows = employeesToAdd.map(emp => serializeEmployee(emp));
+        if (recordsToAdd.length > 0) {
+            const sheet = await getSheet(type === 'employee' ? SHEET_NAME_EMPLOYEES : SHEET_NAME_NON_EMPLOYEES, type === 'employee' ? EMPLOYEE_HEADERS : NON_EMPLOYEE_HEADERS);
+            const serializedRows = recordsToAdd.map(rec => type === 'employee' ? serializeEmployee(rec as Partial<Employee>) : serializeNonEmployee(rec as Partial<NonEmployee>));
             await sheet.addRows(serializedRows);
         }
         
@@ -1045,14 +1052,21 @@ export async function importEmployeesFromExcel(file: File): Promise<{ importedCo
             await updateSettings({ localities: updatedLocalities });
         }
         
-        return { importedCount: employeesToAdd.length, totalRows: data.length, errors };
+        return { importedCount: recordsToAdd.length, totalRows: data.length, errors };
 
     } catch (e) {
-        console.error("Error importing from Excel:", e);
+        console.error(`Error importing ${type}s from Excel:`, e);
         if (e instanceof Error) {
             throw e;
         }
-        throw new Error("Wystąpił nieznany błąd podczas importu.");
+        throw new Error(`Wystąpił nieznany błąd podczas importu.`);
     }
 }
 
+export async function importEmployeesFromExcel(fileContent: string, actorUid: string): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
+    return processImport(fileContent, actorUid, 'employee');
+}
+
+export async function importNonEmployeesFromExcel(fileContent: string, actorUid: string): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
+    return processImport(fileContent, actorUid, 'non-employee');
+}

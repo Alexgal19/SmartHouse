@@ -17,13 +17,14 @@ import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { generateAccommodationReport, transferEmployees, updateSettings, importEmployeesFromExcel, bulkDeleteEmployees, bulkDeleteEmployeesByCoordinator } from '@/lib/actions';
+import { generateAccommodationReport, transferEmployees, updateSettings, bulkDeleteEmployees, bulkDeleteEmployeesByCoordinator } from '@/lib/actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { getOnlySettings } from '@/lib/sheets';
 import { AddressForm } from './address-form';
+import { useMainLayout } from './main-layout';
 
 const coordinatorSchema = z.object({
     uid: z.string(),
@@ -670,41 +671,25 @@ const ReportsGenerator = ({ rawSettings, currentUser }: { rawSettings: Settings;
     );
 };
 
-const ExcelImport = ({ onImportSuccess }: { onImportSuccess: () => Promise<void>}) => {
-    const [isLoading, setIsLoading] = useState(false);
-    const { toast } = useToast();
+const ExcelImport = ({ onImport, title, description, fields, isLoading }: { onImport: (fileContent: string) => Promise<void>; title: string; description: string; fields: string; isLoading: boolean; }) => {
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
 
-        setIsLoading(true);
-        try {
-            const result = await importEmployeesFromExcel(file);
-            
-            let description = `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} wierszy.`;
-            if (result.errors.length > 0) {
-                description += ` Błędy: ${result.errors.join('; ')}`;
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const content = e.target?.result;
+            if (typeof content === 'string') {
+                const base64Content = content.split(',')[1];
+                await onImport(base64Content);
             }
-            
-            toast({
-                title: "Import zakończony",
-                description: description,
-                duration: result.errors.length > 0 ? 10000 : 5000,
-            });
-            await onImportSuccess();
-        } catch (e) {
-             toast({
-                variant: "destructive",
-                title: "Błąd importu",
-                description: e instanceof Error ? e.message : 'Nieznany błąd serwera.'
-            });
-        } finally {
-            setIsLoading(false);
-            if(fileInputRef.current) {
-                fileInputRef.current.value = '';
-            }
+        };
+        reader.readAsDataURL(file);
+
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
         }
     };
     
@@ -715,8 +700,8 @@ const ExcelImport = ({ onImportSuccess }: { onImportSuccess: () => Promise<void>
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Import z Excel</CardTitle>
-                <CardDescription>Zaimportuj nowych pracowników z pliku XLSX.</CardDescription>
+                <CardTitle>{title}</CardTitle>
+                <CardDescription>{description}</CardDescription>
             </CardHeader>
             <CardContent>
                  <Input
@@ -735,11 +720,11 @@ const ExcelImport = ({ onImportSuccess }: { onImportSuccess: () => Promise<void>
                     Wybierz plik i importuj
                 </Button>
                 <p className="text-xs text-muted-foreground mt-2">
-                    Upewnij się, że plik ma kolumny: Imię i nazwisko, Koordynator, Narodowość, Płeć, Adres, Pokój, Zakład, Data zameldowania, etc.
+                    Upewnij się, że plik ma kolumny: {fields}
                 </p>
             </CardContent>
         </Card>
-    )
+    );
 }
 
 function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSettings: Settings, onSettingsChange: (newSettings: Settings) => void; onRefresh: () => void; }) {
@@ -899,6 +884,9 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
 export default function SettingsView({ currentUser }: { currentUser: SessionData }) {
     const [rawSettings, setRawSettings] = useState<Settings | null>(null);
     const { toast } = useToast();
+    const { handleImportEmployees, handleImportNonEmployees } = useMainLayout();
+    const [isEmployeeImportLoading, setIsEmployeeImportLoading] = useState(false);
+    const [isNonEmployeeImportLoading, setIsNonEmployeeImportLoading] = useState(false);
   
     const fetchRawSettings = React.useCallback(async () => {
          if (currentUser.isAdmin) {
@@ -915,6 +903,18 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     useEffect(() => {
         fetchRawSettings();
     }, [fetchRawSettings]);
+
+    const runEmployeeImport = async (fileContent: string) => {
+        setIsEmployeeImportLoading(true);
+        await handleImportEmployees(fileContent);
+        setIsEmployeeImportLoading(false);
+    }
+    
+    const runNonEmployeeImport = async (fileContent: string) => {
+        setIsNonEmployeeImportLoading(true);
+        await handleImportNonEmployees(fileContent);
+        setIsNonEmployeeImportLoading(false);
+    }
   
   if (!currentUser.isAdmin) {
       return (
@@ -946,11 +946,25 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
 
   return (
     <div className="space-y-6">
-      <SettingsManager rawSettings={rawSettings} onSettingsChange={setRawSettings} onRefresh={fetchRawSettings}/>
-      <ExcelImport onImportSuccess={fetchRawSettings} />
-      <ReportsGenerator rawSettings={rawSettings} currentUser={currentUser} />
-      <BulkActions currentUser={currentUser} rawSettings={rawSettings}/>
+        <SettingsManager rawSettings={rawSettings} onSettingsChange={setRawSettings} onRefresh={fetchRawSettings}/>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ExcelImport 
+                onImport={runEmployeeImport}
+                title="Import Pracowników z Excel"
+                description="Zaimportuj nowych pracowników z pliku XLSX."
+                fields="Imię i nazwisko, Koordynator, Narodowość, Płeć, Adres, Pokój, Zakład, Data zameldowania, etc."
+                isLoading={isEmployeeImportLoading}
+            />
+            <ExcelImport 
+                onImport={runNonEmployeeImport}
+                title="Import Mieszkańców (NZ) z Excel"
+                description="Zaimportuj nowych mieszkańców (NZ) z pliku XLSX."
+                fields="Imię i nazwisko, Koordynator, Narodowość, Płeć, Adres, Pokój, Miejscowość, Data zameldowania, etc."
+                isLoading={isNonEmployeeImportLoading}
+            />
+        </div>
+        <ReportsGenerator rawSettings={rawSettings} currentUser={currentUser} />
+        <BulkActions currentUser={currentUser} rawSettings={rawSettings}/>
     </div>
   );
 }
-
