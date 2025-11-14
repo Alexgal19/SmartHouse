@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils';
 import { ModernHouseIcon } from './icons/modern-house-icon';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Label } from './ui/label';
+import { Input } from './ui/input';
 
 const NotificationItem = ({ n, onClick, onDelete }: {n: Notification, onClick: (n: Notification) => void, onDelete: (notificationId: string) => void}) => {
     
@@ -94,6 +95,7 @@ export default function Header({
   onDeleteNotification: (notificationId: string) => void;
 }) {
     const [selectedCoordinatorId, setSelectedCoordinatorId] = useState('all');
+    const [employeeNameFilter, setEmployeeNameFilter] = useState('');
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
     const sortedCoordinators = useMemo(() => {
@@ -102,11 +104,20 @@ export default function Header({
     }, [settings]);
 
     const filteredNotifications = useMemo(() => {
-        if (selectedCoordinatorId === 'all') {
-            return notifications;
+        let tempNotifications = notifications;
+
+        if (selectedCoordinatorId !== 'all') {
+            tempNotifications = tempNotifications.filter(n => n.recipientId === selectedCoordinatorId);
         }
-        return notifications.filter(n => n.recipientId === selectedCoordinatorId);
-    }, [notifications, selectedCoordinatorId]);
+        
+        if (employeeNameFilter) {
+            tempNotifications = tempNotifications.filter(n => 
+                n.entityName.toLowerCase().includes(employeeNameFilter.toLowerCase())
+            );
+        }
+
+        return tempNotifications;
+    }, [notifications, selectedCoordinatorId, employeeNameFilter]);
 
 
   return (
@@ -137,28 +148,38 @@ export default function Header({
                         </Button>
                      )}
                 </SheetHeader>
-                {user.isAdmin && settings && (
-                    <div className="py-4 space-y-2">
-                        <Label>Filtruj wg koordynatora</Label>
-                        <Select value={selectedCoordinatorId} onValueChange={setSelectedCoordinatorId}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Wybierz koordynatora" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
-                                {sortedCoordinators.map(c => (
-                                    <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                <div className="py-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {user.isAdmin && settings && (
+                        <div className="space-y-2">
+                            <Label>Filtruj wg koordynatora</Label>
+                            <Select value={selectedCoordinatorId} onValueChange={setSelectedCoordinatorId}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Wybierz koordynatora" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
+                                    {sortedCoordinators.map(c => (
+                                        <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+                    <div className="space-y-2">
+                        <Label>Filtruj wg pracownika</Label>
+                        <Input 
+                            placeholder="Wpisz imię/nazwisko..."
+                            value={employeeNameFilter}
+                            onChange={(e) => setEmployeeNameFilter(e.target.value)}
+                        />
                     </div>
-                )}
-                <ScrollArea className="h-[calc(100vh-8rem)] pr-6">
+                </div>
+                <ScrollArea className="h-[calc(100vh-14rem)] pr-6">
                     <div className="space-y-4 py-4">
                     {filteredNotifications.length > 0 ? (
                         filteredNotifications.map(n => <NotificationItem key={n.id} n={n} onClick={onNotificationClick} onDelete={onDeleteNotification} />)
                     ) : (
-                        <div className="text-center text-muted-foreground py-12">Brak nowych powiadomień.</div>
+                        <div className="text-center text-muted-foreground py-12">Brak powiadomień pasujących do filtrów.</div>
                     )}
                     </div>
                 </ScrollArea>

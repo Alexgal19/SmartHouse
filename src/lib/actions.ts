@@ -174,7 +174,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     const plainObject = row;
     
     const id = String(plainObject.id || '');
-    if (!id) return null;
+    if (!id || !plainObject.fullName) return null;
 
     let deductionReason: DeductionReason[] | undefined;
     if (plainObject.deductionReason && typeof plainObject.deductionReason === 'string') {
@@ -373,7 +373,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows({ limit: 2000 });
+        const rows = await sheet.getRows();
         const rowIndex = rows.findIndex((row) => row.get('id') === employeeId);
 
         if (rowIndex === -1) {
@@ -454,7 +454,7 @@ export async function deleteEmployee(employeeId: string, actorUid: string): Prom
         const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows({ limit: 2000 });
+        const rows = await sheet.getRows();
         const row = rows.find((r) => r.get('id') === employeeId);
 
         if (!row) {
@@ -503,7 +503,7 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
         const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows({ limit: 1000 });
+        const rows = await sheet.getRows();
         const rowIndex = rows.findIndex((row) => row.get('id') === id);
 
         if (rowIndex === -1) {
@@ -544,7 +544,7 @@ export async function deleteNonEmployee(id: string, actorUid: string): Promise<v
         const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows({ limit: 1000 });
+        const rows = await sheet.getRows();
         const row = rows.find((row) => row.get('id') === id);
         if (row) {
             const nonEmployeeToDelete = row.toObject() as NonEmployee;
@@ -581,7 +581,7 @@ export async function addEquipment(itemData: Omit<EquipmentItem, 'id' | 'address
 export async function updateEquipment(id: string, updates: Partial<EquipmentItem>): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_EQUIPMENT, EQUIPMENT_HEADERS);
-        const rows = await sheet.getRows({ limit: 2000 });
+        const rows = await sheet.getRows();
         const row = rows.find((r) => r.get('id') === id);
         if (!row) throw new Error("Equipment not found");
         
@@ -598,7 +598,7 @@ export async function updateEquipment(id: string, updates: Partial<EquipmentItem
 export async function deleteEquipment(id: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_EQUIPMENT, EQUIPMENT_HEADERS);
-        const rows = await sheet.getRows({ limit: 2000 });
+        const rows = await sheet.getRows();
         const row = rows.find((r) => r.get('id') === id);
         if (row) {
             await row.delete();
@@ -615,7 +615,7 @@ export async function deleteEquipment(id: string): Promise<void> {
 export async function bulkDeleteEmployees(status: 'active' | 'dismissed', _actorUid: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows({ limit: 2000 });
+        const rows = await sheet.getRows();
         const rowsToDelete = rows.filter((row) => row.get('status') === status);
         
         if (rowsToDelete.length === 0) {
@@ -636,7 +636,7 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', _actor
 export async function bulkDeleteEmployeesByCoordinator(coordinatorId: string, actorUid: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows({ limit: 5000 }); // Increased limit
+        const rows = await sheet.getRows();
         const rowsToDelete = rows.filter((row) => row.get('coordinatorId') === coordinatorId);
         
         if (rowsToDelete.length === 0) {
@@ -667,7 +667,7 @@ export async function bulkDeleteEmployeesByCoordinator(coordinatorId: string, ac
 export async function transferEmployees(fromCoordinatorId: string, toCoordinatorId: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows({ limit: 2000 });
+        const rows = await sheet.getRows();
         const rowsToTransfer = rows.filter((row) => row.get('coordinatorId') === fromCoordinatorId);
 
         if (rowsToTransfer.length === 0) {
@@ -694,7 +694,7 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
 export async function checkAndUpdateEmployeeStatuses(actorUid?: string): Promise<{ updated: number }> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows({ limit: 2000 });
+        const rows = await sheet.getRows();
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
@@ -824,7 +824,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
 export async function markNotificationAsRead(notificationId: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
-        const rows = await sheet.getRows({ limit: 200 });
+        const rows = await sheet.getRows();
         const row = rows.find((r) => r.get('id') === notificationId);
         if (row) {
             row.set('isRead', 'TRUE');
@@ -848,7 +848,7 @@ export async function clearAllNotifications(): Promise<void> {
 export async function deleteNotification(notificationId: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
-        const rows = await sheet.getRows({ limit: 200 });
+        const rows = await sheet.getRows();
         const rowToDelete = rows.find(row => row.get('id') === notificationId);
         if (rowToDelete) {
             await rowToDelete.delete();
@@ -990,7 +990,9 @@ const processImport = async (
             try {
                 const normalizedRow: Record<string, any> = {};
                 for (const key in row) {
-                    normalizedRow[key.trim().toLowerCase()] = row[key];
+                    if(row[key] !== null) {
+                       normalizedRow[key.trim().toLowerCase()] = row[key];
+                    }
                 }
                 
                 const fullName = (normalizedRow['imię i nazwisko'] as string)?.trim();

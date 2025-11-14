@@ -127,7 +127,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     const plainObject = row;
     
     const id = plainObject.id;
-    if (!id) return null;
+    if (!id || !plainObject.fullName) return null;
 
     let deductionReason: DeductionReason[] | undefined = undefined;
     if (plainObject.deductionReason && typeof plainObject.deductionReason === 'string') {
@@ -174,7 +174,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
 const deserializeNonEmployee = (row: Record<string, unknown>): NonEmployee | null => {
     const plainObject = row;
     const id = plainObject.id;
-    if (!id) return null;
+    if (!id || !plainObject.fullName) return null;
 
     return {
         id: id as string,
