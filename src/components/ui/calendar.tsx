@@ -19,6 +19,9 @@ function Calendar({
 }: CalendarProps) {
   return (
     <DayPicker
+      captionLayout="dropdown-buttons"
+      fromYear={2015}
+      toYear={2035}
       locale={pl}
       showOutsideDays={showOutsideDays}
       className={cn("p-3", className)}
@@ -27,6 +30,7 @@ function Calendar({
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center",
         caption_label: "text-sm font-medium",
+        caption_dropdowns: "flex gap-2",
         nav: "space-x-1 flex items-center",
         nav_button: cn(
           buttonVariants({ variant: "outline" }),
