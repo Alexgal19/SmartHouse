@@ -1,14 +1,14 @@
 
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList } from "recharts";
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
-import { BarChart2, Copy, Users, ArrowLeft } from "lucide-react";
+import { BarChart2, Copy, Users, ArrowLeft, Loader2 } from "lucide-react";
 import type { Employee, Settings, ChartConfig, Coordinator, Address, NonEmployee } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useMainLayout } from '@/components/main-layout';
-import { format, getYear, eachDayOfInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, eachMonthOfInterval, parseISO } from 'date-fns';
+import { format, getYear, eachDayOfInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, eachMonthOfInterval, parseISO, getDaysInMonth } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { pl } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 import { Combobox } from '../ui/combobox';
 import { Label } from '../ui/label';
+import { generateNzIncomeReport } from '@/lib/actions';
 
 const NoDataState = ({ message }: { message: string }) => (
     <div className="flex h-64 w-full items-center justify-center rounded-lg border border-dashed border-border/50">
@@ -83,7 +84,6 @@ export function DashboardCharts({
     employees: Employee[],
     nonEmployees: NonEmployee[],
     settings: Settings,
-    isMobile: boolean
 }) {
     const { currentUser, selectedCoordinatorId } = useMainLayout();
 
@@ -95,6 +95,17 @@ export function DashboardCharts({
     const [deductionLocality, setDeductionLocality] = useState('all');
     const [deductionAddress, setDeductionAddress] = useState('all');
     const [deductionEmployee, setDeductionEmployee] = useState('all');
+
+    const [nzIncomeIsLoading, setNzIncomeIsLoading] = useState(false);
+    const [nzIncomeData, setNzIncomeData] = useState<any[]>([]);
+    const [nzIncomeFilters, setNzIncomeFilters] = useState({
+        year: new Date().getFullYear(),
+        month: 'all' as number | 'all',
+        coordinatorId: currentUser?.isAdmin ? 'all' : currentUser?.uid || 'all',
+        locality: 'all',
+        address: 'all',
+        nonEmployeeId: 'all',
+    });
 
     const [isEmployeeListDialogOpen, setIsEmployeeListDialogOpen] = useState(false);
     const [selectedDepartment, setSelectedDepartment] = useState<{name: string, employees: Employee[]}>({name: '', employees: []});
@@ -148,6 +159,38 @@ export function DashboardCharts({
         }
         return settings.addresses.filter(a => a.locality === deductionLocality);
     }, [settings.addresses, deductionLocality]);
+
+    const nzIncomeFilteredAddresses = useMemo(() => {
+        if (nzIncomeFilters.locality === 'all') {
+            return settings.addresses;
+        }
+        return settings.addresses.filter(a => a.locality === nzIncomeFilters.locality);
+    }, [settings.addresses, nzIncomeFilters.locality]);
+
+    const fetchNzIncomeData = useCallback(async () => {
+        setNzIncomeIsLoading(true);
+        try {
+            const result = await generateNzIncomeReport(nzIncomeFilters);
+            setNzIncomeData(result);
+        } catch (error) {
+            console.error("Failed to fetch NZ income data", error);
+            setNzIncomeData([]);
+        } finally {
+            setNzIncomeIsLoading(false);
+        }
+    }, [nzIncomeFilters]);
+    
+    useEffect(() => {
+        fetchNzIncomeData();
+    }, [fetchNzIncomeData]);
+    
+    const handleNzIncomeFilterChange = (key: string, value: any) => {
+        const newFilters = { ...nzIncomeFilters, [key]: value };
+        if (key === 'locality') {
+            newFilters.address = 'all';
+        }
+        setNzIncomeFilters(newFilters);
+    };
 
     const chartData = useMemo(() => {
         const activeEmployees = employees.filter(e => e.status === 'active');
@@ -331,7 +374,7 @@ export function DashboardCharts({
             if (!addressInfo) return acc;
             
             const locality = addressInfo.locality || "Brak miejscowości";
-            const amount = nonEmployee.paymentAmount || (nonEmployee.gender === 'Dzieci' ? 600 : 900);
+            const amount = nonEmployee.paymentAmount ?? (nonEmployee.gender === 'Dzieci' ? 600 : 900);
             
             if (!acc.byLocality[locality]) {
                 acc.byLocality[locality] = { name: locality, income: 0, addresses: {} };
@@ -346,19 +389,19 @@ export function DashboardCharts({
             return acc;
         }, { byLocality: {} as Record<string, { name: string, income: number, addresses: Record<string, {name: string, income: number}> }> });
 
-        let nzIncomeChartData;
+        let nzIncomeByLocationChartData;
         if (nzIncomeView.level === 'localities') {
-            nzIncomeChartData = Object.values(incomeByLocation.byLocality)
+            nzIncomeByLocationChartData = Object.values(incomeByLocation.byLocality)
                 .map(l => ({ name: l.name, nzIncome: l.income }))
                 .sort((a,b) => b.nzIncome - a.nzIncome);
         } else {
             const localityData = incomeByLocation.byLocality[nzIncomeView.filter || ''];
             if (localityData) {
-                nzIncomeChartData = Object.values(localityData.addresses)
+                nzIncomeByLocationChartData = Object.values(localityData.addresses)
                     .map(a => ({ name: a.name, nzIncome: a.income }))
                     .sort((a,b) => b.nzIncome - a.nzIncome);
             } else {
-                nzIncomeChartData = [];
+                nzIncomeByLocationChartData = [];
             }
         }
 
@@ -369,7 +412,7 @@ export function DashboardCharts({
             employeesByDepartment: employeesByDepartment,
             departuresByMonth: departuresData,
             deductionsByDate: deductionsData,
-            nzIncomeByLocation: nzIncomeChartData,
+            nzIncomeByLocation: nzIncomeByLocationChartData,
         }
     }, [employees, nonEmployees, settings, departureYear, departureMonth, deductionYear, deductionMonth, departmentChartFilter, departmentChartSort, nationalityChartFilter, nationalityChartSort, coordinatorChartFilter, coordinatorChartSort, deductionLocality, deductionAddress, deductionEmployee, nzIncomeView]);
 
@@ -432,6 +475,12 @@ export function DashboardCharts({
         options.unshift({ value: 'all', label: 'Wszystkie adresy' });
         return options;
     }, [deductionsFilteredAddresses]);
+
+    const nzAddressesOptions = useMemo(() => {
+        const options = nzIncomeFilteredAddresses.map((a: Address) => ({ value: a.name, label: a.name }));
+        options.unshift({ value: 'all', label: 'Wszystkie adresy' });
+        return options;
+    }, [nzIncomeFilteredAddresses]);
 
     const employeeOptions = useMemo(() => {
         const options = employees.map((e: Employee) => ({ value: e.id, label: e.fullName }));
@@ -497,6 +546,79 @@ export function DashboardCharts({
                         <NoDataState message={'Brak danych o przychodach od mieszkańców (NZ)'} />
                     )}
                 </CardContent>
+             </Card>
+             <Card>
+                 <CardHeader className="pb-2">
+                     <div>
+                         <CardTitle className="text-lg">Przychody z mieszkańców (NZ)</CardTitle>
+                     </div>
+                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6 gap-2 pt-2 sm:pt-4">
+                         <div className="space-y-1.5">
+                            <Label className="text-xs">Rok</Label>
+                            <Select value={String(nzIncomeFilters.year)} onValueChange={(v) => handleNzIncomeFilterChange('year', Number(v))}>
+                                <SelectTrigger className="w-full h-8 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>{availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-xs">Miesiąc</Label>
+                             <Select value={String(nzIncomeFilters.month)} onValueChange={(v) => handleNzIncomeFilterChange('month', v === 'all' ? 'all' : Number(v))}>
+                                <SelectTrigger className="w-full h-8 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Wszystkie miesiące</SelectItem>
+                                    {months.map(m => <SelectItem key={m} value={String(m)}>{format(new Date(nzIncomeFilters.year, m - 1), 'LLLL', { locale: pl })}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                         {currentUser?.isAdmin && (
+                            <div className="space-y-1.5">
+                                <Label className="text-xs">Koordynator</Label>
+                                <Combobox options={coordinatorOptions} value={nzIncomeFilters.coordinatorId} onChange={(v) => handleNzIncomeFilterChange('coordinatorId', v)} placeholder="Wszyscy" searchPlaceholder="Szukaj..." className="w-full h-8 text-xs" />
+                            </div>
+                        )}
+                        <div className="space-y-1.5">
+                            <Label className="text-xs">Miejscowość</Label>
+                            <Combobox options={localitiesOptions} value={nzIncomeFilters.locality} onChange={(v) => handleNzIncomeFilterChange('locality', v)} placeholder="Wszystkie" searchPlaceholder="Szukaj..." className="w-full h-8 text-xs" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-xs">Adres</Label>
+                            <Combobox options={nzAddressesOptions} value={nzIncomeFilters.address} onChange={(v) => handleNzIncomeFilterChange('address', v)} placeholder="Wszystkie" searchPlaceholder="Szukaj..." className="w-full h-8 text-xs" />
+                        </div>
+                         <div className="space-y-1.5">
+                            <Label className="text-xs">Mieszkaniec (NZ)</Label>
+                            <Combobox options={nonEmployeeOptions} value={nzIncomeFilters.nonEmployeeId} onChange={(v) => handleNzIncomeFilterChange('nonEmployeeId', v)} placeholder="Wszyscy" searchPlaceholder="Szukaj..." className="w-full h-8 text-xs" />
+                        </div>
+                     </div>
+                 </CardHeader>
+                 <CardContent>
+                     {nzIncomeIsLoading ? (
+                        <div className="flex h-64 w-full items-center justify-center">
+                            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                        </div>
+                     ) : nzIncomeData.length > 0 && nzIncomeData.some(d => d.nzIncome > 0) ? (
+                        <ChartContainer config={chartConfig} className="w-full aspect-video">
+                            <ResponsiveContainer width="100%" height={350}>
+                                <BarChart data={nzIncomeData} margin={{ top: 20, right: 20, bottom: 5, left: 0 }}>
+                                    <defs>
+                                        <linearGradient id="chart-nz-income-gradient" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.8}/>
+                                            <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0.1}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border/50"/>
+                                    <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} className="text-xs" />
+                                    <YAxis allowDecimals={false} tickLine={false} axisLine={false} hide={true} />
+                                    <Tooltip cursor={false} content={<ChartTooltipContent config={chartConfig} formatter={(value) => `${Number(value).toFixed(2)} PLN`}/>} />
+                                    <Bar dataKey="nzIncome" radius={[4, 4, 0, 0]} fill="url(#chart-nz-income-gradient)">
+                                       <LabelList dataKey="nzIncome" position="top" offset={8} className="fill-foreground text-xs" formatter={(value: number) => value > 0 ? `${value.toFixed(2)}` : ''}/>
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </ChartContainer>
+                     ) : (
+                         <NoDataState message={'Brak danych o przychodach (NZ) w wybranym okresie'} />
+                     )}
+                 </CardContent>
              </Card>
              {chartData.employeesByDepartment.length > 0 && (
                 <Card>

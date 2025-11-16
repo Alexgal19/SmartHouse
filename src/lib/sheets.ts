@@ -190,10 +190,10 @@ const deserializeNonEmployee = (row: Record<string, unknown>): NonEmployee | nul
         departureReportDate: safeFormat(plainObject.departureReportDate),
         comments: (plainObject.comments || '') as string,
         status: (plainObject.status as 'active' | 'dismissed') || 'active',
-        paymentType: (plainObject.paymentType as string | null) || null,
+        paymentType: (plainObject.paymentType as string) || null,
         paymentAmount: plainObject.paymentAmount ? parseFloat(plainObject.paymentAmount as string) : null,
-    }
-}
+    };
+};
 
 const deserializeNotification = (row: Record<string, unknown>): Notification | null => {
     const plainObject = row;
