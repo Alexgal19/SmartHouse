@@ -19,6 +19,7 @@ const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_LOCALITIES = 'Localities';
 const SHEET_NAME_EQUIPMENT = 'Equipment';
+const SHEET_NAME_PAYMENT_TYPES_NZ = 'PaymentTypesNZ';
 
 
 const serializeDate = (date?: string | null): string => {
@@ -67,7 +68,7 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
 
 
 const serializeNonEmployee = (nonEmployee: Partial<NonEmployee>): Record<string, string | number | boolean> => {
-    const serialized: Record<string, string> = {};
+    const serialized: Record<string, string | number | boolean | null> = {};
     for (const [key, value] of Object.entries(nonEmployee)) {
         if (['checkInDate', 'checkOutDate', 'departureReportDate'].includes(key)) {
             serialized[key] = serializeDate(value as string);
@@ -107,7 +108,7 @@ const serializeEquipment = (item: Partial<EquipmentItem>): Record<string, string
 };
 
 const NON_EMPLOYEE_HEADERS = [
-    'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'departureReportDate', 'comments', 'status'
+    'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'departureReportDate', 'comments', 'status', 'paymentType', 'paymentAmount'
 ];
 
 const NOTIFICATION_HEADERS = [
@@ -775,6 +776,9 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
         if (newSettings.localities) {
             await updateSimpleList(SHEET_NAME_LOCALITIES, newSettings.localities);
         }
+        if (newSettings.paymentTypesNZ) {
+            await updateSimpleList(SHEET_NAME_PAYMENT_TYPES_NZ, newSettings.paymentTypesNZ);
+        }
         if (newSettings.addresses) {
             const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ADDRESS_HEADERS);
             const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity']);
@@ -1046,7 +1050,9 @@ const processImport = async (
                     checkOutDate: safeFormat(normalizedRow['data wymeldowania']),
                     departureReportDate: safeFormat(normalizedRow['data zgloszenia wyjazdu']),
                     comments: (normalizedRow['komentarze'] as string)?.trim(),
-                    status: 'active'
+                    status: 'active',
+                    paymentType: (normalizedRow['rodzaj płatności nz'] as string)?.trim() || null,
+                    paymentAmount: normalizedRow['kwota'] ? parseFloat(normalizedRow['kwota']) : null,
                 };
 
                 if (type === 'employee') {

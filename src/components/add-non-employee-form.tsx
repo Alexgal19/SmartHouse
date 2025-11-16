@@ -49,6 +49,8 @@ const formSchema = z.object({
   checkOutDate: z.date().nullable().optional(),
   departureReportDate: z.date().nullable().optional(),
   comments: z.string().optional(),
+  paymentType: z.string().nullable().optional(),
+  paymentAmount: z.number().nullable().optional(),
 });
 
 type NonEmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate' | 'locality' | 'departureReportDate'> & {
@@ -169,6 +171,8 @@ export function AddNonEmployeeForm({
       checkOutDate: null,
       departureReportDate: null,
       comments: '',
+      paymentType: null,
+      paymentAmount: null,
     },
   });
 
@@ -189,6 +193,10 @@ export function AddNonEmployeeForm({
   const genderOptions = useMemo(() => 
     settings.genders.sort((a, b) => a.localeCompare(b)),
   [settings.genders]);
+  
+  const paymentTypesNZOptions = useMemo(() => 
+    settings.paymentTypesNZ.map(p => ({ value: p, label: p })).sort((a,b) => a.label.localeCompare(b.label)), 
+  [settings.paymentTypesNZ]);
 
   const availableAddresses = useMemo(() => {
     if (!settings) return [];
@@ -233,6 +241,8 @@ export function AddNonEmployeeForm({
         checkInDate: parseDate(nonEmployee.checkInDate),
         checkOutDate: parseDate(nonEmployee.checkOutDate),
         departureReportDate: parseDate(nonEmployee.departureReportDate),
+        paymentType: nonEmployee.paymentType ?? null,
+        paymentAmount: nonEmployee.paymentAmount ?? null,
       });
     } else {
       form.reset({
@@ -247,6 +257,8 @@ export function AddNonEmployeeForm({
         checkOutDate: null,
         departureReportDate: null,
         comments: '',
+        paymentType: null,
+        paymentAmount: null,
       });
     }
   }, [nonEmployee, isOpen, form, settings.addresses, currentUser]);
@@ -264,6 +276,7 @@ export function AddNonEmployeeForm({
       checkInDate: formatDate(values.checkInDate),
       checkOutDate: formatDate(values.checkOutDate),
       departureReportDate: formatDate(values.departureReportDate),
+      paymentAmount: values.paymentAmount ? Number(values.paymentAmount) : null,
     };
 
     onSave(formData);
@@ -417,7 +430,35 @@ export function AddNonEmployeeForm({
                         )}
                     />
                 </div>
-
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                        control={form.control}
+                        name="paymentType"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Rodzaj płatności NZ</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value || ''}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz rodzaj płatności" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                                {paymentTypesNZOptions.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                            </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="paymentAmount"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Kwota</FormLabel>
+                            <FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))} value={field.value ?? ''} placeholder="PLN" /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                      <FormField
                         control={form.control}

@@ -32,6 +32,7 @@ export type Settings = {
     coordinators: Coordinator[];
     genders: string[];
     localities: string[];
+    paymentTypesNZ: string[];
 }
 
 export type ChartConfig = {
@@ -96,6 +97,8 @@ export type NonEmployee = {
     departureReportDate?: string | null; // YYYY-MM-DD
     comments?: string | null;
     status: 'active' | 'dismissed';
+    paymentType: string | null;
+    paymentAmount: number | null;
 };
 
 

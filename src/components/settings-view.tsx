@@ -39,6 +39,7 @@ const formSchema = z.object({
   departments: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
   genders: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
   localities: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
+  paymentTypesNZ: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
   addresses: z.array(z.any()), // Simplified for top-level form, validation will be in the dialog
   coordinators: z.array(coordinatorSchema),
 });
@@ -740,6 +741,7 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
     const { fields: depFields, append: appendDep, remove: removeDep } = useFieldArray({ control: form.control, name: 'departments' });
     const { fields: genFields, append: appendGen, remove: removeGen } = useFieldArray({ control: form.control, name: 'genders' });
     const { fields: locFields, append: appendLoc, remove: removeLoc } = useFieldArray({ control: form.control, name: 'localities' });
+    const { fields: paymentNzFields, append: appendPaymentNz, remove: removePaymentNz } = useFieldArray({ control: form.control, name: 'paymentTypesNZ' });
     const { fields: coordFields, append: appendCoord, remove: removeCoord } = useFieldArray({ control: form.control, name: 'coordinators' });
     const { remove: removeAddr } = useFieldArray({ control: form.control, name: 'addresses' });
 
@@ -755,6 +757,7 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
             departments: rawSettings.departments.map(d => ({ value: d })).sort((a,b) => a.value.localeCompare(b.value)),
             genders: rawSettings.genders.map(g => ({ value: g })).sort((a,b) => a.value.localeCompare(b.value)),
             localities: rawSettings.localities.map(l => ({ value: l })).sort((a,b) => a.value.localeCompare(b.value)),
+            paymentTypesNZ: rawSettings.paymentTypesNZ.map(p => ({ value: p })).sort((a,b) => a.value.localeCompare(b.value)),
             addresses: [...rawSettings.addresses].sort((a, b) => a.name.localeCompare(b.name)),
             coordinators: [...rawSettings.coordinators].sort((a, b) => a.name.localeCompare(b.name)).map(c => ({...c, password: ''})),
         });
@@ -767,6 +770,7 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
             departments: values.departments.map((d) => d.value).sort((a, b) => a.localeCompare(b)),
             genders: values.genders.map((d) => d.value).sort((a, b) => a.localeCompare(b)),
             localities: values.localities.map((l) => l.value).sort((a, b) => a.localeCompare(b)),
+            paymentTypesNZ: values.paymentTypesNZ.map((p) => p.value).sort((a, b) => a.localeCompare(b)),
             addresses: values.addresses,
             coordinators: values.coordinators.sort((a,b) => a.name.localeCompare(b.name)),
         };
@@ -831,11 +835,12 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
                         <Accordion type="single" collapsible className="w-full">
                             <AccordionItem value="lists">
                                 <AccordionTrigger>Zarządzanie listami</AccordionTrigger>
-                                <AccordionContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-2">
+                                <AccordionContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 p-2">
                                     <ListManager name="nationalities" title="Narodowości" fields={natFields} append={appendNat} remove={removeNat} control={form.control} />
                                     <ListManager name="departments" title="Zakłady" fields={depFields} append={appendDep} remove={removeDep} control={form.control} />
                                     <ListManager name="genders" title="Płcie" fields={genFields} append={appendGen} remove={removeGen} control={form.control} />
                                     <ListManager name="localities" title="Miejscowości" fields={locFields} append={appendLoc} remove={removeLoc} control={form.control} />
+                                    <ListManager name="paymentTypesNZ" title="Rodzaje płatności NZ" fields={paymentNzFields} append={appendPaymentNz} remove={removePaymentNz} control={form.control} />
                                 </AccordionContent>
                             </AccordionItem>
                             <AccordionItem value="coordinators">
