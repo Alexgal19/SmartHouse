@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList } from "recharts";
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart2, Copy, Users } from "lucide-react";
-import type { Employee, Settings, ChartConfig, Coordinator } from "@/types";
+import type { Employee, Settings, ChartConfig, Coordinator, Address } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useMainLayout } from '@/components/main-layout';
 import { format, getYear, eachDayOfInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, eachMonthOfInterval, parseISO } from 'date-fns';
@@ -16,6 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 import { Combobox } from '../ui/combobox';
+import { Label } from '../ui/label';
 
 const NoDataState = ({ message }: { message: string }) => (
     <div className="flex h-64 w-full items-center justify-center rounded-lg border border-dashed border-border/50">
@@ -86,8 +87,13 @@ export function DashboardCharts({
 
     const [departureYear, setDepartureYear] = useState(new Date().getFullYear());
     const [departureMonth, setDepartureMonth] = useState<number | 'all'>('all');
+    
     const [deductionYear, setDeductionYear] = useState(new Date().getFullYear());
     const [deductionMonth, setDeductionMonth] = useState<number | 'all'>('all');
+    const [deductionLocality, setDeductionLocality] = useState('all');
+    const [deductionAddress, setDeductionAddress] = useState('all');
+    const [deductionEmployee, setDeductionEmployee] = useState('all');
+
     const [isEmployeeListDialogOpen, setIsEmployeeListDialogOpen] = useState(false);
     const [selectedDepartment, setSelectedDepartment] = useState<{name: string, employees: Employee[]}>({name: '', employees: []});
     
@@ -127,6 +133,13 @@ export function DashboardCharts({
           color: "hsl(var(--chart-1))"
       }
     } satisfies ChartConfig
+
+    const deductionsFilteredAddresses = useMemo(() => {
+        if (deductionLocality === 'all') {
+            return settings.addresses;
+        }
+        return settings.addresses.filter(a => a.locality === deductionLocality);
+    }, [settings.addresses, deductionLocality]);
 
     const chartData = useMemo(() => {
         const activeEmployees = employees.filter(e => e.status === 'active');
@@ -197,12 +210,16 @@ export function DashboardCharts({
 
         const departuresByDate = employees.reduce((acc, employee) => {
             if (employee.checkOutDate) {
-                const checkOut = parseISO(employee.checkOutDate);
-                const dateKey = format(checkOut, 'yyyy-MM-dd');
-                 if (!acc[dateKey]) {
-                    acc[dateKey] = { departures: 0 };
+                try {
+                    const checkOut = parseISO(employee.checkOutDate);
+                    const dateKey = format(checkOut, 'yyyy-MM-dd');
+                    if (!acc[dateKey]) {
+                        acc[dateKey] = { departures: 0 };
+                    }
+                    acc[dateKey].departures++;
+                } catch(e) {
+                    console.warn(`Invalid checkout date for employee ${employee.id}: ${employee.checkOutDate}`);
                 }
-                acc[dateKey].departures++;
             }
             return acc;
         }, {} as Record<string, { departures: number }>);
@@ -235,8 +252,21 @@ export function DashboardCharts({
                 }
             })
         }
+        
+        let filteredDeductionEmployees = employees;
+        if (deductionLocality !== 'all') {
+            const addressesInLocality = new Set(settings.addresses.filter(a => a.locality === deductionLocality).map(a => a.name));
+            filteredDeductionEmployees = filteredDeductionEmployees.filter(e => e.address && addressesInLocality.has(e.address));
+        }
+        if (deductionAddress !== 'all') {
+             filteredDeductionEmployees = filteredDeductionEmployees.filter(e => e.address === deductionAddress);
+        }
+        if (deductionEmployee !== 'all') {
+            filteredDeductionEmployees = filteredDeductionEmployees.filter(e => e.id === deductionEmployee);
+        }
 
-        const deductionsByDate = employees.reduce((acc, employee) => {
+
+        const deductionsByDate = filteredDeductionEmployees.reduce((acc, employee) => {
             if (employee.checkOutDate) {
                 const totalDeduction = (employee.deductionRegulation || 0) +
                                      (employee.deductionNo4Months || 0) +
@@ -244,11 +274,15 @@ export function DashboardCharts({
                                      (employee.deductionReason || []).reduce((sum, reason) => sum + (reason.checked && reason.amount ? reason.amount : 0), 0);
 
                 if (totalDeduction > 0) {
-                    const dateKey = format(parseISO(employee.checkOutDate), 'yyyy-MM-dd');
-                    if (!acc[dateKey]) {
-                        acc[dateKey] = { deductions: 0 };
+                     try {
+                        const dateKey = format(parseISO(employee.checkOutDate), 'yyyy-MM-dd');
+                        if (!acc[dateKey]) {
+                            acc[dateKey] = { deductions: 0 };
+                        }
+                        acc[dateKey].deductions += totalDeduction;
+                    } catch(e) {
+                         console.warn(`Invalid checkout date for deduction for employee ${employee.id}: ${employee.checkOutDate}`);
                     }
-                    acc[dateKey].deductions += totalDeduction;
                 }
             }
             return acc;
@@ -290,12 +324,18 @@ export function DashboardCharts({
             departuresByMonth: departuresData,
             deductionsByDate: deductionsData,
         }
-    }, [employees, settings, departureYear, departureMonth, deductionYear, deductionMonth, departmentChartFilter, departmentChartSort, nationalityChartFilter, nationalityChartSort, coordinatorChartFilter, coordinatorChartSort]);
+    }, [employees, settings, departureYear, departureMonth, deductionYear, deductionMonth, departmentChartFilter, departmentChartSort, nationalityChartFilter, nationalityChartSort, coordinatorChartFilter, coordinatorChartSort, deductionLocality, deductionAddress, deductionEmployee]);
 
     const showCoordinatorChart = currentUser?.isAdmin && selectedCoordinatorId === 'all';
     
     const availableYears = useMemo(() => {
-        const years = new Set(employees.filter(e => e.checkOutDate).map(e => getYear(parseISO(e.checkOutDate!))));
+        const years = new Set(employees.filter(e => e.checkOutDate).map(e => {
+            try {
+                return getYear(parseISO(e.checkOutDate!))
+            } catch {
+                return new Date().getFullYear();
+            }
+        }));
         if (years.size === 0) {
             return [new Date().getFullYear()];
         }
@@ -327,6 +367,24 @@ export function DashboardCharts({
         options.unshift({ value: 'all', label: 'Wszyscy koordynatorzy' });
         return options;
     }, [settings.coordinators]);
+
+    const localitiesOptions = useMemo(() => {
+        const options = settings.localities.map(l => ({ value: l, label: l }));
+        options.unshift({ value: 'all', label: 'Wszystkie miejscowości' });
+        return options;
+    }, [settings.localities]);
+
+    const addressesOptions = useMemo(() => {
+        const options = deductionsFilteredAddresses.map((a: Address) => ({ value: a.name, label: a.name }));
+        options.unshift({ value: 'all', label: 'Wszystkie adresy' });
+        return options;
+    }, [deductionsFilteredAddresses]);
+
+    const employeeOptions = useMemo(() => {
+        const options = employees.map((e: Employee) => ({ value: e.id, label: e.fullName }));
+        options.unshift({ value: 'all', label: 'Wszyscy pracownicy' });
+        return options;
+    }, [employees]);
 
     return (
         <>
@@ -498,7 +556,7 @@ export function DashboardCharts({
                     </div>
                 </CardHeader>
                 <CardContent>
-                    {chartData.departuresByMonth.length > 0 ? (
+                    {chartData.departuresByMonth.length > 0 && chartData.departuresByMonth.some(d => d.departures > 0) ? (
                          <ChartContainer config={chartConfig} className="w-full aspect-video">
                             <ResponsiveContainer width="100%" height={350}>
                                 <BarChart 
@@ -527,28 +585,46 @@ export function DashboardCharts({
                 </CardContent>
             </Card>
             <Card>
-                <CardHeader className='pb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between min-h-[74px]'>
+                <CardHeader className='pb-2'>
                     <div>
                         <CardTitle className="text-lg">Potrącenia</CardTitle>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 pt-2 sm:pt-0">
-                        <Select value={String(deductionYear)} onValueChange={(v) => setDeductionYear(Number(v))}>
-                            <SelectTrigger className="w-full sm:w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                                {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                        <Select value={String(deductionMonth)} onValueChange={(v) => setDeductionMonth(v === 'all' ? 'all' : Number(v))}>
-                            <SelectTrigger className="w-full sm:w-36 h-8 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Wszystkie miesiące</SelectItem>
-                                {months.map(m => <SelectItem key={m} value={String(m)}>{format(new Date(deductionYear, m-1), 'LLLL', {locale: pl})}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
+                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 pt-2 sm:pt-4">
+                        <div className="space-y-1.5">
+                            <Label className="text-xs">Rok</Label>
+                            <Select value={String(deductionYear)} onValueChange={(v) => setDeductionYear(Number(v))}>
+                                <SelectTrigger className="w-full h-8 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-xs">Miesiąc</Label>
+                            <Select value={String(deductionMonth)} onValueChange={(v) => setDeductionMonth(v === 'all' ? 'all' : Number(v))}>
+                                <SelectTrigger className="w-full h-8 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Wszystkie miesiące</SelectItem>
+                                    {months.map(m => <SelectItem key={m} value={String(m)}>{format(new Date(deductionYear, m-1), 'LLLL', {locale: pl})}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                         <div className="space-y-1.5">
+                            <Label className="text-xs">Miejscowość</Label>
+                            <Combobox options={localitiesOptions} value={deductionLocality} onChange={setDeductionLocality} placeholder="Wszystkie" searchPlaceholder="Szukaj..." className="w-full h-8 text-xs" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-xs">Adres</Label>
+                            <Combobox options={addressesOptions} value={deductionAddress} onChange={setDeductionAddress} placeholder="Wszystkie" searchPlaceholder="Szukaj..." className="w-full h-8 text-xs" />
+                        </div>
+                         <div className="space-y-1.5">
+                            <Label className="text-xs">Pracownik</Label>
+                            <Combobox options={employeeOptions} value={deductionEmployee} onChange={setDeductionEmployee} placeholder="Wszyscy" searchPlaceholder="Szukaj..." className="w-full h-8 text-xs" />
+                        </div>
                     </div>
                 </CardHeader>
                 <CardContent>
-                    {chartData.deductionsByDate.length > 0 ? (
+                    {chartData.deductionsByDate.length > 0 && chartData.deductionsByDate.some(d => d.deductions > 0) ? (
                          <ChartContainer config={chartConfig} className="w-full aspect-video">
                             <ResponsiveContainer width="100%" height={350}>
                                 <BarChart 
@@ -564,9 +640,9 @@ export function DashboardCharts({
                                     <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border/50"/>
                                     <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} className="text-xs" />
                                     <YAxis allowDecimals={false} tickLine={false} axisLine={false} hide={true} />
-                                    <Tooltip cursor={false} content={<ChartTooltipContent config={chartConfig} labelFormatter={(value) => `${value} PLN`}/>} />
+                                    <Tooltip cursor={false} content={<ChartTooltipContent config={chartConfig} formatter={(value) => `${value} PLN`}/>} />
                                     <Bar dataKey="deductions" radius={[4, 4, 0, 0]} fill="url(#chart-deductions-gradient)">
-                                       <LabelList dataKey="deductions" position="top" offset={8} className="fill-foreground text-xs" formatter={(value: number) => value > 0 ? `${value}` : ''}/>
+                                       <LabelList dataKey="deductions" position="top" offset={8} className="fill-foreground text-xs" formatter={(value: number) => value > 0 ? `${value.toFixed(2)}` : ''}/>
                                     </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
