@@ -95,6 +95,7 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
           />
           <DynamicDashboardCharts
               employees={allEmployees}
+              nonEmployees={allNonEmployees}
               settings={settings}
               isMobile={isMobile}
           />
