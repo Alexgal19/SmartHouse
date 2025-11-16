@@ -5,7 +5,7 @@ import * as React from "react"
 import { pl } from "date-fns/locale"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { DayPicker, useDayPicker, useNavigation } from "react-day-picker"
-import { format } from "date-fns"
+import { format, addMonths, subMonths } from "date-fns"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
@@ -13,22 +13,43 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>
 
-function CalendarCaption() {
-  const { goToMonth, nextMonth, previousMonth } = useNavigation()
-  const { fromYear, toYear, fromMonth, toMonth } = useDayPicker()
+function CalendarCaption(props: { displayMonth: Date }) {
+  const { fromYear, toYear } = useDayPicker();
+  const { goToMonth, goToDate } = useNavigation();
+  const [currentMonth, setCurrentMonth] = React.useState(props.displayMonth);
+
+  React.useEffect(() => {
+    setCurrentMonth(props.displayMonth);
+  }, [props.displayMonth]);
 
   const handleYearChange = (value: string) => {
     const newYear = Number(value);
-    const oldDate = new Date();
-    goToMonth(new Date(newYear, oldDate.getMonth()));
+    const newDate = new Date(currentMonth);
+    newDate.setFullYear(newYear);
+    setCurrentMonth(newDate);
+    goToDate(newDate);
   };
 
   const handleMonthChange = (value: string) => {
     const newMonth = Number(value);
-    const oldDate = new Date();
-    goToMonth(new Date(oldDate.getFullYear(), newMonth));
+    const newDate = new Date(currentMonth);
+    newDate.setMonth(newMonth);
+    setCurrentMonth(newDate);
+    goToDate(newDate);
   };
-  
+
+  const handlePreviousMonth = () => {
+    const newDate = subMonths(currentMonth, 1);
+    setCurrentMonth(newDate);
+    goToMonth(newDate);
+  };
+
+  const handleNextMonth = () => {
+    const newDate = addMonths(currentMonth, 1);
+    setCurrentMonth(newDate);
+    goToMonth(newDate);
+  };
+
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: (toYear || currentYear + 5) - (fromYear || currentYear - 5) + 1 }, (_, i) => (fromYear || currentYear - 5) + i);
   const months = Array.from({length: 12}, (_, i) => i);
@@ -37,18 +58,17 @@ function CalendarCaption() {
   return (
     <div className="flex justify-between items-center px-2 py-1.5">
        <button
-        disabled={!previousMonth}
-        onClick={() => previousMonth && goToMonth(previousMonth)}
+        onClick={handlePreviousMonth}
         className={cn(buttonVariants({ variant: "outline" }), "h-8 w-8 p-0")}
       >
         <ChevronLeft className="h-4 w-4" />
       </button>
       <div className="flex gap-2">
         <Select
-            value={String(new Date().getMonth())}
+            value={String(currentMonth.getMonth())}
             onValueChange={handleMonthChange}
         >
-          <SelectTrigger className="w-[120px] h-8 text-sm">
+          <SelectTrigger className="w-[120px] h-8 text-sm focus:ring-0 focus:ring-offset-0">
             <SelectValue placeholder="Miesiąc" />
           </SelectTrigger>
           <SelectContent>
@@ -60,10 +80,10 @@ function CalendarCaption() {
           </SelectContent>
         </Select>
          <Select
-            value={String(new Date().getFullYear())}
+            value={String(currentMonth.getFullYear())}
             onValueChange={handleYearChange}
         >
-          <SelectTrigger className="w-[80px] h-8 text-sm">
+          <SelectTrigger className="w-[80px] h-8 text-sm focus:ring-0 focus:ring-offset-0">
             <SelectValue placeholder="Rok" />
           </SelectTrigger>
           <SelectContent>
@@ -76,8 +96,7 @@ function CalendarCaption() {
         </Select>
       </div>
       <button
-        disabled={!nextMonth}
-        onClick={() => nextMonth && goToMonth(nextMonth)}
+        onClick={handleNextMonth}
         className={cn(buttonVariants({ variant: "outline" }), "h-8 w-8 p-0")}
       >
         <ChevronRight className="h-4 w-4" />
@@ -100,7 +119,7 @@ function Calendar({
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
-        caption: "hidden", // Hide default caption
+        caption: "hidden", 
         head_row: "flex",
         head_cell:
           "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
@@ -123,7 +142,7 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        Caption: CalendarCaption,
+        Caption: (props) => <CalendarCaption {...props} />,
         IconLeft: () => <ChevronLeft className="h-4 w-4" />,
         IconRight: () => <ChevronRight className="h-4 w-4" />,
       }}
