@@ -5,14 +5,23 @@ import { useMemo } from 'react';
 import { useMainLayout } from '@/components/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Combobox } from '@/components/ui/combobox';
+import type { Coordinator } from '@/types';
 
 export function CoordinatorFilter() {
     const { settings, selectedCoordinatorId, setSelectedCoordinatorId } = useMainLayout();
 
-    const sortedCoordinators = useMemo(() => {
+    const coordinatorOptions = useMemo(() => {
         if (!settings) return [];
-        return [...settings.coordinators].sort((a, b) => a.name.localeCompare(b.name));
+        const options = settings.coordinators
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((c: Coordinator) => ({
+                value: c.uid,
+                label: c.name,
+            }));
+        
+        options.unshift({ value: 'all', label: 'Wszyscy Koordynatorzy' });
+        return options;
     }, [settings]);
 
     return (
@@ -25,20 +34,18 @@ export function CoordinatorFilter() {
                 <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                     <div className="flex flex-col space-y-1.5">
                         <Label htmlFor="coordinator-filter">Koordynator</Label>
-                        <Select value={selectedCoordinatorId} onValueChange={setSelectedCoordinatorId}>
-                            <SelectTrigger id="coordinator-filter">
-                                <SelectValue placeholder='Wszyscy Koordynatorzy' />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Wszyscy Koordynatorzy</SelectItem>
-                                {sortedCoordinators.map(c => (
-                                    <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <Combobox
+                            options={coordinatorOptions}
+                            value={selectedCoordinatorId}
+                            onChange={setSelectedCoordinatorId}
+                            placeholder="Wybierz koordynatora"
+                            searchPlaceholder="Szukaj koordynatora..."
+                            notFoundMessage="Nie znaleziono koordynatora."
+                        />
                     </div>
                 </div>
             </CardContent>
         </Card>
     );
 }
+
