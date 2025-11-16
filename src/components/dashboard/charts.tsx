@@ -324,8 +324,8 @@ export function DashboardCharts({
         }
         
         const incomeByLocation = (nonEmployees || []).reduce((acc, nonEmployee) => {
-            const nonEmployeeIncome = nonEmployee.paymentAmount ?? 0;
-            if (nonEmployeeIncome <= 0 || !nonEmployee.address) {
+            const nonEmployeeIncome = nonEmployee.paymentAmount;
+            if (!nonEmployeeIncome || nonEmployeeIncome <= 0 || !nonEmployee.address) {
                 return acc;
             }
 
