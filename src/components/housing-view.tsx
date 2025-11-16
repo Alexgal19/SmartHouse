@@ -71,7 +71,7 @@ const StatsCharts = ({ occupants, chartConfig }: { occupants: Occupant[], chartC
                 <CardContent>
                     {statsData.nationalities.length > 0 ? (
                         <ResponsiveContainer width="100%" height={statsData.nationalities.length * 25 + 20}>
-                            <BarChart data={statsData.nationalities} layout="vertical" margin={{ left: 10, right: 30 }}>
+                            <BarChart data={statsData.nationalities} layout="vertical" margin={{ left: 10, right: 40 }}>
                                 <CartesianGrid horizontal={false} strokeDasharray="3 3" />
                                 <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
                                 <XAxis type="number" hide={true} />
@@ -91,7 +91,7 @@ const StatsCharts = ({ occupants, chartConfig }: { occupants: Occupant[], chartC
                 <CardContent>
                      {statsData.genders.length > 0 ? (
                         <ResponsiveContainer width="100%" height={statsData.genders.length * 30 + 20}>
-                            <BarChart data={statsData.genders} layout="vertical" margin={{ left: 10, right: 30 }}>
+                            <BarChart data={statsData.genders} layout="vertical" margin={{ left: 10, right: 40 }}>
                                 <CartesianGrid horizontal={false} strokeDasharray="3 3" />
                                 <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={5} width={80} className="text-xs" interval={0} />
                                 <XAxis type="number" hide={true} />
