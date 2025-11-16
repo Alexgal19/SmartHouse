@@ -472,28 +472,33 @@ export function DashboardCharts({
                 </CardHeader>
                 <CardContent>
                     {chartData.nzIncomeByLocation.length > 0 && chartData.nzIncomeByLocation.some(d => d.nzIncome > 0) ? (
-                        <ResponsiveContainer width="100%" height={chartData.nzIncomeByLocation.length * 35 + 50}>
-                            <BarChart
-                                data={chartData.nzIncomeByLocation}
-                                layout="vertical"
-                                margin={{ top: 5, right: 40, bottom: 5, left: 10 }}
-                                barCategoryGap="20%"
-                            >
-                                <defs>
-                                    <linearGradient id="chart-nzincome-gradient" x1="0" y1="0" x2="1" y2="0">
-                                        <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.8}/>
-                                        <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0.1}/>
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50" />
-                                <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
-                                <XAxis type="number" hide={true} />
-                                <Tooltip cursor={{fill: 'hsl(var(--muted))'}} content={<ChartTooltipContent config={chartConfig} formatter={(value) => `${value.toFixed(2)} PLN`} />} />
-                                <Bar dataKey="nzIncome" radius={[0, 4, 4, 0]} fill="url(#chart-nzincome-gradient)" className={nzIncomeView.level === 'localities' ? 'cursor-pointer' : ''} onClick={handleNzIncomeClick}>
-                                    <LabelList dataKey="nzIncome" position="right" offset={8} className="fill-foreground text-xs" formatter={(value: number) => value > 0 ? `${value.toFixed(2)}` : ''}/>
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
+                        <div style={{ height: `${chartData.nzIncomeByLocation.length * 35 + 50}px` }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart
+                                    data={chartData.nzIncomeByLocation}
+                                    layout="vertical"
+                                    margin={{ top: 5, right: 50, bottom: 5, left: 10 }}
+                                    barCategoryGap="20%"
+                                >
+                                    <defs>
+                                        <linearGradient id="chart-nzincome-gradient" x1="0" y1="0" x2="1" y2="0">
+                                            <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.8}/>
+                                            <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0.1}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50" />
+                                    <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
+                                    <XAxis type="number" hide={true} />
+                                    <Tooltip 
+                                        cursor={{fill: 'hsl(var(--muted))'}} 
+                                        content={<ChartTooltipContent config={chartConfig} formatter={(value) => `${Math.round(value as number)} zł`} />} 
+                                    />
+                                    <Bar dataKey="nzIncome" radius={[0, 4, 4, 0]} fill="url(#chart-nzincome-gradient)" onClick={handleNzIncomeClick} className={nzIncomeView.level === 'localities' ? 'cursor-pointer' : ''}>
+                                        <LabelList dataKey="nzIncome" position="right" offset={8} className="fill-foreground text-xs" formatter={(value: number) => value > 0 ? `${Math.round(value)} zł` : ''}/>
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
                     ): (
                         <NoDataState message={'Brak danych o przychodach od mieszkańców (NZ)'} />
                     )}
@@ -526,7 +531,7 @@ export function DashboardCharts({
                             <BarChart 
                                 data={chartData.employeesByDepartment}
                                 layout="vertical"
-                                margin={{ top: 5, right: 40, bottom: 5, left: 10 }}
+                                margin={{ top: 5, right: 50, bottom: 5, left: 10 }}
                                 barCategoryGap="20%"
                             >
                                 <defs>
@@ -574,7 +579,7 @@ export function DashboardCharts({
                              <BarChart 
                                 data={chartData.employeesPerCoordinator}
                                 layout="vertical"
-                                margin={{ top: 5, right: 40, bottom: 5, left: 10 }}
+                                margin={{ top: 5, right: 50, bottom: 5, left: 10 }}
                                 barCategoryGap="20%"
                             >
                                 <defs>
@@ -622,7 +627,7 @@ export function DashboardCharts({
                             <BarChart 
                                 data={chartData.employeesByNationality} 
                                 layout="vertical"
-                                margin={{ top: 5, right: 40, bottom: 5, left: 10 }}
+                                margin={{ top: 5, right: 50, bottom: 5, left: 10 }}
                                 barCategoryGap="20%"
                             >
                                 <defs>
