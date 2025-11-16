@@ -4,8 +4,8 @@
 import { useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList } from "recharts";
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
-import { BarChart2, Copy, Users } from "lucide-react";
-import type { Employee, Settings, ChartConfig, Coordinator, Address } from "@/types";
+import { BarChart2, Copy, Users, ArrowLeft } from "lucide-react";
+import type { Employee, Settings, ChartConfig, Coordinator, Address, NonEmployee } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useMainLayout } from '@/components/main-layout';
 import { format, getYear, eachDayOfInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, eachMonthOfInterval, parseISO } from 'date-fns';
@@ -77,9 +77,11 @@ const EmployeeListDialog = ({
 
 export function DashboardCharts({
     employees,
+    nonEmployees,
     settings,
 }: {
     employees: Employee[],
+    nonEmployees: NonEmployee[],
     settings: Settings,
     isMobile: boolean
 }) {
@@ -106,6 +108,8 @@ export function DashboardCharts({
     const [coordinatorChartFilter, setCoordinatorChartFilter] = useState('all');
     const [coordinatorChartSort, setCoordinatorChartSort] = useState<'count' | 'name'>('count');
 
+    const [nzIncomeView, setNzIncomeView] = useState<{level: 'localities' | 'addresses', filter: string | null}>({ level: 'localities', filter: null });
+
 
     const chartConfig = {
       employees: {
@@ -131,6 +135,10 @@ export function DashboardCharts({
       coordinators: {
           label: "Coordinators",
           color: "hsl(var(--chart-1))"
+      },
+      nzIncome: {
+        label: "Przychód (NZ)",
+        color: "hsl(var(--chart-2))"
       }
     } satisfies ChartConfig
 
@@ -315,6 +323,44 @@ export function DashboardCharts({
                 }
             });
         }
+        
+        const incomeByLocation = nonEmployees.reduce((acc, nonEmployee) => {
+            if (!nonEmployee.address) return acc;
+            
+            const addressInfo = settings.addresses.find(a => a.name === nonEmployee.address);
+            if (!addressInfo) return acc;
+            
+            const locality = addressInfo.locality || "Brak miejscowości";
+            const amount = nonEmployee.paymentAmount || (nonEmployee.gender === 'Dzieci' ? 600 : 900);
+            
+            if (!acc.byLocality[locality]) {
+                acc.byLocality[locality] = { name: locality, income: 0, addresses: {} };
+            }
+            acc.byLocality[locality].income += amount;
+            
+            if (!acc.byLocality[locality].addresses[addressInfo.name]) {
+                acc.byLocality[locality].addresses[addressInfo.name] = { name: addressInfo.name, income: 0 };
+            }
+            acc.byLocality[locality].addresses[addressInfo.name].income += amount;
+            
+            return acc;
+        }, { byLocality: {} as Record<string, { name: string, income: number, addresses: Record<string, {name: string, income: number}> }> });
+
+        let nzIncomeChartData;
+        if (nzIncomeView.level === 'localities') {
+            nzIncomeChartData = Object.values(incomeByLocation.byLocality)
+                .map(l => ({ name: l.name, nzIncome: l.income }))
+                .sort((a,b) => b.nzIncome - a.nzIncome);
+        } else {
+            const localityData = incomeByLocation.byLocality[nzIncomeView.filter || ''];
+            if (localityData) {
+                nzIncomeChartData = Object.values(localityData.addresses)
+                    .map(a => ({ name: a.name, nzIncome: a.income }))
+                    .sort((a,b) => b.nzIncome - a.nzIncome);
+            } else {
+                nzIncomeChartData = [];
+            }
+        }
 
 
         return {
@@ -323,8 +369,9 @@ export function DashboardCharts({
             employeesByDepartment: employeesByDepartment,
             departuresByMonth: departuresData,
             deductionsByDate: deductionsData,
+            nzIncomeByLocation: nzIncomeChartData,
         }
-    }, [employees, settings, departureYear, departureMonth, deductionYear, deductionMonth, departmentChartFilter, departmentChartSort, nationalityChartFilter, nationalityChartSort, coordinatorChartFilter, coordinatorChartSort, deductionLocality, deductionAddress, deductionEmployee]);
+    }, [employees, nonEmployees, settings, departureYear, departureMonth, deductionYear, deductionMonth, departmentChartFilter, departmentChartSort, nationalityChartFilter, nationalityChartSort, coordinatorChartFilter, coordinatorChartSort, deductionLocality, deductionAddress, deductionEmployee, nzIncomeView]);
 
     const showCoordinatorChart = currentUser?.isAdmin && selectedCoordinatorId === 'all';
     
@@ -348,6 +395,12 @@ export function DashboardCharts({
         const departmentEmployees = employees.filter(e => (e.zaklad || "Brak zakładu") === departmentName && e.status === 'active');
         setSelectedDepartment({ name: departmentName, employees: departmentEmployees });
         setIsEmployeeListDialogOpen(true);
+    };
+
+    const handleNzIncomeClick = (data: any) => {
+        if (nzIncomeView.level === 'localities') {
+            setNzIncomeView({ level: 'addresses', filter: data.name });
+        }
     };
 
     const departmentOptions = useMemo(() => {
@@ -386,9 +439,64 @@ export function DashboardCharts({
         return options;
     }, [employees]);
 
+    const nonEmployeeOptions = useMemo(() => {
+        const options = nonEmployees.map((e: NonEmployee) => ({ value: e.id, label: e.fullName }));
+        options.unshift({ value: 'all', label: 'Wszyscy mieszkańcy (NZ)' });
+        return options;
+    }, [nonEmployees]);
+
+
     return (
         <>
         <div className="grid gap-6">
+             <Card>
+                <CardHeader className='pb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between min-h-[74px]'>
+                    <div className="flex items-center gap-2">
+                        {nzIncomeView.level === 'addresses' && (
+                            <Button 
+                                variant="ghost" 
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => setNzIncomeView({ level: 'localities', filter: null })}
+                            >
+                                <ArrowLeft className="h-4 w-4" />
+                            </Button>
+                        )}
+                        <div>
+                             <CardTitle className="text-lg">Przychody (NZ) wg Lokalizacji</CardTitle>
+                             {nzIncomeView.level === 'addresses' && <CardDescription>Szczegóły dla: {nzIncomeView.filter}</CardDescription>}
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {chartData.nzIncomeByLocation.length > 0 && chartData.nzIncomeByLocation.some(d => d.nzIncome > 0) ? (
+                        <ResponsiveContainer width="100%" height={chartData.nzIncomeByLocation.length * 35 + 50}>
+                            <BarChart
+                                data={chartData.nzIncomeByLocation}
+                                layout="vertical"
+                                margin={{ top: 5, right: 30, bottom: 5, left: 10 }}
+                                barCategoryGap="20%"
+                            >
+                                <defs>
+                                    <linearGradient id="chart-nzincome-gradient" x1="0" y1="0" x2="1" y2="0">
+                                        <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.8}/>
+                                        <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0.1}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50" />
+                                <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
+                                <XAxis type="number" hide={true} />
+                                <Tooltip cursor={{fill: 'hsl(var(--muted))'}} content={<ChartTooltipContent config={chartConfig} formatter={(value) => `${value.toFixed(2)} PLN`} />} />
+                                <Bar dataKey="nzIncome" radius={[0, 4, 4, 0]} fill="url(#chart-nzincome-gradient)" className={nzIncomeView.level === 'localities' ? 'cursor-pointer' : ''} onClick={handleNzIncomeClick}>
+                                    <LabelList dataKey="nzIncome" position="right" offset={8} className="fill-foreground text-xs" formatter={(value: number) => value > 0 ? `${value.toFixed(2)}` : ''}/>
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    ): (
+                        <NoDataState message={'Brak danych o przychodach od mieszkańców (NZ)'} />
+                    )}
+                </CardContent>
+             </Card>
              {chartData.employeesByDepartment.length > 0 && (
                 <Card>
                     <CardHeader className='pb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between min-h-[74px]'>
@@ -662,3 +770,5 @@ export function DashboardCharts({
         </>
     );
 }
+
+    
