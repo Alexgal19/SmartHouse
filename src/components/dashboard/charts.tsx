@@ -324,7 +324,7 @@ export function DashboardCharts({
             });
         }
         
-        const incomeByLocation = nonEmployees.reduce((acc, nonEmployee) => {
+        const incomeByLocation = (nonEmployees || []).reduce((acc, nonEmployee) => {
             if (!nonEmployee.address) return acc;
             
             const addressInfo = settings.addresses.find(a => a.name === nonEmployee.address);
@@ -440,6 +440,7 @@ export function DashboardCharts({
     }, [employees]);
 
     const nonEmployeeOptions = useMemo(() => {
+        if (!nonEmployees) return [{ value: 'all', label: 'Wszyscy mieszkańcy (NZ)' }];
         const options = nonEmployees.map((e: NonEmployee) => ({ value: e.id, label: e.fullName }));
         options.unshift({ value: 'all', label: 'Wszyscy mieszkańcy (NZ)' });
         return options;
@@ -770,5 +771,3 @@ export function DashboardCharts({
         </>
     );
 }
-
-    
