@@ -238,7 +238,7 @@ const writeToAuditLog = async (actorId: string, actorName: string, action: strin
 
 const createNotification = async (
     actor: Coordinator,
-    action: 'dodał' | 'zaktualizował' | 'trwale usunął' | 'automatycznie zwolnił' | 'automatycznie deaktywował' | 'przeniósł',
+    action: 'dodał' | 'zaktualizował' | 'trwale usunął' | 'automatycznie zwolnił' | 'przeniósł',
     entity: (Employee | NonEmployee),
     settings: Settings,
     changes: NotificationChange[] = []
@@ -734,12 +734,12 @@ export async function checkAndUpdateStatuses(actorUid?: string): Promise<{ updat
             if ((status === 'active' || !status) && checkOutDateString) {
                 const checkOutDate = parseISO(checkOutDateString);
                 if (isValid(checkOutDate) && checkOutDate < today) {
-                    row.set('status', 'inactive');
+                    row.set('status', 'dismissed');
                     await row.save();
                     updatedCount++;
                     const originalNonEmployee = { ...row.toObject(), id: row.get('id'), fullName: row.get('fullName'), coordinatorId: row.get('coordinatorId') } as NonEmployee;
-                    await createNotification(actor, 'automatycznie deaktywował', originalNonEmployee, settings, [
-                        { field: 'status', oldValue: 'active', newValue: 'inactive' }
+                    await createNotification(actor, 'automatycznie zwolnił', originalNonEmployee, settings, [
+                        { field: 'status', oldValue: 'active', newValue: 'dismissed' }
                     ]);
                 }
             }

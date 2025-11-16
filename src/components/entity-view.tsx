@@ -427,13 +427,13 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     const activeEmployees = useMemo(() => filteredEmployees.filter(e => e.status === 'active'), [filteredEmployees]);
     const dismissedEmployees = useMemo(() => filteredEmployees.filter(e => e.status === 'dismissed'), [filteredEmployees]);
     const activeNonEmployees = useMemo(() => filteredNonEmployees.filter(ne => ne.status === 'active'), [filteredNonEmployees]);
-    const inactiveNonEmployees = useMemo(() => filteredNonEmployees.filter(ne => ne.status === 'inactive'), [filteredNonEmployees]);
+    const dismissedNonEmployees = useMemo(() => filteredNonEmployees.filter(ne => ne.status === 'dismissed'), [filteredNonEmployees]);
     
     const dataMap = useMemo(() => ({
         active: activeEmployees,
-        dismissed: [...dismissedEmployees, ...inactiveNonEmployees],
+        dismissed: [...dismissedEmployees, ...dismissedNonEmployees],
         'non-employees': activeNonEmployees,
-    }), [activeEmployees, dismissedEmployees, activeNonEmployees, inactiveNonEmployees]);
+    }), [activeEmployees, dismissedEmployees, activeNonEmployees, dismissedNonEmployees]);
 
     const currentData = dataMap[tab];
     const totalPages = Math.ceil((currentData?.length || 0) / ITEMS_PER_PAGE);
@@ -537,7 +537,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                             <Users className="mr-2 h-4 w-4" />NZ ({activeNonEmployees.length})
                         </TabsTrigger>
                          <TabsTrigger value="dismissed" disabled={isPending}>
-                            <UserX className="mr-2 h-4 w-4" />Zwolnieni ({dismissedEmployees.length + inactiveNonEmployees.length})
+                            <UserX className="mr-2 h-4 w-4" />Zwolnieni ({dismissedEmployees.length + dismissedNonEmployees.length})
                         </TabsTrigger>
                     </TabsList>
                     <TabsContent value="active" className="mt-4">{renderContent()}</TabsContent>

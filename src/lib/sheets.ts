@@ -188,7 +188,7 @@ const deserializeNonEmployee = (row: Record<string, unknown>): NonEmployee | nul
         checkOutDate: safeFormat(plainObject.checkOutDate),
         departureReportDate: safeFormat(plainObject.departureReportDate),
         comments: (plainObject.comments || '') as string,
-        status: plainObject.status as 'active' | 'inactive' || 'active',
+        status: plainObject.status as 'active' | 'dismissed' || 'active',
     }
 }
 
