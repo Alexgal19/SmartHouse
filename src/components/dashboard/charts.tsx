@@ -91,9 +91,6 @@ export function DashboardCharts({
     
     const [deductionYear, setDeductionYear] = useState(new Date().getFullYear());
     const [deductionMonth, setDeductionMonth] = useState<number | 'all'>('all');
-    const [deductionLocality, setDeductionLocality] = useState('all');
-    const [deductionAddress, setDeductionAddress] = useState('all');
-    const [deductionEmployee, setDeductionEmployee] = useState('all');
     
     const [isEmployeeListDialogOpen, setIsEmployeeListDialogOpen] = useState(false);
     const [selectedDepartment, setSelectedDepartment] = useState<{name: string, employees: Employee[]}>({name: '', employees: []});
@@ -108,6 +105,7 @@ export function DashboardCharts({
     const [coordinatorChartSort, setCoordinatorChartSort] = useState<'count' | 'name'>('count');
 
     const [nzIncomeView, setNzIncomeView] = useState<{level: 'localities' | 'addresses', filter: string | null}>({ level: 'localities', filter: null });
+    const [deductionsView, setDeductionsView] = useState<{level: 'localities' | 'addresses' | 'employees', filter: string | null, parentFilter: string | null}>({ level: 'localities', filter: null, parentFilter: null });
 
 
     const chartConfig = {
@@ -141,12 +139,6 @@ export function DashboardCharts({
       }
     } satisfies ChartConfig
 
-    const deductionsFilteredAddresses = useMemo(() => {
-        if (deductionLocality === 'all') {
-            return settings.addresses;
-        }
-        return settings.addresses.filter(a => a.locality === deductionLocality);
-    }, [settings.addresses, deductionLocality]);
 
     const chartData = useMemo(() => {
         const activeEmployees = employees.filter(e => e.status === 'active');
@@ -260,69 +252,6 @@ export function DashboardCharts({
             })
         }
         
-        let filteredDeductionEmployees = employees;
-        if (deductionLocality !== 'all') {
-            const addressesInLocality = new Set(settings.addresses.filter(a => a.locality === deductionLocality).map(a => a.name));
-            filteredDeductionEmployees = filteredDeductionEmployees.filter(e => e.address && addressesInLocality.has(e.address));
-        }
-        if (deductionAddress !== 'all') {
-             filteredDeductionEmployees = filteredDeductionEmployees.filter(e => e.address === deductionAddress);
-        }
-        if (deductionEmployee !== 'all') {
-            filteredDeductionEmployees = filteredDeductionEmployees.filter(e => e.id === deductionEmployee);
-        }
-
-
-        const deductionsByDate = filteredDeductionEmployees.reduce((acc, employee) => {
-            if (employee.checkOutDate) {
-                const totalDeduction = (employee.deductionRegulation || 0) +
-                                     (employee.deductionNo4Months || 0) +
-                                     (employee.deductionNo30Days || 0) +
-                                     (employee.deductionReason || []).reduce((sum, reason) => sum + (reason.checked && reason.amount ? reason.amount : 0), 0);
-
-                if (totalDeduction > 0) {
-                     try {
-                        const dateKey = format(parseISO(employee.checkOutDate), 'yyyy-MM-dd');
-                        if (!acc[dateKey]) {
-                            acc[dateKey] = { deductions: 0 };
-                        }
-                        acc[dateKey].deductions += totalDeduction;
-                    } catch(e) {
-                         console.warn(`Invalid checkout date for deduction for employee ${employee.id}: ${employee.checkOutDate}`);
-                    }
-                }
-            }
-            return acc;
-        }, {} as Record<string, { deductions: number }>);
-        
-        let deductionsData;
-        if (deductionMonth === 'all') {
-            const yearStartDate = startOfYear(new Date(deductionYear, 0, 1));
-            const yearEndDate = endOfYear(new Date(deductionYear, 11, 31));
-            const monthsInYear = eachMonthOfInterval({ start: yearStartDate, end: yearEndDate });
-            
-            deductionsData = monthsInYear.map(monthDate => {
-                const monthKey = format(monthDate, 'yyyy-MM');
-                const monthDeductions = Object.keys(deductionsByDate).filter(dateKey => dateKey.startsWith(monthKey)).reduce((sum, dateKey) => sum + deductionsByDate[dateKey].deductions, 0);
-                return {
-                    label: format(monthDate, 'MMM', { locale: pl }),
-                    deductions: monthDeductions,
-                }
-            });
-        } else {
-            const monthStartDate = startOfMonth(new Date(deductionYear, deductionMonth - 1));
-            const monthEndDate = endOfMonth(monthStartDate);
-            const daysInMonth = eachDayOfInterval({start: monthStartDate, end: monthEndDate});
-
-            deductionsData = daysInMonth.map(dayDate => {
-                const dayKey = format(dayDate, 'yyyy-MM-dd');
-                return {
-                    label: format(dayDate, 'd'),
-                    deductions: deductionsByDate[dayKey]?.deductions || 0,
-                }
-            });
-        }
-        
         const incomeByLocation = (nonEmployees || []).reduce((acc, nonEmployee) => {
             const nonEmployeeIncome = nonEmployee.paymentAmount;
             if (!nonEmployeeIncome || nonEmployeeIncome <= 0 || !nonEmployee.address) {
@@ -362,6 +291,68 @@ export function DashboardCharts({
                 nzIncomeByLocationChartData = [];
             }
         }
+        
+        const deductionsByLocation = employees.reduce((acc, employee) => {
+            const totalDeduction = (employee.deductionRegulation || 0) +
+                                  (employee.deductionNo4Months || 0) +
+                                  (employee.deductionNo30Days || 0) +
+                                  (employee.deductionReason || []).reduce((sum, reason) => sum + (reason.checked && reason.amount ? reason.amount : 0), 0);
+
+            if (totalDeduction <= 0) return acc;
+            
+            const checkOutDate = employee.checkOutDate ? parseISO(employee.checkOutDate) : null;
+            if (!checkOutDate) return acc;
+
+            const matchesPeriod = (deductionMonth === 'all' && checkOutDate.getFullYear() === deductionYear) ||
+                                  (deductionMonth !== 'all' && checkOutDate.getFullYear() === deductionYear && checkOutDate.getMonth() === deductionMonth - 1);
+            
+            if (!matchesPeriod) return acc;
+            
+            const addressInfo = settings.addresses.find(a => a.name === employee.address);
+            const locality = addressInfo?.locality || "Brak miejscowości";
+            const address = employee.address || "Brak adresu";
+
+            if (!acc[locality]) acc[locality] = { name: locality, total: 0, addresses: {} };
+            acc[locality].total += totalDeduction;
+
+            if (!acc[locality].addresses[address]) acc[locality].addresses[address] = { name: address, total: 0, employees: {} };
+            acc[locality].addresses[address].total += totalDeduction;
+            
+            if(!acc[locality].addresses[address].employees[employee.fullName]) acc[locality].addresses[address].employees[employee.fullName] = { name: employee.fullName, total: 0};
+            acc[locality].addresses[address].employees[employee.fullName].total += totalDeduction;
+
+            return acc;
+        }, {} as Record<string, { name: string, total: number, addresses: Record<string, { name: string, total: number, employees: Record<string, {name: string, total: number}> }> }>);
+        
+        let deductionsChartData;
+        if (deductionsView.level === 'localities') {
+            deductionsChartData = Object.values(deductionsByLocation)
+                .map(l => ({ name: l.name, deductions: l.total }))
+                .sort((a,b) => b.deductions - a.deductions);
+        } else if (deductionsView.level === 'addresses') {
+            const localityData = deductionsByLocation[deductionsView.filter || ''];
+            if (localityData) {
+                deductionsChartData = Object.values(localityData.addresses)
+                    .map(a => ({ name: a.name, deductions: a.total }))
+                    .sort((a,b) => b.deductions - a.deductions);
+            } else {
+                deductionsChartData = [];
+            }
+        } else { // employees level
+             const localityData = deductionsByLocation[deductionsView.parentFilter || ''];
+             if (localityData) {
+                const addressData = localityData.addresses[deductionsView.filter || ''];
+                if(addressData) {
+                    deductionsChartData = Object.values(addressData.employees)
+                        .map(e => ({ name: e.name, deductions: e.total }))
+                        .sort((a,b) => b.deductions - a.deductions);
+                } else {
+                   deductionsChartData = [];
+                }
+            } else {
+                deductionsChartData = [];
+            }
+        }
 
 
         return {
@@ -369,10 +360,10 @@ export function DashboardCharts({
             employeesByNationality: employeesByNationality,
             employeesByDepartment: employeesByDepartment,
             departuresByMonth: departuresData,
-            deductionsByDate: deductionsData,
+            deductionsByDate: deductionsChartData,
             nzIncomeByLocation: nzIncomeByLocationChartData,
         }
-    }, [employees, nonEmployees, settings, departureYear, departureMonth, deductionYear, deductionMonth, departmentChartFilter, departmentChartSort, nationalityChartFilter, nationalityChartSort, coordinatorChartFilter, coordinatorChartSort, deductionLocality, deductionAddress, deductionEmployee, nzIncomeView]);
+    }, [employees, nonEmployees, settings, departureYear, departureMonth, deductionYear, deductionMonth, departmentChartFilter, departmentChartSort, nationalityChartFilter, nationalityChartSort, coordinatorChartFilter, coordinatorChartSort, nzIncomeView, deductionsView]);
 
     const showCoordinatorChart = currentUser?.isAdmin && selectedCoordinatorId === 'all';
     
@@ -403,6 +394,22 @@ export function DashboardCharts({
             setNzIncomeView({ level: 'addresses', filter: data.name });
         }
     };
+    
+    const handleDeductionsClick = (data: any) => {
+        if (deductionsView.level === 'localities') {
+            setDeductionsView({ level: 'addresses', filter: data.name, parentFilter: null });
+        } else if (deductionsView.level === 'addresses') {
+            setDeductionsView({ level: 'employees', filter: data.name, parentFilter: deductionsView.filter });
+        }
+    };
+    
+    const handleDeductionsBack = () => {
+        if (deductionsView.level === 'employees') {
+            setDeductionsView({ level: 'addresses', filter: deductionsView.parentFilter, parentFilter: null });
+        } else if (deductionsView.level === 'addresses') {
+            setDeductionsView({ level: 'localities', filter: null, parentFilter: null });
+        }
+    }
 
     const departmentOptions = useMemo(() => {
         const options = settings.departments.map(d => ({ value: d, label: d }));
@@ -421,32 +428,6 @@ export function DashboardCharts({
         options.unshift({ value: 'all', label: 'Wszyscy koordynatorzy' });
         return options;
     }, [settings.coordinators]);
-
-    const localitiesOptions = useMemo(() => {
-        const options = settings.localities.map(l => ({ value: l, label: l }));
-        options.unshift({ value: 'all', label: 'Wszystkie miejscowości' });
-        return options;
-    }, [settings.localities]);
-
-    const addressesOptions = useMemo(() => {
-        const options = deductionsFilteredAddresses.map((a: Address) => ({ value: a.name, label: a.name }));
-        options.unshift({ value: 'all', label: 'Wszystkie adresy' });
-        return options;
-    }, [deductionsFilteredAddresses]);
-
-    const employeeOptions = useMemo(() => {
-        const options = employees.map((e: Employee) => ({ value: e.id, label: e.fullName }));
-        options.unshift({ value: 'all', label: 'Wszyscy pracownicy' });
-        return options;
-    }, [employees]);
-
-    const nonEmployeeOptions = useMemo(() => {
-        if (!nonEmployees) return [{ value: 'all', label: 'Wszyscy mieszkańcy (NZ)' }];
-        const options = nonEmployees.map((e: NonEmployee) => ({ value: e.id, label: e.fullName }));
-        options.unshift({ value: 'all', label: 'Wszyscy mieszkańcy (NZ)' });
-        return options;
-    }, [nonEmployees]);
-
 
     return (
         <>
@@ -701,10 +682,24 @@ export function DashboardCharts({
             </Card>
             <Card>
                 <CardHeader className='pb-2'>
-                    <div>
-                        <CardTitle className="text-lg">Potrącenia</CardTitle>
+                   <div className="flex items-center gap-2">
+                        {deductionsView.level !== 'localities' && (
+                            <Button 
+                                variant="ghost" 
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={handleDeductionsBack}
+                            >
+                                <ArrowLeft className="h-4 w-4" />
+                            </Button>
+                        )}
+                        <div>
+                            <CardTitle className="text-lg">Potrącenia</CardTitle>
+                            {deductionsView.level === 'addresses' && <CardDescription>Szczegóły dla: {deductionsView.filter}</CardDescription>}
+                            {deductionsView.level === 'employees' && <CardDescription>Szczegóły dla: {deductionsView.filter}</CardDescription>}
+                        </div>
                     </div>
-                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 pt-2 sm:pt-4">
+                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 sm:pt-4">
                         <div className="space-y-1.5">
                             <Label className="text-xs">Rok</Label>
                             <Select value={String(deductionYear)} onValueChange={(v) => setDeductionYear(Number(v))}>
@@ -724,44 +719,34 @@ export function DashboardCharts({
                                 </SelectContent>
                             </Select>
                         </div>
-                         <div className="space-y-1.5">
-                            <Label className="text-xs">Miejscowość</Label>
-                            <Combobox options={localitiesOptions} value={deductionLocality} onChange={setDeductionLocality} placeholder="Wszystkie" searchPlaceholder="Szukaj..." className="w-full h-8 text-xs" />
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label className="text-xs">Adres</Label>
-                            <Combobox options={addressesOptions} value={deductionAddress} onChange={setDeductionAddress} placeholder="Wszystkie" searchPlaceholder="Szukaj..." className="w-full h-8 text-xs" />
-                        </div>
-                         <div className="space-y-1.5">
-                            <Label className="text-xs">Pracownik</Label>
-                            <Combobox options={employeeOptions} value={deductionEmployee} onChange={setDeductionEmployee} placeholder="Wszyscy" searchPlaceholder="Szukaj..." className="w-full h-8 text-xs" />
-                        </div>
                     </div>
                 </CardHeader>
                 <CardContent>
                     {chartData.deductionsByDate.length > 0 && chartData.deductionsByDate.some(d => d.deductions > 0) ? (
-                         <ChartContainer config={chartConfig} className="w-full aspect-video">
-                            <ResponsiveContainer width="100%" height={350}>
+                         <div style={{ height: `${chartData.deductionsByDate.length * 35 + 50}px` }}>
+                            <ResponsiveContainer width="100%" height="100%">
                                 <BarChart 
                                     data={chartData.deductionsByDate}
-                                    margin={{ top: 20, right: 20, bottom: 5, left: 0 }}
+                                    layout="vertical"
+                                    margin={{ top: 5, right: 50, bottom: 5, left: 10 }}
+                                    barCategoryGap="20%"
                                 >
                                      <defs>
-                                        <linearGradient id="chart-deductions-gradient" x1="0" y1="0" x2="0" y2="1">
+                                        <linearGradient id="chart-deductions-gradient" x1="0" y1="0" x2="1" y2="0">
                                             <stop offset="5%" stopColor="hsl(var(--chart-5))" stopOpacity={0.8}/>
                                             <stop offset="95%" stopColor="hsl(var(--chart-5))" stopOpacity={0.1}/>
                                         </linearGradient>
                                     </defs>
-                                    <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border/50"/>
-                                    <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} className="text-xs" />
-                                    <YAxis allowDecimals={false} tickLine={false} axisLine={false} hide={true} />
-                                    <Tooltip cursor={false} content={<ChartTooltipContent config={chartConfig} formatter={(value) => `${value} PLN`}/>} />
-                                    <Bar dataKey="deductions" radius={[4, 4, 0, 0]} fill="url(#chart-deductions-gradient)">
-                                       <LabelList dataKey="deductions" position="top" offset={8} className="fill-foreground text-xs" formatter={(value: number) => value > 0 ? `${value.toFixed(2)}` : ''}/>
+                                    <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50"/>
+                                    <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
+                                    <XAxis type="number" hide={true} />
+                                    <Tooltip cursor={{fill: 'hsl(var(--muted))'}} content={<ChartTooltipContent config={chartConfig} formatter={(value) => `${(value as number).toFixed(2)} PLN`}/>} />
+                                    <Bar dataKey="deductions" radius={[4, 4, 0, 0]} fill="url(#chart-deductions-gradient)" onClick={handleDeductionsClick} className={deductionsView.level !== 'employees' ? 'cursor-pointer' : ''}>
+                                       <LabelList dataKey="deductions" position="right" offset={8} className="fill-foreground text-xs" formatter={(value: number) => value > 0 ? `${value.toFixed(2)}` : ''}/>
                                     </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
-                        </ChartContainer>
+                        </div>
                     ) : (
                         <NoDataState message={'Brak danych o potrąceniach w wybranym okresie'} />
                     )}
