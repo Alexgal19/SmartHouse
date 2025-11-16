@@ -187,8 +187,13 @@ const EntityCardList = ({ entities, onEdit, onDismiss, onRestore, isDismissed, s
     return (
         <div className="space-y-4">
              {entities.length > 0 ? (
-                entities.map((entity) => (
-                    <Card key={entity.id} onClick={() => onEdit(entity)} className="cursor-pointer animate-in fade-in-0 duration-300">
+                entities.map((entity, index) => (
+                    <Card 
+                        key={entity.id} 
+                        onClick={() => onEdit(entity)} 
+                        className="cursor-pointer animate-fade-in-up"
+                        style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}
+                    >
                         <CardHeader className="flex flex-row items-start justify-between pb-4">
                            <div>
                              <CardTitle className="text-base">{entity.fullName}</CardTitle>

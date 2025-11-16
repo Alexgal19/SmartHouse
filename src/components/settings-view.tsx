@@ -172,8 +172,8 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
             </div>
 
             <Accordion type="multiple" className="w-full space-y-2">
-                {filteredFields.map((field) => (
-                    <AccordionItem value={field.id} key={field.id} className="border rounded-md px-4">
+                {filteredFields.map((field, index) => (
+                    <AccordionItem value={field.id} key={field.id} className="border rounded-md px-4 animate-fade-in-up" style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}>
                         <AccordionTrigger>
                             <div className="flex items-center justify-between w-full pr-4">
                                 <span className="font-semibold">{form.getValues(`coordinators.${field.originalIndex}.name`) || `Nowy koordynator`}</span>
@@ -357,8 +357,8 @@ const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove,
             </div>
             {filteredAddresses && filteredAddresses.length > 0 ? (
                 <div className="space-y-2">
-                    {filteredAddresses.map((address: Address) => (
-                        <div key={address.id} className="flex items-center justify-between rounded-lg border p-3">
+                    {filteredAddresses.map((address: Address, index: number) => (
+                        <div key={address.id} className="flex items-center justify-between rounded-lg border p-3 animate-fade-in-up" style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}>
                             <div>
                                 <p className="font-semibold">{address.name} <span className="text-sm text-muted-foreground font-normal">({address.locality})</span></p>
                                 <p className="text-sm text-muted-foreground">

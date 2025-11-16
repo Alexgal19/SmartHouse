@@ -363,7 +363,7 @@ const useHousingData = () => {
         
         const allActiveOccupants: Occupant[] = [
             ...allEmployees.filter(e => e.status === 'active'),
-            ...allNonEmployees
+            ...allNonEmployees.filter(ne => ne.status === 'active')
         ];
 
         return addressesToDisplay.map(address => {
@@ -400,11 +400,11 @@ const useHousingData = () => {
 }
 
 
-const MobileAddressCard = ({ address, onOccupantClick }: { address: HousingData; onOccupantClick: (occupant: Occupant) => void }) => {
+const MobileAddressCard = ({ address, onOccupantClick, style }: { address: HousingData; onOccupantClick: (occupant: Occupant) => void; style?: React.CSSProperties }) => {
     const { copyToClipboard } = useCopyToClipboard();
 
     return (
-        <Card asChild className={cn("overflow-hidden", address.available > 0 && "border-green-500/30")}>
+        <Card asChild className={cn("overflow-hidden animate-fade-in-up", address.available > 0 && "border-green-500/30")} style={style}>
             <AccordionItem value={address.id} className="border-b-0">
                 <AccordionTrigger className="p-4 hover:no-underline">
                     <div className="w-full">
@@ -609,11 +609,12 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                                 <div key={locality}>
                                     <h2 className="text-lg font-bold sticky top-0 bg-background py-3 z-10">{locality}</h2>
                                     <div className="space-y-3">
-                                        {addresses.map(address => (
+                                        {addresses.map((address, index) => (
                                             <MobileAddressCard 
                                                 key={address.id}
                                                 address={address}
                                                 onOccupantClick={handleOccupantClick}
+                                                style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}
                                             />
                                         ))}
                                     </div>
@@ -643,15 +644,16 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                                 <AccordionItem value={locality} key={locality} className="border-b-0">
                                     <AccordionTrigger className="text-lg font-bold sticky top-0 bg-background py-3 z-10 hover:no-underline">{locality}</AccordionTrigger>
                                     <AccordionContent className="space-y-2">
-                                        {addresses.map(address => (
+                                        {addresses.map((address, index) => (
                                             <Card 
                                                 key={address.id}
                                                 className={cn(
-                                                    "cursor-pointer transition-colors",
+                                                    "cursor-pointer transition-colors animate-fade-in-up",
                                                     selectedAddressIds.includes(address.id) ? "bg-primary/10 border-primary" : "hover:bg-muted/50",
                                                     address.available > 0 && !selectedAddressIds.includes(address.id) && "bg-green-500/10 border-green-500/20"
                                                 )}
                                                 onClick={() => handleAddressClick(address.id)}
+                                                style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}
                                             >
                                                 <CardHeader className="p-2">
                                                     <div className="flex justify-between items-start">

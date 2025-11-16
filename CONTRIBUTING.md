@@ -136,7 +136,7 @@ XML
 [FULL, FINAL FILE CONTENT HERE - no abbreviations, no diffs]
 ]]></content>
   </change>
-  </changes>
+</changes>
 Requirements:
 
 Use absolute paths from the repository root (e.g., /CONTRIBUTING.md, /src/components/Button.tsx).
@@ -205,29 +205,53 @@ Validation:
 Validate all input with zod schemas. Reject invalid data; do not trust the client.
 
 9. UI/UX, A11y, and Tailwind
+Core Principles & Layout:
+
+Mobile-First: All UI development must follow a Mobile-First approach. Design for small screens first, then use min-width media queries (e.g., Tailwind's md:, lg:) for larger viewports.
+
+Modern Layout: By default, use CSS Grid and Flexbox for main layout structures and component alignment. Avoid legacy layout methods (e.g., float).
+
 A11y:
 
-Semantic HTML5 (header, main, nav, footer).
+Semantic HTML5: Use correct elements (header, main, nav, footer).
 
-ARIA only where necessary; aria-live for messages (toast/status).
+ARIA: Use ARIA roles only where necessary. Use aria-live for dynamic messages (toast/status).
 
-Radix UI: ensure correct roles, aria-*, and focus management. Use available patterns.
+Radix UI: Ensure correct roles, aria-* attributes, and focus management. Use available patterns.
+
+Responsiveness & Modern CSS:
+
+Fluid Design: Use fluid typography and spacing (e.g., clamp(), min(), max()) where appropriate.
+
+Relative Units: Prefer relative units (rem, em) over static px for scalability and accessibility.
+
+CSS Variables: Actively use CSS Custom Properties (Variables) for theming (e.g., var(--primary-color)) when not handled by Tailwind's theme().
+
+Logical Properties: Use Logical Properties (e.g., margin-inline-start instead of margin-left) for automatic RTL support.
 
 Tailwind:
 
-Mobile-first, sensible breakpoints, avoiding FOUC/CLS.
+Apply utility-first, but maintain component readability and SRP (Single Responsibility Principle).
 
-Ensure tailwind.config content includes all sources (app//*, src//, components/**/).
+Ensure tailwind.config content includes all sources (app/, src/, components/**/).
 
-Apply utility-first, but maintain SRP and component readability.
+Avoid FOUC/CLS (Flash of Unstyled Content / Cumulative Layout Shift).
 
-Animations:
+Animations & Microinteractions:
 
-Use transform/opacity (GPU-friendly). Subtle animations that support UX (micro-interactions).
+Purpose: Animations must be subtle and purposeful (provide feedback, guide the user, confirm actions) and enhance the UX, not distract from it.
+
+Performance: Prioritize 60 FPS. Animate transform (translate, scale, rotate) and opacity (GPU-friendly).
+
+Avoid: Do not animate layout-heavy properties (e.g., width, height, margin) as they cause "reflow".
+
+Modern APIs: Where appropriate, consider View Transitions API for page/view changes or Scroll-driven Animations for scroll-based effects.
 
 Forms:
 
-react-hook-form + zodResolver on the client; validation must be repeated on the server.
+Use react-hook-form + zodResolver on the client.
+
+All validation must be repeated on the server (e.g., in Server Actions).
 
 10. Performance and Performance Budget
 Code splitting and dynamic import for heavy libraries (recharts, xlsx) and rarely visited views.
@@ -257,6 +281,7 @@ Be careful not to log secrets.
 
 12. Checklists
 Before Sending a PR
+
 [ ] Changes are limited to the required files.
 
 [ ] Code passes npm run lint, npm run typecheck, npm run build.
@@ -272,6 +297,7 @@ Before Sending a PR
 [ ] Dynamic import for heavy modules, if applicable.
 
 Before Deployment
+
 [ ] Environment variables are set (no secrets in NEXT_PUBLIC_*).
 
 [ ] Service Account access to Google Sheets verified.
@@ -283,18 +309,17 @@ Before Deployment
 [ ] Performance and bundle size are acceptable.
 
 13. Minimum Scripts (Recommended in package.json)
-"typecheck": "tsc --noEmit"
+JSON
 
-"format": "prettier . --write"
-
-"format:check": "prettier . --check"
-
+"typecheck": "tsc --noEmit",
+"format": "prettier . --write",
+"format:check": "prettier . --check",
 "lint:ci": "eslint . --max-warnings=0"
-
 14. Date Handling Standard (and Excel Export)
 Goal: Unify date formatting and parsing throughout the project and avoid errors like "formatDate is not defined".
 
 14.1 General Rules
+
 Centralization: All date operations must be performed via common helpers in the module: /src/lib/date.ts.
 
 Prohibited: Calling non-existent/unimported functions like formatDate in Excel export files or components. If formatting is needed—use functions from /src/lib/date.ts.
@@ -303,8 +328,7 @@ Library: We use date-fns. Do not call functions that do not exist in date-fns (e
 
 Types: Always operate on Date objects or safely parse string/number to Date before formatting.
 
-14.2 Helper Contract (File /src/lib/date.ts must exist)
-The /src/lib/date.ts module must export at least the following:
+14.2 Helper Contract (File /src/lib/date.ts must exist) The /src/lib/date.ts module must export at least the following:
 
 formatDate(input: Date | string | number, pattern?: string): string
 
@@ -327,6 +351,7 @@ true if it is a valid Date object (and not NaN).
 All consumers (UI, API, Excel export) must import exclusively from @/lib/date.
 
 14.3 Usage Rules in Excel Export (xlsx)
+
 Formatting before saving:
 
 Dates to Excel must be saved as formatted strings using formatDate or formatDateTime. Recommended UI formats: "dd.MM.yyyy" for dates, "dd.MM.yyyy HH:mm" for dates with time.
@@ -344,6 +369,7 @@ Column Consistency:
 Date columns in the report must use one consistent format (e.g., "dd.MM.yyyy").
 
 14.4 AI Rules (Date and Excel)
+
 If you see a call to formatDate without an import from @/lib/date, add the correct import and use the helper.
 
 If the helper does not exist—first create /src/lib/date.ts according to the contract in section 14.2, and only then modify the export files.
@@ -353,6 +379,7 @@ Do not replace formatDate with non-existent date-fns functions. date-fns uses th
 Before returning changes, mentally verify that the @/lib/date import is correct (aliases) and that the code will pass lint/typecheck/build.
 
 14.5 Checklist (Dates/Excel)
+
 [ ] File /src/lib/date.ts exists and exports: formatDate, formatDateTime, parseMaybeDate, isValidDate.
 
 [ ] Everywhere I format dates (UI, API, Excel), I use helpers from @/lib/date.
@@ -364,6 +391,7 @@ Before returning changes, mentally verify that the @/lib/date import is correct 
 [ ] No local, ad-hoc formatDate functions in other files.
 
 Additional Recommended Items (Optional)
+
 ESLint rule/grep in CI:
 
 Block the use of “formatDate(” without an import from @/lib/date.
@@ -380,6 +408,7 @@ Documentation in README: (short snippets on how to format dates and import helpe
 
 15. Empty/Nullable Field Handling Rules
 15.1 Definitions and General Rules
+
 Allowed Empty States: null, undefined, empty string "" (after trim: "" is treated as empty).
 
 No Error: An empty field does not generate a validation error, unless the field is marked as required.
@@ -389,6 +418,7 @@ Normalization: Before further processing, all text fields are trimmed. Empty val
 Consistency: The same attribute (e.g., last name, date) must have consistent emptiness rules across the entire application (UI, API, Excel).
 
 15.2 Validation (zod) – Contract
+
 Optional Fields:
 
 Use z.string().optional().transform(v => (v?.trim() ? v.trim() : "")) when you want to store "".
@@ -406,6 +436,7 @@ Use z.union([z.string(), z.date()]).optional().transform(v => { if (!v) return n
 Never throw an error solely because a field is empty if it is marked as optional in the schema.
 
 15.3 UI (Forms and Views)
+
 Forms:
 
 For optional fields, do not show a validation error for an empty value.
@@ -423,6 +454,7 @@ A11y:
 For descriptive elements (e.g., aria-label), do not insert "undefined" or "null". Use meaningful fallbacks, e.g., "No data available".
 
 15.4 Excel Export (xlsx) – Empty Fields
+
 Text:
 
 If the value is empty after normalization → save "" (empty cell) or "—" (if a visual placeholder is required).
@@ -442,6 +474,7 @@ Required Columns:
 If a column is domain-required but the value is empty → do not interrupt the export. Save "" and include warnings in a report (e.g., a list in logs/console or report metadata), but do not treat it as a critical error.
 
 15.5 Backend/API
+
 In Endpoints and Server Actions:
 
 Normalize empty inputs: empty strings → "", null/undefined → null (consistent with the model).
@@ -455,6 +488,7 @@ Logging:
 Log only unexpected errors (e.g., type inconsistent with contract, parsing error in a required field). Empty optional fields are not errors.
 
 15.6 AI Rules (Empty Handling)
+
 If you see an error generated by an empty field, and the field is not required—remove the error and apply normalization + a quiet fallback ("" or null).
 
 For date format: if the value is empty or unparseable → return "" without a toast error. In the UI, you can show a subtle "Missing" badge.
@@ -464,6 +498,7 @@ In Excel export, never interrupt the process due to empty fields. Apply fallback
 Before responding, verify that zod schemas allow emptiness for fields marked as optional.
 
 15.7 Checklist (Empty/Nullable)
+
 [ ] Zod schemas differentiate between required vs optional and do not return errors for empty optional fields.
 
 [ ] UI does not show toast errors for empty optional fields—it uses placeholders.

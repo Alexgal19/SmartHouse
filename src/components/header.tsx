@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useMemo } from 'react';
@@ -24,10 +25,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Label } from './ui/label';
 import { Input } from './ui/input';
 
-const NotificationItem = ({ n, onClick, onDelete }: {n: Notification, onClick: (n: Notification) => void, onDelete: (notificationId: string) => void}) => {
+const NotificationItem = ({ n, onClick, onDelete, style }: {n: Notification, onClick: (n: Notification) => void, onDelete: (notificationId: string) => void, style?: React.CSSProperties}) => {
     
     const itemClasses = cn(
-        "p-3 rounded-lg -mx-2 flex items-start gap-4 transition-colors group border-l-4",
+        "p-3 rounded-lg -mx-2 flex items-start gap-4 transition-colors group border-l-4 animate-fade-in-up",
         n.isRead ? 'opacity-70 border-transparent' : 'font-semibold',
         n.type === 'success' && 'bg-green-500/10 border-green-500',
         n.type === 'destructive' && 'bg-red-500/10 border-red-500',
@@ -51,6 +52,7 @@ const NotificationItem = ({ n, onClick, onDelete }: {n: Notification, onClick: (
     <div 
         className={itemClasses}
         role={n.entityId ? "button" : "status"}
+        style={style}
     >
         <div className="flex-shrink-0" onClick={() => n.entityId && onClick(n)}>
              <div className={iconClasses}></div>
@@ -177,7 +179,7 @@ export default function Header({
                 <ScrollArea className="h-[calc(100vh-14rem)] pr-6">
                     <div className="space-y-4 py-4">
                     {filteredNotifications.length > 0 ? (
-                        filteredNotifications.map(n => <NotificationItem key={n.id} n={n} onClick={onNotificationClick} onDelete={onDeleteNotification} />)
+                        filteredNotifications.map((n, index) => <NotificationItem key={n.id} n={n} onClick={onNotificationClick} onDelete={onDeleteNotification} style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }} />)
                     ) : (
                         <div className="text-center text-muted-foreground py-12">Brak powiadomień pasujących do filtrów.</div>
                     )}
