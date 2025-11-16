@@ -374,17 +374,19 @@ export function DashboardCharts({
             if (!addressInfo) return acc;
             
             const locality = addressInfo.locality || "Brak miejscowości";
-            const amount = nonEmployee.paymentAmount ?? (nonEmployee.gender === 'Dzieci' ? 600 : 900);
+            const amount = nonEmployee.paymentAmount || 0;
             
-            if (!acc.byLocality[locality]) {
-                acc.byLocality[locality] = { name: locality, income: 0, addresses: {} };
+            if (amount > 0) {
+              if (!acc.byLocality[locality]) {
+                  acc.byLocality[locality] = { name: locality, income: 0, addresses: {} };
+              }
+              acc.byLocality[locality].income += amount;
+              
+              if (!acc.byLocality[locality].addresses[addressInfo.name]) {
+                  acc.byLocality[locality].addresses[addressInfo.name] = { name: addressInfo.name, income: 0 };
+              }
+              acc.byLocality[locality].addresses[addressInfo.name].income += amount;
             }
-            acc.byLocality[locality].income += amount;
-            
-            if (!acc.byLocality[locality].addresses[addressInfo.name]) {
-                acc.byLocality[locality].addresses[addressInfo.name] = { name: addressInfo.name, income: 0 };
-            }
-            acc.byLocality[locality].addresses[addressInfo.name].income += amount;
             
             return acc;
         }, { byLocality: {} as Record<string, { name: string, income: number, addresses: Record<string, {name: string, income: number}> }> });
@@ -893,3 +895,5 @@ export function DashboardCharts({
         </>
     );
 }
+
+    
