@@ -107,7 +107,7 @@ const serializeEquipment = (item: Partial<EquipmentItem>): Record<string, string
 };
 
 const NON_EMPLOYEE_HEADERS = [
-    'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'departureReportDate', 'comments'
+    'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'departureReportDate', 'comments', 'status'
 ];
 
 const NOTIFICATION_HEADERS = [
@@ -238,7 +238,7 @@ const writeToAuditLog = async (actorId: string, actorName: string, action: strin
 
 const createNotification = async (
     actor: Coordinator,
-    action: 'dodał' | 'zaktualizował' | 'trwale usunął' | 'automatycznie zwolnił' | 'przeniósł',
+    action: 'dodał' | 'zaktualizował' | 'trwale usunął' | 'automatycznie zwolnił' | 'automatycznie deaktywował' | 'przeniósł',
     entity: (Employee | NonEmployee),
     settings: Settings,
     changes: NotificationChange[] = []
@@ -483,6 +483,7 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>, a
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
         const newNonEmployee: NonEmployee = {
             id: `nonemp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            status: 'active',
             ...nonEmployeeData
         };
 
@@ -691,18 +692,18 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
     }
 }
 
-export async function checkAndUpdateEmployeeStatuses(actorUid?: string): Promise<{ updated: number }> {
+export async function checkAndUpdateStatuses(actorUid?: string): Promise<{ updated: number }> {
     try {
-        const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows();
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        let updatedCount = 0;
         const { settings } = await getAllSheetsData(actorUid, true);
         const actor = findActor(actorUid, settings);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        let updatedCount = 0;
 
-        for (const row of rows) {
+        // Process employees
+        const employeeSheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
+        const employeeRows = await employeeSheet.getRows();
+        for (const row of employeeRows) {
             const status = String(row.get('status'));
             const checkOutDateString = String(row.get('checkOutDate'));
             
@@ -719,6 +720,27 @@ export async function checkAndUpdateEmployeeStatuses(actorUid?: string): Promise
                             { field: 'status', oldValue: 'active', newValue: 'dismissed' }
                         ]);
                     }
+                }
+            }
+        }
+
+        // Process non-employees
+        const nonEmployeeSheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
+        const nonEmployeeRows = await nonEmployeeSheet.getRows();
+        for (const row of nonEmployeeRows) {
+            const status = String(row.get('status'));
+            const checkOutDateString = String(row.get('checkOutDate'));
+
+            if ((status === 'active' || !status) && checkOutDateString) {
+                const checkOutDate = parseISO(checkOutDateString);
+                if (isValid(checkOutDate) && checkOutDate < today) {
+                    row.set('status', 'inactive');
+                    await row.save();
+                    updatedCount++;
+                    const originalNonEmployee = { ...row.toObject(), id: row.get('id'), fullName: row.get('fullName'), coordinatorId: row.get('coordinatorId') } as NonEmployee;
+                    await createNotification(actor, 'automatycznie deaktywował', originalNonEmployee, settings, [
+                        { field: 'status', oldValue: 'active', newValue: 'inactive' }
+                    ]);
                 }
             }
         }
@@ -1012,7 +1034,7 @@ const processImport = async (
                     newLocalities.add(locality);
                 }
 
-                const sharedData = {
+                const sharedData: Partial<NonEmployee> = {
                     id: `${type === 'employee' ? 'emp' : 'nonemp'}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                     fullName,
                     coordinatorId,
@@ -1024,16 +1046,16 @@ const processImport = async (
                     checkOutDate: safeFormat(normalizedRow['data wymeldowania']),
                     departureReportDate: safeFormat(normalizedRow['data zgloszenia wyjazdu']),
                     comments: (normalizedRow['komentarze'] as string)?.trim(),
+                    status: 'active'
                 };
 
                 if (type === 'employee') {
                     recordsToAdd.push({
                         ...sharedData,
-                        status: 'active',
                         zaklad: (normalizedRow['zakład'] as string)?.trim() || null,
                         contractStartDate: safeFormat(normalizedRow['umowa od']),
                         contractEndDate: safeFormat(normalizedRow['umowa do']),
-                    });
+                    } as Partial<Employee>);
                 } else {
                      recordsToAdd.push(sharedData);
                 }

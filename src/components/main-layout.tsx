@@ -23,7 +23,7 @@ import {
     addEmployee,
     bulkDeleteEmployees,
     bulkDeleteEmployeesByCoordinator,
-    checkAndUpdateEmployeeStatuses,
+    checkAndUpdateStatuses,
     clearAllNotifications,
     deleteEmployee,
     deleteNonEmployee,
@@ -102,6 +102,7 @@ type MainLayoutContextType = {
     handleDismissEmployee: (employeeId: string) => Promise<void>;
     handleRestoreEmployee: (employeeId: string) => Promise<void>;
     handleDeleteEmployee: (employeeId: string, actorUid: string) => Promise<void>;
+    handleRestoreNonEmployee: (nonEmployeeId: string) => Promise<void>;
     handleImportEmployees: (fileContent: string) => Promise<void>;
     handleImportNonEmployees: (fileContent: string) => Promise<void>;
 };
@@ -162,7 +163,7 @@ export default function MainLayout({
 
     const filteredData = useMemo(() => {
         if (!rawEmployees || !rawNonEmployees || !rawSettings || !currentUser) {
-            return { employees: [], nonEmployees: [], settings: rawSettings };
+            return { employees: null, nonEmployees: null, settings: rawSettings };
         }
 
         const shouldFilter = !currentUser.isAdmin || (currentUser.isAdmin && selectedCoordinatorId !== 'all');
@@ -302,12 +303,12 @@ export default function MainLayout({
 
     const handleRefreshStatuses = useCallback(async (showNoChangesToast = false) => {
         try {
-            const { updated } = await checkAndUpdateEmployeeStatuses();
+            const { updated } = await checkAndUpdateStatuses();
             if (updated > 0) {
-                toast({ title: "Sukces", description: `Zaktualizowano statusy dla ${updated} pracowników.` });
+                toast({ title: "Sukces", description: `Zaktualizowano statusy dla ${updated} osób.` });
                 await refreshData(false);
             } else if (showNoChangesToast) {
-                 toast({ title: "Brak zmian", description: "Wszyscy pracownicy mają aktualne statusy."});
+                 toast({ title: "Brak zmian", description: "Wszyscy mają aktualne statusy."});
             }
         } catch (e) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się odświeżyć statusów." });
@@ -509,6 +510,17 @@ export default function MainLayout({
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się przywrócić pracownika." });
         }
     }, [currentUser, refreshData, toast]);
+
+    const handleRestoreNonEmployee = useCallback(async (nonEmployeeId: string) => {
+        if (!currentUser) return;
+        try {
+            await updateNonEmployee(nonEmployeeId, { status: 'active' }, currentUser.uid);
+            toast({ title: "Sukces", description: "Mieszkaniec został przywrócony." });
+            await refreshData(false);
+        } catch (e: unknown) {
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się przywrócić mieszkańca." });
+        }
+    }, [currentUser, refreshData, toast]);
     
     const handleDeleteEmployee = useCallback(async (employeeId: string, actorUid: string) => {
         if (!currentUser) return;
@@ -596,6 +608,7 @@ export default function MainLayout({
         handleDismissEmployee,
         handleRestoreEmployee,
         handleDeleteEmployee,
+        handleRestoreNonEmployee,
         handleImportEmployees,
         handleImportNonEmployees,
     } ), [
@@ -623,6 +636,7 @@ export default function MainLayout({
         handleDismissEmployee,
         handleRestoreEmployee,
         handleDeleteEmployee,
+        handleRestoreNonEmployee,
         handleImportEmployees,
         handleImportNonEmployees,
     ]);

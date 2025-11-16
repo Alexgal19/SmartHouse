@@ -86,7 +86,7 @@ const safeFormat = (dateValue: unknown): string | null => {
     if (typeof dateValue === 'number' && dateValue > 0) {
         // Excel's epoch starts on 1900-01-01, but it has a bug treating 1900 as a leap year.
         const excelEpoch = new Date(1899, 11, 30);
-        date = new Date(excelEpoch.getTime() + dateValue * 24 * 60 * 60 * 1000);
+        const date = new Date(excelEpoch.getTime() + dateValue * 24 * 60 * 60 * 1000);
         if (isValid(date)) {
             return format(date, 'yyyy-MM-dd');
         }
@@ -188,6 +188,7 @@ const deserializeNonEmployee = (row: Record<string, unknown>): NonEmployee | nul
         checkOutDate: safeFormat(plainObject.checkOutDate),
         departureReportDate: safeFormat(plainObject.departureReportDate),
         comments: (plainObject.comments || '') as string,
+        status: plainObject.status as 'active' | 'inactive' || 'active',
     }
 }
 
@@ -248,7 +249,6 @@ const getSheetData = async (doc: GoogleSpreadsheet, title: string): Promise<Reco
     }
 
     try {
-        await sheet.loadHeaderRow(); // Ensure headers are loaded before fetching rows
         const rows = await sheet.getRows();
         return rows.map(r => r.toObject());
     } catch (e) {

@@ -95,6 +95,7 @@ export type NonEmployee = {
     checkOutDate?: string | null;
     departureReportDate?: string | null; // YYYY-MM-DD
     comments?: string | null;
+    status: 'active' | 'inactive';
 };
 
 
