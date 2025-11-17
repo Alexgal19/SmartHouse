@@ -59,7 +59,8 @@ export function DashboardKPIs({
 
     const stats = useMemo(() => {
         const activeEmployees = employees.filter(e => e.status === 'active');
-        const allActiveOccupants = [...activeEmployees, ...nonEmployees];
+        const activeNonEmployees = nonEmployees.filter(ne => ne.status === 'active');
+        const allActiveOccupants = [...activeEmployees, ...activeNonEmployees];
 
         const upcomingCheckoutsList = allActiveOccupants.filter(o => {
             if (!o.checkOutDate) return false;
@@ -73,7 +74,7 @@ export function DashboardKPIs({
 
         return {
             totalEmployees: activeEmployees.length,
-            nonEmployeesCount: nonEmployees.length,
+            nonEmployeesCount: activeNonEmployees.length,
             apartmentsInUse,
             upcomingCheckouts: upcomingCheckoutsList.length,
         };
