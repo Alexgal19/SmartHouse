@@ -476,7 +476,7 @@ export async function deleteEmployee(employeeId: string, actorUid: string): Prom
     }
 }
 
-export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id'>, actorUid: string): Promise<void> {
+export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id' | 'status'>, actorUid: string): Promise<void> {
     try {
         const { settings } = await getAllSheetsData(actorUid, true);
         const actor = findActor(actorUid, settings);

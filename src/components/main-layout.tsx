@@ -21,6 +21,7 @@ import { Home, Settings as SettingsIcon, Users, Building } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     addEmployee,
+    addNonEmployee,
     bulkDeleteEmployees,
     bulkDeleteEmployeesByCoordinator,
     checkAndUpdateStatuses,
@@ -365,7 +366,7 @@ export default function MainLayout({
         }
     }, [currentUser, editingEmployee, refreshData, toast]);
 
-    const handleSaveNonEmployee = useCallback(async (data: Omit<NonEmployee, 'id'>) => {
+    const handleSaveNonEmployee = useCallback(async (data: Omit<NonEmployee, 'id' | 'status'>) => {
         if (!currentUser) return;
         if (editingNonEmployee) {
             try {
@@ -715,7 +716,7 @@ export default function MainLayout({
                 <AddNonEmployeeForm
                     isOpen={isNonEmployeeFormOpen}
                     onOpenChange={setIsNonEmployeeFormOpen}
-                    onSave={(data) => handleSaveNonEmployee(data)}
+                    onSave={(data) => handleSaveNonEmployee(data as Omit<NonEmployee, 'id' | 'status'>)}
                     settings={settings}
                     nonEmployee={editingNonEmployee}
                     currentUser={currentUser}
