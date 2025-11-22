@@ -988,6 +988,84 @@ export async function generateAccommodationReport(year: number, month: number, c
     }
 }
 
+export async function generateNzCostsReport(year: number, month: number, coordinatorId: string): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
+    try {
+        const { nonEmployees, settings } = await getAllSheetsData();
+        const coordinatorMap = new Map(settings.coordinators.map((c: { uid: any; name: any; }) => [c.uid, c.name]));
+
+        const reportStart = new Date(year, month - 1, 1);
+        const reportEnd = new Date(year, month, 0, 23, 59, 59);
+
+        let filteredNonEmployees = nonEmployees;
+        if (coordinatorId !== 'all') {
+            filteredNonEmployees = nonEmployees.filter(ne => ne.coordinatorId === coordinatorId);
+        }
+
+        const reportData: any[] = [];
+        
+        filteredNonEmployees.forEach(ne => {
+            const monthlyAmount = ne.paymentAmount;
+            if (!monthlyAmount || monthlyAmount <= 0) {
+                return;
+            }
+
+            const checkIn = ne.checkInDate ? parseISO(ne.checkInDate) : null;
+            if (!checkIn || checkIn > reportEnd) {
+                return;
+            }
+            
+            const checkOut = ne.checkOutDate ? parseISO(ne.checkOutDate) : null;
+             if (checkOut && checkOut < reportStart) {
+                return;
+            }
+
+            const daysInReportMonth = getDaysInMonth(reportStart);
+            const dailyRate = monthlyAmount / daysInReportMonth;
+            
+            const startDateInMonth = max([checkIn, reportStart]);
+            const endDateInMonth = min([checkOut || reportEnd, reportEnd]);
+            
+            const daysStayed = differenceInDays(endDateInMonth, startDateInMonth) + 1;
+            const proratedIncome = dailyRate * daysStayed;
+            
+            if (proratedIncome <= 0) return;
+
+            reportData.push({
+                "Imię i nazwisko": ne.fullName,
+                "Adres": ne.address,
+                "Koordynator": coordinatorMap.get(ne.coordinatorId) || 'N/A',
+                "Miesięczna stawka": monthlyAmount,
+                "Dni w miesiącu": daysStayed,
+                "Obliczona kwota (zł)": proratedIncome.toFixed(2),
+            });
+        });
+
+        const worksheet = XLSX.utils.json_to_sheet(reportData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Raport Kosztów (NZ)");
+        
+        const cols = [
+            { wch: 25 }, // Imię i nazwisko
+            { wch: 30 }, // Adres
+            { wch: 20 }, // Koordynator
+            { wch: 15 }, // Miesięczna stawka
+            { wch: 15 }, // Dni w miesiącu
+            { wch: 20 }, // Obliczona kwota (zł)
+        ];
+        worksheet["!cols"] = cols;
+
+        const fileContent = XLSX.write(workbook, { type: 'base64', bookType: 'xlsx' });
+        const fileName = `Raport_Koszty_NZ_${year}_${String(month).padStart(2, '0')}.xlsx`;
+
+        return { success: true, fileContent, fileName };
+
+    } catch (e) {
+        console.error("Error generating NZ costs report:", e);
+        return { success: false, message: e instanceof Error ? e.message : "Unknown error" };
+    }
+}
+
+
 const processImport = async (
     fileContent: string, 
     actorUid: string, 

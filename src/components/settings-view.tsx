@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { generateAccommodationReport, transferEmployees, updateSettings, bulkDeleteEmployees, bulkDeleteEmployeesByCoordinator } from '@/lib/actions';
+import { generateAccommodationReport, transferEmployees, updateSettings, bulkDeleteEmployees, bulkDeleteEmployeesByCoordinator, generateNzCostsReport } from '@/lib/actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from '@/components/ui/dialog';
@@ -672,6 +672,92 @@ const ReportsGenerator = ({ rawSettings, currentUser }: { rawSettings: Settings;
     );
 };
 
+const NzReportsGenerator = ({ rawSettings, currentUser }: { rawSettings: Settings; currentUser: SessionData }) => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [year, setYear] = useState(new Date().getFullYear());
+    const [month, setMonth] = useState(new Date().getMonth() + 1);
+    const [coordinatorId, setCoordinatorId] = useState<string>(currentUser.isAdmin ? 'all' : currentUser.uid);
+    const { toast } = useToast();
+    
+    const sortedCoordinators = useMemo(() => {
+      if (!rawSettings?.coordinators) return [];
+      return [...rawSettings.coordinators].sort((a,b) => a.name.localeCompare(b.name));
+    }, [rawSettings?.coordinators]);
+
+    const handleGenerate = async () => {
+        setIsLoading(true);
+        try {
+            const result = await generateNzCostsReport(year, month, coordinatorId);
+            
+            if (result.success && result.fileContent) {
+                const link = document.createElement("a");
+                link.href = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + result.fileContent;
+                link.download = result.fileName || 'raport_nz.xlsx';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                toast({ title: "Sukces", description: "Raport kosztów (NZ) został wygenerowany." });
+            } else {
+                throw new Error(result.message || 'Nie udało się wygenerować raportu.');
+            }
+        } catch (e) {
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Wystąpił nieznany błąd." });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    
+    const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
+    const months = Array.from({ length: 12 }, (value, i) => i + 1);
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Generowanie raportu kosztów (NZ)</CardTitle>
+                <CardDescription>Wygeneruj raport przychodów od mieszkańców (NZ) w formacie XLSX.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4 items-end">
+                     <div className="space-y-2">
+                         <Label>Rok</Label>
+                        <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                {years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                     </div>
+                     <div className="space-y-2">
+                         <Label>Miesiąc</Label>
+                        <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                {months.map(m => <SelectItem key={m} value={String(m)}>{m}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                     </div>
+                    {currentUser.isAdmin && (
+                        <div className="space-y-2">
+                            <Label>Koordynator</Label>
+                            <Select value={coordinatorId} onValueChange={setCoordinatorId}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
+                                    {sortedCoordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+                    <Button onClick={handleGenerate} disabled={isLoading} className="w-full">
+                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                        <span className="ml-2">Generuj raport (NZ)</span>
+                    </Button>
+                </div>
+            </CardContent>
+        </Card>
+    );
+};
+
 const ExcelImport = ({ onImport, title, description, fields, isLoading }: { onImport: (fileContent: string) => Promise<void>; title: string; description: string; fields: string; isLoading: boolean; }) => {
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -969,6 +1055,7 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
             />
         </div>
         <ReportsGenerator rawSettings={rawSettings} currentUser={currentUser} />
+        <NzReportsGenerator rawSettings={rawSettings} currentUser={currentUser} />
         <BulkActions currentUser={currentUser} rawSettings={rawSettings}/>
     </div>
   );
