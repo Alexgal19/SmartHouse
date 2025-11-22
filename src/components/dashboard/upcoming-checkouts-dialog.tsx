@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { Employee, NonEmployee } from "@/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -12,6 +12,8 @@ import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 import { Button } from '../ui/button';
 import { Copy } from 'lucide-react';
 import {format} from 'date-fns'
+import { Combobox } from '../ui/combobox';
+import { Label } from '../ui/label';
 
 type Occupant = Employee | NonEmployee;
 
@@ -41,8 +43,16 @@ export function UpcomingCheckoutsDialog({
     employees: Employee[];
     nonEmployees: NonEmployee[];
 }) {
-    const { handleEditEmployeeClick, handleEditNonEmployeeClick } = useMainLayout();
+    const { handleEditEmployeeClick, handleEditNonEmployeeClick, settings } = useMainLayout();
     const { copyToClipboard } = useCopyToClipboard();
+    const [selectedZaklad, setSelectedZaklad] = useState('all');
+
+    const departmentOptions = useMemo(() => {
+        if (!settings?.departments) return [];
+        const options = settings.departments.map(d => ({ value: d, label: d }));
+        options.unshift({ value: 'all', label: 'Wszystkie zakłady' });
+        return options;
+    }, [settings?.departments]);
 
     const upcomingCheckouts = useMemo(() => {
         const allOccupants: Occupant[] = [
@@ -50,7 +60,15 @@ export function UpcomingCheckoutsDialog({
             ...nonEmployees
         ];
 
-        return allOccupants
+        const filteredByDepartment = allOccupants.filter(o => {
+            if (selectedZaklad === 'all') return true;
+            if (isEmployee(o)) {
+                return o.zaklad === selectedZaklad;
+            }
+            return false; // Non-employees don't have 'zaklad'
+        });
+
+        return filteredByDepartment
             .filter(o => o.checkOutDate)
             .map(o => ({
                 ...o,
@@ -61,7 +79,7 @@ export function UpcomingCheckoutsDialog({
                 return diff >= 0 && diff <= 30;
             })
             .sort((a, b) => a.checkOutDateObj.getTime() - b.checkOutDateObj.getTime());
-    }, [employees, nonEmployees]);
+    }, [employees, nonEmployees, selectedZaklad]);
     
     const handleCopy = (occupant: Occupant) => {
         const textToCopy = `${occupant.fullName}, wykwaterowanie: ${formatDate(occupant.checkOutDate)}`;
@@ -84,6 +102,18 @@ export function UpcomingCheckoutsDialog({
                     <DialogTitle>Nadchodzące wykwaterowania</DialogTitle>
                     <DialogDescription>Osoby, które wykwaterują się w ciągu najbliższych 30 dni.</DialogDescription>
                 </DialogHeader>
+                <div className="grid gap-2">
+                    <Label htmlFor="zaklad-filter">Filtruj po zakładu</Label>
+                    <Combobox
+                        options={departmentOptions}
+                        value={selectedZaklad}
+                        onChange={setSelectedZaklad}
+                        placeholder="Wybierz zakład"
+                        searchPlaceholder="Szukaj zakładu..."
+                        notFoundMessage="Nie znaleziono zakładu."
+                        className="w-full sm:w-[250px]"
+                    />
+                </div>
                 <ScrollArea className="flex-1 min-h-0 -mr-6 pr-6">
                     <div className="space-y-2 p-1">
                         {upcomingCheckouts.length > 0 ? (
@@ -118,7 +148,7 @@ export function UpcomingCheckoutsDialog({
                             </Card>
                             ))
                         ) : (
-                            <p className="text-center text-sm text-muted-foreground py-4">Brak nadchodzących wykwaterowań.</p>
+                            <p className="text-center text-sm text-muted-foreground py-4">Brak nadchodzących wykwaterowań pasujących do filtra.</p>
                         )}
                     </div>
                 </ScrollArea>
