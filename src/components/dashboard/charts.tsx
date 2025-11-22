@@ -8,7 +8,7 @@ import { BarChart2, Copy, Users, ArrowLeft, Loader2 } from "lucide-react";
 import type { Employee, Settings, ChartConfig, Coordinator, Address, NonEmployee } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useMainLayout } from '@/components/main-layout';
-import { format, getYear, eachDayOfInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, eachMonthOfInterval, parseISO, getDaysInMonth } from 'date-fns';
+import { format, getYear, eachDayOfInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, eachMonthOfInterval, parseISO, getDaysInMonth, differenceInDays } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { pl } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -251,10 +251,34 @@ export function DashboardCharts({
                 }
             })
         }
-        
+
         const incomeByLocation = (nonEmployees || []).reduce((acc, nonEmployee) => {
-            const nonEmployeeIncome = nonEmployee.paymentAmount;
-            if (!nonEmployeeIncome || nonEmployeeIncome <= 0 || !nonEmployee.address) {
+            const monthlyAmount = nonEmployee.paymentAmount;
+            // Skip if no monthly amount is set
+            if (!monthlyAmount || monthlyAmount <= 0 || !nonEmployee.address) {
+                return acc;
+            }
+        
+            const reportDate = new Date(); // Using current date to determine the month for calculation
+            const reportStartOfMonth = startOfMonth(reportDate);
+            const reportEndOfMonth = endOfMonth(reportDate);
+            const daysInReportMonth = getDaysInMonth(reportDate);
+        
+            const checkIn = nonEmployee.checkInDate ? parseISO(nonEmployee.checkInDate) : null;
+            const checkOut = nonEmployee.checkOutDate ? parseISO(nonEmployee.checkOutDate) : null;
+        
+            if (!checkIn || checkIn > reportEndOfMonth || (checkOut && checkOut < reportStartOfMonth)) {
+                return acc; // Not in this month
+            }
+        
+            const startDateInMonth = checkIn > reportStartOfMonth ? checkIn : reportStartOfMonth;
+            const endDateInMonth = checkOut && checkOut < reportEndOfMonth ? checkOut : reportEndOfMonth;
+            
+            const daysStayed = differenceInDays(endDateInMonth, startDateInMonth) + 1;
+            const dailyRate = monthlyAmount / daysInReportMonth;
+            const proratedIncome = dailyRate * daysStayed;
+        
+            if (proratedIncome <= 0) {
                 return acc;
             }
 
@@ -266,12 +290,12 @@ export function DashboardCharts({
             if (!acc.byLocality[locality]) {
                 acc.byLocality[locality] = { name: locality, income: 0, addresses: {} };
             }
-            acc.byLocality[locality].income += nonEmployeeIncome;
+            acc.byLocality[locality].income += proratedIncome;
             
             if (!acc.byLocality[locality].addresses[addressInfo.name]) {
                 acc.byLocality[locality].addresses[addressInfo.name] = { name: addressInfo.name, income: 0 };
             }
-            acc.byLocality[locality].addresses[addressInfo.name].income += nonEmployeeIncome;
+            acc.byLocality[locality].addresses[addressInfo.name].income += proratedIncome;
             
             return acc;
         }, { byLocality: {} as Record<string, { name: string, income: number, addresses: Record<string, {name: string, income: number}> }> });
