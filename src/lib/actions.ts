@@ -220,6 +220,58 @@ const writeToAuditLog = async (actorId: string, actorName: string, action: strin
     }
 };
 
+const generateSmartNotificationMessage = (
+    actorName: string,
+    entity: (Employee | NonEmployee),
+    action: 'dodał' | 'zaktualizował' | 'trwale usunął' | 'automatycznie zwolnił' | 'przeniósł',
+    changes: NotificationChange[] = []
+): { message: string, type: NotificationType } => {
+    const entityType = 'zaklad' in entity && entity.zaklad ? 'pracownika' : 'mieszkańca';
+    let message = '';
+    let type: NotificationType = 'info';
+
+    switch (action) {
+        case 'dodał':
+            message = `${actorName} dodał nowego ${entityType} ${entity.fullName}.`;
+            type = 'success';
+            break;
+        case 'trwale usunął':
+            message = `${actorName} trwale usunął ${entityType} ${entity.fullName}.`;
+            type = 'destructive';
+            break;
+        case 'automatycznie zwolnił':
+            message = `${actorName} automatycznie zwolnił ${entityType} ${entity.fullName} z powodu upływu daty wymeldowania.`;
+            type = 'warning';
+            break;
+        case 'zaktualizował': {
+            const statusChange = changes.find(c => c.field === 'status');
+            const addressChange = changes.find(c => c.field === 'address');
+            const checkoutChange = changes.find(c => c.field === 'checkOutDate');
+
+            if (statusChange && statusChange.newValue === 'dismissed') {
+                message = `${actorName} zwolnił ${entityType} ${entity.fullName}.`;
+                type = 'warning';
+            } else if (addressChange) {
+                message = `${actorName} zmienił adres ${entityType} ${entity.fullName} na ${addressChange.newValue}.`;
+                type = 'warning';
+            } else if (checkoutChange && (!checkoutChange.oldValue || checkoutChange.oldValue === 'Brak')) {
+                message = `${actorName} przypisał datę wymeldowania dla ${entityType} ${entity.fullName}.`;
+                type = 'info';
+            } else {
+                message = `${actorName} zaktualizował dane ${entityType} ${entity.fullName}.`;
+                type = 'info';
+            }
+            break;
+        }
+        default:
+            message = `${actorName} ${action} ${entityType} ${entity.fullName}.`;
+            type = 'info';
+    }
+
+    return { message, type };
+};
+
+
 const createNotification = async (
     actor: Coordinator,
     action: 'dodał' | 'zaktualizował' | 'trwale usunął' | 'automatycznie zwolnił' | 'przeniósł',
@@ -228,22 +280,14 @@ const createNotification = async (
     changes: NotificationChange[] = []
 ) => {
     try {
+        const { message, type } = generateSmartNotificationMessage(actor.name, entity, action, changes);
+        
         const responsibleCoordinator = settings.coordinators.find(c => c.uid === entity.coordinatorId);
         
-        let notificationType: NotificationType = 'info';
-        const isAddAction = action === 'dodał';
-        const isDeleteAction = action === 'trwale usunął';
-        const isImportantUpdate = changes.some(c => ['address', 'roomNumber'].includes(c.field));
+        const isImportant = ['success', 'destructive', 'warning'].includes(type);
         
-        if (isAddAction) notificationType = 'success';
-        if (isDeleteAction) notificationType = 'destructive';
-        if (isImportantUpdate) notificationType = 'warning';
-        
-        const entityType = 'zaklad' in entity && entity.zaklad ? 'pracownika' : 'mieszkańca';
-        const message = `${actor.name} ${action} ${entityType} ${entity.fullName}.`;
-        
-        // 1. Create notification for the responsible coordinator
-        if (responsibleCoordinator) {
+        // 1. Create notification for the responsible coordinator (if they are not the actor)
+        if (responsibleCoordinator && responsibleCoordinator.uid !== actor.uid) {
             const responsibleNotification: Omit<Notification, 'id'> = {
                 message,
                 entityId: entity.id,
@@ -251,7 +295,7 @@ const createNotification = async (
                 recipientId: responsibleCoordinator.uid,
                 createdAt: new Date().toISOString(),
                 isRead: false,
-                type: notificationType,
+                type: type,
                 changes
             };
             const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
@@ -259,13 +303,12 @@ const createNotification = async (
         }
 
         // 2. If it's a critical event, notify all admins
-        const shouldNotifyAdmins = isAddAction || isDeleteAction || isImportantUpdate;
-        if (shouldNotifyAdmins) {
+        if (isImportant) {
             const admins = settings.coordinators.filter(c => c.isAdmin);
             const adminNotifications: (Omit<Notification, 'id'> & { id: string })[] = [];
             
             for (const admin of admins) {
-                // Avoid duplicating notification if the responsible coordinator is an admin
+                // Avoid duplicating notification for the responsible coordinator if they are an admin
                 if (responsibleCoordinator && admin.uid === responsibleCoordinator.uid) continue;
                 // Avoid duplicating notification for the actor if they are an admin
                 if (admin.uid === actor.uid) continue;
@@ -278,7 +321,7 @@ const createNotification = async (
                     recipientId: admin.uid,
                     createdAt: new Date().toISOString(),
                     isRead: false,
-                    type: notificationType,
+                    type: type,
                     changes
                 });
             }
@@ -290,7 +333,7 @@ const createNotification = async (
             }
         }
         
-        await writeToAuditLog(actor.uid, actor.name, action, entityType, entity.id, changes);
+        await writeToAuditLog(actor.uid, actor.name, action, 'zaklad' in entity && entity.zaklad ? 'pracownika' : 'mieszkańca', entity.id, changes);
 
     } catch (e: unknown) {
         console.error("Could not create notification:", e);
@@ -301,7 +344,7 @@ const findActor = (actorUid: string | undefined, settings: Settings): Coordinato
     if (actorUid === 'system') {
         return { uid: 'system', name: 'System', isAdmin: true, departments: [] };
     }
-    if (actorUid === 'admin-hardcoded') {
+     if (actorUid === 'admin-hardcoded') {
         return { uid: 'admin-hardcoded', name: 'Admin', isAdmin: true, departments: [] };
     }
     if (!actorUid) {
@@ -1115,3 +1158,4 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
 export async function importNonEmployeesFromExcel(fileContent: string, actorUid: string): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
     return processImport(fileContent, actorUid, 'non-employee');
 }
+
