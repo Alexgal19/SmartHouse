@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { generateAccommodationReport, transferEmployees, updateSettings, bulkDeleteEmployees, bulkDeleteEmployeesByCoordinator, generateNzCostsReport, generateCurrentAccommodationReport } from '@/lib/actions';
+import { generateAccommodationReport, transferEmployees, updateSettings, bulkDeleteEmployees, bulkDeleteEmployeesByCoordinator, generateNzCostsReport } from '@/lib/actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from '@/components/ui/dialog';
@@ -586,11 +586,12 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
     );
 }
 
-const HistoricalReportGenerator = ({ rawSettings, currentUser }: { rawSettings: Settings; currentUser: SessionData }) => {
+const AccommodationReportGenerator = ({ rawSettings, currentUser }: { rawSettings: Settings; currentUser: SessionData }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [year, setYear] = useState(new Date().getFullYear());
     const [month, setMonth] = useState(new Date().getMonth() + 1);
     const [coordinatorId, setCoordinatorId] = useState<string>(currentUser.isAdmin ? 'all' : currentUser.uid);
+    const [includeAddressHistory, setIncludeAddressHistory] = useState(false);
     const { toast } = useToast();
     
     const sortedCoordinators = useMemo(() => {
@@ -601,7 +602,7 @@ const HistoricalReportGenerator = ({ rawSettings, currentUser }: { rawSettings: 
     const handleGenerate = async () => {
         setIsLoading(true);
         try {
-            const result = await generateAccommodationReport(year, month, coordinatorId);
+            const result = await generateAccommodationReport(year, month, coordinatorId, includeAddressHistory);
             
             if (result.success && result.fileContent) {
                 const link = document.createElement("a");
@@ -610,7 +611,7 @@ const HistoricalReportGenerator = ({ rawSettings, currentUser }: { rawSettings: 
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
-                toast({ title: "Sukces", description: "Raport historyczny został wygenerowany." });
+                toast({ title: "Sukces", description: "Raport zakwaterowania został wygenerowany." });
             } else {
                 throw new Error(result.message || 'Nie udało się wygenerować raportu.');
             }
@@ -627,93 +628,56 @@ const HistoricalReportGenerator = ({ rawSettings, currentUser }: { rawSettings: 
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Raport zakwaterowania (Historyczny)</CardTitle>
-                <CardDescription>Generuje szczegółowy raport XLSX uwzględniający zmiany adresów w danym miesiącu.</CardDescription>
+                <CardTitle>Raport zakwaterowania</CardTitle>
+                <CardDescription>Generuje raport XLSX pokazujący stan zakwaterowania w wybranym okresie.</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4 items-end">
-                     <div className="space-y-2">
-                         <Label>Rok</Label>
-                        <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                                {years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                     </div>
-                     <div className="space-y-2">
-                         <Label>Miesiąc</Label>
-                        <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                                {months.map(m => <SelectItem key={m} value={String(m)}>{m}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                     </div>
-                    {currentUser.isAdmin && (
+                 <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4 items-end">
                         <div className="space-y-2">
-                            <Label>Koordynator</Label>
-                            <Select value={coordinatorId} onValueChange={setCoordinatorId}>
+                            <Label>Rok</Label>
+                            <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
-                                    {sortedCoordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                                    {years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
-                    )}
-                    <Button onClick={handleGenerate} disabled={isLoading} className="w-full">
-                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                        <span className="ml-2">Generuj raport</span>
-                    </Button>
+                        <div className="space-y-2">
+                            <Label>Miesiąc</Label>
+                            <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    {months.map(m => <SelectItem key={m} value={String(m)}>{m}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        {currentUser.isAdmin && (
+                            <div className="space-y-2">
+                                <Label>Koordynator</Label>
+                                <Select value={coordinatorId} onValueChange={setCoordinatorId}>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
+                                        {sortedCoordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+                        <Button onClick={handleGenerate} disabled={isLoading} className="w-full">
+                            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                            <span className="ml-2">Generuj raport</span>
+                        </Button>
+                    </div>
+                     <div className="flex items-center space-x-2 pt-4">
+                        <Switch id="include-history" checked={includeAddressHistory} onCheckedChange={setIncludeAddressHistory} />
+                        <Label htmlFor="include-history">Uwzględnij historię zmian adresów w raporcie</Label>
+                    </div>
                 </div>
             </CardContent>
         </Card>
     );
 };
-
-const CurrentStateReportGenerator = () => {
-    const [isLoading, setIsLoading] = useState(false);
-    const { toast } = useToast();
-
-    const handleGenerate = async () => {
-        setIsLoading(true);
-        try {
-            const result = await generateCurrentAccommodationReport();
-            if (result.success && result.fileContent) {
-                const link = document.createElement("a");
-                link.href = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + result.fileContent;
-                link.download = result.fileName || 'raport_aktualny.xlsx';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                toast({ title: "Sukces", description: "Raport stanu aktualnego został wygenerowany." });
-            } else {
-                throw new Error(result.message || 'Nie udało się wygenerować raportu.');
-            }
-        } catch (e) {
-             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Wystąpił nieznany błąd." });
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Raport zakwaterowania (Stan aktualny)</CardTitle>
-                <CardDescription>Generuje listę wszystkich aktualnie zakwaterowanych pracowników.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Button onClick={handleGenerate} disabled={isLoading} className="w-full sm:w-auto">
-                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                    <span className="ml-2">Generuj raport stanu aktualnego</span>
-                </Button>
-            </CardContent>
-        </Card>
-    );
-};
-
 
 const NzReportsGenerator = ({ rawSettings, currentUser }: { rawSettings: Settings; currentUser: SessionData }) => {
     const [isLoading, setIsLoading] = useState(false);
@@ -881,15 +845,15 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
 
     useEffect(() => {
         if (rawSettings) {
-        form.reset({
-            nationalities: rawSettings.nationalities.map(n => ({ value: n })).sort((a,b) => a.value.localeCompare(b.value)),
-            departments: rawSettings.departments.map(d => ({ value: d })).sort((a,b) => a.value.localeCompare(b.value)),
-            genders: rawSettings.genders.map(g => ({ value: g })).sort((a,b) => a.value.localeCompare(b.value)),
-            localities: rawSettings.localities.map(l => ({ value: l })).sort((a,b) => a.value.localeCompare(b.value)),
-            paymentTypesNZ: rawSettings.paymentTypesNZ.map(p => ({ value: p })).sort((a,b) => a.value.localeCompare(b.value)),
-            addresses: [...rawSettings.addresses].sort((a, b) => a.name.localeCompare(b.name)),
-            coordinators: [...rawSettings.coordinators].sort((a, b) => a.name.localeCompare(b.name)).map(c => ({...c, password: ''})),
-        });
+            form.reset({
+                nationalities: rawSettings.nationalities.map(n => ({ value: n })).sort((a, b) => a.value.localeCompare(b.value)),
+                departments: rawSettings.departments.map(d => ({ value: d })).sort((a, b) => a.value.localeCompare(b.value)),
+                genders: rawSettings.genders.map(g => ({ value: g })).sort((a, b) => a.value.localeCompare(b.value)),
+                localities: rawSettings.localities.map(l => ({ value: l })).sort((a, b) => a.value.localeCompare(b.value)),
+                paymentTypesNZ: rawSettings.paymentTypesNZ.map(p => ({ value: p })).sort((a, b) => a.value.localeCompare(b.value)),
+                addresses: [...rawSettings.addresses].sort((a, b) => a.name.localeCompare(b.name)),
+                coordinators: [...rawSettings.coordinators].sort((a, b) => a.name.localeCompare(b.name)).map(c => ({ ...c, password: '' })),
+            });
         }
     }, [rawSettings, form]);
 
@@ -1098,11 +1062,12 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
             />
         </div>
         <div className="space-y-6">
-            <HistoricalReportGenerator rawSettings={rawSettings} currentUser={currentUser} />
-            <CurrentStateReportGenerator />
+            <AccommodationReportGenerator rawSettings={rawSettings} currentUser={currentUser} />
             <NzReportsGenerator rawSettings={rawSettings} currentUser={currentUser} />
         </div>
         <BulkActions currentUser={currentUser} rawSettings={rawSettings}/>
     </div>
   );
 }
+
+

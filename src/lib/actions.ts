@@ -4,7 +4,7 @@
 
 import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, NotificationType, Coordinator } from '../types';
 import { getSheet, getAllSheetsData } from './sheets';
-import { format, isPast, isValid, getDaysInMonth, parseISO, differenceInDays, max, min, parse as dateFnsParse } from 'date-fns';
+import { format, isPast, isValid, getDaysInMonth, parseISO, differenceInDays, max, min, parse as dateFnsParse, lastDayOfMonth } from 'date-fns';
 import * as XLSX from 'xlsx';
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
@@ -870,7 +870,7 @@ export async function deleteNotification(notificationId: string): Promise<void> 
 }
 
 
-export async function generateAccommodationReport(year: number, month: number, coordinatorId: string): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
+export async function generateAccommodationReport(year: number, month: number, coordinatorId: string, includeAddressHistory: boolean): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
     try {
         const { employees, settings } = await getAllSheetsData();
         const coordinatorMap = new Map(settings.coordinators.map((c: { uid: any; name: any; }) => [c.uid, c.name]));
@@ -893,60 +893,87 @@ export async function generateAccommodationReport(year: number, month: number, c
             }
         };
 
-        filteredEmployees.forEach(e => {
-            if (!e.checkInDate) return;
+        if (includeAddressHistory) {
+             filteredEmployees.forEach(e => {
+                if (!e.checkInDate) return;
 
-            const periods: { address: string, start: Date, end: Date }[] = [];
-            const mainCheckIn = parseISO(e.checkInDate);
-            const mainCheckOut = e.checkOutDate ? parseISO(e.checkOutDate) : null;
+                const periods: { address: string, start: Date, end: Date }[] = [];
+                const mainCheckIn = parseISO(e.checkInDate);
+                const mainCheckOut = e.checkOutDate ? parseISO(e.checkOutDate) : null;
 
-            if (e.addressChangeDate && e.oldAddress) {
-                const changeDate = parseISO(e.addressChangeDate);
-                // Period at old address
-                periods.push({
-                    address: e.oldAddress,
-                    start: mainCheckIn,
-                    end: changeDate
-                });
-                // Period at new address
-                periods.push({
-                    address: e.address,
-                    start: changeDate,
-                    end: mainCheckOut || reportEnd
-                });
-            } else {
-                // Single period
-                periods.push({
-                    address: e.address,
-                    start: mainCheckIn,
-                    end: mainCheckOut || reportEnd
-                });
-            }
-
-            periods.forEach(period => {
-                const effectiveStart = max([period.start, reportStart]);
-                const effectiveEnd = min([period.end, reportEnd]);
-
-                if (effectiveStart > effectiveEnd) return;
-
-                const daysInMonth = differenceInDays(effectiveEnd, effectiveStart) + 1;
-                
-                if (daysInMonth > 0) {
-                    reportData.push({
-                        "Imię i nazwisko": e.fullName,
-                        "Koordynator": coordinatorMap.get(e.coordinatorId) || 'N/A',
-                        "Adres": period.address,
-                        "Pokój": e.roomNumber,
-                        "Zakład": e.zaklad,
-                        "Stary adres": e.oldAddress,
-                        "Data zmiany adresu": formatDateForReport(e.addressChangeDate),
-                        "Data zameldowania": formatDateForReport(e.checkInDate),
-                        "Data wymeldowania": formatDateForReport(e.checkOutDate),
-                        "Dni w miesiącu": daysInMonth
+                if (e.addressChangeDate && e.oldAddress) {
+                    const changeDate = parseISO(e.addressChangeDate);
+                    // Period at old address
+                    periods.push({
+                        address: e.oldAddress,
+                        start: mainCheckIn,
+                        end: changeDate
+                    });
+                    // Period at new address
+                    periods.push({
+                        address: e.address,
+                        start: changeDate,
+                        end: mainCheckOut || reportEnd
+                    });
+                } else {
+                    // Single period
+                    periods.push({
+                        address: e.address,
+                        start: mainCheckIn,
+                        end: mainCheckOut || reportEnd
                     });
                 }
+
+                periods.forEach(period => {
+                    const effectiveStart = max([period.start, reportStart]);
+                    const effectiveEnd = min([period.end, reportEnd]);
+
+                    if (effectiveStart > effectiveEnd) return;
+
+                    const daysInMonth = differenceInDays(effectiveEnd, effectiveStart) + 1;
+                    
+                    if (daysInMonth > 0) {
+                        reportData.push({
+                            "Imię i nazwisko": e.fullName,
+                            "Koordynator": coordinatorMap.get(e.coordinatorId) || 'N/A',
+                            "Adres": period.address,
+                            "Pokój": e.roomNumber,
+                            "Zakład": e.zaklad,
+                            "Stary adres": e.oldAddress,
+                            "Data zmiany adresu": formatDateForReport(e.addressChangeDate),
+                            "Data zameldowania": formatDateForReport(e.checkInDate),
+                            "Data wymeldowania": formatDateForReport(e.checkOutDate),
+                            "Dni w miesiącu": daysInMonth
+                        });
+                    }
+                });
             });
-        });
+        } else {
+            // Simplified logic for "current state at end of month"
+            const monthEndDate = lastDayOfMonth(new Date(year, month - 1));
+            
+            const employeesInMonth = filteredEmployees.filter(e => {
+                 const checkIn = e.checkInDate ? parseISO(e.checkInDate) : null;
+                 if (!checkIn || checkIn > monthEndDate) return false;
+
+                 const checkOut = e.checkOutDate ? parseISO(e.checkOutDate) : null;
+                 if (checkOut && checkOut < new Date(year, month - 1, 1)) return false;
+
+                 return true;
+            });
+
+            employeesInMonth.forEach(e => {
+                 reportData.push({
+                    "Imię i nazwisko": e.fullName,
+                    "Koordynator": coordinatorMap.get(e.coordinatorId) || 'N/A',
+                    "Adres": e.address,
+                    "Pokój": e.roomNumber,
+                    "Zakład": e.zaklad,
+                    "Data zameldowania": formatDateForReport(e.checkInDate),
+                    "Data wymeldowania": formatDateForReport(e.checkOutDate),
+                });
+            });
+        }
 
         const worksheet = XLSX.utils.json_to_sheet(reportData);
         const workbook = XLSX.utils.book_new();
@@ -966,47 +993,6 @@ export async function generateAccommodationReport(year: number, month: number, c
 
     } catch (e) {
         console.error("Error generating accommodation report:", e);
-        return { success: false, message: e instanceof Error ? e.message : "Unknown error" };
-    }
-}
-
-export async function generateCurrentAccommodationReport(): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
-    try {
-        const { employees, settings } = await getAllSheetsData();
-        const coordinatorMap = new Map(settings.coordinators.map((c: { uid: any; name: any; }) => [c.uid, c.name]));
-
-        const activeEmployees = employees.filter(e => e.status === 'active');
-        
-        const reportData = activeEmployees.map(e => {
-             const checkInDate = e.checkInDate ? format(parseISO(e.checkInDate), 'dd-MM-yyyy') : 'N/A';
-            return {
-                "Imię i nazwisko": e.fullName,
-                "Koordynator": coordinatorMap.get(e.coordinatorId) || 'N/A',
-                "Adres": e.address,
-                "Pokój": e.roomNumber,
-                "Zakład": e.zaklad,
-                "Data zameldowania": checkInDate
-            };
-        });
-        
-        const worksheet = XLSX.utils.json_to_sheet(reportData);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Aktualne Zakwaterowanie");
-        
-        if (reportData.length > 0) {
-            const cols = Object.keys(reportData[0] || {}).map(key => ({
-                wch: Math.max(key.length, ...reportData.map(row => String(row[key as keyof typeof row] ?? '').length)) + 2
-            }));
-            worksheet["!cols"] = cols;
-        }
-
-        const fileContent = XLSX.write(workbook, { type: 'base64', bookType: 'xlsx' });
-        const fileName = `Raport_Aktualnego_Stanu_Zakwaterowania_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
-
-        return { success: true, fileContent, fileName };
-
-    } catch (e) {
-        console.error("Error generating current accommodation report:", e);
         return { success: false, message: e instanceof Error ? e.message : "Unknown error" };
     }
 }
@@ -1202,5 +1188,6 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
 export async function importNonEmployeesFromExcel(fileContent: string, actorUid: string): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
     return processImport(fileContent, actorUid, 'non-employee');
 }
+
 
 
