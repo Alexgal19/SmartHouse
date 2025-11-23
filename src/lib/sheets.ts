@@ -4,7 +4,7 @@
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, Address, Coordinator, EquipmentItem, NotificationType } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, Address, Coordinator, NotificationType } from '../types';
 import { format, isValid, parse, parseISO } from 'date-fns';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
@@ -18,7 +18,6 @@ const SHEET_NAME_DEPARTMENTS = 'Departments';
 const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_LOCALITIES = 'Localities';
-const SHEET_NAME_EQUIPMENT = 'Equipment';
 const SHEET_NAME_PAYMENT_TYPES_NZ = 'PaymentTypesNZ';
 
 

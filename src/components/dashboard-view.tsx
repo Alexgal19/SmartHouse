@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader } from './ui/card';
 import { differenceInDays, parseISO } from 'date-fns';
 import dynamic from 'next/dynamic';
+import { QuickActions } from './dashboard/quick-actions';
 
 const DynamicDashboardCharts = dynamic(() => import('./dashboard/charts').then(mod => mod.DashboardCharts), {
   loading: () => (
@@ -93,11 +94,11 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
               onUpcomingCheckoutsClick={handleUpcomingCheckoutsClick}
               hasNewCheckouts={currentUser.isAdmin && hasNewCheckouts}
           />
+          <QuickActions />
           <DynamicDashboardCharts
               employees={allEmployees}
               nonEmployees={allNonEmployees}
               settings={settings}
-              isMobile={isMobile}
           />
       </div>
 
