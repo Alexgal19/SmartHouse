@@ -63,7 +63,15 @@ export async function getSheet(title: string, headers: string[]): Promise<Google
             const currentHeaders = sheet.headerValues;
             const missingHeaders = headers.filter(h => !currentHeaders.includes(h));
             if(missingHeaders.length > 0) {
-                await sheet.setHeaderRow([...currentHeaders, ...missingHeaders]);
+                const newHeaders = [...currentHeaders, ...missingHeaders];
+                // Check if sheet needs to be resized
+                if (newHeaders.length > sheet.columnCount) {
+                    await sheet.resize({ 
+                        rowCount: sheet.rowCount, 
+                        columnCount: newHeaders.length 
+                    });
+                }
+                await sheet.setHeaderRow(newHeaders);
             }
         }
         return sheet;
@@ -167,6 +175,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         deductionNo4Months: plainObject.deductionNo4Months ? parseFloat(plainObject.deductionNo4Months as string) : null,
         deductionNo30Days: plainObject.deductionNo30Days ? parseFloat(plainObject.deductionNo30Days as string) : null,
         deductionReason: deductionReason,
+        deductionEntryDate: safeFormat(plainObject.deductionEntryDate),
     };
     
     return newEmployee;
@@ -226,22 +235,6 @@ const deserializeNotification = (row: Record<string, unknown>): Notification | n
         changes: changes,
     };
     return newNotification;
-};
-
-const deserializeEquipmentItem = (row: Record<string, unknown>): EquipmentItem | null => {
-    const plainObject = row;
-    const id = plainObject.id;
-    if (!id) return null;
-
-    return {
-        id: id as string,
-        inventoryNumber: (plainObject.inventoryNumber || '') as string,
-        name: (plainObject.name || '') as string,
-        quantity: Number(plainObject.quantity) || 0,
-        description: (plainObject.description || '') as string,
-        addressId: (plainObject.addressId || '') as string,
-        addressName: (plainObject.addressName || '') as string,
-    };
 };
 
 const getSheetData = async (doc: GoogleSpreadsheet, title: string): Promise<Record<string, string>[]> => {
@@ -373,21 +366,18 @@ export async function getAllSheetsData(userId?: string, userIsAdmin?: boolean) {
             nonEmployeesSheet,
             settings,
             notifications,
-            equipmentSheet,
         ] = await Promise.all([
             getSheetData(doc, SHEET_NAME_EMPLOYEES),
             getSheetData(doc, SHEET_NAME_NON_EMPLOYEES),
             getSettingsFromSheet(doc),
             userId ? getNotificationsFromSheet(doc, userId, userIsAdmin || false) : Promise.resolve([]),
-            getSheetData(doc, SHEET_NAME_EQUIPMENT),
         ]);
         
         const employees = employeesSheet.map(row => deserializeEmployee(row)).filter((e): e is Employee => e !== null);
         const nonEmployees = nonEmployeesSheet.map(row => deserializeNonEmployee(row)).filter((e): e is NonEmployee => e !== null);
 
-        const equipment = equipmentSheet.map(row => deserializeEquipmentItem(row)).filter((item): item is EquipmentItem => item !== null);
 
-        return { employees, settings, nonEmployees, equipment, notifications };
+        return { employees, settings, nonEmployees, notifications };
 
     } catch (error: unknown) {
         console.error("Error fetching all sheets data:", error);
