@@ -970,6 +970,48 @@ export async function generateAccommodationReport(year: number, month: number, c
     }
 }
 
+export async function generateCurrentAccommodationReport(): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
+    try {
+        const { employees, settings } = await getAllSheetsData();
+        const coordinatorMap = new Map(settings.coordinators.map((c: { uid: any; name: any; }) => [c.uid, c.name]));
+
+        const activeEmployees = employees.filter(e => e.status === 'active');
+        
+        const reportData = activeEmployees.map(e => {
+             const checkInDate = e.checkInDate ? format(parseISO(e.checkInDate), 'dd-MM-yyyy') : 'N/A';
+            return {
+                "Imię i nazwisko": e.fullName,
+                "Koordynator": coordinatorMap.get(e.coordinatorId) || 'N/A',
+                "Adres": e.address,
+                "Pokój": e.roomNumber,
+                "Zakład": e.zaklad,
+                "Data zameldowania": checkInDate
+            };
+        });
+        
+        const worksheet = XLSX.utils.json_to_sheet(reportData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Aktualne Zakwaterowanie");
+        
+        if (reportData.length > 0) {
+            const cols = Object.keys(reportData[0] || {}).map(key => ({
+                wch: Math.max(key.length, ...reportData.map(row => String(row[key as keyof typeof row] ?? '').length)) + 2
+            }));
+            worksheet["!cols"] = cols;
+        }
+
+        const fileContent = XLSX.write(workbook, { type: 'base64', bookType: 'xlsx' });
+        const fileName = `Raport_Aktualnego_Stanu_Zakwaterowania_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+
+        return { success: true, fileContent, fileName };
+
+    } catch (e) {
+        console.error("Error generating current accommodation report:", e);
+        return { success: false, message: e instanceof Error ? e.message : "Unknown error" };
+    }
+}
+
+
 export async function generateNzCostsReport(year: number, month: number, coordinatorId: string): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
     try {
         const { nonEmployees, settings } = await getAllSheetsData();
@@ -1160,4 +1202,5 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
 export async function importNonEmployeesFromExcel(fileContent: string, actorUid: string): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
     return processImport(fileContent, actorUid, 'non-employee');
 }
+
 
