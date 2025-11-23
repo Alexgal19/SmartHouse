@@ -247,7 +247,7 @@ export function AddNonEmployeeForm({
     } else {
       form.reset({
         fullName: '',
-        coordinatorId: currentUser.uid,
+        coordinatorId: currentUser.isAdmin ? '' : currentUser.uid,
         locality: '',
         address: '',
         roomNumber: '',

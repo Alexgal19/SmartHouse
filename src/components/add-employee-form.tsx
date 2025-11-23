@@ -303,7 +303,7 @@ export function AddEmployeeForm({
     } else {
         form.reset({
           fullName: '',
-          coordinatorId: !currentUser.isAdmin ? currentUser.uid : '',
+          coordinatorId: currentUser.isAdmin ? '' : currentUser.uid,
           locality: '',
           address: '',
           roomNumber: '',
