@@ -324,11 +324,11 @@ export function DashboardCharts({
 
             if (totalDeduction <= 0) return acc;
             
-            const checkOutDate = employee.checkOutDate ? parseISO(employee.checkOutDate) : null;
-            if (!checkOutDate) return acc;
+            const deductionDate = employee.deductionEntryDate ? parseISO(employee.deductionEntryDate) : null;
+            if (!deductionDate) return acc;
 
-            const matchesPeriod = (deductionMonth === 'all' && checkOutDate.getFullYear() === deductionYear) ||
-                                  (deductionMonth !== 'all' && checkOutDate.getFullYear() === deductionYear && checkOutDate.getMonth() === deductionMonth - 1);
+            const matchesPeriod = (deductionMonth === 'all' && deductionDate.getFullYear() === deductionYear) ||
+                                  (deductionMonth !== 'all' && deductionDate.getFullYear() === deductionYear && deductionDate.getMonth() === deductionMonth - 1);
             
             if (!matchesPeriod) return acc;
             
@@ -392,9 +392,9 @@ export function DashboardCharts({
     const showCoordinatorChart = currentUser?.isAdmin && selectedCoordinatorId === 'all';
     
     const availableYears = useMemo(() => {
-        const years = new Set(employees.filter(e => e.checkOutDate).map(e => {
+        const years = new Set(employees.filter(e => e.checkOutDate || e.deductionEntryDate).map(e => {
             try {
-                return getYear(parseISO(e.checkOutDate!))
+                return getYear(parseISO((e.deductionEntryDate || e.checkOutDate)!))
             } catch {
                 return new Date().getFullYear();
             }

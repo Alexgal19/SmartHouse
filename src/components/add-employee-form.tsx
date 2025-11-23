@@ -71,15 +71,34 @@ const formSchema = z.object({
       amount: z.number().nullable(),
       checked: z.boolean(),
   })).optional(),
+  deductionEntryDate: z.date().nullable().optional(),
+}).superRefine((data, ctx) => {
+    const hasDeductions = 
+        data.depositReturned === 'Nie' ||
+        (data.depositReturnAmount ?? 0) > 0 ||
+        (data.deductionRegulation ?? 0) > 0 ||
+        (data.deductionNo4Months ?? 0) > 0 ||
+        (data.deductionNo30Days ?? 0) > 0 ||
+        (data.deductionReason || []).some(r => r.checked && (r.amount ?? 0) > 0);
+
+    if (hasDeductions && !data.deductionEntryDate) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['deductionEntryDate'],
+            message: 'Data jest wymagana, jeśli wprowadzono potrącenia lub kaucja nie jest zwracana.',
+        });
+    }
 });
 
-export type EmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate' | 'contractStartDate' | 'contractEndDate' | 'departureReportDate' | 'addressChangeDate' | 'locality'> & {
+
+export type EmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate' | 'contractStartDate' | 'contractEndDate' | 'departureReportDate' | 'addressChangeDate' | 'deductionEntryDate' | 'locality'> & {
   checkInDate: string | null;
   checkOutDate?: string | null;
   contractStartDate?: string | null;
   contractEndDate?: string | null;
   departureReportDate?: string | null;
   addressChangeDate?: string | null;
+  deductionEntryDate?: string | null;
 };
 
 const defaultDeductionReasons: { label: string }[] = [
@@ -223,7 +242,8 @@ export function AddEmployeeForm({
           id: `reason-${index}`,
           amount: null,
           checked: false
-      }))
+      })),
+      deductionEntryDate: null,
     },
   });
   
@@ -298,7 +318,8 @@ export function AddEmployeeForm({
             deductionRegulation: employee.deductionRegulation ?? null,
             deductionNo4Months: employee.deductionNo4Months ?? null,
             deductionNo30Days: employee.deductionNo30Days ?? null,
-            deductionReason: combinedDeductions
+            deductionReason: combinedDeductions,
+            deductionEntryDate: parseDate(employee.deductionEntryDate) ?? null,
         });
     } else {
         form.reset({
@@ -316,7 +337,7 @@ export function AddEmployeeForm({
           contractEndDate: null,
           departureReportDate: null,
           comments: '',
-          oldAddress: '',
+            oldAddress: '',
           addressChangeDate: null,
           depositReturned: null,
           depositReturnAmount: null,
@@ -328,7 +349,8 @@ export function AddEmployeeForm({
               id: `reason-${index}`,
               amount: null,
               checked: false
-          }))
+          })),
+          deductionEntryDate: null,
         });
     }
   }, [employee, isOpen, form, settings.addresses, settings.coordinators, currentUser]);
@@ -364,6 +386,7 @@ export function AddEmployeeForm({
         contractEndDate: formatDate(values.contractEndDate),
         departureReportDate: formatDate(values.departureReportDate),
         addressChangeDate: formatDate(values.addressChangeDate),
+        deductionEntryDate: formatDate(values.deductionEntryDate),
     };
 
     onSave(formData);
@@ -658,6 +681,20 @@ export function AddEmployeeForm({
                     <TabsContent value="finance">
                         <div className="space-y-4 px-4">
                             <h3 className="text-lg font-medium">Finanse i potrącenia</h3>
+                             <FormField
+                                control={form.control}
+                                name="deductionEntryDate"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-col">
+                                        <FormLabel>Data wpisania potrącenia</FormLabel>
+                                        <DateInput
+                                          value={field.value}
+                                          onChange={field.onChange}
+                                        />
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                                />
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <FormField
                                     control={form.control}

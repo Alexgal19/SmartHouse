@@ -82,6 +82,7 @@ export type Employee = {
     deductionNo4Months: number | null; // potracenie_4_msc
     deductionNo30Days: number | null; // potracenie_30_dni
     deductionReason: DeductionReason[] | undefined;
+    deductionEntryDate?: string | null;
 };
 
 export type NonEmployee = {
@@ -127,14 +128,4 @@ export type SessionData = {
   uid: string;
   name: string;
   isAdmin: boolean;
-}
-
-export type EquipmentItem = {
-    id: string;
-    inventoryNumber: string;
-    name: string;
-    quantity: number;
-    description: string;
-    addressId: string;
-    addressName: string;
 }
