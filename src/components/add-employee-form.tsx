@@ -822,7 +822,12 @@ export function AddEmployeeForm({
                                                 <FormControl>
                                                     <Checkbox
                                                         checked={field.value}
-                                                        onCheckedChange={field.onChange}
+                                                        onCheckedChange={(checked) => {
+                                                            field.onChange(checked)
+                                                            if(!checked) {
+                                                                form.setValue(`deductionReason.${index}.amount`, null)
+                                                            }
+                                                        }}
                                                     />
                                                 </FormControl>
                                                 <div className="space-y-1 leading-none w-full grid grid-cols-2 gap-x-4 items-center">
@@ -838,7 +843,14 @@ export function AddEmployeeForm({
                                                                 placeholder="PLN"
                                                                 className="h-8"
                                                                 {...amountField}
-                                                                onChange={e => amountField.onChange(e.target.value === '' ? null : parseFloat(e.target.value))}
+                                                                onChange={e => {
+                                                                    const value = e.target.value;
+                                                                    const numericValue = value === '' ? null : parseFloat(value);
+                                                                    amountField.onChange(numericValue);
+                                                                    if (numericValue !== null && numericValue > 0) {
+                                                                        form.setValue(`deductionReason.${index}.checked`, true);
+                                                                    }
+                                                                }}
                                                                 value={amountField.value ?? ''}
                                                             />
                                                         )}
