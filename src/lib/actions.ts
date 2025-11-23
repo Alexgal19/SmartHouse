@@ -429,6 +429,12 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
             updatedEmployeeData.oldAddress = originalEmployee.address;
             updatedEmployeeData.addressChangeDate = format(new Date(), 'yyyy-MM-dd');
         }
+
+        // Handle clearing oldAddress
+        if ('oldAddress' in updates && !updates.oldAddress) {
+            updatedEmployeeData.oldAddress = undefined;
+            updatedEmployeeData.addressChangeDate = null;
+        }
         
         const changes: NotificationChange[] = [];
 
@@ -1188,6 +1194,7 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
 export async function importNonEmployeesFromExcel(fileContent: string, actorUid: string): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
     return processImport(fileContent, actorUid, 'non-employee');
 }
+
 
 
 

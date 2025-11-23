@@ -32,7 +32,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { Employee, Settings, Address, SessionData } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Info, X } from 'lucide-react';
+import { CalendarIcon, Info, X, Trash2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parse, isValid, parseISO } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -411,6 +411,11 @@ export function AddEmployeeForm({
     form.setValue('address', value);
     form.setValue('roomNumber', '');
   };
+
+  const handleClearOldAddress = () => {
+      form.setValue('oldAddress', '', { shouldDirty: true });
+      form.setValue('addressChangeDate', null, { shouldDirty: true });
+  }
   
   const sortedCoordinators = useMemo(() => [...settings.coordinators].sort((a, b) => a.name.localeCompare(b.name)), [settings.coordinators]);
   const sortedNationalities = useMemo(() => [...settings.nationalities].sort((a, b) => a.localeCompare(b)), [settings.nationalities]);
@@ -646,14 +651,22 @@ export function AddEmployeeForm({
                             </FormItem>
                             )}
                         />
-                         {employee?.oldAddress && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-md border p-4 bg-muted/50">
+                         {form.watch('oldAddress') && (
+                            <div className="space-y-4 rounded-md border p-4 bg-muted/50">
                                 <FormField
                                     control={form.control}
                                     name="oldAddress"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Poprzedni adres</FormLabel>
+                                            <div className="flex justify-between items-center">
+                                                <FormLabel>Poprzedni adres</FormLabel>
+                                                {currentUser.isAdmin && (
+                                                    <Button variant="ghost" size="sm" type="button" onClick={handleClearOldAddress}>
+                                                        <Trash2 className="h-4 w-4 mr-2 text-destructive"/>
+                                                        Wyczyść
+                                                    </Button>
+                                                )}
+                                            </div>
                                             <FormControl><Input {...field} readOnly /></FormControl>
                                         </FormItem>
                                     )}
