@@ -334,7 +334,7 @@ export default function MainLayout({
             const entityToEdit = allPeople.find(e => e.id === editEntityId);
             if (entityToEdit) {
                 if ('zaklad' in entityToEdit) {
-                    setEditingEmployee(entityToEdit);
+                    setEditingEmployee(entityToEdit as Employee);
                     setIsFormOpen(true);
                 } else {
                     setEditingNonEmployee(entityToEdit as NonEmployee);
@@ -702,22 +702,22 @@ export default function MainLayout({
                 {currentUser && <MobileNav activeView={activeView} navItems={visibleNavItems} currentUser={currentUser}/>}
             </div>
             
-            {settings && currentUser && (
+            {rawSettings && currentUser && (
                  <AddEmployeeForm
                     isOpen={isFormOpen}
                     onOpenChange={setIsFormOpen}
                     onSave={handleSaveEmployee}
-                    settings={settings}
+                    settings={currentUser.isAdmin ? rawSettings : settings}
                     employee={editingEmployee}
                     currentUser={currentUser}
                 />
             )}
-            {settings && currentUser && (
+            {rawSettings && currentUser && (
                 <AddNonEmployeeForm
                     isOpen={isNonEmployeeFormOpen}
                     onOpenChange={setIsNonEmployeeFormOpen}
                     onSave={(data) => handleSaveNonEmployee(data as Omit<NonEmployee, 'id' | 'status'>)}
-                    settings={settings}
+                    settings={currentUser.isAdmin ? rawSettings : settings}
                     nonEmployee={editingNonEmployee}
                     currentUser={currentUser}
                 />
