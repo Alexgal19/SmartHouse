@@ -791,7 +791,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
             </CardHeader>
             <CardContent>
                  <Tabs value={tab} onValueChange={(v) => updateSearchParams({ tab: v, page: 1 })}>
-                    <TabsList className="grid w-full grid-cols-4">
+                    <TabsList className={cn("grid w-full", currentUser.isAdmin ? "grid-cols-4" : "grid-cols-3")}>
                         <TabsTrigger value="active" disabled={isPending}>
                             <Users className="mr-2 h-4 w-4" />Aktywni ({activeEmployees.length})
                         </TabsTrigger>
@@ -801,14 +801,16 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                          <TabsTrigger value="dismissed" disabled={isPending}>
                             <UserX className="mr-2 h-4 w-4" />Zwolnieni ({dismissedEmployees.length + dismissedNonEmployees.length})
                         </TabsTrigger>
-                        <TabsTrigger value="history" disabled={isPending}>
-                            <History className="mr-2 h-4 w-4" />Historia Adresów ({addressHistory.length})
-                        </TabsTrigger>
+                        {currentUser.isAdmin && (
+                            <TabsTrigger value="history" disabled={isPending}>
+                                <History className="mr-2 h-4 w-4" />Historia Adresów ({addressHistory.length})
+                            </TabsTrigger>
+                        )}
                     </TabsList>
                     <TabsContent value="active" className="mt-4">{renderContent()}</TabsContent>
                     <TabsContent value="dismissed" className="mt-4">{renderContent()}</TabsContent>
                     <TabsContent value="non-employees" className="mt-4">{renderContent()}</TabsContent>
-                    <TabsContent value="history" className="mt-4">{renderHistoryContent()}</TabsContent>
+                    {currentUser.isAdmin && <TabsContent value="history" className="mt-4">{renderHistoryContent()}</TabsContent>}
                 </Tabs>
             </CardContent>
             <FilterDialog
@@ -821,5 +823,3 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         </Card>
     )
 }
-
-    
