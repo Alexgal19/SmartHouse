@@ -36,7 +36,7 @@ const serializeDate = (date?: string | null): string => {
 const EMPLOYEE_HEADERS = [
     'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 
     'zaklad', 'checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 
-    'departureReportDate', 'comments', 'status',
+    'departureReportDate', 'comments', 'status', 'oldAddress', 'addressChangeDate',
     'depositReturned', 'depositReturnAmount', 'deductionRegulation', 'deductionNo4Months', 'deductionNo30Days', 'deductionReason', 'deductionEntryDate'
 ];
 
@@ -52,7 +52,7 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
             continue;
         }
 
-        if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'deductionEntryDate'].includes(key)) {
+        if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'addressChangeDate', 'deductionEntryDate'].includes(key)) {
             serialized[key] = serializeDate(value as string);
         } else if (key === 'deductionReason') {
             serialized[key] = Array.isArray(value) ? JSON.stringify(value) : '';
@@ -192,6 +192,8 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         departureReportDate: safeFormat(plainObject.departureReportDate),
         comments: String(plainObject.comments || ''),
         status: String(plainObject.status) === 'dismissed' ? 'dismissed' : 'active',
+        oldAddress: plainObject.oldAddress ? String(plainObject.oldAddress) : undefined,
+        addressChangeDate: safeFormat(plainObject.addressChangeDate),
         depositReturned: depositReturned,
         depositReturnAmount: plainObject.depositReturnAmount ? parseFloat(plainObject.depositReturnAmount as string) : null,
         deductionRegulation: plainObject.deductionRegulation ? parseFloat(plainObject.deductionRegulation as string) : null,
@@ -388,6 +390,8 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
             contractEndDate: employeeData.contractEndDate ?? null,
             departureReportDate: employeeData.departureReportDate,
             comments: employeeData.comments,
+            oldAddress: employeeData.oldAddress,
+            addressChangeDate: employeeData.addressChangeDate,
             depositReturned: employeeData.depositReturned ?? null,
             depositReturnAmount: employeeData.depositReturnAmount ?? null,
             deductionRegulation: employeeData.deductionRegulation ?? null,
@@ -452,7 +456,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
             const oldValue = originalEmployee[typedKey];
             const newValue = updates[typedKey];
             
-            const areDates = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'deductionEntryDate'].includes(key);
+            const areDates = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'addressChangeDate', 'deductionEntryDate'].includes(key);
 
             let oldValStr: string | null = null;
             if (oldValue !== null && oldValue !== undefined) {
@@ -1195,7 +1199,7 @@ export async function importNonEmployeesFromExcel(fileContent: string, actorUid:
 
 export async function migrateOldAddressesToHistory(): Promise<{ migratedCount: number }> {
   try {
-    const employeeSheet = await getSheet(SHEET_NAME_EMPLOYEES, ['id', 'oldAddress', 'addressChangeDate']);
+    const employeeSheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
     const historySheet = await getSheet(SHEET_NAME_ADDRESS_HISTORY, ADDRESS_HISTORY_HEADERS);
     const rows = await employeeSheet.getRows();
 
@@ -1207,10 +1211,7 @@ export async function migrateOldAddressesToHistory(): Promise<{ migratedCount: n
       const addressChangeDate = row.get('addressChangeDate');
 
       if (employeeId && oldAddress && addressChangeDate) {
-        // Find the current address entry to set its checkOutDate
-        const currentAddress = row.get('address');
-        const checkInDate = row.get('checkInDate');
-
+        
         // Add history entry for the old address
         await historySheet.addRow({
           id: `hist-${Date.now()}-${migratedCount}`,
