@@ -8,10 +8,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, PlusCircle, SlidersHorizontal, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, X, Users, UserX, LayoutGrid, List, Trash2 } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, SlidersHorizontal, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, X, Users, UserX, LayoutGrid, List, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -20,6 +20,7 @@ import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, Di
 import { Label } from '@/components/ui/label';
 import { useMainLayout } from '@/components/main-layout';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { cn } from '@/lib/utils';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -36,6 +37,8 @@ const formatDate = (dateString?: string | null) => {
 }
 
 type Entity = Employee | NonEmployee;
+type SortableField = 'fullName' | 'coordinatorId' | 'address' | 'roomNumber' | 'checkInDate' | 'checkOutDate';
+
 
 const isEmployee = (entity: Entity): entity is Employee => 'zaklad' in entity;
 
@@ -136,7 +139,31 @@ const PaginationControls = ({
     );
 };
 
-const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, settings, onPermanentDelete }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onDismiss?: (id: string) => void; onRestore?: (entity: Entity) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee') => void; }) => {
+const SortableHeader = ({
+  label,
+  field,
+  currentSortBy,
+  currentSortOrder,
+  onSort,
+}: {
+  label: string;
+  field: SortableField;
+  currentSortBy: SortableField | null;
+  currentSortOrder: 'asc' | 'desc';
+  onSort: (field: SortableField) => void;
+}) => {
+  const isSorted = currentSortBy === field;
+  return (
+    <TableHead>
+        <Button variant="ghost" onClick={() => onSort(field)} className="px-2 py-1 h-auto -ml-2">
+            {label}
+            {isSorted && (currentSortOrder === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />)}
+        </Button>
+    </TableHead>
+  );
+};
+
+const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, settings, onPermanentDelete, onSort, sortBy, sortOrder }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onDismiss?: (id: string) => void; onRestore?: (entity: Entity) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee') => void; onSort: (field: SortableField) => void; sortBy: SortableField | null; sortOrder: 'asc' | 'desc'; }) => {
   const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
   
   return (
@@ -144,13 +171,13 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Imię i nazwisko</TableHead>
+              <SortableHeader label="Imię i nazwisko" field="fullName" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
               <TableHead>Typ</TableHead>
-              <TableHead>Koordynator</TableHead>
-              <TableHead>Adres</TableHead>
-              <TableHead>Pokój</TableHead>
-              <TableHead>Data zameldowania</TableHead>
-              <TableHead>Data wymeldowania</TableHead>
+              <SortableHeader label="Koordynator" field="coordinatorId" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+              <SortableHeader label="Adres" field="address" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+              <SortableHeader label="Pokój" field="roomNumber" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+              <SortableHeader label="Data zameldowania" field="checkInDate" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+              <SortableHeader label="Data wymeldowania" field="checkOutDate" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
               <TableHead><span className="sr-only">Akcje</span></TableHead>
             </TableRow>
           </TableHeader>
@@ -388,6 +415,9 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     const page = Number(searchParams.get('page') || '1');
     const search = searchParams.get('search') || '';
     const viewMode = (searchParams.get('viewMode') as 'list' | 'grid') || (isMobile ? 'grid' : 'list');
+    const sortBy = (searchParams.get('sortBy') as SortableField) || 'checkInDate';
+    const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc';
+
     const filters = useMemo(() => ({
         coordinator: (searchParams.get('coordinator')) || 'all',
         address: (searchParams.get('address')) || 'all',
@@ -413,10 +443,52 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
             router.push(`${pathname}?${current.toString()}`);
         });
     };
+    
+    const handleSort = (field: SortableField) => {
+        const newSortOrder = sortBy === field && sortOrder === 'asc' ? 'desc' : 'asc';
+        updateSearchParams({ sortBy: field, sortOrder: newSortOrder });
+    }
 
-    const applyFilters = (data: Entity[] | null): Entity[] => {
-        if (!data) return [];
-        return data.filter(entity => {
+    const sortedData = useMemo(() => {
+        const getCoordinatorName = (id: string) => settings?.coordinators.find(c => c.uid === id)?.name || 'N/A';
+
+        const dataToSort = tab === 'active' ? allEmployees?.filter(e => e.status === 'active') :
+                           tab === 'non-employees' ? allNonEmployees?.filter(ne => ne.status === 'active') :
+                           [...(allEmployees?.filter(e => e.status === 'dismissed') || []), ...(allNonEmployees?.filter(ne => ne.status === 'dismissed') || [])];
+        if (!dataToSort) return [];
+
+        const sorted = [...dataToSort].sort((a, b) => {
+            let valA: string | number | null | undefined;
+            let valB: string | number | null | undefined;
+            
+            if (sortBy === 'coordinatorId') {
+                 valA = getCoordinatorName(a.coordinatorId);
+                 valB = getCoordinatorName(b.coordinatorId);
+            } else {
+                valA = a[sortBy];
+                valB = b[sortBy];
+            }
+
+
+            if (valA === null || valA === undefined) return 1;
+            if (valB === null || valB === undefined) return -1;
+            
+            if (sortBy.includes('Date')) {
+                 const dateA = valA ? parseISO(valA as string).getTime() : 0;
+                 const dateB = valB ? parseISO(valB as string).getTime() : 0;
+                 return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+            }
+
+            return String(valA).localeCompare(String(valB), 'pl', { numeric: true }) * (sortOrder === 'asc' ? 1 : -1);
+        });
+        return sorted;
+
+    }, [allEmployees, allNonEmployees, tab, sortBy, sortOrder, settings]);
+
+
+    const filteredData = useMemo(() => {
+        if (!sortedData) return [];
+        return sortedData.filter(entity => {
             const searchMatch = search === '' || entity.fullName.toLowerCase().includes(search.toLowerCase());
             const addressMatch = filters.address === 'all' || entity.address === filters.address;
             const nationalityMatch = filters.nationality === 'all' || entity.nationality === filters.nationality;
@@ -424,29 +496,19 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
             
             return searchMatch && addressMatch && nationalityMatch && departmentMatch;
         });
-    }
+    }, [sortedData, search, filters]);
 
-    const filteredEmployees = useMemo(() => applyFilters(allEmployees), [allEmployees, search, filters]);
-    const filteredNonEmployees = useMemo(() => applyFilters(allNonEmployees), [allNonEmployees, search, filters]);
+    const activeEmployees = useMemo(() => allEmployees?.filter(e => e.status === 'active') || [], [allEmployees]);
+    const dismissedEmployees = useMemo(() => allEmployees?.filter(e => e.status === 'dismissed') || [], [allEmployees]);
+    const activeNonEmployees = useMemo(() => allNonEmployees?.filter(ne => ne.status === 'active') || [], [allNonEmployees]);
+    const dismissedNonEmployees = useMemo(() => allNonEmployees?.filter(ne => ne.status === 'dismissed') || [], [allNonEmployees]);
 
-    const activeEmployees = useMemo(() => filteredEmployees.filter(e => e.status === 'active'), [filteredEmployees]);
-    const dismissedEmployees = useMemo(() => filteredEmployees.filter(e => e.status === 'dismissed'), [filteredEmployees]);
-    const activeNonEmployees = useMemo(() => filteredNonEmployees.filter(ne => ne.status === 'active'), [filteredNonEmployees]);
-    const dismissedNonEmployees = useMemo(() => filteredNonEmployees.filter(ne => ne.status === 'dismissed'), [filteredNonEmployees]);
-    
-    const dataMap = useMemo(() => ({
-        active: activeEmployees,
-        dismissed: [...dismissedEmployees, ...dismissedNonEmployees],
-        'non-employees': activeNonEmployees,
-    }), [activeEmployees, dismissedEmployees, activeNonEmployees, dismissedNonEmployees]);
-
-    const currentData = dataMap[tab];
-    const totalPages = Math.ceil((currentData?.length || 0) / ITEMS_PER_PAGE);
+    const totalPages = Math.ceil((filteredData?.length || 0) / ITEMS_PER_PAGE);
     const paginatedData = useMemo(() => {
         const start = (page - 1) * ITEMS_PER_PAGE;
         const end = start + ITEMS_PER_PAGE;
-        return currentData?.slice(start, end) || [];
-    }, [currentData, page]);
+        return filteredData?.slice(start, end) || [];
+    }, [filteredData, page]);
 
     const isFilterActive = Object.values(filters).some(v => v !== 'all') || search !== '';
 
@@ -504,15 +566,31 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     const renderContent = () => (
         <>
             <ScrollArea className="h-[55vh] overflow-x-auto" style={{ opacity: isPending ? 0.6 : 1 }}>
-                {isMounted ? <EntityListComponent 
-                    entities={paginatedData}
-                    settings={settings}
-                    onEdit={handleEdit}
-                    onDismiss={(id) => handleDismissEmployee(id)}
-                    onRestore={handleRestore}
-                    onPermanentDelete={handlePermanentDelete}
-                    isDismissed={tab === 'dismissed'}
-                /> : <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
+                {isMounted ? 
+                    (viewMode === 'list' ? 
+                        <EntityTable 
+                            entities={paginatedData}
+                            settings={settings}
+                            onEdit={handleEdit}
+                            onDismiss={(id) => handleDismissEmployee(id)}
+                            onRestore={handleRestore}
+                            onPermanentDelete={handlePermanentDelete}
+                            isDismissed={tab === 'dismissed'}
+                            onSort={handleSort}
+                            sortBy={sortBy}
+                            sortOrder={sortOrder}
+                        /> :
+                        <EntityCardList 
+                             entities={paginatedData}
+                            settings={settings}
+                            onEdit={handleEdit}
+                            onDismiss={(id) => handleDismissEmployee(id)}
+                            onRestore={handleRestore}
+                            onPermanentDelete={handlePermanentDelete}
+                            isDismissed={tab === 'dismissed'}
+                        />
+                    )
+                 : <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
             </ScrollArea>
              <PaginationControls currentPage={page} totalPages={totalPages} onPageChange={(p) => updateSearchParams({ page: p })} isDisabled={isPending} />
         </>
