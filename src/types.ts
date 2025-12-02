@@ -74,6 +74,7 @@ export type Employee = {
     departureReportDate?: string | null; // YYYY-MM-DD
     comments?: string | null;
     status: 'active' | 'dismissed';
+    oldAddress?: string;
     depositReturned: 'Tak' | 'Nie' | 'Nie dotyczy' | null;
     depositReturnAmount: number | null;
     deductionRegulation: number | null; // potracenie_regulamin

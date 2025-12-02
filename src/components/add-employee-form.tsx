@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -60,7 +61,6 @@ const formSchema = z.object({
   departureReportDate: z.date().nullable().optional(),
   comments: z.string().optional(),
   oldAddress: z.string().optional(),
-  addressChangeDate: z.date().nullable().optional(),
   depositReturned: z.enum(['Tak', 'Nie', 'Nie dotyczy']).nullable().optional(),
   depositReturnAmount: z.number().nullable().optional(),
   deductionRegulation: z.number().nullable().optional(),
@@ -92,13 +92,12 @@ const formSchema = z.object({
 });
 
 
-export type EmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate' | 'contractStartDate' | 'contractEndDate' | 'departureReportDate' | 'addressChangeDate' | 'deductionEntryDate' | 'locality'> & {
+export type EmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate' | 'contractStartDate' | 'contractEndDate' | 'departureReportDate' | 'deductionEntryDate' | 'locality'> & {
   checkInDate: string | null;
   checkOutDate?: string | null;
   contractStartDate?: string | null;
   contractEndDate?: string | null;
   departureReportDate?: string | null;
-  addressChangeDate?: string | null;
   deductionEntryDate?: string | null;
 };
 
@@ -233,7 +232,6 @@ export function AddEmployeeForm({
       departureReportDate: null,
       comments: '',
       oldAddress: '',
-      addressChangeDate: null,
       depositReturned: null,
       depositReturnAmount: null,
       deductionRegulation: null,
@@ -314,7 +312,6 @@ export function AddEmployeeForm({
             departureReportDate: parseDate(employee.departureReportDate) ?? null,
             comments: employee.comments ?? '',
             oldAddress: employee.oldAddress ?? '',
-            addressChangeDate: parseDate(employee.addressChangeDate) ?? null,
             depositReturned: employee.depositReturned ?? null,
             depositReturnAmount: employee.depositReturnAmount ?? null,
             deductionRegulation: employee.deductionRegulation ?? null,
@@ -340,7 +337,6 @@ export function AddEmployeeForm({
           departureReportDate: null,
           comments: '',
             oldAddress: '',
-          addressChangeDate: null,
           depositReturned: null,
           depositReturnAmount: null,
           deductionRegulation: null,
@@ -387,7 +383,6 @@ export function AddEmployeeForm({
         contractStartDate: formatDate(values.contractStartDate),
         contractEndDate: formatDate(values.contractEndDate),
         departureReportDate: formatDate(values.departureReportDate),
-        addressChangeDate: formatDate(values.addressChangeDate),
         deductionEntryDate: formatDate(values.deductionEntryDate),
     };
 
@@ -416,7 +411,6 @@ export function AddEmployeeForm({
 
   const handleClearOldAddress = () => {
       form.setValue('oldAddress', '', { shouldDirty: true });
-      form.setValue('addressChangeDate', null, { shouldDirty: true });
   }
 
   const handleDismissClick = async () => {
@@ -445,12 +439,11 @@ export function AddEmployeeForm({
         contractStartDate: formatDate(values.contractStartDate),
         contractEndDate: formatDate(values.contractEndDate),
         departureReportDate: formatDate(values.departureReportDate),
-        addressChangeDate: formatDate(values.addressChangeDate),
         deductionEntryDate: formatDate(values.deductionEntryDate),
     };
     onSave(formData);
     
-    await handleDismissEmployee(employee.id);
+    await handleDismissEmployee(employee.id, checkOutDate);
     onOpenChange(false);
   };
   
@@ -705,22 +698,6 @@ export function AddEmployeeForm({
                                                 )}
                                             </div>
                                             <FormControl><Input {...field} readOnly /></FormControl>
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="addressChangeDate"
-                                    render={({ field }) => (
-                                        <FormItem className="flex flex-col">
-                                            <FormLabel>Data zmiany adresu</FormLabel>
-                                            <FormControl>
-                                                <Input 
-                                                    value={field.value ? format(field.value, 'yyyy-MM-dd') : ''} 
-                                                    readOnly 
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
                                         </FormItem>
                                     )}
                                 />
