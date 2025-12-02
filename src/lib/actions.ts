@@ -1213,8 +1213,7 @@ export async function importNonEmployeesFromExcel(fileContent: string, actorUid:
 
 export async function migrateOldAddressesToHistory(): Promise<{ migratedCount: number }> {
     try {
-        // We need to specify the old headers to be able to read them
-        const employeeSheet = await getSheet(SHEET_NAME_EMPLOYEES, [...EMPLOYEE_HEADERS, 'oldAddress']);
+        const employeeSheet = await getSheet(SHEET_NAME_EMPLOYEES, [...EMPLOYEE_HEADERS]);
         const { settings } = await getAllSheetsData();
         const coordinatorMap = new Map(settings.coordinators.map(c => [c.uid, c.name]));
         const rows = await employeeSheet.getRows();
@@ -1224,8 +1223,6 @@ export async function migrateOldAddressesToHistory(): Promise<{ migratedCount: n
         for (const row of rows) {
             const employeeId = row.get('id') as string;
             const oldAddress = row.get('oldAddress') as string;
-            
-            // We use the current check-in date as the check-out date for the old address
             const currentCheckInDate = row.get('checkInDate') as string;
 
             if (employeeId && oldAddress) {
@@ -1242,7 +1239,7 @@ export async function migrateOldAddressesToHistory(): Promise<{ migratedCount: n
                     coordinatorName,
                     department,
                     address: oldAddress,
-                    checkInDate: null, // We don't have this information
+                    checkInDate: null, 
                     checkOutDate: checkOutForOldAddress,
                 });
 
