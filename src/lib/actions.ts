@@ -86,6 +86,7 @@ const serializeNotification = (notification: Omit<Notification, 'id'> & { id: st
         message: notification.message,
         entityId: notification.entityId,
         entityName: notification.entityName,
+        actorName: notification.actorName,
         recipientId: notification.recipientId,
         createdAt: notification.createdAt,
         isRead: String(notification.isRead).toUpperCase(),
@@ -99,7 +100,7 @@ const NON_EMPLOYEE_HEADERS = [
 ];
 
 const NOTIFICATION_HEADERS = [
-    'id', 'message', 'entityId', 'entityName', 'recipientId', 'createdAt', 'isRead', 'type', 'changes'
+    'id', 'message', 'entityId', 'entityName', 'actorName', 'recipientId', 'createdAt', 'isRead', 'type', 'changes'
 ];
 
 
@@ -233,15 +234,15 @@ const generateSmartNotificationMessage = (
 
     switch (action) {
         case 'dodał':
-            message = `${actorName} dodał nowego ${entityType} ${entity.fullName}.`;
+            message = `Dodał nowego ${entityType} ${entity.fullName}.`;
             type = 'success';
             break;
         case 'trwale usunął':
-            message = `${actorName} trwale usunął ${entityType} ${entity.fullName}.`;
+            message = `Trwale usunął ${entityType} ${entity.fullName}.`;
             type = 'destructive';
             break;
         case 'automatycznie zwolnił':
-            message = `${actorName} automatycznie zwolnił ${entityType} ${entity.fullName} z powodu upływu daty wymeldowania.`;
+            message = `Automatycznie zwolnił ${entityType} ${entity.fullName} z powodu upływu daty wymeldowania.`;
             type = 'warning';
             break;
         case 'zaktualizował': {
@@ -250,16 +251,16 @@ const generateSmartNotificationMessage = (
             const checkoutChange = changes.find(c => c.field === 'checkOutDate');
 
             if (statusChange && statusChange.newValue === 'dismissed') {
-                message = `${actorName} zwolnił ${entityType} ${entity.fullName}.`;
+                message = `Zwolnił ${entityType} ${entity.fullName}.`;
                 type = 'warning';
             } else if (addressChange) {
-                message = `${actorName} zmienił adres ${entityType} ${entity.fullName} na ${addressChange.newValue}.`;
+                message = `Zmienił adres ${entityType} ${entity.fullName} na ${addressChange.newValue}.`;
                 type = 'warning';
             } else if (checkoutChange && (!checkoutChange.oldValue || checkoutChange.oldValue === 'Brak')) {
-                message = `${actorName} przypisał datę wymeldowania dla ${entityType} ${entity.fullName}.`;
+                message = `Przypisał datę wymeldowania dla ${entityType} ${entity.fullName}.`;
                 type = 'info';
             } else {
-                message = `${actorName} zaktualizował dane ${entityType} ${entity.fullName}.`;
+                message = `Zaktualizował dane ${entityType} ${entity.fullName}.`;
                 type = 'info';
             }
             break;
@@ -272,66 +273,74 @@ const generateSmartNotificationMessage = (
     return { message, type };
 };
 
+const FIELD_LABELS: Record<string, string> = {
+    fullName: "Imię i nazwisko",
+    coordinatorId: "Koordynator",
+    nationality: "Narodowość",
+    gender: "Płeć",
+    address: "Adres",
+    roomNumber: "Pokój",
+    zaklad: "Zakład",
+    checkInDate: "Data zameldowania",
+    checkOutDate: "Data wymeldowania",
+    status: "Status",
+};
+
 
 const createNotification = async (
     actor: Coordinator,
     action: 'dodał' | 'zaktualizował' | 'trwale usunął' | 'automatycznie zwolnił' | 'przeniósł',
     entity: (Employee | NonEmployee),
     settings: Settings,
-    changes: NotificationChange[] = []
+    changes: Omit<NotificationChange, 'field'> & { field: keyof (Employee | NonEmployee) }[] = []
 ) => {
     try {
-        const { message, type } = generateSmartNotificationMessage(actor.name, entity, action, changes);
+        const readableChanges: NotificationChange[] = changes.map(c => ({
+            ...c,
+            field: FIELD_LABELS[c.field] || c.field
+        }));
+
+        const { message, type } = generateSmartNotificationMessage(actor.name, entity, action, readableChanges);
         
         const responsibleCoordinator = settings.coordinators.find(c => c.uid === entity.coordinatorId);
+        const admins = settings.coordinators.filter(c => c.isAdmin);
+
+        const recipients = new Set<Coordinator>();
+
+        // Add responsible coordinator
+        if (responsibleCoordinator) {
+            recipients.add(responsibleCoordinator);
+        }
+
+        // Add all admins for important events
+        if (['success', 'destructive', 'warning'].includes(type)) {
+            admins.forEach(admin => recipients.add(admin));
+        }
+
+        if (recipients.size === 0) {
+            return;
+        }
         
-        const isImportant = ['success', 'destructive', 'warning'].includes(type);
-        
-        // 1. Create notification for the responsible coordinator (if they are not the actor)
-        if (responsibleCoordinator && responsibleCoordinator.uid !== actor.uid) {
-            const responsibleNotification: Omit<Notification, 'id'> = {
+        const notifications: (Omit<Notification, 'id'> & { id: string })[] = [];
+        for (const recipient of recipients) {
+             notifications.push({
+                id: `notif-${Date.now()}-${Math.random()}`,
                 message,
                 entityId: entity.id,
                 entityName: entity.fullName,
-                recipientId: responsibleCoordinator.uid,
+                actorName: actor.name,
+                recipientId: recipient.uid,
                 createdAt: new Date().toISOString(),
                 isRead: false,
                 type: type,
-                changes
-            };
-            const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
-            await sheet.addRow(serializeNotification({ ...responsibleNotification, id: `notif-${Date.now()}-${Math.random()}` }));
+                changes: readableChanges
+            });
         }
-
-        // 2. If it's a critical event, notify all admins
-        if (isImportant) {
-            const admins = settings.coordinators.filter(c => c.isAdmin);
-            const adminNotifications: (Omit<Notification, 'id'> & { id: string })[] = [];
-            
-            for (const admin of admins) {
-                // Avoid duplicating notification for the responsible coordinator if they are an admin
-                if (responsibleCoordinator && admin.uid === responsibleCoordinator.uid) continue;
-                // Avoid duplicating notification for the actor if they are an admin
-                if (admin.uid === actor.uid) continue;
-
-                adminNotifications.push({
-                    id: `notif-admin-${Date.now()}-${Math.random()}`,
-                    message,
-                    entityId: entity.id,
-                    entityName: entity.fullName,
-                    recipientId: admin.uid,
-                    createdAt: new Date().toISOString(),
-                    isRead: false,
-                    type: type,
-                    changes
-                });
-            }
-
-            if (adminNotifications.length > 0) {
-                const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
-                const serializedNotifications = adminNotifications.map(serializeNotification);
-                await sheet.addRows(serializedNotifications);
-            }
+        
+        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
+        const serializedNotifications = notifications.map(serializeNotification);
+        if(serializedNotifications.length > 0) {
+            await sheet.addRows(serializedNotifications);
         }
         
         await writeToAuditLog(actor.uid, actor.name, action, 'zaklad' in entity && entity.zaklad ? 'pracownika' : 'mieszkańca', entity.id, changes);
@@ -436,7 +445,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
             updatedEmployeeData.addressChangeDate = null;
         }
         
-        const changes: NotificationChange[] = [];
+        const changes: (Omit<NotificationChange, 'field'> & { field: keyof Employee })[] = [];
 
         for (const key in updates) {
             const typedKey = key as keyof Employee;
@@ -555,7 +564,7 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
         const row = rows[rowIndex];
         const originalNonEmployee = row.toObject() as NonEmployee;
         
-        const changes: NotificationChange[] = [];
+        const changes: (Omit<NotificationChange, 'field'> & { field: keyof NonEmployee })[] = [];
         
         for (const key in updates) {
             const typedKey = key as keyof NonEmployee;
@@ -566,7 +575,7 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
                     newValue: String(updates[typedKey] || 'Brak')
                 });
             }
-            row.set(key, serializeNonEmployee({ [key]: updates[typedKey] })[key]);
+             row.set(key, serializeNonEmployee({ [key]: updates[typedKey] })[key] || '');
         }
         await row.save();
         
@@ -1194,8 +1203,3 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
 export async function importNonEmployeesFromExcel(fileContent: string, actorUid: string): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
     return processImport(fileContent, actorUid, 'non-employee');
 }
-
-
-
-
-

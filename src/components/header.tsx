@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Bell, LogOut, Trash2 } from 'lucide-react';
-import type { SessionData, View, Notification, Settings, Coordinator } from '@/types';
+import type { SessionData, View, Notification, NotificationChange, Settings, Coordinator } from '@/types';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatDistanceToNow } from 'date-fns';
@@ -28,13 +28,14 @@ import { Input } from './ui/input';
 const NotificationItem = ({ n, onClick, onDelete, style }: {n: Notification, onClick: (n: Notification) => void, onDelete: (notificationId: string) => void, style?: React.CSSProperties}) => {
     
     const itemClasses = cn(
-        "p-3 rounded-lg -mx-2 flex items-start gap-4 transition-colors group border-l-4 animate-fade-in-up",
-        n.isRead ? 'opacity-70 border-transparent' : 'font-semibold',
+        "p-3 rounded-lg -mx-2 flex flex-col items-start gap-2 transition-colors group border-l-4 animate-fade-in-up",
+        n.isRead ? 'opacity-70 border-transparent hover:bg-muted/50' : 'font-semibold',
         n.type === 'success' && 'bg-green-500/10 border-green-500',
         n.type === 'destructive' && 'bg-red-500/10 border-red-500',
         n.type === 'warning' && 'bg-yellow-500/10 border-yellow-500',
         n.type === 'info' && 'border-blue-500',
-        !n.type && 'border-transparent'
+        !n.type && 'border-transparent',
+        n.entityId && 'cursor-pointer'
     );
     
     const iconClasses = cn(
@@ -46,34 +47,46 @@ const NotificationItem = ({ n, onClick, onDelete, style }: {n: Notification, onC
         n.type === 'info' && !n.isRead && 'bg-blue-500'
     );
 
-    const responsibleCoordinatorName = n.recipientId ? 'dla ' + n.recipientId : '';
-
     return (
     <div 
         className={itemClasses}
         role={n.entityId ? "button" : "status"}
         style={style}
+        onClick={() => n.entityId && onClick(n)}
     >
-        <div className="flex-shrink-0" onClick={() => n.entityId && onClick(n)}>
-             <div className={iconClasses}></div>
+        <div className="flex w-full justify-between items-start">
+            <div className="flex items-start gap-3">
+                 <div className={iconClasses}></div>
+                 <div className="flex-1">
+                    <p className="text-sm leading-tight"><span className="font-bold">{n.actorName}</span> {n.message}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                        {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true, locale: pl })}
+                    </p>
+                </div>
+            </div>
+            <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(n.id);
+                }}
+            >
+                <Trash2 className="h-4 w-4" />
+            </Button>
         </div>
-        <div className="flex-1" onClick={() => n.entityId && onClick(n)}>
-            <p className="text-sm leading-tight">{n.message}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-                 {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true, locale: pl })} {responsibleCoordinatorName}
-            </p>
-        </div>
-        <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={(e) => {
-                e.stopPropagation();
-                onDelete(n.id);
-            }}
-        >
-            <Trash2 className="h-4 w-4" />
-        </Button>
+        {n.changes && n.changes.length > 0 && (
+            <div className="pl-6 w-full">
+                <div className="text-xs space-y-1 mt-2 border-l-2 border-border pl-3 py-1">
+                    {n.changes.map((change, index) => (
+                        <p key={index} className="text-muted-foreground">
+                           <span className="font-medium text-foreground/80">{change.field}:</span> {change.oldValue} &rarr; <span className="font-semibold text-foreground">{change.newValue}</span>
+                        </p>
+                    ))}
+                </div>
+            </div>
+        )}
     </div>
 )
 }

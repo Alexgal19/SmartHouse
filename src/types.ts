@@ -104,7 +104,7 @@ export type NonEmployee = {
 
 
 export type NotificationChange = {
-    field: keyof Employee | keyof NonEmployee;
+    field: string; // User-friendly field name
     oldValue: string;
     newValue: string;
 }
@@ -116,7 +116,8 @@ export type Notification = {
     message: string;
     entityId: string;
     entityName: string;
-    recipientId: string;
+    actorName: string; // Who made the change
+    recipientId: string; // Who this notification is for
     createdAt: string; // ISO date string
     isRead: boolean;
     type: NotificationType;
