@@ -359,7 +359,7 @@ export function AddEmployeeForm({
             toast({
                 variant: 'destructive',
                 title: 'Uwaga',
-                description: 'Zmień datę zameldowania.',
+                description: 'Zmień datę zameldowania, aby poprawnie zarejestrować zmianę adresu.',
             });
             return; // Stop submission
         }

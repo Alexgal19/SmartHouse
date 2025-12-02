@@ -399,8 +399,7 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
         const serialized = serializeEmployee(newEmployee);
         await sheet.addRow(serialized, { raw: false, insert: true });
         
-        // Add first entry to address history
-        if (newEmployee.checkInDate) {
+        if (newEmployee.address && newEmployee.checkInDate) {
             const coordinator = settings.coordinators.find(c => c.uid === newEmployee.coordinatorId);
             await addHistoryToAction({
                 employeeId: newEmployee.id,
@@ -444,18 +443,32 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         const updatedEmployeeData: Employee = { ...originalEmployee, ...updates };
         
         if (updates.address && updates.address !== originalEmployee.address && updates.checkInDate) {
-            const employeeHistory = addressHistory.filter(h => h.employeeId === employeeId).sort((a,b) => new Date(a.checkInDate || 0).getTime() - new Date(b.checkInDate || 0).getTime());
-            const lastHistoryEntry = employeeHistory[employeeHistory.length - 1];
             
+            const lastHistoryEntry = addressHistory
+                .filter(h => h.employeeId === employeeId)
+                .sort((a,b) => new Date(b.checkInDate || 0).getTime() - new Date(a.checkInDate || 0).getTime())[0];
+
             if (lastHistoryEntry) {
                  await updateHistoryToAction(lastHistoryEntry.id, { checkOutDate: updates.checkInDate });
+            } else if (originalEmployee.address && originalEmployee.checkInDate) {
+                // If no history exists, create one for the old address
+                const oldCoordinator = settings.coordinators.find(c => c.uid === originalEmployee.coordinatorId);
+                 await addHistoryToAction({
+                    employeeId: employeeId,
+                    employeeName: originalEmployee.fullName,
+                    coordinatorName: oldCoordinator?.name || 'N/A',
+                    department: originalEmployee.zaklad || 'N/A',
+                    address: originalEmployee.address,
+                    checkInDate: originalEmployee.checkInDate,
+                    checkOutDate: updates.checkInDate,
+                });
             }
 
-            const coordinator = settings.coordinators.find(c => c.uid === updatedEmployeeData.coordinatorId);
+            const newCoordinator = settings.coordinators.find(c => c.uid === updatedEmployeeData.coordinatorId);
             await addHistoryToAction({
                 employeeId: employeeId,
                 employeeName: updatedEmployeeData.fullName,
-                coordinatorName: coordinator?.name || 'N/A',
+                coordinatorName: newCoordinator?.name || 'N/A',
                 department: updatedEmployeeData.zaklad || 'N/A',
                 address: updates.address,
                 checkInDate: updates.checkInDate,
@@ -562,6 +575,19 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id' | '
         const serialized = serializeNonEmployee(newNonEmployee);
         await sheet.addRow(serialized, { raw: false, insert: true });
         
+         if (newNonEmployee.address && newNonEmployee.checkInDate) {
+            const coordinator = settings.coordinators.find(c => c.uid === newNonEmployee.coordinatorId);
+            await addHistoryToAction({
+                employeeId: newNonEmployee.id,
+                employeeName: newNonEmployee.fullName,
+                coordinatorName: coordinator?.name || 'N/A',
+                department: 'N/A',
+                address: newNonEmployee.address,
+                checkInDate: newNonEmployee.checkInDate,
+                checkOutDate: null,
+            });
+        }
+        
         await createNotification(actor, 'dodał', newNonEmployee, settings);
 
     } catch (e: unknown) {
@@ -588,18 +614,30 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
         const updatedNonEmployeeData: NonEmployee = { ...originalNonEmployee, ...updates, id: originalNonEmployee.id, fullName: originalNonEmployee.fullName };
         
         if (updates.address && updates.address !== originalNonEmployee.address && updates.checkInDate) {
-            const nonEmployeeHistory = addressHistory.filter(h => h.employeeId === id).sort((a,b) => new Date(a.checkInDate || 0).getTime() - new Date(b.checkInDate || 0).getTime());
-            const lastHistoryEntry = nonEmployeeHistory[nonEmployeeHistory.length - 1];
-            
+            const lastHistoryEntry = addressHistory
+                .filter(h => h.employeeId === id)
+                .sort((a,b) => new Date(b.checkInDate || 0).getTime() - new Date(a.checkInDate || 0).getTime())[0];
+
             if (lastHistoryEntry) {
                  await updateHistoryToAction(lastHistoryEntry.id, { checkOutDate: updates.checkInDate });
+            } else if (originalNonEmployee.address && originalNonEmployee.checkInDate) {
+                const oldCoordinator = settings.coordinators.find(c => c.uid === originalNonEmployee.coordinatorId);
+                 await addHistoryToAction({
+                    employeeId: id,
+                    employeeName: originalNonEmployee.fullName,
+                    coordinatorName: oldCoordinator?.name || 'N/A',
+                    department: 'N/A',
+                    address: originalNonEmployee.address,
+                    checkInDate: originalNonEmployee.checkInDate,
+                    checkOutDate: updates.checkInDate,
+                });
             }
 
-            const coordinator = settings.coordinators.find(c => c.uid === updatedNonEmployeeData.coordinatorId);
+            const newCoordinator = settings.coordinators.find(c => c.uid === updatedNonEmployeeData.coordinatorId);
             await addHistoryToAction({
                 employeeId: id,
                 employeeName: updatedNonEmployeeData.fullName,
-                coordinatorName: coordinator?.name || 'N/A',
+                coordinatorName: newCoordinator?.name || 'N/A',
                 department: 'N/A',
                 address: updates.address,
                 checkInDate: updates.checkInDate,
@@ -1255,7 +1293,7 @@ export async function deleteAddressHistoryEntry(historyId: string, actorUid: str
 }
 
 export async function migrateOldAddressesToHistory(): Promise<{ migratedCount: number }> {
-    const employeeSheet = await getSheet('Employees', ['id', 'fullName', 'coordinatorId', 'zaklad', 'checkInDate', 'oldAddress', 'addressChangeDate']);
+    const employeeSheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
     const employeeRows = await employeeSheet.getRows();
     const { settings } = await getAllSheetsData();
     const coordinatorMap = new Map(settings.coordinators.map(c => [c.uid, c.name]));
