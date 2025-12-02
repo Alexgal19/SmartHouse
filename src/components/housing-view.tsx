@@ -468,8 +468,20 @@ const MobileAddressCard = ({ address, onOccupantClick, style }: { address: Housi
     )
 }
 
-const FilterControls = ({ filters, onFilterChange, settings }: { filters: any, onFilterChange: (filters: any) => void, settings: Settings | null }) => {
-    const sortedLocalities = useMemo(() => [...(settings?.localities || [])].sort((a,b) => a.localeCompare(b)), [settings?.localities]);
+const FilterControls = ({ filters, onFilterChange, settings, currentUser }: { filters: any, onFilterChange: (filters: any) => void, settings: Settings | null, currentUser: SessionData | null }) => {
+    
+    const sortedLocalities = useMemo(() => {
+        if (!settings || !currentUser) return [];
+
+        if (currentUser.isAdmin) {
+            return [...settings.localities].sort((a, b) => a.localeCompare(b));
+        }
+        
+        const coordinatorAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(currentUser.uid));
+        const uniqueLocalities = [...new Set(coordinatorAddresses.map(a => a.locality))];
+        return uniqueLocalities.sort((a, b) => a.localeCompare(b));
+
+    }, [settings, currentUser]);
 
     const handleValueChange = (key: string, value: string | boolean) => {
         onFilterChange({ ...filters, [key]: value });
@@ -509,7 +521,7 @@ const FilterControls = ({ filters, onFilterChange, settings }: { filters: any, o
 };
 
 
-export default function HousingView({ }: { currentUser: SessionData }) {
+export default function HousingView({ currentUser }: { currentUser: SessionData }) {
     const { settings, handleEditEmployeeClick, handleEditNonEmployeeClick } = useMainLayout();
     const { isMobile } = useIsMobile();
     const [selectedAddressIds, setSelectedAddressIds] = useState<string[]>([]);
@@ -601,7 +613,7 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                 </CardHeader>
                 <CardContent>
                      <div className="mb-4">
-                        <FilterControls filters={filters} onFilterChange={handleFilterChange} settings={settings} />
+                        <FilterControls filters={filters} onFilterChange={handleFilterChange} settings={settings} currentUser={currentUser} />
                     </div>
                     <ScrollArea className="h-[calc(100vh-22rem)] -mx-4 px-4">
                         <Accordion type="multiple" className="w-full space-y-3">
@@ -636,7 +648,7 @@ export default function HousingView({ }: { currentUser: SessionData }) {
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
                     <div className="space-y-4 mb-4">
-                        <FilterControls filters={filters} onFilterChange={handleFilterChange} settings={settings} />
+                        <FilterControls filters={filters} onFilterChange={handleFilterChange} settings={settings} currentUser={currentUser}/>
                     </div>
                     <ScrollArea className="h-[calc(100vh-25rem)] lg:h-[calc(100vh-24rem)]">
                         <Accordion type="multiple" className="w-full" >
