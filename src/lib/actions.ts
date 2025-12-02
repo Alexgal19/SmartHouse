@@ -220,6 +220,19 @@ const writeToAuditLog = async (actorId: string, actorName: string, action: strin
     }
 };
 
+const FIELD_LABELS: Record<string, string> = {
+    fullName: "Imię i nazwisko",
+    coordinatorId: "Koordynator",
+    nationality: "Narodowość",
+    gender: "Płeć",
+    address: "Adres",
+    roomNumber: "Pokój",
+    zaklad: "Zakład",
+    checkInDate: "Data zameldowania",
+    checkOutDate: "Data wymeldowania",
+    status: "Status",
+};
+
 const generateSmartNotificationMessage = (
     actorName: string,
     entity: (Employee | NonEmployee),
@@ -269,19 +282,6 @@ const generateSmartNotificationMessage = (
     }
 
     return { message, type };
-};
-
-const FIELD_LABELS: Record<string, string> = {
-    fullName: "Imię i nazwisko",
-    coordinatorId: "Koordynator",
-    nationality: "Narodowość",
-    gender: "Płeć",
-    address: "Adres",
-    roomNumber: "Pokój",
-    zaklad: "Zakład",
-    checkInDate: "Data zameldowania",
-    checkOutDate: "Data wymeldowania",
-    status: "Status",
 };
 
 
@@ -572,7 +572,7 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id' | '
 
 export async function updateNonEmployee(id: string, updates: Partial<NonEmployee>, actorUid: string): Promise<void> {
      try {
-        const { settings } = await getAllSheetsData(actorUid, true);
+        const { settings, addressHistory } = await getAllSheetsData(actorUid, true);
         const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
@@ -585,6 +585,27 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
 
         const row = rows[rowIndex];
         const originalNonEmployee = row.toObject() as NonEmployee;
+        const updatedNonEmployeeData: NonEmployee = { ...originalNonEmployee, ...updates, id: originalNonEmployee.id, fullName: originalNonEmployee.fullName };
+        
+        if (updates.address && updates.address !== originalNonEmployee.address && updates.checkInDate) {
+            const nonEmployeeHistory = addressHistory.filter(h => h.employeeId === id).sort((a,b) => new Date(a.checkInDate || 0).getTime() - new Date(b.checkInDate || 0).getTime());
+            const lastHistoryEntry = nonEmployeeHistory[nonEmployeeHistory.length - 1];
+            
+            if (lastHistoryEntry) {
+                 await updateHistoryToAction(lastHistoryEntry.id, { checkOutDate: updates.checkInDate });
+            }
+
+            const coordinator = settings.coordinators.find(c => c.uid === updatedNonEmployeeData.coordinatorId);
+            await addHistoryToAction({
+                employeeId: id,
+                employeeName: updatedNonEmployeeData.fullName,
+                coordinatorName: coordinator?.name || 'N/A',
+                department: undefined,
+                address: updates.address,
+                checkInDate: updates.checkInDate,
+                checkOutDate: null,
+            });
+        }
         
         const changes: (Omit<NotificationChange, 'field'> & { field: keyof NonEmployee })[] = [];
         
@@ -604,7 +625,7 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
         await row.save();
         
         if (changes.length > 0) {
-            await createNotification(actor, 'zaktualizował', { ...originalNonEmployee, ...updates }, settings, changes);
+            await createNotification(actor, 'zaktualizował', updatedNonEmployeeData, settings, changes);
         }
 
      } catch (e: unknown) {
@@ -615,7 +636,7 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
 
 export async function deleteNonEmployee(id: string, actorUid: string): Promise<void> {
     try {
-        const { settings } = await getAllSheetsData(actorUid, true);
+        const { settings, addressHistory } = await getAllSheetsData(actorUid, true);
         const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
@@ -624,6 +645,12 @@ export async function deleteNonEmployee(id: string, actorUid: string): Promise<v
         if (row) {
             const nonEmployeeToDelete = row.toObject() as NonEmployee;
             await row.delete();
+
+            const historyToDelete = addressHistory.filter(h => h.employeeId === id);
+            for (const historyEntry of historyToDelete) {
+                await deleteHistoryToAction(historyEntry.id);
+            }
+
             await createNotification(actor, 'trwale usunął', nonEmployeeToDelete, settings);
         } else {
             throw new Error('Non-employee not found');
@@ -1223,9 +1250,9 @@ export async function migrateOldAddressesToHistory(): Promise<{ migratedCount: n
         for (const row of rows) {
             const employeeId = row.get('id') as string;
             const oldAddress = row.get('oldAddress') as string;
-            const currentCheckInDate = row.get('checkInDate') as string;
 
             if (employeeId && oldAddress) {
+                const currentCheckInDate = row.get('checkInDate') as string;
                 const checkOutForOldAddress = safeFormat(currentCheckInDate);
                 
                 const employeeName = row.get('fullName') as string;
@@ -1255,5 +1282,3 @@ export async function migrateOldAddressesToHistory(): Promise<{ migratedCount: n
         throw new Error("Failed to migrate old addresses.");
     }
 }
-
-    
