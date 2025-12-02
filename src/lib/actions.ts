@@ -430,13 +430,13 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         if (updates.address && updates.address !== originalEmployee.address && updates.checkInDate) {
             const lastHistoryEntry = addressHistory
                 .filter(h => h.employeeId === employeeId)
-                .sort((a,b) => new Date(b.checkInDate || 0).getTime() - new Date(a.checkInDate || 0).getTime())[0];
+                .sort((a, b) => new Date(b.checkInDate || 0).getTime() - new Date(a.checkInDate || 0).getTime())[0];
 
             if (lastHistoryEntry && lastHistoryEntry.address === originalEmployee.address && lastHistoryEntry.checkInDate === originalEmployee.checkInDate) {
-                 await updateHistoryToAction(lastHistoryEntry.id, { checkOutDate: updates.checkInDate });
+                await updateHistoryToAction(lastHistoryEntry.id, { checkOutDate: updates.checkInDate });
             } else if (originalEmployee.address && originalEmployee.checkInDate) {
                 const oldCoordinator = settings.coordinators.find(c => c.uid === originalEmployee.coordinatorId);
-                 await addHistoryToAction({
+                await addHistoryToAction({
                     employeeId: employeeId,
                     employeeName: originalEmployee.fullName,
                     coordinatorName: oldCoordinator?.name || 'N/A',
@@ -575,13 +575,13 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
         if (updates.address && updates.address !== originalNonEmployee.address && updates.checkInDate) {
             const lastHistoryEntry = addressHistory
                 .filter(h => h.employeeId === id)
-                .sort((a,b) => new Date(b.checkInDate || 0).getTime() - new Date(a.checkInDate || 0).getTime())[0];
-            
+                .sort((a, b) => new Date(b.checkInDate || 0).getTime() - new Date(a.checkInDate || 0).getTime())[0];
+
             if (lastHistoryEntry && lastHistoryEntry.address === originalNonEmployee.address && lastHistoryEntry.checkInDate === originalNonEmployee.checkInDate) {
-                 await updateHistoryToAction(lastHistoryEntry.id, { checkOutDate: updates.checkInDate });
+                await updateHistoryToAction(lastHistoryEntry.id, { checkOutDate: updates.checkInDate });
             } else if (originalNonEmployee.address && originalNonEmployee.checkInDate) {
                 const oldCoordinator = settings.coordinators.find(c => c.uid === originalNonEmployee.coordinatorId);
-                 await addHistoryToAction({
+                await addHistoryToAction({
                     employeeId: id,
                     employeeName: originalNonEmployee.fullName,
                     coordinatorName: oldCoordinator?.name || 'N/A',
@@ -1240,42 +1240,3 @@ export async function deleteAddressHistoryEntry(historyId: string, actorUid: str
         throw new Error(e instanceof Error ? e.message : "Failed to delete address history entry.");
     }
 }
-
-export async function migrateOldAddressesToHistory(): Promise<{ migratedCount: number }> {
-    const employeeSheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-    const employeeRows = await employeeSheet.getRows();
-    const { settings } = await getAllSheetsData();
-    const coordinatorMap = new Map(settings.coordinators.map(c => [c.uid, c.name]));
-    
-    let migratedCount = 0;
-
-    for (const row of employeeRows) {
-        const employeeId = row.get('id');
-        const oldAddress = row.get('oldAddress');
-        const currentCheckInDate = row.get('checkInDate');
-
-        if (employeeId && oldAddress && currentCheckInDate) {
-            const employeeName = row.get('fullName');
-            const coordinatorId = row.get('coordinatorId');
-            const department = row.get('zaklad');
-            
-            await addHistoryToAction({
-                employeeId: employeeId,
-                employeeName: employeeName,
-                coordinatorName: coordinatorMap.get(coordinatorId) || 'N/A',
-                department: department || 'N/A',
-                address: oldAddress,
-                checkInDate: null, 
-                checkOutDate: safeFormat(currentCheckInDate),
-            });
-            
-            row.set('oldAddress', '');
-            await row.save();
-            
-            migratedCount++;
-        }
-    }
-    return { migratedCount };
-}
-
-    

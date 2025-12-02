@@ -11,13 +11,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Input } from '@/components/ui/input';
-import { Trash2, PlusCircle, Download, Loader2, FileWarning, Edit, Upload, History } from 'lucide-react';
+import { Trash2, PlusCircle, Download, Loader2, FileWarning, Edit, Upload } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { generateAccommodationReport, transferEmployees, updateSettings, bulkDeleteEmployees, bulkDeleteEmployeesByCoordinator, generateNzCostsReport, migrateOldAddressesToHistory } from '@/lib/actions';
+import { generateAccommodationReport, transferEmployees, updateSettings, bulkDeleteEmployees, bulkDeleteEmployeesByCoordinator, generateNzCostsReport } from '@/lib/actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from '@/components/ui/dialog';
@@ -821,61 +821,6 @@ const ExcelImport = ({ onImport, title, description, fields, isLoading }: { onIm
     );
 }
 
-const DataMigration = () => {
-    const [isLoading, setIsLoading] = useState(false);
-    const { toast } = useToast();
-
-    const handleMigration = async () => {
-        setIsLoading(true);
-        try {
-            const result = await migrateOldAddressesToHistory();
-            toast({
-                title: "Migracja zakończona",
-                description: `Pomyślnie zmigrowano ${result.migratedCount} rekordów.`
-            });
-        } catch (e) {
-            toast({
-                variant: 'destructive',
-                title: 'Błąd migracji',
-                description: e instanceof Error ? e.message : 'Nieznany błąd serwera.'
-            });
-        } finally {
-            setIsLoading(false);
-        }
-    }
-
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Migracja Danych</CardTitle>
-                <CardDescription>Jednorazowa migracja starych adresów do nowej tabeli historii.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button variant="outline" disabled={isLoading}>
-                            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <History className="mr-2 h-4 w-4" />}
-                            Migruj stare adresy
-                        </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Czy na pewno chcesz rozpocząć migrację?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                Ta operacja jest jednorazowa. Przeniesie ona dane z kolumn `oldAddress` i `addressChangeDate` do nowej tabeli historii adresów, a następnie wyczyści te kolumny w arkuszu `Employees`.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>Anuluj</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleMigration}>Rozpocznij migrację</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            </CardContent>
-        </Card>
-    );
-};
-
 function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSettings: Settings, onSettingsChange: (newSettings: Settings) => void; onRefresh: () => void; }) {
     const { toast } = useToast();
     const [isAddressFormOpen, setIsAddressFormOpen] = useState(false);
@@ -1121,10 +1066,6 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
             <NzReportsGenerator rawSettings={rawSettings} currentUser={currentUser} />
         </div>
         <BulkActions currentUser={currentUser} rawSettings={rawSettings}/>
-        <DataMigration />
     </div>
   );
 }
-
-
-
