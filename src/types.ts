@@ -102,6 +102,14 @@ export type NonEmployee = {
     paymentAmount: number | null;
 };
 
+export type AddressHistory = {
+    id: string;
+    employeeId: string;
+    address: string;
+    checkInDate: string | null;
+    checkOutDate: string | null;
+};
+
 
 export type NotificationChange = {
     field: string; // User-friendly field name

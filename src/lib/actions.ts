@@ -19,6 +19,7 @@ const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_LOCALITIES = 'Localities';
 const SHEET_NAME_PAYMENT_TYPES_NZ = 'PaymentTypesNZ';
+const SHEET_NAME_ADDRESS_HISTORY = 'AddressHistory';
 
 
 const serializeDate = (date?: string | null): string => {
@@ -107,6 +108,7 @@ const NOTIFICATION_HEADERS = [
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'departments', 'password'];
 const ADDRESS_HEADERS = ['id', 'locality', 'name', 'coordinatorIds'];
 const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targetType', 'targetId', 'details'];
+const ADDRESS_HISTORY_HEADERS = ['id', 'employeeId', 'address', 'checkInDate', 'checkOutDate'];
 
 const safeFormat = (dateValue: unknown): string | null => {
     if (dateValue === null || dateValue === undefined || dateValue === '') {
@@ -1202,4 +1204,34 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
 
 export async function importNonEmployeesFromExcel(fileContent: string, actorUid: string): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
     return processImport(fileContent, actorUid, 'non-employee');
+}
+
+// Address History Actions
+export async function addAddressHistoryEntry(employeeId: string, address: string, checkInDate: string, checkOutDate: string | null) {
+  const sheet = await getSheet(SHEET_NAME_ADDRESS_HISTORY, ADDRESS_HISTORY_HEADERS);
+  await sheet.addRow({
+    id: `hist-${Date.now()}`,
+    employeeId,
+    address,
+    checkInDate,
+    checkOutDate
+  });
+}
+
+export async function updateAddressHistoryEntry(historyId: string, updates: { checkOutDate: string }) {
+    const sheet = await getSheet(SHEET_NAME_ADDRESS_HISTORY, ADDRESS_HISTORY_HEADERS);
+    const rows = await sheet.getRows();
+    const row = rows.find(r => r.get('id') === historyId);
+    if (row) {
+        row.set('checkOutDate', updates.checkOutDate);
+        await row.save();
+    }
+}
+export async function deleteAddressHistoryEntry(historyId: string) {
+    const sheet = await getSheet(SHEET_NAME_ADDRESS_HISTORY, ADDRESS_HISTORY_HEADERS);
+    const rows = await sheet.getRows();
+    const row = rows.find(r => r.get('id') === historyId);
+    if (row) {
+        await row.delete();
+    }
 }

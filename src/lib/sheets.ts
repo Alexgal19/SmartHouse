@@ -4,7 +4,7 @@
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, Address, Coordinator, NotificationType } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, Address, Coordinator, NotificationType, AddressHistory } from '../types';
 import { format, isValid, parse, parseISO } from 'date-fns';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
@@ -19,6 +19,7 @@ const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_LOCALITIES = 'Localities';
 const SHEET_NAME_PAYMENT_TYPES_NZ = 'PaymentTypesNZ';
+const SHEET_NAME_ADDRESS_HISTORY = 'AddressHistory';
 
 
 function getAuth(): JWT {
@@ -237,6 +238,17 @@ const deserializeNotification = (row: Record<string, unknown>): Notification | n
     return newNotification;
 };
 
+const deserializeAddressHistory = (row: Record<string, unknown>): AddressHistory | null => {
+    if (!row.id || !row.employeeId) return null;
+    return {
+        id: row.id as string,
+        employeeId: row.employeeId as string,
+        address: row.address as string,
+        checkInDate: safeFormat(row.checkInDate),
+        checkOutDate: safeFormat(row.checkOutDate),
+    }
+};
+
 const getSheetData = async (doc: GoogleSpreadsheet, title: string): Promise<Record<string, string>[]> => {
     const sheet = doc.sheetsByTitle[title];
     if (!sheet) {
@@ -368,21 +380,52 @@ export async function getAllSheetsData(userId?: string, userIsAdmin?: boolean) {
             nonEmployeesSheet,
             settings,
             notifications,
+            addressHistorySheet,
         ] = await Promise.all([
             getSheetData(doc, SHEET_NAME_EMPLOYEES),
             getSheetData(doc, SHEET_NAME_NON_EMPLOYEES),
             getSettingsFromSheet(doc),
             userId ? getNotificationsFromSheet(doc, userId, userIsAdmin || false) : Promise.resolve([]),
+            getSheetData(doc, SHEET_NAME_ADDRESS_HISTORY),
         ]);
         
         const employees = employeesSheet.map(row => deserializeEmployee(row)).filter((e): e is Employee => e !== null);
         const nonEmployees = nonEmployeesSheet.map(row => deserializeNonEmployee(row)).filter((e): e is NonEmployee => e !== null);
+        const addressHistory = addressHistorySheet.map(row => deserializeAddressHistory(row)).filter((h): h is AddressHistory => h !== null);
 
-
-        return { employees, settings, nonEmployees, notifications };
+        return { employees, settings, nonEmployees, notifications, addressHistory };
 
     } catch (error: unknown) {
         console.error("Error fetching all sheets data:", error);
         throw new Error(`Could not fetch all data from sheets. Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+}
+
+export async function addAddressHistoryEntry(employeeId: string, address: string, checkInDate: string, checkOutDate: string | null) {
+  const sheet = await getSheet(SHEET_NAME_ADDRESS_HISTORY, ['id', 'employeeId', 'address', 'checkInDate', 'checkOutDate']);
+  await sheet.addRow({
+    id: `hist-${Date.now()}`,
+    employeeId,
+    address,
+    checkInDate,
+    checkOutDate
+  });
+}
+
+export async function updateAddressHistoryEntry(historyId: string, updates: { checkOutDate: string }) {
+    const sheet = await getSheet(SHEET_NAME_ADDRESS_HISTORY, ['id', 'employeeId', 'address', 'checkInDate', 'checkOutDate']);
+    const rows = await sheet.getRows();
+    const row = rows.find(r => r.get('id') === historyId);
+    if (row) {
+        row.set('checkOutDate', updates.checkOutDate);
+        await row.save();
+    }
+}
+export async function deleteAddressHistoryEntry(historyId: string) {
+    const sheet = await getSheet(SHEET_NAME_ADDRESS_HISTORY, ['id', 'employeeId', 'address', 'checkInDate', 'checkOutDate']);
+    const rows = await sheet.getRows();
+    const row = rows.find(r => r.get('id') === historyId);
+    if (row) {
+        await row.delete();
     }
 }
