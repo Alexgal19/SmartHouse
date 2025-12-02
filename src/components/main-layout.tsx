@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback, createContext, useContext, useRef } from 'react';
@@ -15,7 +16,7 @@ import {
 } from './ui/sidebar';
 import Header from './header';
 import { MobileNav } from './mobile-nav';
-import type { View, Notification, Employee, Settings, Address, SessionData, NonEmployee, Coordinator } from '@/types';
+import type { View, Notification, Employee, Settings, Address, SessionData, NonEmployee, Coordinator, AddressHistory } from '@/types';
 import { Home, Settings as SettingsIcon, Users, Building } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -33,7 +34,9 @@ import {
     updateEmployee,
     updateNonEmployee,
     updateSettings,
-    deleteNotification
+    deleteNotification,
+    addAddressHistoryEntry,
+    updateAddressHistoryEntry,
 } from '@/lib/actions';
 import { getAllSheetsData } from '@/lib/sheets';
 import { logout } from '../lib/auth';
@@ -79,6 +82,7 @@ const HouseLoader = () => {
 type MainLayoutContextType = {
     allEmployees: Employee[] | null;
     allNonEmployees: NonEmployee[] | null;
+    addressHistory: AddressHistory[] | null;
     rawEmployees: Employee[] | null;
     rawNonEmployees: NonEmployee[] | null;
     settings: Settings | null;
@@ -147,6 +151,8 @@ export default function MainLayout({
     const [rawEmployees, setRawEmployees] = useState<Employee[] | null>(null);
     const [rawNonEmployees, setRawNonEmployees] = useState<NonEmployee[] | null>(null);
     const [rawSettings, setRawSettings] = useState<Settings | null>(null);
+    const [addressHistory, setAddressHistory] = useState<AddressHistory[] | null>(null);
+
     const [hasNewCheckouts, setHasNewCheckouts] = useState(false);
     
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -163,18 +169,18 @@ export default function MainLayout({
 
     const filteredData = useMemo(() => {
         if (!rawEmployees || !rawNonEmployees || !rawSettings || !currentUser) {
-            return { employees: null, nonEmployees: null, settings: rawSettings };
+            return { employees: null, nonEmployees: null, settings: rawSettings, addressHistory: addressHistory };
         }
 
         const shouldFilter = !currentUser.isAdmin || (currentUser.isAdmin && selectedCoordinatorId !== 'all');
 
         if (!shouldFilter) {
-            return { employees: rawEmployees, nonEmployees: rawNonEmployees, settings: rawSettings };
+            return { employees: rawEmployees, nonEmployees: rawNonEmployees, settings: rawSettings, addressHistory: addressHistory };
         }
         
         const coordinator = rawSettings.coordinators.find(c => c.uid === selectedCoordinatorId);
         if (!coordinator) {
-            return { employees: [], nonEmployees: [], settings: { ...rawSettings, addresses: [] } };
+            return { employees: [], nonEmployees: [], settings: { ...rawSettings, addresses: [] }, addressHistory: [] };
         }
         
         const coordinatorAddresses = new Set(rawSettings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId)).map(a => a.name));
@@ -193,9 +199,13 @@ export default function MainLayout({
             addresses: rawSettings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId)),
         };
 
-        return { employees, nonEmployees, settings };
+        const employeeIds = new Set(employees.map(e => e.id));
+        const filteredHistory = addressHistory?.filter(h => employeeIds.has(h.employeeId));
 
-    }, [rawEmployees, rawNonEmployees, rawSettings, currentUser, selectedCoordinatorId]);
+
+        return { employees, nonEmployees, settings, addressHistory: filteredHistory || [] };
+
+    }, [rawEmployees, rawNonEmployees, rawSettings, addressHistory, currentUser, selectedCoordinatorId]);
 
     const { employees: allEmployees, nonEmployees: allNonEmployees, settings } = filteredData;
     
@@ -262,11 +272,12 @@ export default function MainLayout({
         if (!currentUser) return;
         try {
             // Fetch critical data first
-            const { settings, notifications, nonEmployees, employees } = await getAllSheetsData(currentUser.uid, currentUser.isAdmin);
+            const { settings, notifications, nonEmployees, employees, addressHistory } = await getAllSheetsData(currentUser.uid, currentUser.isAdmin);
             setRawSettings(settings);
             setAllNotifications(notifications);
             setRawNonEmployees(nonEmployees);
             setRawEmployees(employees);
+            setAddressHistory(addressHistory);
 
             if (currentUser.isAdmin) {
                 const allActive = [...(employees || []).filter(e => e.status === 'active'), ...(nonEmployees || [])];
@@ -585,6 +596,7 @@ export default function MainLayout({
     const contextValue: MainLayoutContextType = useMemo(() => ({
         allEmployees,
         allNonEmployees,
+        addressHistory: filteredData.addressHistory,
         rawEmployees,
         rawNonEmployees,
         settings,
@@ -614,6 +626,7 @@ export default function MainLayout({
     } ), [
         allEmployees,
         allNonEmployees,
+        filteredData.addressHistory,
         rawEmployees,
         rawNonEmployees,
         settings,
@@ -734,3 +747,4 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
+

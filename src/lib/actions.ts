@@ -2,8 +2,8 @@
 
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, NotificationType, Coordinator } from '../types';
-import { getSheet, getAllSheetsData } from './sheets';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, NotificationType, Coordinator, AddressHistory } from '../types';
+import { getSheet, getAllSheetsData, addAddressHistoryEntry as addHistoryToAction, updateAddressHistoryEntry as updateHistoryToAction, deleteAddressHistoryEntry as deleteHistoryToAction } from './sheets';
 import { format, isPast, isValid, getDaysInMonth, parseISO, differenceInDays, max, min, parse as dateFnsParse, lastDayOfMonth } from 'date-fns';
 import * as XLSX from 'xlsx';
 
@@ -36,7 +36,7 @@ const serializeDate = (date?: string | null): string => {
 const EMPLOYEE_HEADERS = [
     'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 
     'zaklad', 'checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 
-    'departureReportDate', 'comments', 'status', 'oldAddress', 'addressChangeDate',
+    'departureReportDate', 'comments', 'status',
     'depositReturned', 'depositReturnAmount', 'deductionRegulation', 'deductionNo4Months', 'deductionNo30Days', 'deductionReason', 'deductionEntryDate'
 ];
 
@@ -52,7 +52,7 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
             continue;
         }
 
-        if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'addressChangeDate', 'deductionEntryDate'].includes(key)) {
+        if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'deductionEntryDate'].includes(key)) {
             serialized[key] = serializeDate(value as string);
         } else if (key === 'deductionReason') {
             serialized[key] = Array.isArray(value) ? JSON.stringify(value) : '';
@@ -193,8 +193,6 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         departureReportDate: safeFormat(plainObject.departureReportDate),
         comments: String(plainObject.comments || ''),
         status: String(plainObject.status) === 'dismissed' ? 'dismissed' : 'active',
-        oldAddress: plainObject.oldAddress ? String(plainObject.oldAddress) : undefined,
-        addressChangeDate: safeFormat(plainObject.addressChangeDate),
         depositReturned: depositReturned,
         depositReturnAmount: plainObject.depositReturnAmount ? parseFloat(plainObject.depositReturnAmount as string) : null,
         deductionRegulation: plainObject.deductionRegulation ? parseFloat(plainObject.deductionRegulation as string) : null,
@@ -371,7 +369,7 @@ const findActor = (actorUid: string | undefined, settings: Settings): Coordinato
 
 export async function addEmployee(employeeData: Partial<Employee>, actorUid: string): Promise<void> {
     try {
-        const { settings } = await getAllSheetsData(actorUid, true);
+        const { settings, addressHistory } = await getAllSheetsData(actorUid, true);
         const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
@@ -391,8 +389,6 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
             contractEndDate: employeeData.contractEndDate ?? null,
             departureReportDate: employeeData.departureReportDate,
             comments: employeeData.comments,
-            oldAddress: employeeData.oldAddress,
-            addressChangeDate: employeeData.addressChangeDate,
             depositReturned: employeeData.depositReturned ?? null,
             depositReturnAmount: employeeData.depositReturnAmount ?? null,
             deductionRegulation: employeeData.deductionRegulation ?? null,
@@ -405,6 +401,11 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
         const serialized = serializeEmployee(newEmployee);
         await sheet.addRow(serialized, { raw: false, insert: true });
         
+        // Add first entry to address history
+        if (newEmployee.checkInDate) {
+            await addHistoryToAction(newEmployee.id, newEmployee.address, newEmployee.checkInDate, null);
+        }
+        
         await createNotification(actor, 'dodał', newEmployee, settings);
     } catch (e: unknown) {
         console.error("Error adding employee:", e);
@@ -415,7 +416,7 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
 
 export async function updateEmployee(employeeId: string, updates: Partial<Employee>, actorUid: string): Promise<void> {
     try {
-        const { settings } = await getAllSheetsData(actorUid, true);
+        const { settings, addressHistory } = await getAllSheetsData(actorUid, true);
         const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
@@ -435,16 +436,14 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
 
         const updatedEmployeeData: Employee = { ...originalEmployee, ...updates };
         
-        // Handle address change logic
-        if (updates.address && updates.address !== originalEmployee.address) {
-            updatedEmployeeData.oldAddress = originalEmployee.address;
-            updatedEmployeeData.addressChangeDate = format(new Date(), 'yyyy-MM-dd');
-        }
-
-        // Handle clearing oldAddress
-        if ('oldAddress' in updates && !updates.oldAddress) {
-            updatedEmployeeData.oldAddress = undefined;
-            updatedEmployeeData.addressChangeDate = null;
+        if (updates.address && updates.address !== originalEmployee.address && updates.checkInDate) {
+            const employeeHistory = addressHistory.filter(h => h.employeeId === employeeId).sort((a,b) => new Date(a.checkInDate || 0).getTime() - new Date(b.checkInDate || 0).getTime());
+            const lastHistoryEntry = employeeHistory[employeeHistory.length - 1];
+            
+            if (lastHistoryEntry) {
+                 await updateHistoryToAction(lastHistoryEntry.id, { checkOutDate: updates.checkInDate });
+            }
+            await addHistoryToAction(employeeId, updates.address, updates.checkInDate, null);
         }
         
         const changes: (Omit<NotificationChange, 'field'> & { field: keyof Employee })[] = [];
@@ -454,7 +453,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
             const oldValue = originalEmployee[typedKey];
             const newValue = updates[typedKey];
             
-            const areDates = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'addressChangeDate', 'deductionEntryDate'].includes(key);
+            const areDates = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'deductionEntryDate'].includes(key);
 
             let oldValStr: string | null = null;
             if (oldValue !== null && oldValue !== undefined) {
@@ -502,7 +501,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
 
 export async function deleteEmployee(employeeId: string, actorUid: string): Promise<void> {
     try {
-        const { settings } = await getAllSheetsData(actorUid, true);
+        const { settings, addressHistory } = await getAllSheetsData(actorUid, true);
         const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
@@ -514,8 +513,12 @@ export async function deleteEmployee(employeeId: string, actorUid: string): Prom
         }
 
         const employeeToDelete = deserializeEmployee(row.toObject());
-
         await row.delete();
+        
+        const historyToDelete = addressHistory.filter(h => h.employeeId === employeeId);
+        for (const historyEntry of historyToDelete) {
+            await deleteHistoryToAction(historyEntry.id);
+        }
 
         if (employeeToDelete) {
              await createNotification(actor, 'trwale usunął', employeeToDelete, settings);
@@ -889,7 +892,7 @@ export async function deleteNotification(notificationId: string): Promise<void> 
 
 export async function generateAccommodationReport(year: number, month: number, coordinatorId: string, includeAddressHistory: boolean): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
     try {
-        const { employees, settings } = await getAllSheetsData();
+        const { employees, settings, addressHistory } = await getAllSheetsData();
         const coordinatorMap = new Map(settings.coordinators.map((c: { uid: any; name: any; }) => [c.uid, c.name]));
 
         const reportStart = new Date(year, month - 1, 1);
@@ -911,60 +914,41 @@ export async function generateAccommodationReport(year: number, month: number, c
         };
 
         if (includeAddressHistory) {
-             filteredEmployees.forEach(e => {
-                if (!e.checkInDate) return;
+             const employeeIds = new Set(filteredEmployees.map(e => e.id));
+             const relevantHistory = addressHistory.filter(h => employeeIds.has(h.employeeId));
 
-                const periods: { address: string, start: Date, end: Date }[] = [];
-                const mainCheckIn = parseISO(e.checkInDate);
-                const mainCheckOut = e.checkOutDate ? parseISO(e.checkOutDate) : null;
+             for (const employee of filteredEmployees) {
+                 const employeeHistory = relevantHistory.filter(h => h.employeeId === employee.id).sort((a, b) => new Date(a.checkInDate || 0).getTime() - new Date(b.checkInDate || 0).getTime());
+                 
+                 if(employeeHistory.length === 0) continue;
 
-                if (e.addressChangeDate && e.oldAddress) {
-                    const changeDate = parseISO(e.addressChangeDate);
-                    // Period at old address
-                    periods.push({
-                        address: e.oldAddress,
-                        start: mainCheckIn,
-                        end: changeDate
-                    });
-                    // Period at new address
-                    periods.push({
-                        address: e.address,
-                        start: changeDate,
-                        end: mainCheckOut || reportEnd
-                    });
-                } else {
-                    // Single period
-                    periods.push({
-                        address: e.address,
-                        start: mainCheckIn,
-                        end: mainCheckOut || reportEnd
-                    });
-                }
+                 for (const historyEntry of employeeHistory) {
+                     const periodStart = historyEntry.checkInDate ? parseISO(historyEntry.checkInDate) : null;
+                     const periodEnd = historyEntry.checkOutDate ? parseISO(historyEntry.checkOutDate) : reportEnd;
 
-                periods.forEach(period => {
-                    const effectiveStart = max([period.start, reportStart]);
-                    const effectiveEnd = min([period.end, reportEnd]);
+                     if (!periodStart) continue;
 
-                    if (effectiveStart > effectiveEnd) return;
+                     const effectiveStart = max([periodStart, reportStart]);
+                     const effectiveEnd = min([periodEnd, reportEnd]);
+                     
+                     if (effectiveStart > effectiveEnd) continue;
 
-                    const daysInMonth = differenceInDays(effectiveEnd, effectiveStart) + 1;
-                    
-                    if (daysInMonth > 0) {
-                        reportData.push({
-                            "Imię i nazwisko": e.fullName,
-                            "Koordynator": coordinatorMap.get(e.coordinatorId) || 'N/A',
-                            "Adres": period.address,
-                            "Pokój": e.roomNumber,
-                            "Zakład": e.zaklad,
-                            "Stary adres": e.oldAddress,
-                            "Data zmiany adresu": formatDateForReport(e.addressChangeDate),
-                            "Data zameldowania": formatDateForReport(e.checkInDate),
-                            "Data wymeldowania": formatDateForReport(e.checkOutDate),
-                            "Dni w miesiącu": daysInMonth
-                        });
-                    }
-                });
-            });
+                     const daysInMonth = differenceInDays(effectiveEnd, effectiveStart) + 1;
+                     if (daysInMonth > 0) {
+                         reportData.push({
+                            "Imię i nazwisko": employee.fullName,
+                            "Koordynator": coordinatorMap.get(employee.coordinatorId) || 'N/A',
+                            "Adres": historyEntry.address,
+                            "Pokój": employee.roomNumber, // Assuming room number is constant for simplicity, might need adjustment
+                            "Zakład": employee.zaklad,
+                            "Data zameldowania (w adresie)": formatDateForReport(historyEntry.checkInDate),
+                            "Data wymeldowania (z adresu)": formatDateForReport(historyEntry.checkOutDate),
+                            "Dni w miesiącu pod adresem": daysInMonth,
+                         });
+                     }
+                 }
+             }
+
         } else {
             // Simplified logic for "current state at end of month"
             const monthEndDate = lastDayOfMonth(new Date(year, month - 1));
@@ -1204,34 +1188,4 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
 
 export async function importNonEmployeesFromExcel(fileContent: string, actorUid: string): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
     return processImport(fileContent, actorUid, 'non-employee');
-}
-
-// Address History Actions
-export async function addAddressHistoryEntry(employeeId: string, address: string, checkInDate: string, checkOutDate: string | null) {
-  const sheet = await getSheet(SHEET_NAME_ADDRESS_HISTORY, ADDRESS_HISTORY_HEADERS);
-  await sheet.addRow({
-    id: `hist-${Date.now()}`,
-    employeeId,
-    address,
-    checkInDate,
-    checkOutDate
-  });
-}
-
-export async function updateAddressHistoryEntry(historyId: string, updates: { checkOutDate: string }) {
-    const sheet = await getSheet(SHEET_NAME_ADDRESS_HISTORY, ADDRESS_HISTORY_HEADERS);
-    const rows = await sheet.getRows();
-    const row = rows.find(r => r.get('id') === historyId);
-    if (row) {
-        row.set('checkOutDate', updates.checkOutDate);
-        await row.save();
-    }
-}
-export async function deleteAddressHistoryEntry(historyId: string) {
-    const sheet = await getSheet(SHEET_NAME_ADDRESS_HISTORY, ADDRESS_HISTORY_HEADERS);
-    const rows = await sheet.getRows();
-    const row = rows.find(r => r.get('id') === historyId);
-    if (row) {
-        await row.delete();
-    }
 }

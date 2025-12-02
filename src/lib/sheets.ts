@@ -167,8 +167,6 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         departureReportDate: safeFormat(plainObject.departureReportDate),
         comments: (plainObject.comments || '') as string,
         status: plainObject.status as 'active' | 'dismissed' || 'active',
-        oldAddress: (plainObject.oldAddress || undefined) as string | undefined,
-        addressChangeDate: safeFormat(plainObject.addressChangeDate),
         depositReturned: depositReturned,
         depositReturnAmount: plainObject.depositReturnAmount ? parseFloat(plainObject.depositReturnAmount as string) : null,
         deductionRegulation: plainObject.deductionRegulation ? parseFloat(plainObject.deductionRegulation as string) : null,
@@ -429,3 +427,4 @@ export async function deleteAddressHistoryEntry(historyId: string) {
         await row.delete();
     }
 }
+
