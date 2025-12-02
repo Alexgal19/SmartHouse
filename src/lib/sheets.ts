@@ -427,4 +427,3 @@ export async function deleteAddressHistoryEntry(historyId: string) {
         await row.delete();
     }
 }
-

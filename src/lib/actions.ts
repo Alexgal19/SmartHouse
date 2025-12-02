@@ -81,7 +81,11 @@ const serializeNonEmployee = (nonEmployee: Partial<NonEmployee>): Record<string,
     return serialized;
 };
 
-const serializeNotification = (notification: Omit<Notification, 'id'> & { id: string }): Record<string, string> => {
+const NOTIFICATION_HEADERS = [
+    'id', 'message', 'entityId', 'entityName', 'actorName', 'recipientId', 'createdAt', 'isRead', 'type', 'changes'
+];
+
+const serializeNotification = (notification: Notification): Record<string, string> => {
     return {
         id: notification.id,
         message: notification.message,
@@ -99,11 +103,6 @@ const serializeNotification = (notification: Omit<Notification, 'id'> & { id: st
 const NON_EMPLOYEE_HEADERS = [
     'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'departureReportDate', 'comments', 'status', 'paymentType', 'paymentAmount'
 ];
-
-const NOTIFICATION_HEADERS = [
-    'id', 'message', 'entityId', 'entityName', 'actorName', 'recipientId', 'createdAt', 'isRead', 'type', 'changes'
-];
-
 
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'departments', 'password'];
 const ADDRESS_HEADERS = ['id', 'locality', 'name', 'coordinatorIds'];
@@ -321,7 +320,7 @@ const createNotification = async (
             return;
         }
         
-        const notifications: (Omit<Notification, 'id'> & { id: string })[] = [];
+        const notifications: Notification[] = [];
         for (const recipient of recipients) {
              notifications.push({
                 id: `notif-${Date.now()}-${Math.random()}`,
@@ -571,16 +570,18 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
         
         const changes: (Omit<NotificationChange, 'field'> & { field: keyof NonEmployee })[] = [];
         
-        for (const key in updates) {
+        const serializedUpdates = serializeNonEmployee(updates);
+
+        for (const key in serializedUpdates) {
             const typedKey = key as keyof NonEmployee;
-            if (originalNonEmployee[typedKey] !== updates[typedKey]) {
+            if (originalNonEmployee[typedKey] !== serializedUpdates[key]) {
                 changes.push({
                     field: typedKey,
                     oldValue: String(originalNonEmployee[typedKey] || 'Brak'),
-                    newValue: String(updates[typedKey] || 'Brak')
+                    newValue: String(serializedUpdates[key] || 'Brak')
                 });
             }
-             row.set(key, serializeNonEmployee({ [key]: updates[typedKey] })[key] || '');
+            row.set(key, serializedUpdates[key] ?? '');
         }
         await row.save();
         
@@ -1036,6 +1037,8 @@ export async function generateNzCostsReport(year: number, month: number, coordin
             const startDateInMonth = max([checkIn, reportStart]);
             const endDateInMonth = min([checkOut || reportEnd, reportEnd]);
             
+            if (startDateInMonth > endDateInMonth) return;
+
             const daysStayed = differenceInDays(endDateInMonth, startDateInMonth) + 1;
             const proratedIncome = dailyRate * daysStayed;
             
