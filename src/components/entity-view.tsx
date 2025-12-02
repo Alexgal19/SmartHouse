@@ -3,12 +3,12 @@
 "use client"
 import React, { useState, useMemo, useTransition } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import type { Employee, Settings, NonEmployee, SessionData } from '@/types';
+import type { Employee, Settings, NonEmployee, SessionData, AddressHistory } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, PlusCircle, SlidersHorizontal, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, X, Users, UserX, LayoutGrid, List, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, SlidersHorizontal, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, X, Users, UserX, LayoutGrid, List, Trash2, ArrowUp, ArrowDown, History } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format, parseISO } from 'date-fns';
@@ -37,7 +37,7 @@ const formatDate = (dateString?: string | null) => {
 }
 
 type Entity = Employee | NonEmployee;
-type SortableField = 'fullName' | 'coordinatorId' | 'address' | 'roomNumber' | 'checkInDate' | 'checkOutDate';
+type SortableField = 'fullName' | 'coordinatorId' | 'address' | 'roomNumber' | 'checkInDate' | 'checkOutDate' | 'employeeName' | 'coordinatorName' | 'department';
 
 
 const isEmployee = (entity: Entity): entity is Employee => 'zaklad' in entity;
@@ -208,6 +208,43 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
   );
 };
 
+const HistoryTable = ({ history, onSort, sortBy, sortOrder }: { history: AddressHistory[]; onSort: (field: SortableField) => void; sortBy: SortableField | null; sortOrder: 'asc' | 'desc'; }) => {
+  return (
+    <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <SortableHeader label="Imię i nazwisko" field="employeeName" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+              <SortableHeader label="Koordynator" field="coordinatorName" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+              <SortableHeader label="Zakład" field="department" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+              <SortableHeader label="Adres" field="address" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+              <SortableHeader label="Data zameldowania" field="checkInDate" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+              <SortableHeader label="Data wymeldowania" field="checkOutDate" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {history.length > 0 ? (
+              history.map((entry) => (
+                <TableRow key={entry.id}>
+                  <TableCell className="font-medium">{entry.employeeName}</TableCell>
+                  <TableCell>{entry.coordinatorName || 'N/A'}</TableCell>
+                  <TableCell>{entry.department || 'N/A'}</TableCell>
+                  <TableCell>{entry.address}</TableCell>
+                  <TableCell>{formatDate(entry.checkInDate)}</TableCell>
+                  <TableCell>{formatDate(entry.checkOutDate)}</TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center">Brak danych do wyświetlenia.</TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+    </div>
+  );
+};
+
 const EntityCardList = ({ entities, onEdit, onDismiss, onRestore, isDismissed, settings, onPermanentDelete }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onDismiss?: (id: string) => void; onRestore?: (entity: Entity) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee') => void; }) => {
     const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
     
@@ -339,6 +376,7 @@ const ControlPanel = ({
     viewMode,
     isFilterActive,
     onResetFilters,
+    showAddButton,
 }: {
     search: string;
     onSearch: (value: string) => void;
@@ -348,6 +386,7 @@ const ControlPanel = ({
     viewMode: 'list' | 'grid';
     isFilterActive: boolean;
     onResetFilters: () => void;
+    showAddButton: boolean;
 }) => {
     const { isMobile } = useIsMobile();
     return (
@@ -369,10 +408,12 @@ const ControlPanel = ({
                             <X className="h-4 w-4" />
                         </Button>
                     )}
-                    <Button size={isMobile ? "icon" : "default"} onClick={onAdd}>
-                        <PlusCircle className={isMobile ? "h-5 w-5" : "mr-2 h-4 w-4"} />
-                        <span className="hidden sm:inline">Dodaj</span>
-                    </Button>
+                    {showAddButton && (
+                        <Button size={isMobile ? "icon" : "default"} onClick={onAdd}>
+                            <PlusCircle className={isMobile ? "h-5 w-5" : "mr-2 h-4 w-4"} />
+                            <span className="hidden sm:inline">Dodaj</span>
+                        </Button>
+                    )}
                     {!isMobile && (
                         <>
                             <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => onViewChange('list')}>
@@ -393,6 +434,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     const {
         allEmployees,
         allNonEmployees,
+        addressHistory,
         settings,
         handleDismissEmployee,
         handleRestoreEmployee,
@@ -411,7 +453,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     const [isPending, startTransition] = useTransition();
     const { isMobile, isMounted } = useIsMobile();
     
-    const tab = (searchParams.get('tab') as 'active' | 'dismissed' | 'non-employees') || 'active';
+    const tab = (searchParams.get('tab') as 'active' | 'dismissed' | 'non-employees' | 'history') || 'active';
     const page = Number(searchParams.get('page') || '1');
     const search = searchParams.get('search') || '';
     const viewMode = (searchParams.get('viewMode') as 'list' | 'grid') || (isMobile ? 'grid' : 'list');
@@ -452,21 +494,40 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     const sortedData = useMemo(() => {
         const getCoordinatorName = (id: string) => settings?.coordinators.find(c => c.uid === id)?.name || 'N/A';
 
-        const dataToSort = tab === 'active' ? allEmployees?.filter(e => e.status === 'active') :
-                           tab === 'non-employees' ? allNonEmployees?.filter(ne => ne.status === 'active') :
-                           [...(allEmployees?.filter(e => e.status === 'dismissed') || []), ...(allNonEmployees?.filter(ne => ne.status === 'dismissed') || [])];
+        let dataToSort: (Entity | AddressHistory)[] = [];
+        switch (tab) {
+            case 'active':
+                dataToSort = allEmployees?.filter(e => e.status === 'active') || [];
+                break;
+            case 'non-employees':
+                dataToSort = allNonEmployees?.filter(ne => ne.status === 'active') || [];
+                break;
+            case 'dismissed':
+                dataToSort = [
+                    ...(allEmployees?.filter(e => e.status === 'dismissed') || []),
+                    ...(allNonEmployees?.filter(ne => ne.status === 'dismissed') || [])
+                ];
+                break;
+            case 'history':
+                dataToSort = addressHistory || [];
+                break;
+        }
+
         if (!dataToSort) return [];
 
         const sorted = [...dataToSort].sort((a, b) => {
             let valA: string | number | null | undefined;
             let valB: string | number | null | undefined;
-            
-            if (sortBy === 'coordinatorId') {
+
+            if (sortBy === 'coordinatorId' && 'coordinatorId' in a && 'coordinatorId' in b) {
                  valA = getCoordinatorName(a.coordinatorId);
                  valB = getCoordinatorName(b.coordinatorId);
+            } else if ('employeeName' in a && sortBy === 'employeeName') { // For history tab
+                valA = a.employeeName;
+                valB = (b as AddressHistory).employeeName;
             } else {
-                valA = a[sortBy];
-                valB = b[sortBy];
+                valA = (a as any)[sortBy];
+                valB = (b as any)[sortBy];
             }
 
 
@@ -483,20 +544,24 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         });
         return sorted;
 
-    }, [allEmployees, allNonEmployees, tab, sortBy, sortOrder, settings]);
+    }, [allEmployees, allNonEmployees, addressHistory, tab, sortBy, sortOrder, settings]);
 
 
     const filteredData = useMemo(() => {
         if (!sortedData) return [];
         return sortedData.filter(entity => {
-            const searchMatch = search === '' || entity.fullName.toLowerCase().includes(search.toLowerCase());
-            const addressMatch = filters.address === 'all' || entity.address === filters.address;
-            const nationalityMatch = filters.nationality === 'all' || entity.nationality === filters.nationality;
-            const departmentMatch = !isEmployee(entity) || filters.department === 'all' || entity.zaklad === filters.department;
+            const searchField = 'employeeName' in entity ? entity.employeeName : entity.fullName;
+            const searchMatch = search === '' || (searchField && searchField.toLowerCase().includes(search.toLowerCase()));
+
+            if (tab === 'history') return searchMatch;
+
+            const addressMatch = filters.address === 'all' || ('address' in entity && entity.address === filters.address);
+            const nationalityMatch = filters.nationality === 'all' || ('nationality' in entity && entity.nationality === filters.nationality);
+            const departmentMatch = !isEmployee(entity) || filters.department === 'all' || ('zaklad' in entity && entity.zaklad === filters.department);
             
             return searchMatch && addressMatch && nationalityMatch && departmentMatch;
         });
-    }, [sortedData, search, filters]);
+    }, [sortedData, search, filters, tab]);
 
     const activeEmployees = useMemo(() => allEmployees?.filter(e => e.status === 'active') || [], [allEmployees]);
     const dismissedEmployees = useMemo(() => allEmployees?.filter(e => e.status === 'dismissed') || [], [allEmployees]);
@@ -512,7 +577,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
 
     const isFilterActive = Object.values(filters).some(v => v !== 'all') || search !== '';
 
-    if (!settings || !allEmployees || !allNonEmployees) {
+    if (!settings || !allEmployees || !allNonEmployees || !addressHistory) {
         return (
             <Card>
                 <CardHeader>
@@ -531,9 +596,9 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     
     const handleRestore = async (entity: Entity) => {
         if (isEmployee(entity)) {
-            await handleRestoreEmployee(entity.id);
+            await handleRestoreEmployee(entity);
         } else {
-            await handleRestoreNonEmployee(entity.id);
+            await handleRestoreNonEmployee(entity);
         }
     };
 
@@ -561,18 +626,16 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         }
     }
 
-    const EntityListComponent = viewMode === 'grid' ? EntityCardList : EntityTable;
-
     const renderContent = () => (
         <>
             <ScrollArea className="h-[55vh] overflow-x-auto" style={{ opacity: isPending ? 0.6 : 1 }}>
                 {isMounted ? 
                     (viewMode === 'list' ? 
                         <EntityTable 
-                            entities={paginatedData}
+                            entities={paginatedData as Entity[]}
                             settings={settings}
                             onEdit={handleEdit}
-                            onDismiss={(id) => handleDismissEmployee(id)}
+                            onDismiss={(id) => handleDismissEmployee(id, new Date())}
                             onRestore={handleRestore}
                             onPermanentDelete={handlePermanentDelete}
                             isDismissed={tab === 'dismissed'}
@@ -581,15 +644,31 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                             sortOrder={sortOrder}
                         /> :
                         <EntityCardList 
-                             entities={paginatedData}
+                             entities={paginatedData as Entity[]}
                             settings={settings}
                             onEdit={handleEdit}
-                            onDismiss={(id) => handleDismissEmployee(id)}
+                            onDismiss={(id) => handleDismissEmployee(id, new Date())}
                             onRestore={handleRestore}
                             onPermanentDelete={handlePermanentDelete}
                             isDismissed={tab === 'dismissed'}
                         />
                     )
+                 : <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
+            </ScrollArea>
+             <PaginationControls currentPage={page} totalPages={totalPages} onPageChange={(p) => updateSearchParams({ page: p })} isDisabled={isPending} />
+        </>
+    );
+
+     const renderHistoryContent = () => (
+        <>
+            <ScrollArea className="h-[55vh] overflow-x-auto" style={{ opacity: isPending ? 0.6 : 1 }}>
+                {isMounted ? 
+                    <HistoryTable
+                        history={paginatedData as AddressHistory[]}
+                        onSort={handleSort}
+                        sortBy={sortBy}
+                        sortOrder={sortOrder}
+                    />
                  : <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
             </ScrollArea>
              <PaginationControls currentPage={page} totalPages={totalPages} onPageChange={(p) => updateSearchParams({ page: p })} isDisabled={isPending} />
@@ -608,11 +687,12 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                     onViewChange={(mode) => updateSearchParams({ viewMode: mode })}
                     isFilterActive={isFilterActive}
                     onResetFilters={() => updateSearchParams({ search: '', page: 1, coordinator: '', address: '', department: '', nationality: ''})}
+                    showAddButton={tab !== 'history'}
                 />
             </CardHeader>
             <CardContent>
                  <Tabs value={tab} onValueChange={(v) => updateSearchParams({ tab: v, page: 1 })}>
-                    <TabsList className="grid w-full grid-cols-3">
+                    <TabsList className="grid w-full grid-cols-4">
                         <TabsTrigger value="active" disabled={isPending}>
                             <Users className="mr-2 h-4 w-4" />Aktywni ({activeEmployees.length})
                         </TabsTrigger>
@@ -622,10 +702,14 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                          <TabsTrigger value="dismissed" disabled={isPending}>
                             <UserX className="mr-2 h-4 w-4" />Zwolnieni ({dismissedEmployees.length + dismissedNonEmployees.length})
                         </TabsTrigger>
+                        <TabsTrigger value="history" disabled={isPending}>
+                            <History className="mr-2 h-4 w-4" />Historia Adresów ({addressHistory.length})
+                        </TabsTrigger>
                     </TabsList>
                     <TabsContent value="active" className="mt-4">{renderContent()}</TabsContent>
                     <TabsContent value="dismissed" className="mt-4">{renderContent()}</TabsContent>
                     <TabsContent value="non-employees" className="mt-4">{renderContent()}</TabsContent>
+                    <TabsContent value="history" className="mt-4">{renderHistoryContent()}</TabsContent>
                 </Tabs>
             </CardContent>
             <FilterDialog
