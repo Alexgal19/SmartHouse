@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback, createContext, useContext, useRef } from 'react';
@@ -42,7 +43,7 @@ import { AddNonEmployeeForm } from './add-non-employee-form';
 import { cn } from '../lib/utils';
 import { AddressForm } from './address-form';
 import { ModernHouseIcon } from './icons/modern-house-icon';
-import { differenceInDays, parseISO } from 'date-fns';
+import { differenceInDays, parseISO, format } from 'date-fns';
 
 const HouseLoader = () => {
     return (
@@ -98,10 +99,10 @@ type MainLayoutContextType = {
     handleDeleteNonEmployee: (id: string, actorUid: string) => Promise<void>;
     handleRefreshStatuses: (showNoChangesToast?: boolean) => Promise<void>;
     handleAddressFormOpen: (address: Address | null) => void;
-    handleDismissEmployee: (employeeId: string) => Promise<void>;
-    handleRestoreEmployee: (employeeId: string) => Promise<void>;
+    handleDismissEmployee: (employeeId: string, checkOutDate: Date) => Promise<void>;
+    handleRestoreEmployee: (employee: Employee) => Promise<void>;
     handleDeleteEmployee: (employeeId: string, actorUid: string) => Promise<void>;
-    handleRestoreNonEmployee: (nonEmployeeId: string) => Promise<void>;
+    handleRestoreNonEmployee: (nonEmployee: NonEmployee) => Promise<void>;
     handleImportEmployees: (fileContent: string) => Promise<void>;
     handleImportNonEmployees: (fileContent: string) => Promise<void>;
 };
@@ -302,7 +303,7 @@ export default function MainLayout({
 
     const handleRefreshStatuses = useCallback(async (showNoChangesToast = false) => {
         try {
-            const { updated } = await checkAndUpdateStatuses();
+            const { updated } = await checkAndUpdateStatuses(currentUser?.uid);
             if (updated > 0) {
                 toast({ title: "Sukces", description: `Zaktualizowano statusy dla ${updated} osób.` });
                 await refreshData(false);
@@ -312,7 +313,7 @@ export default function MainLayout({
         } catch (e) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się odświeżyć statusów." });
         }
-    }, [refreshData, toast]);
+    }, [refreshData, toast, currentUser]);
 
     useEffect(() => {
         if (currentUser) {
@@ -488,10 +489,10 @@ export default function MainLayout({
         }
     }, [currentUser, refreshData, toast]);
     
-    const handleDismissEmployee = useCallback(async (employeeId: string) => {
+    const handleDismissEmployee = useCallback(async (employeeId: string, checkOutDate: Date) => {
         if (!currentUser) return;
         try {
-            await updateEmployee(employeeId, { status: 'dismissed' }, currentUser.uid);
+            await updateEmployee(employeeId, { status: 'dismissed', checkOutDate: format(checkOutDate, 'yyyy-MM-dd') }, currentUser.uid);
             toast({ title: "Sukces", description: "Pracownik został zwolniony." });
             await refreshData(false);
         } catch (e: unknown) {
@@ -499,10 +500,10 @@ export default function MainLayout({
         }
     }, [currentUser, refreshData, toast]);
 
-    const handleRestoreEmployee = useCallback(async (employeeId: string) => {
+    const handleRestoreEmployee = useCallback(async (employee: Employee) => {
         if (!currentUser) return;
         try {
-            await updateEmployee(employeeId, { status: 'active' }, currentUser.uid);
+            await updateEmployee(employee.id, { status: 'active', checkOutDate: null }, currentUser.uid);
             toast({ title: "Sukces", description: "Pracownik został przywrócony." });
             await refreshData(false);
         } catch (e: unknown) {
@@ -510,10 +511,10 @@ export default function MainLayout({
         }
     }, [currentUser, refreshData, toast]);
 
-    const handleRestoreNonEmployee = useCallback(async (nonEmployeeId: string) => {
+    const handleRestoreNonEmployee = useCallback(async (nonEmployee: NonEmployee) => {
         if (!currentUser) return;
         try {
-            await updateNonEmployee(nonEmployeeId, { status: 'active' }, currentUser.uid);
+            await updateNonEmployee(nonEmployee.id, { status: 'active', checkOutDate: null }, currentUser.uid);
             toast({ title: "Sukces", description: "Mieszkaniec został przywrócony." });
             await refreshData(false);
         } catch (e: unknown) {

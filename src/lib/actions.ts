@@ -246,9 +246,9 @@ const generateSmartNotificationMessage = (
             type = 'warning';
             break;
         case 'zaktualizował': {
-            const statusChange = changes.find(c => c.field === 'status');
-            const addressChange = changes.find(c => c.field === 'address');
-            const checkoutChange = changes.find(c => c.field === 'checkOutDate');
+            const statusChange = changes.find(c => c.field === 'Status');
+            const addressChange = changes.find(c => c.field === 'Adres');
+            const checkoutChange = changes.find(c => c.field === 'Data wymeldowania');
 
             if (statusChange && statusChange.newValue === 'dismissed') {
                 message = `Zwolnił ${entityType} ${entity.fullName}.`;
@@ -693,7 +693,7 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
 export async function checkAndUpdateStatuses(actorUid?: string): Promise<{ updated: number }> {
     try {
         const { settings } = await getAllSheetsData(actorUid, true);
-        const actor = findActor(actorUid, settings);
+        const actor = findActor('system', settings);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         let updatedCount = 0;
