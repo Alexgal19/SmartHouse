@@ -240,9 +240,9 @@ const deserializeAddressHistory = (row: Record<string, unknown>): AddressHistory
     return {
         id: row.id as string,
         employeeId: row.employeeId as string,
-        employeeName: (row.employeeName as string) || undefined,
-        coordinatorName: (row.coordinatorName as string) || undefined,
-        department: (row.department as string) || undefined,
+        employeeName: (row.employeeName as string),
+        coordinatorName: (row.coordinatorName as string),
+        department: (row.department as string),
         address: row.address as string,
         checkInDate: safeFormat(row.checkInDate),
         checkOutDate: safeFormat(row.checkOutDate),
@@ -421,11 +421,13 @@ export async function updateAddressHistoryEntry(historyId: string, updates: Part
     }
 }
 export async function deleteAddressHistoryEntry(historyId: string) {
-    const sheet = await getSheet(SHEET_NAME_ADDRESS_HISTORY, ['id', 'employeeId', 'address', 'checkInDate', 'checkOutDate']);
+    const sheet = await getSheet(SHEET_NAME_ADDRESS_HISTORY, ['id']);
     const rows = await sheet.getRows();
     const row = rows.find(r => r.get('id') === historyId);
     if (row) {
         await row.delete();
+    } else {
+        throw new Error('Address history entry not found');
     }
 }
 

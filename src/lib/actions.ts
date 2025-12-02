@@ -2,7 +2,7 @@
 "use server";
 
 import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, NotificationType, Coordinator, AddressHistory } from '../types';
-import { getSheet, getAllSheetsData, addAddressHistoryEntry as addHistoryToAction, updateAddressHistoryEntry as updateHistoryToAction, deleteAddressHistoryEntry as deleteHistoryToAction } from './sheets';
+import { getSheet, getAllSheetsData, addAddressHistoryEntry as addHistoryToAction, updateAddressHistoryEntry as updateHistoryToAction, deleteAddressHistoryEntry as deleteHistoryFromSheet } from './sheets';
 import { format, isPast, isValid, getDaysInMonth, parseISO, differenceInDays, max, min, parse as dateFnsParse, lastDayOfMonth } from 'date-fns';
 import * as XLSX from 'xlsx';
 
@@ -534,7 +534,7 @@ export async function deleteEmployee(employeeId: string, actorUid: string): Prom
         
         const historyToDelete = addressHistory.filter(h => h.employeeId === employeeId);
         for (const historyEntry of historyToDelete) {
-            await deleteHistoryToAction(historyEntry.id);
+            await deleteHistoryFromSheet(historyEntry.id);
         }
 
         if (employeeToDelete) {
@@ -600,7 +600,7 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
                 employeeId: id,
                 employeeName: updatedNonEmployeeData.fullName,
                 coordinatorName: coordinator?.name || 'N/A',
-                department: undefined,
+                department: 'N/A',
                 address: updates.address,
                 checkInDate: updates.checkInDate,
                 checkOutDate: null,
@@ -648,7 +648,7 @@ export async function deleteNonEmployee(id: string, actorUid: string): Promise<v
 
             const historyToDelete = addressHistory.filter(h => h.employeeId === id);
             for (const historyEntry of historyToDelete) {
-                await deleteHistoryToAction(historyEntry.id);
+                await deleteHistoryFromSheet(historyEntry.id);
             }
 
             await createNotification(actor, 'trwale usunął', nonEmployeeToDelete, settings);
@@ -1238,47 +1238,18 @@ export async function importNonEmployeesFromExcel(fileContent: string, actorUid:
     return processImport(fileContent, actorUid, 'non-employee');
 }
 
-export async function migrateOldAddressesToHistory(): Promise<{ migratedCount: number }> {
+export async function deleteAddressHistoryEntry(historyId: string, actorUid: string): Promise<void> {
     try {
-        const employeeSheet = await getSheet(SHEET_NAME_EMPLOYEES, [...EMPLOYEE_HEADERS]);
-        const { settings } = await getAllSheetsData();
-        const coordinatorMap = new Map(settings.coordinators.map(c => [c.uid, c.name]));
-        const rows = await employeeSheet.getRows();
+        const { settings } = await getAllSheetsData(actorUid, true);
+        const actor = findActor(actorUid, settings);
 
-        let migratedCount = 0;
+        await deleteHistoryFromSheet(historyId);
 
-        for (const row of rows) {
-            const employeeId = row.get('id') as string;
-            const oldAddress = row.get('oldAddress') as string;
-
-            if (employeeId && oldAddress) {
-                const currentCheckInDate = row.get('checkInDate') as string;
-                const checkOutForOldAddress = safeFormat(currentCheckInDate);
-                
-                const employeeName = row.get('fullName') as string;
-                const coordinatorId = row.get('coordinatorId') as string;
-                const department = row.get('zaklad') as string;
-                const coordinatorName = coordinatorMap.get(coordinatorId) || 'N/A';
-
-                await addHistoryToAction({
-                    employeeId,
-                    employeeName,
-                    coordinatorName,
-                    department,
-                    address: oldAddress,
-                    checkInDate: null, 
-                    checkOutDate: checkOutForOldAddress,
-                });
-
-                row.set('oldAddress', '');
-                await row.save();
-                
-                migratedCount++;
-            }
-        }
-        return { migratedCount };
-    } catch (error) {
-        console.error("Error migrating old addresses:", error);
-        throw new Error("Failed to migrate old addresses.");
+        await writeToAuditLog(actor.uid, actor.name, 'delete-address-history', 'address-history', historyId, {
+            message: `Usunięto wpis z historii adresów.`,
+        });
+    } catch (e: unknown) {
+        console.error("Error deleting address history entry:", e);
+        throw new Error(e instanceof Error ? e.message : "Failed to delete address history entry.");
     }
 }

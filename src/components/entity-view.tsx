@@ -208,7 +208,7 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
   );
 };
 
-const HistoryTable = ({ history, onSort, sortBy, sortOrder }: { history: AddressHistory[]; onSort: (field: SortableField) => void; sortBy: SortableField | null; sortOrder: 'asc' | 'desc'; }) => {
+const HistoryTable = ({ history, onSort, sortBy, sortOrder, onDelete }: { history: AddressHistory[]; onSort: (field: SortableField) => void; sortBy: SortableField | null; sortOrder: 'asc' | 'desc'; onDelete: (id: string) => void; }) => {
   return (
     <div className="overflow-x-auto">
         <Table>
@@ -220,6 +220,7 @@ const HistoryTable = ({ history, onSort, sortBy, sortOrder }: { history: Address
               <SortableHeader label="Adres" field="address" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
               <SortableHeader label="Data zameldowania" field="checkInDate" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
               <SortableHeader label="Data wymeldowania" field="checkOutDate" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+              <TableHead><span className="sr-only">Akcje</span></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -232,11 +233,37 @@ const HistoryTable = ({ history, onSort, sortBy, sortOrder }: { history: Address
                   <TableCell>{entry.address}</TableCell>
                   <TableCell>{formatDate(entry.checkInDate)}</TableCell>
                   <TableCell>{formatDate(entry.checkOutDate)}</TableCell>
+                  <TableCell>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Czy na pewno chcesz usunąć ten wpis z historii?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Ta operacja jest nieodwracalna i usunie wpis o pobycie <span className="font-bold">{entry.employeeName}</span> pod adresem <span className="font-bold">{entry.address}</span>.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                          <AlertDialogAction
+                              className="bg-destructive hover:bg-destructive/90"
+                              onClick={() => onDelete(entry.id)}
+                          >
+                              Potwierdź i usuń
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="text-center">Brak danych do wyświetlenia.</TableCell>
+                <TableCell colSpan={7} className="text-center">Brak danych do wyświetlenia.</TableCell>
               </TableRow>
             )}
           </TableBody>
@@ -445,6 +472,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         handleAddEmployeeClick,
         handleAddNonEmployeeClick,
         handleDeleteNonEmployee,
+        handleDeleteAddressHistory,
     } = useMainLayout();
 
     const router = useRouter();
@@ -668,6 +696,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                         onSort={handleSort}
                         sortBy={sortBy}
                         sortOrder={sortOrder}
+                        onDelete={(id) => handleDeleteAddressHistory(id, currentUser.uid)}
                     />
                  : <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
             </ScrollArea>

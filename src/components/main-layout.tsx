@@ -35,8 +35,7 @@ import {
     updateNonEmployee,
     updateSettings,
     deleteNotification,
-    addAddressHistoryEntry,
-    updateAddressHistoryEntry,
+    deleteAddressHistoryEntry,
 } from '@/lib/actions';
 import { getAllSheetsData } from '@/lib/sheets';
 import { logout } from '../lib/auth';
@@ -109,6 +108,7 @@ type MainLayoutContextType = {
     handleRestoreNonEmployee: (nonEmployee: NonEmployee) => Promise<void>;
     handleImportEmployees: (fileContent: string) => Promise<void>;
     handleImportNonEmployees: (fileContent: string) => Promise<void>;
+    handleDeleteAddressHistory: (historyId: string, actorUid: string) => Promise<void>;
 };
 
 const MainLayoutContext = createContext<MainLayoutContextType | null>(null);
@@ -543,6 +543,17 @@ export default function MainLayout({
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć pracownika." });
         }
     }, [currentUser, refreshData, toast]);
+
+    const handleDeleteAddressHistory = useCallback(async (historyId: string, actorUid: string) => {
+        if (!currentUser) return;
+        try {
+            await deleteAddressHistoryEntry(historyId, actorUid);
+            toast({ title: "Sukces", description: "Wpis z historii został usunięty." });
+            await refreshData(false);
+        } catch (e: unknown) {
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć wpisu z historii." });
+        }
+    }, [currentUser, refreshData, toast]);
     
     const handleImportEmployees = useCallback(async (fileContent: string) => {
         if (!currentUser) return;
@@ -623,6 +634,7 @@ export default function MainLayout({
         handleRestoreNonEmployee,
         handleImportEmployees,
         handleImportNonEmployees,
+        handleDeleteAddressHistory,
     } ), [
         allEmployees,
         allNonEmployees,
@@ -652,6 +664,7 @@ export default function MainLayout({
         handleRestoreNonEmployee,
         handleImportEmployees,
         handleImportNonEmployees,
+        handleDeleteAddressHistory,
     ]);
 
     if (!settings || !currentUser || !allEmployees || !allNonEmployees) {
