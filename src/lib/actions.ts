@@ -367,7 +367,7 @@ const findActor = (actorUid: string | undefined, settings: Settings): Coordinato
 
 export async function addEmployee(employeeData: Partial<Employee>, actorUid: string): Promise<void> {
     try {
-        const { settings, addressHistory } = await getAllSheetsData(actorUid, true);
+        const { settings } = await getAllSheetsData(actorUid, true);
         const actor = findActor(actorUid, settings);
 
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
@@ -1213,7 +1213,8 @@ export async function importNonEmployeesFromExcel(fileContent: string, actorUid:
 
 export async function migrateOldAddressesToHistory(): Promise<{ migratedCount: number }> {
     try {
-        const employeeSheet = await getSheet(SHEET_NAME_EMPLOYEES, ['id', 'fullName', 'coordinatorId', 'zaklad', 'oldAddress', 'checkInDate']);
+        // We need to specify the old headers to be able to read them
+        const employeeSheet = await getSheet(SHEET_NAME_EMPLOYEES, [...EMPLOYEE_HEADERS, 'oldAddress']);
         const { settings } = await getAllSheetsData();
         const coordinatorMap = new Map(settings.coordinators.map(c => [c.uid, c.name]));
         const rows = await employeeSheet.getRows();
@@ -1223,6 +1224,8 @@ export async function migrateOldAddressesToHistory(): Promise<{ migratedCount: n
         for (const row of rows) {
             const employeeId = row.get('id') as string;
             const oldAddress = row.get('oldAddress') as string;
+            
+            // We use the current check-in date as the check-out date for the old address
             const currentCheckInDate = row.get('checkInDate') as string;
 
             if (employeeId && oldAddress) {
@@ -1239,7 +1242,7 @@ export async function migrateOldAddressesToHistory(): Promise<{ migratedCount: n
                     coordinatorName,
                     department,
                     address: oldAddress,
-                    checkInDate: null, 
+                    checkInDate: null, // We don't have this information
                     checkOutDate: checkOutForOldAddress,
                 });
 
@@ -1255,3 +1258,5 @@ export async function migrateOldAddressesToHistory(): Promise<{ migratedCount: n
         throw new Error("Failed to migrate old addresses.");
     }
 }
+
+    

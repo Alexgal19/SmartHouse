@@ -1,5 +1,4 @@
 
-
 "use server";
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
@@ -241,9 +240,9 @@ const deserializeAddressHistory = (row: Record<string, unknown>): AddressHistory
     return {
         id: row.id as string,
         employeeId: row.employeeId as string,
-        employeeName: row.employeeName as string,
-        coordinatorName: row.coordinatorName as string,
-        department: row.department as string,
+        employeeName: (row.employeeName as string) || undefined,
+        coordinatorName: (row.coordinatorName as string) || undefined,
+        department: (row.department as string) || undefined,
         address: row.address as string,
         checkInDate: safeFormat(row.checkInDate),
         checkOutDate: safeFormat(row.checkOutDate),
@@ -410,12 +409,14 @@ export async function addAddressHistoryEntry(data: Omit<AddressHistory, 'id'>) {
   });
 }
 
-export async function updateAddressHistoryEntry(historyId: string, updates: { checkOutDate: string }) {
+export async function updateAddressHistoryEntry(historyId: string, updates: Partial<AddressHistory>) {
     const sheet = await getSheet(SHEET_NAME_ADDRESS_HISTORY, ['id', 'employeeId', 'address', 'checkInDate', 'checkOutDate']);
     const rows = await sheet.getRows();
     const row = rows.find(r => r.get('id') === historyId);
     if (row) {
-        row.set('checkOutDate', updates.checkOutDate);
+        for (const key in updates) {
+             row.set(key, (updates as any)[key]);
+        }
         await row.save();
     }
 }
@@ -427,3 +428,5 @@ export async function deleteAddressHistoryEntry(historyId: string) {
         await row.delete();
     }
 }
+
+    
