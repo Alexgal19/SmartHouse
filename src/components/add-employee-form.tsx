@@ -42,6 +42,7 @@ import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/comp
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Combobox } from '@/components/ui/combobox';
 import { useToast } from '@/hooks/use-toast';
+import { useMainLayout } from './main-layout';
 
 const formSchema = z.object({
   fullName: z.string().min(3, "Imię i nazwisko musi mieć co najmniej 3 znaki."),
@@ -187,7 +188,7 @@ const DateInput = ({
           locale={pl}
           mode="single"
           selected={value && isValid(value) ? value : undefined}
-          onSelect={(d) => handleDateSelect(d)}
+          onSelect={(d) => handleDateSelect(d ?? null)}
           disabled={disabled}
           initialFocus
         />
@@ -213,6 +214,7 @@ export function AddEmployeeForm({
   currentUser: SessionData;
 }) {
   const { toast } = useToast();
+  const { handleDismissEmployee } = useMainLayout();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -416,6 +418,41 @@ export function AddEmployeeForm({
       form.setValue('oldAddress', '', { shouldDirty: true });
       form.setValue('addressChangeDate', null, { shouldDirty: true });
   }
+
+  const handleDismissClick = async () => {
+    if (!employee) return;
+
+    const checkOutDate = form.getValues('checkOutDate');
+    if (!checkOutDate) {
+        form.setError('checkOutDate', {
+            type: 'manual',
+            message: 'Data wymeldowania jest wymagana, aby zwolnić pracownika.',
+        });
+        return;
+    }
+    
+    // update the checkout date first
+    const values = form.getValues();
+     const formatDate = (date: Date | null | undefined): string | null | undefined => {
+        if (!date) return null;
+        return format(date, 'yyyy-MM-dd');
+    }
+    const { locality, ...restOfValues } = values;
+     const formData: EmployeeFormData = {
+        ...restOfValues,
+        checkInDate: formatDate(values.checkInDate),
+        checkOutDate: formatDate(values.checkOutDate),
+        contractStartDate: formatDate(values.contractStartDate),
+        contractEndDate: formatDate(values.contractEndDate),
+        departureReportDate: formatDate(values.departureReportDate),
+        addressChangeDate: formatDate(values.addressChangeDate),
+        deductionEntryDate: formatDate(values.deductionEntryDate),
+    };
+    onSave(formData);
+    
+    await handleDismissEmployee(employee.id);
+    onOpenChange(false);
+  };
   
   const sortedCoordinators = useMemo(() => [...settings.coordinators].sort((a, b) => a.name.localeCompare(b.name)), [settings.coordinators]);
   const sortedNationalities = useMemo(() => [...settings.nationalities].sort((a, b) => a.localeCompare(b)), [settings.nationalities]);
@@ -585,7 +622,7 @@ export function AddEmployeeForm({
                                     <FormItem className="flex flex-col">
                                         <FormLabel>Data zameldowania</FormLabel>
                                         <DateInput
-                                          value={field.value}
+                                          value={field.value ?? undefined}
                                           onChange={field.onChange}
                                         />
                                         <FormMessage />
@@ -598,7 +635,7 @@ export function AddEmployeeForm({
                                 render={({ field }) => (
                                     <FormItem className="flex flex-col">
                                         <FormLabel>Data wymeldowania</FormLabel>
-                                        <DateInput value={field.value} onChange={field.onChange} />
+                                        <DateInput value={field.value ?? undefined} onChange={field.onChange} />
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -609,7 +646,7 @@ export function AddEmployeeForm({
                                 render={({ field }) => (
                                     <FormItem className="flex flex-col">
                                         <FormLabel>Data zgłoszenia wyjazdu</FormLabel>
-                                        <DateInput value={field.value} onChange={field.onChange} />
+                                        <DateInput value={field.value ?? undefined} onChange={field.onChange} />
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -622,7 +659,7 @@ export function AddEmployeeForm({
                                 render={({ field }) => (
                                     <FormItem className="flex flex-col">
                                         <FormLabel>Umowa od</FormLabel>
-                                        <DateInput value={field.value} onChange={field.onChange} />
+                                        <DateInput value={field.value ?? undefined} onChange={field.onChange} />
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -633,7 +670,7 @@ export function AddEmployeeForm({
                                 render={({ field }) => (
                                     <FormItem className="flex flex-col">
                                         <FormLabel>Umowa do</FormLabel>
-                                        <DateInput value={field.value} onChange={field.onChange} />
+                                        <DateInput value={field.value ?? undefined} onChange={field.onChange} />
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -701,7 +738,7 @@ export function AddEmployeeForm({
                                     <FormItem className="flex flex-col">
                                         <FormLabel>Data wpisania potrącenia</FormLabel>
                                         <DateInput
-                                          value={field.value}
+                                          value={field.value ?? undefined}
                                           onChange={field.onChange}
                                         />
                                         <FormMessage />
@@ -869,11 +906,20 @@ export function AddEmployeeForm({
                 </ScrollArea>
             </Tabs>
 
-            <DialogFooter className="p-6 pt-4">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Anuluj
-              </Button>
-              <Button type="submit">Zapisz</Button>
+            <DialogFooter className="p-6 pt-4 flex flex-row justify-between">
+              <div>
+                  {employee && employee.status === 'active' && (
+                      <Button type="button" variant="destructive" onClick={handleDismissClick}>
+                          Zwolnij
+                      </Button>
+                  )}
+              </div>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                    Anuluj
+                </Button>
+                <Button type="submit">Zapisz</Button>
+              </div>
             </DialogFooter>
           </form>
         </Form>
