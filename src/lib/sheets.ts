@@ -241,6 +241,9 @@ const deserializeAddressHistory = (row: Record<string, unknown>): AddressHistory
     return {
         id: row.id as string,
         employeeId: row.employeeId as string,
+        employeeName: row.employeeName as string,
+        coordinatorName: row.coordinatorName as string,
+        department: row.department as string,
         address: row.address as string,
         checkInDate: safeFormat(row.checkInDate),
         checkOutDate: safeFormat(row.checkOutDate),
@@ -399,14 +402,11 @@ export async function getAllSheetsData(userId?: string, userIsAdmin?: boolean) {
     }
 }
 
-export async function addAddressHistoryEntry(employeeId: string, address: string, checkInDate: string, checkOutDate: string | null) {
-  const sheet = await getSheet(SHEET_NAME_ADDRESS_HISTORY, ['id', 'employeeId', 'address', 'checkInDate', 'checkOutDate']);
+export async function addAddressHistoryEntry(data: Omit<AddressHistory, 'id'>) {
+  const sheet = await getSheet(SHEET_NAME_ADDRESS_HISTORY, ['id', 'employeeId', 'employeeName', 'coordinatorName', 'department', 'address', 'checkInDate', 'checkOutDate']);
   await sheet.addRow({
     id: `hist-${Date.now()}`,
-    employeeId,
-    address,
-    checkInDate,
-    checkOutDate
+    ...data
   });
 }
 
