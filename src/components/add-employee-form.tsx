@@ -60,7 +60,6 @@ const formSchema = z.object({
   contractEndDate: z.date().nullable().optional(),
   departureReportDate: z.date().nullable().optional(),
   comments: z.string().optional(),
-  oldAddress: z.string().optional(),
   depositReturned: z.enum(['Tak', 'Nie', 'Nie dotyczy']).nullable().optional(),
   depositReturnAmount: z.number().nullable().optional(),
   deductionRegulation: z.number().nullable().optional(),
@@ -231,7 +230,6 @@ export function AddEmployeeForm({
       contractEndDate: null,
       departureReportDate: null,
       comments: '',
-      oldAddress: '',
       depositReturned: null,
       depositReturnAmount: null,
       deductionRegulation: null,
@@ -311,7 +309,6 @@ export function AddEmployeeForm({
             contractEndDate: parseDate(employee.contractEndDate) ?? null,
             departureReportDate: parseDate(employee.departureReportDate) ?? null,
             comments: employee.comments ?? '',
-            oldAddress: employee.oldAddress ?? '',
             depositReturned: employee.depositReturned ?? null,
             depositReturnAmount: employee.depositReturnAmount ?? null,
             deductionRegulation: employee.deductionRegulation ?? null,
@@ -336,7 +333,6 @@ export function AddEmployeeForm({
           contractEndDate: null,
           departureReportDate: null,
           comments: '',
-            oldAddress: '',
           depositReturned: null,
           depositReturnAmount: null,
           deductionRegulation: null,
@@ -408,10 +404,6 @@ export function AddEmployeeForm({
     form.setValue('address', value);
     form.setValue('roomNumber', '');
   };
-
-  const handleClearOldAddress = () => {
-      form.setValue('oldAddress', '', { shouldDirty: true });
-  }
 
   const handleDismissClick = async () => {
     if (!employee) return;
@@ -681,28 +673,6 @@ export function AddEmployeeForm({
                             </FormItem>
                             )}
                         />
-                         {form.watch('oldAddress') && (
-                            <div className="space-y-4 rounded-md border p-4 bg-muted/50">
-                                <FormField
-                                    control={form.control}
-                                    name="oldAddress"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <div className="flex justify-between items-center">
-                                                <FormLabel>Poprzedni adres</FormLabel>
-                                                {currentUser.isAdmin && (
-                                                    <Button variant="ghost" size="sm" type="button" onClick={handleClearOldAddress}>
-                                                        <Trash2 className="h-4 w-4 mr-2 text-destructive"/>
-                                                        Wyczyść
-                                                    </Button>
-                                                )}
-                                            </div>
-                                            <FormControl><Input {...field} readOnly /></FormControl>
-                                        </FormItem>
-                                    )}
-                                />
-                            </div>
-                        )}
                         </div>
                     </TabsContent>
                     <TabsContent value="finance">

@@ -1253,3 +1253,40 @@ export async function deleteAddressHistoryEntry(historyId: string, actorUid: str
         throw new Error(e instanceof Error ? e.message : "Failed to delete address history entry.");
     }
 }
+
+export async function migrateOldAddressesToHistory(): Promise<{ migratedCount: number }> {
+    const employeeSheet = await getSheet('Employees', ['id', 'fullName', 'coordinatorId', 'zaklad', 'checkInDate', 'oldAddress', 'addressChangeDate']);
+    const employeeRows = await employeeSheet.getRows();
+    const { settings } = await getAllSheetsData();
+    const coordinatorMap = new Map(settings.coordinators.map(c => [c.uid, c.name]));
+    
+    let migratedCount = 0;
+
+    for (const row of employeeRows) {
+        const employeeId = row.get('id');
+        const oldAddress = row.get('oldAddress');
+        const currentCheckInDate = row.get('checkInDate');
+
+        if (employeeId && oldAddress && currentCheckInDate) {
+            const employeeName = row.get('fullName');
+            const coordinatorId = row.get('coordinatorId');
+            const department = row.get('zaklad');
+            
+            await addHistoryToAction({
+                employeeId: employeeId,
+                employeeName: employeeName,
+                coordinatorName: coordinatorMap.get(coordinatorId) || 'N/A',
+                department: department || 'N/A',
+                address: oldAddress,
+                checkInDate: null, 
+                checkOutDate: safeFormat(currentCheckInDate),
+            });
+            
+            row.set('oldAddress', '');
+            await row.save();
+            
+            migratedCount++;
+        }
+    }
+    return { migratedCount };
+}
