@@ -310,6 +310,63 @@ const EntityCardList = ({ entities, onEdit, onDismiss, onRestore, isDismissed, s
     )
 };
 
+const HistoryCardList = ({ history, onDelete }: { history: AddressHistory[]; onDelete: (id: string) => void; }) => {
+    return (
+        <div className="space-y-4">
+            {history.length > 0 ? (
+                history.map((entry, index) => (
+                    <Card 
+                        key={entry.id} 
+                        className="animate-fade-in-up"
+                        style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}
+                    >
+                        <CardHeader className="flex flex-row items-start justify-between pb-4">
+                           <div>
+                             <CardTitle className="text-base">{entry.employeeName}</CardTitle>
+                             <CardDescription>
+                                {entry.coordinatorName} - {entry.department}
+                             </CardDescription>
+                           </div>
+                           <div onClick={(e) => e.stopPropagation()}>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                      <Trash2 className="h-4 w-4 text-destructive" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Czy na pewno chcesz usunąć ten wpis z historii?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Ta operacja jest nieodwracalna i usunie wpis o pobycie <span className="font-bold">{entry.employeeName}</span> pod adresem <span className="font-bold">{entry.address}</span>.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                                      <AlertDialogAction
+                                          className="bg-destructive hover:bg-destructive/90"
+                                          onClick={() => onDelete(entry.id)}
+                                      >
+                                          Potwierdź i usuń
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                           </div>
+                        </CardHeader>
+                        <CardContent className="text-sm space-y-2">
+                            <p><span className="font-semibold text-muted-foreground">Adres:</span> {entry.address}</p>
+                            <p><span className="font-semibold text-muted-foreground">Okres:</span> {formatDate(entry.checkInDate)} - {formatDate(entry.checkOutDate)}</p>
+                        </CardContent>
+                    </Card>
+                ))
+            ) : (
+                <div className="text-center text-muted-foreground py-8">Brak danych do wyświetlenia.</div>
+            )}
+        </div>
+    );
+};
+
 const FilterDialog = ({ isOpen, onOpenChange, settings, onApply, initialFilters }: { isOpen: boolean; onOpenChange: (open: boolean) => void; settings: Settings; onApply: (filters: Record<string, string>) => void; initialFilters: Record<string, string>; }) => {
     const [filters, setFilters] = useState(initialFilters);
 
@@ -690,15 +747,28 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
      const renderHistoryContent = () => (
         <>
             <ScrollArea className="h-[55vh] overflow-x-auto" style={{ opacity: isPending ? 0.6 : 1 }}>
-                {isMounted ? 
-                    <HistoryTable
-                        history={paginatedData as AddressHistory[]}
-                        onSort={handleSort}
-                        sortBy={sortBy}
-                        sortOrder={sortOrder}
-                        onDelete={(id) => handleDeleteAddressHistory(id, currentUser.uid)}
-                    />
-                 : <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
+                {isMounted ? (
+                    isMobile ? (
+                        <HistoryCardList
+                            history={paginatedData as AddressHistory[]}
+                            onDelete={(id) => handleDeleteAddressHistory(id, currentUser.uid)}
+                        />
+                    ) : (
+                        <HistoryTable
+                            history={paginatedData as AddressHistory[]}
+                            onSort={handleSort}
+                            sortBy={sortBy}
+                            sortOrder={sortOrder}
+                            onDelete={(id) => handleDeleteAddressHistory(id, currentUser.uid)}
+                        />
+                    )
+                ) : (
+                    <div className="space-y-4">
+                        <Skeleton className="h-24 w-full" />
+                        <Skeleton className="h-24 w-full" />
+                        <Skeleton className="h-24 w-full" />
+                    </div>
+                )}
             </ScrollArea>
              <PaginationControls currentPage={page} totalPages={totalPages} onPageChange={(p) => updateSearchParams({ page: p })} isDisabled={isPending} />
         </>
@@ -751,3 +821,5 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         </Card>
     )
 }
+
+    
