@@ -1192,3 +1192,45 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
 export async function importNonEmployeesFromExcel(fileContent: string, actorUid: string): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
     return processImport(fileContent, actorUid, 'non-employee');
 }
+
+export async function migrateOldAddressesToHistory(): Promise<{ migratedCount: number }> {
+  try {
+    const employeeSheet = await getSheet(SHEET_NAME_EMPLOYEES, ['id', 'oldAddress', 'addressChangeDate']);
+    const historySheet = await getSheet(SHEET_NAME_ADDRESS_HISTORY, ADDRESS_HISTORY_HEADERS);
+    const rows = await employeeSheet.getRows();
+
+    let migratedCount = 0;
+
+    for (const row of rows) {
+      const employeeId = row.get('id');
+      const oldAddress = row.get('oldAddress');
+      const addressChangeDate = row.get('addressChangeDate');
+
+      if (employeeId && oldAddress && addressChangeDate) {
+        // Find the current address entry to set its checkOutDate
+        const currentAddress = row.get('address');
+        const checkInDate = row.get('checkInDate');
+
+        // Add history entry for the old address
+        await historySheet.addRow({
+          id: `hist-${Date.now()}-${migratedCount}`,
+          employeeId: employeeId,
+          address: oldAddress,
+          checkInDate: null, // We don't know the original check-in for the old address
+          checkOutDate: safeFormat(addressChangeDate),
+        });
+
+        // Clear the old data from the Employees sheet
+        row.set('oldAddress', '');
+        row.set('addressChangeDate', '');
+        await row.save();
+        
+        migratedCount++;
+      }
+    }
+    return { migratedCount };
+  } catch (error) {
+    console.error("Error migrating old addresses:", error);
+    throw new Error("Failed to migrate old addresses.");
+  }
+}
