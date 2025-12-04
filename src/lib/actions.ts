@@ -430,7 +430,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
 
         if (updates.address && updates.address !== originalEmployee.address && updates.checkInDate) {
             const lastHistoryEntry = addressHistory
-                .filter(h => h.employeeId === employeeId && h.address === originalEmployee.address)
+                .filter(h => h.employeeId === employeeId && h.address === originalEmployee.address && h.checkInDate === originalEmployee.checkInDate)
                 .sort((a, b) => new Date(b.checkInDate || 0).getTime() - new Date(a.checkInDate || 0).getTime())[0];
             
             if (lastHistoryEntry) {
@@ -575,7 +575,7 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
         
         if (updates.address && updates.address !== originalNonEmployee.address && updates.checkInDate) {
             const lastHistoryEntry = addressHistory
-                .filter(h => h.employeeId === id && h.address === originalNonEmployee.address)
+                .filter(h => h.employeeId === id && h.address === originalNonEmployee.address && h.checkInDate === originalNonEmployee.checkInDate)
                 .sort((a, b) => new Date(b.checkInDate || 0).getTime() - new Date(a.checkInDate || 0).getTime())[0];
 
             if (lastHistoryEntry) {

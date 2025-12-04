@@ -51,7 +51,7 @@ const formSchema = z.object({
   locality: z.string().min(1, "Miejscowość jest wymagana."),
   address: z.string().min(1, "Adres jest wymagany."),
   roomNumber: z.string().min(1, "Numer pokoju jest wymagany."),
-  zaklad: z.string().nullable(),
+  zaklad: z.string().min(1, "Zakład jest wymagany."),
   nationality: z.string().min(1, "Narodowość jest wymagana."),
   gender: z.string().min(1, "Płeć jest wymagana."),
   checkInDate: z.date({ required_error: "Data zameldowania jest wymagana." }).nullable(),
@@ -221,7 +221,7 @@ export function AddEmployeeForm({
       locality: '',
       address: '',
       roomNumber: '',
-      zaklad: null,
+      zaklad: '',
       nationality: '',
       gender: '',
       checkInDate: new Date(),
@@ -300,7 +300,7 @@ export function AddEmployeeForm({
             locality: employeeLocality,
             address: employee.address ?? '',
             roomNumber: employee.roomNumber ?? '',
-            zaklad: employee.zaklad ?? null,
+            zaklad: employee.zaklad ?? '',
             nationality: employee.nationality ?? '',
             gender: employee.gender ?? '',
             checkInDate: parseDate(employee.checkInDate) ?? null,
@@ -324,7 +324,7 @@ export function AddEmployeeForm({
           locality: '',
           address: '',
           roomNumber: '',
-          zaklad: null,
+          zaklad: '',
           nationality: '',
           gender: '',
           checkInDate: new Date(),
@@ -391,7 +391,7 @@ export function AddEmployeeForm({
     form.setValue('locality', '');
     form.setValue('address', '');
     form.setValue('roomNumber', '');
-    form.setValue('zaklad', null);
+    form.setValue('zaklad', '');
   }
 
   const handleLocalityChange = (value: string) => {
@@ -874,5 +874,3 @@ export function AddEmployeeForm({
     </Dialog>
   );
 }
-
-    
