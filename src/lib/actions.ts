@@ -381,7 +381,7 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
             gender: employeeData.gender || '',
             address: employeeData.address || '',
             roomNumber: employeeData.roomNumber || '',
-            zaklad: employeeData.zaklad || null,
+            zaklad: employeeData.zaklad || '',
             checkInDate: employeeData.checkInDate,
             checkOutDate: employeeData.checkOutDate,
             contractStartDate: employeeData.contractStartDate ?? null,
@@ -1241,4 +1241,5 @@ export async function deleteAddressHistoryEntry(historyId: string, actorUid: str
         throw new Error(e instanceof Error ? e.message : "Failed to delete address history entry.");
     }
 }
+
 
