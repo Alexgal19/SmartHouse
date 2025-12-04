@@ -16,7 +16,7 @@ import {
 } from './ui/sidebar';
 import Header from './header';
 import { MobileNav } from './mobile-nav';
-import type { View, Notification, Employee, Settings, Address, SessionData, NonEmployee, Coordinator, AddressHistory } from '@/types';
+import type { View, Notification, Employee, Settings, Address, SessionData, NonEmployee, AddressHistory } from '@/types';
 import { Home, Settings as SettingsIcon, Users, Building } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -584,16 +584,18 @@ export default function MainLayout({
         if (!currentUser) return;
         try {
             const result = await importNonEmployeesFromExcel(fileContent, currentUser.uid);
-            let description = `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} wierszy.`;
-            if (result.errors.length > 0) {
-                description += ` Błędy: ${result.errors.join('; ')}`;
+            if (result) {
+                let description = `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} wierszy.`;
+                if (result.errors.length > 0) {
+                    description += ` Błędy: ${result.errors.join('; ')}`;
+                }
+                
+                toast({
+                    title: "Import zakończony",
+                    description: description,
+                    duration: result.errors.length > 0 ? 10000 : 5000,
+                });
             }
-            
-            toast({
-                title: "Import zakończony",
-                description: description,
-                duration: result.errors.length > 0 ? 10000 : 5000,
-            });
             await refreshData(false);
         } catch (e) {
             toast({

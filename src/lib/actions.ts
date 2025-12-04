@@ -1,4 +1,5 @@
 
+
 "use server";
 
 import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, NotificationType, Coordinator, AddressHistory } from '../types';
@@ -429,13 +430,13 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
 
         if (updates.address && updates.address !== originalEmployee.address && updates.checkInDate) {
             const lastHistoryEntry = addressHistory
-                .filter(h => h.employeeId === employeeId)
+                .filter(h => h.employeeId === employeeId && h.address === originalEmployee.address)
                 .sort((a, b) => new Date(b.checkInDate || 0).getTime() - new Date(a.checkInDate || 0).getTime())[0];
-
-            if (lastHistoryEntry && lastHistoryEntry.address === originalEmployee.address && lastHistoryEntry.checkInDate === originalEmployee.checkInDate) {
-                await updateHistoryToAction(lastHistoryEntry.id, { checkOutDate: updates.checkInDate });
+            
+            if (lastHistoryEntry) {
+                 await updateHistoryToAction(lastHistoryEntry.id, { checkOutDate: updates.checkInDate });
             } else if (originalEmployee.address && originalEmployee.checkInDate) {
-                const oldCoordinator = settings.coordinators.find(c => c.uid === originalEmployee.coordinatorId);
+                 const oldCoordinator = settings.coordinators.find(c => c.uid === originalEmployee.coordinatorId);
                 await addHistoryToAction({
                     employeeId: employeeId,
                     employeeName: originalEmployee.fullName,
@@ -574,11 +575,11 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
         
         if (updates.address && updates.address !== originalNonEmployee.address && updates.checkInDate) {
             const lastHistoryEntry = addressHistory
-                .filter(h => h.employeeId === id)
+                .filter(h => h.employeeId === id && h.address === originalNonEmployee.address)
                 .sort((a, b) => new Date(b.checkInDate || 0).getTime() - new Date(a.checkInDate || 0).getTime())[0];
 
-            if (lastHistoryEntry && lastHistoryEntry.address === originalNonEmployee.address && lastHistoryEntry.checkInDate === originalNonEmployee.checkInDate) {
-                await updateHistoryToAction(lastHistoryEntry.id, { checkOutDate: updates.checkInDate });
+            if (lastHistoryEntry) {
+                 await updateHistoryToAction(lastHistoryEntry.id, { checkOutDate: updates.checkInDate });
             } else if (originalNonEmployee.address && originalNonEmployee.checkInDate) {
                 const oldCoordinator = settings.coordinators.find(c => c.uid === originalNonEmployee.coordinatorId);
                 await addHistoryToAction({
@@ -1240,3 +1241,4 @@ export async function deleteAddressHistoryEntry(historyId: string, actorUid: str
         throw new Error(e instanceof Error ? e.message : "Failed to delete address history entry.");
     }
 }
+
