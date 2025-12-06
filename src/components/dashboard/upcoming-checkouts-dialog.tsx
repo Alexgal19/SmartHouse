@@ -46,6 +46,7 @@ export function UpcomingCheckoutsDialog({
     const { handleEditEmployeeClick, handleEditNonEmployeeClick, settings } = useMainLayout();
     const { copyToClipboard } = useCopyToClipboard();
     const [selectedZaklad, setSelectedZaklad] = useState('all');
+    const [selectedAddress, setSelectedAddress] = useState('all');
 
     const departmentOptions = useMemo(() => {
         if (!settings?.departments) return [];
@@ -53,6 +54,13 @@ export function UpcomingCheckoutsDialog({
         options.unshift({ value: 'all', label: 'Wszystkie zakłady' });
         return options;
     }, [settings?.departments]);
+
+    const addressOptions = useMemo(() => {
+        if (!settings?.addresses) return [];
+        const options = settings.addresses.map(a => ({ value: a.name, label: a.name })).sort((a,b) => a.label.localeCompare(b.label));
+        options.unshift({ value: 'all', label: 'Wszystkie adresy' });
+        return options;
+    }, [settings?.addresses]);
 
     const upcomingCheckouts = useMemo(() => {
         const allOccupants: Occupant[] = [
@@ -68,7 +76,12 @@ export function UpcomingCheckoutsDialog({
             return false; // Non-employees don't have 'zaklad'
         });
 
-        return filteredByDepartment
+        const filteredByAddress = filteredByDepartment.filter(o => {
+            if (selectedAddress === 'all') return true;
+            return o.address === selectedAddress;
+        });
+
+        return filteredByAddress
             .filter(o => o.checkOutDate)
             .map(o => ({
                 ...o,
@@ -79,7 +92,7 @@ export function UpcomingCheckoutsDialog({
                 return diff >= 0 && diff <= 30;
             })
             .sort((a, b) => a.checkOutDateObj.getTime() - b.checkOutDateObj.getTime());
-    }, [employees, nonEmployees, selectedZaklad]);
+    }, [employees, nonEmployees, selectedZaklad, selectedAddress]);
     
     const handleCopy = (occupant: Occupant) => {
         const textToCopy = `${occupant.fullName}, wykwaterowanie: ${formatDate(occupant.checkOutDate)}`;
@@ -102,17 +115,31 @@ export function UpcomingCheckoutsDialog({
                     <DialogTitle>Nadchodzące wykwaterowania</DialogTitle>
                     <DialogDescription>Osoby, które wykwaterują się w ciągu najbliższych 30 dni.</DialogDescription>
                 </DialogHeader>
-                <div className="grid gap-2">
-                    <Label htmlFor="zaklad-filter">Filtruj po zakładu</Label>
-                    <Combobox
-                        options={departmentOptions}
-                        value={selectedZaklad}
-                        onChange={setSelectedZaklad}
-                        placeholder="Wybierz zakład"
-                        searchPlaceholder="Szukaj zakładu..."
-                        notFoundMessage="Nie znaleziono zakładu."
-                        className="w-full sm:w-[250px]"
-                    />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="zaklad-filter">Filtruj po zakładu</Label>
+                        <Combobox
+                            options={departmentOptions}
+                            value={selectedZaklad}
+                            onChange={setSelectedZaklad}
+                            placeholder="Wybierz zakład"
+                            searchPlaceholder="Szukaj zakładu..."
+                            notFoundMessage="Nie znaleziono zakładu."
+                            className="w-full"
+                        />
+                    </div>
+                     <div className="grid gap-2">
+                        <Label htmlFor="address-filter">Filtruj po adresie</Label>
+                        <Combobox
+                            options={addressOptions}
+                            value={selectedAddress}
+                            onChange={setSelectedAddress}
+                            placeholder="Wybierz adres"
+                            searchPlaceholder="Szukaj adresu..."
+                            notFoundMessage="Nie znaleziono adresu."
+                            className="w-full"
+                        />
+                    </div>
                 </div>
                 <ScrollArea className="flex-1 min-h-0 -mr-6 pr-6">
                     <div className="space-y-2 p-1">
