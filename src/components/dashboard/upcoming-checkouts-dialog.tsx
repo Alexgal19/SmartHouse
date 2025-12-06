@@ -43,45 +43,19 @@ export function UpcomingCheckoutsDialog({
     employees: Employee[];
     nonEmployees: NonEmployee[];
 }) {
-    const { handleEditEmployeeClick, handleEditNonEmployeeClick, settings } = useMainLayout();
+    const { handleEditEmployeeClick, handleEditNonEmployeeClick } = useMainLayout();
     const { copyToClipboard } = useCopyToClipboard();
     const [selectedZaklad, setSelectedZaklad] = useState('all');
     const [selectedAddress, setSelectedAddress] = useState('all');
 
-    const departmentOptions = useMemo(() => {
-        if (!settings?.departments) return [];
-        const options = settings.departments.map(d => ({ value: d, label: d }));
-        options.unshift({ value: 'all', label: 'Wszystkie zakłady' });
-        return options;
-    }, [settings?.departments]);
-
-    const addressOptions = useMemo(() => {
-        if (!settings?.addresses) return [];
-        const options = settings.addresses.map(a => ({ value: a.name, label: a.name })).sort((a,b) => a.label.localeCompare(b.label));
-        options.unshift({ value: 'all', label: 'Wszystkie adresy' });
-        return options;
-    }, [settings?.addresses]);
-
-    const upcomingCheckouts = useMemo(() => {
+    // Step 1: Create a raw, unfiltered list of upcoming checkouts
+    const upcomingCheckoutsUnfiltered = useMemo(() => {
         const allOccupants: Occupant[] = [
             ...employees.filter(e => e.status === 'active'), 
-            ...nonEmployees
+            ...nonEmployees.filter(ne => ne.status === 'active')
         ];
 
-        const filteredByDepartment = allOccupants.filter(o => {
-            if (selectedZaklad === 'all') return true;
-            if (isEmployee(o)) {
-                return o.zaklad === selectedZaklad;
-            }
-            return false; // Non-employees don't have 'zaklad'
-        });
-
-        const filteredByAddress = filteredByDepartment.filter(o => {
-            if (selectedAddress === 'all') return true;
-            return o.address === selectedAddress;
-        });
-
-        return filteredByAddress
+        return allOccupants
             .filter(o => o.checkOutDate)
             .map(o => ({
                 ...o,
@@ -90,9 +64,51 @@ export function UpcomingCheckoutsDialog({
             .filter(o => {
                 const diff = differenceInDays(o.checkOutDateObj, new Date());
                 return diff >= 0 && diff <= 30;
-            })
-            .sort((a, b) => a.checkOutDateObj.getTime() - b.checkOutDateObj.getTime());
-    }, [employees, nonEmployees, selectedZaklad, selectedAddress]);
+            });
+    }, [employees, nonEmployees]);
+
+    // Step 2: Generate filter options based *only* on the people in the unfiltered list
+    const departmentOptions = useMemo(() => {
+        const departments = new Set(
+            upcomingCheckoutsUnfiltered
+                .filter(isEmployee)
+                .map(e => e.zaklad)
+                .filter(Boolean) as string[]
+        );
+        const options = Array.from(departments).map(d => ({ value: d, label: d }));
+        options.unshift({ value: 'all', label: 'Wszystkie zakłady' });
+        return options;
+    }, [upcomingCheckoutsUnfiltered]);
+
+    const addressOptions = useMemo(() => {
+        const addresses = new Set(
+            upcomingCheckoutsUnfiltered
+                .map(o => o.address)
+                .filter(Boolean) as string[]
+        );
+        const options = Array.from(addresses).map(a => ({ value: a, label: a })).sort((a,b) => a.label.localeCompare(b.label));
+        options.unshift({ value: 'all', label: 'Wszystkie adresy' });
+        return options;
+    }, [upcomingCheckoutsUnfiltered]);
+
+
+    // Step 3: Apply the selected filters to the raw list
+    const upcomingCheckouts = useMemo(() => {
+        const filteredByDepartment = upcomingCheckoutsUnfiltered.filter(o => {
+            if (selectedZaklad === 'all') return true;
+            if (isEmployee(o)) {
+                return o.zaklad === selectedZaklad;
+            }
+            return true; // Show non-employees if department filter is on, unless we want to hide them
+        });
+
+        const filteredByAddress = filteredByDepartment.filter(o => {
+            if (selectedAddress === 'all') return true;
+            return o.address === selectedAddress;
+        });
+
+        return filteredByAddress.sort((a, b) => a.checkOutDateObj.getTime() - b.checkOutDateObj.getTime());
+    }, [upcomingCheckoutsUnfiltered, selectedZaklad, selectedAddress]);
     
     const handleCopy = (occupant: Occupant) => {
         const textToCopy = `${occupant.fullName}, wykwaterowanie: ${formatDate(occupant.checkOutDate)}`;
