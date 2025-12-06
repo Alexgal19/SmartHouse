@@ -104,7 +104,7 @@ const NON_EMPLOYEE_HEADERS = [
     'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'departureReportDate', 'comments', 'status', 'paymentType', 'paymentAmount'
 ];
 
-const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'departments', 'password'];
+const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'departments', 'password', 'visibilityMode'];
 const ADDRESS_HEADERS = ['id', 'locality', 'name', 'coordinatorIds'];
 const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targetType', 'targetId', 'details'];
 const ADDRESS_HISTORY_HEADERS = ['id', 'employeeId', 'employeeName', 'coordinatorName', 'department', 'address', 'checkInDate', 'checkOutDate'];
@@ -381,7 +381,7 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
             gender: employeeData.gender || '',
             address: employeeData.address || '',
             roomNumber: employeeData.roomNumber || '',
-            zaklad: employeeData.zaklad || '',
+            zaklad: employeeData.zaklad || null,
             checkInDate: employeeData.checkInDate,
             checkOutDate: employeeData.checkOutDate,
             contractStartDate: employeeData.contractStartDate ?? null,
@@ -860,6 +860,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
                      row.set('name', coord.name);
                      row.set('isAdmin', String(coord.isAdmin).toUpperCase());
                      row.set('departments', coord.departments.join(','));
+                     row.set('visibilityMode', coord.visibilityMode || 'department');
                      if (coord.password) {
                          row.set('password', coord.password);
                      }
@@ -871,7 +872,8 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
                  await sheet.addRows(toAdd.map(c => ({
                      ...c,
                      departments: c.departments.join(','),
-                     isAdmin: String(c.isAdmin).toUpperCase()
+                     isAdmin: String(c.isAdmin).toUpperCase(),
+                     visibilityMode: c.visibilityMode || 'department',
                  })));
              }
         }
@@ -1241,5 +1243,6 @@ export async function deleteAddressHistoryEntry(historyId: string, actorUid: str
         throw new Error(e instanceof Error ? e.message : "Failed to delete address history entry.");
     }
 }
+
 
 

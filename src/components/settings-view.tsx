@@ -32,6 +32,7 @@ const coordinatorSchema = z.object({
     password: z.string().optional(),
     isAdmin: z.boolean(),
     departments: z.array(z.string()),
+    visibilityMode: z.enum(['department', 'strict']).default('department'),
 });
 
 const formSchema = z.object({
@@ -165,15 +166,15 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full sm:w-64 h-9"
                     />
-                    <Button type="button" variant="outline" size="sm" onClick={() => append({ uid: `coord-${Date.now()}`, name: '', password: '', isAdmin: false, departments: [] })}>
+                    <Button type="button" variant="outline" size="sm" onClick={() => append({ uid: `coord-${Date.now()}`, name: '', password: '', isAdmin: false, departments: [], visibilityMode: 'department' })}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Dodaj koordynatora
                     </Button>
                 </div>
             </div>
 
             <Accordion type="multiple" className="w-full space-y-2">
-                {filteredFields.map((field, index) => (
-                    <AccordionItem value={field.id} key={field.id} className="border rounded-md px-4 animate-fade-in-up" style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}>
+                {filteredFields.map((field) => (
+                    <AccordionItem value={field.id} key={field.id} className="border rounded-md px-4 animate-fade-in-up" style={{ animationDelay: `${field.originalIndex * 50}ms`, animationFillMode: 'backwards' }}>
                         <AccordionTrigger>
                             <div className="flex items-center justify-between w-full pr-4">
                                 <span className="font-semibold">{form.getValues(`coordinators.${field.originalIndex}.name`) || `Nowy koordynator`}</span>
@@ -263,6 +264,25 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                         </FormItem>
                                     )}
                                 />
+                                
+                                <FormField
+                                    control={form.control}
+                                    name={`coordinators.${field.originalIndex}.visibilityMode`}
+                                    render={({ field: modeField }) => (
+                                        <FormItem>
+                                            <FormLabel>Tryb widoczności</FormLabel>
+                                            <Select onValueChange={modeField.onChange} value={modeField.value || 'department'}>
+                                                <FormControl><SelectTrigger><SelectValue placeholder="Wybierz tryb" /></SelectTrigger></FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="department">Globalny (wg zakładów)</SelectItem>
+                                                    <SelectItem value="strict">Ścisły (wg przypisania)</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
 
                                 <div className="flex justify-between items-center">
                                     <FormField

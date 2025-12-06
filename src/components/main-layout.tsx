@@ -172,31 +172,43 @@ export default function MainLayout({
             return { employees: null, nonEmployees: null, settings: rawSettings, addressHistory: addressHistory };
         }
 
+        const coordinator = rawSettings.coordinators.find(c => c.uid === selectedCoordinatorId);
         const shouldFilter = !currentUser.isAdmin || (currentUser.isAdmin && selectedCoordinatorId !== 'all');
+        const isStrict = shouldFilter && coordinator?.visibilityMode === 'strict';
 
         if (!shouldFilter) {
             return { employees: rawEmployees, nonEmployees: rawNonEmployees, settings: rawSettings, addressHistory: addressHistory };
         }
         
-        const coordinator = rawSettings.coordinators.find(c => c.uid === selectedCoordinatorId);
         if (!coordinator) {
             return { employees: [], nonEmployees: [], settings: { ...rawSettings, addresses: [] }, addressHistory: [] };
         }
-        
-        const coordinatorAddresses = new Set(rawSettings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId)).map(a => a.name));
-        const coordinatorDepartments = new Set(coordinator.departments || []);
 
-        const employees = rawEmployees.filter(e => {
-            const livesInCoordinatorsAddress = e.address && coordinatorAddresses.has(e.address);
-            const worksInCoordinatorsDepartment = e.zaklad && coordinatorDepartments.has(e.zaklad);
-            return livesInCoordinatorsAddress || worksInCoordinatorsDepartment;
-        });
-
-        const nonEmployees = rawNonEmployees.filter(ne => ne.address && coordinatorAddresses.has(ne.address));
+        let employees: Employee[];
+        let nonEmployees: NonEmployee[];
+        let filteredAddresses = rawSettings.addresses;
         
+        if (isStrict) {
+            employees = rawEmployees.filter(e => e.coordinatorId === selectedCoordinatorId);
+            nonEmployees = rawNonEmployees.filter(ne => ne.coordinatorId === selectedCoordinatorId);
+            filteredAddresses = rawSettings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
+        } else { // department mode
+            const coordinatorAddresses = new Set(rawSettings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId)).map(a => a.name));
+            const coordinatorDepartments = new Set(coordinator.departments || []);
+            
+            employees = rawEmployees.filter(e => {
+                const livesInCoordinatorsAddress = e.address && coordinatorAddresses.has(e.address);
+                const worksInCoordinatorsDepartment = e.zaklad && coordinatorDepartments.has(e.zaklad);
+                return livesInCoordinatorsAddress || worksInCoordinatorsDepartment;
+            });
+
+            nonEmployees = rawNonEmployees.filter(ne => ne.address && coordinatorAddresses.has(ne.address));
+            filteredAddresses = rawSettings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
+        }
+
         const settings = {
             ...rawSettings,
-            addresses: rawSettings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId)),
+            addresses: filteredAddresses,
         };
 
         const employeeIds = new Set(employees.map(e => e.id));

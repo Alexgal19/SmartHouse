@@ -23,6 +23,7 @@ export type Coordinator = {
     isAdmin: boolean;
     departments: string[];
     password?: string;
+    visibilityMode?: 'department' | 'strict';
 }
 
 export type Settings = {

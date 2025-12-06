@@ -320,6 +320,7 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
                 isAdmin: rowObj.isAdmin === 'TRUE',
                 departments: (rowObj?.departments || '').split(',').filter(Boolean),
                 password: rowObj.password,
+                visibilityMode: (rowObj.visibilityMode as 'department' | 'strict') || 'department',
             }
         });
         
