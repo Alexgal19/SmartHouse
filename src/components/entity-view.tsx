@@ -542,7 +542,21 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     const page = Number(searchParams.get('page') || '1');
     const search = searchParams.get('search') || '';
     const viewMode = (searchParams.get('viewMode') as 'list' | 'grid') || (isMobile ? 'grid' : 'list');
-    const sortBy = (searchParams.get('sortBy') as SortableField) || 'checkInDate';
+    
+    const defaultSortField = useMemo(() => {
+        switch (tab) {
+            case 'active':
+            case 'non-employees':
+                return 'checkInDate';
+            case 'dismissed':
+            case 'history':
+                return 'checkOutDate';
+            default:
+                return 'checkInDate';
+        }
+    }, [tab]);
+
+    const sortBy = (searchParams.get('sortBy') as SortableField) || defaultSortField;
     const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc';
 
     const filters = useMemo(() => ({
@@ -790,7 +804,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                 />
             </CardHeader>
             <CardContent>
-                 <Tabs value={tab} onValueChange={(v) => updateSearchParams({ tab: v, page: 1 })}>
+                 <Tabs value={tab} onValueChange={(v) => updateSearchParams({ tab: v, page: 1, sortBy: '', sortOrder: '' })}>
                     <TabsList className={cn("grid w-full", currentUser.isAdmin ? "grid-cols-4" : "grid-cols-3")}>
                         <TabsTrigger value="active" disabled={isPending}>
                             <Users className="mr-2 h-4 w-4" />Aktywni ({activeEmployees.length})
