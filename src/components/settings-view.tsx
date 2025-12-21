@@ -82,7 +82,7 @@ const AddMultipleDialog = ({ open, onOpenChange, onAdd, listTitle }: { open: boo
 };
 
 
-const ListManager = ({ name, title, fields, append, remove, control }: { name: string; title: string; fields: Record<"id", string>[]; append: (obj: { value: string} | {value: string}[]) => void; remove: (index: number) => void; control: any }) => {
+const ListManager = ({ name, title, fields, append, remove, control }: { name: string; title: string; fields: Record<"id", string>[]; append: (obj: { value: string} | {value: string}[]) => void; remove: (index: number) => void; control: unknown }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isAddMultipleOpen, setIsAddMultipleOpen] = useState(false);
     const watchedValues = useWatch({ control, name });
