@@ -871,8 +871,8 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
                 genders: rawSettings.genders.map(g => ({ value: g })).sort((a, b) => a.value.localeCompare(b.value)),
                 localities: rawSettings.localities.map(l => ({ value: l })).sort((a, b) => a.value.localeCompare(b.value)),
                 paymentTypesNZ: rawSettings.paymentTypesNZ.map(p => ({ value: p })).sort((a, b) => a.value.localeCompare(b.value)),
-                addresses: [...rawSettings.addresses].sort((a, b) => a.name.localeCompare(b.name)),
-                coordinators: [...rawSettings.coordinators].sort((a, b) => a.name.localeCompare(b.name)).map(c => ({ ...c, password: '' })),
+                addresses: [...rawSettings.addresses].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
+                coordinators: [...rawSettings.coordinators].sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(c => ({ ...c, password: '' })),
             });
         }
     }, [rawSettings, form]);
