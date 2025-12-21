@@ -551,7 +551,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
         let items = [...rawHousingData];
         
         if (filters.name) {
-            items = items.filter(item => item.name.toLowerCase().includes(filters.name.toLowerCase()));
+            items = items.filter(item => (item.name || '').toLowerCase().includes(filters.name.toLowerCase()));
         }
         if (filters.locality !== 'all') {
             items = items.filter(item => item.locality === filters.locality);
