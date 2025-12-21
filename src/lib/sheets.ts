@@ -309,7 +309,7 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
                 name: rowObj.name,
                 locality: rowObj.locality,
                 coordinatorIds: (rowObj?.coordinatorIds || '').split(',').filter(Boolean),
-                rooms: roomsByAddressId.get(rowObj.id) || [],
+                rooms: [...(roomsByAddressId.get(rowObj.id) || [])],
             }
         });
 
@@ -431,5 +431,3 @@ export async function deleteAddressHistoryEntry(historyId: string) {
         throw new Error('Address history entry not found');
     }
 }
-
-    

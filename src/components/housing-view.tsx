@@ -257,7 +257,7 @@ const AddressDetailView = ({
                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
                             <div className="space-y-4">
                                 <h3 className="font-semibold">Pokoje</h3>
-                                {aggregatedAddressesData.rooms.length > 0 ? aggregatedAddressesData.rooms.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(room => (
+                                {aggregatedAddressesData.rooms.length > 0 ? aggregatedAddressesData.rooms.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true })).map(room => (
                                     <div
                                         key={room.id}
                                         className={cn(
@@ -427,7 +427,7 @@ const MobileAddressCard = ({ address, onOccupantClick, style }: { address: Housi
                         <div>
                             <h4 className="text-sm font-semibold mb-2">Pokoje</h4>
                             <div className="space-y-2">
-                                {address.rooms.sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(room => (
+                                {address.rooms.sort((a,b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true })).map(room => (
                                     <div key={room.id} className={cn("rounded-md border p-3", room.available > 0 && "bg-green-500/10 border-green-500/20")}>
                                         <div className="flex justify-between items-center font-medium text-sm">
                                             <div className="flex items-center gap-2">
