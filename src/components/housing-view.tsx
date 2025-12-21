@@ -560,7 +560,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
             items = items.filter(item => item.available > 0);
         }
         
-        items.sort((a,b) => a.name.localeCompare(b.name));
+        items.sort((a,b) => (a.name || '').localeCompare(b.name || ''));
 
         return items;
     }, [rawHousingData, filters]);
@@ -700,3 +700,5 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
         </div>
     );
 }
+
+    
