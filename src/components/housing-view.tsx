@@ -651,7 +651,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                         <FilterControls filters={filters} onFilterChange={handleFilterChange} settings={settings} currentUser={currentUser}/>
                     </div>
                     <ScrollArea className="h-[calc(100vh-25rem)] lg:h-[calc(100vh-24rem)]">
-                        <Accordion type="multiple" className="w-full" >
+                        <Accordion type="multiple" className="w-full" defaultValue={groupedByLocality.map(g => g[0])} >
                              {groupedByLocality.map(([locality, addresses]) => (
                                 <AccordionItem value={locality} key={locality} className="border-b-0">
                                     <AccordionTrigger className="text-lg font-bold sticky top-0 bg-background py-3 z-10 hover:no-underline">{locality}</AccordionTrigger>
