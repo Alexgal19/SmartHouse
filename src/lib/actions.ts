@@ -172,9 +172,8 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         }
     }
     
-    const validDepositValues: Employee['depositReturned'][] = ['Tak', 'Nie', 'Nie dotyczy'];
-    const depositReturnedValue = String(plainObject.depositReturned || '');
-    const depositReturned = validDepositValues.includes(depositReturnedValue as Employee['depositReturned']) ? depositReturnedValue as Employee['depositReturned'] : null;
+    const validDepositValues = ['Tak', 'Nie', 'Nie dotyczy'];
+    const depositReturned = validDepositValues.includes(plainObject.depositReturned as string) ? plainObject.depositReturned as Employee['depositReturned'] : null;
 
     const newEmployee: Employee = {
         id: id,
@@ -410,6 +409,10 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
 
 export async function updateEmployee(employeeId: string, updates: Partial<Employee>, actorUid: string): Promise<void> {
     try {
+        if (updates.status === 'dismissed' && !updates.checkOutDate) {
+            throw new Error('Data wymeldowania jest wymagana przy zwalnianiu pracownika.');
+        }
+
         const { settings, addressHistory } = await getAllSheetsData(actorUid, true);
         const actor = findActor(actorUid, settings);
 
@@ -1243,6 +1246,7 @@ export async function deleteAddressHistoryEntry(historyId: string, actorUid: str
         throw new Error(e instanceof Error ? e.message : "Failed to delete address history entry.");
     }
 }
+
 
 
 
