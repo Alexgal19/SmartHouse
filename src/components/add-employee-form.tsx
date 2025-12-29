@@ -46,7 +46,7 @@ import { Combobox } from '@/components/ui/combobox';
 import { useToast } from '@/hooks/use-toast';
 import { useMainLayout } from './main-layout';
 
-const formSchema = z.object({
+const createFormSchema = (isInitiallyFromBok: boolean) => z.object({
   fullName: z.string().min(3, "Imię i nazwisko musi mieć co najmniej 3 znaki."),
   coordinatorId: z.string().min(1, "Koordynator jest wymagany."),
   locality: z.string().optional(),
@@ -76,16 +76,22 @@ const formSchema = z.object({
   bokStatus: z.string().nullable().optional(),
   bokStatusDate: z.date().nullable().optional(),
 }).superRefine((data, ctx) => {
-    const isBok = data.coordinatorId === 'BOK';
-    
-    // This validation applies only when NOT assigned to BOK
-    if (!isBok) {
+    // This logic applies only when a person is being edited, NOT when they are being assigned from BOK for the first time.
+    const isBeingAssigned = isInitiallyFromBok && data.coordinatorId !== 'BOK';
+    const isRegularEdit = !isInitiallyFromBok && data.coordinatorId !== 'BOK';
+
+    if (isRegularEdit) {
         if (!data.locality) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['locality'], message: 'Miejscowość jest wymagana.' });
         if (!data.address) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['address'], message: 'Adres jest wymagany.' });
         if (!data.roomNumber) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['roomNumber'], message: 'Pokój jest wymagany.' });
         if (!data.zaklad) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['zaklad'], message: 'Zakład jest wymagany.' });
         if (!data.nationality) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['nationality'], message: 'Narodowość jest wymagana.' });
         if (!data.gender) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['gender'], message: 'Płeć jest wymagana.' });
+    }
+    
+    if (isBeingAssigned) {
+        // When assigning from BOK, only the coordinator is required. We don't check other fields.
+        return;
     }
 
     const hasDeductions = 
@@ -106,7 +112,7 @@ const formSchema = z.object({
 });
 
 
-export type EmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate' | 'contractStartDate' | 'contractEndDate' | 'departureReportDate' | 'deductionEntryDate' | 'bokStatusDate' | 'locality'> & {
+export type EmployeeFormData = Omit<z.infer<ReturnType<typeof createFormSchema>>, 'checkInDate' | 'checkOutDate' | 'contractStartDate' | 'contractEndDate' | 'departureReportDate' | 'deductionEntryDate' | 'bokStatusDate' | 'locality'> & {
   checkInDate: string | null;
   checkOutDate?: string | null;
   contractStartDate?: string | null;
@@ -229,6 +235,12 @@ export function AddEmployeeForm({
 }) {
   const { toast } = useToast();
   const { handleDismissEmployee } = useMainLayout();
+
+  // Determine if the employee is initially from BOK when the form opens
+  const [isInitiallyFromBok] = useState(employee?.coordinatorId === 'BOK');
+  
+  const formSchema = useMemo(() => createFormSchema(isInitiallyFromBok), [isInitiallyFromBok]);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema, {
       // We need to resolve the entire form, so conditional logic in schema works.

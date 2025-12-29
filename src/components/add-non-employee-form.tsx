@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -39,7 +40,7 @@ import { format, parse, isValid, parseISO } from 'date-fns';
 import { Combobox } from './ui/combobox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 
-const formSchema = z.object({
+const createFormSchema = (isInitiallyFromBok: boolean) => z.object({
   fullName: z.string().min(3, "Imię i nazwisko musi mieć co najmniej 3 znaki."),
   coordinatorId: z.string().min(1, "Koordynator jest wymagany."),
   locality: z.string().optional(),
@@ -56,17 +57,24 @@ const formSchema = z.object({
   bokStatus: z.string().nullable().optional(),
   bokStatusDate: z.date().nullable().optional(),
 }).superRefine((data, ctx) => {
-    const isBok = data.coordinatorId === 'BOK';
-    if (!isBok) {
+    const isBeingAssigned = isInitiallyFromBok && data.coordinatorId !== 'BOK';
+    const isRegularEdit = !isInitiallyFromBok && data.coordinatorId !== 'BOK';
+
+    if (isRegularEdit) {
         if (!data.locality) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['locality'], message: 'Miejscowość jest wymagana.' });
         if (!data.address) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['address'], message: 'Adres jest wymagany.' });
         if (!data.roomNumber) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['roomNumber'], message: 'Pokój jest wymagany.' });
         if (!data.nationality) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['nationality'], message: 'Narodowość jest wymagana.' });
         if (!data.gender) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['gender'], message: 'Płeć jest wymagana.' });
     }
+
+    if (isBeingAssigned) {
+        // When assigning from BOK, only the coordinator is required. We don't check other fields.
+        return;
+    }
 });
 
-type NonEmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate' | 'locality' | 'departureReportDate' | 'bokStatusDate'> & {
+type NonEmployeeFormData = Omit<z.infer<ReturnType<typeof createFormSchema>>, 'checkInDate' | 'checkOutDate' | 'locality' | 'departureReportDate' | 'bokStatusDate'> & {
   checkInDate: string | null;
   checkOutDate?: string | null;
   departureReportDate?: string | null;
@@ -171,6 +179,9 @@ export function AddNonEmployeeForm({
   nonEmployee: NonEmployee | null;
   currentUser: SessionData;
 }) {
+  const [isInitiallyFromBok] = useState(nonEmployee?.coordinatorId === 'BOK');
+  const formSchema = useMemo(() => createFormSchema(isInitiallyFromBok), [isInitiallyFromBok]);
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
