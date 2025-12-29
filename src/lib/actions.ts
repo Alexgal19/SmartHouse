@@ -331,7 +331,7 @@ const createNotification = async (
         }
 
         const recipient = settings.coordinators.find(c => c.uid === recipientId);
-        if (!recipient) return;
+        if (!recipient || recipient.uid === 'BOK') return;
 
         const { message, type } = generateSmartNotificationMessage(actor.name, entity, notificationAction, readableChanges, settings);
         
@@ -435,7 +435,9 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
         const serialized = serializeEmployee(newEmployee);
         await sheet.addRow(serialized, { raw: false, insert: true });
         
-        await createNotification(actor, 'dodał', newEmployee, settings);
+        if (newEmployee.coordinatorId !== 'BOK') {
+          await createNotification(actor, 'dodał', newEmployee, settings);
+        }
     } catch (e: unknown) {
         console.error("Error adding employee:", e);
         throw new Error(e instanceof Error ? e.message : "Failed to add employee.");
@@ -467,6 +469,8 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
             throw new Error('Could not deserialize original employee data.');
         }
 
+        const isAssigningFromBok = originalEmployee.coordinatorId === 'BOK' && updates.coordinatorId && updates.coordinatorId !== 'BOK';
+
         // --- History Logic ---
         if (updates.address && updates.address !== originalEmployee.address && updates.checkInDate) {
             const lastHistoryEntry = addressHistory
@@ -490,13 +494,13 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         }
         
         // --- Assignment History ---
-        if (updates.coordinatorId && updates.coordinatorId !== originalEmployee.coordinatorId && originalEmployee.coordinatorId === 'BOK') {
+        if (isAssigningFromBok) {
              const assignmentSheet = await getSheet(SHEET_NAME_ASSIGNMENT_HISTORY, ASSIGNMENT_HISTORY_HEADERS);
              const newAssignment: Omit<AssignmentHistory, 'id'> = {
                  employeeId: employeeId,
                  employeeName: originalEmployee.fullName,
                  fromCoordinatorId: originalEmployee.coordinatorId,
-                 toCoordinatorId: updates.coordinatorId,
+                 toCoordinatorId: updates.coordinatorId!,
                  assignedBy: actor.uid,
                  assignmentDate: new Date().toISOString(),
              };
@@ -517,6 +521,8 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
             if (oldValue !== null && oldValue !== undefined) {
                  if (key === 'deductionReason' && Array.isArray(oldValue)) {
                     oldValStr = JSON.stringify(oldValue);
+                } else if (key === 'coordinatorId') {
+                    oldValStr = settings.coordinators.find(c => c.uid === oldValue)?.name || (oldValue as string);
                 } else if (areDates && isValid(new Date(oldValue as string))) {
                     oldValStr = format(new Date(oldValue as string), 'dd-MM-yyyy');
                 } else {
@@ -528,10 +534,10 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
             if (newValue !== null && newValue !== undefined) {
                  if (key === 'deductionReason' && Array.isArray(newValue)) {
                     newValStr = JSON.stringify(newValue);
-                } else if (areDates && isValid(new Date(newValue as string))) {
-                    newValStr = format(new Date(newValue as string), 'dd-MM-yyyy');
                 } else if (key === 'coordinatorId') {
                     newValStr = settings.coordinators.find(c => c.uid === newValue)?.name || (newValue as string);
+                } else if (areDates && isValid(new Date(newValue as string))) {
+                    newValStr = format(new Date(newValue as string), 'dd-MM-yyyy');
                 }
                  else {
                     newValStr = String(newValue);
@@ -606,7 +612,9 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id' | '
         const serialized = serializeNonEmployee(newNonEmployee);
         await sheet.addRow(serialized, { raw: false, insert: true });
         
-        await createNotification(actor, 'dodał', newNonEmployee, settings);
+         if (newNonEmployee.coordinatorId !== 'BOK') {
+            await createNotification(actor, 'dodał', newNonEmployee, settings);
+        }
 
     } catch (e: unknown) {
         console.error("Error adding non-employee:", e);
@@ -630,6 +638,8 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
         const row = rows[rowIndex];
         const originalNonEmployee = row.toObject() as NonEmployee;
         
+        const isAssigningFromBok = originalNonEmployee.coordinatorId === 'BOK' && updates.coordinatorId && updates.coordinatorId !== 'BOK';
+        
         if (updates.address && updates.address !== originalNonEmployee.address && updates.checkInDate) {
             const lastHistoryEntry = addressHistory
                 .filter(h => h.employeeId === id && h.address === originalNonEmployee.address && h.checkInDate === originalNonEmployee.checkInDate)
@@ -649,6 +659,19 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
                     checkOutDate: updates.checkInDate,
                 });
             }
+        }
+
+        if (isAssigningFromBok) {
+             const assignmentSheet = await getSheet(SHEET_NAME_ASSIGNMENT_HISTORY, ASSIGNMENT_HISTORY_HEADERS);
+             const newAssignment: Omit<AssignmentHistory, 'id'> = {
+                 employeeId: id,
+                 employeeName: originalNonEmployee.fullName,
+                 fromCoordinatorId: originalNonEmployee.coordinatorId,
+                 toCoordinatorId: updates.coordinatorId!,
+                 assignedBy: actor.uid,
+                 assignmentDate: new Date().toISOString(),
+             };
+             await assignmentSheet.addRow({id: `assign-${Date.now()}`, ...newAssignment});
         }
         
         const updatedNonEmployeeData: NonEmployee = { ...originalNonEmployee, ...updates, id: originalNonEmployee.id, fullName: originalNonEmployee.fullName };

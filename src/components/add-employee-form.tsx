@@ -77,6 +77,8 @@ const formSchema = z.object({
   bokStatusDate: z.date().nullable().optional(),
 }).superRefine((data, ctx) => {
     const isBok = data.coordinatorId === 'BOK';
+    
+    // This validation applies only when NOT assigned to BOK
     if (!isBok) {
         if (!data.locality) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['locality'], message: 'Miejscowość jest wymagana.' });
         if (!data.address) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['address'], message: 'Adres jest wymagany.' });
@@ -228,7 +230,9 @@ export function AddEmployeeForm({
   const { toast } = useToast();
   const { handleDismissEmployee } = useMainLayout();
   const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema, {
+      // We need to resolve the entire form, so conditional logic in schema works.
+    }),
     defaultValues: {
       fullName: '',
       coordinatorId: '',
@@ -380,7 +384,10 @@ export function AddEmployeeForm({
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     
-    if (employee && !isBokCoordinator) { // Check only on edit
+    // If we are just assigning from BOK, we don't need to check for address change date.
+    const isAssigningFromBok = employee?.coordinatorId === 'BOK' && values.coordinatorId !== 'BOK';
+
+    if (employee && !isAssigningFromBok) {
         const addressChanged = values.address !== employee.address;
         const checkInDateChanged = values.checkInDate?.getTime() !== parseDate(employee.checkInDate)?.getTime();
 
