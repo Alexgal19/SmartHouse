@@ -18,11 +18,6 @@ const nextConfig = {
         // !! WARN !!
         ignoreBuildErrors: true,
     },
-    env: {
-        WEBPUSH_PUBLIC_KEY: process.env.WEBPUSH_PUBLIC_KEY,
-        WEBPUSH_PRIVATE_KEY: process.env.WEBPUSH_PRIVATE_KEY,
-        WEBPUSH_SUBJECT: process.env.WEBPUSH_SUBJECT,
-    }
 };
 
 module.exports = nextConfig;
