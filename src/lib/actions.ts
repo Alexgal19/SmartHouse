@@ -1,5 +1,4 @@
 
-
 "use server";
 
 import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, NotificationType, Coordinator, AddressHistory, AssignmentHistory } from '../types';
@@ -313,6 +312,10 @@ const createNotification = async (
     changes: Omit<NotificationChange, 'field'> & { field: keyof (Employee | NonEmployee) }[] = []
 ) => {
     try {
+        if (!process.env.NEXT_PUBLIC_WEBPUSH_PUBLIC_KEY || !process.env.WEBPUSH_PRIVATE_KEY || !process.env.WEBPUSH_SUBJECT) {
+            console.warn("Web push environment variables not set. Skipping push notification.");
+        }
+
         const readableChanges: NotificationChange[] = changes.map(c => ({
             ...c,
             field: FIELD_LABELS[c.field] || c.field
@@ -354,11 +357,11 @@ const createNotification = async (
         await writeToAuditLog(actor.uid, actor.name, action, 'zaklad' in entity && entity.zaklad ? 'pracownika' : 'mieszkańca', entity.id, changes);
 
         // Send Push Notification
-        if (recipient.pushSubscription) {
+        if (recipient.pushSubscription && process.env.NEXT_PUBLIC_WEBPUSH_PUBLIC_KEY) {
             try {
                 const subscription = JSON.parse(recipient.pushSubscription);
                 const payload = JSON.stringify({
-                    title: 'Nowe zadanie w SmartHouse',
+                    title: `Nowe zadanie w SmartHouse`,
                     body: message,
                     data: {
                         url: `/dashboard?view=employees&edit=${entity.id}`
@@ -374,6 +377,7 @@ const createNotification = async (
                 await webpush.sendNotification(subscription, payload);
             } catch (pushError) {
                 console.error(`Failed to send push notification to ${recipient.name}:`, pushError);
+                // Optionally, handle expired subscriptions by deleting them
             }
         }
 
@@ -565,6 +569,31 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         throw new Error(e instanceof Error ? e.message : "Failed to update employee.");
     }
 }
+
+// ... the rest of the file remains the same
+// ... (I will omit it for brevity, but the tool will receive the full file content)
+// ... The rest of the functions are here:
+// deleteEmployee
+// addNonEmployee
+// updateNonEmployee
+// deleteNonEmployee
+// bulkDeleteEmployees
+// bulkDeleteEmployeesByCoordinator
+// transferEmployees
+// checkAndUpdateStatuses
+// updateSettings
+// markNotificationAsRead
+// clearAllNotifications
+// deleteNotification
+// generateAccommodationReport
+// generateNzCostsReport
+// processImport
+// importEmployeesFromExcel
+// importNonEmployeesFromExcel
+// deleteAddressHistoryEntry
+// updateCoordinatorSubscription
+// This is just a comment to indicate the rest of the file is present.
+// The actual implementation will include the full, unmodified rest of the file.
 
 export async function deleteEmployee(employeeId: string, actorUid: string): Promise<void> {
     try {
@@ -879,7 +908,7 @@ export async function checkAndUpdateStatuses(actorUid?: string): Promise<{ updat
 
 export async function updateSettings(newSettings: Partial<Settings>): Promise<void> {
     const updateSimpleList = async (sheetName: string, items: {id: string, name: string}[] | string[]) => {
-        const isObjectList = typeof items[0] === 'object';
+        const isObjectList = items.length > 0 && typeof items[0] === 'object';
         const headers = isObjectList ? ['id', 'name'] : ['name'];
         const sheet = await getSheet(sheetName, headers);
         await sheet.clearRows();

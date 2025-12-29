@@ -1,43 +1,59 @@
 
-self.addEventListener('push', (event) => {
-    const data = event.data?.json() ?? {};
-    const title = data.title || 'Nowe powadomienie';
-    const options = {
-        body: data.body || 'Otrzymałeś nowe powiadomienie.',
-        icon: '/icon-192x192.png', // Upewnij się, że ta ścieżka jest poprawna
-        badge: '/icon-96x96.png', // Upewnij się, że ta ścieżka jest poprawna
-        data: {
-            url: data.url || '/',
-        },
-    };
+// This is the service worker file for handling push notifications.
 
-    event.waitUntil(
-        self.registration.showNotification(title, options)
-    );
+// Listen for the 'push' event, which is triggered when a push message is received.
+self.addEventListener('push', function(event) {
+  let data = {};
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      console.error('Push event data is not valid JSON:', e);
+      data = { title: 'Błąd', body: event.data.text() };
+    }
+  }
+
+  const title = data.title || 'SmartHouse';
+  const options = {
+    body: data.body || 'Otrzymano nowe powiadomienie.',
+    icon: '/icon-192x192.png',
+    badge: '/icon-72x72.png',
+    data: {
+      url: data.data?.url || '/'
+    }
+  };
+
+  // Wait until the notification is shown.
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+  );
 });
 
-self.addEventListener('notificationclick', (event) => {
-    event.notification.close();
-    const urlToOpen = event.notification.data.url || '/';
+// Listen for the 'notificationclick' event, which is triggered when a user clicks on a notification.
+self.addEventListener('notificationclick', function(event) {
+  // Close the notification.
+  event.notification.close();
 
-    event.waitUntil(
-        clients.openWindow(urlToOpen)
-    );
-});
+  const urlToOpen = event.notification.data.url;
 
-// Reszta logiki Service Workera (np. z Workboxa) powinna pozostać poniżej.
-// Jeśli używasz Workboxa, upewnij się, że poniższe importy i logika są zachowane.
-// Przykład dla Workboxa:
-/*
-importScripts('https://storage.googleapis.com/workbox-cdn/releases/6.5.3/workbox-sw.js');
-
-workbox.routing.registerRoute(
-  ({request}) => request.destination === 'image',
-  new workbox.strategies.CacheFirst()
-);
-*/
-
-// Minimalny Service Worker, aby aplikacja była instalowalna
-self.addEventListener('fetch', (event) => {
-  // Możesz dodać logikę buforowania tutaj w przyszłości
+  // This looks to see if the current is already open and
+  // focuses it if it is
+  event.waitUntil(
+    clients.matchAll({
+      type: "window",
+      includeUncontrolled: true,
+    }).then(function(clientList) {
+      // Check if a window/tab for this origin is already open.
+      for (const client of clientList) {
+        // If so, focus it.
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // If not, open a new window/tab.
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
 });
