@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -40,7 +41,7 @@ export function Combobox({
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
 
-  const selectedOption = options.find((option) => option.value.toLowerCase() === value?.toLowerCase())
+  const selectedOption = options.find((option) => option.value?.toLowerCase() === value?.toLowerCase())
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -78,7 +79,7 @@ export function Combobox({
                   <Check
                     className={cn(
                       "mr-2 h-4 w-4",
-                      value?.toLowerCase() === option.value.toLowerCase() ? "opacity-100" : "opacity-0"
+                      value?.toLowerCase() === option.value?.toLowerCase() ? "opacity-100" : "opacity-0"
                     )}
                   />
                   {option.label}
