@@ -27,6 +27,11 @@ export type Coordinator = {
     pushSubscription?: string | null;
 }
 
+export type BOKStatus = {
+    id: string;
+    name: string;
+}
+
 export type Settings = {
     id: 'global-settings';
     addresses: Address[];
@@ -36,6 +41,7 @@ export type Settings = {
     genders: string[];
     localities: string[];
     paymentTypesNZ: string[];
+    bokStatuses: BOKStatus[];
 }
 
 export type ChartConfig = {
@@ -84,6 +90,9 @@ export type Employee = {
     deductionNo30Days: number | null; // potracenie_30_dni
     deductionReason: DeductionReason[] | undefined;
     deductionEntryDate?: string | null;
+    // BOK specific fields
+    bokStatus: string | null;
+    bokStatusDate: string | null; // YYYY-MM-DD
 };
 
 export type NonEmployee = {
@@ -101,6 +110,9 @@ export type NonEmployee = {
     status: 'active' | 'dismissed';
     paymentType: string | null;
     paymentAmount: number | null;
+     // BOK specific fields
+    bokStatus: string | null;
+    bokStatusDate: string | null; // YYYY-MM-DD
 };
 
 export type AddressHistory = {
@@ -114,6 +126,15 @@ export type AddressHistory = {
     checkOutDate: string | null;
 };
 
+export type AssignmentHistory = {
+    id: string;
+    employeeId: string;
+    employeeName: string;
+    fromCoordinatorId: string;
+    toCoordinatorId: string;
+    assignedBy: string; // UID of the user who made the assignment
+    assignmentDate: string; // ISO date string
+}
 
 export type NotificationChange = {
     field: string; // User-friendly field name

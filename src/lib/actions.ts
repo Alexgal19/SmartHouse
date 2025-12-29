@@ -2,10 +2,11 @@
 
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, NotificationType, Coordinator, AddressHistory } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, NotificationType, Coordinator, AddressHistory, AssignmentHistory } from '../types';
 import { getSheet, getAllSheetsData, addAddressHistoryEntry as addHistoryToAction, updateAddressHistoryEntry as updateHistoryToAction, deleteAddressHistoryEntry as deleteHistoryFromSheet } from './sheets';
 import { format, isPast, isValid, getDaysInMonth, parseISO, differenceInDays, max, min, parse as dateFnsParse, lastDayOfMonth } from 'date-fns';
 import * as XLSX from 'xlsx';
+import webpush from 'web-push';
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
 const SHEET_NAME_NON_EMPLOYEES = 'NonEmployees';
@@ -20,6 +21,8 @@ const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_LOCALITIES = 'Localities';
 const SHEET_NAME_PAYMENT_TYPES_NZ = 'PaymentTypesNZ';
 const SHEET_NAME_ADDRESS_HISTORY = 'AddressHistory';
+const SHEET_NAME_BOK_STATUSES = 'BOKStatuses';
+const SHEET_NAME_ASSIGNMENT_HISTORY = 'AssignmentHistory';
 
 
 const serializeDate = (date?: string | null): string => {
@@ -37,7 +40,8 @@ const EMPLOYEE_HEADERS = [
     'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 
     'zaklad', 'checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 
     'departureReportDate', 'comments', 'status',
-    'depositReturned', 'depositReturnAmount', 'deductionRegulation', 'deductionNo4Months', 'deductionNo30Days', 'deductionReason', 'deductionEntryDate'
+    'depositReturned', 'depositReturnAmount', 'deductionRegulation', 'deductionNo4Months', 'deductionNo30Days', 'deductionReason', 'deductionEntryDate',
+    'bokStatus', 'bokStatusDate'
 ];
 
 const serializeEmployee = (employee: Partial<Employee>): Record<string, string | number | boolean> => {
@@ -52,7 +56,7 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
             continue;
         }
 
-        if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'deductionEntryDate'].includes(key)) {
+        if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'deductionEntryDate', 'bokStatusDate'].includes(key)) {
             serialized[key] = serializeDate(value as string);
         } else if (key === 'deductionReason') {
             serialized[key] = Array.isArray(value) ? JSON.stringify(value) : '';
@@ -70,7 +74,7 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
 const serializeNonEmployee = (nonEmployee: Partial<NonEmployee>): Record<string, string | number | boolean> => {
     const serialized: Record<string, string | number | boolean | null> = {};
     for (const [key, value] of Object.entries(nonEmployee)) {
-        if (['checkInDate', 'checkOutDate', 'departureReportDate'].includes(key)) {
+        if (['checkInDate', 'checkOutDate', 'departureReportDate', 'bokStatusDate'].includes(key)) {
             serialized[key] = serializeDate(value as string);
         } else if (value !== null && value !== undefined) {
             serialized[key] = String(value);
@@ -101,13 +105,16 @@ const serializeNotification = (notification: Notification): Record<string, strin
 };
 
 const NON_EMPLOYEE_HEADERS = [
-    'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'departureReportDate', 'comments', 'status', 'paymentType', 'paymentAmount'
+    'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'departureReportDate', 'comments', 'status', 'paymentType', 'paymentAmount',
+    'bokStatus', 'bokStatusDate'
 ];
 
-const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'departments', 'password', 'visibilityMode'];
+const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'departments', 'password', 'visibilityMode', 'pushSubscription'];
 const ADDRESS_HEADERS = ['id', 'locality', 'name', 'coordinatorIds'];
 const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targetType', 'targetId', 'details'];
 const ADDRESS_HISTORY_HEADERS = ['id', 'employeeId', 'employeeName', 'coordinatorName', 'department', 'address', 'checkInDate', 'checkOutDate'];
+const ASSIGNMENT_HISTORY_HEADERS = ['id', 'employeeId', 'employeeName', 'fromCoordinatorId', 'toCoordinatorId', 'assignedBy', 'assignmentDate'];
+
 
 const safeFormat = (dateValue: unknown): string | null => {
     if (dateValue === null || dateValue === undefined || dateValue === '') {
@@ -198,6 +205,8 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         deductionNo30Days: plainObject.deductionNo30Days ? parseFloat(plainObject.deductionNo30Days as string) : null,
         deductionReason: deductionReason,
         deductionEntryDate: safeFormat(plainObject.deductionEntryDate),
+        bokStatus: (plainObject.bokStatus as string | null) || null,
+        bokStatusDate: safeFormat(plainObject.bokStatusDate),
     };
     
     return newEmployee;
@@ -231,13 +240,16 @@ const FIELD_LABELS: Record<string, string> = {
     checkInDate: "Data zameldowania",
     checkOutDate: "Data wymeldowania",
     status: "Status",
+    bokStatus: "Status BOK",
+    bokStatusDate: "Data statusu BOK",
 };
 
 const generateSmartNotificationMessage = (
     actorName: string,
     entity: (Employee | NonEmployee),
-    action: 'dodał' | 'zaktualizował' | 'trwale usunął' | 'automatycznie zwolnił' | 'przeniósł',
-    changes: NotificationChange[] = []
+    action: 'dodał' | 'zaktualizował' | 'trwale usunął' | 'automatycznie zwolnił' | 'przypisał do Ciebie' | 'przeniósł',
+    changes: NotificationChange[] = [],
+    settings?: Settings
 ): { message: string, type: NotificationType } => {
     const entityType = 'zaklad' in entity && entity.zaklad ? 'pracownika' : 'mieszkańca';
     let message = '';
@@ -256,12 +268,20 @@ const generateSmartNotificationMessage = (
             message = `Automatycznie zwolnił ${entityType} ${entity.fullName} z powodu upływu daty wymeldowania.`;
             type = 'warning';
             break;
+        case 'przypisał do Ciebie':
+            message = `Przypisał do Ciebie nowego ${entityType}: ${entity.fullName}.`;
+            type = 'info';
+            break;
         case 'zaktualizował': {
             const statusChange = changes.find(c => c.field === FIELD_LABELS['status']);
             const addressChange = changes.find(c => c.field === FIELD_LABELS['address']);
             const checkoutChange = changes.find(c => c.field === FIELD_LABELS['checkOutDate']);
+            const coordinatorChange = changes.find(c => c.field === FIELD_LABELS['coordinatorId']);
 
-            if (statusChange && statusChange.newValue === 'dismissed') {
+            if (coordinatorChange && coordinatorChange.oldValue === 'BOK') {
+                 message = `Przypisał do Ciebie nowego ${entityType}: ${entity.fullName}.`;
+                 type = 'info';
+            } else if (statusChange && statusChange.newValue === 'dismissed') {
                 message = `Zwolnił ${entityType} ${entity.fullName}.`;
                 type = 'warning';
             } else if (addressChange) {
@@ -287,7 +307,7 @@ const generateSmartNotificationMessage = (
 
 const createNotification = async (
     actor: Coordinator,
-    action: 'dodał' | 'zaktualizował' | 'trwale usunął' | 'automatycznie zwolnił' | 'przeniósł',
+    action: 'dodał' | 'zaktualizował' | 'trwale usunął' | 'automatycznie zwolnił' | 'przypisał do Ciebie' | 'przeniósł',
     entity: (Employee | NonEmployee),
     settings: Settings,
     changes: Omit<NotificationChange, 'field'> & { field: keyof (Employee | NonEmployee) }[] = []
@@ -298,50 +318,64 @@ const createNotification = async (
             field: FIELD_LABELS[c.field] || c.field
         }));
 
-        const { message, type } = generateSmartNotificationMessage(actor.name, entity, action, readableChanges);
+        const coordinatorChange = changes.find(c => c.field === 'coordinatorId');
         
-        const responsibleCoordinator = settings.coordinators.find(c => c.uid === entity.coordinatorId);
-        const admins = settings.coordinators.filter(c => c.isAdmin);
+        let recipientId: string;
+        let notificationAction = action;
 
-        const recipients = new Set<Coordinator>();
-
-        // Add responsible coordinator
-        if (responsibleCoordinator) {
-            recipients.add(responsibleCoordinator);
+        if (coordinatorChange && coordinatorChange.oldValue === 'BOK') {
+            recipientId = coordinatorChange.newValue;
+            notificationAction = 'przypisał do Ciebie';
+        } else {
+            recipientId = entity.coordinatorId;
         }
 
-        // Add all admins for important events
-        if (['success', 'destructive', 'warning'].includes(type)) {
-            admins.forEach(admin => recipients.add(admin));
-        }
+        const recipient = settings.coordinators.find(c => c.uid === recipientId);
+        if (!recipient) return;
 
-        if (recipients.size === 0) {
-            return;
-        }
+        const { message, type } = generateSmartNotificationMessage(actor.name, entity, notificationAction, readableChanges, settings);
         
-        const notifications: Notification[] = [];
-        for (const recipient of recipients) {
-             notifications.push({
-                id: `notif-${Date.now()}-${Math.random()}`,
-                message,
-                entityId: entity.id,
-                entityName: entity.fullName,
-                actorName: actor.name,
-                recipientId: recipient.uid,
-                createdAt: new Date().toISOString(),
-                isRead: false,
-                type: type,
-                changes: readableChanges
-            });
-        }
+        const notification: Notification = {
+            id: `notif-${Date.now()}-${Math.random()}`,
+            message,
+            entityId: entity.id,
+            entityName: entity.fullName,
+            actorName: actor.name,
+            recipientId: recipient.uid,
+            createdAt: new Date().toISOString(),
+            isRead: false,
+            type: type,
+            changes: readableChanges
+        };
         
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
-        const serializedNotifications = notifications.map(serializeNotification);
-        if(serializedNotifications.length > 0) {
-            await sheet.addRows(serializedNotifications);
-        }
+        await sheet.addRow(serializeNotification(notification));
         
         await writeToAuditLog(actor.uid, actor.name, action, 'zaklad' in entity && entity.zaklad ? 'pracownika' : 'mieszkańca', entity.id, changes);
+
+        // Send Push Notification
+        if (recipient.pushSubscription) {
+            try {
+                const subscription = JSON.parse(recipient.pushSubscription);
+                const payload = JSON.stringify({
+                    title: 'Nowe zadanie w SmartHouse',
+                    body: message,
+                    data: {
+                        url: `/dashboard?view=employees&edit=${entity.id}`
+                    }
+                });
+
+                webpush.setVapidDetails(
+                    process.env.WEBPUSH_SUBJECT!,
+                    process.env.NEXT_PUBLIC_WEBPUSH_PUBLIC_KEY!,
+                    process.env.WEBPUSH_PRIVATE_KEY!
+                );
+                
+                await webpush.sendNotification(subscription, payload);
+            } catch (pushError) {
+                console.error(`Failed to send push notification to ${recipient.name}:`, pushError);
+            }
+        }
 
     } catch (e: unknown) {
         console.error("Could not create notification:", e);
@@ -394,6 +428,8 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
             deductionNo30Days: employeeData.deductionNo30Days ?? null,
             deductionReason: employeeData.deductionReason ?? undefined,
             deductionEntryDate: employeeData.deductionEntryDate ?? null,
+            bokStatus: employeeData.bokStatus ?? null,
+            bokStatusDate: employeeData.bokStatusDate ?? null,
         };
 
         const serialized = serializeEmployee(newEmployee);
@@ -431,6 +467,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
             throw new Error('Could not deserialize original employee data.');
         }
 
+        // --- History Logic ---
         if (updates.address && updates.address !== originalEmployee.address && updates.checkInDate) {
             const lastHistoryEntry = addressHistory
                 .filter(h => h.employeeId === employeeId && h.address === originalEmployee.address && h.checkInDate === originalEmployee.checkInDate)
@@ -452,6 +489,20 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
             }
         }
         
+        // --- Assignment History ---
+        if (updates.coordinatorId && updates.coordinatorId !== originalEmployee.coordinatorId && originalEmployee.coordinatorId === 'BOK') {
+             const assignmentSheet = await getSheet(SHEET_NAME_ASSIGNMENT_HISTORY, ASSIGNMENT_HISTORY_HEADERS);
+             const newAssignment: Omit<AssignmentHistory, 'id'> = {
+                 employeeId: employeeId,
+                 employeeName: originalEmployee.fullName,
+                 fromCoordinatorId: originalEmployee.coordinatorId,
+                 toCoordinatorId: updates.coordinatorId,
+                 assignedBy: actor.uid,
+                 assignmentDate: new Date().toISOString(),
+             };
+             await assignmentSheet.addRow({id: `assign-${Date.now()}`, ...newAssignment});
+        }
+        
         const updatedEmployeeData: Employee = { ...originalEmployee, ...updates };
         const changes: (Omit<NotificationChange, 'field'> & { field: keyof Employee })[] = [];
 
@@ -460,7 +511,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
             const oldValue = originalEmployee[typedKey];
             const newValue = updates[typedKey];
             
-            const areDates = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'deductionEntryDate'].includes(key);
+            const areDates = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'deductionEntryDate', 'bokStatusDate'].includes(key);
 
             let oldValStr: string | null = null;
             if (oldValue !== null && oldValue !== undefined) {
@@ -479,7 +530,10 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
                     newValStr = JSON.stringify(newValue);
                 } else if (areDates && isValid(new Date(newValue as string))) {
                     newValStr = format(new Date(newValue as string), 'dd-MM-yyyy');
-                } else {
+                } else if (key === 'coordinatorId') {
+                    newValStr = settings.coordinators.find(c => c.uid === newValue)?.name || (newValue as string);
+                }
+                 else {
                     newValStr = String(newValue);
                 }
             }
@@ -605,10 +659,17 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
         for (const key in serializedUpdates) {
             const typedKey = key as keyof NonEmployee;
             if (originalNonEmployee[typedKey] !== serializedUpdates[key]) {
+                 let oldValue = String(originalNonEmployee[typedKey] || 'Brak');
+                 let newValue = String(serializedUpdates[key] || 'Brak');
+                 if (key === 'coordinatorId' && settings) {
+                     oldValue = settings.coordinators.find(c => c.uid === oldValue)?.name || oldValue;
+                     newValue = settings.coordinators.find(c => c.uid === newValue)?.name || newValue;
+                 }
+
                 changes.push({
                     field: typedKey,
-                    oldValue: String(originalNonEmployee[typedKey] || 'Brak'),
-                    newValue: String(serializedUpdates[key] || 'Brak')
+                    oldValue: oldValue,
+                    newValue: newValue
                 });
             }
             row.set(key, serializedUpdates[key] ?? '');
@@ -794,11 +855,14 @@ export async function checkAndUpdateStatuses(actorUid?: string): Promise<{ updat
 
 
 export async function updateSettings(newSettings: Partial<Settings>): Promise<void> {
-    const updateSimpleList = async (sheetName: string, items: string[]) => {
-        const sheet = await getSheet(sheetName, ['name']);
+    const updateSimpleList = async (sheetName: string, items: {id: string, name: string}[] | string[]) => {
+        const isObjectList = typeof items[0] === 'object';
+        const headers = isObjectList ? ['id', 'name'] : ['name'];
+        const sheet = await getSheet(sheetName, headers);
         await sheet.clearRows();
         if (items.length > 0) {
-            await sheet.addRows(items.map(name => ({ name })), { raw: false, insert: true });
+            const dataToAdd = isObjectList ? items : (items as string[]).map(name => ({ name }));
+            await sheet.addRows(dataToAdd, { raw: false, insert: true });
         }
     };
     
@@ -817,6 +881,9 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
         }
         if (newSettings.paymentTypesNZ) {
             await updateSimpleList(SHEET_NAME_PAYMENT_TYPES_NZ, newSettings.paymentTypesNZ);
+        }
+        if (newSettings.bokStatuses) {
+            await updateSimpleList(SHEET_NAME_BOK_STATUSES, newSettings.bokStatuses);
         }
         if (newSettings.addresses) {
             const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ADDRESS_HEADERS);
@@ -867,6 +934,9 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
                      if (coord.password) {
                          row.set('password', coord.password);
                      }
+                     if (coord.hasOwnProperty('pushSubscription')) {
+                        row.set('pushSubscription', coord.pushSubscription || '');
+                     }
                      await row.save();
                  }
              }
@@ -877,6 +947,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
                      departments: c.departments.join(','),
                      isAdmin: String(c.isAdmin).toUpperCase(),
                      visibilityMode: c.visibilityMode || 'department',
+                     pushSubscription: c.pushSubscription || '',
                  })));
              }
         }
@@ -1247,6 +1318,21 @@ export async function deleteAddressHistoryEntry(historyId: string, actorUid: str
     }
 }
 
-
-
-
+export async function updateCoordinatorSubscription(coordinatorId: string, subscription: PushSubscription | null): Promise<void> {
+    try {
+        const { settings } = await getAllSheetsData(coordinatorId, true);
+        const coordinator = settings.coordinators.find(c => c.uid === coordinatorId);
+        if (coordinator) {
+            await updateSettings({
+                coordinators: settings.coordinators.map(c => 
+                    c.uid === coordinatorId ? { ...c, pushSubscription: subscription ? JSON.stringify(subscription) : null } : c
+                )
+            });
+        } else {
+            throw new Error("Coordinator not found");
+        }
+    } catch (error) {
+        console.error("Error updating coordinator subscription:", error);
+        throw new Error(error instanceof Error ? error.message : "Failed to update subscription.");
+    }
+}

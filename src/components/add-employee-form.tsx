@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -48,12 +49,12 @@ import { useMainLayout } from './main-layout';
 const formSchema = z.object({
   fullName: z.string().min(3, "Imię i nazwisko musi mieć co najmniej 3 znaki."),
   coordinatorId: z.string().min(1, "Koordynator jest wymagany."),
-  locality: z.string().min(1, "Miejscowość jest wymagana."),
-  address: z.string().min(1, "Adres jest wymagany."),
-  roomNumber: z.string().min(1, "Numer pokoju jest wymagany."),
-  zaklad: z.string().min(1, "Zakład jest wymagany."),
-  nationality: z.string().min(1, "Narodowość jest wymagana."),
-  gender: z.string().min(1, "Płeć jest wymagana."),
+  locality: z.string().optional(),
+  address: z.string().optional(),
+  roomNumber: z.string().optional(),
+  zaklad: z.string().optional(),
+  nationality: z.string().optional(),
+  gender: z.string().optional(),
   checkInDate: z.date({ required_error: "Data zameldowania jest wymagana." }).nullable(),
   checkOutDate: z.date().nullable().optional(),
   contractStartDate: z.date().nullable().optional(),
@@ -72,7 +73,19 @@ const formSchema = z.object({
       checked: z.boolean(),
   })).optional(),
   deductionEntryDate: z.date().nullable().optional(),
+  bokStatus: z.string().nullable().optional(),
+  bokStatusDate: z.date().nullable().optional(),
 }).superRefine((data, ctx) => {
+    const isBok = data.coordinatorId === 'BOK';
+    if (!isBok) {
+        if (!data.locality) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['locality'], message: 'Miejscowość jest wymagana.' });
+        if (!data.address) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['address'], message: 'Adres jest wymagany.' });
+        if (!data.roomNumber) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['roomNumber'], message: 'Pokój jest wymagany.' });
+        if (!data.zaklad) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['zaklad'], message: 'Zakład jest wymagany.' });
+        if (!data.nationality) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['nationality'], message: 'Narodowość jest wymagana.' });
+        if (!data.gender) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['gender'], message: 'Płeć jest wymagana.' });
+    }
+
     const hasDeductions = 
         data.depositReturned === 'Nie' ||
         (data.depositReturnAmount ?? 0) > 0 ||
@@ -91,13 +104,14 @@ const formSchema = z.object({
 });
 
 
-export type EmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate' | 'contractStartDate' | 'contractEndDate' | 'departureReportDate' | 'deductionEntryDate' | 'locality'> & {
+export type EmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate' | 'contractStartDate' | 'contractEndDate' | 'departureReportDate' | 'deductionEntryDate' | 'bokStatusDate' | 'locality'> & {
   checkInDate: string | null;
   checkOutDate?: string | null;
   contractStartDate?: string | null;
   contractEndDate?: string | null;
   departureReportDate?: string | null;
   deductionEntryDate?: string | null;
+  bokStatusDate?: string | null;
 };
 
 const defaultDeductionReasons: { label: string }[] = [
@@ -242,30 +256,41 @@ export function AddEmployeeForm({
           checked: false
       })),
       deductionEntryDate: null,
+      bokStatus: null,
+      bokStatusDate: null,
     },
   });
   
   const selectedCoordinatorId = form.watch('coordinatorId');
+  const isBokCoordinator = selectedCoordinatorId === 'BOK';
   const selectedLocality = form.watch('locality');
   const selectedAddress = form.watch('address');
 
   const availableLocalities = useMemo(() => {
-    if (!selectedCoordinatorId || !settings.addresses) return [];
+    if (!settings.addresses) return [];
+    if (isBokCoordinator) {
+        return [...new Set(settings.addresses.map(addr => addr.locality))].sort((a, b) => a.localeCompare(b));
+    }
+    if (!selectedCoordinatorId) return [];
     
     const coordinatorAddresses = settings.addresses.filter(addr => 
         addr.coordinatorIds.includes(selectedCoordinatorId)
     );
     const localities = [...new Set(coordinatorAddresses.map(addr => addr.locality))];
     return localities.sort((a, b) => a.localeCompare(b));
-  }, [settings.addresses, selectedCoordinatorId]);
+  }, [settings.addresses, selectedCoordinatorId, isBokCoordinator]);
 
   const availableAddresses = useMemo(() => {
-    if (!selectedLocality || !selectedCoordinatorId) return [];
+    if (!selectedLocality) return [];
+    if (isBokCoordinator) {
+        return [...settings.addresses.filter(a => a.locality === selectedLocality)].sort((a,b) => a.name.localeCompare(b.name));
+    }
+    if (!selectedCoordinatorId) return [];
     const filtered = settings.addresses.filter(a => 
         a.locality === selectedLocality && a.coordinatorIds.includes(selectedCoordinatorId)
     );
     return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
-  }, [settings.addresses, selectedLocality, selectedCoordinatorId]);
+  }, [settings.addresses, selectedLocality, selectedCoordinatorId, isBokCoordinator]);
 
   const availableRooms = useMemo(() => {
     const rooms = settings.addresses.find(a => a.name === selectedAddress)?.rooms || [];
@@ -316,6 +341,8 @@ export function AddEmployeeForm({
             deductionNo30Days: employee.deductionNo30Days ?? null,
             deductionReason: combinedDeductions,
             deductionEntryDate: parseDate(employee.deductionEntryDate) ?? null,
+            bokStatus: employee.bokStatus ?? null,
+            bokStatusDate: parseDate(employee.bokStatusDate) ?? null,
         });
     } else {
         form.reset({
@@ -345,13 +372,15 @@ export function AddEmployeeForm({
               checked: false
           })),
           deductionEntryDate: null,
+          bokStatus: null,
+          bokStatusDate: null,
         });
     }
-  }, [employee, isOpen, form, settings.addresses, settings.coordinators, currentUser]);
+  }, [employee, isOpen, form, settings, currentUser]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     
-    if (employee) { // Check only on edit
+    if (employee && !isBokCoordinator) { // Check only on edit
         const addressChanged = values.address !== employee.address;
         const checkInDateChanged = values.checkInDate?.getTime() !== parseDate(employee.checkInDate)?.getTime();
 
@@ -380,6 +409,7 @@ export function AddEmployeeForm({
         contractEndDate: formatDate(values.contractEndDate),
         departureReportDate: formatDate(values.departureReportDate),
         deductionEntryDate: formatDate(values.deductionEntryDate),
+        bokStatusDate: formatDate(values.bokStatusDate),
     };
 
     onSave(formData);
@@ -432,6 +462,7 @@ export function AddEmployeeForm({
         contractEndDate: formatDate(values.contractEndDate),
         departureReportDate: formatDate(values.departureReportDate),
         deductionEntryDate: formatDate(values.deductionEntryDate),
+        bokStatusDate: formatDate(values.bokStatusDate),
     };
     onSave(formData);
     
@@ -439,14 +470,25 @@ export function AddEmployeeForm({
     onOpenChange(false);
   };
   
-  const sortedCoordinators = useMemo(() => [...settings.coordinators].sort((a, b) => a.name.localeCompare(b.name)), [settings.coordinators]);
+  const sortedCoordinators = useMemo(() => {
+    const bokCoordinator = { uid: 'BOK', name: 'BOK (Planowane osoby)' };
+    const otherCoordinators = [...settings.coordinators].sort((a, b) => a.name.localeCompare(b.name));
+    return [bokCoordinator, ...otherCoordinators];
+  }, [settings.coordinators]);
+
   const sortedNationalities = useMemo(() => [...settings.nationalities].sort((a, b) => a.localeCompare(b)), [settings.nationalities]);
   const sortedGenders = useMemo(() => [...settings.genders].sort((a, b) => a.localeCompare(b)), [settings.genders]);
+  const bokStatuses = useMemo(() => [...settings.bokStatuses].sort((a,b) => a.name.localeCompare(b.name)), [settings.bokStatuses]);
 
   const coordinatorOptions = useMemo(() => sortedCoordinators.map(c => ({ value: c.uid, label: c.name })), [sortedCoordinators]);
   const nationalityOptions = useMemo(() => sortedNationalities.map(n => ({ value: n, label: n })), [sortedNationalities]);
   const departmentOptions = useMemo(() => availableDepartments.map(d => ({ value: d, label: d })), [availableDepartments]);
   
+  const tabNames: ('basic' | 'finance' | 'bok')[] = ['basic', 'finance'];
+  if (isBokCoordinator) {
+    tabNames.push('bok');
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
@@ -459,9 +501,10 @@ export function AddEmployeeForm({
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <Tabs defaultValue="basic" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="basic">Dane podstawowe</TabsTrigger>
                     <TabsTrigger value="finance">Finanse i potrącenia</TabsTrigger>
+                    {isBokCoordinator && <TabsTrigger value="bok">Status BOK</TabsTrigger>}
                 </TabsList>
                 <ScrollArea className="h-[60vh] mt-4">
                     <TabsContent value="basic">
@@ -504,7 +547,7 @@ export function AddEmployeeForm({
                                     <FormLabel>Narodowość</FormLabel>
                                      <Combobox
                                         options={nationalityOptions}
-                                        value={field.value}
+                                        value={field.value || ''}
                                         onChange={field.onChange}
                                         placeholder="Wybierz narodowość"
                                         searchPlaceholder="Szukaj narodowości..."
@@ -519,7 +562,7 @@ export function AddEmployeeForm({
                                 render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Płeć</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value || ''}>
                                     <FormControl><SelectTrigger><SelectValue placeholder="Wybierz płeć" /></SelectTrigger></FormControl>
                                     <SelectContent>
                                         {sortedGenders.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
@@ -538,7 +581,7 @@ export function AddEmployeeForm({
                                 render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Miejscowość</FormLabel>
-                                    <Select onValueChange={handleLocalityChange} value={field.value} disabled={!selectedCoordinatorId}>
+                                    <Select onValueChange={handleLocalityChange} value={field.value || ''} disabled={!isBokCoordinator && !selectedCoordinatorId}>
                                         <FormControl><SelectTrigger><SelectValue placeholder={!selectedCoordinatorId ? "Najpierw wybierz koordynatora" : "Wybierz miejscowość"} /></SelectTrigger></FormControl>
                                         <SelectContent>
                                             {availableLocalities.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
@@ -554,7 +597,7 @@ export function AddEmployeeForm({
                                 render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Adres</FormLabel>
-                                    <Select onValueChange={handleAddressChange} value={field.value} disabled={!selectedLocality}>
+                                    <Select onValueChange={handleAddressChange} value={field.value || ''} disabled={!selectedLocality}>
                                         <FormControl><SelectTrigger><SelectValue placeholder={!selectedLocality ? "Najpierw wybierz miejscowość" : "Wybierz adres"} /></SelectTrigger></FormControl>
                                         <SelectContent>
                                             {availableAddresses.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
@@ -570,7 +613,7 @@ export function AddEmployeeForm({
                                 render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Pokój</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value} disabled={!selectedAddress}>
+                                    <Select onValueChange={field.onChange} value={field.value || ''} disabled={!selectedAddress}>
                                     <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : "Wybierz pokój"} /></SelectTrigger></FormControl>
                                     <SelectContent>
                                         {availableRooms.map(r => <SelectItem key={r.id} value={r.name}>{r.name} (Pojemność: {r.capacity})</SelectItem>)}
@@ -590,7 +633,7 @@ export function AddEmployeeForm({
                                         options={departmentOptions}
                                         value={field.value || ''}
                                         onChange={field.onChange}
-                                        placeholder={!selectedCoordinatorId ? "Najpierw wybierz koordynatora" : "Wybierz zakład"}
+                                        placeholder={!isBokCoordinator && !selectedCoordinatorId ? "Najpierw wybierz koordynatora" : "Wybierz zakład"}
                                         searchPlaceholder="Szukaj zakładu..."
                                     />
                                     <FormMessage />
@@ -850,6 +893,40 @@ export function AddEmployeeForm({
                                 />
                         </div>
                     </TabsContent>
+                    {isBokCoordinator && (
+                        <TabsContent value="bok">
+                             <div className="space-y-4 px-4">
+                                <h3 className="text-lg font-medium">Status BOK</h3>
+                                 <FormField
+                                    control={form.control}
+                                    name="bokStatus"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Status</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value || ''}>
+                                        <FormControl><SelectTrigger><SelectValue placeholder="Wybierz status" /></SelectTrigger></FormControl>
+                                        <SelectContent>
+                                            {bokStatuses.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
+                                        </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="bokStatusDate"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-col">
+                                            <FormLabel>Data statusu</FormLabel>
+                                            <DateInput value={field.value ?? undefined} onChange={field.onChange} />
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                             </div>
+                        </TabsContent>
+                    )}
                 </ScrollArea>
             </Tabs>
 

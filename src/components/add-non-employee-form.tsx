@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -36,27 +37,40 @@ import { CalendarIcon, X } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parse, isValid, parseISO } from 'date-fns';
 import { Combobox } from './ui/combobox';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 
 const formSchema = z.object({
   fullName: z.string().min(3, "Imię i nazwisko musi mieć co najmniej 3 znaki."),
   coordinatorId: z.string().min(1, "Koordynator jest wymagany."),
-  locality: z.string().min(1, "Miejscowość jest wymagana."),
-  address: z.string().min(1, "Adres jest wymagany."),
-  roomNumber: z.string().min(1, "Numer pokoju jest wymagany."),
-  nationality: z.string().min(1, "Narodowość jest wymagana."),
-  gender: z.string().min(1, "Płeć jest wymagana."),
+  locality: z.string().optional(),
+  address: z.string().optional(),
+  roomNumber: z.string().optional(),
+  nationality: z.string().optional(),
+  gender: z.string().optional(),
   checkInDate: z.date({ required_error: "Data zameldowania jest wymagana." }).nullable(),
   checkOutDate: z.date().nullable().optional(),
   departureReportDate: z.date().nullable().optional(),
   comments: z.string().optional(),
   paymentType: z.string().nullable().optional(),
   paymentAmount: z.number().nullable().optional(),
+  bokStatus: z.string().nullable().optional(),
+  bokStatusDate: z.date().nullable().optional(),
+}).superRefine((data, ctx) => {
+    const isBok = data.coordinatorId === 'BOK';
+    if (!isBok) {
+        if (!data.locality) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['locality'], message: 'Miejscowość jest wymagana.' });
+        if (!data.address) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['address'], message: 'Adres jest wymagany.' });
+        if (!data.roomNumber) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['roomNumber'], message: 'Pokój jest wymagany.' });
+        if (!data.nationality) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['nationality'], message: 'Narodowość jest wymagana.' });
+        if (!data.gender) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['gender'], message: 'Płeć jest wymagana.' });
+    }
 });
 
-type NonEmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate' | 'locality' | 'departureReportDate'> & {
+type NonEmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate' | 'locality' | 'departureReportDate' | 'bokStatusDate'> & {
   checkInDate: string | null;
   checkOutDate?: string | null;
   departureReportDate?: string | null;
+  bokStatusDate?: string | null;
 };
 
 const parseDate = (dateString: string | null | undefined): Date | undefined => {
@@ -173,18 +187,23 @@ export function AddNonEmployeeForm({
       comments: '',
       paymentType: null,
       paymentAmount: null,
+      bokStatus: null,
+      bokStatusDate: null,
     },
   });
 
   const selectedCoordinatorId = form.watch('coordinatorId');
+  const isBokCoordinator = selectedCoordinatorId === 'BOK';
   const selectedLocality = form.watch('locality');
   const selectedAddress = form.watch('address');
 
-  const coordinatorOptions = useMemo(() => 
-    settings.coordinators
+  const coordinatorOptions = useMemo(() => {
+     const bokCoordinator = { uid: 'BOK', name: 'BOK (Planowane osoby)' };
+     const otherCoordinators = settings.coordinators
       .map(c => ({ value: c.uid, label: c.name }))
-      .sort((a,b) => a.label.localeCompare(b.label)),
-  [settings.coordinators]);
+      .sort((a,b) => a.label.localeCompare(b.label));
+    return [bokCoordinator, ...otherCoordinators.map(c => ({value: c.value, label: c.label}))];
+  },[settings.coordinators]);
   
   const nationalityOptions = useMemo(() => 
     settings.nationalities.map(n => ({ value: n, label: n })).sort((a, b) => a.label.localeCompare(b.label)),
@@ -198,8 +217,15 @@ export function AddNonEmployeeForm({
     settings.paymentTypesNZ.map(p => ({ value: p, label: p })).sort((a,b) => a.label.localeCompare(b.label)), 
   [settings.paymentTypesNZ]);
 
+  const bokStatuses = useMemo(() => [...settings.bokStatuses].sort((a,b) => a.name.localeCompare(b.name)), [settings.bokStatuses]);
+
   const availableAddresses = useMemo(() => {
     if (!settings) return [];
+    
+    if (isBokCoordinator) {
+        if (!selectedLocality) return [];
+        return [...settings.addresses.filter(a => a.locality === selectedLocality)].sort((a, b) => a.name.localeCompare(b.name));
+    }
     
     let userAddresses = settings.addresses;
     if (selectedCoordinatorId) {
@@ -212,7 +238,7 @@ export function AddNonEmployeeForm({
 
     const filtered = userAddresses.filter(a => a.locality === selectedLocality);
     return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
-  }, [settings, selectedLocality, currentUser, selectedCoordinatorId]);
+  }, [settings, selectedLocality, currentUser, selectedCoordinatorId, isBokCoordinator]);
 
   const availableRooms = useMemo(() => {
     const rooms = settings.addresses.find(a => a.name === selectedAddress)?.rooms || [];
@@ -221,6 +247,9 @@ export function AddNonEmployeeForm({
 
   const availableLocalities = useMemo(() => {
     if (!settings) return [];
+    if(isBokCoordinator) {
+        return [...new Set(settings.addresses.map(a => a.locality))].sort((a,b) => a.localeCompare(b));
+    }
     let userAddresses = settings.addresses;
      if (selectedCoordinatorId) {
         userAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
@@ -229,7 +258,7 @@ export function AddNonEmployeeForm({
     }
     const localities = [...new Set(userAddresses.map(a => a.locality))];
     return localities.sort((a,b) => a.localeCompare(b));
-  }, [settings, currentUser, selectedCoordinatorId]);
+  }, [settings, currentUser, selectedCoordinatorId, isBokCoordinator]);
 
   useEffect(() => {
     if (nonEmployee) {
@@ -243,6 +272,8 @@ export function AddNonEmployeeForm({
         departureReportDate: parseDate(nonEmployee.departureReportDate),
         paymentType: nonEmployee.paymentType ?? null,
         paymentAmount: nonEmployee.paymentAmount ?? null,
+        bokStatus: nonEmployee.bokStatus ?? null,
+        bokStatusDate: parseDate(nonEmployee.bokStatusDate) ?? null,
       });
     } else {
       form.reset({
@@ -259,6 +290,8 @@ export function AddNonEmployeeForm({
         comments: '',
         paymentType: null,
         paymentAmount: null,
+        bokStatus: null,
+        bokStatusDate: null,
       });
     }
   }, [nonEmployee, isOpen, form, settings.addresses, currentUser]);
@@ -277,6 +310,7 @@ export function AddNonEmployeeForm({
       checkOutDate: formatDate(values.checkOutDate),
       departureReportDate: formatDate(values.departureReportDate),
       paymentAmount: values.paymentAmount ? Number(values.paymentAmount) : null,
+      bokStatusDate: formatDate(values.bokStatusDate),
     };
 
     onSave(formData);
@@ -312,205 +346,247 @@ export function AddNonEmployeeForm({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
-            <ScrollArea className="h-[65vh] p-1">
-                <div className="space-y-4 px-4">
-                  <FormField
-                    control={form.control}
-                    name="fullName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Imię i nazwisko</FormLabel>
-                        <FormControl><Input placeholder="Anna Nowak" {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                 <FormField
-                    control={form.control}
-                    name="coordinatorId"
-                    render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                        <FormLabel>Koordynator</FormLabel>
-                        <Combobox
-                            options={coordinatorOptions}
-                            value={field.value}
-                            onChange={handleCoordinatorChange}
-                            placeholder="Wybierz koordynatora"
-                            searchPlaceholder="Szukaj koordynatora..."
-                        />
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Tabs defaultValue="basic" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="basic">Dane podstawowe</TabsTrigger>
+                {isBokCoordinator && <TabsTrigger value="bok">Status BOK</TabsTrigger>}
+              </TabsList>
+               <ScrollArea className="h-[65vh] p-1 mt-4">
+                  <TabsContent value="basic">
+                    <div className="space-y-4 px-4">
+                      <FormField
+                        control={form.control}
+                        name="fullName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Imię i nazwisko</FormLabel>
+                            <FormControl><Input placeholder="Anna Nowak" {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
                     <FormField
                         control={form.control}
-                        name="nationality"
+                        name="coordinatorId"
                         render={({ field }) => (
                         <FormItem className="flex flex-col">
-                            <FormLabel>Narodowość</FormLabel>
+                            <FormLabel>Koordynator</FormLabel>
                             <Combobox
-                                options={nationalityOptions}
+                                options={coordinatorOptions}
                                 value={field.value}
-                                onChange={field.onChange}
-                                placeholder="Wybierz narodowość"
-                                searchPlaceholder="Szukaj narodowości..."
+                                onChange={handleCoordinatorChange}
+                                placeholder="Wybierz koordynatora"
+                                searchPlaceholder="Szukaj koordynatora..."
                             />
                             <FormMessage />
                         </FormItem>
                         )}
                     />
-                     <FormField
-                        control={form.control}
-                        name="gender"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Płeć</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz płeć" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                                {genderOptions.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-                            </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                </div>
-
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     <FormField
-                        control={form.control}
-                        name="locality"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Miejscowość</FormLabel>
-                            <Select onValueChange={handleLocalityChange} value={field.value}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Wybierz miejscowość" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                    {availableLocalities.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="address"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Adres</FormLabel>
-                            <Select onValueChange={handleAddressChange} value={field.value} disabled={!selectedLocality}>
-                                <FormControl><SelectTrigger><SelectValue placeholder={!selectedLocality ? "Najpierw wybierz miejscowość" : "Wybierz adres"} /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                    {availableAddresses.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="roomNumber"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Pokój</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value} disabled={!selectedAddress}>
-                            <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : "Wybierz pokój"} /></SelectTrigger></FormControl>
-                            <SelectContent>
-                                {availableRooms.map(r => <SelectItem key={r.id} value={r.name}>{r.name} (Pojemność: {r.capacity})</SelectItem>)}
-                            </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                </div>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                        control={form.control}
-                        name="paymentType"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Rodzaj płatności NZ</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value || ''}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz rodzaj płatności" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                                {paymentTypesNZOptions.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
-                            </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="paymentAmount"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Kwota</FormLabel>
-                            <FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))} value={field.value ?? ''} placeholder="PLN" /></FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     <FormField
-                        control={form.control}
-                        name="checkInDate"
-                        render={({ field }) => (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="nationality"
+                            render={({ field }) => (
                             <FormItem className="flex flex-col">
-                                <FormLabel>Data zameldowania</FormLabel>
-                                <DateInput 
-                                    value={field.value} 
+                                <FormLabel>Narodowość</FormLabel>
+                                <Combobox
+                                    options={nationalityOptions}
+                                    value={field.value || ''}
                                     onChange={field.onChange}
+                                    placeholder="Wybierz narodowość"
+                                    searchPlaceholder="Szukaj narodowości..."
                                 />
                                 <FormMessage />
                             </FormItem>
-                        )}
+                            )}
                         />
-                     <FormField
-                        control={form.control}
-                        name="checkOutDate"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                                <FormLabel>Data wymeldowania</FormLabel>
-                                <DateInput value={field.value} onChange={d => field.onChange(d)} />
+                        <FormField
+                            control={form.control}
+                            name="gender"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Płeć</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value || ''}>
+                                <FormControl><SelectTrigger><SelectValue placeholder="Wybierz płeć" /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    {genderOptions.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                                </SelectContent>
+                                </Select>
                                 <FormMessage />
                             </FormItem>
-                        )}
+                            )}
                         />
-                     <FormField
-                        control={form.control}
-                        name="departureReportDate"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                                <FormLabel>Data zgłoszenia wyjazdu</FormLabel>
-                                <DateInput value={field.value} onChange={d => field.onChange(d)} />
+                    </div>
+
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="locality"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Miejscowość</FormLabel>
+                                <Select onValueChange={handleLocalityChange} value={field.value || ''}>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="Wybierz miejscowość" /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                        {availableLocalities.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
                                 <FormMessage />
                             </FormItem>
-                        )}
+                            )}
                         />
-                </div>
-                
-                 <FormField
-                    control={form.control}
-                    name="comments"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Komentarze</FormLabel>
-                        <FormControl><Input placeholder="Dodatkowe informacje..." {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
+                        <FormField
+                            control={form.control}
+                            name="address"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Adres</FormLabel>
+                                <Select onValueChange={handleAddressChange} value={field.value || ''} disabled={!selectedLocality}>
+                                    <FormControl><SelectTrigger><SelectValue placeholder={!selectedLocality ? "Najpierw wybierz miejscowość" : "Wybierz adres"} /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                        {availableAddresses.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="roomNumber"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Pokój</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value || ''} disabled={!selectedAddress}>
+                                <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : "Wybierz pokój"} /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    {availableRooms.map(r => <SelectItem key={r.id} value={r.name}>{r.name} (Pojemność: {r.capacity})</SelectItem>)}
+                                </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="paymentType"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Rodzaj płatności NZ</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value || ''}>
+                                <FormControl><SelectTrigger><SelectValue placeholder="Wybierz rodzaj płatności" /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    {paymentTypesNZOptions.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                                </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="paymentAmount"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Kwota</FormLabel>
+                                <FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))} value={field.value ?? ''} placeholder="PLN" /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="checkInDate"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-col">
+                                    <FormLabel>Data zameldowania</FormLabel>
+                                    <DateInput 
+                                        value={field.value} 
+                                        onChange={field.onChange}
+                                    />
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                            />
+                        <FormField
+                            control={form.control}
+                            name="checkOutDate"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-col">
+                                    <FormLabel>Data wymeldowania</FormLabel>
+                                    <DateInput value={field.value} onChange={d => field.onChange(d)} />
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                            />
+                        <FormField
+                            control={form.control}
+                            name="departureReportDate"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-col">
+                                    <FormLabel>Data zgłoszenia wyjazdu</FormLabel>
+                                    <DateInput value={field.value} onChange={d => field.onChange(d)} />
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                            />
+                    </div>
+                    
+                    <FormField
+                        control={form.control}
+                        name="comments"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Komentarze</FormLabel>
+                            <FormControl><Input placeholder="Dodatkowe informacje..." {...field} /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                  </div>
+                  </TabsContent>
+                   {isBokCoordinator && (
+                        <TabsContent value="bok">
+                             <div className="space-y-4 px-4">
+                                <h3 className="text-lg font-medium">Status BOK</h3>
+                                 <FormField
+                                    control={form.control}
+                                    name="bokStatus"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Status</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value || ''}>
+                                        <FormControl><SelectTrigger><SelectValue placeholder="Wybierz status" /></SelectTrigger></FormControl>
+                                        <SelectContent>
+                                            {bokStatuses.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
+                                        </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="bokStatusDate"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-col">
+                                            <FormLabel>Data statusu</FormLabel>
+                                            <DateInput value={field.value ?? undefined} onChange={field.onChange} />
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                             </div>
+                        </TabsContent>
                     )}
-                  />
-              </div>
             </ScrollArea>
+            </Tabs>
             <DialogFooter className="p-6 pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Anuluj
