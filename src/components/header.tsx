@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Bell, LogOut, Trash2 } from 'lucide-react';
-import type { SessionData, View, Notification, NotificationChange, Settings, Coordinator } from '@/types';
+import type { SessionData, View, Notification, Settings } from '@/types';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatDistanceToNow } from 'date-fns';
@@ -24,6 +24,7 @@ import { ModernHouseIcon } from './icons/modern-house-icon';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
+import { PushSubscriptionManager } from './push-subscription-manager';
 
 const NotificationItem = ({ n, onClick, onDelete, style }: {n: Notification, onClick: (n: Notification) => void, onDelete: (notificationId: string) => void, style?: React.CSSProperties}) => {
     
@@ -143,6 +144,8 @@ export default function Header({
         <h1 className="text-xl font-semibold">SmartHouse</h1>
       </div>
       <div className="ml-auto flex items-center gap-2">
+        
+        <PushSubscriptionManager />
         
         <Sheet>
             <SheetTrigger asChild>

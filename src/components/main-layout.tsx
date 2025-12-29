@@ -36,6 +36,7 @@ import {
     updateSettings,
     deleteNotification,
     deleteAddressHistoryEntry,
+    updateCoordinatorSubscription,
 } from '@/lib/actions';
 import { getAllSheetsData } from '@/lib/sheets';
 import { logout } from '../lib/auth';
@@ -89,6 +90,7 @@ type MainLayoutContextType = {
     currentUser: SessionData | null;
     selectedCoordinatorId: string;
     hasNewCheckouts: boolean;
+    pushSubscription: PushSubscription | null;
     setHasNewCheckouts: React.Dispatch<React.SetStateAction<boolean>>;
     setSelectedCoordinatorId: React.Dispatch<React.SetStateAction<string>>;
     handleBulkDeleteEmployees: (entityType: 'employee' | 'non-employee', status: 'active' | 'dismissed') => Promise<boolean>;
@@ -109,6 +111,8 @@ type MainLayoutContextType = {
     handleImportEmployees: (fileContent: string) => Promise<void>;
     handleImportNonEmployees: (fileContent: string) => Promise<void>;
     handleDeleteAddressHistory: (historyId: string, actorUid: string) => Promise<void>;
+    handleUpdateCoordinatorSubscription: (subscription: PushSubscription | null) => Promise<void>;
+    setPushSubscription: React.Dispatch<React.SetStateAction<PushSubscription | null>>;
 };
 
 const MainLayoutContext = createContext<MainLayoutContextType | null>(null);
@@ -154,6 +158,7 @@ export default function MainLayout({
     const [addressHistory, setAddressHistory] = useState<AddressHistory[] | null>(null);
 
     const [hasNewCheckouts, setHasNewCheckouts] = useState(false);
+    const [pushSubscription, setPushSubscription] = useState<PushSubscription | null>(null);
     
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isNonEmployeeFormOpen, setIsNonEmployeeFormOpen] = useState(false);
@@ -618,6 +623,17 @@ export default function MainLayout({
         }
     }, [currentUser, refreshData, toast]);
 
+    const handleUpdateCoordinatorSubscription = useCallback(async (subscription: PushSubscription | null) => {
+        if (!currentUser) return;
+        try {
+            await updateCoordinatorSubscription(currentUser.uid, subscription);
+            await refreshData(false);
+        } catch (error) {
+            console.error('Failed to update subscription:', error);
+            toast({ variant: 'destructive', title: 'Błąd', description: 'Nie udało się zaktualizować subskrypcji.'});
+        }
+    }, [currentUser, refreshData, toast]);
+
     const contextValue: MainLayoutContextType = useMemo(() => ({
         allEmployees,
         allNonEmployees,
@@ -629,6 +645,7 @@ export default function MainLayout({
         currentUser,
         selectedCoordinatorId,
         hasNewCheckouts,
+        pushSubscription,
         setHasNewCheckouts,
         setSelectedCoordinatorId,
         handleEditEmployeeClick,
@@ -649,6 +666,8 @@ export default function MainLayout({
         handleImportEmployees,
         handleImportNonEmployees,
         handleDeleteAddressHistory,
+        handleUpdateCoordinatorSubscription,
+        setPushSubscription
     } ), [
         allEmployees,
         allNonEmployees,
@@ -660,6 +679,7 @@ export default function MainLayout({
         currentUser,
         selectedCoordinatorId,
         hasNewCheckouts,
+        pushSubscription,
         setSelectedCoordinatorId,
         handleEditEmployeeClick,
         handleBulkDeleteEmployees,
@@ -679,6 +699,8 @@ export default function MainLayout({
         handleImportEmployees,
         handleImportNonEmployees,
         handleDeleteAddressHistory,
+        handleUpdateCoordinatorSubscription,
+        setPushSubscription
     ]);
 
     if (!settings || !currentUser || !allEmployees || !allNonEmployees) {
