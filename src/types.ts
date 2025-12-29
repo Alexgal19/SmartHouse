@@ -24,6 +24,7 @@ export type Coordinator = {
     departments: string[];
     password?: string;
     visibilityMode?: 'department' | 'strict';
+    pushSubscription?: string | null;
 }
 
 export type Settings = {
