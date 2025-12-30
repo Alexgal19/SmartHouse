@@ -302,6 +302,10 @@ export function AddEmployeeForm({
     return localities.sort((a, b) => a.localeCompare(b));
   }, [settings.addresses, selectedCoordinatorId, isBokCoordinator]);
 
+  const localityOptions = useMemo(() => {
+    return availableLocalities.map(l => ({ value: l, label: l }));
+  }, [availableLocalities]);
+
   const availableAddresses = useMemo(() => {
     if (!selectedLocality) return [];
     if (isBokCoordinator) {
@@ -606,14 +610,15 @@ export function AddEmployeeForm({
                                 control={form.control}
                                 name="locality"
                                 render={({ field }) => (
-                                <FormItem>
+                                <FormItem className="flex flex-col">
                                     <FormLabel>Miejscowość</FormLabel>
-                                    <Select onValueChange={handleLocalityChange} value={field.value || ''} disabled={!isBokCoordinator && !selectedCoordinatorId}>
-                                        <FormControl><SelectTrigger><SelectValue placeholder={!selectedCoordinatorId ? "Najpierw wybierz koordynatora" : "Wybierz miejscowość"} /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                            {availableLocalities.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
+                                    <Combobox
+                                        options={localityOptions}
+                                        value={field.value || ''}
+                                        onChange={handleLocalityChange}
+                                        placeholder={!selectedCoordinatorId ? "Najpierw wybierz koordynatora" : "Wybierz miejscowość"}
+                                        searchPlaceholder="Szukaj miejscowości..."
+                                    />
                                     <FormMessage />
                                 </FormItem>
                                 )}
