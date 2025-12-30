@@ -56,11 +56,11 @@ const createFormSchema = (isInitiallyFromBok: boolean) => z.object({
   paymentAmount: z.number().nullable().optional(),
   bokStatus: z.string().nullable().optional(),
   bokStatusDate: z.date().nullable().optional(),
+  targetCoordinatorId: z.string().optional(),
 }).superRefine((data, ctx) => {
-    const isBeingAssigned = isInitiallyFromBok && data.coordinatorId !== 'BOK';
-    const isRegularEdit = !isInitiallyFromBok && data.coordinatorId !== 'BOK';
+    const isEditingAssigned = !isInitiallyFromBok && data.coordinatorId !== 'BOK';
 
-    if (isRegularEdit) {
+    if (isEditingAssigned) {
         if (!data.locality) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['locality'], message: 'Miejscowość jest wymagana.' });
         if (!data.address) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['address'], message: 'Adres jest wymagany.' });
         if (!data.roomNumber) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['roomNumber'], message: 'Pokój jest wymagany.' });
@@ -68,9 +68,8 @@ const createFormSchema = (isInitiallyFromBok: boolean) => z.object({
         if (!data.gender) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['gender'], message: 'Płeć jest wymagana.' });
     }
 
-    if (isBeingAssigned) {
-        // When assigning from BOK, only the coordinator is required. We don't check other fields.
-        return;
+    if (data.bokStatus === 'Osoba została wysłana' && !data.targetCoordinatorId) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['targetCoordinatorId'], message: 'Wybierz docelowego koordynatora.' });
     }
 });
 
@@ -200,6 +199,7 @@ export function AddNonEmployeeForm({
       paymentAmount: null,
       bokStatus: null,
       bokStatusDate: null,
+      targetCoordinatorId: undefined,
     },
   });
 
@@ -207,6 +207,7 @@ export function AddNonEmployeeForm({
   const isBokCoordinator = selectedCoordinatorId === 'BOK';
   const selectedLocality = form.watch('locality');
   const selectedAddress = form.watch('address');
+  const bokStatus = form.watch('bokStatus');
 
   const coordinatorOptions = useMemo(() => {
      const bokCoordinator = { uid: 'BOK', name: 'BOK (Planowane osoby)' };
@@ -285,6 +286,7 @@ export function AddNonEmployeeForm({
         paymentAmount: nonEmployee.paymentAmount ?? null,
         bokStatus: nonEmployee.bokStatus ?? null,
         bokStatusDate: parseDate(nonEmployee.bokStatusDate) ?? null,
+        targetCoordinatorId: undefined, // Always reset this on open
       });
     } else {
       form.reset({
@@ -303,6 +305,7 @@ export function AddNonEmployeeForm({
         paymentAmount: null,
         bokStatus: null,
         bokStatusDate: null,
+        targetCoordinatorId: undefined,
       });
     }
   }, [nonEmployee, isOpen, form, settings.addresses, currentUser]);
@@ -593,6 +596,25 @@ export function AddNonEmployeeForm({
                                         </FormItem>
                                     )}
                                 />
+                                 {bokStatus === 'Osoba została wysłana' && (
+                                     <FormField
+                                        control={form.control}
+                                        name="targetCoordinatorId"
+                                        render={({ field }) => (
+                                        <FormItem className="flex flex-col">
+                                            <FormLabel>Wyślij do koordynatora</FormLabel>
+                                            <Combobox
+                                                options={coordinatorOptions.filter(c => c.value !== 'BOK')}
+                                                value={field.value || ''}
+                                                onChange={field.onChange}
+                                                placeholder="Wybierz docelowego koordynatora"
+                                                searchPlaceholder="Szukaj koordynatora..."
+                                            />
+                                            <FormMessage />
+                                        </FormItem>
+                                        )}
+                                    />
+                                )}
                              </div>
                         </TabsContent>
                     )}

@@ -75,23 +75,25 @@ const createFormSchema = (isInitiallyFromBok: boolean) => z.object({
   deductionEntryDate: z.date().nullable().optional(),
   bokStatus: z.string().nullable().optional(),
   bokStatusDate: z.date().nullable().optional(),
+  targetCoordinatorId: z.string().optional(),
 }).superRefine((data, ctx) => {
-    // This logic applies only when a person is being edited, NOT when they are being assigned from BOK for the first time.
-    const isBeingAssigned = isInitiallyFromBok && data.coordinatorId !== 'BOK';
-    const isRegularEdit = !isInitiallyFromBok && data.coordinatorId !== 'BOK';
+    const isAssigning = isInitiallyFromBok && data.coordinatorId !== 'BOK';
+    const isEditingAssigned = !isInitiallyFromBok && data.coordinatorId !== 'BOK';
 
-    if (isRegularEdit) {
+    if (isAssigning) {
+        if (!data.zaklad) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['zaklad'], message: 'Zakład jest wymagany przy przypisywaniu.' });
+        }
+        return;
+    }
+
+    if (isEditingAssigned) {
         if (!data.locality) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['locality'], message: 'Miejscowość jest wymagana.' });
         if (!data.address) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['address'], message: 'Adres jest wymagany.' });
         if (!data.roomNumber) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['roomNumber'], message: 'Pokój jest wymagany.' });
         if (!data.zaklad) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['zaklad'], message: 'Zakład jest wymagany.' });
         if (!data.nationality) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['nationality'], message: 'Narodowość jest wymagana.' });
         if (!data.gender) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['gender'], message: 'Płeć jest wymagana.' });
-    }
-    
-    if (isBeingAssigned) {
-        // When assigning from BOK, only the coordinator is required. We don't check other fields.
-        return;
     }
 
     const hasDeductions = 
@@ -108,6 +110,10 @@ const createFormSchema = (isInitiallyFromBok: boolean) => z.object({
             path: ['deductionEntryDate'],
             message: 'Data jest wymagana, jeśli wprowadzono potrącenia lub kaucja nie jest zwracana.',
         });
+    }
+
+    if (data.bokStatus === 'Osoba została wysłana' && !data.targetCoordinatorId) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['targetCoordinatorId'], message: 'Wybierz docelowego koordynatora.' });
     }
 });
 
@@ -236,14 +242,12 @@ export function AddEmployeeForm({
   const { toast } = useToast();
   const { handleDismissEmployee } = useMainLayout();
 
-  // Determine if the employee is initially from BOK when the form opens
   const [isInitiallyFromBok] = useState(employee?.coordinatorId === 'BOK');
   
   const formSchema = useMemo(() => createFormSchema(isInitiallyFromBok), [isInitiallyFromBok]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema, {
-      // We need to resolve the entire form, so conditional logic in schema works.
     }),
     defaultValues: {
       fullName: '',
@@ -274,6 +278,7 @@ export function AddEmployeeForm({
       deductionEntryDate: null,
       bokStatus: null,
       bokStatusDate: null,
+      targetCoordinatorId: undefined,
     },
   });
   
@@ -281,6 +286,7 @@ export function AddEmployeeForm({
   const isBokCoordinator = selectedCoordinatorId === 'BOK';
   const selectedLocality = form.watch('locality');
   const selectedAddress = form.watch('address');
+  const bokStatus = form.watch('bokStatus');
 
   const availableLocalities = useMemo(() => {
     if (!settings.addresses) return [];
@@ -314,10 +320,13 @@ export function AddEmployeeForm({
   }, [settings.addresses, selectedAddress]);
 
   const availableDepartments = useMemo(() => {
+    if (isBokCoordinator) {
+        return [...settings.departments].sort((a, b) => a.localeCompare(b));
+    }
     if (!selectedCoordinatorId) return [];
     const coordinator = settings.coordinators.find(c => c.uid === selectedCoordinatorId);
-    return coordinator ? coordinator.departments.sort((a, b) => a.localeCompare(b)) : [];
-  }, [settings.coordinators, selectedCoordinatorId]);
+    return coordinator ? [...coordinator.departments].sort((a, b) => a.localeCompare(b)) : [];
+  }, [settings.coordinators, settings.departments, selectedCoordinatorId, isBokCoordinator]);
 
   useEffect(() => {
     if (employee) {
@@ -359,6 +368,7 @@ export function AddEmployeeForm({
             deductionEntryDate: parseDate(employee.deductionEntryDate) ?? null,
             bokStatus: employee.bokStatus ?? null,
             bokStatusDate: parseDate(employee.bokStatusDate) ?? null,
+            targetCoordinatorId: undefined, // Always reset this on open
         });
     } else {
         form.reset({
@@ -390,16 +400,14 @@ export function AddEmployeeForm({
           deductionEntryDate: null,
           bokStatus: null,
           bokStatusDate: null,
+          targetCoordinatorId: undefined,
         });
     }
   }, [employee, isOpen, form, settings, currentUser]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     
-    // If we are just assigning from BOK, we don't need to check for address change date.
-    const isAssigningFromBok = employee?.coordinatorId === 'BOK' && values.coordinatorId !== 'BOK';
-
-    if (employee && !isAssigningFromBok) {
+    if (employee) {
         const addressChanged = values.address !== employee.address;
         const checkInDateChanged = values.checkInDate?.getTime() !== parseDate(employee.checkInDate)?.getTime();
 
@@ -943,6 +951,25 @@ export function AddEmployeeForm({
                                         </FormItem>
                                     )}
                                 />
+                                {bokStatus === 'Osoba została wysłana' && (
+                                     <FormField
+                                        control={form.control}
+                                        name="targetCoordinatorId"
+                                        render={({ field }) => (
+                                        <FormItem className="flex flex-col">
+                                            <FormLabel>Wyślij do koordynatora</FormLabel>
+                                            <Combobox
+                                                options={coordinatorOptions.filter(c => c.value !== 'BOK')}
+                                                value={field.value || ''}
+                                                onChange={field.onChange}
+                                                placeholder="Wybierz docelowego koordynatora"
+                                                searchPlaceholder="Szukaj koordynatora..."
+                                            />
+                                            <FormMessage />
+                                        </FormItem>
+                                        )}
+                                    />
+                                )}
                              </div>
                         </TabsContent>
                     )}

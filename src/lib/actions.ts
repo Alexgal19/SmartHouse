@@ -1,4 +1,5 @@
 
+
 "use server";
 
 import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, NotificationType, Coordinator, AddressHistory, AssignmentHistory } from '../types';
@@ -241,12 +242,13 @@ const FIELD_LABELS: Record<string, string> = {
     status: "Status",
     bokStatus: "Status BOK",
     bokStatusDate: "Data statusu BOK",
+    targetCoordinatorId: "Docelowy Koordynator",
 };
 
 const generateSmartNotificationMessage = (
     actorName: string,
     entity: (Employee | NonEmployee),
-    action: 'dodał' | 'zaktualizował' | 'trwale usunął' | 'automatycznie zwolnił' | 'przypisał do Ciebie' | 'przeniósł',
+    action: 'dodał' | 'zaktualizował' | 'trwale usunął' | 'automatycznie zwolnił' | 'przypisał do Ciebie' | 'przeniósł' | 'wysłał do Ciebie',
     changes: NotificationChange[] = [],
     settings?: Settings
 ): { message: string, type: NotificationType } => {
@@ -267,6 +269,10 @@ const generateSmartNotificationMessage = (
             message = `Automatycznie zwolnił ${entityType} ${entity.fullName} z powodu upływu daty wymeldowania.`;
             type = 'warning';
             break;
+        case 'wysłał do Ciebie':
+             message = `Wysłał do Ciebie nowego ${entityType}: ${entity.fullName}.`;
+             type = 'info';
+             break;
         case 'przypisał do Ciebie':
             message = `Przypisał do Ciebie nowego ${entityType}: ${entity.fullName}.`;
             type = 'info';
@@ -277,7 +283,7 @@ const generateSmartNotificationMessage = (
             const checkoutChange = changes.find(c => c.field === FIELD_LABELS['checkOutDate']);
             const coordinatorChange = changes.find(c => c.field === FIELD_LABELS['coordinatorId']);
 
-            if (coordinatorChange && coordinatorChange.oldValue === 'BOK') {
+            if (coordinatorChange && coordinatorChange.oldValue === 'BOK (Planowane osoby)') {
                  message = `Przypisał do Ciebie nowego ${entityType}: ${entity.fullName}.`;
                  type = 'info';
             } else if (statusChange && statusChange.newValue === 'dismissed') {
@@ -306,9 +312,10 @@ const generateSmartNotificationMessage = (
 
 const createNotification = async (
     actor: Coordinator,
-    action: 'dodał' | 'zaktualizował' | 'trwale usunął' | 'automatycznie zwolnił' | 'przypisał do Ciebie' | 'przeniósł',
+    action: 'dodał' | 'zaktualizował' | 'trwale usunął' | 'automatycznie zwolnił' | 'przypisał do Ciebie' | 'przeniósł' | 'wysłał do Ciebie',
     entity: (Employee | NonEmployee),
     settings: Settings,
+    recipientIdOverride?: string,
     changes: Omit<NotificationChange, 'field'> & { field: keyof (Employee | NonEmployee) }[] = []
 ) => {
     try {
@@ -321,18 +328,21 @@ const createNotification = async (
             field: FIELD_LABELS[c.field] || c.field
         }));
 
-        const coordinatorChange = changes.find(c => c.field === 'coordinatorId');
-        
         let recipientId: string;
         let notificationAction = action;
 
-        if (coordinatorChange && coordinatorChange.oldValue === 'BOK') {
-            recipientId = coordinatorChange.newValue;
-            notificationAction = 'przypisał do Ciebie';
+        if (recipientIdOverride) {
+            recipientId = recipientIdOverride;
         } else {
-            recipientId = entity.coordinatorId;
+            const coordinatorChange = changes.find(c => c.field === 'coordinatorId');
+             if (coordinatorChange && (settings.coordinators.find(c => c.name === coordinatorChange.oldValue)?.uid === 'BOK' || coordinatorChange.oldValue === 'BOK (Planowane osoby)')) {
+                recipientId = coordinatorChange.newValue;
+                notificationAction = 'przypisał do Ciebie';
+            } else {
+                recipientId = entity.coordinatorId;
+            }
         }
-
+        
         const recipient = settings.coordinators.find(c => c.uid === recipientId);
         if (!recipient || recipient.uid === 'BOK') return;
 
@@ -377,7 +387,6 @@ const createNotification = async (
                 await webpush.sendNotification(subscription, payload);
             } catch (pushError) {
                 console.error(`Failed to send push notification to ${recipient.name}:`, pushError);
-                // Optionally, handle expired subscriptions by deleting them
             }
         }
 
@@ -473,7 +482,9 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
             throw new Error('Could not deserialize original employee data.');
         }
 
-        const isAssigningFromBok = originalEmployee.coordinatorId === 'BOK' && updates.coordinatorId && updates.coordinatorId !== 'BOK';
+        if (updates.bokStatus === 'Osoba została wysłana' && updates.targetCoordinatorId) {
+            await createNotification(actor, 'wysłał do Ciebie', { ...originalEmployee, ...updates }, settings, updates.targetCoordinatorId);
+        }
 
         // --- History Logic ---
         if (updates.address && updates.address !== originalEmployee.address && updates.checkInDate) {
@@ -498,6 +509,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         }
         
         // --- Assignment History ---
+        const isAssigningFromBok = originalEmployee.coordinatorId === 'BOK' && updates.coordinatorId && updates.coordinatorId !== 'BOK';
         if (isAssigningFromBok) {
              const assignmentSheet = await getSheet(SHEET_NAME_ASSIGNMENT_HISTORY, ASSIGNMENT_HISTORY_HEADERS);
              const newAssignment: Omit<AssignmentHistory, 'id'> = {
@@ -513,11 +525,12 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         
         const updatedEmployeeData: Employee = { ...originalEmployee, ...updates };
         const changes: (Omit<NotificationChange, 'field'> & { field: keyof Employee })[] = [];
+        const { targetCoordinatorId, ...dbUpdates } = updates;
 
-        for (const key in updates) {
+        for (const key in dbUpdates) {
             const typedKey = key as keyof Employee;
             const oldValue = originalEmployee[typedKey];
-            const newValue = updates[typedKey];
+            const newValue = dbUpdates[typedKey];
             
             const areDates = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'deductionEntryDate', 'bokStatusDate'].includes(key);
 
@@ -560,8 +573,8 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
 
         await row.save();
         
-        if (changes.length > 0) {
-            await createNotification(actor, 'zaktualizował', updatedEmployeeData, settings, changes);
+        if (changes.length > 0 && !(updates.bokStatus === 'Osoba została wysłana')) {
+            await createNotification(actor, 'zaktualizował', updatedEmployeeData, settings, undefined, changes);
         }
 
     } catch (e: unknown) {
@@ -667,7 +680,9 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
         const row = rows[rowIndex];
         const originalNonEmployee = row.toObject() as NonEmployee;
         
-        const isAssigningFromBok = originalNonEmployee.coordinatorId === 'BOK' && updates.coordinatorId && updates.coordinatorId !== 'BOK';
+         if (updates.bokStatus === 'Osoba została wysłana' && updates.targetCoordinatorId) {
+            await createNotification(actor, 'wysłał do Ciebie', { ...originalNonEmployee, ...updates }, settings, updates.targetCoordinatorId);
+        }
         
         if (updates.address && updates.address !== originalNonEmployee.address && updates.checkInDate) {
             const lastHistoryEntry = addressHistory
@@ -690,6 +705,7 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
             }
         }
 
+        const isAssigningFromBok = originalNonEmployee.coordinatorId === 'BOK' && updates.coordinatorId && updates.coordinatorId !== 'BOK';
         if (isAssigningFromBok) {
              const assignmentSheet = await getSheet(SHEET_NAME_ASSIGNMENT_HISTORY, ASSIGNMENT_HISTORY_HEADERS);
              const newAssignment: Omit<AssignmentHistory, 'id'> = {
@@ -706,7 +722,8 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
         const updatedNonEmployeeData: NonEmployee = { ...originalNonEmployee, ...updates, id: originalNonEmployee.id, fullName: originalNonEmployee.fullName };
         const changes: (Omit<NotificationChange, 'field'> & { field: keyof NonEmployee })[] = [];
         
-        const serializedUpdates = serializeNonEmployee(updates);
+        const { targetCoordinatorId, ...dbUpdates } = updates;
+        const serializedUpdates = serializeNonEmployee(dbUpdates);
 
         for (const key in serializedUpdates) {
             const typedKey = key as keyof NonEmployee;
@@ -728,8 +745,8 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
         }
         await row.save();
         
-        if (changes.length > 0) {
-            await createNotification(actor, 'zaktualizował', updatedNonEmployeeData, settings, changes);
+        if (changes.length > 0 && !(updates.bokStatus === 'Osoba została wysłana')) {
+            await createNotification(actor, 'zaktualizował', updatedNonEmployeeData, settings, undefined, changes);
         }
 
      } catch (e: unknown) {
@@ -869,7 +886,7 @@ export async function checkAndUpdateStatuses(actorUid?: string): Promise<{ updat
 
                     const originalEmployee = deserializeEmployee(row.toObject());
                     if (originalEmployee) {
-                        await createNotification(actor, 'automatycznie zwolnił', originalEmployee, settings, [
+                        await createNotification(actor, 'automatycznie zwolnił', originalEmployee, settings, undefined, [
                             { field: 'status', oldValue: 'active', newValue: 'dismissed' }
                         ]);
                     }
@@ -891,7 +908,7 @@ export async function checkAndUpdateStatuses(actorUid?: string): Promise<{ updat
                     await row.save();
                     updatedCount++;
                     const originalNonEmployee = { ...row.toObject(), id: row.get('id'), fullName: row.get('fullName'), coordinatorId: row.get('coordinatorId') } as NonEmployee;
-                    await createNotification(actor, 'automatycznie zwolnił', originalNonEmployee, settings, [
+                    await createNotification(actor, 'automatycznie zwolnił', originalNonEmployee, settings, undefined, [
                         { field: 'status', oldValue: 'active', newValue: 'dismissed' }
                     ]);
                 }
