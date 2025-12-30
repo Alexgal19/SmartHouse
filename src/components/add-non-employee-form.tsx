@@ -257,12 +257,12 @@ export function AddNonEmployeeForm({
     const availableAddresses = useMemo(() => {
         if (!settings) return [];
         
-        let userAddresses = settings.addresses;
         if (isBokCoordinator) {
-            if (!selectedLocality) return [];
+            if (!selectedLocality) return [...settings.addresses].sort((a, b) => a.name.localeCompare(b.name));
             return [...settings.addresses.filter(a => a.locality === selectedLocality)].sort((a, b) => a.name.localeCompare(b.name));
         }
         
+        let userAddresses = settings.addresses;
         if (selectedCoordinatorId) {
             userAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
         } else if (!currentUser.isAdmin) {
@@ -640,3 +640,4 @@ export function AddNonEmployeeForm({
     </Dialog>
   );
 }
+
