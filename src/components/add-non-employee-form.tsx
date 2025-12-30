@@ -58,7 +58,13 @@ const createFormSchema = (isInitiallyFromBok: boolean) => z.object({
   bokStatusDate: z.date().nullable().optional(),
   targetCoordinatorId: z.string().optional(),
 }).superRefine((data, ctx) => {
+    const isAssigning = isInitiallyFromBok && data.coordinatorId !== 'BOK';
     const isEditingAssigned = !isInitiallyFromBok && data.coordinatorId !== 'BOK';
+
+    if (isAssigning) {
+        // No extra validation needed on assignment
+        return;
+    }
 
     if (isEditingAssigned) {
         if (!data.locality) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['locality'], message: 'Miejscowość jest wymagana.' });
@@ -231,46 +237,48 @@ export function AddNonEmployeeForm({
 
   const bokStatuses = useMemo(() => [...settings.bokStatuses].sort((a,b) => a.name.localeCompare(b.name)), [settings.bokStatuses]);
 
-  const availableAddresses = useMemo(() => {
-    if (!settings) return [];
-    
-    if (isBokCoordinator) {
-        if (!selectedLocality) return [];
-        return [...settings.addresses.filter(a => a.locality === selectedLocality)].sort((a, b) => a.name.localeCompare(b.name));
-    }
-    
-    let userAddresses = settings.addresses;
-    if (selectedCoordinatorId) {
-        userAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
-    } else if (!currentUser.isAdmin) {
-        userAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(currentUser.uid));
-    }
-    
-    if (!selectedLocality) return userAddresses;
+    const availableLocalities = useMemo(() => {
+        if (!settings) return [];
+        if (isBokCoordinator) {
+             return [...new Set(settings.addresses.map(a => a.locality))].sort((a,b) => a.localeCompare(b));
+        }
 
-    const filtered = userAddresses.filter(a => a.locality === selectedLocality);
-    return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
-  }, [settings, selectedLocality, currentUser, selectedCoordinatorId, isBokCoordinator]);
+        let userAddresses = settings.addresses;
+        if (selectedCoordinatorId) {
+            userAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
+        } else if (!currentUser.isAdmin) {
+            userAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(currentUser.uid));
+        }
+        
+        const localities = [...new Set(userAddresses.map(a => a.locality))];
+        return localities.sort((a,b) => a.localeCompare(b));
+    }, [settings, currentUser, selectedCoordinatorId, isBokCoordinator]);
+
+    const availableAddresses = useMemo(() => {
+        if (!settings) return [];
+        
+        let userAddresses = settings.addresses;
+        if (isBokCoordinator) {
+            if (!selectedLocality) return [];
+            return [...settings.addresses.filter(a => a.locality === selectedLocality)].sort((a, b) => a.name.localeCompare(b.name));
+        }
+        
+        if (selectedCoordinatorId) {
+            userAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
+        } else if (!currentUser.isAdmin) {
+            userAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(currentUser.uid));
+        }
+        
+        if (!selectedLocality) return userAddresses;
+
+        const filtered = userAddresses.filter(a => a.locality === selectedLocality);
+        return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
+    }, [settings, selectedLocality, currentUser, selectedCoordinatorId, isBokCoordinator]);
 
   const availableRooms = useMemo(() => {
     const rooms = settings.addresses.find(a => a.name === selectedAddress)?.rooms || [];
     return [...rooms].sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
   }, [settings.addresses, selectedAddress]);
-
-  const availableLocalities = useMemo(() => {
-    if (!settings) return [];
-    if(isBokCoordinator) {
-        return [...new Set(settings.addresses.map(a => a.locality))].sort((a,b) => a.localeCompare(b));
-    }
-    let userAddresses = settings.addresses;
-     if (selectedCoordinatorId) {
-        userAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
-    } else if (!currentUser.isAdmin) {
-        userAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(currentUser.uid));
-    }
-    const localities = [...new Set(userAddresses.map(a => a.locality))];
-    return localities.sort((a,b) => a.localeCompare(b));
-  }, [settings, currentUser, selectedCoordinatorId, isBokCoordinator]);
 
   useEffect(() => {
     if (nonEmployee) {
