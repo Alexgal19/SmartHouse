@@ -46,15 +46,15 @@ import { Combobox } from '@/components/ui/combobox';
 import { useToast } from '@/hooks/use-toast';
 import { useMainLayout } from './main-layout';
 
-const createFormSchema = (isInitiallyFromBok: boolean) => z.object({
+const formSchema = z.object({
   fullName: z.string().min(3, "Imię i nazwisko musi mieć co najmniej 3 znaki."),
   coordinatorId: z.string().min(1, "Koordynator jest wymagany."),
-  locality: z.string().optional(),
-  address: z.string().optional(),
-  roomNumber: z.string().optional(),
-  zaklad: z.string().optional(),
-  nationality: z.string().optional(),
-  gender: z.string().optional(),
+  locality: z.string().min(1, "Miejscowość jest wymagana."),
+  address: z.string().min(1, "Adres jest wymagany."),
+  roomNumber: z.string().min(1, "Pokój jest wymagany."),
+  zaklad: z.string().min(1, "Zakład jest wymagany."),
+  nationality: z.string().min(1, "Narodowość jest wymagana."),
+  gender: z.string().min(1, "Płeć jest wymagana."),
   checkInDate: z.date({ required_error: "Data zameldowania jest wymagana." }).nullable(),
   checkOutDate: z.date().nullable().optional(),
   contractStartDate: z.date().nullable().optional(),
@@ -73,29 +73,7 @@ const createFormSchema = (isInitiallyFromBok: boolean) => z.object({
       checked: z.boolean(),
   })).optional(),
   deductionEntryDate: z.date().nullable().optional(),
-  bokStatus: z.string().nullable().optional(),
-  bokStatusDate: z.date().nullable().optional(),
-  targetCoordinatorId: z.string().optional(),
 }).superRefine((data, ctx) => {
-    const isAssigning = isInitiallyFromBok && data.coordinatorId !== 'BOK';
-    const isEditingAssigned = !isInitiallyFromBok && data.coordinatorId !== 'BOK';
-
-    if (isAssigning) {
-        if (!data.zaklad) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['zaklad'], message: 'Zakład jest wymagany przy przypisywaniu.' });
-        }
-        return;
-    }
-
-    if (isEditingAssigned) {
-        if (!data.locality) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['locality'], message: 'Miejscowość jest wymagana.' });
-        if (!data.address) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['address'], message: 'Adres jest wymagany.' });
-        if (!data.roomNumber) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['roomNumber'], message: 'Pokój jest wymagany.' });
-        if (!data.zaklad) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['zaklad'], message: 'Zakład jest wymagany.' });
-        if (!data.nationality) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['nationality'], message: 'Narodowość jest wymagana.' });
-        if (!data.gender) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['gender'], message: 'Płeć jest wymagana.' });
-    }
-
     const hasDeductions = 
         data.depositReturned === 'Nie' ||
         (data.depositReturnAmount ?? 0) > 0 ||
@@ -111,21 +89,16 @@ const createFormSchema = (isInitiallyFromBok: boolean) => z.object({
             message: 'Data jest wymagana, jeśli wprowadzono potrącenia lub kaucja nie jest zwracana.',
         });
     }
-
-    if (data.bokStatus === 'Osoba została wysłana' && !data.targetCoordinatorId) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['targetCoordinatorId'], message: 'Wybierz docelowego koordynatora.' });
-    }
 });
 
 
-export type EmployeeFormData = Omit<z.infer<ReturnType<typeof createFormSchema>>, 'checkInDate' | 'checkOutDate' | 'contractStartDate' | 'contractEndDate' | 'departureReportDate' | 'deductionEntryDate' | 'bokStatusDate' | 'locality'> & {
+export type EmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate' | 'contractStartDate' | 'contractEndDate' | 'departureReportDate' | 'deductionEntryDate' | 'locality'> & {
   checkInDate: string | null;
   checkOutDate?: string | null;
   contractStartDate?: string | null;
   contractEndDate?: string | null;
   departureReportDate?: string | null;
   deductionEntryDate?: string | null;
-  bokStatusDate?: string | null;
 };
 
 const defaultDeductionReasons: { label: string }[] = [
@@ -242,10 +215,6 @@ export function AddEmployeeForm({
   const { toast } = useToast();
   const { handleDismissEmployee } = useMainLayout();
 
-  const [isInitiallyFromBok] = useState(employee?.coordinatorId === 'BOK');
-  
-  const formSchema = useMemo(() => createFormSchema(isInitiallyFromBok), [isInitiallyFromBok]);
-
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema, {
     }),
@@ -276,23 +245,15 @@ export function AddEmployeeForm({
           checked: false
       })),
       deductionEntryDate: null,
-      bokStatus: null,
-      bokStatusDate: null,
-      targetCoordinatorId: undefined,
     },
   });
   
   const selectedCoordinatorId = form.watch('coordinatorId');
-  const isBokCoordinator = selectedCoordinatorId === 'BOK';
   const selectedLocality = form.watch('locality');
   const selectedAddress = form.watch('address');
-  const bokStatus = form.watch('bokStatus');
 
   const availableLocalities = useMemo(() => {
     if (!settings.addresses) return [];
-    if (isBokCoordinator) {
-        return [...new Set(settings.addresses.map(addr => addr.locality))].sort((a, b) => a.localeCompare(b));
-    }
     if (!selectedCoordinatorId) return [];
     
     const coordinatorAddresses = settings.addresses.filter(addr => 
@@ -300,7 +261,7 @@ export function AddEmployeeForm({
     );
     const localities = [...new Set(coordinatorAddresses.map(addr => addr.locality))];
     return localities.sort((a, b) => a.localeCompare(b));
-  }, [settings.addresses, selectedCoordinatorId, isBokCoordinator]);
+  }, [settings.addresses, selectedCoordinatorId]);
 
   const localityOptions = useMemo(() => {
     return availableLocalities.map(l => ({ value: l, label: l }));
@@ -308,15 +269,12 @@ export function AddEmployeeForm({
 
   const availableAddresses = useMemo(() => {
     if (!selectedLocality) return [];
-    if (isBokCoordinator) {
-        return [...settings.addresses.filter(a => a.locality === selectedLocality)].sort((a,b) => a.name.localeCompare(b.name));
-    }
     if (!selectedCoordinatorId) return [];
     const filtered = settings.addresses.filter(a => 
         a.locality === selectedLocality && a.coordinatorIds.includes(selectedCoordinatorId)
     );
     return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
-  }, [settings.addresses, selectedLocality, selectedCoordinatorId, isBokCoordinator]);
+  }, [settings.addresses, selectedLocality, selectedCoordinatorId]);
 
   const availableRooms = useMemo(() => {
     const rooms = settings.addresses.find(a => a.name === selectedAddress)?.rooms || [];
@@ -324,13 +282,10 @@ export function AddEmployeeForm({
   }, [settings.addresses, selectedAddress]);
 
   const availableDepartments = useMemo(() => {
-    if (isBokCoordinator) {
-        return [...settings.departments].sort((a, b) => a.localeCompare(b));
-    }
     if (!selectedCoordinatorId) return [];
     const coordinator = settings.coordinators.find(c => c.uid === selectedCoordinatorId);
     return coordinator ? [...coordinator.departments].sort((a, b) => a.localeCompare(b)) : [];
-  }, [settings.coordinators, settings.departments, selectedCoordinatorId, isBokCoordinator]);
+  }, [settings.coordinators, selectedCoordinatorId]);
 
   useEffect(() => {
     if (employee) {
@@ -370,9 +325,6 @@ export function AddEmployeeForm({
             deductionNo30Days: employee.deductionNo30Days ?? null,
             deductionReason: combinedDeductions,
             deductionEntryDate: parseDate(employee.deductionEntryDate) ?? null,
-            bokStatus: employee.bokStatus ?? null,
-            bokStatusDate: parseDate(employee.bokStatusDate) ?? null,
-            targetCoordinatorId: undefined, // Always reset this on open
         });
     } else {
         form.reset({
@@ -402,9 +354,6 @@ export function AddEmployeeForm({
               checked: false
           })),
           deductionEntryDate: null,
-          bokStatus: null,
-          bokStatusDate: null,
-          targetCoordinatorId: undefined,
         });
     }
   }, [employee, isOpen, form, settings, currentUser]);
@@ -440,7 +389,6 @@ export function AddEmployeeForm({
         contractEndDate: formatDate(values.contractEndDate),
         departureReportDate: formatDate(values.departureReportDate),
         deductionEntryDate: formatDate(values.deductionEntryDate),
-        bokStatusDate: formatDate(values.bokStatusDate),
     };
 
     onSave(formData);
@@ -493,7 +441,6 @@ export function AddEmployeeForm({
         contractEndDate: formatDate(values.contractEndDate),
         departureReportDate: formatDate(values.departureReportDate),
         deductionEntryDate: formatDate(values.deductionEntryDate),
-        bokStatusDate: formatDate(values.bokStatusDate),
     };
     onSave(formData);
     
@@ -502,24 +449,16 @@ export function AddEmployeeForm({
   };
   
   const sortedCoordinators = useMemo(() => {
-    const bokCoordinator = { uid: 'BOK', name: 'BOK (Planowane osoby)' };
-    const otherCoordinators = [...settings.coordinators].sort((a, b) => a.name.localeCompare(b.name));
-    return [bokCoordinator, ...otherCoordinators];
+    return [...settings.coordinators].sort((a, b) => a.name.localeCompare(b.name));
   }, [settings.coordinators]);
 
   const sortedNationalities = useMemo(() => [...settings.nationalities].sort((a, b) => a.localeCompare(b)), [settings.nationalities]);
   const sortedGenders = useMemo(() => [...settings.genders].sort((a, b) => a.localeCompare(b)), [settings.genders]);
-  const bokStatuses = useMemo(() => [...settings.bokStatuses].sort((a,b) => a.name.localeCompare(b.name)), [settings.bokStatuses]);
 
   const coordinatorOptions = useMemo(() => sortedCoordinators.map(c => ({ value: c.uid, label: c.name })), [sortedCoordinators]);
   const nationalityOptions = useMemo(() => sortedNationalities.map(n => ({ value: n, label: n })), [sortedNationalities]);
   const departmentOptions = useMemo(() => availableDepartments.map(d => ({ value: d, label: d })), [availableDepartments]);
   
-  const tabNames: ('basic' | 'finance' | 'bok')[] = ['basic', 'finance'];
-  if (isBokCoordinator) {
-    tabNames.push('bok');
-  }
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
@@ -532,10 +471,9 @@ export function AddEmployeeForm({
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <Tabs defaultValue="basic" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="basic">Dane podstawowe</TabsTrigger>
                     <TabsTrigger value="finance">Finanse i potrącenia</TabsTrigger>
-                    {isBokCoordinator && <TabsTrigger value="bok">Status BOK</TabsTrigger>}
                 </TabsList>
                 <ScrollArea className="h-[60vh] mt-4">
                     <TabsContent value="basic">
@@ -665,7 +603,7 @@ export function AddEmployeeForm({
                                         options={departmentOptions}
                                         value={field.value || ''}
                                         onChange={field.onChange}
-                                        placeholder={!isBokCoordinator && !selectedCoordinatorId ? "Najpierw wybierz koordynatora" : "Wybierz zakład"}
+                                        placeholder={!selectedCoordinatorId ? "Najpierw wybierz koordynatora" : "Wybierz zakład"}
                                         searchPlaceholder="Szukaj zakładu..."
                                     />
                                     <FormMessage />
@@ -925,59 +863,6 @@ export function AddEmployeeForm({
                                 />
                         </div>
                     </TabsContent>
-                    {isBokCoordinator && (
-                        <TabsContent value="bok">
-                             <div className="space-y-4 px-4">
-                                <h3 className="text-lg font-medium">Status BOK</h3>
-                                 <FormField
-                                    control={form.control}
-                                    name="bokStatus"
-                                    render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Status</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value || ''}>
-                                        <FormControl><SelectTrigger><SelectValue placeholder="Wybierz status" /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                            {bokStatuses.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
-                                        </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="bokStatusDate"
-                                    render={({ field }) => (
-                                        <FormItem className="flex flex-col">
-                                            <FormLabel>Data statusu</FormLabel>
-                                            <DateInput value={field.value ?? undefined} onChange={field.onChange} />
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                {bokStatus === 'Osoba została wysłana' && (
-                                     <FormField
-                                        control={form.control}
-                                        name="targetCoordinatorId"
-                                        render={({ field }) => (
-                                        <FormItem className="flex flex-col">
-                                            <FormLabel>Wyślij do koordynatora</FormLabel>
-                                            <Combobox
-                                                options={coordinatorOptions.filter(c => c.value !== 'BOK')}
-                                                value={field.value || ''}
-                                                onChange={field.onChange}
-                                                placeholder="Wybierz docelowego koordynatora"
-                                                searchPlaceholder="Szukaj koordynatora..."
-                                            />
-                                            <FormMessage />
-                                        </FormItem>
-                                        )}
-                                    />
-                                )}
-                             </div>
-                        </TabsContent>
-                    )}
                 </ScrollArea>
             </Tabs>
 
@@ -1002,3 +887,4 @@ export function AddEmployeeForm({
     </Dialog>
   );
 }
+

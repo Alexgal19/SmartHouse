@@ -91,10 +91,6 @@ export type Employee = {
     deductionNo30Days: number | null; // potracenie_30_dni
     deductionReason: DeductionReason[] | undefined;
     deductionEntryDate?: string | null;
-    // BOK specific fields
-    bokStatus: string | null;
-    bokStatusDate: string | null; // YYYY-MM-DD
-    targetCoordinatorId?: string;
 };
 
 export type NonEmployee = {
@@ -112,10 +108,6 @@ export type NonEmployee = {
     status: 'active' | 'dismissed';
     paymentType: string | null;
     paymentAmount: number | null;
-     // BOK specific fields
-    bokStatus: string | null;
-    bokStatusDate: string | null; // YYYY-MM-DD
-    targetCoordinatorId?: string;
 };
 
 export type AddressHistory = {

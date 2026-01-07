@@ -40,8 +40,7 @@ const EMPLOYEE_HEADERS = [
     'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 
     'zaklad', 'checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 
     'departureReportDate', 'comments', 'status',
-    'depositReturned', 'depositReturnAmount', 'deductionRegulation', 'deductionNo4Months', 'deductionNo30Days', 'deductionReason', 'deductionEntryDate',
-    'bokStatus', 'bokStatusDate'
+    'depositReturned', 'depositReturnAmount', 'deductionRegulation', 'deductionNo4Months', 'deductionNo30Days', 'deductionReason', 'deductionEntryDate'
 ];
 
 const serializeEmployee = (employee: Partial<Employee>): Record<string, string | number | boolean> => {
@@ -56,7 +55,7 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
             continue;
         }
 
-        if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'deductionEntryDate', 'bokStatusDate'].includes(key)) {
+        if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'deductionEntryDate'].includes(key)) {
             serialized[key] = serializeDate(value as string);
         } else if (key === 'deductionReason') {
             serialized[key] = Array.isArray(value) ? JSON.stringify(value) : '';
@@ -74,7 +73,7 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
 const serializeNonEmployee = (nonEmployee: Partial<NonEmployee>): Record<string, string | number | boolean> => {
     const serialized: Record<string, string | number | boolean | null> = {};
     for (const [key, value] of Object.entries(nonEmployee)) {
-        if (['checkInDate', 'checkOutDate', 'departureReportDate', 'bokStatusDate'].includes(key)) {
+        if (['checkInDate', 'checkOutDate', 'departureReportDate'].includes(key)) {
             serialized[key] = serializeDate(value as string);
         } else if (value !== null && value !== undefined) {
             serialized[key] = String(value);
@@ -105,8 +104,7 @@ const serializeNotification = (notification: Notification): Record<string, strin
 };
 
 const NON_EMPLOYEE_HEADERS = [
-    'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'departureReportDate', 'comments', 'status', 'paymentType', 'paymentAmount',
-    'bokStatus', 'bokStatusDate'
+    'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'departureReportDate', 'comments', 'status', 'paymentType', 'paymentAmount'
 ];
 
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'departments', 'password', 'visibilityMode', 'pushSubscription'];
@@ -205,8 +203,6 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         deductionNo30Days: plainObject.deductionNo30Days ? parseFloat(plainObject.deductionNo30Days as string) : null,
         deductionReason: deductionReason,
         deductionEntryDate: safeFormat(plainObject.deductionEntryDate),
-        bokStatus: (plainObject.bokStatus as string | null) || null,
-        bokStatusDate: safeFormat(plainObject.bokStatusDate),
     };
     
     return newEmployee;
@@ -240,9 +236,6 @@ const FIELD_LABELS: Record<string, string> = {
     checkInDate: "Data zameldowania",
     checkOutDate: "Data wymeldowania",
     status: "Status",
-    bokStatus: "Status BOK",
-    bokStatusDate: "Data statusu BOK",
-    targetCoordinatorId: "Docelowy Koordynator",
 };
 
 const generateSmartNotificationMessage = (
@@ -281,12 +274,8 @@ const generateSmartNotificationMessage = (
             const statusChange = changes.find(c => c.field === FIELD_LABELS['status']);
             const addressChange = changes.find(c => c.field === FIELD_LABELS['address']);
             const checkoutChange = changes.find(c => c.field === FIELD_LABELS['checkOutDate']);
-            const coordinatorChange = changes.find(c => c.field === FIELD_LABELS['coordinatorId']);
 
-            if (coordinatorChange && coordinatorChange.oldValue === 'BOK (Planowane osoby)') {
-                 message = `Przypisał do Ciebie nowego ${entityType}: ${entity.fullName}.`;
-                 type = 'info';
-            } else if (statusChange && statusChange.newValue === 'dismissed') {
+            if (statusChange && statusChange.newValue === 'dismissed') {
                 message = `Zwolnił ${entityType} ${entity.fullName}.`;
                 type = 'warning';
             } else if (addressChange) {
@@ -334,17 +323,11 @@ const createNotification = async (
         if (recipientIdOverride) {
             recipientId = recipientIdOverride;
         } else {
-            const coordinatorChange = changes.find(c => c.field === 'coordinatorId');
-             if (coordinatorChange && (settings.coordinators.find(c => c.name === coordinatorChange.oldValue)?.uid === 'BOK' || coordinatorChange.oldValue === 'BOK (Planowane osoby)')) {
-                recipientId = coordinatorChange.newValue;
-                notificationAction = 'przypisał do Ciebie';
-            } else {
-                recipientId = entity.coordinatorId;
-            }
+            recipientId = entity.coordinatorId;
         }
         
         const recipient = settings.coordinators.find(c => c.uid === recipientId);
-        if (!recipient || recipient.uid === 'BOK') return;
+        if (!recipient) return;
 
         const { message, type } = generateSmartNotificationMessage(actor.name, entity, notificationAction, readableChanges, settings);
         
@@ -441,16 +424,13 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
             deductionNo30Days: employeeData.deductionNo30Days ?? null,
             deductionReason: employeeData.deductionReason ?? undefined,
             deductionEntryDate: employeeData.deductionEntryDate ?? null,
-            bokStatus: employeeData.bokStatus ?? null,
-            bokStatusDate: employeeData.bokStatusDate ?? null,
         };
 
         const serialized = serializeEmployee(newEmployee);
         await sheet.addRow(serialized, { raw: false, insert: true });
         
-        if (newEmployee.coordinatorId !== 'BOK') {
-          await createNotification(actor, 'dodał', newEmployee, settings);
-        }
+        await createNotification(actor, 'dodał', newEmployee, settings);
+
     } catch (e: unknown) {
         console.error("Error adding employee:", e);
         throw new Error(e instanceof Error ? e.message : "Failed to add employee.");
@@ -482,10 +462,6 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
             throw new Error('Could not deserialize original employee data.');
         }
 
-        if (updates.bokStatus === 'Osoba została wysłana' && updates.targetCoordinatorId) {
-            await createNotification(actor, 'wysłał do Ciebie', { ...originalEmployee, ...updates }, settings, updates.targetCoordinatorId);
-        }
-
         // --- History Logic ---
         if (updates.address && updates.address !== originalEmployee.address && updates.checkInDate) {
             const lastHistoryEntry = addressHistory
@@ -508,31 +484,16 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
             }
         }
         
-        // --- Assignment History ---
-        const isAssigningFromBok = originalEmployee.coordinatorId === 'BOK' && updates.coordinatorId && updates.coordinatorId !== 'BOK';
-        if (isAssigningFromBok) {
-             const assignmentSheet = await getSheet(SHEET_NAME_ASSIGNMENT_HISTORY, ASSIGNMENT_HISTORY_HEADERS);
-             const newAssignment: Omit<AssignmentHistory, 'id'> = {
-                 employeeId: employeeId,
-                 employeeName: originalEmployee.fullName,
-                 fromCoordinatorId: originalEmployee.coordinatorId,
-                 toCoordinatorId: updates.coordinatorId!,
-                 assignedBy: actor.uid,
-                 assignmentDate: new Date().toISOString(),
-             };
-             await assignmentSheet.addRow({id: `assign-${Date.now()}`, ...newAssignment});
-        }
-        
         const updatedEmployeeData: Employee = { ...originalEmployee, ...updates };
         const changes: (Omit<NotificationChange, 'field'> & { field: keyof Employee })[] = [];
-        const { targetCoordinatorId, ...dbUpdates } = updates;
+        const { ...dbUpdates } = updates;
 
         for (const key in dbUpdates) {
             const typedKey = key as keyof Employee;
             const oldValue = originalEmployee[typedKey];
             const newValue = dbUpdates[typedKey];
             
-            const areDates = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'deductionEntryDate', 'bokStatusDate'].includes(key);
+            const areDates = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'deductionEntryDate'].includes(key);
 
             let oldValStr: string | null = null;
             if (oldValue !== null && oldValue !== undefined) {
@@ -573,7 +534,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
 
         await row.save();
         
-        if (changes.length > 0 && !(updates.bokStatus === 'Osoba została wysłana')) {
+        if (changes.length > 0) {
             await createNotification(actor, 'zaktualizował', updatedEmployeeData, settings, undefined, changes);
         }
 
@@ -654,9 +615,7 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id' | '
         const serialized = serializeNonEmployee(newNonEmployee);
         await sheet.addRow(serialized, { raw: false, insert: true });
         
-         if (newNonEmployee.coordinatorId !== 'BOK') {
-            await createNotification(actor, 'dodał', newNonEmployee, settings);
-        }
+        await createNotification(actor, 'dodał', newNonEmployee, settings);
 
     } catch (e: unknown) {
         console.error("Error adding non-employee:", e);
@@ -680,10 +639,6 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
         const row = rows[rowIndex];
         const originalNonEmployee = row.toObject() as NonEmployee;
         
-         if (updates.bokStatus === 'Osoba została wysłana' && updates.targetCoordinatorId) {
-            await createNotification(actor, 'wysłał do Ciebie', { ...originalNonEmployee, ...updates }, settings, updates.targetCoordinatorId);
-        }
-        
         if (updates.address && updates.address !== originalNonEmployee.address && updates.checkInDate) {
             const lastHistoryEntry = addressHistory
                 .filter(h => h.employeeId === id && h.address === originalNonEmployee.address && h.checkInDate === originalNonEmployee.checkInDate)
@@ -704,25 +659,11 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
                 });
             }
         }
-
-        const isAssigningFromBok = originalNonEmployee.coordinatorId === 'BOK' && updates.coordinatorId && updates.coordinatorId !== 'BOK';
-        if (isAssigningFromBok) {
-             const assignmentSheet = await getSheet(SHEET_NAME_ASSIGNMENT_HISTORY, ASSIGNMENT_HISTORY_HEADERS);
-             const newAssignment: Omit<AssignmentHistory, 'id'> = {
-                 employeeId: id,
-                 employeeName: originalNonEmployee.fullName,
-                 fromCoordinatorId: originalNonEmployee.coordinatorId,
-                 toCoordinatorId: updates.coordinatorId!,
-                 assignedBy: actor.uid,
-                 assignmentDate: new Date().toISOString(),
-             };
-             await assignmentSheet.addRow({id: `assign-${Date.now()}`, ...newAssignment});
-        }
         
         const updatedNonEmployeeData: NonEmployee = { ...originalNonEmployee, ...updates, id: originalNonEmployee.id, fullName: originalNonEmployee.fullName };
         const changes: (Omit<NotificationChange, 'field'> & { field: keyof NonEmployee })[] = [];
         
-        const { targetCoordinatorId, ...dbUpdates } = updates;
+        const { ...dbUpdates } = updates;
         const serializedUpdates = serializeNonEmployee(dbUpdates);
 
         for (const key in serializedUpdates) {
@@ -745,7 +686,7 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
         }
         await row.save();
         
-        if (changes.length > 0 && !(updates.bokStatus === 'Osoba została wysłana')) {
+        if (changes.length > 0) {
             await createNotification(actor, 'zaktualizował', updatedNonEmployeeData, settings, undefined, changes);
         }
 
@@ -1405,3 +1346,4 @@ export async function updateCoordinatorSubscription(coordinatorId: string, subsc
         throw new Error(error instanceof Error ? error.message : "Failed to update subscription.");
     }
 }
+
