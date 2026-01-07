@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -25,6 +24,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { getOnlySettings } from '@/lib/sheets';
 import { AddressForm } from './address-form';
 import { useMainLayout } from './main-layout';
+import { Progress } from '@/components/ui/progress';
 
 const coordinatorSchema = z.object({
     uid: z.string(),
@@ -141,7 +141,6 @@ const ListManager = ({ name, title, fields, append, remove, control }: { name: s
              <AddMultipleDialog 
                 open={isAddMultipleOpen}
                 onOpenChange={setIsAddMultipleOpen}
-                onAdd={handleAddMultiple}
                 listTitle={title}
             />
         </div>
@@ -371,7 +370,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
     );
 };
 
-const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove, onAdd }: { addresses: Address[]; coordinators: Coordinator[]; localities: string[]; onEdit: (address: Address) => void; onRemove: (addressId: string) => void; onAdd: (coordinatorId: string) => void; }) => {
+const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove, onAdd, allEmployees, allNonEmployees }: { addresses: Address[]; coordinators: Coordinator[]; localities: string[]; onEdit: (address: Address) => void; onRemove: (addressId: string) => void; onAdd: (coordinatorId: string) => void; allEmployees: any[], allNonEmployees: any[] }) => {
     const [filterCoordinatorId, setFilterCoordinatorId] = useState('all');
     const [filterLocality, setFilterLocality] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
@@ -379,6 +378,28 @@ const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove,
     const coordinatorMap = useMemo(() => new Map(coordinators.map(c => [c.uid, c.name])), [coordinators]);
     const sortedCoordinators = useMemo(() => [...coordinators].sort((a,b) => a.name.localeCompare(b.name)), [coordinators]);
     const sortedLocalities = useMemo(() => [...localities].sort((a, b) => a.localeCompare(b)), [localities]);
+    
+    const occupancyData = useMemo(() => {
+        const occupancyMap = new Map<string, { occupants: number, capacity: number }>();
+        const allOccupants = [...allEmployees, ...allNonEmployees].filter(o => o.status === 'active');
+        
+        allOccupants.forEach(occupant => {
+            if (occupant.address) {
+                const current = occupancyMap.get(occupant.address) || { occupants: 0, capacity: 0 };
+                current.occupants += 1;
+                occupancyMap.set(occupant.address, current);
+            }
+        });
+        
+        addresses.forEach(address => {
+            const current = occupancyMap.get(address.name) || { occupants: 0, capacity: 0 };
+            current.capacity = address.rooms.reduce((sum, room) => sum + room.capacity, 0);
+            occupancyMap.set(address.name, current);
+        });
+
+        return occupancyMap;
+
+    }, [addresses, allEmployees, allNonEmployees]);
 
     const filteredAddresses = useMemo(() => {
         if (!addresses) return [];
@@ -397,6 +418,13 @@ const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove,
         return tempAddresses.sort((a, b) => a.name.localeCompare(b.name));
 
     }, [addresses, filterCoordinatorId, filterLocality, searchTerm]);
+    
+    const getProgressColor = (value: number) => {
+        if (value < 30) return 'hsl(0 84.2% 60.2%)'; // red
+        if (value < 70) return 'hsl(var(--primary))'; // orange
+        return 'hsl(142.1 76.2% 36.3%)'; // green
+    };
+
 
     return (
         <div className="space-y-4 rounded-md border p-4">
@@ -434,24 +462,39 @@ const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove,
             </div>
             {filteredAddresses && filteredAddresses.length > 0 ? (
                 <div className="space-y-2">
-                    {filteredAddresses.map((address: Address, index: number) => (
-                        <div key={address.id} className="flex items-center justify-between rounded-lg border p-3 animate-fade-in-up" style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}>
-                            <div>
-                                <p className="font-semibold">{address.name} <span className="text-sm text-muted-foreground font-normal">({address.locality})</span></p>
-                                <p className="text-sm text-muted-foreground">
-                                    {address.coordinatorIds.map(id => coordinatorMap.get(id) || 'B/D').join(', ')}, {address.rooms.length} pokoi
-                                </p>
+                    {filteredAddresses.map((address: Address, index: number) => {
+                        const data = occupancyData.get(address.name) || { occupants: 0, capacity: 0};
+                        const occupancyPercentage = data.capacity > 0 ? (data.occupants / data.capacity) * 100 : 0;
+
+                        return (
+                            <div key={address.id} className="rounded-lg border p-3 animate-fade-in-up" style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}>
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="font-semibold">{address.name} <span className="text-sm text-muted-foreground font-normal">({address.locality})</span></p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {address.coordinatorIds.map(id => coordinatorMap.get(id) || 'B/D').join(', ')}, {address.rooms.length} pokoi, {data.occupants}/{data.capacity} miejsc
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button type="button" variant="ghost" size="icon" onClick={() => onEdit(address)}>
+                                            <Edit className="h-4 w-4" />
+                                        </Button>
+                                        <Button type="button" variant="ghost" size="icon" onClick={() => onRemove(address.id)}>
+                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                        </Button>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 mt-2">
+                                    <Progress 
+                                        value={occupancyPercentage} 
+                                        className="h-2"
+                                        indicatorStyle={{ backgroundColor: getProgressColor(occupancyPercentage)}}
+                                    />
+                                    <span className="text-xs font-semibold w-12 text-right">{occupancyPercentage.toFixed(0)}%</span>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <Button type="button" variant="ghost" size="icon" onClick={() => onEdit(address)}>
-                                    <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button type="button" variant="ghost" size="icon" onClick={() => onRemove(address.id)}>
-                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
-                            </div>
-                        </div>
-                    ))}
+                        )
+                    })}
                 </div>
             ) : (
                 <p className="text-sm text-muted-foreground text-center py-2">Brak adresów pasujących do kryteriów.</p>
@@ -902,6 +945,7 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
     const { toast } = useToast();
     const [isAddressFormOpen, setIsAddressFormOpen] = useState(false);
     const [editingAddress, setEditingAddress] = useState<Address | null>(null);
+    const { allEmployees, allNonEmployees } = useMainLayout();
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -1033,6 +1077,8 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
                                         onEdit={(address) => handleAddressFormOpen(address)}
                                         onAdd={handleAddAddress}
                                         onRemove={handleRemoveAddress}
+                                        allEmployees={allEmployees || []}
+                                        allNonEmployees={allNonEmployees || []}
                                     />
                                 </AccordionContent>
                             </AccordionItem>
