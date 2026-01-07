@@ -5,7 +5,7 @@ import React, { useMemo } from 'react';
 import type { Employee, NonEmployee, Settings, ChartConfig } from "@/types";
 import { useMainLayout } from '@/components/main-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, LabelList, Tooltip as RechartsTooltip } from "recharts";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, LabelList, Tooltip as RechartsTooltip, Cell } from "recharts";
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart2 } from "lucide-react";
 import { cn } from '@/lib/utils';
@@ -26,6 +26,16 @@ const NoDataState = ({ message, className }: { message: string, className?: stri
         </div>
     </div>
 );
+
+const getOccupancyColor = (percentage: number) => {
+    if (percentage > 90) {
+        return 'hsl(var(--chart-5))'; // red
+    }
+    if (percentage > 70) {
+        return 'hsl(var(--chart-1))'; // orange
+    }
+    return 'hsl(var(--chart-2))'; // green
+};
 
 
 export function CoordinatorOccupancyChart() {
@@ -70,7 +80,6 @@ export function CoordinatorOccupancyChart() {
      const chartConfig = {
       occupancy: {
         label: "Obłożenie (%)",
-        color: "hsl(var(--chart-1))",
       },
     } satisfies ChartConfig;
 
@@ -123,7 +132,10 @@ export function CoordinatorOccupancyChart() {
                                         return null;
                                     }}
                                 />
-                                <Bar dataKey="occupancy" radius={[0, 4, 4, 0]} fill={chartConfig.occupancy.color}>
+                                <Bar dataKey="occupancy" radius={[0, 4, 4, 0]}>
+                                     {chartData.data.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={getOccupancyColor(entry.occupancy)} />
+                                    ))}
                                     <LabelList 
                                         dataKey="occupancy" 
                                         position="right" 
@@ -140,4 +152,3 @@ export function CoordinatorOccupancyChart() {
         </Card>
     );
 }
-
