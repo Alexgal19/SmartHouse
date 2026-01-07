@@ -24,6 +24,16 @@ const DynamicDashboardCharts = dynamic(() => import('./dashboard/charts').then(m
   ssr: false
 });
 
+const DynamicCoordinatorOccupancyChart = dynamic(() => import('./dashboard/coordinator-occupancy-chart').then(mod => mod.CoordinatorOccupancyChart), {
+  loading: () => (
+    <Card>
+      <CardHeader><Skeleton className="h-8 w-1/3" /></CardHeader>
+      <CardContent><Skeleton className="h-48 w-full" /></CardContent>
+    </Card>
+  ),
+  ssr: false
+});
+
 
 export default function DashboardView({ currentUser }: { currentUser: SessionData}) {
   const { 
@@ -31,7 +41,8 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
     allNonEmployees,
     settings,
     hasNewCheckouts,
-    setHasNewCheckouts
+    setHasNewCheckouts,
+    selectedCoordinatorId
   } = useMainLayout();
 
   const [isUpcomingCheckoutsModalOpen, setIsUpcomingCheckoutsModalOpen] = useState(false);
@@ -88,6 +99,11 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
     <>
       <div className="space-y-6">
           {currentUser.isAdmin && <CoordinatorFilter />}
+          
+          {currentUser.isAdmin && selectedCoordinatorId !== 'all' && (
+            <DynamicCoordinatorOccupancyChart />
+          )}
+
           <DashboardKPIs 
               employees={allEmployees}
               nonEmployees={allNonEmployees}
