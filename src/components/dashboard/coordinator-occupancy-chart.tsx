@@ -6,7 +6,7 @@ import type { Employee, NonEmployee, Settings, ChartConfig } from "@/types";
 import { useMainLayout } from '@/components/main-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, LabelList, Tooltip as RechartsTooltip, Cell } from "recharts";
-import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
+import { ChartContainer } from "@/components/ui/chart";
 import { BarChart2 } from "lucide-react";
 import { cn } from '@/lib/utils';
 
@@ -28,13 +28,13 @@ const NoDataState = ({ message, className }: { message: string, className?: stri
 );
 
 const getOccupancyColor = (percentage: number) => {
-    if (percentage > 90) {
-        return 'hsl(var(--chart-5))'; // red
-    }
     if (percentage > 70) {
+        return 'hsl(var(--chart-2))'; // green
+    }
+    if (percentage > 30) {
         return 'hsl(var(--chart-1))'; // orange
     }
-    return 'hsl(var(--chart-2))'; // green
+    return 'hsl(var(--chart-5))'; // red
 };
 
 
