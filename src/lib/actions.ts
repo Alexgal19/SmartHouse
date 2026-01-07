@@ -6,7 +6,6 @@ import type { Employee, Settings, Notification, NotificationChange, Room, NonEmp
 import { getSheet, getAllSheetsData, addAddressHistoryEntry as addHistoryToAction, updateAddressHistoryEntry as updateHistoryToAction, deleteAddressHistoryEntry as deleteHistoryFromSheet } from './sheets';
 import { format, isPast, isValid, getDaysInMonth, parseISO, differenceInDays, max, min, parse as dateFnsParse, lastDayOfMonth } from 'date-fns';
 import * as XLSX from 'xlsx';
-import webpush from 'web-push';
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
 const SHEET_NAME_NON_EMPLOYEES = 'NonEmployees';
@@ -107,7 +106,7 @@ const NON_EMPLOYEE_HEADERS = [
     'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'departureReportDate', 'comments', 'status', 'paymentType', 'paymentAmount'
 ];
 
-const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'departments', 'password', 'visibilityMode', 'pushSubscription'];
+const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'departments', 'password', 'visibilityMode'];
 const ADDRESS_HEADERS = ['id', 'locality', 'name', 'coordinatorIds'];
 const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targetType', 'targetId', 'details'];
 const ADDRESS_HISTORY_HEADERS = ['id', 'employeeId', 'employeeName', 'coordinatorName', 'department', 'address', 'checkInDate', 'checkOutDate'];
@@ -308,10 +307,6 @@ const createNotification = async (
     changes: Omit<NotificationChange, 'field'> & { field: keyof (Employee | NonEmployee) }[] = []
 ) => {
     try {
-        if (!process.env.NEXT_PUBLIC_WEBPUSH_PUBLIC_KEY || !process.env.WEBPUSH_PRIVATE_KEY || !process.env.WEBPUSH_SUBJECT) {
-            console.warn("Web push environment variables not set. Skipping push notification.");
-        }
-
         const readableChanges: NotificationChange[] = changes.map(c => ({
             ...c,
             field: FIELD_LABELS[c.field] || c.field
@@ -348,30 +343,6 @@ const createNotification = async (
         await sheet.addRow(serializeNotification(notification));
         
         await writeToAuditLog(actor.uid, actor.name, action, 'zaklad' in entity && entity.zaklad ? 'pracownika' : 'mieszkańca', entity.id, changes);
-
-        // Send Push Notification
-        if (recipient.pushSubscription && process.env.NEXT_PUBLIC_WEBPUSH_PUBLIC_KEY) {
-            try {
-                const subscription = JSON.parse(recipient.pushSubscription);
-                const payload = JSON.stringify({
-                    title: `Nowe zadanie w SmartHouse`,
-                    body: message,
-                    data: {
-                        url: `/dashboard?view=employees&edit=${entity.id}`
-                    }
-                });
-
-                webpush.setVapidDetails(
-                    process.env.WEBPUSH_SUBJECT!,
-                    process.env.NEXT_PUBLIC_WEBPUSH_PUBLIC_KEY!,
-                    process.env.WEBPUSH_PRIVATE_KEY!
-                );
-                
-                await webpush.sendNotification(subscription, payload);
-            } catch (pushError) {
-                console.error(`Failed to send push notification to ${recipient.name}:`, pushError);
-            }
-        }
 
     } catch (e: unknown) {
         console.error("Could not create notification:", e);
@@ -944,9 +915,6 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
                      if (coord.password) {
                          row.set('password', coord.password);
                      }
-                     if (coord.hasOwnProperty('pushSubscription')) {
-                        row.set('pushSubscription', coord.pushSubscription || '');
-                     }
                      await row.save();
                  }
              }
@@ -957,7 +925,6 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
                      departments: c.departments.join(','),
                      isAdmin: String(c.isAdmin).toUpperCase(),
                      visibilityMode: c.visibilityMode || 'department',
-                     pushSubscription: c.pushSubscription || '',
                  })));
              }
         }
@@ -1327,23 +1294,3 @@ export async function deleteAddressHistoryEntry(historyId: string, actorUid: str
         throw new Error(e instanceof Error ? e.message : "Failed to delete address history entry.");
     }
 }
-
-export async function updateCoordinatorSubscription(coordinatorId: string, subscription: PushSubscription | null): Promise<void> {
-    try {
-        const { settings } = await getAllSheetsData(coordinatorId, true);
-        const coordinator = settings.coordinators.find(c => c.uid === coordinatorId);
-        if (coordinator) {
-            await updateSettings({
-                coordinators: settings.coordinators.map(c => 
-                    c.uid === coordinatorId ? { ...c, pushSubscription: subscription ? JSON.stringify(subscription) : null } : c
-                )
-            });
-        } else {
-            throw new Error("Coordinator not found");
-        }
-    } catch (error) {
-        console.error("Error updating coordinator subscription:", error);
-        throw new Error(error instanceof Error ? error.message : "Failed to update subscription.");
-    }
-}
-

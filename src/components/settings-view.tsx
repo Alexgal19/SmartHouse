@@ -33,7 +33,6 @@ const coordinatorSchema = z.object({
     isAdmin: z.boolean(),
     departments: z.array(z.string()),
     visibilityMode: z.enum(['department', 'strict']).default('department'),
-    pushSubscription: z.string().nullable().optional(),
 });
 
 const bokStatusSchema = z.object({
@@ -224,7 +223,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full sm:w-64 h-9"
                     />
-                    <Button type="button" variant="outline" size="sm" onClick={() => append({ uid: `coord-${Date.now()}`, name: '', password: '', isAdmin: false, departments: [], visibilityMode: 'department', pushSubscription: null })}>
+                    <Button type="button" variant="outline" size="sm" onClick={() => append({ uid: `coord-${Date.now()}`, name: '', password: '', isAdmin: false, departments: [], visibilityMode: 'department' })}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Dodaj koordynatora
                     </Button>
                 </div>
