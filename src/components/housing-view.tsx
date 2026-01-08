@@ -15,11 +15,12 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, LabelList, Tooltip as RechartsTooltip } from "recharts";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, LabelList, Tooltip as RechartsTooltip, Cell } from "recharts";
 import { ChartConfig, ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
+import { Badge } from './ui/badge';
 
 type Occupant = Employee | NonEmployee;
 type RoomWithOccupants = Room & { occupants: Occupant[]; occupantCount: number; available: number; };
@@ -569,11 +570,22 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
         const grouped = filteredData.reduce((acc, address) => {
             const locality = address.locality || 'Inne';
             if (!acc[locality]) {
-                acc[locality] = [];
+                acc[locality] = { addresses: [], availablePlaces: 0 };
             }
-            acc[locality].push(address);
+            acc[locality].addresses.push(address);
             return acc;
-        }, {} as Record<string, HousingData[]>);
+        }, {} as Record<string, { addresses: HousingData[]; availablePlaces: number }>);
+        
+        // Calculate available places per locality
+        for (const locality in grouped) {
+            grouped[locality].availablePlaces = grouped[locality].addresses.reduce((sum, address) => {
+                if (address.name.toLowerCase().startsWith('własne mieszkanie')) {
+                    return sum;
+                }
+                return sum + address.available;
+            }, 0);
+        }
+
         return Object.entries(grouped).sort((a,b) => a[0].localeCompare(b[0]));
     }, [filteredData]);
     
@@ -617,9 +629,14 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                     </div>
                     <ScrollArea className="h-[calc(100vh-22rem)] -mx-4 px-4">
                         <Accordion type="multiple" className="w-full space-y-3">
-                            {groupedByLocality.map(([locality, addresses]) => (
+                            {groupedByLocality.map(([locality, { addresses, availablePlaces }]) => (
                                 <div key={locality}>
-                                    <h2 className="text-lg font-bold sticky top-0 bg-background py-3 z-10">{locality}</h2>
+                                    <h2 className="text-lg font-bold sticky top-0 bg-background py-3 z-10 flex items-center">
+                                        {locality}
+                                        {availablePlaces > 0 && (
+                                            <Badge variant="secondary" className="ml-2">{availablePlaces} wolnych</Badge>
+                                        )}
+                                    </h2>
                                     <div className="space-y-3">
                                         {addresses.map((address, index) => (
                                             <MobileAddressCard 
@@ -652,9 +669,16 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                     </div>
                     <ScrollArea className="h-[calc(100vh-25rem)] lg:h-[calc(100vh-24rem)]">
                         <Accordion type="multiple" className="w-full" defaultValue={groupedByLocality.map(g => g[0])} >
-                             {groupedByLocality.map(([locality, addresses]) => (
+                             {groupedByLocality.map(([locality, { addresses, availablePlaces }]) => (
                                 <AccordionItem value={locality} key={locality} className="border-b-0">
-                                    <AccordionTrigger className="text-lg font-bold sticky top-0 bg-background py-3 z-10 hover:no-underline">{locality}</AccordionTrigger>
+                                    <AccordionTrigger className="text-lg font-bold sticky top-0 bg-background py-3 z-10 hover:no-underline">
+                                        <div className="flex items-center">
+                                            {locality}
+                                            {availablePlaces > 0 && (
+                                                <Badge variant="secondary" className="ml-2">{availablePlaces} wolnych</Badge>
+                                            )}
+                                        </div>
+                                    </AccordionTrigger>
                                     <AccordionContent className="space-y-2">
                                         {addresses.map((address, index) => (
                                             <Card 
@@ -700,5 +724,3 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
         </div>
     );
 }
-
-    
