@@ -84,7 +84,11 @@ export function CoordinatorOccupancyChart() {
             }
         }).sort((a,b) => b.occupancy - a.occupancy);
         
-        const totals = occupancyByAddress.reduce((acc, address) => {
+        const managedAddresses = occupancyByAddress.filter(
+            (address) => !address.name.toLowerCase().startsWith('własne mieszkanie')
+        );
+
+        const totals = managedAddresses.reduce((acc, address) => {
             acc.capacity += address.capacity;
             acc.occupantCount += address.occupantCount;
             acc.available += address.available;
