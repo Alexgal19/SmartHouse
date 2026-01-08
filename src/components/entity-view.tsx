@@ -606,7 +606,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         const dataSources = {
             active: allEmployees.filter(e => e.status === 'active'),
             dismissed: allEmployees.filter(e => e.status === 'dismissed'),
-            'non-employees': allNonEmployees,
+            'non-employees': allNonEmployees.filter(ne => ne.status === 'active'),
             history: addressHistory
         };
 
