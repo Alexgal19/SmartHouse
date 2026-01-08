@@ -27,13 +27,13 @@ const NoDataState = ({ message, className }: { message: string, className?: stri
 );
 
 const getOccupancyColor = (percentage: number) => {
-    if (percentage > 70) {
-        return 'hsl(var(--chart-2))'; // green
+    if (percentage < 30) {
+        return 'hsl(var(--chart-5))'; // red
     }
-    if (percentage > 30) {
+    if (percentage < 70) {
         return 'hsl(var(--chart-1))'; // orange
     }
-    return 'hsl(var(--chart-5))'; // red
+    return 'hsl(var(--chart-2))'; // green
 };
 
 const KpiCard = ({ title, value, icon, description }: { title: string; value: string | number; icon: React.ReactNode; description?: string; }) => (
@@ -52,7 +52,7 @@ const KpiCard = ({ title, value, icon, description }: { title: string; value: st
 export function CoordinatorOccupancyChart() {
     const { allEmployees, allNonEmployees, settings, selectedCoordinatorId } = useMainLayout();
 
-    const { data, coordinatorName, totals } = useMemo(() => {
+    const chartData = useMemo(() => {
         if (!settings || !allEmployees || !allNonEmployees || selectedCoordinatorId === 'all') {
             return { data: [], coordinatorName: '', totals: null };
         }
@@ -112,21 +112,21 @@ export function CoordinatorOccupancyChart() {
                 <CardDescription>Procentowe obłożenie adresów przypisanych do: <span className="font-bold text-primary">{chartData.coordinatorName}</span></CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                {totals && (
+                {chartData.totals && (
                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <KpiCard
                             title="Wszystkie miejsca"
-                            value={totals.capacity}
+                            value={chartData.totals.capacity}
                             icon={<Users className="h-5 w-5 text-muted-foreground" />}
                         />
                         <KpiCard
                             title="Zajęte"
-                            value={totals.occupantCount}
+                            value={chartData.totals.occupantCount}
                             icon={<UserRoundCheck className="h-5 w-5 text-muted-foreground" />}
                         />
                         <KpiCard
                             title="Wolne"
-                            value={totals.available}
+                            value={chartData.totals.available}
                             icon={<BedDouble className="h-5 w-5 text-muted-foreground" />}
                         />
                     </div>
