@@ -546,7 +546,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     const [isPending, startTransition] = useTransition();
     const { isMobile, isMounted } = useIsMobile();
     
-    const tab = (searchParams.get('tab') as 'active' | 'dismissed' | 'history') || 'active';
+    const tab = (searchParams.get('tab') as 'active' | 'dismissed' | 'non-employees' | 'history') || 'active';
     const page = Number(searchParams.get('page') || '1');
     const search = searchParams.get('search') || '';
     const viewMode = (searchParams.get('viewMode') as 'list' | 'grid') || (isMobile ? 'grid' : 'list');
@@ -557,6 +557,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                 return 'checkInDate';
             case 'dismissed':
             case 'history':
+            case 'non-employees':
                 return 'checkOutDate';
             default:
                 return 'checkInDate';
@@ -597,85 +598,90 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         updateSearchParams({ sortBy: field, sortOrder: newSortOrder });
     }
 
-    const sortedData = useMemo(() => {
-        const getCoordinatorName = (id: string) => settings?.coordinators.find(c => c.uid === id)?.name || 'N/A';
+    const filteredAndSortedData = useMemo(() => {
+        if (!allEmployees || !allNonEmployees || !addressHistory || !settings) return {};
 
-        let dataToSort: (Entity | AddressHistory)[] = [];
-        switch (tab) {
-            case 'active':
-                dataToSort = [...(allEmployees?.filter(e => e.status === 'active') || []), ...(allNonEmployees?.filter(ne => ne.status === 'active') || [])];
-                break;
-            case 'dismissed':
-                dataToSort = [
-                    ...(allEmployees?.filter(e => e.status === 'dismissed') || []),
-                    ...(allNonEmployees?.filter(ne => ne.status === 'dismissed') || [])
-                ];
-                break;
-            case 'history':
-                dataToSort = addressHistory || [];
-                break;
+        const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
+
+        const dataSources = {
+            active: allEmployees.filter(e => e.status === 'active'),
+            dismissed: allEmployees.filter(e => e.status === 'dismissed'),
+            'non-employees': allNonEmployees,
+            history: addressHistory
+        };
+
+        const sorted = (dataToSort: any[]) => {
+            return [...dataToSort].sort((a, b) => {
+                let valA: string | number | null | undefined;
+                let valB: string | number | null | undefined;
+    
+                if (sortBy === 'coordinatorId' && 'coordinatorId' in a && 'coordinatorId' in b) {
+                     valA = getCoordinatorName(a.coordinatorId);
+                     valB = getCoordinatorName(b.coordinatorId);
+                } else if ('employeeName' in a && sortBy === 'employeeName') { // For history tab
+                    valA = a.employeeName;
+                    valB = (b as AddressHistory).employeeName;
+                } else {
+                    valA = (a as any)[sortBy];
+                    valB = (b as any)[sortBy];
+                }
+    
+    
+                if (valA === null || valA === undefined) return 1;
+                if (valB === null || valB === undefined) return -1;
+                
+                if (sortBy.includes('Date')) {
+                     const dateA = valA ? parseISO(valA as string).getTime() : 0;
+                     const dateB = valB ? parseISO(valB as string).getTime() : 0;
+                     return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+                }
+    
+                return String(valA).localeCompare(String(valB), 'pl', { numeric: true }) * (sortOrder === 'asc' ? 1 : -1);
+            });
+        };
+        
+        const filtered = (dataToFilter: any[]) => {
+            return dataToFilter.filter(entity => {
+                const searchField = 'employeeName' in entity ? entity.employeeName : entity.fullName;
+                const searchMatch = search === '' || (searchField && searchField.toLowerCase().includes(search.toLowerCase()));
+
+                if (!searchMatch) return false;
+    
+                const coordinatorMatch = filters.coordinator === 'all' || ('coordinatorId' in entity && entity.coordinatorId === filters.coordinator);
+                const addressMatch = filters.address === 'all' || ('address' in entity && entity.address === filters.address);
+                const departmentMatch = !('zaklad' in entity) || filters.department === 'all' || ('zaklad' in entity && entity.zaklad === filters.department);
+                const nationalityMatch = filters.nationality === 'all' || ('nationality' in entity && entity.nationality === filters.nationality);
+                
+                return coordinatorMatch && addressMatch && departmentMatch && nationalityMatch;
+            });
+        };
+
+        const result: Record<string, any[]> = {};
+        for (const key in dataSources) {
+            const data = filtered(dataSources[key as keyof typeof dataSources]);
+            result[key] = sorted(data);
         }
 
-        if (!dataToSort) return [];
+        return result;
 
-        const sorted = [...dataToSort].sort((a, b) => {
-            let valA: string | number | null | undefined;
-            let valB: string | number | null | undefined;
-
-            if (sortBy === 'coordinatorId' && 'coordinatorId' in a && 'coordinatorId' in b) {
-                 valA = getCoordinatorName(a.coordinatorId);
-                 valB = getCoordinatorName(b.coordinatorId);
-            } else if ('employeeName' in a && sortBy === 'employeeName') { // For history tab
-                valA = a.employeeName;
-                valB = (b as AddressHistory).employeeName;
-            } else {
-                valA = (a as any)[sortBy];
-                valB = (b as any)[sortBy];
-            }
+    }, [allEmployees, allNonEmployees, addressHistory, settings, search, filters, sortBy, sortOrder]);
 
 
-            if (valA === null || valA === undefined) return 1;
-            if (valB === null || valB === undefined) return -1;
-            
-            if (sortBy.includes('Date')) {
-                 const dateA = valA ? parseISO(valA as string).getTime() : 0;
-                 const dateB = valB ? parseISO(valB as string).getTime() : 0;
-                 return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
-            }
+    const dataMap = useMemo(() => ({
+        active: filteredAndSortedData.active || [],
+        dismissed: filteredAndSortedData.dismissed || [],
+        'non-employees': filteredAndSortedData['non-employees'] || [],
+        history: filteredAndSortedData.history || [],
+    }), [filteredAndSortedData]);
 
-            return String(valA).localeCompare(String(valB), 'pl', { numeric: true }) * (sortOrder === 'asc' ? 1 : -1);
-        });
-        return sorted;
-
-    }, [allEmployees, allNonEmployees, addressHistory, tab, sortBy, sortOrder, settings]);
-
-
-    const filteredData = useMemo(() => {
-        if (!sortedData) return [];
-        return sortedData.filter(entity => {
-            const searchField = 'employeeName' in entity ? entity.employeeName : entity.fullName;
-            const searchMatch = search === '' || (searchField && searchField.toLowerCase().includes(search.toLowerCase()));
-
-            if (tab === 'history') return searchMatch;
-
-            const addressMatch = filters.address === 'all' || ('address' in entity && entity.address === filters.address);
-            const nationalityMatch = filters.nationality === 'all' || ('nationality' in entity && entity.nationality === filters.nationality);
-            const departmentMatch = !isEmployee(entity) || filters.department === 'all' || ('zaklad' in entity && entity.zaklad === filters.department);
-            
-            return searchMatch && addressMatch && nationalityMatch && departmentMatch;
-        });
-    }, [sortedData, search, filters, tab]);
-
-    const activeCount = useMemo(() => (allEmployees?.filter(e => e.status === 'active').length || 0) + (allNonEmployees?.filter(ne => ne.status === 'active').length || 0), [allEmployees, allNonEmployees]);
-    const dismissedCount = useMemo(() => (allEmployees?.filter(e => e.status === 'dismissed').length || 0) + (allNonEmployees?.filter(ne => ne.status === 'dismissed').length || 0), [allEmployees, allNonEmployees]);
-
-
-    const totalPages = Math.ceil((filteredData?.length || 0) / ITEMS_PER_PAGE);
+    const currentData = dataMap[tab];
+    const totalPages = Math.ceil((currentData?.length || 0) / ITEMS_PER_PAGE);
+    
     const paginatedData = useMemo(() => {
         const start = (page - 1) * ITEMS_PER_PAGE;
         const end = start + ITEMS_PER_PAGE;
-        return filteredData?.slice(start, end) || [];
-    }, [filteredData, page]);
+        return currentData?.slice(start, end) || [];
+    }, [currentData, page]);
 
     const isFilterActive = Object.values(filters).some(v => v !== 'all') || search !== '';
 
@@ -728,13 +734,13 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         }
     }
 
-    const renderContent = () => (
+    const renderContent = (data: Entity[]) => (
         <>
             <ScrollArea className="h-[55vh] overflow-x-auto" style={{ opacity: isPending ? 0.6 : 1 }}>
                 {isMounted ? 
                     (viewMode === 'list' ? 
                         <EntityTable 
-                            entities={paginatedData as Entity[]}
+                            entities={data}
                             settings={settings}
                             onEdit={handleEdit}
                             onDismiss={(id) => handleDismissEmployee(id, new Date())}
@@ -746,7 +752,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                             sortOrder={sortOrder}
                         /> :
                         <EntityCardList 
-                             entities={paginatedData as Entity[]}
+                             entities={data}
                             settings={settings}
                             onEdit={handleEdit}
                             onDismiss={(id) => handleDismissEmployee(id, new Date())}
@@ -791,6 +797,8 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         </>
     );
 
+    const tabsGridClass = cn("grid w-full", currentUser.isAdmin ? "grid-cols-4" : "grid-cols-3");
+
     return (
         <Card>
             <CardHeader>
@@ -808,21 +816,25 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
             </CardHeader>
             <CardContent>
                  <Tabs value={tab} onValueChange={(v) => updateSearchParams({ tab: v, page: 1, sortBy: '', sortOrder: '' })}>
-                    <TabsList className={cn("grid w-full", currentUser.isAdmin ? "grid-cols-3" : "grid-cols-2")}>
+                    <TabsList className={tabsGridClass}>
                         <TabsTrigger value="active" disabled={isPending}>
-                            <Users className="mr-2 h-4 w-4" />Aktywni ({activeCount})
+                            <Users className="mr-2 h-4 w-4" />Aktywni ({dataMap.active.length})
                         </TabsTrigger>
                          <TabsTrigger value="dismissed" disabled={isPending}>
-                            <UserX className="mr-2 h-4 w-4" />Zwolnieni ({dismissedCount})
+                            <UserX className="mr-2 h-4 w-4" />Zwolnieni ({dataMap.dismissed.length})
+                        </TabsTrigger>
+                        <TabsTrigger value="non-employees" disabled={isPending}>
+                            <UserX className="mr-2 h-4 w-4" />NZ ({dataMap['non-employees'].length})
                         </TabsTrigger>
                         {currentUser.isAdmin && (
                             <TabsTrigger value="history" disabled={isPending}>
-                                <History className="mr-2 h-4 w-4" />Historia Adresów ({addressHistory.length})
+                                <History className="mr-2 h-4 w-4" />Historia Adresów ({dataMap.history.length})
                             </TabsTrigger>
                         )}
                     </TabsList>
-                    <TabsContent value="active" className="mt-4">{renderContent()}</TabsContent>
-                    <TabsContent value="dismissed" className="mt-4">{renderContent()}</TabsContent>
+                    <TabsContent value="active" className="mt-4">{renderContent(paginatedData as Employee[])}</TabsContent>
+                    <TabsContent value="dismissed" className="mt-4">{renderContent(paginatedData as Employee[])}</TabsContent>
+                    <TabsContent value="non-employees" className="mt-4">{renderContent(paginatedData as NonEmployee[])}</TabsContent>
                     {currentUser.isAdmin && <TabsContent value="history" className="mt-4">{renderHistoryContent()}</TabsContent>}
                 </Tabs>
             </CardContent>
@@ -837,3 +849,5 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     )
 }
 
+
+    
