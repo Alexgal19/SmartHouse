@@ -6,8 +6,7 @@ import type { Employee, NonEmployee, Settings, ChartConfig } from "@/types";
 import { useMainLayout } from '@/components/main-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, LabelList, Tooltip as RechartsTooltip, Cell } from "recharts";
-import { ChartContainer } from "@/components/ui/chart";
-import { BarChart2 } from "lucide-react";
+import { BarChart2, BedDouble, UserRoundCheck, Users } from "lucide-react";
 import { cn } from '@/lib/utils';
 
 type OccupancyData = {
@@ -37,18 +36,30 @@ const getOccupancyColor = (percentage: number) => {
     return 'hsl(var(--chart-5))'; // red
 };
 
+const KpiCard = ({ title, value, icon, description }: { title: string; value: string | number; icon: React.ReactNode; description?: string; }) => (
+    <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{title}</CardTitle>
+            {icon}
+        </CardHeader>
+        <CardContent>
+            <div className="text-2xl font-bold">{value}</div>
+            {description && <p className="text-xs text-muted-foreground">{description}</p>}
+        </CardContent>
+    </Card>
+);
 
 export function CoordinatorOccupancyChart() {
     const { allEmployees, allNonEmployees, settings, selectedCoordinatorId } = useMainLayout();
 
-    const chartData = useMemo(() => {
+    const { data, coordinatorName, totals } = useMemo(() => {
         if (!settings || !allEmployees || !allNonEmployees || selectedCoordinatorId === 'all') {
-            return { data: [], coordinatorName: '' };
+            return { data: [], coordinatorName: '', totals: null };
         }
 
         const coordinator = settings.coordinators.find(c => c.uid === selectedCoordinatorId);
         if (!coordinator) {
-            return { data: [], coordinatorName: '' };
+            return { data: [], coordinatorName: '', totals: null };
         }
         
         const coordinatorAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
@@ -72,8 +83,15 @@ export function CoordinatorOccupancyChart() {
                 available: totalCapacity - occupantCount
             }
         }).sort((a,b) => b.occupancy - a.occupancy);
+        
+        const totals = occupancyByAddress.reduce((acc, address) => {
+            acc.capacity += address.capacity;
+            acc.occupantCount += address.occupantCount;
+            acc.available += address.available;
+            return acc;
+        }, { capacity: 0, occupantCount: 0, available: 0 });
 
-        return { data: occupancyByAddress, coordinatorName: coordinator.name };
+        return { data: occupancyByAddress, coordinatorName: coordinator.name, totals };
 
     }, [allEmployees, allNonEmployees, settings, selectedCoordinatorId]);
 
@@ -93,7 +111,26 @@ export function CoordinatorOccupancyChart() {
                 <CardTitle>Obłożenie dla koordynatora</CardTitle>
                 <CardDescription>Procentowe obłożenie adresów przypisanych do: <span className="font-bold text-primary">{chartData.coordinatorName}</span></CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-6">
+                {totals && (
+                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <KpiCard
+                            title="Wszystkie miejsca"
+                            value={totals.capacity}
+                            icon={<Users className="h-5 w-5 text-muted-foreground" />}
+                        />
+                        <KpiCard
+                            title="Zajęte"
+                            value={totals.occupantCount}
+                            icon={<UserRoundCheck className="h-5 w-5 text-muted-foreground" />}
+                        />
+                        <KpiCard
+                            title="Wolne"
+                            value={totals.available}
+                            icon={<BedDouble className="h-5 w-5 text-muted-foreground" />}
+                        />
+                    </div>
+                )}
                 {chartData.data.every(d => d.capacity === 0) ? (
                     <NoDataState message="Brak zdefiniowanej pojemności dla adresów tego koordynatora." />
                 ) : (
