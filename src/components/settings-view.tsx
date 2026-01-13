@@ -1018,7 +1018,7 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
                 paymentTypesNZ: rawSettings.paymentTypesNZ.map(p => ({ value: p })).sort((a, b) => a.value.localeCompare(b.value)),
                 bokStatuses: (rawSettings.bokStatuses || []).map(s => ({ id: s.id, name: s.name })).sort((a,b) => a.name.localeCompare(b.name)),
                 addresses: [...rawSettings.addresses].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
-                coordinators: [...rawSettings.coordinators].sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(c => ({ ...c, password: '' })),
+                coordinators: [...rawSettings.coordinators].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
             });
         }
     }, [rawSettings, form]);
@@ -1246,4 +1246,3 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     </div>
   );
 }
-
