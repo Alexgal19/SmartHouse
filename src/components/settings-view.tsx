@@ -200,17 +200,26 @@ const BokStatusManager = ({ name, title, fields, append, remove, control }: { na
     );
 };
 
-const CoordinatorManager = ({ form, fields, append, remove, departments }: { form:  ReturnType<typeof useForm<z.infer<typeof formSchema>>>; fields: Record<"id", string>[], append: UseFieldArrayAppend<z.infer<typeof formSchema>, "coordinators">, remove: UseFieldArrayRemove, departments: string[] }) => {
+const CoordinatorManager = ({ form, fields, append, remove, departments, rawSettings }: { form:  ReturnType<typeof useForm<z.infer<typeof formSchema>>>; fields: Record<"id", string>[], append: UseFieldArrayAppend<z.infer<typeof formSchema>, "coordinators">, remove: UseFieldArrayRemove, departments: string[], rawSettings: Settings }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [visibleFields, setVisibleFields] = useState<Record<string, {name: boolean, pass: boolean}>>({});
     const watchedCoordinators = useWatch({ control: form.control, name: 'coordinators' });
 
-    const toggleVisibility = (id: string, field: 'name' | 'pass') => {
+    const toggleVisibility = (id: string, field: 'name' | 'pass', originalIndex: number) => {
+        const isCurrentlyVisible = visibleFields[id]?.[field];
+
+        if (field === 'pass' && !isCurrentlyVisible) {
+            const originalCoordinator = rawSettings.coordinators.find(c => c.uid === id);
+            if (originalCoordinator?.password) {
+                form.setValue(`coordinators.${originalIndex}.password`, originalCoordinator.password);
+            }
+        }
+
         setVisibleFields(prev => ({
             ...prev,
             [id]: {
                 ...prev[id],
-                [field]: !prev[id]?.[field]
+                [field]: !isCurrentlyVisible
             }
         }));
     };
@@ -272,13 +281,13 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                     name={`coordinators.${field.originalIndex}.password`}
                                     render={({ field: passField }) => (
                                         <FormItem>
-                                        <FormLabel>Hasło</FormLabel>
+                                        <FormLabel>Zresetuj hasło</FormLabel>
                                          <div className="relative">
                                             <FormControl>
                                                 <Input 
                                                     type={visibleFields[field.id]?.pass ? 'text' : 'password'}
                                                     {...passField} 
-                                                    placeholder="Wpisz nowe hasło, aby zmienić" 
+                                                    placeholder="Wpisz nowe hasło, aby je zmienić" 
                                                 />
                                             </FormControl>
                                             <Button
@@ -286,7 +295,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                                 variant="ghost"
                                                 size="icon"
                                                 className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
-                                                onClick={() => toggleVisibility(field.id, 'pass')}
+                                                onClick={() => toggleVisibility(field.id, 'pass', field.originalIndex)}
                                             >
                                                 {visibleFields[field.id]?.pass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                             </Button>
@@ -1098,7 +1107,14 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
                             <AccordionItem value="coordinators">
                                 <AccordionTrigger>Zarządzanie koordynatorami</AccordionTrigger>
                                 <AccordionContent className="p-2">
-                                    <CoordinatorManager form={form} fields={coordFields} append={appendCoord} remove={removeCoord} departments={(watchedDepartments || []).map((d: { value: string}) => d.value)} />
+                                    <CoordinatorManager
+                                        form={form}
+                                        fields={coordFields}
+                                        append={appendCoord}
+                                        remove={removeCoord}
+                                        departments={(watchedDepartments || []).map((d: { value: string}) => d.value)}
+                                        rawSettings={rawSettings}
+                                    />
                                 </AccordionContent>
                             </AccordionItem>
                             <AccordionItem value="addresses">

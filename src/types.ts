@@ -150,6 +150,12 @@ export type Notification = {
     changes: NotificationChange[];
 }
 
+export type NotificationChange = {
+    field: string;
+    oldValue: string | null;
+    newValue: string | null;
+};
+
 export type SessionData = {
   isLoggedIn: boolean;
   uid: string;
