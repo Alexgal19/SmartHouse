@@ -104,7 +104,7 @@ export function DashboardCharts({
     const [coordinatorChartFilter, setCoordinatorChartFilter] = useState('all');
     const [coordinatorChartSort, setCoordinatorChartSort] = useState<'count' | 'name'>('count');
 
-    const [nzIncomeView, setNzIncomeView] = useState<{level: 'localities' | 'addresses', filter: string | null}>({ level: 'localities', filter: null });
+    const [nzOccupancyView, setNzOccupancyView] = useState<{level: 'localities' | 'addresses', filter: string | null}>({ level: 'localities', filter: null });
     const [deductionsView, setDeductionsView] = useState<{level: 'localities' | 'addresses' | 'employees', filter: string | null, parentFilter: string | null}>({ level: 'localities', filter: null, parentFilter: null });
 
 
@@ -133,8 +133,8 @@ export function DashboardCharts({
           label: "Coordinators",
           color: "hsl(var(--chart-1))"
       },
-      nzIncome: {
-        label: "Przychód (NZ)",
+      personCount: {
+        label: "Ilość osób (NZ)",
         color: "hsl(var(--chart-2))"
       }
     } satisfies ChartConfig
@@ -252,67 +252,40 @@ export function DashboardCharts({
             })
         }
 
-        const incomeByLocation = (nonEmployees || []).reduce((acc, nonEmployee) => {
-            const monthlyAmount = nonEmployee.paymentAmount;
-            // Skip if no monthly amount is set
-            if (!monthlyAmount || monthlyAmount <= 0 || !nonEmployee.address) {
-                return acc;
-            }
-        
-            const reportDate = new Date(); // Using current date to determine the month for calculation
-            const reportStartOfMonth = startOfMonth(reportDate);
-            const reportEndOfMonth = endOfMonth(reportDate);
-            const daysInReportMonth = getDaysInMonth(reportDate);
-        
-            const checkIn = nonEmployee.checkInDate ? parseISO(nonEmployee.checkInDate) : null;
-            const checkOut = nonEmployee.checkOutDate ? parseISO(nonEmployee.checkOutDate) : null;
-        
-            if (!checkIn || checkIn > reportEndOfMonth || (checkOut && checkOut < reportStartOfMonth)) {
-                return acc; // Not in this month
-            }
-        
-            const startDateInMonth = checkIn > reportStartOfMonth ? checkIn : reportStartOfMonth;
-            const endDateInMonth = checkOut && checkOut < reportEndOfMonth ? checkOut : reportEndOfMonth;
-            
-            const daysStayed = differenceInDays(endDateInMonth, startDateInMonth) + 1;
-            const dailyRate = monthlyAmount / daysInReportMonth;
-            const proratedIncome = dailyRate * daysStayed;
-        
-            if (proratedIncome <= 0) {
-                return acc;
-            }
-
+        const occupancyByLocation = (nonEmployees || []).filter(ne => ne.status === 'active').reduce((acc, nonEmployee) => {
+            if (!nonEmployee.address) return acc;
             const addressInfo = settings.addresses.find(a => a.name === nonEmployee.address);
             if (!addressInfo) return acc;
             
             const locality = addressInfo.locality || "Brak miejscowości";
             
-            if (!acc.byLocality[locality]) {
-                acc.byLocality[locality] = { name: locality, income: 0, addresses: {} };
+            if (!acc[locality]) {
+                acc[locality] = { name: locality, personCount: 0, addresses: {} };
             }
-            acc.byLocality[locality].income += proratedIncome;
+            acc[locality].personCount++;
             
-            if (!acc.byLocality[locality].addresses[addressInfo.name]) {
-                acc.byLocality[locality].addresses[addressInfo.name] = { name: addressInfo.name, income: 0 };
+            if (!acc[locality].addresses[addressInfo.name]) {
+                acc[locality].addresses[addressInfo.name] = { name: addressInfo.name, personCount: 0 };
             }
-            acc.byLocality[locality].addresses[addressInfo.name].income += proratedIncome;
+            acc[locality].addresses[addressInfo.name].personCount++;
             
             return acc;
-        }, { byLocality: {} as Record<string, { name: string, income: number, addresses: Record<string, {name: string, income: number}> }> });
+        }, {} as Record<string, { name: string, personCount: number, addresses: Record<string, {name: string, personCount: number}> }> );
 
-        let nzIncomeByLocationChartData;
-        if (nzIncomeView.level === 'localities') {
-            nzIncomeByLocationChartData = Object.values(incomeByLocation.byLocality)
-                .map(l => ({ name: l.name, nzIncome: l.income }))
-                .sort((a,b) => b.nzIncome - a.nzIncome);
+
+        let nzOccupancyByLocationChartData;
+        if (nzOccupancyView.level === 'localities') {
+            nzOccupancyByLocationChartData = Object.values(occupancyByLocation)
+                .map(l => ({ name: l.name, personCount: l.personCount }))
+                .sort((a,b) => b.personCount - a.personCount);
         } else {
-            const localityData = incomeByLocation.byLocality[nzIncomeView.filter || ''];
+            const localityData = occupancyByLocation[nzOccupancyView.filter || ''];
             if (localityData) {
-                nzIncomeByLocationChartData = Object.values(localityData.addresses)
-                    .map(a => ({ name: a.name, nzIncome: a.income }))
-                    .sort((a,b) => b.nzIncome - a.nzIncome);
+                nzOccupancyByLocationChartData = Object.values(localityData.addresses)
+                    .map(a => ({ name: a.name, personCount: a.personCount }))
+                    .sort((a,b) => b.personCount - a.personCount);
             } else {
-                nzIncomeByLocationChartData = [];
+                nzOccupancyByLocationChartData = [];
             }
         }
         
@@ -385,9 +358,9 @@ export function DashboardCharts({
             employeesByDepartment: employeesByDepartment,
             departuresByMonth: departuresData,
             deductionsByDate: deductionsChartData,
-            nzIncomeByLocation: nzIncomeByLocationChartData,
+            nzOccupancyByLocation: nzOccupancyByLocationChartData,
         }
-    }, [employees, nonEmployees, settings, departureYear, departureMonth, deductionYear, deductionMonth, departmentChartFilter, departmentChartSort, nationalityChartFilter, nationalityChartSort, coordinatorChartFilter, coordinatorChartSort, nzIncomeView, deductionsView]);
+    }, [employees, nonEmployees, settings, departureYear, departureMonth, deductionYear, deductionMonth, departmentChartFilter, departmentChartSort, nationalityChartFilter, nationalityChartSort, coordinatorChartFilter, coordinatorChartSort, nzOccupancyView, deductionsView]);
 
     const showCoordinatorChart = currentUser?.isAdmin && selectedCoordinatorId === 'all';
     
@@ -413,9 +386,9 @@ export function DashboardCharts({
         setIsEmployeeListDialogOpen(true);
     };
 
-    const handleNzIncomeClick = (data: any) => {
-        if (nzIncomeView.level === 'localities') {
-            setNzIncomeView({ level: 'addresses', filter: data.name });
+    const handleNzOccupancyClick = (data: any) => {
+        if (nzOccupancyView.level === 'localities') {
+            setNzOccupancyView({ level: 'addresses', filter: data.name });
         }
     };
     
@@ -459,34 +432,34 @@ export function DashboardCharts({
              <Card>
                 <CardHeader className='pb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between min-h-[74px]'>
                     <div className="flex items-center gap-2">
-                        {nzIncomeView.level === 'addresses' && (
+                        {nzOccupancyView.level === 'addresses' && (
                             <Button 
                                 variant="ghost" 
                                 size="icon"
                                 className="h-8 w-8"
-                                onClick={() => setNzIncomeView({ level: 'localities', filter: null })}
+                                onClick={() => setNzOccupancyView({ level: 'localities', filter: null })}
                             >
                                 <ArrowLeft className="h-4 w-4" />
                             </Button>
                         )}
                         <div>
-                             <CardTitle className="text-lg">Przychody (NZ) wg Lokalizacji</CardTitle>
-                             {nzIncomeView.level === 'addresses' && <CardDescription>Szczegóły dla: {nzIncomeView.filter}</CardDescription>}
+                             <CardTitle className="text-lg">Ilość osób (NZ) wg Lokalizacji</CardTitle>
+                             {nzOccupancyView.level === 'addresses' && <CardDescription>Szczegóły dla: {nzOccupancyView.filter}</CardDescription>}
                         </div>
                     </div>
                 </CardHeader>
                 <CardContent>
-                    {chartData.nzIncomeByLocation.length > 0 && chartData.nzIncomeByLocation.some(d => d.nzIncome > 0) ? (
-                        <div style={{ height: `${chartData.nzIncomeByLocation.length * 35 + 50}px` }}>
+                    {chartData.nzOccupancyByLocation.length > 0 && chartData.nzOccupancyByLocation.some(d => d.personCount > 0) ? (
+                        <div style={{ height: `${chartData.nzOccupancyByLocation.length * 35 + 50}px` }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart
-                                    data={chartData.nzIncomeByLocation}
+                                    data={chartData.nzOccupancyByLocation}
                                     layout="vertical"
                                     margin={{ top: 5, right: 50, bottom: 5, left: 10 }}
                                     barCategoryGap="20%"
                                 >
                                     <defs>
-                                        <linearGradient id="chart-nzincome-gradient" x1="0" y1="0" x2="1" y2="0">
+                                        <linearGradient id="chart-nzoccupancy-gradient" x1="0" y1="0" x2="1" y2="0">
                                             <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.8}/>
                                             <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0.1}/>
                                         </linearGradient>
@@ -496,16 +469,16 @@ export function DashboardCharts({
                                     <XAxis type="number" hide={true} />
                                     <Tooltip 
                                         cursor={{fill: 'hsl(var(--muted))'}} 
-                                        content={<ChartTooltipContent config={chartConfig} formatter={(value) => `${Math.round(value as number)} zł`} />} 
+                                        content={<ChartTooltipContent config={chartConfig} formatter={(value) => `${value} os.`} />} 
                                     />
-                                    <Bar dataKey="nzIncome" radius={[0, 4, 4, 0]} fill="url(#chart-nzincome-gradient)" onClick={handleNzIncomeClick} className={nzIncomeView.level === 'localities' ? 'cursor-pointer' : ''}>
-                                        <LabelList dataKey="nzIncome" position="right" offset={8} className="fill-foreground text-xs" formatter={(value: number) => value > 0 ? `${Math.round(value)} zł` : ''}/>
+                                    <Bar dataKey="personCount" radius={[0, 4, 4, 0]} fill="url(#chart-nzoccupancy-gradient)" onClick={handleNzOccupancyClick} className={nzOccupancyView.level === 'localities' ? 'cursor-pointer' : ''}>
+                                        <LabelList dataKey="personCount" position="right" offset={8} className="fill-foreground text-xs" formatter={(value: number) => value > 0 ? `${value}` : ''}/>
                                     </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
                     ): (
-                        <NoDataState message={'Brak danych o przychodach od mieszkańców (NZ)'} />
+                        <NoDataState message={'Brak danych o mieszkańcach (NZ)'} />
                     )}
                 </CardContent>
              </Card>
