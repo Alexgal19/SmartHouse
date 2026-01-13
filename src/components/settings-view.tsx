@@ -281,13 +281,13 @@ const CoordinatorManager = ({ form, fields, append, remove, departments, rawSett
                                     name={`coordinators.${field.originalIndex}.password`}
                                     render={({ field: passField }) => (
                                         <FormItem>
-                                        <FormLabel>Zresetuj hasło</FormLabel>
+                                        <FormLabel>Hasło</FormLabel>
                                          <div className="relative">
                                             <FormControl>
                                                 <Input 
                                                     type={visibleFields[field.id]?.pass ? 'text' : 'password'}
                                                     {...passField} 
-                                                    placeholder="Wpisz nowe hasło, aby je zmienić" 
+                                                    placeholder="Kliknij oko, aby wyświetlić lub zmienić" 
                                                 />
                                             </FormControl>
                                             <Button
@@ -1246,3 +1246,4 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     </div>
   );
 }
+
