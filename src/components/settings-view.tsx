@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -10,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Input } from '@/components/ui/input';
-import { Trash2, PlusCircle, Download, Loader2, FileWarning, Edit, Upload } from 'lucide-react';
+import { Trash2, PlusCircle, Download, Loader2, FileWarning, Edit, Upload, Eye, EyeOff } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
@@ -142,6 +143,7 @@ const ListManager = ({ name, title, fields, append, remove, control }: { name: s
                 open={isAddMultipleOpen}
                 onOpenChange={setIsAddMultipleOpen}
                 listTitle={title}
+                onAdd={handleAddMultiple}
             />
         </div>
     );
@@ -200,7 +202,18 @@ const BokStatusManager = ({ name, title, fields, append, remove, control }: { na
 
 const CoordinatorManager = ({ form, fields, append, remove, departments }: { form:  ReturnType<typeof useForm<z.infer<typeof formSchema>>>; fields: Record<"id", string>[], append: UseFieldArrayAppend<z.infer<typeof formSchema>, "coordinators">, remove: UseFieldArrayRemove, departments: string[] }) => {
     const [searchTerm, setSearchTerm] = useState('');
+    const [visibleFields, setVisibleFields] = useState<Record<string, {name: boolean, pass: boolean}>>({});
     const watchedCoordinators = useWatch({ control: form.control, name: 'coordinators' });
+
+    const toggleVisibility = (id: string, field: 'name' | 'pass') => {
+        setVisibleFields(prev => ({
+            ...prev,
+            [id]: {
+                ...prev[id],
+                [field]: !prev[id]?.[field]
+            }
+        }));
+    };
 
     const filteredFields = useMemo(() => {
         if (!searchTerm) return fields.map((field, index) => ({ ...field, originalIndex: index }));
@@ -244,9 +257,13 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                     name={`coordinators.${field.originalIndex}.name`}
                                     render={({ field: nameField }) => (
                                         <FormItem>
-                                        <FormLabel>Imię</FormLabel>
-                                        <FormControl><Input {...nameField} /></FormControl>
-                                        <FormMessage />
+                                            <FormLabel>Imię (Login)</FormLabel>
+                                            <div className="relative">
+                                                <FormControl>
+                                                    <Input {...nameField} />
+                                                </FormControl>
+                                            </div>
+                                            <FormMessage />
                                         </FormItem>
                                     )}
                                 />
@@ -255,8 +272,25 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                     name={`coordinators.${field.originalIndex}.password`}
                                     render={({ field: passField }) => (
                                         <FormItem>
-                                        <FormLabel>Hasło (pozostaw puste, aby nie zmieniać)</FormLabel>
-                                        <FormControl><Input type="password" {...passField} placeholder="Nowe hasło" /></FormControl>
+                                        <FormLabel>Hasło</FormLabel>
+                                         <div className="relative">
+                                            <FormControl>
+                                                <Input 
+                                                    type={visibleFields[field.id]?.pass ? 'text' : 'password'}
+                                                    {...passField} 
+                                                    placeholder="Wpisz nowe hasło, aby zmienić" 
+                                                />
+                                            </FormControl>
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
+                                                onClick={() => toggleVisibility(field.id, 'pass')}
+                                            >
+                                                {visibleFields[field.id]?.pass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                            </Button>
+                                         </div>
                                         <FormMessage />
                                         </FormItem>
                                     )}

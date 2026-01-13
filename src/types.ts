@@ -25,6 +25,7 @@ export type Coordinator = {
     departments: string[];
     password?: string;
     visibilityMode?: 'department' | 'strict';
+    pushSubscription?: string | null;
 }
 
 export type BOKStatus = {
@@ -90,6 +91,8 @@ export type Employee = {
     deductionNo30Days: number | null; // potracenie_30_dni
     deductionReason: DeductionReason[] | undefined;
     deductionEntryDate?: string | null;
+    bokStatus?: string | null;
+    bokStatusDate?: string | null;
 };
 
 export type NonEmployee = {
@@ -107,6 +110,8 @@ export type NonEmployee = {
     status: 'active' | 'dismissed';
     paymentType: string | null;
     paymentAmount: number | null;
+    bokStatus?: string | null;
+    bokStatusDate?: string | null;
 };
 
 export type AddressHistory = {
@@ -128,12 +133,6 @@ export type AssignmentHistory = {
     toCoordinatorId: string;
     assignedBy: string; // UID of the user who made the assignment
     assignmentDate: string; // ISO date string
-}
-
-export type NotificationChange = {
-    field: string; // User-friendly field name
-    oldValue: string;
-    newValue: string;
 }
 
 export type NotificationType = 'success' | 'destructive' | 'warning' | 'info';
