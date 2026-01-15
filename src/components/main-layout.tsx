@@ -107,7 +107,7 @@ type MainLayoutContextType = {
     handleDeleteEmployee: (employeeId: string, actorUid: string) => Promise<void>;
     handleRestoreNonEmployee: (nonEmployee: NonEmployee) => Promise<void>;
     handleImportEmployees: (fileContent: string) => Promise<void>;
-    handleImportNonEmployees: (fileContent: string) => Promise<void>;
+    handleImportNonEmployees: (fileContent: string, settings: Settings) => Promise<void>;
     handleDeleteAddressHistory: (historyId: string, actorUid: string) => Promise<void>;
 };
 
@@ -592,10 +592,10 @@ export default function MainLayout({
         }
     }, [currentUser, refreshData, toast]);
 
-    const handleImportNonEmployees = useCallback(async (fileContent: string) => {
+    const handleImportNonEmployees = useCallback(async (fileContent: string, settings: Settings) => {
         if (!currentUser) return;
         try {
-            const result = await importNonEmployeesFromExcel(fileContent, currentUser.uid);
+            const result = await importNonEmployeesFromExcel(fileContent, currentUser.uid, settings);
             if (result) {
                 let description = `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} wierszy.`;
                 if (result.errors.length > 0) {

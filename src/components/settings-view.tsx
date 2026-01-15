@@ -984,7 +984,7 @@ const ExcelImport = ({ onImport, title, description, fields, isLoading }: { onIm
     );
 }
 
-function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSettings: Settings, onSettingsChange: (newSettings: Settings) => void; onRefresh: () => void; }) {
+function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSettings: Settings, onSettingsChange: (newSettings: Settings) => void; onRefresh: () => void; }) => {
     const { toast } = useToast();
     const [isAddressFormOpen, setIsAddressFormOpen] = useState(false);
     const [editingAddress, setEditingAddress] = useState<Address | null>(null);
@@ -1186,8 +1186,12 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     }
     
     const runNonEmployeeImport = async (fileContent: string) => {
+        if (!rawSettings) {
+            toast({ variant: 'destructive', title: 'Błąd', description: 'Ustawienia nie są załadowane. Spróbuj ponownie za chwilę.'});
+            return;
+        }
         setIsNonEmployeeImportLoading(true);
-        await handleImportNonEmployees(fileContent);
+        await handleImportNonEmployees(fileContent, rawSettings);
         setIsNonEmployeeImportLoading(false);
     }
   

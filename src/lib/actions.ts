@@ -1169,13 +1169,13 @@ export async function generateNzCostsReport(year: number, month: number, coordin
 const processImport = async (
     fileContent: string, 
     actorUid: string, 
-    type: 'employee' | 'non-employee'
+    type: 'employee' | 'non-employee',
+    settings: Settings,
 ): Promise<{ importedCount: number; totalRows: number; errors: string[] }> => {
     
     const buffer = Buffer.from(fileContent, 'base64');
     
     try {
-        const { settings } = await getAllSheetsData(actorUid, true);
         const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: false, dateNF: 'dd.mm.yyyy' });
         const sheetName = workbook.SheetNames[0];
         if (!sheetName) throw new Error("Nie znaleziono arkusza w pliku Excel.");
@@ -1271,12 +1271,12 @@ const processImport = async (
     }
 }
 
-export async function importEmployeesFromExcel(fileContent: string, actorUid: string): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
-    return processImport(fileContent, actorUid, 'employee');
+export async function importEmployeesFromExcel(fileContent: string, actorUid: string, settings: Settings): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
+    return processImport(fileContent, actorUid, 'employee', settings);
 }
 
-export async function importNonEmployeesFromExcel(fileContent: string, actorUid: string): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
-    return processImport(fileContent, actorUid, 'non-employee');
+export async function importNonEmployeesFromExcel(fileContent: string, actorUid: string, settings: Settings): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
+    return processImport(fileContent, actorUid, 'non-employee', settings);
 }
 
 export async function deleteAddressHistoryEntry(historyId: string, actorUid: string): Promise<void> {

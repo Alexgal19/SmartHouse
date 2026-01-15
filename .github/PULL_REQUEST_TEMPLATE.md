@@ -48,14 +48,20 @@ Steps to verify this PR works:
   - [ ] Ran `npm run lint` (zero or minimal known errors)
   - [ ] Ran `npm run build` (build passes with no errors)
   - [ ] TypeScript types are correct (no `any` unless justified)
-  - [ ] No console.log statements (except for debugging, removed before commit)
+  - [ ] No `console.log` statements (except for debugging, removed before commit)
 
 - [ ] **Architecture & Conventions**
   - [ ] UI components placed in `src/components/ui/` (primitives) or `src/components/` (business logic)
   - [ ] Server logic in `src/lib/` and `src/lib/actions.ts`
+  - [ ] Global state and actions are correctly exposed via `MainLayoutContext`
   - [ ] No client-only code in server-only modules
   - [ ] No hardcoded secrets or credentials
   - [ ] `.env.local` is NOT committed
+
+- [ ] **Permissions & Roles (RBAC)**
+  - [ ] New features correctly respect user roles (admin, auditor, coordinator)
+  - [ ] "Read-only" views for `auditor` role are correctly enforced
+  - [ ] UI elements are correctly shown/hidden based on role
 
 - [ ] **Imports & Dependencies**
   - [ ] Used absolute imports (aliases like `@/`) where possible
@@ -65,13 +71,13 @@ Steps to verify this PR works:
 - [ ] **Testing & Verification**
   - [ ] Tested locally in dev mode
   - [ ] Verified form inputs/validations work (if applicable)
-  - [ ] Checked Sheets integration (if modified)
-  - [ ] No console errors or warnings
+  - [ ] Verified data is saved to and read from Google Sheets correctly
+  - [ ] No console errors or warnings in the browser
 
 - [ ] **Documentation**
   - [ ] Updated `.github/copilot-instructions.md` if adding new conventions or integration points
   - [ ] Added JSDoc comments to public functions/actions
-  - [ ] Updated README.md if adding new setup steps or features
+  - [ ] Updated `README.md` if adding new setup steps or features
 
 - [ ] **A11y & Styling**
   - [ ] Tailwind CSS used (no inline styles)
