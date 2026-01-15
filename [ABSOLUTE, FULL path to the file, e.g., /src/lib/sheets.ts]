@@ -1,0 +1,7 @@
+[FULL, FINAL FILE CONTENT HERE - no abbreviations, no diffs]
+
+// All code must be correctly escaped.
+// For example, this CDATA block is inside an XML file.
+// The code inside must not contain a `]]>` sequence.
+// If it does, it must be escaped, for example by splitting it.
+// Like this: `const endOfCdata = "]]" + ">";`

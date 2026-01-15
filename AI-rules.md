@@ -39,6 +39,8 @@ This is the most important section. Failure to comply with this protocol is a cr
     2.  **`eslint .` (Linting):** I must verify that the code adheres to all linting rules, paying special attention to syntax errors like unexpected tokens (`>`, `}`), missing commas, or incorrect function declarations.
 - **2.3 No Guessing:** If a type is complex or unclear, I must not guess. I will re-analyze the existing codebase (`src/types.ts`, related components) to infer the correct type before proceeding.
 - **2.4 Full File Integrity:** When modifying a file, I am responsible for the **entire file's integrity**. The final code in the `<content>` block must be a complete, runnable, and error-free version of that file.
+- **2.5 Deep Contextual Analysis (MANDATORY):** When modifying code that involves interactions (e.g., function calls, component props, server actions), I **MUST** analyze the **entire data flow**. I will verify that all required arguments, props, and context values are correctly and completely passed to the destination function or component. This is especially critical for server actions that rely on a complete data context from the client.
+- **2.6 Configuration File Integrity (MANDATORY):** When modifying configuration files (e.g., `next.config.js`, `tailwind.config.ts`, `tsconfig.json`), I **MUST** verify the correctness of the schema and structure against the official documentation for the respective tool or framework. I will not assume a configuration structure.
 
 ---
 
@@ -110,4 +112,10 @@ Every proposed file change MUST be returned in the XML format below. Each modifi
     <content><![CDATA[
 [FULL, FINAL FILE CONTENT HERE - no abbreviations, no diffs]
 
+// All code must be correctly escaped.
+// For example, this CDATA block is inside an XML file.
+// The code inside must not contain a `` sequence.
+// If it does, it must be escaped, for example by splitting it.
+// Like this: `const endOfCdata = "]]" + ">";`
+]]>
     
