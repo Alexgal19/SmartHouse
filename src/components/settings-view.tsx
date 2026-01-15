@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -984,7 +983,7 @@ const ExcelImport = ({ onImport, title, description, fields, isLoading }: { onIm
     );
 }
 
-function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSettings: Settings, onSettingsChange: (newSettings: Settings) => void; onRefresh: () => void; }) => {
+function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSettings: Settings, onSettingsChange: (newSettings: Settings) => void; onRefresh: () => void; }) {
     const { toast } = useToast();
     const [isAddressFormOpen, setIsAddressFormOpen] = useState(false);
     const [editingAddress, setEditingAddress] = useState<Address | null>(null);
@@ -993,7 +992,31 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         mode: 'onChange',
+        defaultValues: {
+            nationalities: rawSettings.nationalities.map(n => ({ value: n })).sort((a, b) => a.value.localeCompare(b.value)),
+            departments: rawSettings.departments.map(d => ({ value: d })).sort((a, b) => a.value.localeCompare(b.value)),
+            genders: rawSettings.genders.map(g => ({ value: g })).sort((a, b) => a.value.localeCompare(b.value)),
+            localities: rawSettings.localities.map(l => ({ value: l })).sort((a, b) => a.value.localeCompare(b.value)),
+            paymentTypesNZ: rawSettings.paymentTypesNZ.map(p => ({ value: p })).sort((a, b) => a.value.localeCompare(b.value)),
+            bokStatuses: (rawSettings.bokStatuses || []).map(s => ({ id: s.id, name: s.name })).sort((a,b) => a.name.localeCompare(b.name)),
+            addresses: [...rawSettings.addresses].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
+            coordinators: [...rawSettings.coordinators].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
+        },
     });
+    
+    useEffect(() => {
+        form.reset({
+            nationalities: rawSettings.nationalities.map(n => ({ value: n })).sort((a, b) => a.value.localeCompare(b.value)),
+            departments: rawSettings.departments.map(d => ({ value: d })).sort((a, b) => a.value.localeCompare(b.value)),
+            genders: rawSettings.genders.map(g => ({ value: g })).sort((a, b) => a.value.localeCompare(b.value)),
+            localities: rawSettings.localities.map(l => ({ value: l })).sort((a, b) => a.value.localeCompare(b.value)),
+            paymentTypesNZ: rawSettings.paymentTypesNZ.map(p => ({ value: p })).sort((a, b) => a.value.localeCompare(b.value)),
+            bokStatuses: (rawSettings.bokStatuses || []).map(s => ({ id: s.id, name: s.name })).sort((a,b) => a.name.localeCompare(b.name)),
+            addresses: [...rawSettings.addresses].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
+            coordinators: [...rawSettings.coordinators].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
+        });
+    }, [rawSettings, form]);
+
     const { fields: natFields, append: appendNat, remove: removeNat } = useFieldArray({ control: form.control, name: 'nationalities' });
     const { fields: depFields, append: appendDep, remove: removeDep } = useFieldArray({ control: form.control, name: 'departments' });
     const { fields: genFields, append: appendGen, remove: removeGen } = useFieldArray({ control: form.control, name: 'genders' });
@@ -1007,21 +1030,6 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
     const watchedCoordinators = useWatch({ control: form.control, name: 'coordinators' });
     const watchedLocalities = useWatch({ control: form.control, name: 'localities' });
     const watchedDepartments = useWatch({ control: form.control, name: 'departments' });
-
-    useEffect(() => {
-        if (rawSettings) {
-            form.reset({
-                nationalities: rawSettings.nationalities.map(n => ({ value: n })).sort((a, b) => a.value.localeCompare(b.value)),
-                departments: rawSettings.departments.map(d => ({ value: d })).sort((a, b) => a.value.localeCompare(b.value)),
-                genders: rawSettings.genders.map(g => ({ value: g })).sort((a, b) => a.value.localeCompare(b.value)),
-                localities: rawSettings.localities.map(l => ({ value: l })).sort((a, b) => a.value.localeCompare(b.value)),
-                paymentTypesNZ: rawSettings.paymentTypesNZ.map(p => ({ value: p })).sort((a, b) => a.value.localeCompare(b.value)),
-                bokStatuses: (rawSettings.bokStatuses || []).map(s => ({ id: s.id, name: s.name })).sort((a,b) => a.name.localeCompare(b.name)),
-                addresses: [...rawSettings.addresses].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
-                coordinators: [...rawSettings.coordinators].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
-            });
-        }
-    }, [rawSettings, form]);
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         const newSettings: Partial<Settings> = {
@@ -1180,8 +1188,12 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     }, [fetchRawSettings]);
 
     const runEmployeeImport = async (fileContent: string) => {
+        if (!rawSettings) {
+            toast({ variant: 'destructive', title: 'Błąd', description: 'Ustawienia nie są załadowane. Spróbuj ponownie za chwilę.'});
+            return;
+        }
         setIsEmployeeImportLoading(true);
-        await handleImportEmployees(fileContent);
+        await handleImportEmployees(fileContent, rawSettings);
         setIsEmployeeImportLoading(false);
     }
     
