@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -1243,14 +1244,14 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
                 onImport={runEmployeeImport}
                 title="Import Pracowników z Excel"
                 description="Zaimportuj nowych pracowników z pliku XLSX."
-                fields="Imię i nazwisko, Koordynator, Narodowość, Płeć, Adres, Pokój, Zakład, Data zameldowania, etc."
+                fields="Imię, Nazwisko, Koordynator, Narodowość, etc."
                 isLoading={isEmployeeImportLoading}
             />
             <ExcelImport 
                 onImport={runNonEmployeeImport}
                 title="Import Mieszkańców (NZ) z Excel"
                 description="Zaimportuj nowych mieszkańców (NZ) z pliku XLSX."
-                fields="Imię i nazwisko, Koordynator, Narodowość, Płeć, Adres, Pokój, Miejscowość, Data zameldowania, etc."
+                fields="Imię, Nazwisko, Koordynator, Narodowość, etc."
                 isLoading={isNonEmployeeImportLoading}
             />
         </div>

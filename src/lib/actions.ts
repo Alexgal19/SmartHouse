@@ -36,7 +36,7 @@ const serializeDate = (date?: string | null): string => {
 };
 
 const EMPLOYEE_HEADERS = [
-    'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 
+    'id', 'firstName', 'lastName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 
     'zaklad', 'checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 
     'departureReportDate', 'comments', 'status',
     'depositReturned', 'depositReturnAmount', 'deductionRegulation', 'deductionNo4Months', 'deductionNo30Days', 'deductionReason', 'deductionEntryDate'
@@ -44,16 +44,9 @@ const EMPLOYEE_HEADERS = [
 
 const serializeEmployee = (employee: Partial<Employee>): Record<string, string | number | boolean> => {
     const serialized: Record<string, string | number | boolean> = {};
-    const fullName = `${employee.lastName || ''} ${employee.firstName || ''}`.trim();
 
     for (const key of EMPLOYEE_HEADERS) {
         const typedKey = key as keyof Employee;
-        
-        if (key === 'fullName') {
-            serialized[key] = fullName;
-            continue;
-        }
-
         const value = employee[typedKey];
         
         if (value === undefined || value === null) {
@@ -78,13 +71,8 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
 
 const serializeNonEmployee = (nonEmployee: Partial<NonEmployee>): Record<string, string | number | boolean> => {
     const serialized: Record<string, string | number | boolean | null> = {};
-    const fullName = `${nonEmployee.lastName || ''} ${nonEmployee.firstName || ''}`.trim();
 
     for (const [key, value] of Object.entries(nonEmployee)) {
-        if (key === 'fullName') {
-            serialized[key] = fullName;
-            continue;
-        }
         if (['checkInDate', 'checkOutDate', 'departureReportDate'].includes(key)) {
             serialized[key] = serializeDate(value as string);
         } else if (value !== null && value !== undefined) {
@@ -93,21 +81,20 @@ const serializeNonEmployee = (nonEmployee: Partial<NonEmployee>): Record<string,
             serialized[key] = '';
         }
     }
-    serialized.fullName = fullName;
     return serialized;
 };
 
 const NOTIFICATION_HEADERS = [
-    'id', 'message', 'entityId', 'entityName', 'actorName', 'recipientId', 'createdAt', 'isRead', 'type', 'changes'
+    'id', 'message', 'entityId', 'entityFirstName', 'entityLastName', 'actorName', 'recipientId', 'createdAt', 'isRead', 'type', 'changes'
 ];
 
 const serializeNotification = (notification: Notification): Record<string, string> => {
-    const entityName = `${notification.entityLastName} ${notification.entityFirstName}`.trim();
     return {
         id: notification.id,
         message: notification.message,
         entityId: notification.entityId,
-        entityName: entityName,
+        entityFirstName: notification.entityFirstName,
+        entityLastName: notification.entityLastName,
         actorName: notification.actorName,
         recipientId: notification.recipientId,
         createdAt: notification.createdAt,
@@ -118,14 +105,14 @@ const serializeNotification = (notification: Notification): Record<string, strin
 };
 
 const NON_EMPLOYEE_HEADERS = [
-    'id', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'departureReportDate', 'comments', 'status', 'paymentType', 'paymentAmount'
+    'id', 'firstName', 'lastName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'departureReportDate', 'comments', 'status', 'paymentType', 'paymentAmount'
 ];
 
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'departments', 'password', 'visibilityMode'];
 const ADDRESS_HEADERS = ['id', 'locality', 'name', 'coordinatorIds'];
 const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targetType', 'targetId', 'details'];
-const ADDRESS_HISTORY_HEADERS = ['id', 'employeeId', 'employeeName', 'coordinatorName', 'department', 'address', 'checkInDate', 'checkOutDate'];
-const ASSIGNMENT_HISTORY_HEADERS = ['id', 'employeeId', 'employeeName', 'fromCoordinatorId', 'toCoordinatorId', 'assignedBy', 'assignmentDate'];
+const ADDRESS_HISTORY_HEADERS = ['id', 'employeeId', 'employeeFirstName', 'employeeLastName', 'coordinatorName', 'department', 'address', 'checkInDate', 'checkOutDate'];
+const ASSIGNMENT_HISTORY_HEADERS = ['id', 'employeeId', 'employeeFirstName', 'employeeLastName', 'fromCoordinatorId', 'toCoordinatorId', 'assignedBy', 'assignmentDate'];
 
 
 const safeFormat = (dateValue: unknown): string | null => {
@@ -192,8 +179,13 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     const plainObject = row;
     
     const id = String(plainObject.id || '');
-    const { firstName, lastName } = splitFullName(plainObject.fullName as string);
-    if (!id || !lastName) return null;
+    if (!id || (!plainObject.lastName && !plainObject.fullName)) return null;
+
+    const { firstName, lastName } = plainObject.lastName 
+        ? { firstName: plainObject.firstName as string, lastName: plainObject.lastName as string}
+        : splitFullName(plainObject.fullName as string);
+
+    if (!lastName) return null;
 
 
     let deductionReason: DeductionReason[] | undefined;
@@ -1255,16 +1247,18 @@ const processImport = async (
                     }
                 }
                 
-                const fullName = (normalizedRow['imię i nazwisko'] as string)?.trim();
-                const { firstName, lastName } = splitFullName(fullName);
+                const firstName = (normalizedRow['imię'] as string)?.trim();
+                const lastName = (normalizedRow['nazwisko'] as string)?.trim();
+
                 if (!lastName) {
+                    errors.push(`Wiersz ${rowNum}: Brak nazwiska.`);
                     continue; 
                 }
                 
                 const coordinatorName = (normalizedRow['koordynator'] as string)?.toLowerCase().trim();
                 const coordinatorId = coordinatorName ? coordinatorMap.get(coordinatorName) : '';
                 if (!coordinatorId) {
-                     errors.push(`Wiersz ${rowNum} (${fullName}): Nie znaleziono koordynatora '${normalizedRow['koordynator']}'.`);
+                     errors.push(`Wiersz ${rowNum} (${lastName}): Nie znaleziono koordynatora '${normalizedRow['koordynator']}'.`);
                      continue;
                 }
                 
@@ -1303,7 +1297,7 @@ const processImport = async (
                 }
 
             } catch (rowError) {
-                errors.push(`Wiersz ${rowNum} (${(row['Imię i nazwisko'] as string) || 'Brak Imienia'}): ${rowError instanceof Error ? rowError.message : 'Nieznany błąd'}.`);
+                errors.push(`Wiersz ${rowNum} (${(row['Nazwisko'] as string) || 'Brak Nazwiska'}): ${rowError instanceof Error ? rowError.message : 'Nieznany błąd'}.`);
             }
         }
 

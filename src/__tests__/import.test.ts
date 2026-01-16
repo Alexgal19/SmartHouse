@@ -57,7 +57,8 @@ describe('Import z Plików Excel', () => {
     it('powinien poprawnie zaimportować prawidłowe dane pracownika', async () => {
       const excelData = [
         {
-          'Imię i nazwisko': 'Testowy Adam',
+          'Nazwisko': 'Testowy',
+          'Imię': 'Adam',
           'Koordynator': 'Jan Kowalski',
           'Narodowość': 'Polska',
           'Płeć': 'Mężczyzna',
@@ -89,8 +90,8 @@ describe('Import z Plików Excel', () => {
 
     it('powinien zignorować wiersz z nieistniejącym koordynatorem i zaraportować błąd', async () => {
       const excelData = [
-        { 'Imię i nazwisko': 'Poprawny Jan', 'Koordynator': 'Jan Kowalski', 'Data zameldowania': '01.01.2024' },
-        { 'Imię i nazwisko': 'Błędny Adam', 'Koordynator': 'Nieistniejący Koordynator', 'Data zameldowania': '01.01.2024' },
+        { 'Nazwisko': 'Poprawny', 'Imię': 'Jan', 'Koordynator': 'Jan Kowalski', 'Data zameldowania': '01.01.2024' },
+        { 'Nazwisko': 'Błędny', 'Imię': 'Adam', 'Koordynator': 'Nieistniejący Koordynator', 'Data zameldowania': '01.01.2024' },
       ];
       const base64Content = createMockExcel(excelData);
 
@@ -103,10 +104,10 @@ describe('Import z Plików Excel', () => {
       expect(mockedAddEmployee).toHaveBeenCalledTimes(1);
     });
 
-    it('powinien zignorować wiersz bez imienia i nazwiska lub daty zameldowania', async () => {
+    it('powinien zignorować wiersz bez nazwiska lub daty zameldowania', async () => {
         const excelData = [
-            { 'Imię i nazwisko': '', 'Koordynator': 'Jan Kowalski', 'Data zameldowania': '01.01.2024' },
-            { 'Imię i nazwisko': 'Testowy Jan', 'Koordynator': 'Jan Kowalski', 'Data zameldowania': '' },
+            { 'Nazwisko': '', 'Imię': 'Jan', 'Koordynator': 'Jan Kowalski', 'Data zameldowania': '01.01.2024' },
+            { 'Nazwisko': 'Testowy', 'Imię': 'Jan', 'Koordynator': 'Jan Kowalski', 'Data zameldowania': '' },
         ];
         const base64Content = createMockExcel(excelData);
 
@@ -120,7 +121,8 @@ describe('Import z Plików Excel', () => {
     it('powinien wykryć i dodać nową miejscowość do ustawień', async () => {
       const excelData = [
         {
-          'Imię i nazwisko': 'Nowacki Jan',
+          'Nazwisko': 'Nowacki',
+          'Imię': 'Jan',
           'Koordynator': 'Jan Kowalski',
           'Miejscowość': 'Gdańsk', // Nowa miejscowość
           'Data zameldowania': '01.01.2024',
@@ -143,7 +145,8 @@ describe('Import z Plików Excel', () => {
     it('powinien poprawnie zaimportować mieszkańca (NZ)', async () => {
         const excelData = [
             {
-              'Imię i nazwisko': 'Niezatrudniony Zenon',
+              'Nazwisko': 'Niezatrudniony',
+              'Imię': 'Zenon',
               'Koordynator': 'Anna Nowak',
               'Adres': 'ul. Wolna 5',
               'Data zameldowania': '2024-02-10',
