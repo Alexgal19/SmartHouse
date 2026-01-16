@@ -44,9 +44,16 @@ const EMPLOYEE_HEADERS = [
 
 const serializeEmployee = (employee: Partial<Employee>): Record<string, string | number | boolean> => {
     const serialized: Record<string, string | number | boolean> = {};
+    const fullName = `${employee.lastName || ''} ${employee.firstName || ''}`.trim();
 
     for (const key of EMPLOYEE_HEADERS) {
         const typedKey = key as keyof Employee;
+        
+        if (key === 'fullName') {
+            serialized[key] = fullName;
+            continue;
+        }
+
         const value = employee[typedKey];
         
         if (value === undefined || value === null) {
@@ -71,7 +78,13 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
 
 const serializeNonEmployee = (nonEmployee: Partial<NonEmployee>): Record<string, string | number | boolean> => {
     const serialized: Record<string, string | number | boolean | null> = {};
+    const fullName = `${nonEmployee.lastName || ''} ${nonEmployee.firstName || ''}`.trim();
+
     for (const [key, value] of Object.entries(nonEmployee)) {
+        if (key === 'fullName') {
+            serialized[key] = fullName;
+            continue;
+        }
         if (['checkInDate', 'checkOutDate', 'departureReportDate'].includes(key)) {
             serialized[key] = serializeDate(value as string);
         } else if (value !== null && value !== undefined) {
@@ -80,6 +93,7 @@ const serializeNonEmployee = (nonEmployee: Partial<NonEmployee>): Record<string,
             serialized[key] = '';
         }
     }
+    serialized.fullName = fullName;
     return serialized;
 };
 
@@ -88,11 +102,12 @@ const NOTIFICATION_HEADERS = [
 ];
 
 const serializeNotification = (notification: Notification): Record<string, string> => {
+    const entityName = `${notification.entityLastName} ${notification.entityFirstName}`.trim();
     return {
         id: notification.id,
         message: notification.message,
         entityId: notification.entityId,
-        entityName: notification.entityName,
+        entityName: entityName,
         actorName: notification.actorName,
         recipientId: notification.recipientId,
         createdAt: notification.createdAt,
@@ -159,12 +174,27 @@ const safeFormat = (dateValue: unknown): string | null => {
     return null;
 };
 
+const splitFullName = (fullName: string | null | undefined): { firstName: string, lastName: string } => {
+    if (!fullName || typeof fullName !== 'string') {
+        return { firstName: '', lastName: '' };
+    }
+    const nameParts = fullName.trim().split(/\s+/);
+    if (nameParts.length === 1) {
+        return { firstName: '', lastName: nameParts[0] };
+    }
+    const lastName = nameParts.shift() || '';
+    const firstName = nameParts.join(' ');
+    return { firstName, lastName };
+}
+
 
 const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     const plainObject = row;
     
     const id = String(plainObject.id || '');
-    if (!id || !plainObject.fullName) return null;
+    const { firstName, lastName } = splitFullName(plainObject.fullName as string);
+    if (!id || !lastName) return null;
+
 
     let deductionReason: DeductionReason[] | undefined;
     if (plainObject.deductionReason && typeof plainObject.deductionReason === 'string') {
@@ -181,7 +211,8 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
 
     const newEmployee: Employee = {
         id: id,
-        fullName: String(plainObject.fullName || ''),
+        firstName,
+        lastName,
         coordinatorId: String(plainObject.coordinatorId || ''),
         nationality: String(plainObject.nationality || ''),
         gender: String(plainObject.gender || ''),
@@ -225,7 +256,8 @@ const writeToAuditLog = async (actorId: string, actorName: string, action: strin
 };
 
 const FIELD_LABELS: Record<string, string> = {
-    fullName: "Imię i nazwisko",
+    firstName: "Imię",
+    lastName: "Nazwisko",
     coordinatorId: "Koordynator",
     nationality: "Narodowość",
     gender: "Płeć",
@@ -245,28 +277,29 @@ const generateSmartNotificationMessage = (
     settings?: Settings
 ): { message: string, type: NotificationType } => {
     const entityType = 'zaklad' in entity && entity.zaklad ? 'pracownika' : 'mieszkańca';
+    const entityFullName = `${entity.firstName} ${entity.lastName}`.trim();
     let message = '';
     let type: NotificationType = 'info';
 
     switch (action) {
         case 'dodał':
-            message = `Dodał nowego ${entityType} ${entity.fullName}.`;
+            message = `Dodał nowego ${entityType} ${entityFullName}.`;
             type = 'success';
             break;
         case 'trwale usunął':
-            message = `Trwale usunął ${entityType} ${entity.fullName}.`;
+            message = `Trwale usunął ${entityType} ${entityFullName}.`;
             type = 'destructive';
             break;
         case 'automatycznie zwolnił':
-            message = `Automatycznie zwolnił ${entityType} ${entity.fullName} z powodu upływu daty wymeldowania.`;
+            message = `Automatycznie zwolnił ${entityType} ${entityFullName} z powodu upływu daty wymeldowania.`;
             type = 'warning';
             break;
         case 'wysłał do Ciebie':
-             message = `Wysłał do Ciebie nowego ${entityType}: ${entity.fullName}.`;
+             message = `Wysłał do Ciebie nowego ${entityType}: ${entityFullName}.`;
              type = 'info';
              break;
         case 'przypisał do Ciebie':
-            message = `Przypisał do Ciebie nowego ${entityType}: ${entity.fullName}.`;
+            message = `Przypisał do Ciebie nowego ${entityType}: ${entityFullName}.`;
             type = 'info';
             break;
         case 'zaktualizował': {
@@ -275,22 +308,22 @@ const generateSmartNotificationMessage = (
             const checkoutChange = changes.find(c => c.field === FIELD_LABELS['checkOutDate']);
 
             if (statusChange && statusChange.newValue === 'dismissed') {
-                message = `Zwolnił ${entityType} ${entity.fullName}.`;
+                message = `Zwolnił ${entityType} ${entityFullName}.`;
                 type = 'warning';
             } else if (addressChange) {
-                message = `Zmienił adres ${entityType} ${entity.fullName} na ${addressChange.newValue}.`;
+                message = `Zmienił adres ${entityType} ${entityFullName} na ${addressChange.newValue}.`;
                 type = 'warning';
             } else if (checkoutChange && (!checkoutChange.oldValue || checkoutChange.oldValue === 'Brak')) {
-                message = `Przypisał datę wymeldowania dla ${entityType} ${entity.fullName}.`;
+                message = `Przypisał datę wymeldowania dla ${entityType} ${entityFullName}.`;
                 type = 'info';
             } else {
-                message = `Zaktualizował dane ${entityType} ${entity.fullName}.`;
+                message = `Zaktualizował dane ${entityType} ${entityFullName}.`;
                 type = 'info';
             }
             break;
         }
         default:
-            message = `${actorName} ${action} ${entityType} ${entity.fullName}.`;
+            message = `${actorName} ${action} ${entityType} ${entityFullName}.`;
             type = 'info';
     }
 
@@ -330,7 +363,8 @@ const createNotification = async (
             id: `notif-${Date.now()}-${Math.random()}`,
             message,
             entityId: entity.id,
-            entityName: entity.fullName,
+            entityFirstName: entity.firstName,
+            entityLastName: entity.lastName,
             actorName: actor.name,
             recipientId: recipient.uid,
             createdAt: new Date().toISOString(),
@@ -375,7 +409,8 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
         const newEmployee: Employee = {
             id: `emp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
             status: 'active',
-            fullName: employeeData.fullName || '',
+            firstName: employeeData.firstName || '',
+            lastName: employeeData.lastName || '',
             coordinatorId: employeeData.coordinatorId || '',
             nationality: employeeData.nationality || '',
             gender: employeeData.gender || '',
@@ -445,7 +480,8 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
                  const oldCoordinator = settings.coordinators.find(c => c.uid === originalEmployee.coordinatorId);
                 await addHistoryToAction({
                     employeeId: employeeId,
-                    employeeName: originalEmployee.fullName,
+                    employeeFirstName: originalEmployee.firstName,
+                    employeeLastName: originalEmployee.lastName,
                     coordinatorName: oldCoordinator?.name || 'N/A',
                     department: originalEmployee.zaklad || 'N/A',
                     address: originalEmployee.address,
@@ -580,7 +616,19 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id' | '
         const newNonEmployee: NonEmployee = {
             id: `nonemp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
             status: 'active',
-            ...nonEmployeeData
+            firstName: nonEmployeeData.firstName || '',
+            lastName: nonEmployeeData.lastName || '',
+            coordinatorId: nonEmployeeData.coordinatorId || '',
+            nationality: nonEmployeeData.nationality || '',
+            gender: nonEmployeeData.gender || '',
+            address: nonEmployeeData.address || '',
+            roomNumber: nonEmployeeData.roomNumber || '',
+            checkInDate: nonEmployeeData.checkInDate,
+            checkOutDate: nonEmployeeData.checkOutDate,
+            departureReportDate: nonEmployeeData.departureReportDate,
+            comments: nonEmployeeData.comments,
+            paymentType: nonEmployeeData.paymentType,
+            paymentAmount: nonEmployeeData.paymentAmount,
         };
 
         const serialized = serializeNonEmployee(newNonEmployee);
@@ -608,7 +656,7 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
         }
 
         const row = rows[rowIndex];
-        const originalNonEmployee = row.toObject() as NonEmployee;
+        const originalNonEmployee = { ...row.toObject(), ...splitFullName(row.get('fullName')) } as NonEmployee;
         
         if (updates.address && updates.address !== originalNonEmployee.address && updates.checkInDate) {
             const lastHistoryEntry = addressHistory
@@ -621,7 +669,8 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
                 const oldCoordinator = settings.coordinators.find(c => c.uid === originalNonEmployee.coordinatorId);
                 await addHistoryToAction({
                     employeeId: id,
-                    employeeName: originalNonEmployee.fullName,
+                    employeeFirstName: originalNonEmployee.firstName,
+                    employeeLastName: originalNonEmployee.lastName,
                     coordinatorName: oldCoordinator?.name || 'N/A',
                     department: 'N/A',
                     address: originalNonEmployee.address,
@@ -631,7 +680,7 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
             }
         }
         
-        const updatedNonEmployeeData: NonEmployee = { ...originalNonEmployee, ...updates, id: originalNonEmployee.id, fullName: originalNonEmployee.fullName };
+        const updatedNonEmployeeData: NonEmployee = { ...originalNonEmployee, ...updates, id: originalNonEmployee.id, firstName: originalNonEmployee.firstName, lastName: originalNonEmployee.lastName };
         const changes: (Omit<NotificationChange, 'field'> & { field: keyof NonEmployee })[] = [];
         
         const { ...dbUpdates } = updates;
@@ -676,7 +725,7 @@ export async function deleteNonEmployee(id: string, actorUid: string): Promise<v
         const rows = await sheet.getRows();
         const row = rows.find((row) => row.get('id') === id);
         if (row) {
-            const nonEmployeeToDelete = row.toObject() as NonEmployee;
+            const nonEmployeeToDelete = { ...row.toObject(), ...splitFullName(row.get('fullName')) } as NonEmployee;
             await row.delete();
 
             const historyToDelete = addressHistory.filter(h => h.employeeId === id);
@@ -819,7 +868,7 @@ export async function checkAndUpdateStatuses(actorUid?: string): Promise<{ updat
                     row.set('status', 'dismissed');
                     await row.save();
                     updatedCount++;
-                    const originalNonEmployee = { ...row.toObject(), id: row.get('id'), fullName: row.get('fullName'), coordinatorId: row.get('coordinatorId') } as NonEmployee;
+                    const originalNonEmployee = { ...row.toObject(), ...splitFullName(row.get('fullName')) } as NonEmployee;
                     await createNotification(actor, 'automatycznie zwolnił', originalNonEmployee, settings, undefined, [
                         { field: 'status', oldValue: 'active', newValue: 'dismissed' }
                     ]);
@@ -1026,7 +1075,8 @@ export async function generateAccommodationReport(year: number, month: number, c
                      const daysInMonth = differenceInDays(effectiveEnd, effectiveStart) + 1;
                      if (daysInMonth > 0) {
                          reportData.push({
-                            "Imię i nazwisko": employee.fullName,
+                            "Imię": employee.firstName,
+                            "Nazwisko": employee.lastName,
                             "Koordynator": coordinatorMap.get(employee.coordinatorId) || 'N/A',
                             "Adres": historyEntry.address,
                             "Pokój": employee.roomNumber, // Assuming room number is constant for simplicity, might need adjustment
@@ -1055,7 +1105,8 @@ export async function generateAccommodationReport(year: number, month: number, c
 
             employeesInMonth.forEach(e => {
                  reportData.push({
-                    "Imię i nazwisko": e.fullName,
+                    "Imię": e.firstName,
+                    "Nazwisko": e.lastName,
                     "Koordynator": coordinatorMap.get(e.coordinatorId) || 'N/A',
                     "Adres": e.address,
                     "Pokój": e.roomNumber,
@@ -1134,7 +1185,8 @@ export async function generateNzCostsReport(year: number, month: number, coordin
             if (proratedIncome <= 0) return;
 
             reportData.push({
-                "Imię i nazwisko": ne.fullName,
+                "Imię": ne.firstName,
+                "Nazwisko": ne.lastName,
                 "Adres": ne.address,
                 "Koordynator": coordinatorMap.get(ne.coordinatorId) || 'N/A',
                 "Miesięczna stawka": monthlyAmount,
@@ -1148,7 +1200,8 @@ export async function generateNzCostsReport(year: number, month: number, coordin
         XLSX.utils.book_append_sheet(workbook, worksheet, "Raport Kosztów (NZ)");
         
         const cols = [
-            { wch: 25 }, // Imię i nazwisko
+            { wch: 25 }, // Imię
+            { wch: 25 }, // Nazwisko
             { wch: 30 }, // Adres
             { wch: 20 }, // Koordynator
             { wch: 15 }, // Miesięczna stawka
@@ -1203,7 +1256,8 @@ const processImport = async (
                 }
                 
                 const fullName = (normalizedRow['imię i nazwisko'] as string)?.trim();
-                if (!fullName) {
+                const { firstName, lastName } = splitFullName(fullName);
+                if (!lastName) {
                     continue; 
                 }
                 
@@ -1221,7 +1275,8 @@ const processImport = async (
 
                 const sharedData: Partial<NonEmployee> = {
                     id: `${type === 'employee' ? 'emp' : 'nonemp'}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                    fullName,
+                    firstName,
+                    lastName,
                     coordinatorId,
                     nationality: (normalizedRow['narodowość'] as string)?.trim(),
                     gender: (normalizedRow['płeć'] as string)?.trim(),

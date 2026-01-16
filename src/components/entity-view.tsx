@@ -86,7 +86,7 @@ const EntityActions = ({
                     <AlertDialogHeader>
                         <AlertDialogTitle>Czy na pewno chcesz trwale usunąć ten wpis?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Ta operacja jest nieodwracalna. Wszystkie dane powiązane z <span className="font-bold">{entity.fullName}</span> zostaną usunięte na zawsze.
+                            Ta operacja jest nieodwracalna. Wszystkie dane powiązane z <span className="font-bold">{`${entity.firstName} ${entity.lastName}`}</span> zostaną usunięte na zawsze.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -185,7 +185,7 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
             {entities.length > 0 ? (
               entities.map((entity) => (
                 <TableRow key={entity.id} onClick={() => onEdit(entity)} className="cursor-pointer">
-                  <TableCell className="font-medium">{entity.fullName}</TableCell>
+                  <TableCell className="font-medium">{`${entity.firstName} ${entity.lastName}`.trim()}</TableCell>
                   <TableCell>{isEmployee(entity) ? "Pracownik" : "Mieszkaniec (NZ)"}</TableCell>
                   <TableCell>{getCoordinatorName(entity.coordinatorId)}</TableCell>
                   <TableCell>{entity.address}</TableCell>
@@ -227,7 +227,7 @@ const HistoryTable = ({ history, onSort, sortBy, sortOrder, onDelete }: { histor
             {history.length > 0 ? (
               history.map((entry) => (
                 <TableRow key={entry.id}>
-                  <TableCell className="font-medium">{entry.employeeName}</TableCell>
+                  <TableCell className="font-medium">{`${entry.employeeFirstName} ${entry.employeeLastName}`.trim()}</TableCell>
                   <TableCell>{entry.coordinatorName || 'N/A'}</TableCell>
                   <TableCell>{entry.department || 'N/A'}</TableCell>
                   <TableCell>{entry.address}</TableCell>
@@ -244,7 +244,7 @@ const HistoryTable = ({ history, onSort, sortBy, sortOrder, onDelete }: { histor
                         <AlertDialogHeader>
                           <AlertDialogTitle>Czy na pewno chcesz usunąć ten wpis z historii?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Ta operacja jest nieodwracalna i usunie wpis o pobycie <span className="font-bold">{entry.employeeName}</span> pod adresem <span className="font-bold">{entry.address}</span>.
+                            Ta operacja jest nieodwracalna i usunie wpis o pobycie <span className="font-bold">{`${entry.employeeFirstName} ${entry.employeeLastName}`.trim()}</span> pod adresem <span className="font-bold">{entry.address}</span>.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -287,7 +287,7 @@ const EntityCardList = ({ entities, onEdit, onDismiss, onRestore, isDismissed, s
                     >
                         <CardHeader className="flex flex-row items-start justify-between pb-4">
                            <div>
-                             <CardTitle className="text-base">{entity.fullName}</CardTitle>
+                             <CardTitle className="text-base">{`${entity.firstName} ${entity.lastName}`.trim()}</CardTitle>
                              <CardDescription>
                                 {isEmployee(entity) ? getCoordinatorName(entity.coordinatorId) : "Mieszkaniec (NZ)"}
                              </CardDescription>
@@ -322,7 +322,7 @@ const HistoryCardList = ({ history, onDelete }: { history: AddressHistory[]; onD
                     >
                         <CardHeader className="flex flex-row items-start justify-between pb-4">
                            <div>
-                             <CardTitle className="text-base">{entry.employeeName}</CardTitle>
+                             <CardTitle className="text-base">{`${entry.employeeFirstName} ${entry.employeeLastName}`.trim()}</CardTitle>
                              <CardDescription>
                                 {entry.coordinatorName} - {entry.department}
                              </CardDescription>
@@ -338,7 +338,7 @@ const HistoryCardList = ({ history, onDelete }: { history: AddressHistory[]; onD
                                     <AlertDialogHeader>
                                       <AlertDialogTitle>Czy na pewno chcesz usunąć ten wpis z historii?</AlertDialogTitle>
                                       <AlertDialogDescription>
-                                        Ta operacja jest nieodwracalna i usunie wpis o pobycie <span className="font-bold">{entry.employeeName}</span> pod adresem <span className="font-bold">{entry.address}</span>.
+                                        Ta operacja jest nieodwracalna i usunie wpis o pobycie <span className="font-bold">{`${entry.employeeFirstName} ${entry.employeeLastName}`.trim()}</span> pod adresem <span className="font-bold">{entry.address}</span>.
                                       </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
@@ -614,13 +614,16 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
             return [...dataToSort].sort((a, b) => {
                 let valA: string | number | null | undefined;
                 let valB: string | number | null | undefined;
+                
+                if (sortBy === 'fullName' || sortBy === 'employeeName') {
+                    const nameA = `${a.lastName || a.employeeLastName} ${a.firstName || a.employeeFirstName}`;
+                    const nameB = `${b.lastName || b.employeeLastName} ${b.firstName || b.employeeFirstName}`;
+                    return nameA.localeCompare(nameB, 'pl', { numeric: true }) * (sortOrder === 'asc' ? 1 : -1);
+                }
     
                 if (sortBy === 'coordinatorId' && 'coordinatorId' in a && 'coordinatorId' in b) {
                      valA = getCoordinatorName(a.coordinatorId);
                      valB = getCoordinatorName(b.coordinatorId);
-                } else if ('employeeName' in a && sortBy === 'employeeName') { // For history tab
-                    valA = a.employeeName;
-                    valB = (b as AddressHistory).employeeName;
                 } else {
                     valA = (a as any)[sortBy];
                     valB = (b as any)[sortBy];
@@ -642,8 +645,11 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         
         const filtered = (dataToFilter: any[]) => {
             return dataToFilter.filter(entity => {
-                const searchField = 'employeeName' in entity ? entity.employeeName : entity.fullName;
-                const searchMatch = search === '' || (searchField && searchField.toLowerCase().includes(search.toLowerCase()));
+                const searchMatch = search === '' || 
+                    (entity.firstName && entity.firstName.toLowerCase().includes(search.toLowerCase())) ||
+                    (entity.lastName && entity.lastName.toLowerCase().includes(search.toLowerCase())) ||
+                    (entity.employeeFirstName && entity.employeeFirstName.toLowerCase().includes(search.toLowerCase())) ||
+                    (entity.employeeLastName && entity.employeeLastName.toLowerCase().includes(search.toLowerCase()));
 
                 if (!searchMatch) return false;
     
@@ -848,6 +854,3 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         </Card>
     )
 }
-
-
-    

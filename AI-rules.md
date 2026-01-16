@@ -14,7 +14,32 @@ Note: This document defines working standards for stability, security, accessibi
 9.  [Google Sheets Integration (Security and Reliability)](#9-google-sheets-integration-security-and-reliability)
 10. [UI/UX, A11y, and Tailwind](#10-uiux-a11y-and-tailwind)
 11. [Performance and Performance Budget](#11-performance-and-performance-budget)
-12. [Testing and Observability](#12-testing-and-observability)
+12. Testing and Observability (MANDATORY LOGIC VERIFICATION)
+Crucial: As an AI, I cannot "see" or "click" the UI. Therefore, I must use automated tests to verify my work.
+
+12.1 The "Test-First" or "Test-Alongside" Rule:
+
+For every change in Business Logic (e.g., parsing functions in utils.ts, data transformation in sheets.ts), I MUST provide a corresponding Unit Test (.test.ts).
+
+For complex UI interactions (e.g., add-employee-form.tsx), I SHOULD provide an Integration Test using React Testing Library to verify the happy path (render -> input -> submit).
+
+12.2 Mocking External Services (Google Sheets Safety):
+
+Tests MUST NEVER attempt to connect to the real Google Sheets API.
+
+I MUST mock all imports from src/lib/sheets.ts and src/lib/actions.ts in my test files.
+
+I will use jest.mock() to simulate successful data fetching and server action responses.
+
+12.3 Verification Workflow:
+
+After generating code, I will instruct the user to run npm test.
+
+If tests fail, I will treat fixing them as the highest priority before proceeding to new features.
+
+12.4 Snapshots:
+
+Avoid fragile UI snapshots. Focus tests on logic: "Does function X return Y given input Z?" or "Does clicking Submit call the server action with correct arguments?"
 13. [Checklists (Pre-PR and Pre-Deployment)](#13-checklists-pre-pr-and-pre-deployment)
 14. [Minimum Scripts (Recommended)](#14-minimum-scripts-recommended)
 15. [Date Handling Standard (and Excel Export)](#15-date-handling-standard-and-excel-export)

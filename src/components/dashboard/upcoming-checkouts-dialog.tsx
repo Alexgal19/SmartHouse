@@ -17,7 +17,7 @@ import { Label } from '../ui/label';
 
 type Occupant = Employee | NonEmployee;
 
-const isEmployee = (occupant: Occupant): occupant is Employee => 'coordinatorId' in occupant;
+const isEmployee = (occupant: Occupant): occupant is Employee => 'zaklad' in occupant;
 
 const formatDate = (dateString?: string | null) => {
     if (!dateString) return 'N/A';
@@ -111,8 +111,9 @@ export function UpcomingCheckoutsDialog({
     }, [upcomingCheckoutsUnfiltered, selectedZaklad, selectedAddress]);
     
     const handleCopy = (occupant: Occupant) => {
-        const textToCopy = `${occupant.fullName}, wykwaterowanie: ${formatDate(occupant.checkOutDate)}`;
-        copyToClipboard(textToCopy, `Skopiowano dane: ${occupant.fullName}`);
+        const fullName = `${occupant.firstName} ${occupant.lastName}`.trim();
+        const textToCopy = `${fullName}, wykwaterowanie: ${formatDate(occupant.checkOutDate)}`;
+        copyToClipboard(textToCopy, `Skopiowano dane: ${fullName}`);
     }
 
     const handleOccupantClick = (occupant: Occupant) => {
@@ -170,7 +171,7 @@ export function UpcomingCheckoutsDialog({
                                         className="flex-1 cursor-pointer"
                                         onClick={() => handleOccupantClick(occupant)}
                                     >
-                                        <span className="font-semibold group-hover:text-primary">{occupant.fullName}</span>
+                                        <span className="font-semibold group-hover:text-primary">{`${occupant.firstName} ${occupant.lastName}`.trim()}</span>
                                         <div className="text-sm text-muted-foreground mt-1">
                                             {isEmployee(occupant) ? <p>{occupant.zaklad}</p> : <p>Mieszkaniec (NZ)</p>}
                                             <p>{occupant.address || ''} {occupant.roomNumber ? `, pokój ${occupant.roomNumber}` : ''}</p>

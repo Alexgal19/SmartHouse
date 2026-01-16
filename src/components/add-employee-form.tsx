@@ -47,7 +47,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useMainLayout } from './main-layout';
 
 const formSchema = z.object({
-  fullName: z.string().min(3, "Imię i nazwisko musi mieć co najmniej 3 znaki."),
+  firstName: z.string().min(1, "Imię jest wymagane."),
+  lastName: z.string().min(1, "Nazwisko jest wymagane."),
   coordinatorId: z.string().min(1, "Koordynator jest wymagany."),
   locality: z.string().min(1, "Miejscowość jest wymagana."),
   address: z.string().min(1, "Adres jest wymagany."),
@@ -219,7 +220,8 @@ export function AddEmployeeForm({
     resolver: zodResolver(formSchema, {
     }),
     defaultValues: {
-      fullName: '',
+      firstName: '',
+      lastName: '',
       coordinatorId: '',
       locality: '',
       address: '',
@@ -304,7 +306,8 @@ export function AddEmployeeForm({
         const employeeLocality = employeeAddress ? employeeAddress.locality : '';
 
         form.reset({
-            fullName: employee.fullName ?? '',
+            firstName: employee.firstName ?? '',
+            lastName: employee.lastName ?? '',
             coordinatorId: employee.coordinatorId ?? '',
             locality: employeeLocality,
             address: employee.address ?? '',
@@ -328,7 +331,8 @@ export function AddEmployeeForm({
         });
     } else {
         form.reset({
-          fullName: '',
+          firstName: '',
+          lastName: '',
           coordinatorId: currentUser.isAdmin ? '' : currentUser.uid,
           locality: '',
           address: '',
@@ -478,17 +482,30 @@ export function AddEmployeeForm({
                 <ScrollArea className="h-[60vh] mt-4">
                     <TabsContent value="basic">
                         <div className="space-y-4 px-4">
-                        <FormField
-                            control={form.control}
-                            name="fullName"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Imię i nazwisko</FormLabel>
-                                <FormControl><Input placeholder="Jan Kowalski" {...field} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <FormField
+                              control={form.control}
+                              name="lastName"
+                              render={({ field }) => (
+                              <FormItem>
+                                  <FormLabel>Nazwisko</FormLabel>
+                                  <FormControl><Input placeholder="Kowalski" {...field} /></FormControl>
+                                  <FormMessage />
+                              </FormItem>
+                              )}
+                          />
+                          <FormField
+                              control={form.control}
+                              name="firstName"
+                              render={({ field }) => (
+                              <FormItem>
+                                  <FormLabel>Imię</FormLabel>
+                                  <FormControl><Input placeholder="Jan" {...field} /></FormControl>
+                                  <FormMessage />
+                              </FormItem>
+                              )}
+                          />
+                        </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             <FormField
@@ -887,4 +904,3 @@ export function AddEmployeeForm({
     </Dialog>
   );
 }
-

@@ -278,14 +278,17 @@ const AddressDetailView = ({
                                             </span>
                                         </div>
                                         <div className="pl-4 mt-2 space-y-1">
-                                            {room.occupants.map(o => (
-                                                <div key={o.id} className="flex items-center justify-between text-xs text-muted-foreground group">
-                                                    <span onClick={(e) => { e.stopPropagation(); onOccupantClick(o); }} className="cursor-pointer hover:text-primary flex-1">{o.fullName}</span>
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); copyToClipboard(o.fullName, `Skopiowano: ${o.fullName}`)}}>
-                                                        <Copy className="h-3 w-3" />
-                                                    </Button>
-                                                </div>
-                                            ))}
+                                            {room.occupants.map(o => {
+                                                const fullName = `${o.firstName} ${o.lastName}`.trim();
+                                                return (
+                                                    <div key={o.id} className="flex items-center justify-between text-xs text-muted-foreground group">
+                                                        <span onClick={(e) => { e.stopPropagation(); onOccupantClick(o); }} className="cursor-pointer hover:text-primary flex-1">{fullName}</span>
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); copyToClipboard(fullName, `Skopiowano: ${fullName}`)}}>
+                                                            <Copy className="h-3 w-3" />
+                                                        </Button>
+                                                    </div>
+                                                )
+                                            })}
                                         </div>
                                     </div>
                                 )) : <NoDataState message="Brak pokoi dla tego adresu" />}
@@ -440,14 +443,17 @@ const MobileAddressCard = ({ address, onOccupantClick, style }: { address: Housi
                                             </span>
                                         </div>
                                          <div className="pl-4 mt-2 space-y-1">
-                                            {room.occupants.map(o => (
-                                                <div key={o.id} className="flex items-center justify-between text-xs text-muted-foreground group">
-                                                    <span onClick={() => onOccupantClick(o)} className="cursor-pointer hover:text-primary">{o.fullName}</span>
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); copyToClipboard(o.fullName, `Skopiowano: ${o.fullName}`)}}>
-                                                        <Copy className="h-3 w-3" />
-                                                    </Button>
-                                                </div>
-                                            ))}
+                                            {room.occupants.map(o => {
+                                                const fullName = `${o.firstName} ${o.lastName}`.trim();
+                                                return (
+                                                    <div key={o.id} className="flex items-center justify-between text-xs text-muted-foreground group">
+                                                        <span onClick={() => onOccupantClick(o)} className="cursor-pointer hover:text-primary">{fullName}</span>
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); copyToClipboard(fullName, `Skopiowano: ${fullName}`)}}>
+                                                            <Copy className="h-3 w-3" />
+                                                        </Button>
+                                                    </div>
+                                                )
+                                            })}
                                         </div>
                                     </div>
                                 ))}

@@ -1,5 +1,3 @@
-
-
 // This file contains all the TypeScript type definitions for the application's data structures.
 
 export type View = 'dashboard' | 'employees' | 'settings' | 'housing';
@@ -70,7 +68,8 @@ export type DeductionReason = {
 
 export type Employee = {
     id: string;
-    fullName: string;
+    firstName: string;
+    lastName: string;
     coordinatorId: string;
     nationality: string;
     gender: string;
@@ -97,7 +96,8 @@ export type Employee = {
 
 export type NonEmployee = {
     id: string;
-    fullName: string;
+    firstName: string;
+    lastName: string;
     coordinatorId: string;
     nationality: string;
     gender: string;
@@ -117,7 +117,8 @@ export type NonEmployee = {
 export type AddressHistory = {
     id: string;
     employeeId: string;
-    employeeName: string;
+    employeeFirstName: string;
+    employeeLastName: string;
     coordinatorName: string;
     department: string;
     address: string;
@@ -128,7 +129,8 @@ export type AddressHistory = {
 export type AssignmentHistory = {
     id: string;
     employeeId: string;
-    employeeName: string;
+    employeeFirstName: string;
+    employeeLastName: string;
     fromCoordinatorId: string;
     toCoordinatorId: string;
     assignedBy: string; // UID of the user who made the assignment
@@ -141,7 +143,8 @@ export type Notification = {
     id: string;
     message: string;
     entityId: string;
-    entityName: string;
+    entityFirstName: string;
+    entityLastName: string;
     actorName: string; // Who made the change
     recipientId: string; // Who this notification is for
     createdAt: string; // ISO date string

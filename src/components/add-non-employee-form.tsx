@@ -41,7 +41,8 @@ import { Combobox } from './ui/combobox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 
 const formSchema = z.object({
-  fullName: z.string().min(3, "Imię i nazwisko musi mieć co najmniej 3 znaki."),
+  firstName: z.string().min(1, "Imię jest wymagane."),
+  lastName: z.string().min(1, "Nazwisko jest wymagane."),
   coordinatorId: z.string().min(1, "Koordynator jest wymagany."),
   locality: z.string().min(1, 'Miejscowość jest wymagana.'),
   address: z.string().min(1, 'Adres jest wymagany.'),
@@ -163,7 +164,8 @@ export function AddNonEmployeeForm({
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      fullName: '',
+      firstName: '',
+      lastName: '',
       coordinatorId: '',
       locality: '',
       address: '',
@@ -249,7 +251,8 @@ export function AddNonEmployeeForm({
       });
     } else {
       form.reset({
-        fullName: '',
+        firstName: '',
+        lastName: '',
         coordinatorId: currentUser.isAdmin ? '' : currentUser.uid,
         locality: '',
         address: '',
@@ -317,17 +320,30 @@ export function AddNonEmployeeForm({
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <ScrollArea className="h-[65vh] p-1 mt-4">
               <div className="space-y-4 px-4">
-                <FormField
-                  control={form.control}
-                  name="fullName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Imię i nazwisko</FormLabel>
-                      <FormControl><Input placeholder="Anna Nowak" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="lastName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nazwisko</FormLabel>
+                        <FormControl><Input placeholder="Nowak" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="firstName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Imię</FormLabel>
+                        <FormControl><Input placeholder="Anna" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
                 
               <FormField
                   control={form.control}
@@ -526,5 +542,3 @@ export function AddNonEmployeeForm({
     </Dialog>
   );
 }
-
-
