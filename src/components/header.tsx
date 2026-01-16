@@ -24,69 +24,78 @@ import { ModernHouseIcon } from './icons/modern-house-icon';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
+import { Checkbox } from './ui/checkbox';
 
-const NotificationItem = ({ n, onClick, onDelete, style }: {n: Notification, onClick: (n: Notification) => void, onDelete: (notificationId: string) => void, style?: React.CSSProperties}) => {
+const NotificationItem = ({ n, onClick, onDelete, onToggleReadStatus, style }: {
+    n: Notification;
+    onClick: (n: Notification) => void;
+    onDelete: (notificationId: string) => void;
+    onToggleReadStatus: (notificationId: string, isRead: boolean) => void;
+    style?: React.CSSProperties
+}) => {
     
     const itemClasses = cn(
-        "p-3 rounded-lg -mx-2 flex flex-col items-start gap-2 transition-colors group border-l-4 animate-fade-in-up",
+        "p-3 rounded-lg -mx-2 flex items-start gap-3 transition-colors group border-l-4 animate-fade-in-up",
         n.isRead ? 'opacity-70 border-transparent hover:bg-muted/50' : 'font-semibold',
         n.type === 'success' && 'bg-green-500/10 border-green-500',
         n.type === 'destructive' && 'bg-red-500/10 border-red-500',
         n.type === 'warning' && 'bg-yellow-500/10 border-yellow-500',
         n.type === 'info' && 'border-blue-500',
-        !n.type && 'border-transparent',
-        n.entityId && 'cursor-pointer'
-    );
-    
-    const iconClasses = cn(
-        'h-2.5 w-2.5 rounded-full mt-1.5',
-        n.isRead ? 'bg-muted-foreground' : 'bg-primary animate-pulse',
-        n.type === 'success' && !n.isRead && 'bg-green-500',
-        n.type === 'destructive' && !n.isRead && 'bg-red-500',
-        n.type === 'warning' && !n.isRead && 'bg-yellow-500',
-        n.type === 'info' && !n.isRead && 'bg-blue-500'
+        !n.type && 'border-transparent'
     );
 
     return (
     <div 
         className={itemClasses}
-        role={n.entityId ? "button" : "status"}
+        role="status"
         style={style}
-        onClick={() => n.entityId && onClick(n)}
     >
-        <div className="flex w-full justify-between items-start">
-            <div className="flex items-start gap-3">
-                 <div className={iconClasses}></div>
-                 <div className="flex-1">
-                    <p className="text-sm leading-tight"><span className="font-bold">{n.actorName}</span> {n.message}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                        {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true, locale: pl })}
-                    </p>
-                </div>
-            </div>
-            <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete(n.id);
+        <div className="flex items-center pt-1">
+            <Checkbox
+                id={`notif-read-${n.id}`}
+                checked={n.isRead}
+                onCheckedChange={(checked) => {
+                    onToggleReadStatus(n.id, !!checked);
                 }}
-            >
-                <Trash2 className="h-4 w-4" />
-            </Button>
+            />
         </div>
-        {n.changes && n.changes.length > 0 && (
-            <div className="pl-6 w-full">
-                <div className="text-xs space-y-1 mt-2 border-l-2 border-border pl-3 py-1">
-                    {n.changes.map((change, index) => (
-                        <p key={index} className="text-muted-foreground">
-                           <span className="font-medium text-foreground/80">{change.field}:</span> {change.oldValue} &rarr; <span className="font-semibold text-foreground">{change.newValue}</span>
+        <div className="flex-1">
+            <div 
+                className={cn("w-full", n.entityId && "cursor-pointer")}
+                onClick={() => n.entityId && onClick(n)}
+            >
+                <div className="flex w-full justify-between items-start">
+                    <div className="flex-1">
+                        <p className="text-sm leading-tight"><span className="font-bold">{n.actorName}</span> {n.message}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true, locale: pl })}
                         </p>
-                    ))}
+                    </div>
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 -mr-2"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(n.id);
+                        }}
+                    >
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
                 </div>
             </div>
-        )}
+            {n.changes && n.changes.length > 0 && (
+                <div className="w-full mt-2">
+                    <div className="text-xs space-y-1 border-l-2 border-border pl-3 py-1">
+                        {n.changes.map((change, index) => (
+                            <p key={index} className="text-muted-foreground">
+                            <span className="font-medium text-foreground/80">{change.field}:</span> {change.oldValue} &rarr; <span className="font-semibold text-foreground">{change.newValue}</span>
+                            </p>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
     </div>
 )
 }
@@ -99,6 +108,7 @@ export default function Header({
   onNotificationClick,
   onClearNotifications,
   onDeleteNotification,
+  onToggleNotificationReadStatus,
 }: {
   user: SessionData;
   activeView: View;
@@ -108,6 +118,7 @@ export default function Header({
   onLogout: () => Promise<void>;
   onClearNotifications: () => void;
   onDeleteNotification: (notificationId: string) => void;
+  onToggleNotificationReadStatus: (notificationId: string, isRead: boolean) => void;
 }) {
     const [selectedCoordinatorId, setSelectedCoordinatorId] = useState('all');
     const [employeeNameFilter, setEmployeeNameFilter] = useState('');
@@ -192,7 +203,7 @@ export default function Header({
                 <ScrollArea className="h-[calc(100vh-14rem)] pr-6">
                     <div className="space-y-4 py-4">
                     {filteredNotifications.length > 0 ? (
-                        filteredNotifications.map((n, index) => <NotificationItem key={n.id} n={n} onClick={onNotificationClick} onDelete={onDeleteNotification} style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }} />)
+                        filteredNotifications.map((n, index) => <NotificationItem key={n.id} n={n} onClick={onNotificationClick} onDelete={onDeleteNotification} onToggleReadStatus={onToggleNotificationReadStatus} style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }} />)
                     ) : (
                         <div className="text-center text-muted-foreground py-12">Brak powiadomień pasujących do filtrów.</div>
                     )}

@@ -936,17 +936,20 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
 }
 
 
-export async function markNotificationAsRead(notificationId: string): Promise<void> {
+export async function updateNotificationReadStatus(notificationId: string, isRead: boolean): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
         const rows = await sheet.getRows();
         const row = rows.find((r) => r.get('id') === notificationId);
         if (row) {
-            row.set('isRead', 'TRUE');
+            row.set('isRead', String(isRead).toUpperCase());
             await row.save();
+        } else {
+            throw new Error('Notification not found');
         }
     } catch (e: unknown) {
-        console.error("Could not mark notification as read:", e instanceof Error ? e.message : "Unknown error");
+        console.error("Could not update notification read status:", e);
+        throw new Error(e instanceof Error ? e.message : "Could not update notification status");
     }
 }
 

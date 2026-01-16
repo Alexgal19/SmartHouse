@@ -30,7 +30,7 @@ import {
     deleteNonEmployee,
     importEmployeesFromExcel,
     importNonEmployeesFromExcel,
-    markNotificationAsRead,
+    updateNotificationReadStatus,
     updateEmployee,
     updateNonEmployee,
     updateSettings,
@@ -106,9 +106,10 @@ type MainLayoutContextType = {
     handleRestoreEmployee: (employee: Employee) => Promise<void>;
     handleDeleteEmployee: (employeeId: string, actorUid: string) => Promise<void>;
     handleRestoreNonEmployee: (nonEmployee: NonEmployee) => Promise<void>;
-    handleImportEmployees: (fileContent: string) => Promise<void>;
+    handleImportEmployees: (fileContent: string, settings: Settings) => Promise<void>;
     handleImportNonEmployees: (fileContent: string, settings: Settings) => Promise<void>;
     handleDeleteAddressHistory: (historyId: string, actorUid: string) => Promise<void>;
+    handleToggleNotificationReadStatus: (notificationId: string, isRead: boolean) => Promise<void>;
 };
 
 const MainLayoutContext = createContext<MainLayoutContextType | null>(null);
@@ -246,12 +247,18 @@ export default function MainLayout({
              currentSearchParams.set('edit', entityId);
              routerRef.current.push(`${pathname}?${currentSearchParams.toString()}`);
         }
-        
-        if (!notification.isRead) {
-            setAllNotifications(prev => prev.map(n => n.id === notification.id ? {...n, isRead: true} : n));
-            await markNotificationAsRead(notification.id);
-        }
     }, []);
+
+    const handleToggleNotificationReadStatus = useCallback(async (notificationId: string, isRead: boolean) => {
+        const originalNotifications = allNotifications;
+        setAllNotifications(prev => prev.map(n => n.id === notificationId ? { ...n, isRead } : n));
+        try {
+            await updateNotificationReadStatus(notificationId, isRead);
+        } catch (e: unknown) {
+            setAllNotifications(originalNotifications);
+            toast({ variant: "destructive", title: "Błąd", description: "Nie udało się zaktualizować statusu powiadomienia." });
+        }
+    }, [allNotifications, toast]);
 
      const handleClearNotifications = useCallback(async () => {
         if (!currentUser?.isAdmin) {
@@ -567,10 +574,10 @@ export default function MainLayout({
         }
     }, [currentUser, refreshData, toast]);
     
-    const handleImportEmployees = useCallback(async (fileContent: string) => {
+    const handleImportEmployees = useCallback(async (fileContent: string, settings: Settings) => {
         if (!currentUser) return;
         try {
-            const result = await importEmployeesFromExcel(fileContent, currentUser.uid);
+            const result = await importEmployeesFromExcel(fileContent, currentUser.uid, settings);
             
             let description = `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} wierszy.`;
             if (result.errors.length > 0) {
@@ -649,6 +656,7 @@ export default function MainLayout({
         handleImportEmployees,
         handleImportNonEmployees,
         handleDeleteAddressHistory,
+        handleToggleNotificationReadStatus,
     } ), [
         allEmployees,
         allNonEmployees,
@@ -679,6 +687,7 @@ export default function MainLayout({
         handleImportEmployees,
         handleImportNonEmployees,
         handleDeleteAddressHistory,
+        handleToggleNotificationReadStatus,
     ]);
 
     if (!settings || !currentUser || !allEmployees || !allNonEmployees) {
@@ -732,6 +741,7 @@ export default function MainLayout({
                         onLogout={handleLogout} 
                         onClearNotifications={handleClearNotifications}
                         onDeleteNotification={handleDeleteNotification}
+                        onToggleNotificationReadStatus={handleToggleNotificationReadStatus}
                     />}
                     <main className="flex-1 overflow-y-auto px-2 sm:px-6 pb-20 sm:pb-6 pt-4">
                         {children}
