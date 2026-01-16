@@ -52,7 +52,8 @@ const formSchema = z.object({
   coordinatorId: z.string().min(1, "Koordynator jest wymagany."),
   locality: z.string().min(1, "Miejscowość jest wymagana."),
   address: z.string().min(1, "Adres jest wymagany."),
-  roomNumber: z.string().min(1, "Pokój jest wymagany."),
+  ownAddress: z.string().optional(),
+  roomNumber: z.string(),
   zaklad: z.string().min(1, "Zakład jest wymagany."),
   nationality: z.string().min(1, "Narodowość jest wymagana."),
   gender: z.string().min(1, "Płeć jest wymagana."),
@@ -88,6 +89,22 @@ const formSchema = z.object({
             code: z.ZodIssueCode.custom,
             path: ['deductionEntryDate'],
             message: 'Data jest wymagana, jeśli wprowadzono potrącenia lub kaucja nie jest zwracana.',
+        });
+    }
+
+    if (data.address?.toLowerCase().startsWith('własne mieszkanie') && !data.ownAddress) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['ownAddress'],
+            message: 'Adres własny jest wymagany, jeśli wybrano tę opcję.',
+        });
+    }
+    
+    if (!data.address?.toLowerCase().startsWith('własne mieszkanie') && !data.roomNumber) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['roomNumber'],
+            message: 'Pokój jest wymagany.',
         });
     }
 });
@@ -225,6 +242,7 @@ export function AddEmployeeForm({
       coordinatorId: '',
       locality: '',
       address: '',
+      ownAddress: '',
       roomNumber: '',
       zaklad: '',
       nationality: '',
@@ -253,6 +271,7 @@ export function AddEmployeeForm({
   const selectedCoordinatorId = form.watch('coordinatorId');
   const selectedLocality = form.watch('locality');
   const selectedAddress = form.watch('address');
+  const isOwnAddressSelected = selectedAddress?.toLowerCase().startsWith('własne mieszkanie');
 
   const availableLocalities = useMemo(() => {
     if (!settings.addresses) return [];
@@ -311,6 +330,7 @@ export function AddEmployeeForm({
             coordinatorId: employee.coordinatorId ?? '',
             locality: employeeLocality,
             address: employee.address ?? '',
+            ownAddress: employee.ownAddress ?? '',
             roomNumber: employee.roomNumber ?? '',
             zaklad: employee.zaklad ?? '',
             nationality: employee.nationality ?? '',
@@ -336,6 +356,7 @@ export function AddEmployeeForm({
           coordinatorId: currentUser.isAdmin ? '' : currentUser.uid,
           locality: '',
           address: '',
+          ownAddress: '',
           roomNumber: '',
           zaklad: '',
           nationality: '',
@@ -403,6 +424,7 @@ export function AddEmployeeForm({
     form.setValue('coordinatorId', value);
     form.setValue('locality', '');
     form.setValue('address', '');
+    form.setValue('ownAddress', '');
     form.setValue('roomNumber', '');
     form.setValue('zaklad', '');
   }
@@ -410,12 +432,16 @@ export function AddEmployeeForm({
   const handleLocalityChange = (value: string) => {
     form.setValue('locality', value);
     form.setValue('address', '');
+    form.setValue('ownAddress', '');
     form.setValue('roomNumber', '');
   }
 
   const handleAddressChange = (value: string) => {
     form.setValue('address', value);
     form.setValue('roomNumber', '');
+    if (!value.toLowerCase().startsWith('własne mieszkanie')) {
+        form.setValue('ownAddress', '');
+    }
   };
 
   const handleDismissClick = async () => {
@@ -588,20 +614,34 @@ export function AddEmployeeForm({
                                         <FormControl><SelectTrigger><SelectValue placeholder={!selectedLocality ? "Najpierw wybierz miejscowość" : "Wybierz adres"} /></SelectTrigger></FormControl>
                                         <SelectContent>
                                             {availableAddresses.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
+                                            <SelectItem value="Własne mieszkanie...">Własne mieszkanie...</SelectItem>
                                         </SelectContent>
                                     </Select>
                                     <FormMessage />
                                 </FormItem>
                                 )}
                             />
+                            {isOwnAddressSelected && (
+                                <FormField
+                                    control={form.control}
+                                    name="ownAddress"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Adres własnego mieszkania</FormLabel>
+                                            <FormControl><Input placeholder="np. ul. Testowa 1, 00-000 Warszawa" {...field} /></FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            )}
                             <FormField
                                 control={form.control}
                                 name="roomNumber"
                                 render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Pokój</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value || ''} disabled={!selectedAddress}>
-                                    <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : "Wybierz pokój"} /></SelectTrigger></FormControl>
+                                    <Select onValueChange={field.onChange} value={field.value || ''} disabled={!selectedAddress || isOwnAddressSelected}>
+                                    <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : (isOwnAddressSelected ? "N/A" : "Wybierz pokój")} /></SelectTrigger></FormControl>
                                     <SelectContent>
                                         {availableRooms.map(r => <SelectItem key={r.id} value={r.name}>{r.name} (Pojemność: {r.capacity})</SelectItem>)}
                                     </SelectContent>

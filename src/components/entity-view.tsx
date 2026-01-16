@@ -1,4 +1,5 @@
 
+
 "use client"
 import React, { useState, useMemo, useTransition } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
@@ -189,8 +190,13 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
                   <TableCell className="font-medium">{entity.firstName}</TableCell>
                   <TableCell>{isEmployee(entity) ? "Pracownik" : "Mieszkaniec (NZ)"}</TableCell>
                   <TableCell>{getCoordinatorName(entity.coordinatorId)}</TableCell>
-                  <TableCell>{entity.address}</TableCell>
-                  <TableCell>{entity.roomNumber}</TableCell>
+                  <TableCell>
+                      {isEmployee(entity) && entity.address?.toLowerCase().startsWith('własne mieszkanie') 
+                          ? `Własne (${entity.ownAddress || 'Brak danych'})` 
+                          : entity.address
+                      }
+                  </TableCell>
+                  <TableCell>{isEmployee(entity) && entity.address?.toLowerCase().startsWith('własne mieszkanie') ? 'N/A' : entity.roomNumber}</TableCell>
                   <TableCell>{formatDate(entity.checkInDate)}</TableCell>
                   <TableCell>{formatDate(entity.checkOutDate)}</TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
@@ -300,7 +306,12 @@ const EntityCardList = ({ entities, onEdit, onDismiss, onRestore, isDismissed, s
                            </div>
                         </CardHeader>
                         <CardContent className="text-sm space-y-2">
-                            <p><span className="font-semibold text-muted-foreground">Adres:</span> {entity.address || 'Brak'}, pok. {entity.roomNumber || 'Brak'}</p>
+                            <p><span className="font-semibold text-muted-foreground">Adres:</span> 
+                                {isEmployee(entity) && entity.address?.toLowerCase().startsWith('własne mieszkanie') 
+                                    ? ` ${entity.ownAddress || 'Własne mieszkanie (brak danych)'}` 
+                                    : ` ${entity.address}, pok. ${entity.roomNumber}`
+                                }
+                            </p>
                             {isEmployee(entity) && <p><span className="font-semibold text-muted-foreground">Narodowość:</span> {entity.nationality || 'Brak'}</p>}
                             <p><span className="font-semibold text-muted-foreground">Zameldowanie:</span> {formatDate(entity.checkInDate)}</p>
                         </CardContent>

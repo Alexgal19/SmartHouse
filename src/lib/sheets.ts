@@ -176,6 +176,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         nationality: (plainObject.nationality || '') as string,
         gender: (plainObject.gender || '') as string,
         address: (plainObject.address || '') as string,
+        ownAddress: (plainObject.ownAddress as string | null) || null,
         roomNumber: (plainObject.roomNumber || '') as string,
         zaklad: (plainObject.zaklad as string | null) || null,
         checkInDate: safeFormat(plainObject.checkInDate),

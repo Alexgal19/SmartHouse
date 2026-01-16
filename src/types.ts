@@ -74,6 +74,7 @@ export type Employee = {
     nationality: string;
     gender: string;
     address: string;
+    ownAddress?: string | null;
     roomNumber: string;
     zaklad: string | null; // department
     checkInDate: string | null; // YYYY-MM-DD

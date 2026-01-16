@@ -36,7 +36,7 @@ const serializeDate = (date?: string | null): string => {
 };
 
 const EMPLOYEE_HEADERS = [
-    'id', 'firstName', 'lastName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 
+    'id', 'firstName', 'lastName', 'coordinatorId', 'nationality', 'gender', 'address', 'ownAddress', 'roomNumber', 
     'zaklad', 'checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 
     'departureReportDate', 'comments', 'status',
     'depositReturned', 'depositReturnAmount', 'deductionRegulation', 'deductionNo4Months', 'deductionNo30Days', 'deductionReason', 'deductionEntryDate'
@@ -145,7 +145,7 @@ const safeFormat = (dateValue: unknown): string | null => {
         return format(date, 'yyyy-MM-dd');
     }
 
-    const formatsToTry = ['dd.MM.yyyy', 'dd-MM-yyyy', 'dd/MM/yyyy'];
+    const formatsToTry = ['dd.mm.yyyy', 'dd-MM-yyyy', 'dd/MM/yyyy'];
     for (const fmt of formatsToTry) {
         date = dateFnsParse(dateString, fmt, new Date());
         if (isValid(date)) {
@@ -209,6 +209,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         nationality: String(plainObject.nationality || ''),
         gender: String(plainObject.gender || ''),
         address: String(plainObject.address || ''),
+        ownAddress: (plainObject.ownAddress as string | null) || null,
         roomNumber: String(plainObject.roomNumber || ''),
         zaklad: (plainObject.zaklad as string | null) || null,
         checkInDate: safeFormat(plainObject.checkInDate),
@@ -254,6 +255,7 @@ const FIELD_LABELS: Record<string, string> = {
     nationality: "Narodowość",
     gender: "Płeć",
     address: "Adres",
+    ownAddress: "Adres własny",
     roomNumber: "Pokój",
     zaklad: "Zakład",
     checkInDate: "Data zameldowania",
@@ -407,6 +409,7 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
             nationality: employeeData.nationality || '',
             gender: employeeData.gender || '',
             address: employeeData.address || '',
+            ownAddress: employeeData.ownAddress,
             roomNumber: employeeData.roomNumber || '',
             zaklad: employeeData.zaklad || null,
             checkInDate: employeeData.checkInDate,
