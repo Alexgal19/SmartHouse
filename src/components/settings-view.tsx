@@ -26,6 +26,8 @@ import { getOnlySettings } from '@/lib/sheets';
 import { AddressForm } from './address-form';
 import { useMainLayout } from './main-layout';
 import { Progress } from '@/components/ui/progress';
+import { Badge } from './ui/badge';
+import { ScrollArea } from './ui/scroll-area';
 
 const coordinatorSchema = z.object({
     uid: z.string(),
@@ -928,8 +930,72 @@ const NzReportsGenerator = ({ rawSettings, currentUser }: { rawSettings: Setting
     );
 };
 
-const ExcelImport = ({ onImport, title, description, fields, isLoading }: { onImport: (fileContent: string) => Promise<void>; title: string; description: string; fields: string; isLoading: boolean; }) => {
+const ExcelImportGuideDialog = ({
+    open,
+    onOpenChange,
+    onContinue,
+    title,
+    requiredFields,
+    optionalFields,
+}: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onContinue: () => void;
+    title: string;
+    requiredFields: string[];
+    optionalFields: string[];
+}) => {
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-xl">
+                <DialogHeader>
+                    <DialogTitle>{title}</DialogTitle>
+                    <DialogDescription>
+                        Upewnij się, że Twój plik Excel ma poprawną strukturę przed importem. Nazwy kolumn nie uwzględniają wielkości liter.
+                    </DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="max-h-[60vh] -mr-6 pr-6">
+                    <div className="space-y-4 p-1">
+                        <div>
+                            <h4 className="font-semibold mb-2">Kolumny Wymagane</h4>
+                            <div className="flex flex-wrap gap-2">
+                                {requiredFields.map(field => (
+                                    <Badge key={field} variant="destructive">{field}</Badge>
+                                ))}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2">
+                                Te kolumny muszą istnieć i być wypełnione dla każdego rekordu.
+                            </p>
+                        </div>
+                        <div>
+                            <h4 className="font-semibold mb-2">Kolumny Opcjonalne</h4>
+                            <div className="flex flex-wrap gap-2">
+                                {optionalFields.map(field => (
+                                    <Badge key={field} variant="secondary">{field}</Badge>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </ScrollArea>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>Anuluj</Button>
+                    <Button onClick={onContinue}>Zrozumiałem, kontynuuj</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+const ExcelImport = ({ onImport, title, description, requiredFields, optionalFields, isLoading }: { 
+    onImport: (fileContent: string) => Promise<void>; 
+    title: string; 
+    description: string; 
+    requiredFields: string[];
+    optionalFields: string[];
+    isLoading: boolean; 
+}) => {
     const fileInputRef = React.useRef<HTMLInputElement>(null);
+    const [isGuideOpen, setIsGuideOpen] = React.useState(false);
 
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -950,7 +1016,8 @@ const ExcelImport = ({ onImport, title, description, fields, isLoading }: { onIm
         }
     };
     
-    const handleButtonClick = () => {
+    const handleContinueImport = () => {
+        setIsGuideOpen(false);
         fileInputRef.current?.click();
     };
 
@@ -968,7 +1035,7 @@ const ExcelImport = ({ onImport, title, description, fields, isLoading }: { onIm
                     accept=".xlsx, .xls"
                     onChange={handleFileChange}
                 />
-                <Button onClick={handleButtonClick} disabled={isLoading}>
+                <Button onClick={() => setIsGuideOpen(true)} disabled={isLoading}>
                     {isLoading ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
@@ -976,9 +1043,14 @@ const ExcelImport = ({ onImport, title, description, fields, isLoading }: { onIm
                     )}
                     Wybierz plik i importuj
                 </Button>
-                <p className="text-xs text-muted-foreground mt-2">
-                    Upewnij się, że plik ma kolumny: {fields}
-                </p>
+                <ExcelImportGuideDialog
+                    open={isGuideOpen}
+                    onOpenChange={setIsGuideOpen}
+                    onContinue={handleContinueImport}
+                    title={`Przewodnik importu: ${title}`}
+                    requiredFields={requiredFields}
+                    optionalFields={optionalFields}
+                />
             </CardContent>
         </Card>
     );
@@ -1207,6 +1279,12 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
         await handleImportNonEmployees(fileContent, rawSettings);
         setIsNonEmployeeImportLoading(false);
     }
+
+    const employeeRequiredFields = ["Nazwisko", "Imię", "Koordynator", "Data zameldowania"];
+    const employeeOptionalFields = ["Narodowość", "Płeć", "Miejscowość", "Adres", "Pokój", "Zakład", "Umowa od", "Umowa do", "Data wymeldowania", "Data zgloszenia wyjazdu", "Komentarze"];
+    
+    const nonEmployeeRequiredFields = ["Nazwisko", "Imię", "Koordynator", "Data zameldowania"];
+    const nonEmployeeOptionalFields = ["Narodowość", "Płeć", "Miejscowość", "Adres", "Pokój", "Data wymeldowania", "Data zgloszenia wyjazdu", "Komentarze", "Rodzaj płatności NZ", "Kwota"];
   
   if (!currentUser.isAdmin) {
       return (
@@ -1244,14 +1322,16 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
                 onImport={runEmployeeImport}
                 title="Import Pracowników z Excel"
                 description="Zaimportuj nowych pracowników z pliku XLSX."
-                fields="Imię, Nazwisko, Koordynator, Narodowość, etc."
+                requiredFields={employeeRequiredFields}
+                optionalFields={employeeOptionalFields}
                 isLoading={isEmployeeImportLoading}
             />
             <ExcelImport 
                 onImport={runNonEmployeeImport}
                 title="Import Mieszkańców (NZ) z Excel"
                 description="Zaimportuj nowych mieszkańców (NZ) z pliku XLSX."
-                fields="Imię, Nazwisko, Koordynator, Narodowość, etc."
+                requiredFields={nonEmployeeRequiredFields}
+                optionalFields={nonEmployeeOptionalFields}
                 isLoading={isNonEmployeeImportLoading}
             />
         </div>
