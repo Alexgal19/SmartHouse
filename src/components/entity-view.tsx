@@ -1,5 +1,4 @@
 
-
 "use client"
 import React, { useState, useMemo, useTransition } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
@@ -37,7 +36,7 @@ const formatDate = (dateString?: string | null) => {
 }
 
 type Entity = Employee | NonEmployee;
-type SortableField = 'fullName' | 'coordinatorId' | 'address' | 'roomNumber' | 'checkInDate' | 'checkOutDate' | 'employeeName' | 'coordinatorName' | 'department';
+type SortableField = 'lastName' | 'firstName' | 'coordinatorId' | 'address' | 'roomNumber' | 'checkInDate' | 'checkOutDate' | 'coordinatorName' | 'department';
 
 
 const isEmployee = (entity: Entity): entity is Employee => 'zaklad' in entity;
@@ -171,7 +170,8 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
         <Table>
           <TableHeader>
             <TableRow>
-              <SortableHeader label="Imię i nazwisko" field="fullName" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+              <SortableHeader label="Nazwisko" field="lastName" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+              <SortableHeader label="Imię" field="firstName" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
               <TableHead>Typ</TableHead>
               <SortableHeader label="Koordynator" field="coordinatorId" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
               <SortableHeader label="Adres" field="address" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
@@ -185,7 +185,8 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
             {entities.length > 0 ? (
               entities.map((entity) => (
                 <TableRow key={entity.id} onClick={() => onEdit(entity)} className="cursor-pointer">
-                  <TableCell className="font-medium">{`${entity.firstName} ${entity.lastName}`.trim()}</TableCell>
+                  <TableCell className="font-medium">{entity.lastName}</TableCell>
+                  <TableCell className="font-medium">{entity.firstName}</TableCell>
                   <TableCell>{isEmployee(entity) ? "Pracownik" : "Mieszkaniec (NZ)"}</TableCell>
                   <TableCell>{getCoordinatorName(entity.coordinatorId)}</TableCell>
                   <TableCell>{entity.address}</TableCell>
@@ -199,7 +200,7 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={8} className="text-center">Brak danych do wyświetlenia.</TableCell>
+                <TableCell colSpan={9} className="text-center">Brak danych do wyświetlenia.</TableCell>
               </TableRow>
             )}
           </TableBody>
@@ -214,7 +215,8 @@ const HistoryTable = ({ history, onSort, sortBy, sortOrder, onDelete }: { histor
         <Table>
           <TableHeader>
             <TableRow>
-              <SortableHeader label="Imię i nazwisko" field="employeeName" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+              <SortableHeader label="Nazwisko" field="lastName" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+              <SortableHeader label="Imię" field="firstName" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
               <SortableHeader label="Koordynator" field="coordinatorName" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
               <SortableHeader label="Zakład" field="department" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
               <SortableHeader label="Adres" field="address" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
@@ -227,7 +229,8 @@ const HistoryTable = ({ history, onSort, sortBy, sortOrder, onDelete }: { histor
             {history.length > 0 ? (
               history.map((entry) => (
                 <TableRow key={entry.id}>
-                  <TableCell className="font-medium">{`${entry.employeeFirstName} ${entry.employeeLastName}`.trim()}</TableCell>
+                  <TableCell className="font-medium">{entry.employeeLastName}</TableCell>
+                  <TableCell className="font-medium">{entry.employeeFirstName}</TableCell>
                   <TableCell>{entry.coordinatorName || 'N/A'}</TableCell>
                   <TableCell>{entry.department || 'N/A'}</TableCell>
                   <TableCell>{entry.address}</TableCell>
@@ -263,7 +266,7 @@ const HistoryTable = ({ history, onSort, sortBy, sortOrder, onDelete }: { histor
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={7} className="text-center">Brak danych do wyświetlenia.</TableCell>
+                <TableCell colSpan={8} className="text-center">Brak danych do wyświetlenia.</TableCell>
               </TableRow>
             )}
           </TableBody>
@@ -560,7 +563,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
             case 'non-employees':
                 return 'checkOutDate';
             default:
-                return 'checkInDate';
+                return 'lastName';
         }
     }, [tab]);
 
@@ -612,15 +615,31 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
 
         const sorted = (dataToSort: any[]) => {
             return [...dataToSort].sort((a, b) => {
+                if (sortBy === 'lastName') {
+                    const lastNameA = a.lastName || a.employeeLastName || '';
+                    const lastNameB = b.lastName || b.employeeLastName || '';
+                    const firstNameA = a.firstName || a.employeeFirstName || '';
+                    const firstNameB = b.firstName || b.employeeFirstName || '';
+    
+                    const lastNameCompare = lastNameA.localeCompare(lastNameB, 'pl');
+                    if (lastNameCompare !== 0) return lastNameCompare * (sortOrder === 'asc' ? 1 : -1);
+                    return firstNameA.localeCompare(firstNameB, 'pl') * (sortOrder === 'asc' ? 1 : -1);
+                }
+    
+                if (sortBy === 'firstName') {
+                    const lastNameA = a.lastName || a.employeeLastName || '';
+                    const lastNameB = b.lastName || b.employeeLastName || '';
+                    const firstNameA = a.firstName || a.employeeFirstName || '';
+                    const firstNameB = b.firstName || b.employeeFirstName || '';
+    
+                    const firstNameCompare = firstNameA.localeCompare(firstNameB, 'pl');
+                    if (firstNameCompare !== 0) return firstNameCompare * (sortOrder === 'asc' ? 1 : -1);
+                    return lastNameA.localeCompare(lastNameB, 'pl') * (sortOrder === 'asc' ? 1 : -1);
+                }
+    
                 let valA: string | number | null | undefined;
                 let valB: string | number | null | undefined;
                 
-                if (sortBy === 'fullName' || sortBy === 'employeeName') {
-                    const nameA = `${a.lastName || a.employeeLastName} ${a.firstName || a.employeeFirstName}`;
-                    const nameB = `${b.lastName || b.employeeLastName} ${b.firstName || b.employeeFirstName}`;
-                    return nameA.localeCompare(nameB, 'pl', { numeric: true }) * (sortOrder === 'asc' ? 1 : -1);
-                }
-    
                 if (sortBy === 'coordinatorId' && 'coordinatorId' in a && 'coordinatorId' in b) {
                      valA = getCoordinatorName(a.coordinatorId);
                      valB = getCoordinatorName(b.coordinatorId);
@@ -838,9 +857,9 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                             </TabsTrigger>
                         )}
                     </TabsList>
-                    <TabsContent value="active" className="mt-4">{renderContent(paginatedData as Employee[])}</TabsContent>
-                    <TabsContent value="dismissed" className="mt-4">{renderContent(paginatedData as Employee[])}</TabsContent>
-                    <TabsContent value="non-employees" className="mt-4">{renderContent(paginatedData as NonEmployee[])}</TabsContent>
+                    <TabsContent value="active" className="mt-4">{renderContent(paginatedData as Entity[])}</TabsContent>
+                    <TabsContent value="dismissed" className="mt-4">{renderContent(paginatedData as Entity[])}</TabsContent>
+                    <TabsContent value="non-employees" className="mt-4">{renderContent(paginatedData as Entity[])}</TabsContent>
                     {currentUser.isAdmin && <TabsContent value="history" className="mt-4">{renderHistoryContent()}</TabsContent>}
                 </Tabs>
             </CardContent>
