@@ -36,7 +36,7 @@ const serializeDate = (date?: string | null): string => {
 };
 
 const EMPLOYEE_HEADERS = [
-    'id', 'firstName', 'lastName', 'coordinatorId', 'nationality', 'gender', 'address', 'ownAddress', 'roomNumber', 
+    'id', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'ownAddress', 'roomNumber', 
     'zaklad', 'checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 
     'departureReportDate', 'comments', 'status',
     'depositReturned', 'depositReturnAmount', 'deductionRegulation', 'deductionNo4Months', 'deductionNo30Days', 'deductionReason', 'deductionEntryDate'
@@ -45,9 +45,14 @@ const EMPLOYEE_HEADERS = [
 const serializeEmployee = (employee: Partial<Employee>): Record<string, string | number | boolean> => {
     const serialized: Record<string, string | number | boolean> = {};
 
+    const dataToWrite = { ...employee };
+    if (dataToWrite.firstName || dataToWrite.lastName) {
+      dataToWrite.fullName = `${dataToWrite.lastName || ''} ${dataToWrite.firstName || ''}`.trim();
+    }
+
     for (const key of EMPLOYEE_HEADERS) {
         const typedKey = key as keyof Employee;
-        const value = employee[typedKey];
+        const value = dataToWrite[typedKey];
         
         if (value === undefined || value === null) {
             serialized[key] = '';
@@ -71,8 +76,13 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
 
 const serializeNonEmployee = (nonEmployee: Partial<NonEmployee>): Record<string, string | number | boolean> => {
     const serialized: Record<string, string | number | boolean | null> = {};
+    const dataToWrite = { ...nonEmployee };
 
-    for (const [key, value] of Object.entries(nonEmployee)) {
+    if (dataToWrite.firstName || dataToWrite.lastName) {
+      dataToWrite.fullName = `${dataToWrite.lastName || ''} ${dataToWrite.firstName || ''}`.trim();
+    }
+
+    for (const [key, value] of Object.entries(dataToWrite)) {
         if (['checkInDate', 'checkOutDate', 'departureReportDate'].includes(key)) {
             serialized[key] = serializeDate(value as string);
         } else if (value !== null && value !== undefined) {
@@ -105,7 +115,7 @@ const serializeNotification = (notification: Notification): Record<string, strin
 };
 
 const NON_EMPLOYEE_HEADERS = [
-    'id', 'firstName', 'lastName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'departureReportDate', 'comments', 'status', 'paymentType', 'paymentAmount'
+    'id', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'departureReportDate', 'comments', 'status', 'paymentType', 'paymentAmount'
 ];
 
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'departments', 'password', 'visibilityMode'];
@@ -205,6 +215,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         id: id,
         firstName,
         lastName,
+        fullName: `${lastName} ${firstName}`.trim(),
         coordinatorId: String(plainObject.coordinatorId || ''),
         nationality: String(plainObject.nationality || ''),
         gender: String(plainObject.gender || ''),
@@ -405,6 +416,7 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
             status: 'active',
             firstName: employeeData.firstName || '',
             lastName: employeeData.lastName || '',
+            fullName: `${employeeData.lastName || ''} ${employeeData.firstName || ''}`.trim(),
             coordinatorId: employeeData.coordinatorId || '',
             nationality: employeeData.nationality || '',
             gender: employeeData.gender || '',
@@ -546,31 +558,6 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
     }
 }
 
-// ... the rest of the file remains the same
-// ... (I will omit it for brevity, but the tool will receive the full file content)
-// ... The rest of the functions are here:
-// deleteEmployee
-// addNonEmployee
-// updateNonEmployee
-// deleteNonEmployee
-// bulkDeleteEmployees
-// bulkDeleteEmployeesByCoordinator
-// transferEmployees
-// checkAndUpdateStatuses
-// updateSettings
-// markNotificationAsRead
-// clearAllNotifications
-// deleteNotification
-// generateAccommodationReport
-// generateNzCostsReport
-// processImport
-// importEmployeesFromExcel
-// importNonEmployeesFromExcel
-// deleteAddressHistoryEntry
-// updateCoordinatorSubscription
-// This is just a comment to indicate the rest of the file is present.
-// The actual implementation will include the full, unmodified rest of the file.
-
 export async function deleteEmployee(employeeId: string, actorUid: string): Promise<void> {
     try {
         const { settings, addressHistory } = await getAllSheetsData(actorUid, true);
@@ -613,6 +600,7 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id' | '
             status: 'active',
             firstName: nonEmployeeData.firstName || '',
             lastName: nonEmployeeData.lastName || '',
+            fullName: `${nonEmployeeData.lastName || ''} ${nonEmployeeData.firstName || ''}`.trim(),
             coordinatorId: nonEmployeeData.coordinatorId || '',
             nationality: nonEmployeeData.nationality || '',
             gender: nonEmployeeData.gender || '',
@@ -1274,6 +1262,7 @@ const processImport = async (
                     id: `${type === 'employee' ? 'emp' : 'nonemp'}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                     firstName,
                     lastName,
+                    fullName: `${lastName || ''} ${firstName || ''}`.trim(),
                     coordinatorId,
                     nationality: (normalizedRow['narodowość'] as string)?.trim(),
                     gender: (normalizedRow['płeć'] as string)?.trim(),

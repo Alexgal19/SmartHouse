@@ -151,7 +151,13 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     const plainObject = row;
     
     const id = plainObject.id;
-    if (!id || !plainObject.fullName) return null;
+    if (!id || (!plainObject.lastName && !plainObject.fullName)) return null;
+
+    const { firstName, lastName } = (plainObject.lastName && plainObject.firstName)
+        ? { firstName: plainObject.firstName as string, lastName: plainObject.lastName as string}
+        : splitFullName(plainObject.fullName as string);
+
+    if (!lastName) return null;
 
     let deductionReason: DeductionReason[] | undefined = undefined;
     if (plainObject.deductionReason && typeof plainObject.deductionReason === 'string') {
@@ -166,12 +172,11 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     const validDepositValues = ['Tak', 'Nie', 'Nie dotyczy'];
     const depositReturned = validDepositValues.includes(plainObject.depositReturned as string) ? plainObject.depositReturned as Employee['depositReturned'] : null;
 
-    const { firstName, lastName } = splitFullName(plainObject.fullName as string);
-
     const newEmployee: Employee = {
         id: id as string,
         firstName,
         lastName,
+        fullName: `${lastName} ${firstName}`.trim(),
         coordinatorId: (plainObject.coordinatorId || '') as string,
         nationality: (plainObject.nationality || '') as string,
         gender: (plainObject.gender || '') as string,
@@ -203,14 +208,19 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
 const deserializeNonEmployee = (row: Record<string, unknown>): NonEmployee | null => {
     const plainObject = row;
     const id = plainObject.id;
-    if (!id || !plainObject.fullName) return null;
+    if (!id || (!plainObject.lastName && !plainObject.fullName)) return null;
 
-    const { firstName, lastName } = splitFullName(plainObject.fullName as string);
+    const { firstName, lastName } = (plainObject.lastName && plainObject.firstName)
+        ? { firstName: plainObject.firstName as string, lastName: plainObject.lastName as string}
+        : splitFullName(plainObject.fullName as string);
+
+    if (!lastName) return null;
 
     return {
         id: id as string,
         firstName,
         lastName,
+        fullName: `${lastName} ${firstName}`.trim(),
         coordinatorId: (plainObject.coordinatorId || '') as string,
         nationality: (plainObject.nationality || '') as string,
         gender: (plainObject.gender || '') as string,
@@ -246,15 +256,13 @@ const deserializeNotification = (row: Record<string, unknown>): Notification | n
              console.warn(`Could not parse changes for notification ${id}:`, e);
         }
     }
-    
-    const { firstName, lastName } = splitFullName(plainObject.entityName as string);
 
     const newNotification: Notification = {
         id: id as string,
         message: (plainObject.message || '') as string,
         entityId: (plainObject.entityId || '') as string,
-        entityFirstName: firstName,
-        entityLastName: lastName,
+        entityFirstName: (plainObject.entityFirstName || '') as string,
+        entityLastName: (plainObject.entityLastName || '') as string,
         actorName: (plainObject.actorName || 'System') as string,
         recipientId: (plainObject.recipientId || '') as string,
         createdAt: createdAt,
@@ -267,12 +275,11 @@ const deserializeNotification = (row: Record<string, unknown>): Notification | n
 
 const deserializeAddressHistory = (row: Record<string, unknown>): AddressHistory | null => {
     if (!row.id || !row.employeeId) return null;
-    const { firstName, lastName } = splitFullName(row.employeeName as string);
     return {
         id: row.id as string,
         employeeId: row.employeeId as string,
-        employeeFirstName: firstName,
-        employeeLastName: lastName,
+        employeeFirstName: (row.employeeFirstName as string) || '',
+        employeeLastName: (row.employeeLastName as string) || '',
         coordinatorName: (row.coordinatorName as string),
         department: (row.department as string),
         address: row.address as string,
@@ -444,10 +451,9 @@ export async function getAllSheetsData(userId?: string, userIsAdmin?: boolean) {
 }
 
 export async function addAddressHistoryEntry(data: Omit<AddressHistory, 'id'>) {
-  const sheet = await getSheet(SHEET_NAME_ADDRESS_HISTORY, ['id', 'employeeId', 'employeeName', 'coordinatorName', 'department', 'address', 'checkInDate', 'checkOutDate']);
+  const sheet = await getSheet(SHEET_NAME_ADDRESS_HISTORY, ['id', 'employeeId', 'employeeFirstName', 'employeeLastName', 'coordinatorName', 'department', 'address', 'checkInDate', 'checkOutDate']);
   await sheet.addRow({
     id: `hist-${Date.now()}`,
-    employeeName: `${data.employeeLastName} ${data.employeeFirstName}`.trim(),
     ...data
   });
 }
