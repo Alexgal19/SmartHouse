@@ -2,7 +2,7 @@
 
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, NotificationType, Coordinator, AddressHistory, AssignmentHistory } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, NotificationType, Coordinator, AddressHistory, AssignmentHistory, BOKStatus } from '../types';
 import { getSheet, getAllSheetsData, addAddressHistoryEntry as addHistoryToAction, updateAddressHistoryEntry as updateHistoryToAction, deleteAddressHistoryEntry as deleteHistoryFromSheet } from './sheets';
 import { format, isPast, isValid, getDaysInMonth, parseISO, differenceInDays, max, min, parse as dateFnsParse, lastDayOfMonth } from 'date-fns';
 import * as XLSX from 'xlsx';
@@ -39,7 +39,8 @@ const EMPLOYEE_HEADERS = [
     'id', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'ownAddress', 'roomNumber', 
     'zaklad', 'checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 
     'departureReportDate', 'comments', 'status',
-    'depositReturned', 'depositReturnAmount', 'deductionRegulation', 'deductionNo4Months', 'deductionNo30Days', 'deductionReason', 'deductionEntryDate'
+    'depositReturned', 'depositReturnAmount', 'deductionRegulation', 'deductionNo4Months', 'deductionNo30Days', 'deductionReason', 'deductionEntryDate',
+    'bokStatus', 'bokStatusDate'
 ];
 
 const serializeEmployee = (employee: Partial<Employee>): Record<string, string | number | boolean> => {
@@ -59,7 +60,7 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
             continue;
         }
 
-        if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'deductionEntryDate'].includes(key)) {
+        if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'deductionEntryDate', 'bokStatusDate'].includes(key)) {
             serialized[key] = serializeDate(value as string);
         } else if (key === 'deductionReason') {
             serialized[key] = Array.isArray(value) ? JSON.stringify(value) : '';
@@ -73,22 +74,33 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
     return serialized;
 };
 
+const NON_EMPLOYEE_HEADERS = [
+    'id', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'departureReportDate', 'comments', 'status', 'paymentType', 'paymentAmount', 'bokStatus', 'bokStatusDate'
+];
 
 const serializeNonEmployee = (nonEmployee: Partial<NonEmployee>): Record<string, string | number | boolean> => {
-    const serialized: Record<string, string | number | boolean | null> = {};
+    const serialized: Record<string, string | number | boolean> = {};
     const dataToWrite = { ...nonEmployee };
 
     if (dataToWrite.firstName || dataToWrite.lastName) {
       dataToWrite.fullName = `${dataToWrite.lastName || ''} ${dataToWrite.firstName || ''}`.trim();
     }
 
-    for (const [key, value] of Object.entries(dataToWrite)) {
-        if (['checkInDate', 'checkOutDate', 'departureReportDate'].includes(key)) {
-            serialized[key] = serializeDate(value as string);
-        } else if (value !== null && value !== undefined) {
-            serialized[key] = String(value);
-        } else {
+    for (const key of NON_EMPLOYEE_HEADERS) {
+        const typedKey = key as keyof NonEmployee;
+        const value = dataToWrite[typedKey];
+
+        if (value === undefined || value === null) {
             serialized[key] = '';
+            continue;
+        }
+
+        if (['checkInDate', 'checkOutDate', 'departureReportDate', 'bokStatusDate'].includes(key)) {
+            serialized[key] = serializeDate(value as string);
+        } else if (typeof value === 'boolean') {
+            serialized[key] = String(value).toUpperCase();
+        } else {
+            serialized[key] = String(value);
         }
     }
     return serialized;
@@ -113,10 +125,6 @@ const serializeNotification = (notification: Notification): Record<string, strin
         changes: JSON.stringify(notification.changes || []),
     };
 };
-
-const NON_EMPLOYEE_HEADERS = [
-    'id', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'departureReportDate', 'comments', 'status', 'paymentType', 'paymentAmount'
-];
 
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'departments', 'password', 'visibilityMode', 'pushSubscription'];
 const ADDRESS_HEADERS = ['id', 'locality', 'name', 'coordinatorIds'];
@@ -237,6 +245,8 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         deductionNo30Days: plainObject.deductionNo30Days ? parseFloat(plainObject.deductionNo30Days as string) : null,
         deductionReason: deductionReason,
         deductionEntryDate: safeFormat(plainObject.deductionEntryDate),
+        bokStatus: (plainObject.bokStatus as string | null) || null,
+        bokStatusDate: safeFormat(plainObject.bokStatusDate),
     };
     
     return newEmployee;
@@ -437,6 +447,8 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
             deductionNo30Days: employeeData.deductionNo30Days ?? null,
             deductionReason: employeeData.deductionReason ?? undefined,
             deductionEntryDate: employeeData.deductionEntryDate ?? null,
+            bokStatus: employeeData.bokStatus ?? null,
+            bokStatusDate: employeeData.bokStatusDate ?? null,
         };
 
         const serialized = serializeEmployee(newEmployee);
@@ -507,7 +519,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
             const oldValue = originalEmployee[typedKey];
             const newValue = dbUpdates[typedKey];
             
-            const areDates = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'deductionEntryDate'].includes(key);
+            const areDates = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'deductionEntryDate', 'bokStatusDate'].includes(key);
 
             let oldValStr: string | null = null;
             if (oldValue !== null && oldValue !== undefined) {
@@ -612,6 +624,8 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id' | '
             comments: nonEmployeeData.comments,
             paymentType: nonEmployeeData.paymentType,
             paymentAmount: nonEmployeeData.paymentAmount,
+            bokStatus: nonEmployeeData.bokStatus,
+            bokStatusDate: nonEmployeeData.bokStatusDate,
         };
 
         const serialized = serializeNonEmployee(newNonEmployee);
@@ -1385,4 +1399,22 @@ export async function migrateFullNames(actorUid: string): Promise<{ migratedEmpl
     });
 
     return { migratedEmployees, migratedNonEmployees };
+}
+
+export async function updateCoordinatorSubscription(coordinatorId: string, subscription: PushSubscription | null): Promise<void> {
+    try {
+        const sheet = await getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS);
+        const rows = await sheet.getRows();
+        const coordinatorRow = rows.find(row => row.get('uid') === coordinatorId);
+
+        if (coordinatorRow) {
+            coordinatorRow.set('pushSubscription', subscription ? JSON.stringify(subscription) : '');
+            await coordinatorRow.save();
+        } else {
+            throw new Error('Coordinator not found.');
+        }
+    } catch (e: unknown) {
+        console.error("Error updating coordinator subscription:", e);
+        throw new Error(e instanceof Error ? e.message : "Failed to update subscription.");
+    }
 }
