@@ -36,6 +36,7 @@ import {
     updateSettings,
     deleteNotification,
     deleteAddressHistoryEntry,
+    migrateFullNames,
 } from '@/lib/actions';
 import { getAllSheetsData } from '@/lib/sheets';
 import { logout } from '../lib/auth';
@@ -110,6 +111,7 @@ type MainLayoutContextType = {
     handleImportNonEmployees: (fileContent: string, settings: Settings) => Promise<void>;
     handleDeleteAddressHistory: (historyId: string, actorUid: string) => Promise<void>;
     handleToggleNotificationReadStatus: (notificationId: string, isRead: boolean) => Promise<void>;
+    handleMigrateFullNames: () => Promise<void>;
 };
 
 const MainLayoutContext = createContext<MainLayoutContextType | null>(null);
@@ -625,6 +627,21 @@ export default function MainLayout({
         }
     }, [currentUser, refreshData, toast]);
 
+    const handleMigrateFullNames = useCallback(async () => {
+        if (!currentUser) return;
+        try {
+            const result = await migrateFullNames(currentUser.uid);
+            toast({ title: "Sukces", description: `Zmigrowano ${result.migratedEmployees} pracowników i ${result.migratedNonEmployees} mieszkańców.` });
+            await refreshData(false);
+        } catch (e) {
+             toast({
+                variant: "destructive",
+                title: "Błąd migracji",
+                description: e instanceof Error ? e.message : 'Nieznany błąd serwera.'
+            });
+        }
+    }, [currentUser, refreshData, toast]);
+
     const contextValue: MainLayoutContextType = useMemo(() => ({
         allEmployees,
         allNonEmployees,
@@ -657,6 +674,7 @@ export default function MainLayout({
         handleImportNonEmployees,
         handleDeleteAddressHistory,
         handleToggleNotificationReadStatus,
+        handleMigrateFullNames,
     } ), [
         allEmployees,
         allNonEmployees,
@@ -688,6 +706,7 @@ export default function MainLayout({
         handleImportNonEmployees,
         handleDeleteAddressHistory,
         handleToggleNotificationReadStatus,
+        handleMigrateFullNames,
     ]);
 
     if (!settings || !currentUser || !allEmployees || !allNonEmployees) {

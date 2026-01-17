@@ -118,7 +118,7 @@ const NON_EMPLOYEE_HEADERS = [
     'id', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'departureReportDate', 'comments', 'status', 'paymentType', 'paymentAmount'
 ];
 
-const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'departments', 'password', 'visibilityMode'];
+const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'departments', 'password', 'visibilityMode', 'pushSubscription'];
 const ADDRESS_HEADERS = ['id', 'locality', 'name', 'coordinatorIds'];
 const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targetType', 'targetId', 'details'];
 const ADDRESS_HISTORY_HEADERS = ['id', 'employeeId', 'employeeFirstName', 'employeeLastName', 'coordinatorName', 'department', 'address', 'checkInDate', 'checkOutDate'];
@@ -188,10 +188,10 @@ const splitFullName = (fullName: string | null | undefined): { firstName: string
 const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     const plainObject = row;
     
-    const id = String(plainObject.id || '');
+    const id = plainObject.id;
     if (!id || (!plainObject.lastName && !plainObject.fullName)) return null;
 
-    const { firstName, lastName } = plainObject.lastName 
+    const { firstName, lastName } = (plainObject.lastName && plainObject.firstName)
         ? { firstName: plainObject.firstName as string, lastName: plainObject.lastName as string}
         : splitFullName(plainObject.fullName as string);
 
@@ -212,7 +212,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     const depositReturned = validDepositValues.includes(plainObject.depositReturned as string) ? plainObject.depositReturned as Employee['depositReturned'] : null;
 
     const newEmployee: Employee = {
-        id: id,
+        id: id as string,
         firstName,
         lastName,
         fullName: `${lastName} ${firstName}`.trim(),
@@ -1337,4 +1337,52 @@ export async function deleteAddressHistoryEntry(historyId: string, actorUid: str
         console.error("Error deleting address history entry:", e);
         throw new Error(e instanceof Error ? e.message : "Failed to delete address history entry.");
     }
+}
+
+
+export async function migrateFullNames(actorUid: string): Promise<{ migratedEmployees: number; migratedNonEmployees: number }> {
+    const { settings } = await getAllSheetsData(actorUid, true);
+    const actor = findActor(actorUid, settings);
+
+    let migratedEmployees = 0;
+    let migratedNonEmployees = 0;
+
+    // Migrate Employees
+    const employeeSheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
+    const employeeRows = await employeeSheet.getRows();
+    for (const row of employeeRows) {
+        const fullName = row.get('fullName') as string;
+        const firstName = row.get('firstName') as string;
+        const lastName = row.get('lastName') as string;
+        if (fullName && (!firstName || !lastName)) {
+            const { firstName: newFirstName, lastName: newLastName } = splitFullName(fullName);
+            row.set('firstName', newFirstName);
+            row.set('lastName', newLastName);
+            await row.save();
+            migratedEmployees++;
+        }
+    }
+    
+    // Migrate Non-Employees
+    const nonEmployeeSheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
+    const nonEmployeeRows = await nonEmployeeSheet.getRows();
+    for (const row of nonEmployeeRows) {
+        const fullName = row.get('fullName') as string;
+        const firstName = row.get('firstName') as string;
+        const lastName = row.get('lastName') as string;
+        if (fullName && (!firstName || !lastName)) {
+            const { firstName: newFirstName, lastName: newLastName } = splitFullName(fullName);
+            row.set('firstName', newFirstName);
+            row.set('lastName', newLastName);
+            await row.save();
+            migratedNonEmployees++;
+        }
+    }
+
+    await writeToAuditLog(actor.uid, actor.name, 'migrate-full-names', 'system', 'all', {
+        migratedEmployees,
+        migratedNonEmployees
+    });
+
+    return { migratedEmployees, migratedNonEmployees };
 }

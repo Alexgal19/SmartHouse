@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Input } from '@/components/ui/input';
-import { Trash2, PlusCircle, Download, Loader2, FileWarning, Edit, Upload, Eye, EyeOff } from 'lucide-react';
+import { Trash2, PlusCircle, Download, Loader2, FileWarning, Edit, Upload, Eye, EyeOff, DatabaseZap } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
@@ -547,6 +547,56 @@ const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove,
         </div>
     );
 };
+
+const DataMigration = () => {
+    const { handleMigrateFullNames } = useMainLayout();
+    const [isLoading, setIsLoading] = useState(false);
+
+    const onMigrate = async () => {
+        setIsLoading(true);
+        await handleMigrateFullNames();
+        setIsLoading(false);
+    }
+    
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Migracja Danych</CardTitle>
+                <CardDescription>Jednorazowe akcje do porządkowania danych w arkuszach.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="flex items-center justify-between rounded-lg border p-4">
+                    <div>
+                        <h3 className="font-medium">Migracja Imienia i Nazwiska</h3>
+                        <p className="text-sm text-muted-foreground">
+                            Przeszukuje arkusze i dzieli pole `fullName` na `firstName` i `lastName` dla starych rekordów.
+                        </p>
+                    </div>
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="outline" disabled={isLoading}>
+                                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <DatabaseZap className="mr-2 h-4 w-4"/>}
+                                Uruchom migrację
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Czy na pewno chcesz uruchomić migrację?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Ta operacja przeanalizuje wszystkie rekordy pracowników i mieszkańców i uzupełni brakujące pola `firstName` i `lastName` na podstawie istniejącego pola `fullName`. Operacja jest bezpieczna, ale może potrwać chwilę.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                                <AlertDialogAction onClick={onMigrate}>Uruchom</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
 
 
 const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; rawSettings: Settings | null }) => {
@@ -1280,10 +1330,10 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
         setIsNonEmployeeImportLoading(false);
     }
 
-    const employeeRequiredFields = ["Nazwisko", "Imię", "Koordynator", "Data zameldowania"];
+    const employeeRequiredFields = ["Imię", "Nazwisko", "Koordynator", "Data zameldowania"];
     const employeeOptionalFields = ["Narodowość", "Płeć", "Miejscowość", "Adres", "Pokój", "Zakład", "Umowa od", "Umowa do", "Data wymeldowania", "Data zgloszenia wyjazdu", "Komentarze"];
     
-    const nonEmployeeRequiredFields = ["Nazwisko", "Imię", "Koordynator", "Data zameldowania"];
+    const nonEmployeeRequiredFields = ["Imię", "Nazwisko", "Koordynator", "Data zameldowania"];
     const nonEmployeeOptionalFields = ["Narodowość", "Płeć", "Miejscowość", "Adres", "Pokój", "Data wymeldowania", "Data zgloszenia wyjazdu", "Komentarze", "Rodzaj płatności NZ", "Kwota"];
   
   if (!currentUser.isAdmin) {
@@ -1317,6 +1367,7 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
   return (
     <div className="space-y-6">
         <SettingsManager rawSettings={rawSettings} onSettingsChange={setRawSettings} onRefresh={fetchRawSettings}/>
+        <DataMigration />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <ExcelImport 
                 onImport={runEmployeeImport}
