@@ -6,6 +6,7 @@ import type { Employee, Settings, Notification, NotificationChange, Room, NonEmp
 import { getSheet, getAllSheetsData, addAddressHistoryEntry as addHistoryToAction, updateAddressHistoryEntry as updateHistoryToAction, deleteAddressHistoryEntry as deleteHistoryFromSheet } from './sheets';
 import { format, isPast, isValid, getDaysInMonth, parseISO, differenceInDays, max, min, parse as dateFnsParse, lastDayOfMonth } from 'date-fns';
 import * as XLSX from 'xlsx';
+import { EMPLOYEE_HEADERS, NON_EMPLOYEE_HEADERS } from '@/types';
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
 const SHEET_NAME_NON_EMPLOYEES = 'NonEmployees';
@@ -34,14 +35,6 @@ const serializeDate = (date?: string | null): string => {
     }
     return date; 
 };
-
-const EMPLOYEE_HEADERS = [
-    'id', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'ownAddress', 'roomNumber', 
-    'zaklad', 'checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 
-    'departureReportDate', 'comments', 'status',
-    'depositReturned', 'depositReturnAmount', 'deductionRegulation', 'deductionNo4Months', 'deductionNo30Days', 'deductionReason', 'deductionEntryDate',
-    'bokStatus', 'bokStatusDate'
-];
 
 const serializeEmployee = (employee: Partial<Employee>): Record<string, string | number | boolean> => {
     const serialized: Record<string, string | number | boolean> = {};
@@ -73,10 +66,6 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
 
     return serialized;
 };
-
-const NON_EMPLOYEE_HEADERS = [
-    'id', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 'checkInDate', 'checkOutDate', 'departureReportDate', 'comments', 'status', 'paymentType', 'paymentAmount', 'bokStatus', 'bokStatusDate'
-];
 
 const serializeNonEmployee = (nonEmployee: Partial<NonEmployee>): Record<string, string | number | boolean> => {
     const serialized: Record<string, string | number | boolean> = {};
@@ -163,7 +152,7 @@ const safeFormat = (dateValue: unknown): string | null => {
         return format(date, 'yyyy-MM-dd');
     }
 
-    const formatsToTry = ['dd.mm.yyyy', 'dd-MM-yyyy', 'dd/MM/yyyy'];
+    const formatsToTry = ['dd.MM.yyyy', 'dd-MM-yyyy', 'dd/MM/yyyy', 'yyyy.MM.dd'];
     for (const fmt of formatsToTry) {
         date = dateFnsParse(dateString, fmt, new Date());
         if (isValid(date)) {
@@ -197,16 +186,26 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     const plainObject = row;
     
     const id = plainObject.id;
-    if (!id || (!plainObject.lastName && !plainObject.fullName)) return null;
+    if (!id || (!plainObject.lastName && !plainObject.fullName)) {
+        return null;
+    }
 
     const { firstName, lastName } = (plainObject.lastName && plainObject.firstName)
         ? { firstName: plainObject.firstName as string, lastName: plainObject.lastName as string}
         : splitFullName(plainObject.fullName as string);
 
-    if (!lastName) return null;
+    if (!lastName) {
+        console.warn(`[Data Deserialization] Skipping employee record with ID "${id}" due to missing last name.`);
+        return null;
+    }
 
+    const checkInDate = safeFormat(plainObject.checkInDate);
+    if (!checkInDate) {
+      // Don't skip the record, just log a warning and proceed with null.
+        console.warn(`[Data Deserialization] Employee "${lastName}, ${firstName}" (ID: ${id}) has an invalid or missing check-in date: "${plainObject.checkInDate}". The record will be loaded, but this may affect functionality.`);
+    }
 
-    let deductionReason: DeductionReason[] | undefined;
+    let deductionReason: DeductionReason[] | undefined = undefined;
     if (plainObject.deductionReason && typeof plainObject.deductionReason === 'string') {
         try {
             const parsed = JSON.parse(plainObject.deductionReason);
@@ -224,20 +223,20 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         firstName,
         lastName,
         fullName: `${lastName} ${firstName}`.trim(),
-        coordinatorId: String(plainObject.coordinatorId || ''),
-        nationality: String(plainObject.nationality || ''),
-        gender: String(plainObject.gender || ''),
-        address: String(plainObject.address || ''),
+        coordinatorId: (plainObject.coordinatorId || '') as string,
+        nationality: (plainObject.nationality || '') as string,
+        gender: (plainObject.gender || '') as string,
+        address: (plainObject.address || '') as string,
         ownAddress: (plainObject.ownAddress as string | null) || null,
-        roomNumber: String(plainObject.roomNumber || ''),
+        roomNumber: (plainObject.roomNumber || '') as string,
         zaklad: (plainObject.zaklad as string | null) || null,
-        checkInDate: safeFormat(plainObject.checkInDate),
+        checkInDate: checkInDate,
         checkOutDate: safeFormat(plainObject.checkOutDate),
         contractStartDate: safeFormat(plainObject.contractStartDate),
         contractEndDate: safeFormat(plainObject.contractEndDate),
         departureReportDate: safeFormat(plainObject.departureReportDate),
-        comments: String(plainObject.comments || ''),
-        status: String(plainObject.status) === 'dismissed' ? 'dismissed' : 'active',
+        comments: (plainObject.comments || '') as string,
+        status: plainObject.status as 'active' | 'dismissed' || 'active',
         depositReturned: depositReturned,
         depositReturnAmount: plainObject.depositReturnAmount ? parseFloat(plainObject.depositReturnAmount as string) : null,
         deductionRegulation: plainObject.deductionRegulation ? parseFloat(plainObject.deductionRegulation as string) : null,
@@ -1252,13 +1251,23 @@ const processImport = async (
                     }
                 }
                 
+                const employeeRequiredFields = ['imię', 'nazwisko', 'koordynator', 'data zameldowania', 'zakład', 'miejscowość', 'adres', 'pokój', 'narodowość'];
+                const nonEmployeeRequiredFields = ['imię', 'nazwisko', 'koordynator', 'data zameldowania', 'miejscowość', 'adres', 'pokój', 'narodowość'];
+
+                const requiredFields = type === 'employee' ? employeeRequiredFields : nonEmployeeRequiredFields;
+                
+                const missingFields = requiredFields.filter(field => {
+                    const value = normalizedRow[field];
+                    return value === undefined || value === null || String(value).trim() === '';
+                });
+
+                if (missingFields.length > 0) {
+                    errors.push(`Wiersz ${rowNum}: Brak wymaganych danych w kolumnach: ${missingFields.join(', ')}.`);
+                    continue;
+                }
+
                 const firstName = (normalizedRow['imię'] as string)?.trim();
                 const lastName = (normalizedRow['nazwisko'] as string)?.trim();
-
-                if (!lastName) {
-                    errors.push(`Wiersz ${rowNum}: Brak nazwiska.`);
-                    continue; 
-                }
                 
                 const coordinatorName = (normalizedRow['koordynator'] as string)?.toLowerCase().trim();
                 const coordinatorId = coordinatorName ? coordinatorMap.get(coordinatorName) : '';
@@ -1267,6 +1276,12 @@ const processImport = async (
                      continue;
                 }
                 
+                const checkInDate = safeFormat(normalizedRow['data zameldowania']);
+                 if (!checkInDate) {
+                    errors.push(`Wiersz ${rowNum} (${lastName}): Nieprawidłowy format daty zameldowania.`);
+                    continue;
+                }
+
                 const locality = (normalizedRow['miejscowość'] as string)?.trim();
                 if (locality && !settings.localities.includes(locality)) {
                     newLocalities.add(locality);
@@ -1282,7 +1297,7 @@ const processImport = async (
                     gender: (normalizedRow['płeć'] as string)?.trim(),
                     address: (normalizedRow['adres'] as string)?.trim(),
                     roomNumber: String(normalizedRow['pokój'] || '').trim(),
-                    checkInDate: safeFormat(normalizedRow['data zameldowania']),
+                    checkInDate,
                     checkOutDate: safeFormat(normalizedRow['data wymeldowania']),
                     departureReportDate: safeFormat(normalizedRow['data zgloszenia wyjazdu']),
                     comments: (normalizedRow['komentarze'] as string)?.trim(),

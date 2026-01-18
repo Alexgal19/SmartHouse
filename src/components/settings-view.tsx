@@ -1330,11 +1330,11 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
         setIsNonEmployeeImportLoading(false);
     }
 
-    const employeeRequiredFields = ["Imię", "Nazwisko", "Koordynator", "Data zameldowania"];
-    const employeeOptionalFields = ["Narodowość", "Płeć", "Miejscowość", "Adres", "Pokój", "Zakład", "Umowa od", "Umowa do", "Data wymeldowania", "Data zgloszenia wyjazdu", "Komentarze"];
+    const employeeRequiredFields = ["Imię", "Nazwisko", "Koordynator", "Data zameldowania", "Zakład", "Miejscowość", "Adres", "Pokój", "Narodowość"];
+    const employeeOptionalFields = ["Płeć", "Umowa od", "Umowa do", "Data wymeldowania", "Data zgloszenia wyjazdu", "Komentarze"];
     
-    const nonEmployeeRequiredFields = ["Imię", "Nazwisko", "Koordynator", "Data zameldowania"];
-    const nonEmployeeOptionalFields = ["Narodowość", "Płeć", "Miejscowość", "Adres", "Pokój", "Data wymeldowania", "Data zgloszenia wyjazdu", "Komentarze", "Rodzaj płatności NZ", "Kwota"];
+    const nonEmployeeRequiredFields = ["Imię", "Nazwisko", "Koordynator", "Data zameldowania", "Miejscowość", "Adres", "Pokój", "Narodowość"];
+    const nonEmployeeOptionalFields = ["Płeć", "Data wymeldowania", "Data zgloszenia wyjazdu", "Komentarze", "Rodzaj płatności NZ", "Kwota"];
   
   if (!currentUser.isAdmin) {
       return (
