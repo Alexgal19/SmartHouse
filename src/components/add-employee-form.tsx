@@ -438,9 +438,11 @@ export function AddEmployeeForm({
 
   const handleAddressChange = (value: string) => {
     form.setValue('address', value);
-    form.setValue('roomNumber', '');
-    if (!value.toLowerCase().startsWith('własne mieszkanie')) {
+    if (value.toLowerCase().startsWith('własne mieszkanie')) {
+        form.setValue('roomNumber', '1');
+    } else {
         form.setValue('ownAddress', '');
+        form.setValue('roomNumber', '');
     }
   };
 
@@ -614,7 +616,6 @@ export function AddEmployeeForm({
                                         <FormControl><SelectTrigger><SelectValue placeholder={!selectedLocality ? "Najpierw wybierz miejscowość" : "Wybierz adres"} /></SelectTrigger></FormControl>
                                         <SelectContent>
                                             {availableAddresses.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
-                                            <SelectItem value="Własne mieszkanie...">Własne mieszkanie...</SelectItem>
                                         </SelectContent>
                                     </Select>
                                     <FormMessage />
@@ -641,7 +642,7 @@ export function AddEmployeeForm({
                                 <FormItem>
                                     <FormLabel>Pokój</FormLabel>
                                     <Select onValueChange={field.onChange} value={field.value || ''} disabled={!selectedAddress || isOwnAddressSelected}>
-                                    <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : (isOwnAddressSelected ? "N/A" : "Wybierz pokój")} /></SelectTrigger></FormControl>
+                                    <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : (isOwnAddressSelected ? "1" : "Wybierz pokój")} /></SelectTrigger></FormControl>
                                     <SelectContent>
                                         {availableRooms.map(r => <SelectItem key={r.id} value={r.name}>{r.name} (Pojemność: {r.capacity})</SelectItem>)}
                                     </SelectContent>
