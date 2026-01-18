@@ -571,9 +571,8 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
 
 export async function deleteEmployee(employeeId: string, actorUid: string): Promise<void> {
     try {
-        const { settings, addressHistory } = await getAllSheetsData(actorUid, true);
-        const actor = findActor(actorUid, settings);
-
+        const { addressHistory } = await getAllSheetsData(actorUid, true);
+        
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows();
         const row = rows.find((r) => r.get('id') === employeeId);
@@ -582,16 +581,11 @@ export async function deleteEmployee(employeeId: string, actorUid: string): Prom
             throw new Error('Employee not found for deletion.');
         }
 
-        const employeeToDelete = deserializeEmployee(row.toObject());
         await row.delete();
         
         const historyToDelete = (addressHistory || []).filter(h => h.employeeId === employeeId);
         for (const historyEntry of historyToDelete) {
             await deleteHistoryFromSheet(historyEntry.id);
-        }
-
-        if (employeeToDelete) {
-             await createNotification(actor, 'trwale usunął', employeeToDelete, settings);
         }
 
     } catch (e: unknown) {
@@ -714,22 +708,18 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
 
 export async function deleteNonEmployee(id: string, actorUid: string): Promise<void> {
     try {
-        const { settings, addressHistory } = await getAllSheetsData(actorUid, true);
-        const actor = findActor(actorUid, settings);
+        const { addressHistory } = await getAllSheetsData(actorUid, true);
 
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
         const rows = await sheet.getRows();
         const row = rows.find((row) => row.get('id') === id);
         if (row) {
-            const nonEmployeeToDelete = { ...row.toObject(), ...splitFullName(row.get('fullName')) } as NonEmployee;
             await row.delete();
 
             const historyToDelete = (addressHistory || []).filter(h => h.employeeId === id);
             for (const historyEntry of historyToDelete) {
                 await deleteHistoryFromSheet(historyEntry.id);
             }
-
-            await createNotification(actor, 'trwale usunął', nonEmployeeToDelete, settings);
         } else {
             throw new Error('Non-employee not found');
         }
@@ -1439,4 +1429,3 @@ export async function updateCoordinatorSubscription(coordinatorId: string, subsc
         throw new Error(e instanceof Error ? e.message : "Failed to update subscription.");
     }
 }
-
