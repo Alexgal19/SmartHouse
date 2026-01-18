@@ -32,7 +32,7 @@ describe('SmartHouse Core Logic Integrity', () => {
   describe('Data Structures Integrity', () => {
     it('allows creating a valid mock Employee object', () => {
       // Create a sample object to check if the TS compiler is satisfied
-      const mockEmployee: Partial<Employee> = {
+      const mockEmployee: Employee = {
         id: 'emp-123',
         fullName: 'Kowalski Jan',
         firstName: 'Jan',
@@ -40,6 +40,19 @@ describe('SmartHouse Core Logic Integrity', () => {
         coordinatorId: 'coord-1',
         status: 'active',
         checkInDate: '2024-01-01',
+        nationality: 'Polska',
+        gender: 'Mężczyzna',
+        address: 'Testowa 1',
+        roomNumber: '101',
+        zaklad: 'IT',
+        contractStartDate: null,
+        contractEndDate: null,
+        depositReturned: null,
+        depositReturnAmount: null,
+        deductionNo30Days: null,
+        deductionNo4Months: null,
+        deductionRegulation: null,
+        deductionReason: undefined
       };
 
       expect(mockEmployee.id).toBe('emp-123');
