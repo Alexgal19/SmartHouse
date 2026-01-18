@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { generateAccommodationReport, transferEmployees, updateSettings, bulkDeleteEmployees, bulkDeleteEmployeesByCoordinator, generateNzCostsReport } from '@/lib/actions';
+import { generateAccommodationReport, transferEmployees, updateSettings, bulkDeleteEmployees, bulkDeleteEmployeesByCoordinator, generateNzCostsReport, bulkDeleteEmployeesByDepartment } from '@/lib/actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from '@/components/ui/dialog';
@@ -604,17 +604,25 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
     const [isDeletingDismissed, setIsDeletingDismissed] = useState(false);
     const [isDeletingByCoord, setIsDeletingByCoord] = useState(false);
     const [isTransferring, setIsTransferring] = useState(false);
+    const [isDeletingByDept, setIsDeletingByDept] = useState(false);
     
     const [transferFrom, setTransferFrom] = useState('');
     const [transferTo, setTransferTo] = useState('');
     const [deleteCoordinatorId, setDeleteCoordinatorId] = useState('');
+    const [deleteDepartment, setDeleteDepartment] = useState('');
 
     const { toast } = useToast();
+    const { handleBulkDeleteEmployeesByDepartment } = useMainLayout();
     
     const sortedCoordinators = useMemo(() => {
       if (!rawSettings?.coordinators) return [];
       return [...rawSettings.coordinators].sort((a,b) => a.name.localeCompare(b.name));
     }, [rawSettings?.coordinators]);
+
+    const sortedDepartments = useMemo(() => {
+        if (!rawSettings?.departments) return [];
+        return [...rawSettings.departments].sort((a,b) => a.localeCompare(b));
+    }, [rawSettings?.departments]);
 
     const handleBulkDelete = async (status: 'active' | 'dismissed') => {
         if (!currentUser || !currentUser.isAdmin) {
@@ -651,6 +659,19 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
         } finally {
             setIsDeletingByCoord(false);
         }
+    };
+
+    const handleDepartmentDelete = async () => {
+        if (!deleteDepartment) {
+            toast({ variant: 'destructive', title: 'Błąd', description: 'Wybierz zakład.' });
+            return;
+        }
+        setIsDeletingByDept(true);
+        const success = await handleBulkDeleteEmployeesByDepartment(deleteDepartment);
+        if (success) {
+            setDeleteDepartment('');
+        }
+        setIsDeletingByDept(false);
     };
     
     const handleTransfer = async () => {
@@ -790,6 +811,45 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
                                     <AlertDialogFooter>
                                         <AlertDialogCancel>Anuluj</AlertDialogCancel>
                                         <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleCoordinatorDelete}>Potwierdź i usuń</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </div>
+                     </div>
+                 )}
+                {currentUser.isAdmin && rawSettings?.departments && (
+                     <div className="rounded-lg border p-4 space-y-4 border-destructive/50 bg-destructive/10">
+                         <div className="flex-1">
+                            <h3 className="font-medium text-destructive">Usuwanie pracowników wg zakładu</h3>
+                            <p className="text-sm text-destructive/80">Trwale usuwa wszystkich pracowników (aktywnych i zwolnionych) przypisanych do wybranego zakładu. Ta akcja jest nieodwracalna.</p>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                            <div className="space-y-2">
+                                <Label>Zakład</Label>
+                                <Select value={deleteDepartment} onValueChange={setDeleteDepartment}>
+                                    <SelectTrigger><SelectValue placeholder="Wybierz zakład" /></SelectTrigger>
+                                    <SelectContent>
+                                        {sortedDepartments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" disabled={isDeletingByDept || !deleteDepartment}>
+                                        {isDeletingByDept ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Trash2 className="mr-2 h-4 w-4" />}
+                                        Usuń pracowników
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Czy na pewno chcesz usunąć WSZYSTKICH pracowników z tego zakładu?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Ta operacja jest nieodwracalna. Wszyscy pracownicy przypisani do zakładu <span className="font-bold">{deleteDepartment}</span> zostaną trwale usunięci.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                                        <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDepartmentDelete}>Potwierdź i usuń</AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
                             </AlertDialog>

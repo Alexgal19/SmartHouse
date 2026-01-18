@@ -1,4 +1,4 @@
-import { deleteEmployee } from '@/lib/actions';
+import { deleteEmployee, bulkDeleteEmployeesByDepartment } from '@/lib/actions';
 import * as sheets from '@/lib/sheets';
 
 // Mock the entire sheets module
@@ -81,5 +81,57 @@ describe('Server Actions - deleteEmployee', () => {
         expect(mockRow.delete).toHaveBeenCalledTimes(1);
         // Crucially, deleteAddressHistoryEntry should not be called
         expect(mockedDeleteAddressHistoryEntry).not.toHaveBeenCalled();
+    });
+});
+
+
+describe('Server Actions - bulkDeleteEmployeesByDepartment', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    it('should delete only the employees from the specified department', async () => {
+        // Arrange
+        const mockRows = [
+            { get: (key: string) => (key === 'zaklad' ? 'IT' : ''), delete: jest.fn().mockResolvedValue(undefined) },
+            { get: (key: string) => (key === 'zaklad' ? 'HR' : ''), delete: jest.fn().mockResolvedValue(undefined) },
+            { get: (key: string) => (key === 'zaklad' ? 'IT' : ''), delete: jest.fn().mockResolvedValue(undefined) },
+        ];
+        
+        const mockSheet = {
+            getRows: jest.fn().mockResolvedValue(mockRows),
+        };
+
+        mockedGetSheet.mockResolvedValue(mockSheet as any);
+        mockedGetAllSheetsData.mockResolvedValue({ settings: { coordinators: [] } });
+
+        // Act
+        await bulkDeleteEmployeesByDepartment('IT', 'actor-uid');
+
+        // Assert
+        expect(mockedGetSheet).toHaveBeenCalledWith('Employees', expect.any(Array));
+        expect(mockRows[0].delete).toHaveBeenCalledTimes(1); // First IT employee
+        expect(mockRows[1].delete).not.toHaveBeenCalled(); // HR employee
+        expect(mockRows[2].delete).toHaveBeenCalledTimes(1); // Second IT employee
+    });
+
+    it('should do nothing if no employees are in the specified department', async () => {
+        // Arrange
+        const mockRows = [
+            { get: (key: string) => 'HR', delete: jest.fn().mockResolvedValue(undefined) },
+            { get: (key:string) => 'Marketing', delete: jest.fn().mockResolvedValue(undefined) },
+        ];
+        
+        const mockSheet = {
+            getRows: jest.fn().mockResolvedValue(mockRows),
+        };
+        mockedGetSheet.mockResolvedValue(mockSheet as any);
+
+        // Act
+        await bulkDeleteEmployeesByDepartment('IT', 'actor-uid');
+
+        // Assert
+        expect(mockRows[0].delete).not.toHaveBeenCalled();
+        expect(mockRows[1].delete).not.toHaveBeenCalled();
     });
 });

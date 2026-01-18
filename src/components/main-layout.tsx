@@ -37,6 +37,7 @@ import {
     deleteNotification,
     deleteAddressHistoryEntry,
     migrateFullNames,
+    bulkDeleteEmployeesByDepartment,
 } from '@/lib/actions';
 import { getAllSheetsData } from '@/lib/sheets';
 import { logout } from '../lib/auth';
@@ -94,6 +95,7 @@ type MainLayoutContextType = {
     setSelectedCoordinatorId: React.Dispatch<React.SetStateAction<string>>;
     handleBulkDeleteEmployees: (entityType: 'employee' | 'non-employee', status: 'active' | 'dismissed') => Promise<boolean>;
     handleBulkDeleteEmployeesByCoordinator: (coordinatorId: string) => Promise<boolean>;
+    handleBulkDeleteEmployeesByDepartment: (department: string) => Promise<boolean>;
     handleAddEmployeeClick: () => void;
     handleEditEmployeeClick: (employee: Employee) => void;
     handleUpdateSettings: (newSettings: Partial<Settings>) => Promise<void>;
@@ -421,7 +423,6 @@ export default function MainLayout({
         if (!currentUser) return;
         try {
             await deleteNonEmployee(id, actorUid);
-            toast({ title: "Sukces", description: "Mieszkaniec został usunięty." });
             await refreshData(false);
         } catch(e) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć mieszkańca." });
@@ -520,6 +521,23 @@ export default function MainLayout({
             return false;
         }
     }, [currentUser, refreshData, toast]);
+
+    const handleBulkDeleteEmployeesByDepartment = useCallback(async (department: string) => {
+        if (!currentUser || !currentUser.isAdmin) {
+            toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administratorzy mogą wykonać tę akcję." });
+            return false;
+        }
+        
+        try {
+            await bulkDeleteEmployeesByDepartment(department, currentUser.uid);
+            toast({ title: "Sukces", description: `Wszyscy pracownicy z zakładu "${department}" zostali usunięci.` });
+            await refreshData(false);
+            return true;
+        } catch(e) {
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć pracowników." });
+            return false;
+        }
+    }, [currentUser, refreshData, toast]);
     
     const handleDismissEmployee = useCallback(async (employeeId: string, checkOutDate: Date) => {
         if (!currentUser) return;
@@ -558,7 +576,6 @@ export default function MainLayout({
         if (!currentUser) return;
         try {
             await deleteEmployee(employeeId, actorUid);
-            toast({ title: "Sukces", description: "Pracownik został trwale usunięty." });
             await refreshData(false);
         } catch (e: unknown) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć pracownika." });
@@ -658,6 +675,7 @@ export default function MainLayout({
         handleEditEmployeeClick,
         handleBulkDeleteEmployees,
         handleBulkDeleteEmployeesByCoordinator,
+        handleBulkDeleteEmployeesByDepartment,
         handleAddEmployeeClick,
         handleUpdateSettings,
         refreshData,
@@ -690,6 +708,7 @@ export default function MainLayout({
         handleEditEmployeeClick,
         handleBulkDeleteEmployees,
         handleBulkDeleteEmployeesByCoordinator,
+        handleBulkDeleteEmployeesByDepartment,
         handleAddEmployeeClick,
         handleUpdateSettings,
         refreshData,

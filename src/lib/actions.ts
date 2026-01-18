@@ -782,6 +782,36 @@ export async function bulkDeleteEmployeesByCoordinator(coordinatorId: string, ac
     }
 }
 
+export async function bulkDeleteEmployeesByDepartment(department: string, actorUid: string): Promise<void> {
+    try {
+        const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
+        const rows = await sheet.getRows();
+        const rowsToDelete = rows.filter((row) => row.get('zaklad') === department);
+        
+        if (rowsToDelete.length === 0) {
+            return;
+        }
+
+        for (let i = rowsToDelete.length - 1; i >= 0; i--) {
+            await rowsToDelete[i].delete();
+        }
+        
+        // Audit logging
+        const { settings } = await getAllSheetsData(actorUid, true);
+        const actor = findActor(actorUid, settings);
+        if (actor) {
+            await writeToAuditLog(actor.uid, actor.name, 'bulk-delete-by-department', 'employee', department, {
+                deletedCount: rowsToDelete.length,
+                department: department
+            });
+        }
+
+    } catch (e: unknown) {
+        console.error("Error bulk deleting employees by department:", e);
+        throw new Error(e instanceof Error ? e.message : "Failed to bulk delete employees by department.");
+    }
+}
+
 export async function transferEmployees(fromCoordinatorId: string, toCoordinatorId: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
