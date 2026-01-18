@@ -1308,9 +1308,15 @@ const processImport = async (
         }
 
         if (recordsToAdd.length > 0) {
-            const sheet = await getSheet(type === 'employee' ? SHEET_NAME_EMPLOYEES : SHEET_NAME_NON_EMPLOYEES, type === 'employee' ? EMPLOYEE_HEADERS : NON_EMPLOYEE_HEADERS);
-            const serializedRows = recordsToAdd.map(rec => type === 'employee' ? serializeEmployee(rec as Partial<Employee>) : serializeNonEmployee(rec as Partial<NonEmployee>));
-            await sheet.addRows(serializedRows);
+            const importPromises: Promise<void>[] = [];
+            for (const record of recordsToAdd) {
+                if (type === 'employee') {
+                    importPromises.push(addEmployee(record as Partial<Employee>, actorUid));
+                } else {
+                    importPromises.push(addNonEmployee(record as Omit<NonEmployee, 'id'|'status'>, actorUid));
+                }
+            }
+            await Promise.all(importPromises);
         }
         
         if (newLocalities.size > 0) {
