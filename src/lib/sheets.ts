@@ -173,6 +173,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
 
     const checkInDate = safeFormat(plainObject.checkInDate);
     if (!checkInDate) {
+      // Don't skip the record, just log a warning and proceed with null.
         console.warn(`[Data Deserialization] Employee "${lastName}, ${firstName}" (ID: ${id}) has an invalid or missing check-in date: "${plainObject.checkInDate}". The record will be loaded, but this may affect functionality.`);
     }
 
@@ -240,6 +241,7 @@ const deserializeNonEmployee = (row: Record<string, unknown>): NonEmployee | nul
     
     const checkInDate = safeFormat(plainObject.checkInDate);
     if (!checkInDate) {
+        // Don't skip, just warn
         console.warn(`[Data Deserialization] Non-employee "${lastName}, ${firstName}" (ID: ${id}) has an invalid or missing check-in date: "${plainObject.checkInDate}". The record will be loaded, but this may affect functionality.`);
     }
 
@@ -467,7 +469,20 @@ export async function getAllSheetsData(userId?: string, userIsAdmin?: boolean) {
         
         const employees = employeesSheet.map(row => deserializeEmployee(row)).filter((e): e is Employee => e !== null);
         const nonEmployees = nonEmployeesSheet.map(row => deserializeNonEmployee(row)).filter((e): e is NonEmployee => e !== null);
-        const addressHistory = addressHistorySheet.map(row => deserializeAddressHistory(row)).filter((h): h is AddressHistory => h !== null);
+        
+        const allPeopleMap = new Map([...employees, ...nonEmployees].map(p => [p.id, p]));
+
+        const addressHistory = addressHistorySheet.map(row => {
+            const historyEntry = deserializeAddressHistory(row);
+            if (historyEntry && (!historyEntry.employeeFirstName || !historyEntry.employeeLastName)) {
+                const person = allPeopleMap.get(historyEntry.employeeId);
+                if (person) {
+                    historyEntry.employeeFirstName = person.firstName;
+                    historyEntry.employeeLastName = person.lastName;
+                }
+            }
+            return historyEntry;
+        }).filter((h): h is AddressHistory => h !== null);
 
         return { employees, settings, nonEmployees, notifications, addressHistory };
 
