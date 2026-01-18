@@ -5,7 +5,20 @@ import type { Employee, Settings, Notification, NotificationChange, Room, NonEmp
 import { getSheet, getAllSheetsData, addAddressHistoryEntry as addHistoryToAction, updateAddressHistoryEntry as updateHistoryToAction, deleteAddressHistoryEntry as deleteHistoryFromSheet } from './sheets';
 import { format, isPast, isValid, getDaysInMonth, parseISO, differenceInDays, max, min, parse as dateFnsParse, lastDayOfMonth } from 'date-fns';
 import * as XLSX from 'xlsx';
-import { EMPLOYEE_HEADERS, NON_EMPLOYEE_HEADERS } from '@/types';
+
+const EMPLOYEE_HEADERS = [
+    'id', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'ownAddress', 'roomNumber', 
+    'zaklad', 'checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 
+    'departureReportDate', 'comments', 'status', 'depositReturned', 'depositReturnAmount', 
+    'deductionRegulation', 'deductionNo4Months', 'deductionNo30Days', 'deductionReason', 'deductionEntryDate',
+    'bokStatus', 'bokStatusDate'
+];
+
+const NON_EMPLOYEE_HEADERS = [
+    'id', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 
+    'checkInDate', 'checkOutDate', 'departureReportDate', 'comments', 'status', 'paymentType', 
+    'paymentAmount', 'bokStatus', 'bokStatusDate'
+];
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
 const SHEET_NAME_NON_EMPLOYEES = 'NonEmployees';
@@ -1499,5 +1512,3 @@ export async function updateCoordinatorSubscription(coordinatorId: string, subsc
         throw new Error(e instanceof Error ? e.message : "Failed to update subscription.");
     }
 }
-
-    
