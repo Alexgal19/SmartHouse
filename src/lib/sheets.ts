@@ -173,8 +173,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
 
     const checkInDate = safeFormat(plainObject.checkInDate);
     if (!checkInDate) {
-        console.warn(`[Data Deserialization] Skipping employee record "${lastName}, ${firstName}" (ID: ${id}) due to invalid or missing check-in date: "${plainObject.checkInDate}".`);
-        return null;
+        console.warn(`[Data Deserialization] Employee "${lastName}, ${firstName}" (ID: ${id}) has an invalid or missing check-in date: "${plainObject.checkInDate}". The record will be loaded, but this may affect functionality.`);
     }
 
     let deductionReason: DeductionReason[] | undefined = undefined;
@@ -241,8 +240,7 @@ const deserializeNonEmployee = (row: Record<string, unknown>): NonEmployee | nul
     
     const checkInDate = safeFormat(plainObject.checkInDate);
     if (!checkInDate) {
-        console.warn(`[Data Deserialization] Skipping non-employee record "${lastName}, ${firstName}" (ID: ${id}) due to invalid or missing check-in date: "${plainObject.checkInDate}".`);
-        return null;
+        console.warn(`[Data Deserialization] Non-employee "${lastName}, ${firstName}" (ID: ${id}) has an invalid or missing check-in date: "${plainObject.checkInDate}". The record will be loaded, but this may affect functionality.`);
     }
 
     return {
