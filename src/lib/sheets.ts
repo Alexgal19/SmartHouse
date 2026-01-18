@@ -59,21 +59,25 @@ export async function getSheet(title: string, headers: string[]): Promise<Google
         const doc = await getDoc();
         let sheet = doc.sheetsByTitle[title];
         if (!sheet) {
+            if (!headers) {
+                throw new Error(`Cannot create sheet "${title}" without headers.`);
+            }
             sheet = await doc.addSheet({ title, headerValues: headers });
         } else {
             await sheet.loadHeaderRow();
-            const currentHeaders = sheet.headerValues;
-            const missingHeaders = headers.filter(h => !currentHeaders.includes(h));
-            if(missingHeaders.length > 0) {
-                const newHeaders = [...currentHeaders, ...missingHeaders];
-                // Check if sheet needs to be resized
-                if (newHeaders.length > sheet.columnCount) {
-                    await sheet.resize({ 
-                        rowCount: sheet.rowCount, 
-                        columnCount: newHeaders.length 
-                    });
+            const currentHeaders = sheet.headerValues || [];
+            if (headers) {
+                const missingHeaders = headers.filter(h => !currentHeaders.includes(h));
+                if (missingHeaders.length > 0) {
+                    const newHeaders = [...currentHeaders, ...missingHeaders];
+                    if (newHeaders.length > sheet.columnCount) {
+                        await sheet.resize({
+                            rowCount: sheet.rowCount,
+                            columnCount: newHeaders.length
+                        });
+                    }
+                    await sheet.setHeaderRow(newHeaders);
                 }
-                await sheet.setHeaderRow(newHeaders);
             }
         }
         return sheet;
@@ -173,7 +177,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
 
     const checkInDate = safeFormat(plainObject.checkInDate);
     if (!checkInDate) {
-      // Don't skip the record, just log a warning and proceed with null.
+      // Don't skip, just warn and proceed with null.
         console.warn(`[Data Deserialization] Employee "${lastName}, ${firstName}" (ID: ${id}) has an invalid or missing check-in date: "${plainObject.checkInDate}". The record will be loaded, but this may affect functionality.`);
     }
 
@@ -241,7 +245,7 @@ const deserializeNonEmployee = (row: Record<string, unknown>): NonEmployee | nul
     
     const checkInDate = safeFormat(plainObject.checkInDate);
     if (!checkInDate) {
-        // Don't skip, just warn
+        // Don't skip, just warn and proceed with null.
         console.warn(`[Data Deserialization] Non-employee "${lastName}, ${firstName}" (ID: ${id}) has an invalid or missing check-in date: "${plainObject.checkInDate}". The record will be loaded, but this may affect functionality.`);
     }
 
@@ -521,3 +525,4 @@ export async function deleteAddressHistoryEntry(historyId: string) {
         throw new Error('Address history entry not found');
     }
 }
+
