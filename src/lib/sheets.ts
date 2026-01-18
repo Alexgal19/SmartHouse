@@ -114,13 +114,19 @@ const safeFormat = (dateValue: unknown): string | null => {
     }
 
     // Attempt to parse a specific format like dd-MM-yyyy or dd.MM.yyyy
-    date = parse(dateString, 'dd-MM-yyyy', new Date());
-     if (isValid(date)) {
-        return format(date, 'yyyy-MM-dd');
-    }
-    date = parse(dateString, 'dd.MM.yyyy', new Date());
-     if (isValid(date)) {
-        return format(date, 'yyyy-MM-dd');
+    const formatsToTry = [
+        'dd.MM.yyyy',
+        'dd-MM-yyyy',
+        'MM/dd/yyyy',
+        'M/d/yyyy',
+        'yyyy-MM-dd',
+        'dd/MM/yy'
+    ];
+    for (const fmt of formatsToTry) {
+        date = parse(dateString, fmt, new Date());
+        if (isValid(date)) {
+            return format(date, 'yyyy-MM-dd');
+        }
     }
 
     // Try a more general Date constructor for other formats
@@ -151,13 +157,24 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     const plainObject = row;
     
     const id = plainObject.id;
-    if (!id || (!plainObject.lastName && !plainObject.fullName)) return null;
+    if (!id || (!plainObject.lastName && !plainObject.fullName)) {
+        return null;
+    }
 
     const { firstName, lastName } = (plainObject.lastName && plainObject.firstName)
         ? { firstName: plainObject.firstName as string, lastName: plainObject.lastName as string}
         : splitFullName(plainObject.fullName as string);
 
-    if (!lastName) return null;
+    if (!lastName) {
+        console.warn(`[Data Deserialization] Skipping employee record with ID "${id}" due to missing last name.`);
+        return null;
+    }
+
+    const checkInDate = safeFormat(plainObject.checkInDate);
+    if (!checkInDate) {
+        console.warn(`[Data Deserialization] Skipping employee record "${lastName}, ${firstName}" (ID: ${id}) due to invalid or missing check-in date: "${plainObject.checkInDate}".`);
+        return null;
+    }
 
     let deductionReason: DeductionReason[] | undefined = undefined;
     if (plainObject.deductionReason && typeof plainObject.deductionReason === 'string') {
@@ -184,7 +201,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         ownAddress: (plainObject.ownAddress as string | null) || null,
         roomNumber: (plainObject.roomNumber || '') as string,
         zaklad: (plainObject.zaklad as string | null) || null,
-        checkInDate: safeFormat(plainObject.checkInDate),
+        checkInDate: checkInDate,
         checkOutDate: safeFormat(plainObject.checkOutDate),
         contractStartDate: safeFormat(plainObject.contractStartDate),
         contractEndDate: safeFormat(plainObject.contractEndDate),
@@ -208,13 +225,24 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
 const deserializeNonEmployee = (row: Record<string, unknown>): NonEmployee | null => {
     const plainObject = row;
     const id = plainObject.id;
-    if (!id || (!plainObject.lastName && !plainObject.fullName)) return null;
+    if (!id || (!plainObject.lastName && !plainObject.fullName)) {
+        return null;
+    }
 
     const { firstName, lastName } = (plainObject.lastName && plainObject.firstName)
         ? { firstName: plainObject.firstName as string, lastName: plainObject.lastName as string}
         : splitFullName(plainObject.fullName as string);
 
-    if (!lastName) return null;
+    if (!lastName) {
+        console.warn(`[Data Deserialization] Skipping non-employee record with ID "${id}" due to missing last name.`);
+        return null;
+    }
+    
+    const checkInDate = safeFormat(plainObject.checkInDate);
+    if (!checkInDate) {
+        console.warn(`[Data Deserialization] Skipping non-employee record "${lastName}, ${firstName}" (ID: ${id}) due to invalid or missing check-in date: "${plainObject.checkInDate}".`);
+        return null;
+    }
 
     return {
         id: id as string,
@@ -226,7 +254,7 @@ const deserializeNonEmployee = (row: Record<string, unknown>): NonEmployee | nul
         gender: (plainObject.gender || '') as string,
         address: (plainObject.address || '') as string,
         roomNumber: (plainObject.roomNumber || '') as string,
-        checkInDate: safeFormat(plainObject.checkInDate),
+        checkInDate: checkInDate,
         checkOutDate: safeFormat(plainObject.checkOutDate),
         departureReportDate: safeFormat(plainObject.departureReportDate),
         comments: (plainObject.comments || '') as string,
