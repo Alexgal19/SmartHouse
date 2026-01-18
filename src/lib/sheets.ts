@@ -115,11 +115,12 @@ const safeFormat = (dateValue: unknown): string | null => {
 
     // Attempt to parse a specific format like dd-MM-yyyy or dd.MM.yyyy
     const formatsToTry = [
+        'yyyy.MM.dd',
         'dd.MM.yyyy',
         'dd-MM-yyyy',
+        'yyyy-MM-dd',
         'MM/dd/yyyy',
         'M/d/yyyy',
-        'yyyy-MM-dd',
         'dd/MM/yy'
     ];
     for (const fmt of formatsToTry) {
