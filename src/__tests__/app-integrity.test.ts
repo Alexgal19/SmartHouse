@@ -1,50 +1,51 @@
 import { cn } from '@/lib/utils';
-// Zakładamy, że typy mogą być w @/types lub @/types/index - dostosuj import jeśli trzeba
-// Jeśli UserRole nie istnieje, możesz usunąć 'as UserRole' w teście poniżej
 import { type Employee } from '@/types'; 
 
 /**
  * APP INTEGRITY TEST SUITE
- * Ten plik służy do weryfikacji fundamentów logiki aplikacji SmartHouse.
- * Sprawdzamy tu funkcje pomocnicze (utils) oraz spójność typów TypeScript.
+ * This file verifies the fundamentals of the SmartHouse application logic.
+ * It checks helper functions (utils) and the consistency of TypeScript types.
  */
-
 describe('SmartHouse Core Logic Integrity', () => {
 
-  // 1. Sprawdzenie narzędzi UI (Tailwind Merge)
+  // 1. Check UI utilities (Tailwind Merge)
   describe('Utils: cn (Classname Merger)', () => {
-    it('prawidłowo łączy klasy Tailwind', () => {
+    it('correctly merges Tailwind classes', () => {
       const result = cn('p-4', 'bg-red-500');
       expect(result).toContain('p-4');
       expect(result).toContain('bg-red-500');
     });
 
-    it('rozwiązuje konflikty klas (nadpisuje style)', () => {
-      // W Tailwindzie "p-8" powinno nadpisać "p-4"
+    it('resolves class conflicts (overwrites styles)', () => {
+      // In Tailwind, "p-8" should override "p-4"
       const result = cn('p-4', 'p-8');
       expect(result).toBe('p-8'); 
     });
 
-    it('ignoruje warunkowe false/null/undefined', () => {
+    it('ignores conditional false/null/undefined', () => {
       const result = cn('flex', false && 'hidden', null, undefined, 'gap-2');
       expect(result).toBe('flex gap-2');
     });
   });
 
-  // 2. Weryfikacja struktur danych (TypeScript Runtime Check)
+  // 2. Verify data structures (TypeScript Runtime Check)
   describe('Data Structures Integrity', () => {
-    it('pozwala stworzyć poprawny obiekt Employee (Mock)', () => {
-      // Tworzymy przykładowy obiekt, aby sprawdzić czy kompilator TS nie krzyczy
+    it('allows creating a valid mock Employee object', () => {
+      // Create a sample object to check if the TS compiler is satisfied
       const mockEmployee: Partial<Employee> = {
-        id: '123',
+        id: 'emp-123',
+        fullName: 'Kowalski Jan',
         firstName: 'Jan',
         lastName: 'Kowalski',
-        // Używamy Partial, żeby nie musieć wypisywać tutaj 50 pól, 
-        // sprawdzamy tylko czy podstawowe pola działają.
+        coordinatorId: 'coord-1',
+        status: 'active',
+        checkInDate: '2024-01-01',
       };
 
-      expect(mockEmployee.id).toBe('123');
+      expect(mockEmployee.id).toBe('emp-123');
       expect(mockEmployee.firstName).toBe('Jan');
+      expect(mockEmployee.lastName).toBe('Kowalski');
+      expect(mockEmployee.status).toBe('active');
     });
   });
 });
