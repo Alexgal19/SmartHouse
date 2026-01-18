@@ -152,7 +152,7 @@ const safeFormat = (dateValue: unknown): string | null => {
         return format(date, 'yyyy-MM-dd');
     }
 
-    const formatsToTry = ['dd.MM.yyyy', 'dd-MM-yyyy', 'dd/MM/yyyy', 'yyyy.MM.dd'];
+    const formatsToTry = ['dd.MM.yyyy', 'yyyy.MM.dd', 'dd-MM-yyyy', 'yyyy-MM-dd', 'MM/dd/yyyy', 'M/d/yyyy', 'dd/MM/yy'];
     for (const fmt of formatsToTry) {
         date = dateFnsParse(dateString, fmt, new Date());
         if (isValid(date)) {
@@ -201,7 +201,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
 
     const checkInDate = safeFormat(plainObject.checkInDate);
     if (!checkInDate) {
-      // Don't skip the record, just log a warning and proceed with null.
+        // Don't skip the record, just log a warning and proceed.
         console.warn(`[Data Deserialization] Employee "${lastName}, ${firstName}" (ID: ${id}) has an invalid or missing check-in date: "${plainObject.checkInDate}". The record will be loaded, but this may affect functionality.`);
     }
 
@@ -488,7 +488,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
 
         // --- History Logic ---
         if (updates.address && updates.address !== originalEmployee.address && updates.checkInDate) {
-            const lastHistoryEntry = addressHistory
+            const lastHistoryEntry = (addressHistory || [])
                 .filter(h => h.employeeId === employeeId && h.address === originalEmployee.address && h.checkInDate === originalEmployee.checkInDate)
                 .sort((a, b) => new Date(b.checkInDate || 0).getTime() - new Date(a.checkInDate || 0).getTime())[0];
             
@@ -585,7 +585,7 @@ export async function deleteEmployee(employeeId: string, actorUid: string): Prom
         const employeeToDelete = deserializeEmployee(row.toObject());
         await row.delete();
         
-        const historyToDelete = addressHistory.filter(h => h.employeeId === employeeId);
+        const historyToDelete = (addressHistory || []).filter(h => h.employeeId === employeeId);
         for (const historyEntry of historyToDelete) {
             await deleteHistoryFromSheet(historyEntry.id);
         }
@@ -655,7 +655,7 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
         const originalNonEmployee = { ...row.toObject(), ...splitFullName(row.get('fullName')) } as NonEmployee;
         
         if (updates.address && updates.address !== originalNonEmployee.address && updates.checkInDate) {
-            const lastHistoryEntry = addressHistory
+            const lastHistoryEntry = (addressHistory || [])
                 .filter(h => h.employeeId === id && h.address === originalNonEmployee.address && h.checkInDate === originalNonEmployee.checkInDate)
                 .sort((a, b) => new Date(b.checkInDate || 0).getTime() - new Date(a.checkInDate || 0).getTime())[0];
 
@@ -724,7 +724,7 @@ export async function deleteNonEmployee(id: string, actorUid: string): Promise<v
             const nonEmployeeToDelete = { ...row.toObject(), ...splitFullName(row.get('fullName')) } as NonEmployee;
             await row.delete();
 
-            const historyToDelete = addressHistory.filter(h => h.employeeId === id);
+            const historyToDelete = (addressHistory || []).filter(h => h.employeeId === id);
             for (const historyEntry of historyToDelete) {
                 await deleteHistoryFromSheet(historyEntry.id);
             }
@@ -1439,3 +1439,4 @@ export async function updateCoordinatorSubscription(coordinatorId: string, subsc
         throw new Error(e instanceof Error ? e.message : "Failed to update subscription.");
     }
 }
+
