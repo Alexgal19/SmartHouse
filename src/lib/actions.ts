@@ -1,5 +1,4 @@
 
-
 "use server";
 
 import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, NotificationType, Coordinator, AddressHistory, AssignmentHistory, BOKStatus } from '../types';
@@ -201,7 +200,6 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
 
     const checkInDate = safeFormat(plainObject.checkInDate);
     if (!checkInDate) {
-        // Don't skip the record, just log a warning and proceed.
         console.warn(`[Data Deserialization] Employee "${lastName}, ${firstName}" (ID: ${id}) has an invalid or missing check-in date: "${plainObject.checkInDate}". The record will be loaded, but this may affect functionality.`);
     }
 
@@ -1256,10 +1254,12 @@ const processImport = async (
         const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: null });
 
         const errors: string[] = [];
-        const recordsToAdd: (Partial<Employee> | Partial<NonEmployee>)[] = [];
+        const recordsToAdd: (Employee | NonEmployee)[] = [];
+        const notificationsToAdd: Notification[] = [];
         const newLocalities = new Set<string>();
         
         const coordinatorMap = new Map(settings.coordinators.map(c => [c.name.toLowerCase().trim(), c.uid]));
+        const actor = findActor(actorUid, settings);
 
         for (const [index, row] of data.entries()) {
             const rowNum = index + 2;
@@ -1307,7 +1307,7 @@ const processImport = async (
                     newLocalities.add(locality);
                 }
 
-                const sharedData: Partial<NonEmployee> = {
+                const baseRecord = {
                     id: `${type === 'employee' ? 'emp' : 'nonemp'}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                     firstName,
                     lastName,
@@ -1321,21 +1321,54 @@ const processImport = async (
                     checkOutDate: safeFormat(normalizedRow['data wymeldowania']),
                     departureReportDate: safeFormat(normalizedRow['data zgloszenia wyjazdu']),
                     comments: (normalizedRow['komentarze'] as string)?.trim(),
-                    status: 'active',
-                    paymentType: (normalizedRow['rodzaj płatności nz'] as string)?.trim() || null,
-                    paymentAmount: normalizedRow['kwota'] ? parseFloat(normalizedRow['kwota']) : null,
+                    status: 'active' as const,
                 };
 
+                let newRecord: Employee | NonEmployee;
+
                 if (type === 'employee') {
-                    recordsToAdd.push({
-                        ...sharedData,
+                    newRecord = {
+                        ...baseRecord,
                         zaklad: (normalizedRow['zakład'] as string)?.trim() || null,
                         contractStartDate: safeFormat(normalizedRow['umowa od']),
                         contractEndDate: safeFormat(normalizedRow['umowa do']),
-                    } as Partial<Employee>);
+                        ownAddress: null,
+                        depositReturned: null,
+                        depositReturnAmount: null,
+                        deductionRegulation: null,
+                        deductionNo4Months: null,
+                        deductionNo30Days: null,
+                        deductionReason: undefined,
+                        deductionEntryDate: null,
+                        bokStatus: null,
+                        bokStatusDate: null,
+                    };
                 } else {
-                     recordsToAdd.push(sharedData);
+                     newRecord = {
+                        ...baseRecord,
+                        paymentType: (normalizedRow['rodzaj płatności nz'] as string)?.trim() || null,
+                        paymentAmount: normalizedRow['kwota'] ? parseFloat(String(normalizedRow['kwota'])) : null,
+                        bokStatus: null,
+                        bokStatusDate: null,
+                    };
                 }
+
+                recordsToAdd.push(newRecord);
+                
+                const { message, type: notificationType } = generateSmartNotificationMessage(actor.name, newRecord, 'dodał');
+                notificationsToAdd.push({
+                    id: `notif-${Date.now()}-${Math.random()}`,
+                    message,
+                    entityId: newRecord.id,
+                    entityFirstName: newRecord.firstName,
+                    entityLastName: newRecord.lastName,
+                    actorName: actor.name,
+                    recipientId: newRecord.coordinatorId,
+                    createdAt: new Date().toISOString(),
+                    isRead: false,
+                    type: notificationType,
+                    changes: []
+                });
 
             } catch (rowError) {
                 errors.push(`Wiersz ${rowNum} (${(row['Nazwisko'] as string) || 'Brak Nazwiska'}): ${rowError instanceof Error ? rowError.message : 'Nieznany błąd'}.`);
@@ -1343,17 +1376,21 @@ const processImport = async (
         }
 
         if (recordsToAdd.length > 0) {
-            const importPromises: Promise<void>[] = [];
-            for (const record of recordsToAdd) {
-                if (type === 'employee') {
-                    importPromises.push(addEmployee(record as Partial<Employee>, actorUid));
-                } else {
-                    importPromises.push(addNonEmployee(record as Omit<NonEmployee, 'id'|'status'>, actorUid));
-                }
-            }
-            await Promise.all(importPromises);
+            const sheetName = type === 'employee' ? SHEET_NAME_EMPLOYEES : SHEET_NAME_NON_EMPLOYEES;
+            const headers = type === 'employee' ? EMPLOYEE_HEADERS : NON_EMPLOYEE_HEADERS;
+            const serializeFn = type === 'employee' ? serializeEmployee : serializeNonEmployee;
+
+            const sheet = await getSheet(sheetName, headers);
+            const serializedRecords = recordsToAdd.map(rec => serializeFn(rec as any));
+            await sheet.addRows(serializedRecords);
         }
         
+        if (notificationsToAdd.length > 0) {
+            const notificationsSheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
+            const serializedNotifications = notificationsToAdd.map(serializeNotification);
+            await notificationsSheet.addRows(serializedNotifications);
+        }
+
         if (newLocalities.size > 0) {
             const updatedLocalities = [...new Set([...settings.localities, ...Array.from(newLocalities)])];
             await updateSettings({ localities: updatedLocalities });
@@ -1364,6 +1401,9 @@ const processImport = async (
     } catch (e) {
         console.error(`Error importing ${type}s from Excel:`, e);
         if (e instanceof Error) {
+            if (e.message.includes('[429]')) {
+                 throw new Error("Przekroczono limit zapytań do Google Sheets API. Spróbuj ponownie za chwilę lub zaimportuj mniejszy plik.");
+            }
             throw e;
         }
         throw new Error(`Wystąpił nieznany błąd podczas importu.`);
@@ -1459,3 +1499,5 @@ export async function updateCoordinatorSubscription(coordinatorId: string, subsc
         throw new Error(e instanceof Error ? e.message : "Failed to update subscription.");
     }
 }
+
+    
