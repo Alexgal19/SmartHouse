@@ -137,9 +137,11 @@ export default function Header({
         }
         
         if (employeeNameFilter) {
-            tempNotifications = tempNotifications.filter(n => 
-                n.entityName.toLowerCase().includes(employeeNameFilter.toLowerCase())
-            );
+            tempNotifications = tempNotifications.filter(n => {
+                const entityFullName = `${n.entityFirstName || ''} ${n.entityLastName || ''}`.trim();
+                if (!entityFullName) return false;
+                return entityFullName.toLowerCase().includes(employeeNameFilter.toLowerCase());
+            });
         }
 
         return tempNotifications;
