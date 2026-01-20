@@ -12,11 +12,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Bell, LogOut, Trash2 } from 'lucide-react';
+import { Bell, LogOut, Trash2, Calendar as CalendarIcon, XCircle } from 'lucide-react';
 import type { SessionData, View, Notification, Settings } from '@/types';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { MobileSidebarToggle } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
@@ -25,6 +25,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Label } from './ui/label';
 import { Input } from './ui/input';
 import { Checkbox } from './ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Calendar } from './ui/calendar';
 
 const NotificationItem = ({ n, onClick, onDelete, onToggleReadStatus, style }: {
     n: Notification;
@@ -100,6 +102,34 @@ const NotificationItem = ({ n, onClick, onDelete, onToggleReadStatus, style }: {
 )
 }
 
+const DatePicker = ({ date, setDate, placeholder }: { date?: Date, setDate: (date?: Date) => void, placeholder: string }) => {
+    return (
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button
+                    variant={"outline"}
+                    className={cn(
+                        "w-full h-9 justify-start text-left font-normal text-sm",
+                        !date && "text-muted-foreground"
+                    )}
+                >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date ? format(date, "dd-MM-yyyy") : <span>{placeholder}</span>}
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+                <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={setDate}
+                    initialFocus
+                    locale={pl}
+                />
+            </PopoverContent>
+        </Popover>
+    )
+}
+
 export default function Header({
   user,
   onLogout,
@@ -122,6 +152,7 @@ export default function Header({
 }) {
     const [selectedCoordinatorId, setSelectedCoordinatorId] = useState('all');
     const [employeeNameFilter, setEmployeeNameFilter] = useState('');
+    const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
     const sortedCoordinators = useMemo(() => {
@@ -143,9 +174,21 @@ export default function Header({
                 return entityFullName.toLowerCase().includes(employeeNameFilter.toLowerCase());
             });
         }
+        
+        if (dateRange.from) {
+            const fromDate = new Date(dateRange.from);
+            fromDate.setHours(0, 0, 0, 0);
+            tempNotifications = tempNotifications.filter(n => new Date(n.createdAt) >= fromDate);
+        }
+
+        if (dateRange.to) {
+            const toDate = new Date(dateRange.to);
+            toDate.setHours(23, 59, 59, 999);
+            tempNotifications = tempNotifications.filter(n => new Date(n.createdAt) <= toDate);
+        }
 
         return tempNotifications;
-    }, [notifications, selectedCoordinatorId, employeeNameFilter]);
+    }, [notifications, selectedCoordinatorId, employeeNameFilter, dateRange]);
 
 
   return (
@@ -202,7 +245,37 @@ export default function Header({
                         />
                     </div>
                 </div>
-                <ScrollArea className="h-[calc(100vh-14rem)] pr-6">
+                 <div className="py-4 grid grid-cols-2 gap-4 border-t border-border">
+                    <div className="space-y-2">
+                        <Label>Data od</Label>
+                        <DatePicker
+                            date={dateRange.from}
+                            setDate={(date) => {
+                                setDateRange((prev) => ({ ...prev, from: date }));
+                            }}
+                            placeholder="Początek okresu"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Data do</Label>
+                        <DatePicker
+                            date={dateRange.to}
+                            setDate={(date) => {
+                                setDateRange((prev) => ({ ...prev, to: date }));
+                            }}
+                            placeholder="Koniec okresu"
+                        />
+                    </div>
+                     {(dateRange.from || dateRange.to) && (
+                        <div className="col-span-2">
+                            <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={() => setDateRange({})}>
+                                <XCircle className="mr-2 h-4 w-4" />
+                                Wyczyść filtry dat
+                            </Button>
+                        </div>
+                    )}
+                </div>
+                <ScrollArea className="h-[calc(100vh-22rem)] pr-6">
                     <div className="space-y-4 py-4">
                     {filteredNotifications.length > 0 ? (
                         filteredNotifications.map((n, index) => <NotificationItem key={n.id} n={n} onClick={onNotificationClick} onDelete={onDeleteNotification} onToggleReadStatus={onToggleNotificationReadStatus} style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }} />)
