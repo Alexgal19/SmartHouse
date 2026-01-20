@@ -16,10 +16,10 @@ import { Bell, LogOut, Trash2, Calendar as CalendarIcon, XCircle } from 'lucide-
 import type { SessionData, View, Notification, Settings } from '@/types';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { format, formatDistanceToNow, startOfDay, endOfDay } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { MobileSidebarToggle } from '@/components/ui/sidebar';
-import { cn } from '@/lib/utils';
+import { cn, filterNotifications } from '@/lib/utils';
 import { ModernHouseIcon } from './icons/modern-house-icon';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Label } from './ui/label';
@@ -161,30 +161,11 @@ export default function Header({
     }, [settings]);
 
     const filteredNotifications = useMemo(() => {
-        let tempNotifications = notifications;
-
-        if (selectedCoordinatorId !== 'all') {
-            tempNotifications = tempNotifications.filter(n => n.recipientId === selectedCoordinatorId);
-        }
-        
-        if (employeeNameFilter) {
-            tempNotifications = tempNotifications.filter(n => {
-                const entityFullName = `${n.entityFirstName || ''} ${n.entityLastName || ''}`.trim();
-                if (!entityFullName) return false;
-                return entityFullName.toLowerCase().includes(employeeNameFilter.toLowerCase());
-            });
-        }
-        
-        if (selectedDate) {
-            const startDate = startOfDay(selectedDate);
-            const endDate = endOfDay(selectedDate);
-            tempNotifications = tempNotifications.filter(n => {
-                const createdAt = new Date(n.createdAt);
-                return createdAt >= startDate && createdAt <= endDate;
-            });
-        }
-
-        return tempNotifications;
+        return filterNotifications(notifications, {
+            selectedCoordinatorId,
+            employeeNameFilter,
+            selectedDate,
+        });
     }, [notifications, selectedCoordinatorId, employeeNameFilter, selectedDate]);
 
 
@@ -294,4 +275,3 @@ export default function Header({
     </header>
   );
 }
-

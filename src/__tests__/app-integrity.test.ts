@@ -1,5 +1,5 @@
-import { cn } from '@/lib/utils';
-import { type Employee } from '@/types'; 
+import { cn, filterNotifications } from '@/lib/utils';
+import { type Employee, type Notification } from '@/types'; 
 
 /**
  * APP INTEGRITY TEST SUITE
@@ -59,6 +59,60 @@ describe('SmartHouse Core Logic Integrity', () => {
       expect(mockEmployee.firstName).toBe('Jan');
       expect(mockEmployee.lastName).toBe('Kowalski');
       expect(mockEmployee.status).toBe('active');
+    });
+  });
+  
+  // 3. Test Business Logic Utilities
+  describe('Utils: Notification Filtering', () => {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    const mockNotifications: Notification[] = [
+      { id: '1', actorName: 'Admin', message: 'Test 1', createdAt: today.toISOString(), isRead: false, entityId: 'e1', entityFirstName: 'Jan', entityLastName: 'Kowalski', recipientId: 'coord-1', type: 'info', changes: [] },
+      { id: '2', actorName: 'Admin', message: 'Test 2', createdAt: yesterday.toISOString(), isRead: false, entityId: 'e2', entityFirstName: 'Anna', entityLastName: 'Nowak', recipientId: 'coord-2', type: 'info', changes: [] },
+      { id: '3', actorName: 'System', message: 'Test 3', createdAt: today.toISOString(), isRead: true, entityId: 'e3', entityFirstName: 'Piotr', entityLastName: 'Zalewski', recipientId: 'coord-1', type: 'warning', changes: [] },
+      { id: '4', actorName: 'Admin', message: 'Test 4', createdAt: tomorrow.toISOString(), isRead: false, entityId: 'e4', entityFirstName: 'Jan', entityLastName: 'Iksinski', recipientId: 'coord-2', type: 'info', changes: [] },
+    ];
+
+    it('should return all notifications when no filters are applied', () => {
+      const result = filterNotifications(mockNotifications, {});
+      expect(result).toHaveLength(4);
+    });
+
+    it('should filter notifications by a specific date', () => {
+      const result = filterNotifications(mockNotifications, { selectedDate: today });
+      expect(result).toHaveLength(2);
+      expect(result[0].id).toBe('1');
+      expect(result[1].id).toBe('3');
+    });
+
+    it('should return an empty array if no notifications match the date', () => {
+        const twoDaysAgo = new Date(today);
+        twoDaysAgo.setDate(today.getDate() - 2);
+        const result = filterNotifications(mockNotifications, { selectedDate: twoDaysAgo });
+        expect(result).toHaveLength(0);
+    });
+
+    it('should filter by employee name (case-insensitive)', () => {
+        const result = filterNotifications(mockNotifications, { employeeNameFilter: 'kowal' });
+        expect(result).toHaveLength(1);
+        expect(result[0].id).toBe('1');
+    });
+
+    it('should filter by coordinator ID', () => {
+        const result = filterNotifications(mockNotifications, { selectedCoordinatorId: 'coord-2' });
+        expect(result).toHaveLength(2);
+        expect(result[0].id).toBe('2');
+        expect(result[1].id).toBe('4');
+    });
+
+    it('should combine date and name filters', () => {
+        const result = filterNotifications(mockNotifications, { selectedDate: today, employeeNameFilter: 'piotr' });
+        expect(result).toHaveLength(1);
+        expect(result[0].id).toBe('3');
     });
   });
 });
