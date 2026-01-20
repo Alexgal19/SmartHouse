@@ -16,7 +16,7 @@ import { Bell, LogOut, Trash2, Calendar as CalendarIcon, XCircle } from 'lucide-
 import type { SessionData, View, Notification, Settings } from '@/types';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { format, formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow, startOfDay, endOfDay } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { MobileSidebarToggle } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
@@ -152,7 +152,7 @@ export default function Header({
 }) {
     const [selectedCoordinatorId, setSelectedCoordinatorId] = useState('all');
     const [employeeNameFilter, setEmployeeNameFilter] = useState('');
-    const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
+    const [selectedDate, setSelectedDate] = useState<Date | undefined>();
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
     const sortedCoordinators = useMemo(() => {
@@ -175,20 +175,17 @@ export default function Header({
             });
         }
         
-        if (dateRange.from) {
-            const fromDate = new Date(dateRange.from);
-            fromDate.setHours(0, 0, 0, 0);
-            tempNotifications = tempNotifications.filter(n => new Date(n.createdAt) >= fromDate);
-        }
-
-        if (dateRange.to) {
-            const toDate = new Date(dateRange.to);
-            toDate.setHours(23, 59, 59, 999);
-            tempNotifications = tempNotifications.filter(n => new Date(n.createdAt) <= toDate);
+        if (selectedDate) {
+            const startDate = startOfDay(selectedDate);
+            const endDate = endOfDay(selectedDate);
+            tempNotifications = tempNotifications.filter(n => {
+                const createdAt = new Date(n.createdAt);
+                return createdAt >= startDate && createdAt <= endDate;
+            });
         }
 
         return tempNotifications;
-    }, [notifications, selectedCoordinatorId, employeeNameFilter, dateRange]);
+    }, [notifications, selectedCoordinatorId, employeeNameFilter, selectedDate]);
 
 
   return (
@@ -245,32 +242,20 @@ export default function Header({
                         />
                     </div>
                 </div>
-                 <div className="py-4 grid grid-cols-2 gap-4 border-t border-border">
+                 <div className="py-4 border-t border-border">
                     <div className="space-y-2">
-                        <Label>Data od</Label>
+                        <Label>Filtruj wg daty</Label>
                         <DatePicker
-                            date={dateRange.from}
-                            setDate={(date) => {
-                                setDateRange((prev) => ({ ...prev, from: date }));
-                            }}
-                            placeholder="Początek okresu"
+                            date={selectedDate}
+                            setDate={setSelectedDate}
+                            placeholder="Wybierz datę"
                         />
                     </div>
-                    <div className="space-y-2">
-                        <Label>Data do</Label>
-                        <DatePicker
-                            date={dateRange.to}
-                            setDate={(date) => {
-                                setDateRange((prev) => ({ ...prev, to: date }));
-                            }}
-                            placeholder="Koniec okresu"
-                        />
-                    </div>
-                     {(dateRange.from || dateRange.to) && (
-                        <div className="col-span-2">
-                            <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={() => setDateRange({})}>
+                     {selectedDate && (
+                        <div className="col-span-2 pt-2">
+                            <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={() => setSelectedDate(undefined)}>
                                 <XCircle className="mr-2 h-4 w-4" />
-                                Wyczyść filtry dat
+                                Wyczyść filtr daty
                             </Button>
                         </div>
                     )}
@@ -309,3 +294,4 @@ export default function Header({
     </header>
   );
 }
+
