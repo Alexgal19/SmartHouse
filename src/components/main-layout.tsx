@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback, createContext, useContext, useRef } from 'react';
@@ -99,7 +98,7 @@ type MainLayoutContextType = {
     handleAddEmployeeClick: () => void;
     handleEditEmployeeClick: (employee: Employee) => void;
     handleUpdateSettings: (newSettings: Partial<Settings>) => Promise<void>;
-    refreshData: (showToast?: boolean) => Promise<void>;
+    refreshData: (showToast?: boolean) => Promise<any>;
     handleAddNonEmployeeClick: () => void;
     handleEditNonEmployeeClick: (nonEmployee: NonEmployee) => void;
     handleDeleteNonEmployee: (id: string, actorUid: string) => Promise<void>;
@@ -295,15 +294,15 @@ export default function MainLayout({
         if (!currentUser) return;
         try {
             // Fetch critical data first
-            const { settings, notifications, nonEmployees, employees, addressHistory } = await getAllSheetsData(currentUser.uid, currentUser.isAdmin);
-            setRawSettings(settings);
-            setAllNotifications(notifications);
-            setRawNonEmployees(nonEmployees);
-            setRawEmployees(employees);
-            setAddressHistory(addressHistory);
+            const data = await getAllSheetsData(currentUser.uid, currentUser.isAdmin);
+            setRawSettings(data.settings);
+            setAllNotifications(data.notifications);
+            setRawNonEmployees(data.nonEmployees);
+            setRawEmployees(data.employees);
+            setAddressHistory(data.addressHistory);
 
             if (currentUser.isAdmin) {
-                const allActive = [...(employees || []).filter(e => e.status === 'active'), ...(nonEmployees || [])];
+                const allActive = [...(data.employees || []).filter(e => e.status === 'active'), ...(data.nonEmployees || [])];
                 const upcoming = allActive
                     .filter(o => {
                         if (!o.checkOutDate) return false;
@@ -325,6 +324,7 @@ export default function MainLayout({
             if(showToast) {
                 toast({ title: "Sukces", description: "Dane zostały odświeżone." });
             }
+            return data;
         } catch (error) {
             console.error(error);
             toast({
@@ -389,11 +389,17 @@ export default function MainLayout({
                 const updatedData: Partial<Employee> = { ...data };
                 await updateEmployee(editingEmployee.id, updatedData, currentUser.uid)
                 toast({ title: "Sukces", description: "Dane pracownika zostały zaktualizowane." });
+                await refreshData(false);
             } else {
-                await addEmployee(data, currentUser.uid);
-                toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
+                const newEmployee = await addEmployee(data, currentUser.uid);
+                const refreshedData = await refreshData(false);
+                const wasAdded = refreshedData.employees.some((e: Employee) => e.id === newEmployee.id);
+                if (wasAdded) {
+                    toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
+                } else {
+                    toast({ variant: "destructive", title: "Błąd zapisu", description: "Osoba nie została dodana, proszę poinformować administratora." });
+                }
             }
-            await refreshData(false);
         } catch (e: unknown) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać pracownika." });
         }
@@ -401,22 +407,24 @@ export default function MainLayout({
 
     const handleSaveNonEmployee = useCallback(async (data: Omit<NonEmployee, 'id' | 'status'>) => {
         if (!currentUser) return;
-        if (editingNonEmployee) {
-            try {
+        try {
+            if (editingNonEmployee) {
                 await updateNonEmployee(editingNonEmployee.id, data, currentUser.uid);
                 toast({ title: "Sukces", description: "Dane mieszkańca zostały zaktualizowane." });
-            } catch(e) {
-                toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać mieszkańca." });
+                await refreshData(false);
+            } else {
+                 const newNonEmployee = await addNonEmployee(data, currentUser.uid);
+                 const refreshedData = await refreshData(false);
+                 const wasAdded = refreshedData.nonEmployees.some((ne: NonEmployee) => ne.id === newNonEmployee.id);
+                 if(wasAdded) {
+                    toast({ title: "Sukces", description: "Nowy mieszkaniec został dodany." });
+                 } else {
+                    toast({ variant: "destructive", title: "Błąd zapisu", description: "Osoba nie została dodana, proszę poinformować administratora." });
+                 }
             }
-        } else {
-             try {
-                await addNonEmployee(data, currentUser.uid);
-                toast({ title: "Sukces", description: "Nowy mieszkaniec został dodany." });
-            } catch (e) {
-                toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się dodać mieszkańca." });
-            }
+        } catch(e) {
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać mieszkańca." });
         }
-        await refreshData(false);
     }, [editingNonEmployee, currentUser, refreshData, toast]);
     
     const handleDeleteNonEmployee = useCallback(async (id: string, actorUid: string) => {

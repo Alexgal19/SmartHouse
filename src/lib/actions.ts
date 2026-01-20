@@ -425,7 +425,7 @@ const findActor = (actorUid: string | undefined, settings: Settings): Coordinato
     return actor;
 }
 
-export async function addEmployee(employeeData: Partial<Employee>, actorUid: string): Promise<void> {
+export async function addEmployee(employeeData: Partial<Employee>, actorUid: string): Promise<Employee> {
     try {
         const { settings } = await getAllSheetsData(actorUid, true);
         const actor = findActor(actorUid, settings);
@@ -466,6 +466,7 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
         
         await createNotification(actor, 'dodał', newEmployee, settings);
 
+        return newEmployee;
     } catch (e: unknown) {
         console.error("Error adding employee:", e);
         throw new Error(e instanceof Error ? e.message : "Failed to add employee.");
@@ -605,7 +606,7 @@ export async function deleteEmployee(employeeId: string, actorUid: string): Prom
     }
 }
 
-export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id' | 'status'>, actorUid: string): Promise<void> {
+export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id' | 'status'>, actorUid: string): Promise<NonEmployee> {
     try {
         const { settings } = await getAllSheetsData(actorUid, true);
         const actor = findActor(actorUid, settings);
@@ -637,6 +638,7 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id' | '
         
         await createNotification(actor, 'dodał', newNonEmployee, settings);
 
+        return newNonEmployee;
     } catch (e: unknown) {
         console.error("Error adding non-employee:", e);
         throw new Error(e instanceof Error ? e.message : "Failed to add non-employee.");
@@ -834,7 +836,7 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
         }
 
         const { settings } = await getAllSheetsData();
-        const toCoordinator = settings.coordinators.find((c: { uid: string; }) => c.uid === toCoordinatorId);
+        const toCoordinator = settings.coordinators.find((c: { uid: string; name: string; }) => c.uid === toCoordinatorId);
         if (!toCoordinator) {
             throw new Error("Target coordinator not found.");
         }
@@ -1059,7 +1061,7 @@ export async function deleteNotification(notificationId: string): Promise<void> 
 export async function generateAccommodationReport(year: number, month: number, coordinatorId: string, includeAddressHistory: boolean): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
     try {
         const { employees, settings, addressHistory } = await getAllSheetsData();
-        const coordinatorMap = new Map(settings.coordinators.map((c: { uid: any; name: any; }) => [c.uid, c.name]));
+        const coordinatorMap = new Map(settings.coordinators.map((c: { uid: string; name: string; }) => [c.uid, c.name]));
 
         const reportStart = new Date(year, month - 1, 1);
         const reportEnd = new Date(year, month, 0, 23, 59, 59);
@@ -1170,7 +1172,7 @@ export async function generateAccommodationReport(year: number, month: number, c
 export async function generateNzCostsReport(year: number, month: number, coordinatorId: string): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
     try {
         const { nonEmployees, settings } = await getAllSheetsData();
-        const coordinatorMap = new Map(settings.coordinators.map((c: { uid: any; name: any; }) => [c.uid, c.name]));
+        const coordinatorMap = new Map(settings.coordinators.map((c: { uid: string; name: string; }) => [c.uid, c.name]));
 
         const reportStart = new Date(year, month - 1, 1);
         const reportEnd = new Date(year, month, 0, 23, 59, 59);
