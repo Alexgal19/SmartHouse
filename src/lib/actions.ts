@@ -684,30 +684,34 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
             }
         }
         
-        const updatedNonEmployeeData: NonEmployee = { ...originalNonEmployee, ...updates, id: originalNonEmployee.id, firstName: originalNonEmployee.firstName, lastName: originalNonEmployee.lastName };
+        const updatedNonEmployeeData: NonEmployee = { ...originalNonEmployee, ...updates };
         const changes: (Omit<NotificationChange, 'field'> & { field: keyof NonEmployee })[] = [];
         
-        const { ...dbUpdates } = updates;
-        const serializedUpdates = serializeNonEmployee(dbUpdates);
-
-        for (const key in serializedUpdates) {
+        for (const key in updates) {
             const typedKey = key as keyof NonEmployee;
-            if (originalNonEmployee[typedKey] !== serializedUpdates[key]) {
-                 let oldValue = String(originalNonEmployee[typedKey] || 'Brak');
-                 let newValue = String(serializedUpdates[key] || 'Brak');
-                 if (key === 'coordinatorId' && settings) {
-                     oldValue = settings.coordinators.find(c => c.uid === oldValue)?.name || oldValue;
-                     newValue = settings.coordinators.find(c => c.uid === newValue)?.name || newValue;
-                 }
-
-                changes.push({
-                    field: typedKey,
-                    oldValue: oldValue,
-                    newValue: newValue
-                });
+            const oldValue = originalNonEmployee[typedKey];
+            const newValue = updates[typedKey];
+            
+            let oldValStr: string | null = null;
+            if (oldValue !== null && oldValue !== undefined) {
+                oldValStr = String(oldValue);
             }
-            row.set(key, serializedUpdates[key] ?? '');
+
+            let newValStr: string | null = null;
+            if (newValue !== null && newValue !== undefined) {
+                newValStr = String(newValue);
+            }
+            
+            if (oldValStr !== newValStr) {
+                changes.push({ field: typedKey, oldValue: oldValStr || 'Brak', newValue: newValStr || 'Brak' });
+            }
         }
+        
+        const serializedData = serializeNonEmployee(updatedNonEmployeeData);
+        for(const header of NON_EMPLOYEE_HEADERS) {
+            row.set(header, serializedData[header]);
+        }
+
         await row.save();
         
         if (changes.length > 0) {
