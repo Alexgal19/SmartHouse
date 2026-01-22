@@ -57,7 +57,7 @@ const formSchema = z.object({
   zaklad: z.string().min(1, "Zakład jest wymagany."),
   nationality: z.string().min(1, "Narodowość jest wymagana."),
   gender: z.string().min(1, "Płeć jest wymagana."),
-  checkInDate: z.date({ required_error: "Data zameldowania jest wymagana." }).nullable(),
+  checkInDate: z.date({ required_error: "Data zameldowania jest wymagana." }),
   checkOutDate: z.date().nullable().optional(),
   contractStartDate: z.date().nullable().optional(),
   contractEndDate: z.date().nullable().optional(),
@@ -92,7 +92,7 @@ const formSchema = z.object({
         });
     }
 
-    if (data.address?.toLowerCase().startsWith('własne mieszkanie') && !data.ownAddress) {
+    if (data.address?.toLowerCase().includes('własne mieszkanie') && !data.ownAddress) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ['ownAddress'],
@@ -100,7 +100,7 @@ const formSchema = z.object({
         });
     }
     
-    if (!data.address?.toLowerCase().startsWith('własne mieszkanie') && !data.roomNumber) {
+    if (!data.address?.toLowerCase().includes('własne mieszkanie') && !data.roomNumber) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ['roomNumber'],
@@ -271,7 +271,7 @@ export function AddEmployeeForm({
   const selectedCoordinatorId = form.watch('coordinatorId');
   const selectedLocality = form.watch('locality');
   const selectedAddress = form.watch('address');
-  const isOwnAddressSelected = selectedAddress?.toLowerCase().startsWith('własne mieszkanie');
+  const isOwnAddressSelected = selectedAddress?.toLowerCase().includes('własne mieszkanie');
 
   const availableLocalities = useMemo(() => {
     if (!settings.addresses) return [];
@@ -335,7 +335,7 @@ export function AddEmployeeForm({
             zaklad: employee.zaklad ?? '',
             nationality: employee.nationality ?? '',
             gender: employee.gender ?? '',
-            checkInDate: parseDate(employee.checkInDate) ?? null,
+            checkInDate: parseDate(employee.checkInDate) ?? undefined,
             checkOutDate: parseDate(employee.checkOutDate) ?? null,
             contractStartDate: parseDate(employee.contractStartDate) ?? null,
             contractEndDate: parseDate(employee.contractEndDate) ?? null,
@@ -438,7 +438,7 @@ export function AddEmployeeForm({
 
   const handleAddressChange = (value: string) => {
     form.setValue('address', value);
-    if (value.toLowerCase().startsWith('własne mieszkanie')) {
+    if (value.toLowerCase().includes('własne mieszkanie')) {
         form.setValue('roomNumber', '1');
     } else {
         form.setValue('ownAddress', '');
