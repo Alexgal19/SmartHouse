@@ -538,6 +538,7 @@ export function AddEmployeeForm({
               ref={fileInputRef}
               className="hidden"
               accept="image/*"
+              capture="environment"
               onChange={handleScanPassport}
             />
             <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isScanning}>
