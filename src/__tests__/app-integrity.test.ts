@@ -1,5 +1,7 @@
+
 import { cn, filterNotifications } from '@/lib/utils';
 import { type Employee, type Notification } from '@/types'; 
+import { formSchema } from '@/components/add-employee-form';
 
 /**
  * APP INTEGRITY TEST SUITE
@@ -113,6 +115,57 @@ describe('SmartHouse Core Logic Integrity', () => {
         const result = filterNotifications(mockNotifications, { selectedDate: today, employeeNameFilter: 'piotr' });
         expect(result).toHaveLength(1);
         expect(result[0].id).toBe('3');
+    });
+  });
+
+  // 4. Test Form Schemas Integrity
+  describe('Form Schemas Integrity', () => {
+    describe('AddEmployeeForm Schema', () => {
+        const validData = {
+            firstName: 'Jan',
+            lastName: 'Kowalski',
+            coordinatorId: 'coord-1',
+            locality: 'Warszawa',
+            address: 'Testowa 1',
+            roomNumber: '101',
+            zaklad: 'IT',
+            nationality: 'Polska',
+            gender: 'Mężczyzna',
+            checkInDate: new Date(),
+        };
+
+        it('should fail validation if checkInDate is null or undefined', () => {
+            // Test with null
+            const resultNull = formSchema.safeParse({
+                ...validData,
+                checkInDate: null,
+            });
+            
+            expect(resultNull.success).toBe(false);
+            if (!resultNull.success) {
+                const checkInError = resultNull.error.issues.find(issue => issue.path.includes('checkInDate'));
+                expect(checkInError).toBeDefined();
+                expect(checkInError?.message).toBe('Data zameldowania jest wymagana.');
+            }
+
+            // Test with undefined
+            const resultUndefined = formSchema.safeParse({
+                 ...validData,
+                checkInDate: undefined,
+            });
+
+            expect(resultUndefined.success).toBe(false);
+            if (!resultUndefined.success) {
+                const checkInError = resultUndefined.error.issues.find(issue => issue.path.includes('checkInDate'));
+                expect(checkInError).toBeDefined();
+                 expect(checkInError?.message).toBe('Data zameldowania jest wymagana.');
+            }
+        });
+
+        it('should pass validation with a valid checkInDate', () => {
+             const result = formSchema.safeParse(validData);
+             expect(result.success).toBe(true);
+        });
     });
   });
 });

@@ -46,7 +46,7 @@ import { Combobox } from '@/components/ui/combobox';
 import { useToast } from '@/hooks/use-toast';
 import { useMainLayout } from './main-layout';
 
-const formSchema = z.object({
+export const formSchema = z.object({
   firstName: z.string().min(1, "Imię jest wymagane."),
   lastName: z.string().min(1, "Nazwisko jest wymagane."),
   coordinatorId: z.string().min(1, "Koordynator jest wymagany."),
