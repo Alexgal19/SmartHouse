@@ -1,5 +1,4 @@
 
-
 "use client"
 import React, { useState, useMemo, useTransition } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
@@ -69,7 +68,7 @@ const EntityActions = ({
             <DropdownMenuItem onClick={() => onEdit(entity)}>Edytuj</DropdownMenuItem>
             {isDismissed 
                 ? <DropdownMenuItem onClick={() => onRestore?.(entity)}>Przywróć</DropdownMenuItem>
-                : (isEmployee(entity) && <DropdownMenuItem onClick={() => onEdit(entity)}>Zwolnij</DropdownMenuItem>)
+                : <DropdownMenuItem onClick={() => onEdit(entity)}>Zwolnij</DropdownMenuItem>
             }
              <DropdownMenuSeparator />
              <AlertDialog>
@@ -542,7 +541,6 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         allNonEmployees,
         addressHistory,
         settings,
-        handleDismissEmployee,
         handleRestoreEmployee,
         handleRestoreNonEmployee,
         handleDeleteEmployee,
@@ -616,36 +614,41 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         if (!allEmployees || !allNonEmployees || !addressHistory || !settings) return {};
 
         const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
+        
+        const filterAndSort = (dataToProcess: any[], isHistory: boolean = false) => {
+            const filtered = dataToProcess.filter(entity => {
+                const searchMatch = search === '' || 
+                    (entity.firstName && entity.firstName.toLowerCase().includes(search.toLowerCase())) ||
+                    (entity.lastName && entity.lastName.toLowerCase().includes(search.toLowerCase())) ||
+                    (isHistory && entity.employeeFirstName && entity.employeeFirstName.toLowerCase().includes(search.toLowerCase())) ||
+                    (isHistory && entity.employeeLastName && entity.employeeLastName.toLowerCase().includes(search.toLowerCase()));
 
-        const dataSources = {
-            active: allEmployees.filter(e => e.status === 'active'),
-            dismissed: allEmployees.filter(e => e.status === 'dismissed'),
-            'non-employees': allNonEmployees,
-            history: addressHistory
-        };
-
-        const sorted = (dataToSort: any[]) => {
-            return [...dataToSort].sort((a, b) => {
-                if (sortBy === 'lastName') {
-                    const lastNameA = a.lastName || a.employeeLastName || '';
-                    const lastNameB = b.lastName || b.employeeLastName || '';
-                    const firstNameA = a.firstName || a.employeeFirstName || '';
-                    const firstNameB = b.firstName || b.employeeFirstName || '';
+                if (!searchMatch) return false;
     
-                    const lastNameCompare = lastNameA.localeCompare(lastNameB, 'pl');
+                const coordinatorMatch = filters.coordinator === 'all' || ('coordinatorId' in entity && entity.coordinatorId === filters.coordinator);
+                const addressMatch = filters.address === 'all' || ('address' in entity && entity.address === filters.address);
+                const departmentMatch = !('zaklad' in entity) || filters.department === 'all' || ('zaklad' in entity && entity.zaklad === filters.department);
+                const nationalityMatch = filters.nationality === 'all' || ('nationality' in entity && entity.nationality === filters.nationality);
+                
+                return coordinatorMatch && addressMatch && departmentMatch && nationalityMatch;
+            });
+            
+            return [...filtered].sort((a, b) => {
+                const aName = isHistory ? a.employeeLastName : a.lastName;
+                const bName = isHistory ? b.employeeLastName : b.lastName;
+                const aFirstName = isHistory ? a.employeeFirstName : a.firstName;
+                const bFirstName = isHistory ? b.employeeFirstName : b.firstName;
+                
+                if (sortBy === 'lastName') {
+                    const lastNameCompare = (aName || '').localeCompare(bName || '', 'pl');
                     if (lastNameCompare !== 0) return lastNameCompare * (sortOrder === 'asc' ? 1 : -1);
-                    return firstNameA.localeCompare(firstNameB, 'pl') * (sortOrder === 'asc' ? 1 : -1);
+                    return (aFirstName || '').localeCompare(bFirstName || '', 'pl') * (sortOrder === 'asc' ? 1 : -1);
                 }
     
                 if (sortBy === 'firstName') {
-                    const lastNameA = a.lastName || a.employeeLastName || '';
-                    const lastNameB = b.lastName || b.employeeLastName || '';
-                    const firstNameA = a.firstName || a.employeeFirstName || '';
-                    const firstNameB = b.firstName || b.employeeFirstName || '';
-    
-                    const firstNameCompare = firstNameA.localeCompare(firstNameB, 'pl');
+                    const firstNameCompare = (aFirstName || '').localeCompare(bFirstName || '', 'pl');
                     if (firstNameCompare !== 0) return firstNameCompare * (sortOrder === 'asc' ? 1 : -1);
-                    return lastNameA.localeCompare(lastNameB, 'pl') * (sortOrder === 'asc' ? 1 : -1);
+                    return (aName || '').localeCompare(bName || '', 'pl') * (sortOrder === 'asc' ? 1 : -1);
                 }
     
                 let valA: string | number | null | undefined;
@@ -658,7 +661,6 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                     valA = (a as any)[sortBy];
                     valB = (b as any)[sortBy];
                 }
-    
     
                 if (valA === null || valA === undefined) return 1;
                 if (valB === null || valB === undefined) return -1;
@@ -673,40 +675,25 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
             });
         };
         
-        const filtered = (dataToFilter: any[]) => {
-            return dataToFilter.filter(entity => {
-                const searchMatch = search === '' || 
-                    (entity.firstName && entity.firstName.toLowerCase().includes(search.toLowerCase())) ||
-                    (entity.lastName && entity.lastName.toLowerCase().includes(search.toLowerCase())) ||
-                    (entity.employeeFirstName && entity.employeeFirstName.toLowerCase().includes(search.toLowerCase())) ||
-                    (entity.employeeLastName && entity.employeeLastName.toLowerCase().includes(search.toLowerCase()));
+        const filteredEmployees = filterAndSort(allEmployees);
+        const filteredNonEmployees = filterAndSort(allNonEmployees);
+        const filteredHistory = filterAndSort(addressHistory, true);
 
-                if (!searchMatch) return false;
-    
-                const coordinatorMatch = filters.coordinator === 'all' || ('coordinatorId' in entity && entity.coordinatorId === filters.coordinator);
-                const addressMatch = filters.address === 'all' || ('address' in entity && entity.address === filters.address);
-                const departmentMatch = !('zaklad' in entity) || filters.department === 'all' || ('zaklad' in entity && entity.zaklad === filters.department);
-                const nationalityMatch = filters.nationality === 'all' || ('nationality' in entity && entity.nationality === filters.nationality);
-                
-                return coordinatorMatch && addressMatch && departmentMatch && nationalityMatch;
-            });
-        };
-
-        const result: Record<string, any[]> = {};
-        for (const key in dataSources) {
-            const data = filtered(dataSources[key as keyof typeof dataSources]);
-            result[key] = sorted(data);
+        return {
+            activeEmployees: filteredEmployees.filter(e => e.status === 'active'),
+            dismissedEmployees: filteredEmployees.filter(e => e.status === 'dismissed'),
+            activeNonEmployees: filteredNonEmployees.filter(ne => ne.status !== 'dismissed'),
+            dismissedNonEmployees: filteredNonEmployees.filter(ne => ne.status === 'dismissed'),
+            history: filteredHistory,
         }
-
-        return result;
 
     }, [allEmployees, allNonEmployees, addressHistory, settings, search, filters, sortBy, sortOrder]);
 
 
     const dataMap = useMemo(() => ({
-        active: filteredAndSortedData.active || [],
-        dismissed: filteredAndSortedData.dismissed || [],
-        'non-employees': filteredAndSortedData['non-employees'] || [],
+        active: filteredAndSortedData.activeEmployees || [],
+        dismissed: [...(filteredAndSortedData.dismissedEmployees || []), ...(filteredAndSortedData.dismissedNonEmployees || [])],
+        'non-employees': filteredAndSortedData.activeNonEmployees || [],
         history: filteredAndSortedData.history || [],
     }), [filteredAndSortedData]);
 
