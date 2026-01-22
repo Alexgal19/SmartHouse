@@ -7,7 +7,7 @@
  * - ExtractPassportDataOutput - The return type for the extractPassportData function.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai } from '@/lib/genkit';
 import { z } from 'zod';
 
 const ExtractPassportDataInputSchema = z.object({
