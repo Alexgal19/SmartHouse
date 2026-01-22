@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -34,11 +34,14 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { NonEmployee, Settings, SessionData } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, X } from 'lucide-react';
+import { CalendarIcon, X, Camera, Loader2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parse, isValid, parseISO } from 'date-fns';
 import { Combobox } from './ui/combobox';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { useToast } from '@/hooks/use-toast';
+import { extractPassportData } from '@/ai/flows/extract-passport-data-flow';
+import Webcam from 'react-webcam';
+import { useMainLayout } from './main-layout';
 
 const formSchema = z.object({
   firstName: z.string().min(1, "Imię jest wymagane."),
@@ -63,10 +66,10 @@ type NonEmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'che
   departureReportDate?: string | null;
 };
 
-const parseDate = (dateString: string | null | undefined): Date | undefined => {
-    if (!dateString) return undefined;
+const parseDate = (dateString: string | null | undefined): Date | null => {
+    if (!dateString) return null;
     const date = parseISO(dateString);
-    return isValid(date) ? date : undefined;
+    return isValid(date) ? date : null;
 };
 
 const DateInput = ({
@@ -161,6 +164,12 @@ export function AddNonEmployeeForm({
   nonEmployee: NonEmployee | null;
   currentUser: SessionData;
 }) {
+  const { toast } = useToast();
+  const { handleDismissNonEmployee } = useMainLayout();
+  const webcamRef = useRef<Webcam>(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -248,6 +257,7 @@ export function AddNonEmployeeForm({
         departureReportDate: parseDate(nonEmployee.departureReportDate),
         paymentType: nonEmployee.paymentType ?? null,
         paymentAmount: nonEmployee.paymentAmount ?? null,
+        comments: nonEmployee.comments ?? '',
       });
     } else {
       form.reset({
@@ -269,12 +279,46 @@ export function AddNonEmployeeForm({
     }
   }, [nonEmployee, isOpen, form, settings.addresses, currentUser]);
 
+  const handleOpenCamera = async () => {
+    setIsCameraOpen(true);
+  };
+
+  const handleCapture = () => {
+    const dataUri = webcamRef.current?.getScreenshot();
+    if (dataUri) {
+      setIsScanning(true);
+      extractPassportData({ photoDataUri: dataUri })
+        .then(({ firstName, lastName }) => {
+          form.setValue('firstName', firstName, { shouldValidate: true });
+          form.setValue('lastName', lastName, { shouldValidate: true });
+          toast({ title: 'Sukces', description: 'Dane z dokumentu zostały wczytane.' });
+          setIsCameraOpen(false);
+        })
+        .catch((error) => {
+          console.error('OCR Error:', error);
+          toast({
+            variant: 'destructive',
+            title: 'Błąd skanowania',
+            description: 'Nie udało się odczytać danych z dokumentu.'
+          });
+        })
+        .finally(() => {
+          setIsScanning(false);
+        });
+    }
+  };
+
+  const handleCloseCamera = () => {
+    setIsCameraOpen(false);
+  };
+
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     const formatDate = (date: Date | null | undefined): string | null => {
         if (!date) return null;
         return format(date, 'yyyy-MM-dd');
     }
-    
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { locality, ...restOfValues } = values;
 
     const formData: NonEmployeeFormData = {
@@ -307,14 +351,58 @@ export function AddNonEmployeeForm({
     form.setValue('roomNumber', '');
   }
 
+  const handleDismissClick = async () => {
+    if (!nonEmployee) return;
+
+    const checkOutDate = form.getValues('checkOutDate');
+    if (!checkOutDate) {
+        form.setError('checkOutDate', {
+            type: 'manual',
+            message: 'Data wymeldowania jest wymagana, aby zwolnić mieszkańca.',
+        });
+        return;
+    }
+    
+    const values = form.getValues();
+    const formatDateFn = (date: Date | null | undefined): string | null => {
+        if (!date) return null;
+        return format(date, 'yyyy-MM-dd');
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { locality, ...restOfValues } = values;
+    const formData: NonEmployeeFormData = {
+        ...restOfValues,
+        checkInDate: formatDateFn(values.checkInDate),
+        checkOutDate: formatDateFn(values.checkOutDate),
+        departureReportDate: formatDateFn(values.departureReportDate),
+    };
+    onSave(formData);
+    
+    await handleDismissNonEmployee(nonEmployee.id, checkOutDate);
+    onOpenChange(false);
+  };
+
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
         <DialogHeader>
-          <DialogTitle>{nonEmployee ? 'Edytuj dane mieszkańca (NZ)' : 'Dodaj nowego mieszkańca (NZ)'}</DialogTitle>
-          <DialogDescription>
-            Wypełnij poniższe pola, aby {nonEmployee ? 'zaktualizować' : 'dodać'} mieszkańca.
-          </DialogDescription>
+          <div className="flex justify-between items-start">
+            <div>
+              <DialogTitle>{nonEmployee ? 'Edytuj dane mieszkańca (NZ)' : 'Dodaj nowego mieszkańca (NZ)'}</DialogTitle>
+              <DialogDescription>
+                Wypełnij poniższe pola, aby {nonEmployee ? 'zaktualizować' : 'dodać'} mieszkańca.
+              </DialogDescription>
+            </div>
+            <Button variant="outline" onClick={handleOpenCamera} disabled={isScanning}>
+              {isScanning ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Camera className="mr-2 h-4 w-4" />
+              )}
+              Zrób zdjęcie paszportu
+            </Button>
+          </div>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -530,15 +618,60 @@ export function AddNonEmployeeForm({
               />
             </div>
             </ScrollArea>
-            <DialogFooter className="p-6 pt-4">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Anuluj
-              </Button>
-              <Button type="submit">Zapisz</Button>
+            <DialogFooter className="p-6 pt-4 flex flex-row justify-between">
+                <div>
+                  {nonEmployee && nonEmployee.status === 'active' && (
+                      <Button type="button" variant="destructive" onClick={handleDismissClick}>
+                          Zwolnij
+                      </Button>
+                  )}
+              </div>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                    Anuluj
+                </Button>
+                <Button type="submit">Zapisz</Button>
+              </div>
             </DialogFooter>
           </form>
         </Form>
       </DialogContent>
     </Dialog>
+
+    <Dialog open={isCameraOpen} onOpenChange={handleCloseCamera}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Zrób zdjęcie paszportu</DialogTitle>
+          <DialogDescription>
+            Umieść paszport w kadrze i zrób zdjęcie.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col items-center space-y-4">
+          <Webcam
+            ref={webcamRef}
+            audio={false}
+            screenshotFormat="image/jpeg"
+            videoConstraints={{ facingMode: 'environment' }}
+            className="w-full max-w-sm rounded-lg border"
+          />
+          <div className="flex gap-2">
+            <Button onClick={handleCapture} disabled={isScanning}>
+              {isScanning ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Camera className="mr-2 h-4 w-4" />
+              )}
+              Zrób zdjęcie
+            </Button>
+            <Button variant="outline" onClick={handleCloseCamera}>
+              Anuluj
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  </>
   );
 }
+
+    

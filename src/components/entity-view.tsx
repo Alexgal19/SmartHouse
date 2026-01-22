@@ -69,7 +69,7 @@ const EntityActions = ({
             <DropdownMenuItem onClick={() => onEdit(entity)}>Edytuj</DropdownMenuItem>
             {isDismissed 
                 ? <DropdownMenuItem onClick={() => onRestore?.(entity)}>Przywróć</DropdownMenuItem>
-                : (isEmployee(entity) && <DropdownMenuItem onClick={() => onDismiss?.(entity.id)}>Zwolnij</DropdownMenuItem>)
+                : (isEmployee(entity) && <DropdownMenuItem onClick={() => onEdit(entity)}>Zwolnij</DropdownMenuItem>)
             }
              <DropdownMenuSeparator />
              <AlertDialog>
@@ -620,7 +620,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         const dataSources = {
             active: allEmployees.filter(e => e.status === 'active'),
             dismissed: allEmployees.filter(e => e.status === 'dismissed'),
-            'non-employees': allNonEmployees.filter(ne => ne.status === 'active'),
+            'non-employees': allNonEmployees,
             history: addressHistory
         };
 
@@ -742,7 +742,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         if (isEmployee(entity)) {
             await handleRestoreEmployee(entity);
         } else {
-            await handleRestoreNonEmployee(entity);
+            await handleRestoreNonEmployee(entity as NonEmployee);
         }
     };
 
@@ -779,7 +779,6 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                             entities={data}
                             settings={settings}
                             onEdit={handleEdit}
-                            onDismiss={(id) => handleDismissEmployee(id, new Date())}
                             onRestore={handleRestore}
                             onPermanentDelete={handlePermanentDelete}
                             isDismissed={tab === 'dismissed'}
@@ -791,7 +790,6 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                              entities={data}
                             settings={settings}
                             onEdit={handleEdit}
-                            onDismiss={(id) => handleDismissEmployee(id, new Date())}
                             onRestore={handleRestore}
                             onPermanentDelete={handlePermanentDelete}
                             isDismissed={tab === 'dismissed'}
@@ -884,3 +882,5 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         </Card>
     )
 }
+
+    

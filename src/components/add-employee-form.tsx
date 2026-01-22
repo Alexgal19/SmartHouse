@@ -32,9 +32,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { Employee, Settings, Address, SessionData } from '@/types';
+import type { Employee, Settings, SessionData } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Info, X, Trash2, Camera, Loader2 } from 'lucide-react';
+import { CalendarIcon, Info, X, Camera, Loader2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parse, isValid, parseISO } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -46,6 +46,7 @@ import { Combobox } from '@/components/ui/combobox';
 import { useToast } from '@/hooks/use-toast';
 import { useMainLayout } from './main-layout';
 import { extractPassportData } from '@/ai/flows/extract-passport-data-flow';
+import Webcam from 'react-webcam';
 
 export const formSchema = z.object({
   firstName: z.string().min(1, "Imię jest wymagane."),
@@ -233,8 +234,9 @@ export function AddEmployeeForm({
 }) {
   const { toast } = useToast();
   const { handleDismissEmployee } = useMainLayout();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const webcamRef = useRef<Webcam>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema, {
@@ -279,11 +281,11 @@ export function AddEmployeeForm({
   const availableLocalities = useMemo(() => {
     if (!settings.addresses) return [];
     if (!selectedCoordinatorId) return [];
-    
-    const coordinatorAddresses = settings.addresses.filter(addr => 
+
+    const coordinatorAddresses = settings.addresses.filter(addr =>
         addr.coordinatorIds.includes(selectedCoordinatorId)
     );
-    const localities = [...new Set(coordinatorAddresses.map(addr => addr.locality))];
+    const localities = coordinatorAddresses.map(addr => addr.locality).filter((value, index, self) => self.indexOf(value) === index);
     return localities.sort((a, b) => a.localeCompare(b));
   }, [settings.addresses, selectedCoordinatorId]);
 
@@ -338,7 +340,7 @@ export function AddEmployeeForm({
             zaklad: employee.zaklad ?? '',
             nationality: employee.nationality ?? '',
             gender: employee.gender ?? '',
-            checkInDate: parseDate(employee.checkInDate) ?? undefined,
+            checkInDate: parseDate(employee.checkInDate) ?? new Date(),
             checkOutDate: parseDate(employee.checkOutDate) ?? null,
             contractStartDate: parseDate(employee.contractStartDate) ?? null,
             contractEndDate: parseDate(employee.contractEndDate) ?? null,
@@ -386,32 +388,42 @@ export function AddEmployeeForm({
     }
   }, [employee, isOpen, form, settings, currentUser]);
 
-  const handleScanPassport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setIsScanning(true);
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-        const photoDataUri = e.target?.result as string;
-        if (photoDataUri) {
-            try {
-                const { firstName, lastName } = await extractPassportData({ photoDataUri });
-                form.setValue('firstName', firstName, { shouldValidate: true });
-                form.setValue('lastName', lastName, { shouldValidate: true });
-                toast({ title: 'Sukces', description: 'Dane z dokumentu zostały wczytane.' });
-            } catch (error) {
-                console.error("OCR Error:", error);
-                toast({ variant: 'destructive', title: 'Błąd skanowania', description: 'Nie udało się odczytać danych z dokumentu.' });
-            } finally {
-                setIsScanning(false);
-                // Reset file input to allow scanning the same file again
-                if(fileInputRef.current) fileInputRef.current.value = '';
-            }
-        }
-    };
-    reader.readAsDataURL(file);
+  const handleOpenCamera = async () => {
+    setIsCameraOpen(true);
   };
+
+  const handleCapture = () => {
+    const dataUri = webcamRef.current?.getScreenshot();
+    if (dataUri) {
+      setIsScanning(true);
+      extractPassportData({ photoDataUri: dataUri })
+        .then(({ firstName, lastName }) => {
+          form.setValue('firstName', firstName, { shouldValidate: true });
+          form.setValue('lastName', lastName, { shouldValidate: true });
+          toast({ title: 'Sukces', description: 'Dane z dokumentu zostały wczytane.' });
+          setIsCameraOpen(false);
+        })
+        .catch((error) => {
+          console.error('OCR Error:', error);
+          toast({
+            variant: 'destructive',
+            title: 'Błąd skanowania',
+            description: 'Nie udało się odczytać danych z dokumentu.'
+          });
+        })
+        .finally(() => {
+          setIsScanning(false);
+        });
+    }
+  };
+
+  const handleCloseCamera = () => {
+    setIsCameraOpen(false);
+  };
+
+
+
+
 
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
@@ -430,12 +442,12 @@ export function AddEmployeeForm({
         }
     }
 
-    const formatDate = (date: Date | null | undefined): string | null | undefined => {
+    const formatDate = (date: Date | null | undefined): string | null => {
         if (!date) return null;
         return format(date, 'yyyy-MM-dd');
     }
 
-    const { locality, ...restOfValues } = values;
+    const { locality: _, ...restOfValues } = values;
 
     const formData: EmployeeFormData = {
         ...restOfValues,
@@ -491,11 +503,11 @@ export function AddEmployeeForm({
     
     // update the checkout date first
     const values = form.getValues();
-     const formatDate = (date: Date | null | undefined): string | null | undefined => {
+     const formatDate = (date: Date | null | undefined): string | null => {
         if (!date) return null;
         return format(date, 'yyyy-MM-dd');
     }
-    const { locality, ...restOfValues } = values;
+    const { locality: _, ...restOfValues } = values;
      const formData: EmployeeFormData = {
         ...restOfValues,
         checkInDate: formatDate(values.checkInDate),
@@ -523,6 +535,7 @@ export function AddEmployeeForm({
   const departmentOptions = useMemo(() => availableDepartments.map(d => ({ value: d, label: d })), [availableDepartments]);
   
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
         <DialogHeader>
@@ -533,20 +546,13 @@ export function AddEmployeeForm({
                 Wypełnij poniższe pola, aby {employee ? 'zaktualizować' : 'dodać'} pracownika.
               </DialogDescription>
             </div>
-             <input
-              type="file"
-              ref={fileInputRef}
-              className="hidden"
-              accept="image/*"
-              onChange={handleScanPassport}
-            />
-            <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isScanning}>
+            <Button variant="outline" onClick={handleOpenCamera} disabled={isScanning}>
               {isScanning ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Camera className="mr-2 h-4 w-4" />
               )}
-              Skanuj dokument
+              Zrób zdjęcie paszportu
             </Button>
           </div>
         </DialogHeader>
@@ -993,5 +999,39 @@ export function AddEmployeeForm({
         </Form>
       </DialogContent>
     </Dialog>
+
+    <Dialog open={isCameraOpen} onOpenChange={handleCloseCamera}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Zrób zdjęcie paszportu</DialogTitle>
+          <DialogDescription>
+            Umieść paszport w kadrze i zrób zdjęcie.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col items-center space-y-4">
+          <Webcam
+            ref={webcamRef}
+            audio={false}
+            screenshotFormat="image/jpeg"
+            videoConstraints={{ facingMode: 'environment' }}
+            className="w-full max-w-sm rounded-lg border"
+          />
+          <div className="flex gap-2">
+            <Button onClick={handleCapture} disabled={isScanning}>
+              {isScanning ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Camera className="mr-2 h-4 w-4" />
+              )}
+              Zrób zdjęcie
+            </Button>
+            <Button variant="outline" onClick={handleCloseCamera}>
+              Anuluj
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

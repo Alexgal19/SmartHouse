@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback, createContext, useContext, useRef } from 'react';
@@ -98,13 +99,14 @@ type MainLayoutContextType = {
     handleAddEmployeeClick: () => void;
     handleEditEmployeeClick: (employee: Employee) => void;
     handleUpdateSettings: (newSettings: Partial<Settings>) => Promise<void>;
-    refreshData: (showToast?: boolean) => Promise<any>;
+    refreshData: (showToast?: boolean) => Promise<RefreshDataResult | undefined>;
     handleAddNonEmployeeClick: () => void;
     handleEditNonEmployeeClick: (nonEmployee: NonEmployee) => void;
     handleDeleteNonEmployee: (id: string, actorUid: string) => Promise<void>;
     handleRefreshStatuses: (showNoChangesToast?: boolean) => Promise<void>;
     handleAddressFormOpen: (address: Address | null) => void;
     handleDismissEmployee: (employeeId: string, checkOutDate: Date) => Promise<void>;
+    handleDismissNonEmployee: (nonEmployeeId: string, checkOutDate: Date) => Promise<void>;
     handleRestoreEmployee: (employee: Employee) => Promise<void>;
     handleDeleteEmployee: (employeeId: string, actorUid: string) => Promise<void>;
     handleRestoreNonEmployee: (nonEmployee: NonEmployee) => Promise<void>;
@@ -113,6 +115,14 @@ type MainLayoutContextType = {
     handleDeleteAddressHistory: (historyId: string, actorUid: string) => Promise<void>;
     handleToggleNotificationReadStatus: (notificationId: string, isRead: boolean) => Promise<void>;
     handleMigrateFullNames: () => Promise<void>;
+};
+
+type RefreshDataResult = {
+    employees: Employee[];
+    nonEmployees: NonEmployee[];
+    settings: Settings;
+    notifications: Notification[];
+    addressHistory: AddressHistory[];
 };
 
 const MainLayoutContext = createContext<MainLayoutContextType | null>(null);
@@ -393,6 +403,7 @@ export default function MainLayout({
             } else {
                 const newEmployee = await addEmployee(data, currentUser.uid);
                 const refreshedData = await refreshData(false);
+                if (!refreshedData) return;
                 const wasAdded = refreshedData.employees.some((e: Employee) => e.id === newEmployee.id);
                 if (wasAdded) {
                     toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
@@ -415,6 +426,7 @@ export default function MainLayout({
             } else {
                  const newNonEmployee = await addNonEmployee(data, currentUser.uid);
                  const refreshedData = await refreshData(false);
+                 if (!refreshedData) return;
                  const wasAdded = refreshedData.nonEmployees.some((ne: NonEmployee) => ne.id === newNonEmployee.id);
                  if(wasAdded) {
                     toast({ title: "Sukces", description: "Nowy mieszkaniec został dodany." });
@@ -558,6 +570,17 @@ export default function MainLayout({
         }
     }, [currentUser, refreshData, toast]);
 
+    const handleDismissNonEmployee = useCallback(async (nonEmployeeId: string, checkOutDate: Date) => {
+        if (!currentUser) return;
+        try {
+            await updateNonEmployee(nonEmployeeId, { status: 'dismissed', checkOutDate: format(checkOutDate, 'yyyy-MM-dd') }, currentUser.uid);
+            toast({ title: "Sukces", description: "Mieszkaniec został zwolniony." });
+            await refreshData(false);
+        } catch (e: unknown) {
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zwolnić mieszkańca." });
+        }
+    }, [currentUser, refreshData, toast]);
+
     const handleRestoreEmployee = useCallback(async (employee: Employee) => {
         if (!currentUser) return;
         try {
@@ -693,6 +716,7 @@ export default function MainLayout({
         handleRefreshStatuses,
         handleAddressFormOpen,
         handleDismissEmployee,
+        handleDismissNonEmployee,
         handleRestoreEmployee,
         handleDeleteEmployee,
         handleRestoreNonEmployee,
@@ -726,6 +750,7 @@ export default function MainLayout({
         handleRefreshStatuses,
         handleAddressFormOpen,
         handleDismissEmployee,
+        handleDismissNonEmployee,
         handleRestoreEmployee,
         handleDeleteEmployee,
         handleRestoreNonEmployee,
@@ -830,3 +855,5 @@ export default function MainLayout({
         </SidebarProvider>
     );
 }
+
+    

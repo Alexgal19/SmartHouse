@@ -1,7 +1,8 @@
 
+
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, NotificationType, Coordinator, AddressHistory, AssignmentHistory, BOKStatus } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, NotificationType, Coordinator, AddressHistory, BOKStatus } from '../types';
 import { getSheet, getAllSheetsData, addAddressHistoryEntry as addHistoryToAction, updateAddressHistoryEntry as updateHistoryToAction, deleteAddressHistoryEntry as deleteHistoryFromSheet } from './sheets';
 import { format, isPast, isValid, getDaysInMonth, parseISO, differenceInDays, max, min, parse as dateFnsParse, lastDayOfMonth } from 'date-fns';
 import * as XLSX from 'xlsx';
@@ -371,7 +372,7 @@ const createNotification = async (
         }));
 
         let recipientId: string;
-        let notificationAction = action;
+        const notificationAction = action;
 
         if (recipientIdOverride) {
             recipientId = recipientIdOverride;
@@ -1514,3 +1515,5 @@ export async function updateCoordinatorSubscription(coordinatorId: string, subsc
         throw new Error(e instanceof Error ? e.message : "Failed to update subscription.");
     }
 }
+
+    

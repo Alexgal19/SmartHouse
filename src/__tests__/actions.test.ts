@@ -2,15 +2,29 @@ import {
   addEmployee,
   updateEmployee,
   deleteEmployee,
+  addNonEmployee,
+  updateNonEmployee,
+  deleteNonEmployee,
+  bulkDeleteEmployees,
+  bulkDeleteEmployeesByCoordinator,
+  transferEmployees,
   bulkDeleteEmployeesByDepartment,
-  checkAndUpdateEmployeeStatuses,
-  generateMonthlyReport,
+  checkAndUpdateStatuses,
   importEmployeesFromExcel,
-  deleteAddressHistoryEntry,
+  updateSettings,
+  updateNotificationReadStatus,
+  clearAllNotifications,
+  deleteNotification,
+  generateAccommodationReport,
+  generateNzCostsReport,
+  importNonEmployeesFromExcel,
+  migrateFullNames,
+  updateCoordinatorSubscription,
 } from '@/lib/actions';
 import * as sheets from '@/lib/sheets';
 import * as XLSX from 'xlsx';
-import type { Settings, Employee } from '@/types';
+import { GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
+import type { Settings, Employee, NonEmployee } from '@/types';
 
 // Mock the entire sheets module
 jest.mock('@/lib/sheets', () => ({
@@ -27,7 +41,7 @@ const mockedGetAllSheetsData = sheets.getAllSheetsData as jest.Mock;
 const mockedDeleteHistory = sheets.deleteAddressHistoryEntry as jest.Mock;
 
 // Helper function to create a mock Excel file in memory (as base64)
-function createMockExcel(data: any[]): string {
+function createMockExcel(data: Record<string, unknown>[]): string {
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Arkusz1');
@@ -51,9 +65,9 @@ const mockSettings: Settings = {
 };
 
 const mockEmployees: Employee[] = [
-    { id: 'emp-1', firstName: 'Adam', lastName: 'Nowak', fullName: 'Nowak Adam', coordinatorId: 'coord-1', status: 'active', checkInDate: '2024-01-01', zaklad: 'IT', nationality: 'Polska', gender: 'Mężczyzna', address: 'Testowa 1', roomNumber: '1', depositReturned: null, depositReturnAmount: null, deductionNo30Days: null, deductionNo4Months: null, deductionRegulation: null, deductionReason: undefined, contractStartDate: null, contractEndDate: null },
-    { id: 'emp-2', firstName: 'Ewa', lastName: 'Kowal', fullName: 'Kowal Ewa', coordinatorId: 'coord-1', status: 'active', checkInDate: '2024-02-01', checkOutDate: '2024-02-15', zaklad: 'IT', nationality: 'Polska', gender: 'Kobieta', address: 'Testowa 1', roomNumber: '1', depositReturned: null, depositReturnAmount: null, deductionNo30Days: null, deductionNo4Months: null, deductionRegulation: null, deductionReason: undefined, contractStartDate: null, contractEndDate: null },
-    { id: 'emp-3', firstName: 'Piotr', lastName: 'Lis', fullName: 'Lis Piotr', coordinatorId: 'coord-2', status: 'active', checkInDate: '2023-12-01', checkOutDate: '2024-01-10', zaklad: 'Marketing', nationality: 'Ukraina', gender: 'Mężczyzna', address: 'Testowa 2', roomNumber: '2', depositReturned: null, depositReturnAmount: null, deductionNo30Days: null, deductionNo4Months: null, deductionRegulation: null, deductionReason: undefined, contractStartDate: null, contractEndDate: null },
+    { id: 'emp-1', firstName: 'Adam', lastName: 'Nowak', coordinatorId: 'coord-1', status: 'active', checkInDate: '2024-01-01', zaklad: 'IT', nationality: 'Polska', gender: 'Mężczyzna', address: 'Testowa 1', roomNumber: '1', depositReturned: null, depositReturnAmount: null, deductionNo30Days: null, deductionNo4Months: null, deductionRegulation: null, deductionReason: undefined, contractStartDate: null, contractEndDate: null },
+    { id: 'emp-2', firstName: 'Ewa', lastName: 'Kowal', coordinatorId: 'coord-1', status: 'active', checkInDate: '2024-02-01', checkOutDate: '2024-02-15', zaklad: 'IT', nationality: 'Polska', gender: 'Kobieta', address: 'Testowa 1', roomNumber: '1', depositReturned: null, depositReturnAmount: null, deductionNo30Days: null, deductionNo4Months: null, deductionRegulation: null, deductionReason: undefined, contractStartDate: null, contractEndDate: null },
+    { id: 'emp-3', firstName: 'Piotr', lastName: 'Lis', coordinatorId: 'coord-2', status: 'active', checkInDate: '2023-12-01', checkOutDate: '2024-01-10', zaklad: 'Marketing', nationality: 'Ukraina', gender: 'Mężczyzna', address: 'Testowa 2', roomNumber: '2', depositReturned: null, depositReturnAmount: null, deductionNo30Days: null, deductionNo4Months: null, deductionRegulation: null, deductionReason: undefined, contractStartDate: null, contractEndDate: null },
 ];
 
 describe('Server Actions', () => {
@@ -71,7 +85,7 @@ describe('Server Actions', () => {
         it('should correctly serialize and add an employee, and create a notification', async () => {
             const mockAddRow = jest.fn().mockResolvedValue(undefined);
             const mockSheet = { addRow: mockAddRow, getRows: jest.fn().mockResolvedValue([]) };
-            mockedGetSheet.mockResolvedValue(mockSheet as any);
+            mockedGetSheet.mockResolvedValue(mockSheet as unknown as GoogleSpreadsheetWorksheet);
 
             const employeeData: Partial<Employee> = {
                 firstName: 'Nowy',
@@ -133,9 +147,9 @@ describe('Server Actions', () => {
                 get: (key: string) => (key === 'id' ? 'emp-1' : ''),
                 delete: jest.fn().mockResolvedValue(undefined),
             };
-            
+
             const mockSheet = { getRows: jest.fn().mockResolvedValue([mockRow]) };
-            mockedGetSheet.mockResolvedValue(mockSheet as any);
+            mockedGetSheet.mockResolvedValue(mockSheet as unknown as GoogleSpreadsheetWorksheet);
             
             mockedGetAllSheetsData.mockResolvedValue({ 
                 addressHistory: [
@@ -158,10 +172,65 @@ describe('Server Actions', () => {
 
         it('should throw an error if employee is not found', async () => {
             const mockSheet = { getRows: jest.fn().mockResolvedValue([]) };
-            mockedGetSheet.mockResolvedValue(mockSheet as any);
+            mockedGetSheet.mockResolvedValue(mockSheet as unknown as GoogleSpreadsheetWorksheet);
             mockedGetAllSheetsData.mockResolvedValue({ addressHistory: [] });
 
             await expect(deleteEmployee('emp-not-found', 'coord-1')).rejects.toThrow('Employee not found for deletion.');
+        });
+    });
+
+    describe('bulkDeleteEmployees', () => {
+        it('should delete all employees with the specified status', async () => {
+            const mockRows = [
+                { get: (key: string) => (key === 'status' ? 'active' : 'value'), delete: jest.fn().mockResolvedValue(undefined) },
+                { get: (key: string) => (key === 'status' ? 'dismissed' : 'value'), delete: jest.fn().mockResolvedValue(undefined) },
+                { get: (key: string) => (key === 'status' ? 'active' : 'value'), delete: jest.fn().mockResolvedValue(undefined) },
+            ];
+
+            const mockSheet = { getRows: jest.fn().mockResolvedValue(mockRows) };
+            mockedGetSheet.mockResolvedValue(mockSheet as unknown as GoogleSpreadsheetWorksheet);
+
+            await bulkDeleteEmployees('active', 'coord-1');
+
+            expect(mockRows[0].delete).toHaveBeenCalledTimes(1);
+            expect(mockRows[1].delete).not.toHaveBeenCalled();
+            expect(mockRows[2].delete).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('bulkDeleteEmployeesByCoordinator', () => {
+        it('should delete all employees assigned to the specified coordinator', async () => {
+            const mockRows = [
+                { get: (key: string) => (key === 'coordinatorId' ? 'coord-1' : 'value'), delete: jest.fn().mockResolvedValue(undefined) },
+                { get: (key: string) => (key === 'coordinatorId' ? 'coord-2' : 'value'), delete: jest.fn().mockResolvedValue(undefined) },
+            ];
+
+            const mockSheet = { getRows: jest.fn().mockResolvedValue(mockRows) };
+            mockedGetSheet.mockResolvedValue(mockSheet as unknown as GoogleSpreadsheetWorksheet);
+
+            await bulkDeleteEmployeesByCoordinator('coord-1', 'coord-1');
+
+            expect(mockRows[0].delete).toHaveBeenCalledTimes(1);
+            expect(mockRows[1].delete).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('transferEmployees', () => {
+        it('should transfer employees from one coordinator to another', async () => {
+            const mockRows = [
+                { get: (key: string) => (key === 'coordinatorId' ? 'coord-1' : 'value'), set: jest.fn(), save: jest.fn().mockResolvedValue(undefined) },
+                { get: (key: string) => (key === 'coordinatorId' ? 'coord-2' : 'value'), set: jest.fn(), save: jest.fn().mockResolvedValue(undefined) },
+            ];
+
+            const mockSheet = { getRows: jest.fn().mockResolvedValue(mockRows) };
+            mockedGetSheet.mockResolvedValue(mockSheet as unknown as GoogleSpreadsheetWorksheet);
+            mockedGetAllSheetsData.mockResolvedValue({ settings: mockSettings });
+
+            await transferEmployees('coord-1', 'coord-2');
+
+            expect(mockRows[0].set).toHaveBeenCalledWith('coordinatorId', 'coord-2');
+            expect(mockRows[0].save).toHaveBeenCalledTimes(1);
+            expect(mockRows[1].set).not.toHaveBeenCalled();
         });
     });
 
@@ -172,9 +241,9 @@ describe('Server Actions', () => {
                 { get: (key: string) => (key === 'zaklad' ? 'HR' : 'some-other-value'), delete: jest.fn().mockResolvedValue(undefined) },
                 { get: (key: string) => (key === 'zaklad' ? 'IT' : 'some-other-value'), delete: jest.fn().mockResolvedValue(undefined) },
             ];
-            
+
             const mockSheet = { getRows: jest.fn().mockResolvedValue(mockRows) };
-            mockedGetSheet.mockResolvedValue(mockSheet as any);
+            mockedGetSheet.mockResolvedValue(mockSheet as unknown as GoogleSpreadsheetWorksheet);
 
             await bulkDeleteEmployeesByDepartment('IT', 'coord-1');
 
@@ -202,9 +271,9 @@ describe('Server Actions', () => {
                 toObject: () => ({ status: 'active', checkOutDate: pastDateStr }),
             };
             const mockSheet = { getRows: jest.fn().mockResolvedValue([mockEmployeeRow]) };
-            mockedGetSheet.mockResolvedValue(mockSheet as any);
+            mockedGetSheet.mockResolvedValue(mockSheet as unknown as GoogleSpreadsheetWorksheet);
 
-            const result = await checkAndUpdateEmployeeStatuses('system');
+            const result = await checkAndUpdateStatuses('system');
             
             expect(result.updated).toBe(1);
             expect(mockEmployeeRow.set).toHaveBeenCalledWith('status', 'dismissed');
@@ -212,35 +281,72 @@ describe('Server Actions', () => {
         });
     });
 
-    describe('generateMonthlyReport', () => {
-        it('should correctly calculate days in month for an employee', async () => {
-             mockedGetAllSheetsData.mockResolvedValue({
-                settings: mockSettings,
-                employees: [
-                    // Stays the whole month
-                    { id: 'emp-1', checkInDate: '2024-01-01', checkOutDate: '2024-01-31', coordinatorId: 'coord-1', fullName: 'Test User 1', firstName: 'Test', lastName: 'User 1' },
-                    // Starts mid-month, leaves next month
-                    { id: 'emp-2', checkInDate: '2024-01-15', checkOutDate: '2024-02-10', coordinatorId: 'coord-1', fullName: 'Test User 2', firstName: 'Test', lastName: 'User 2' },
-                    // Starts before, leaves mid-month
-                    { id: 'emp-3', checkInDate: '2023-12-10', checkOutDate: '2024-01-10', coordinatorId: 'coord-1', fullName: 'Test User 3', firstName: 'Test', lastName: 'User 3' },
-                     // Not in this month at all
-                    { id: 'emp-4', checkInDate: '2024-02-01', coordinatorId: 'coord-1', fullName: 'Test User 4', firstName: 'Test', lastName: 'User 4' },
-                ],
-            });
 
-            // This is a placeholder as the function is not implemented in the provided code
-            const generateMonthlyReport = async (year: number, month: number, coordId: string) => ({ success: true, fileContent: '', fileName: ''});
-            const result = await generateMonthlyReport(2024, 1, 'all');
-            
-            // This part of the test is commented out as the function is not fully implemented
-            // const sheetData = XLSX.read(result.fileContent, { type: 'base64' });
-            // const jsonData = XLSX.utils.sheet_to_json(sheetData.Sheets[sheetData.SheetNames[0]]);
 
-            // expect(jsonData).toHaveLength(3);
-            // expect(jsonData[0]).toHaveProperty('Dni w miesiącu', 31);
-            // expect(jsonData[1]).toHaveProperty('Dni w miesiącu', 17);
-            // expect(jsonData[2]).toHaveProperty('Dni w miesiącu', 10);
-            expect(result.success).toBe(true);
+    describe('addNonEmployee', () => {
+        it('should correctly serialize and add a non-employee', async () => {
+            const mockAddRow = jest.fn().mockResolvedValue(undefined);
+            const mockSheet = { addRow: mockAddRow, getRows: jest.fn().mockResolvedValue([]) };
+            mockedGetSheet.mockResolvedValue(mockSheet as unknown as GoogleSpreadsheetWorksheet);
+
+            const nonEmployeeData: Omit<NonEmployee, 'id' | 'status'> = {
+                firstName: 'Nowy',
+                lastName: 'Mieszkaniec',
+                coordinatorId: 'coord-1',
+                checkInDate: '2024-05-10',
+                nationality: 'Polska',
+                gender: 'Mężczyzna',
+                address: 'Testowa 1',
+                roomNumber: '101',
+                paymentType: 'Miesięczny',
+                paymentAmount: 1000,
+            };
+
+            await addNonEmployee(nonEmployeeData, 'coord-1');
+
+            expect(mockedGetSheet).toHaveBeenCalledWith('NonEmployees', expect.any(Array));
+            expect(mockAddRow).toHaveBeenCalledTimes(1);
+
+            const addedData = mockAddRow.mock.calls[0][0];
+            expect(addedData.firstName).toBe('Nowy');
+            expect(addedData.lastName).toBe('Mieszkaniec');
+            expect(addedData.status).toBe('active');
+        });
+    });
+
+    describe('updateNonEmployee', () => {
+        it('should update a non-employee', async () => {
+            const mockRow = {
+                get: (key: string) => (key === 'firstName' ? 'Old' : 'Test'),
+                set: jest.fn(),
+                save: jest.fn().mockResolvedValue(undefined),
+                toObject: () => ({ firstName: 'Old', lastName: 'Test' }),
+            };
+            const mockSheet = { getRows: jest.fn().mockResolvedValue([mockRow]) };
+            mockedGetSheet.mockResolvedValue(mockSheet as unknown as GoogleSpreadsheetWorksheet);
+
+            await updateNonEmployee('nonemp-1', { comments: 'New comment' }, 'coord-1');
+
+            expect(mockRow.set).toHaveBeenCalledWith('comments', 'New comment');
+            expect(mockRow.save).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('deleteNonEmployee', () => {
+        it('should delete a non-employee', async () => {
+            const mockRow = {
+                get: (key: string) => (key === 'id' ? 'nonemp-1' : ''),
+                delete: jest.fn().mockResolvedValue(undefined),
+            };
+
+            const mockSheet = { getRows: jest.fn().mockResolvedValue([mockRow]) };
+            mockedGetSheet.mockResolvedValue(mockSheet as unknown as GoogleSpreadsheetWorksheet);
+
+            mockedGetAllSheetsData.mockResolvedValue({ addressHistory: [] });
+
+            await deleteNonEmployee('nonemp-1', 'coord-1');
+
+            expect(mockRow.delete).toHaveBeenCalledTimes(1);
         });
     });
 
@@ -255,7 +361,7 @@ describe('Server Actions', () => {
     
             const mockAddRows = jest.fn().mockResolvedValue(undefined);
             const mockSheet = { addRows: mockAddRows };
-            mockedGetSheet.mockResolvedValue(mockSheet as any);
+            mockedGetSheet.mockResolvedValue(mockSheet as unknown as GoogleSpreadsheetWorksheet);
 
             const result = await importEmployeesFromExcel(base64Content, 'coord-1', mockSettings);
     
@@ -275,6 +381,198 @@ describe('Server Actions', () => {
                 coordinatorId: 'coord-1',
                 checkInDate: '2024-01-01',
             }));
+        });
+    });
+
+    describe('importNonEmployeesFromExcel', () => {
+        it('should correctly parse and import non-employees', async () => {
+            const nonEmployeeData = [
+                { 'Imię': 'Jan', 'Nazwisko': 'Kowalski', 'Koordynator': 'Jan Kowalski', 'Data zameldowania': '01.01.2024', 'Miejscowość': 'Warszawa', 'Adres': 'Testowa 1', 'Pokój': '101', 'Narodowość': 'Polska', 'Rodzaj płatności nz': 'Miesięczny', 'Kwota': 1000 },
+            ];
+            const base64Content = createMockExcel(nonEmployeeData);
+
+            const mockAddRows = jest.fn().mockResolvedValue(undefined);
+            const mockSheet = { addRows: mockAddRows };
+            mockedGetSheet.mockResolvedValue(mockSheet as unknown as GoogleSpreadsheetWorksheet);
+
+            const result = await importNonEmployeesFromExcel(base64Content, 'coord-1', mockSettings);
+
+            expect(result.importedCount).toBe(1);
+            expect(result.totalRows).toBe(1);
+            expect(result.errors).toHaveLength(0);
+            expect(mockAddRows).toHaveBeenCalledTimes(1);
+
+            const addedRecords = mockAddRows.mock.calls[0][0];
+            expect(addedRecords[0]).toEqual(expect.objectContaining({
+                firstName: 'Jan',
+                lastName: 'Kowalski',
+                coordinatorId: 'coord-1',
+                checkInDate: '2024-01-01',
+                paymentType: 'Miesięczny',
+                paymentAmount: 1000,
+            }));
+        });
+    });
+
+    describe('updateSettings', () => {
+        it('should update nationalities', async () => {
+            const mockSheet = { clearRows: jest.fn().mockResolvedValue(undefined), addRows: jest.fn().mockResolvedValue(undefined) };
+            mockedGetSheet.mockResolvedValue(mockSheet as unknown as GoogleSpreadsheetWorksheet);
+
+            await updateSettings({ nationalities: ['Polska', 'Niemcy'] });
+
+            expect(mockSheet.clearRows).toHaveBeenCalled();
+            expect(mockSheet.addRows).toHaveBeenCalledWith([{ name: 'Polska' }, { name: 'Niemcy' }]);
+        });
+
+        it('should update coordinators', async () => {
+            const mockSheet = {
+                getRows: jest.fn().mockResolvedValue([]),
+                clearRows: jest.fn().mockResolvedValue(undefined),
+                addRows: jest.fn().mockResolvedValue(undefined),
+            };
+            mockedGetSheet.mockResolvedValue(mockSheet as unknown as GoogleSpreadsheetWorksheet);
+
+            const newCoordinators = [{ uid: 'coord-1', name: 'Jan', isAdmin: false, departments: ['IT'] }];
+            await updateSettings({ coordinators: newCoordinators });
+
+            expect(mockSheet.addRows).toHaveBeenCalledWith(expect.arrayContaining([
+                expect.objectContaining({ uid: 'coord-1', name: 'Jan', isAdmin: 'FALSE' })
+            ]));
+        });
+    });
+
+    describe('updateNotificationReadStatus', () => {
+        it('should update the read status of a notification', async () => {
+            const mockRow = { get: (key: string) => (key === 'id' ? 'notif-1' : 'FALSE'), set: jest.fn(), save: jest.fn().mockResolvedValue(undefined) };
+            const mockSheet = { getRows: jest.fn().mockResolvedValue([mockRow]) };
+            mockedGetSheet.mockResolvedValue(mockSheet as unknown as GoogleSpreadsheetWorksheet);
+
+            await updateNotificationReadStatus('notif-1', true);
+
+            expect(mockRow.set).toHaveBeenCalledWith('isRead', 'TRUE');
+            expect(mockRow.save).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('clearAllNotifications', () => {
+        it('should clear all notifications', async () => {
+            const mockSheet = { clearRows: jest.fn().mockResolvedValue(undefined) };
+            mockedGetSheet.mockResolvedValue(mockSheet as unknown as GoogleSpreadsheetWorksheet);
+
+            await clearAllNotifications();
+
+            expect(mockSheet.clearRows).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('deleteNotification', () => {
+        it('should delete a notification', async () => {
+            const mockRow = { get: (key: string) => (key === 'id' ? 'notif-1' : ''), delete: jest.fn().mockResolvedValue(undefined) };
+            const mockSheet = { getRows: jest.fn().mockResolvedValue([mockRow]) };
+            mockedGetSheet.mockResolvedValue(mockSheet as unknown as GoogleSpreadsheetWorksheet);
+
+            await deleteNotification('notif-1');
+
+            expect(mockRow.delete).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('generateAccommodationReport', () => {
+        it('should generate accommodation report successfully', async () => {
+            mockedGetAllSheetsData.mockResolvedValue({
+                employees: mockEmployees,
+                settings: mockSettings,
+                addressHistory: [],
+            });
+
+            const result = await generateAccommodationReport(2024, 1, 'all', false);
+
+            expect(result.success).toBe(true);
+            expect(result.fileContent).toBeDefined();
+            expect(result.fileName).toContain('Raport_Zakwaterowania');
+        });
+    });
+
+    describe('generateNzCostsReport', () => {
+        it('should generate NZ costs report successfully', async () => {
+            const mockNonEmployees: NonEmployee[] = [
+                {
+                    id: 'nonemp-1',
+                    firstName: 'Jan',
+                    lastName: 'Kowalski',
+                    coordinatorId: 'coord-1',
+                    nationality: 'Polska',
+                    gender: 'Mężczyzna',
+                    address: 'Testowa 1',
+                    roomNumber: '1',
+                    checkInDate: '2024-01-01',
+                    paymentType: 'Miesięczny',
+                    paymentAmount: 1000,
+                    status: 'active',
+                },
+            ];
+
+            mockedGetAllSheetsData.mockResolvedValue({
+                nonEmployees: mockNonEmployees,
+                settings: mockSettings,
+            });
+
+            const result = await generateNzCostsReport(2024, 1, 'all');
+
+            expect(result.success).toBe(true);
+            expect(result.fileContent).toBeDefined();
+            expect(result.fileName).toContain('Raport_Koszty_NZ');
+        });
+    });
+
+    describe('migrateFullNames', () => {
+        it('should migrate full names to separate first and last names', async () => {
+            const mockEmployeeRows = [
+                { get: () => 'Kowalski Jan', set: jest.fn(), save: jest.fn().mockResolvedValue(undefined) },
+                { get: () => '', set: jest.fn(), save: jest.fn().mockResolvedValue(undefined) },
+            ];
+            const mockNonEmployeeRows = [
+                { get: () => 'Nowak Anna', set: jest.fn(), save: jest.fn().mockResolvedValue(undefined) },
+            ];
+
+            mockedGetSheet.mockImplementation((sheetName) => {
+                if (sheetName === 'Employees') return Promise.resolve({ getRows: () => Promise.resolve(mockEmployeeRows) });
+                if (sheetName === 'NonEmployees') return Promise.resolve({ getRows: () => Promise.resolve(mockNonEmployeeRows) });
+                return Promise.resolve({ getRows: () => Promise.resolve([]) });
+            });
+
+            const result = await migrateFullNames('coord-1');
+
+            expect(result.migratedEmployees).toBe(1);
+            expect(result.migratedNonEmployees).toBe(1);
+            expect(mockEmployeeRows[0].set).toHaveBeenCalledWith('firstName', 'Jan');
+            expect(mockEmployeeRows[0].set).toHaveBeenCalledWith('lastName', 'Kowalski');
+        });
+    });
+
+    describe('updateCoordinatorSubscription', () => {
+        it('should update coordinator push subscription', async () => {
+            const mockRow = { get: () => 'coord-1', set: jest.fn(), save: jest.fn().mockResolvedValue(undefined) };
+            const mockSheet = { getRows: jest.fn().mockResolvedValue([mockRow]) };
+            mockedGetSheet.mockResolvedValue(mockSheet);
+
+            const subscription = { endpoint: 'test-endpoint' } as PushSubscription;
+            await updateCoordinatorSubscription('coord-1', subscription);
+
+            expect(mockRow.set).toHaveBeenCalledWith('pushSubscription', JSON.stringify(subscription));
+            expect(mockRow.save).toHaveBeenCalledTimes(1);
+        });
+
+        it('should clear subscription if null provided', async () => {
+            const mockRow = { get: () => 'coord-1', set: jest.fn(), save: jest.fn().mockResolvedValue(undefined) };
+            const mockSheet = { getRows: jest.fn().mockResolvedValue([mockRow]) };
+            mockedGetSheet.mockResolvedValue(mockSheet);
+
+            await updateCoordinatorSubscription('coord-1', null);
+
+            expect(mockRow.set).toHaveBeenCalledWith('pushSubscription', '');
+            expect(mockRow.save).toHaveBeenCalledTimes(1);
         });
     });
 });
