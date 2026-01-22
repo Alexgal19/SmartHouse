@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -34,7 +34,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { Employee, Settings, Address, SessionData } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Info, X, Trash2 } from 'lucide-react';
+import { CalendarIcon, Info, X, Trash2, Camera, Loader2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parse, isValid, parseISO } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -45,6 +45,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Combobox } from '@/components/ui/combobox';
 import { useToast } from '@/hooks/use-toast';
 import { useMainLayout } from './main-layout';
+import { extractPassportData } from '@/ai/flows/extract-passport-data-flow';
 
 export const formSchema = z.object({
   firstName: z.string().min(1, "Imię jest wymagane."),
@@ -232,6 +233,8 @@ export function AddEmployeeForm({
 }) {
   const { toast } = useToast();
   const { handleDismissEmployee } = useMainLayout();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isScanning, setIsScanning] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema, {
@@ -383,6 +386,34 @@ export function AddEmployeeForm({
     }
   }, [employee, isOpen, form, settings, currentUser]);
 
+  const handleScanPassport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsScanning(true);
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        const photoDataUri = e.target?.result as string;
+        if (photoDataUri) {
+            try {
+                const { firstName, lastName } = await extractPassportData({ photoDataUri });
+                form.setValue('firstName', firstName, { shouldValidate: true });
+                form.setValue('lastName', lastName, { shouldValidate: true });
+                toast({ title: 'Sukces', description: 'Dane z dokumentu zostały wczytane.' });
+            } catch (error) {
+                console.error("OCR Error:", error);
+                toast({ variant: 'destructive', title: 'Błąd skanowania', description: 'Nie udało się odczytać danych z dokumentu.' });
+            } finally {
+                setIsScanning(false);
+                // Reset file input to allow scanning the same file again
+                if(fileInputRef.current) fileInputRef.current.value = '';
+            }
+        }
+    };
+    reader.readAsDataURL(file);
+  };
+
+
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     
     if (employee) {
@@ -495,10 +526,29 @@ export function AddEmployeeForm({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
         <DialogHeader>
-          <DialogTitle>{employee ? 'Edytuj dane pracownika' : 'Dodaj nowego pracownika'}</DialogTitle>
-          <DialogDescription>
-            Wypełnij poniższe pola, aby {employee ? 'zaktualizować' : 'dodać'} pracownika.
-          </DialogDescription>
+          <div className="flex justify-between items-start">
+            <div>
+              <DialogTitle>{employee ? 'Edytuj dane pracownika' : 'Dodaj nowego pracownika'}</DialogTitle>
+              <DialogDescription>
+                Wypełnij poniższe pola, aby {employee ? 'zaktualizować' : 'dodać'} pracownika.
+              </DialogDescription>
+            </div>
+             <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept="image/*"
+              onChange={handleScanPassport}
+            />
+            <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isScanning}>
+              {isScanning ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Camera className="mr-2 h-4 w-4" />
+              )}
+              Skanuj dokument
+            </Button>
+          </div>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>

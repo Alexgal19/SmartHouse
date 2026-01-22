@@ -12,6 +12,7 @@
     "test:watch": "jest --watch"
   },
   "dependencies": {
+    "@genkit-ai/google-genai": "1.0.0",
     "@hookform/resolvers": "^3.9.0",
     "@radix-ui/react-accordion": "^1.2.0",
     "@radix-ui/react-alert-dialog": "^1.1.1",
@@ -38,6 +39,7 @@
     "cmdk": "^1.0.0",
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.1.6",
+    "genkit": "1.0.0",
     "google-auth-library": "9.11.0",
     "google-spreadsheet": "^4.1.2",
     "iron-session": "^8.0.2",
