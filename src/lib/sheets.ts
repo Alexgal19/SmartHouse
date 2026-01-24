@@ -4,7 +4,7 @@
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, Address, Coordinator, NotificationType, AddressHistory, BOKStatus } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, Address, Coordinator, NotificationType, AddressHistory } from '../types';
 import { format, isValid, parse, parseISO } from 'date-fns';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
@@ -20,7 +20,6 @@ const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_LOCALITIES = 'Localities';
 const SHEET_NAME_PAYMENT_TYPES_NZ = 'PaymentTypesNZ';
 const SHEET_NAME_ADDRESS_HISTORY = 'AddressHistory';
-const SHEET_NAME_BOK_STATUSES = 'BOKStatuses';
 const SHEET_NAME_ASSIGNMENT_HISTORY = 'AssignmentHistory';
 
 
@@ -220,8 +219,6 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         deductionNo30Days: plainObject.deductionNo30Days ? parseFloat(plainObject.deductionNo30Days as string) : null,
         deductionReason: deductionReason,
         deductionEntryDate: safeFormat(plainObject.deductionEntryDate),
-        bokStatus: (plainObject.bokStatus as string | null) || null,
-        bokStatusDate: safeFormat(plainObject.bokStatusDate),
     };
     
     return newEmployee;
@@ -266,8 +263,6 @@ const deserializeNonEmployee = (row: Record<string, unknown>): NonEmployee | nul
         status: (plainObject.status as 'active' | 'dismissed') || 'active',
         paymentType: (plainObject.paymentType as string) || null,
         paymentAmount: plainObject.paymentAmount ? parseFloat(plainObject.paymentAmount as string) : null,
-        bokStatus: (plainObject.bokStatus as string | null) || null,
-        bokStatusDate: safeFormat(plainObject.bokStatusDate),
     };
 };
 
@@ -349,7 +344,6 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
             genderRows,
             localityRows,
             paymentTypesNZRows,
-            bokStatusRows,
         ] = await Promise.all([
             getSheetData(doc, SHEET_NAME_ADDRESSES),
             getSheetData(doc, SHEET_NAME_ROOMS),
@@ -359,7 +353,6 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
             getSheetData(doc, SHEET_NAME_GENDERS),
             getSheetData(doc, SHEET_NAME_LOCALITIES),
             getSheetData(doc, SHEET_NAME_PAYMENT_TYPES_NZ),
-            getSheetData(doc, SHEET_NAME_BOK_STATUSES),
         ]);
         
         const roomsByAddressId = new Map<string, Room[]>();
@@ -399,11 +392,6 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
             }
         });
         
-        const bokStatuses: BOKStatus[] = bokStatusRows.map((row) => ({
-            id: row.id,
-            name: row.name,
-        }));
-
         return {
             id: 'global-settings',
             addresses,
@@ -413,7 +401,6 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
             genders: genderRows.map(row => row.name).filter(Boolean),
             localities: localityRows.map(row => row.name).filter(Boolean),
             paymentTypesNZ: paymentTypesNZRows.map(row => row.name).filter(Boolean),
-            bokStatuses,
         };
     } catch (error: unknown) {
         console.error("Error fetching settings from sheet:", error instanceof Error ? error.message : "Unknown error", error instanceof Error ? error.stack : "");
@@ -525,4 +512,3 @@ export async function deleteAddressHistoryEntry(historyId: string) {
         throw new Error('Address history entry not found');
     }
 }
-

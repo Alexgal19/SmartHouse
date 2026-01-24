@@ -26,11 +26,6 @@ export type Coordinator = {
     pushSubscription?: string | null;
 }
 
-export type BOKStatus = {
-    id: string;
-    name: string;
-}
-
 export type Settings = {
     id: 'global-settings';
     addresses: Address[];
@@ -40,7 +35,6 @@ export type Settings = {
     genders: string[];
     localities: string[];
     paymentTypesNZ: string[];
-    bokStatuses: BOKStatus[];
 }
 
 export type ChartConfig = {
@@ -70,6 +64,7 @@ export type Employee = {
     id: string;
     firstName: string;
     lastName: string;
+    fullName: string;
     coordinatorId: string;
     nationality: string;
     gender: string;
@@ -91,14 +86,13 @@ export type Employee = {
     deductionNo30Days: number | null; // potracenie_30_dni
     deductionReason: DeductionReason[] | undefined;
     deductionEntryDate?: string | null;
-    bokStatus?: string | null;
-    bokStatusDate?: string | null;
 };
 
 export type NonEmployee = {
     id: string;
     firstName: string;
     lastName: string;
+    fullName: string;
     coordinatorId: string;
     nationality: string;
     gender: string;
@@ -111,8 +105,6 @@ export type NonEmployee = {
     status: 'active' | 'dismissed';
     paymentType: string | null;
     paymentAmount: number | null;
-    bokStatus?: string | null;
-    bokStatusDate?: string | null;
 };
 
 export type AddressHistory = {

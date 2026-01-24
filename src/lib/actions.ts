@@ -2,7 +2,7 @@
 
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, NotificationType, Coordinator, AddressHistory, BOKStatus } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, NotificationType, Coordinator, AddressHistory } from '../types';
 import { getSheet, getAllSheetsData, addAddressHistoryEntry as addHistoryToAction, updateAddressHistoryEntry as updateHistoryToAction, deleteAddressHistoryEntry as deleteHistoryFromSheet } from './sheets';
 import { format, isPast, isValid, getDaysInMonth, parseISO, differenceInDays, max, min, parse as dateFnsParse, lastDayOfMonth } from 'date-fns';
 import * as XLSX from 'xlsx';
@@ -11,14 +11,13 @@ const EMPLOYEE_HEADERS = [
     'id', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'ownAddress', 'roomNumber', 
     'zaklad', 'checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 
     'departureReportDate', 'comments', 'status', 'depositReturned', 'depositReturnAmount', 
-    'deductionRegulation', 'deductionNo4Months', 'deductionNo30Days', 'deductionReason', 'deductionEntryDate',
-    'bokStatus', 'bokStatusDate'
+    'deductionRegulation', 'deductionNo4Months', 'deductionNo30Days', 'deductionReason', 'deductionEntryDate'
 ];
 
 const NON_EMPLOYEE_HEADERS = [
     'id', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 
     'checkInDate', 'checkOutDate', 'departureReportDate', 'comments', 'status', 'paymentType', 
-    'paymentAmount', 'bokStatus', 'bokStatusDate'
+    'paymentAmount'
 ];
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
@@ -34,7 +33,6 @@ const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_LOCALITIES = 'Localities';
 const SHEET_NAME_PAYMENT_TYPES_NZ = 'PaymentTypesNZ';
 const SHEET_NAME_ADDRESS_HISTORY = 'AddressHistory';
-const SHEET_NAME_BOK_STATUSES = 'BOKStatuses';
 const SHEET_NAME_ASSIGNMENT_HISTORY = 'AssignmentHistory';
 
 
@@ -66,7 +64,7 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
             continue;
         }
 
-        if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'deductionEntryDate', 'bokStatusDate'].includes(key)) {
+        if (['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'deductionEntryDate'].includes(key)) {
             serialized[key] = serializeDate(value as string);
         } else if (key === 'deductionReason') {
             serialized[key] = Array.isArray(value) ? JSON.stringify(value) : '';
@@ -97,7 +95,7 @@ const serializeNonEmployee = (nonEmployee: Partial<NonEmployee>): Record<string,
             continue;
         }
 
-        if (['checkInDate', 'checkOutDate', 'departureReportDate', 'bokStatusDate'].includes(key)) {
+        if (['checkInDate', 'checkOutDate', 'departureReportDate'].includes(key)) {
             serialized[key] = serializeDate(value as string);
         } else if (typeof value === 'boolean') {
             serialized[key] = String(value).toUpperCase();
@@ -256,8 +254,6 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         deductionNo30Days: plainObject.deductionNo30Days ? parseFloat(plainObject.deductionNo30Days as string) : null,
         deductionReason: deductionReason,
         deductionEntryDate: safeFormat(plainObject.deductionEntryDate),
-        bokStatus: (plainObject.bokStatus as string | null) || null,
-        bokStatusDate: safeFormat(plainObject.bokStatusDate),
     };
     
     return newEmployee;
@@ -458,8 +454,6 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
             deductionNo30Days: employeeData.deductionNo30Days ?? null,
             deductionReason: employeeData.deductionReason ?? undefined,
             deductionEntryDate: employeeData.deductionEntryDate ?? null,
-            bokStatus: employeeData.bokStatus ?? null,
-            bokStatusDate: employeeData.bokStatusDate ?? null,
         };
 
         const serialized = serializeEmployee(newEmployee);
@@ -531,7 +525,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
             const oldValue = originalEmployee[typedKey];
             const newValue = dbUpdates[typedKey];
             
-            const areDates = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'deductionEntryDate', 'bokStatusDate'].includes(key);
+            const areDates = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'deductionEntryDate'].includes(key);
 
             let oldValStr: string | null = null;
             if (oldValue !== null && oldValue !== undefined) {
@@ -630,8 +624,6 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id' | '
             comments: nonEmployeeData.comments,
             paymentType: nonEmployeeData.paymentType,
             paymentAmount: nonEmployeeData.paymentAmount,
-            bokStatus: nonEmployeeData.bokStatus,
-            bokStatusDate: nonEmployeeData.bokStatusDate,
         };
 
         const serialized = serializeNonEmployee(newNonEmployee);
@@ -919,13 +911,12 @@ export async function checkAndUpdateStatuses(actorUid?: string): Promise<{ updat
 
 
 export async function updateSettings(newSettings: Partial<Settings>): Promise<void> {
-    const updateSimpleList = async (sheetName: string, items: {id: string, name: string}[] | string[]) => {
-        const isObjectList = items.length > 0 && typeof items[0] === 'object';
-        const headers = isObjectList ? ['id', 'name'] : ['name'];
+    const updateSimpleList = async (sheetName: string, items: string[]) => {
+        const headers = ['name'];
         const sheet = await getSheet(sheetName, headers);
         await sheet.clearRows();
         if (items.length > 0) {
-            const dataToAdd = isObjectList ? items : (items as string[]).map(name => ({ name }));
+            const dataToAdd = items.map(name => ({ name }));
             await sheet.addRows(dataToAdd, { raw: false, insert: true });
         }
     };
@@ -945,9 +936,6 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
         }
         if (newSettings.paymentTypesNZ) {
             await updateSimpleList(SHEET_NAME_PAYMENT_TYPES_NZ, newSettings.paymentTypesNZ);
-        }
-        if (newSettings.bokStatuses) {
-            await updateSimpleList(SHEET_NAME_BOK_STATUSES, newSettings.bokStatuses);
         }
         if (newSettings.addresses) {
             const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ADDRESS_HEADERS);
@@ -1360,16 +1348,12 @@ const processImport = async (
                         deductionNo30Days: null,
                         deductionReason: undefined,
                         deductionEntryDate: null,
-                        bokStatus: null,
-                        bokStatusDate: null,
                     };
                 } else {
                      newRecord = {
                         ...baseRecord,
                         paymentType: (normalizedRow['rodzaj płatności nz'] as string)?.trim() || null,
                         paymentAmount: normalizedRow['kwota'] ? parseFloat(String(normalizedRow['kwota'])) : null,
-                        bokStatus: null,
-                        bokStatusDate: null,
                     };
                 }
 
@@ -1519,5 +1503,3 @@ export async function updateCoordinatorSubscription(coordinatorId: string, subsc
         throw new Error(e instanceof Error ? e.message : "Failed to update subscription.");
     }
 }
-
-    
