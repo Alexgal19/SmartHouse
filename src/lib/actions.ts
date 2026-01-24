@@ -1,5 +1,4 @@
 
-
 "use server";
 
 import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, NotificationType, Coordinator, AddressHistory } from '../types';
@@ -32,6 +31,7 @@ const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_LOCALITIES = 'Localities';
 const SHEET_NAME_PAYMENT_TYPES_NZ = 'PaymentTypesNZ';
+const SHEET_NAME_STATUSES = 'Statuses';
 const SHEET_NAME_ADDRESS_HISTORY = 'AddressHistory';
 const SHEET_NAME_ASSIGNMENT_HISTORY = 'AssignmentHistory';
 
@@ -936,6 +936,9 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
         }
         if (newSettings.paymentTypesNZ) {
             await updateSimpleList(SHEET_NAME_PAYMENT_TYPES_NZ, newSettings.paymentTypesNZ);
+        }
+        if (newSettings.statuses) {
+            await updateSimpleList(SHEET_NAME_STATUSES, newSettings.statuses);
         }
         if (newSettings.addresses) {
             const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ADDRESS_HEADERS);

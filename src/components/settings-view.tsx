@@ -1,8 +1,7 @@
 
-
 "use client";
 
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useForm, useFieldArray, useWatch, UseFieldArrayAppend, UseFieldArrayRemove } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -44,6 +43,7 @@ const formSchema = z.object({
   genders: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
   localities: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
   paymentTypesNZ: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
+  statuses: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
   addresses: z.array(z.any()),
   coordinators: z.array(coordinatorSchema),
 });
@@ -1124,6 +1124,7 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
             genders: rawSettings.genders.map(g => ({ value: g })).sort((a, b) => a.value.localeCompare(b.value)),
             localities: rawSettings.localities.map(l => ({ value: l })).sort((a, b) => a.value.localeCompare(b.value)),
             paymentTypesNZ: rawSettings.paymentTypesNZ.map(p => ({ value: p })).sort((a, b) => a.value.localeCompare(b.value)),
+            statuses: rawSettings.statuses.map(s => ({ value: s })).sort((a, b) => a.value.localeCompare(b.value)),
             addresses: [...rawSettings.addresses].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
             coordinators: [...rawSettings.coordinators].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
         },
@@ -1136,6 +1137,7 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
             genders: rawSettings.genders.map(g => ({ value: g })).sort((a, b) => a.value.localeCompare(b.value)),
             localities: rawSettings.localities.map(l => ({ value: l })).sort((a, b) => a.value.localeCompare(b.value)),
             paymentTypesNZ: rawSettings.paymentTypesNZ.map(p => ({ value: p })).sort((a, b) => a.value.localeCompare(b.value)),
+            statuses: rawSettings.statuses.map(s => ({ value: s })).sort((a, b) => a.value.localeCompare(b.value)),
             addresses: [...rawSettings.addresses].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
             coordinators: [...rawSettings.coordinators].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
         });
@@ -1146,6 +1148,7 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
     const { fields: genFields, append: appendGen, remove: removeGen } = useFieldArray({ control: form.control, name: 'genders' });
     const { fields: locFields, append: appendLoc, remove: removeLoc } = useFieldArray({ control: form.control, name: 'localities' });
     const { fields: paymentNzFields, append: appendPaymentNz, remove: removePaymentNz } = useFieldArray({ control: form.control, name: 'paymentTypesNZ' });
+    const { fields: statusFields, append: appendStatus, remove: removeStatus } = useFieldArray({ control: form.control, name: 'statuses' });
     const { fields: coordFields, append: appendCoord, remove: removeCoord } = useFieldArray({ control: form.control, name: 'coordinators' });
     const { remove: removeAddr } = useFieldArray({ control: form.control, name: 'addresses' });
 
@@ -1161,6 +1164,7 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
             genders: values.genders.map((d) => d.value).sort((a, b) => a.localeCompare(b)),
             localities: values.localities.map((l) => l.value).sort((a, b) => a.localeCompare(b)),
             paymentTypesNZ: values.paymentTypesNZ.map((p) => p.value).sort((a, b) => a.localeCompare(b)),
+            statuses: values.statuses.map((s) => s.value).sort((a, b) => a.localeCompare(b)),
             addresses: values.addresses,
             coordinators: values.coordinators.sort((a,b) => a.name.localeCompare(b.name)),
         };
@@ -1231,6 +1235,7 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
                                     <ListManager name="genders" title="Płcie" fields={genFields} append={appendGen} remove={removeGen} control={form.control} />
                                     <ListManager name="localities" title="Miejscowości" fields={locFields} append={appendLoc} remove={removeLoc} control={form.control} />
                                     <ListManager name="paymentTypesNZ" title="Rodzaje płatności NZ" fields={paymentNzFields} append={appendPaymentNz} remove={removePaymentNz} control={form.control} />
+                                    <ListManager name="statuses" title="Statusy" fields={statusFields} append={appendStatus} remove={removeStatus} control={form.control} />
                                 </AccordionContent>
                             </AccordionItem>
                             <AccordionItem value="coordinators">

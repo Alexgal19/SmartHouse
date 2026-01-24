@@ -1,5 +1,4 @@
 
-
 "use server";
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
@@ -19,6 +18,7 @@ const SHEET_NAME_COORDINATORS = 'Coordinators';
 const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_LOCALITIES = 'Localities';
 const SHEET_NAME_PAYMENT_TYPES_NZ = 'PaymentTypesNZ';
+const SHEET_NAME_STATUSES = 'Statuses';
 const SHEET_NAME_ADDRESS_HISTORY = 'AddressHistory';
 const SHEET_NAME_ASSIGNMENT_HISTORY = 'AssignmentHistory';
 
@@ -344,6 +344,7 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
             genderRows,
             localityRows,
             paymentTypesNZRows,
+            statusRows,
         ] = await Promise.all([
             getSheetData(doc, SHEET_NAME_ADDRESSES),
             getSheetData(doc, SHEET_NAME_ROOMS),
@@ -353,6 +354,7 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
             getSheetData(doc, SHEET_NAME_GENDERS),
             getSheetData(doc, SHEET_NAME_LOCALITIES),
             getSheetData(doc, SHEET_NAME_PAYMENT_TYPES_NZ),
+            getSheetData(doc, SHEET_NAME_STATUSES),
         ]);
         
         const roomsByAddressId = new Map<string, Room[]>();
@@ -401,6 +403,7 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
             genders: genderRows.map(row => row.name).filter(Boolean),
             localities: localityRows.map(row => row.name).filter(Boolean),
             paymentTypesNZ: paymentTypesNZRows.map(row => row.name).filter(Boolean),
+            statuses: statusRows.map(row => row.name).filter(Boolean),
         };
     } catch (error: unknown) {
         console.error("Error fetching settings from sheet:", error instanceof Error ? error.message : "Unknown error", error instanceof Error ? error.stack : "");

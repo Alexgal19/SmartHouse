@@ -35,6 +35,7 @@ export type Settings = {
     genders: string[];
     localities: string[];
     paymentTypesNZ: string[];
+    statuses: string[];
 }
 
 export type ChartConfig = {
