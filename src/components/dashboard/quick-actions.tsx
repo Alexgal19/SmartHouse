@@ -1,20 +1,22 @@
 
 "use client";
 
-import { Building, UserPlus, Users, Search } from "lucide-react";
+import { Building, UserPlus, Search, Bell, BellOff, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useMainLayout } from "@/components/main-layout";
 import { useRouter } from "next/navigation";
+import { usePushSubscription } from "@/hooks/use-push-subscription";
 
 type ActionButtonProps = {
     icon: React.ReactNode;
     label: string;
     onClick: () => void;
+    disabled?: boolean;
 }
 
-const ActionButton = ({ icon, label, onClick }: ActionButtonProps) => (
-    <Button variant="outline" className="flex-1 min-w-[140px] h-20 flex-col gap-2" onClick={onClick}>
+const ActionButton = ({ icon, label, onClick, disabled }: ActionButtonProps) => (
+    <Button variant="outline" className="flex-1 min-w-[140px] h-20 flex-col gap-2" onClick={onClick} disabled={disabled}>
         {icon}
         <span>{label}</span>
     </Button>
@@ -22,9 +24,10 @@ const ActionButton = ({ icon, label, onClick }: ActionButtonProps) => (
 
 export function QuickActions() {
     const { handleAddEmployeeClick, handleAddNonEmployeeClick } = useMainLayout();
+    const { pushSubscription, subscribe, unsubscribe, isSupported, isSubscribing, isUnsubscribing } = usePushSubscription();
     const router = useRouter();
 
-    const actions = [
+    const actions: { icon: React.ReactNode; label: string; onClick: () => void; disabled?: boolean }[] = [
         {
             icon: <UserPlus className="h-6 w-6 text-primary" />,
             label: "Dodaj pracownika",
@@ -46,6 +49,15 @@ export function QuickActions() {
             onClick: () => router.push('/dashboard?view=housing')
         },
     ];
+
+    // Always show the button, but it might fail if not supported
+    const isLoading = isSubscribing || isUnsubscribing;
+    actions.push({
+        icon: isLoading ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /> : (pushSubscription ? <BellOff className="h-6 w-6 text-red-500" /> : <Bell className="h-6 w-6 text-yellow-500" />),
+        label: pushSubscription ? "Wyłącz PUSH Powiadomienia" : "Włącz PUSH Powiadomienia",
+        onClick: pushSubscription ? unsubscribe : subscribe,
+        disabled: isLoading || !isSupported
+    });
 
     return (
         <Card>

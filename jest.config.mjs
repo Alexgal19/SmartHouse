@@ -15,7 +15,11 @@ const config = {
   moduleNameMapper: {
     // Handle module aliases (this will be automatically configured for you soon)
     '^@/(.*)$': '<rootDir>/src/$1',
+    '^iron-session$': '<rootDir>/src/__mocks__/iron-session.js',
   },
+  transformIgnorePatterns: [
+    '/node_modules/(?!(uncrypto|iron-session|jose|jsonpath-plus|@genkit-ai)/)',
+  ],
 };
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async

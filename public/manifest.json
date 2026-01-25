@@ -2,6 +2,7 @@
   "name": "SmartHouse",
   "short_name": "SmartHouse",
   "description": "Zarządzanie pracownikami i inspekcjami",
+  "gcm_sender_id": "294831457703",
   "icons": [
     {
       "src": "/icon-192x192.png",

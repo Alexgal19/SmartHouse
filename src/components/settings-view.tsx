@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from 'react';
-import { useForm, useFieldArray, useWatch, UseFieldArrayAppend, UseFieldArrayRemove } from 'react-hook-form';
+import { useState, useMemo, useEffect, useCallback, useRef, ChangeEvent } from 'react';
+import { useForm, useFieldArray, useWatch, UseFieldArrayAppend, UseFieldArrayRemove, Control, FieldPath } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import type { Settings, SessionData, Address, Coordinator } from '@/types';
@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { generateAccommodationReport, transferEmployees, updateSettings, bulkDeleteEmployees, bulkDeleteEmployeesByCoordinator, generateNzCostsReport, bulkDeleteEmployeesByDepartment } from '@/lib/actions';
+import { generateAccommodationReport, transferEmployees, updateSettings, generateNzCostsReport } from '@/lib/actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from '@/components/ui/dialog';
@@ -44,6 +44,9 @@ const formSchema = z.object({
   localities: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
   paymentTypesNZ: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
   statuses: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
+  bokRoles: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
+  bokReturnOptions: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
+  bokStatuses: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
   addresses: z.array(z.any()),
   coordinators: z.array(coordinatorSchema),
 });
@@ -85,16 +88,16 @@ const AddMultipleDialog = ({ open, onOpenChange, onAdd, listTitle }: { open: boo
 };
 
 
-const ListManager = ({ name, title, fields, append, remove, control }: { name: string; title: string; fields: Record<"id", string>[]; append: (obj: { value: string} | {value: string}[]) => void; remove: (index: number) => void; control: unknown }) => {
+const ListManager = ({ name, title, fields, append, remove, control }: { name: FieldPath<z.infer<typeof formSchema>>; title: string; fields: Record<"id", string>[]; append: (obj: { value: string} | {value: string}[]) => void; remove: (index: number) => void; control: Control<z.infer<typeof formSchema>> }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isAddMultipleOpen, setIsAddMultipleOpen] = useState(false);
-    const watchedValues = useWatch({ control, name });
+    const watchedValues = useWatch({ control, name }) as { value: string }[] | undefined;
 
     const filteredFields = useMemo(() => {
         if (!searchTerm) return fields.map((field, index) => ({ ...field, originalIndex: index }));
         
         return fields
-            .map((field, index) => ({ ...field, originalIndex: index, value: watchedValues[index]?.value }))
+            .map((field, index) => ({ ...field, originalIndex: index, value: watchedValues?.[index]?.value }))
             .filter(field => field.value?.toLowerCase().includes(searchTerm.toLowerCase()));
     }, [fields, watchedValues, searchTerm]);
 
@@ -105,43 +108,47 @@ const ListManager = ({ name, title, fields, append, remove, control }: { name: s
 
 
     return (
-        <div className="space-y-2 rounded-md border p-4">
-            <h3 className="font-medium">{title}</h3>
-            <div className="flex justify-between items-center mb-4 gap-2">
-                 <Input 
-                    placeholder="Szukaj..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="h-9"
-                />
-                <Button type="button" variant="outline" size="sm" onClick={() => setIsAddMultipleOpen(true)} className="shrink-0">
-                    <PlusCircle className="mr-2 h-4 w-4" /> Dodaj
-                </Button>
-            </div>
-            {filteredFields.map((field) => (
-                <FormField
-                    key={field.id}
-                    name={`${name}.${field.originalIndex}.value`}
-                    render={({ field: formField }) => (
-                        <FormItem className="flex items-center gap-2">
-                            <FormControl>
-                                <Input {...formField} />
-                            </FormControl>
-                            <Button type="button" variant="ghost" size="icon" onClick={() => remove(field.originalIndex)}>
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                        </FormItem>
-                    )}
-                />
-            ))}
-            {filteredFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Brak pozycji pasujących do wyszukiwania.</p>}
-             <AddMultipleDialog 
-                open={isAddMultipleOpen}
-                onOpenChange={setIsAddMultipleOpen}
-                listTitle={title}
-                onAdd={handleAddMultiple}
-            />
-        </div>
+        <AccordionItem value={name} className="border rounded-md px-4">
+            <AccordionTrigger>{title}</AccordionTrigger>
+            <AccordionContent>
+                <div className="space-y-2 pt-2">
+                    <div className="flex justify-between items-center mb-4 gap-2">
+                        <Input
+                            placeholder="Szukaj..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="h-9"
+                        />
+                        <Button type="button" variant="outline" size="sm" onClick={() => setIsAddMultipleOpen(true)} className="shrink-0">
+                            <PlusCircle className="mr-2 h-4 w-4" /> Dodaj
+                        </Button>
+                    </div>
+                    {filteredFields.map((field) => (
+                        <FormField
+                            key={field.id}
+                            name={`${name}.${field.originalIndex}.value`}
+                            render={({ field: formField }) => (
+                                <FormItem className="flex items-center gap-2">
+                                    <FormControl>
+                                        <Input {...formField} />
+                                    </FormControl>
+                                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(field.originalIndex)}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </FormItem>
+                            )}
+                        />
+                    ))}
+                    {filteredFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Brak pozycji pasujących do wyszukiwania.</p>}
+                    <AddMultipleDialog
+                        open={isAddMultipleOpen}
+                        onOpenChange={setIsAddMultipleOpen}
+                        listTitle={title}
+                        onAdd={handleAddMultiple}
+                    />
+                </div>
+            </AccordionContent>
+        </AccordionItem>
     );
 };
 
@@ -358,7 +365,9 @@ const CoordinatorManager = ({ form, fields, append, remove, departments, rawSett
     );
 };
 
-const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove, onAdd, allEmployees, allNonEmployees }: { addresses: Address[]; coordinators: Coordinator[]; localities: string[]; onEdit: (address: Address) => void; onRemove: (addressId: string) => void; onAdd: (coordinatorId: string) => void; allEmployees: any[], allNonEmployees: any[] }) => {
+type Occupant = { status: string; address?: string | null };
+
+const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove, onAdd, allEmployees, allNonEmployees }: { addresses: Address[]; coordinators: Coordinator[]; localities: string[]; onEdit: (address: Address) => void; onRemove: (addressId: string) => void; onAdd: (coordinatorId: string) => void; allEmployees: Occupant[]; allNonEmployees: Occupant[] }) => {
     const [filterCoordinatorId, setFilterCoordinatorId] = useState('all');
     const [filterLocality, setFilterLocality] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
@@ -555,7 +564,7 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
     const [deleteDepartment, setDeleteDepartment] = useState('');
 
     const { toast } = useToast();
-    const { handleBulkDeleteEmployeesByDepartment } = useMainLayout();
+    const { handleBulkDeleteEmployeesByDepartment, handleBulkDeleteEmployees, handleBulkDeleteEmployeesByCoordinator, refreshData } = useMainLayout();
     
     const sortedCoordinators = useMemo(() => {
       if (!rawSettings?.coordinators) return [];
@@ -576,15 +585,10 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
         if(status === 'active') setIsDeletingActive(true);
         else setIsDeletingDismissed(true);
 
-        try {
-            await bulkDeleteEmployees(status, currentUser.uid);
-            toast({ title: "Sukces", description: `Wszyscy ${status === 'active' ? 'aktywni' : 'zwolnieni'} pracownicy zostali usunięci.` });
-        } catch(e) {
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć pracowników." });
-        } finally {
-            if(status === 'active') setIsDeletingActive(false);
-            else setIsDeletingDismissed(false);
-        }
+        await handleBulkDeleteEmployees('employee', status);
+        
+        if(status === 'active') setIsDeletingActive(false);
+        else setIsDeletingDismissed(false);
     };
 
     const handleCoordinatorDelete = async () => {
@@ -593,15 +597,11 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
             return;
         }
         setIsDeletingByCoord(true);
-        try {
-            await bulkDeleteEmployeesByCoordinator(deleteCoordinatorId, currentUser.uid);
-            toast({ title: "Sukces", description: `Wszyscy pracownicy wybranego koordynatora zostali usunięci.` });
+        const success = await handleBulkDeleteEmployeesByCoordinator(deleteCoordinatorId);
+        if (success) {
             setDeleteCoordinatorId('');
-        } catch(e) {
-             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć pracowników." });
-        } finally {
-            setIsDeletingByCoord(false);
         }
+        setIsDeletingByCoord(false);
     };
 
     const handleDepartmentDelete = async () => {
@@ -630,6 +630,7 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
         try {
             await transferEmployees(transferFrom, transferTo);
             toast({ title: "Sukces", description: "Pracownicy zostali przeniesieni." });
+            await refreshData(false);
         } catch (e) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się przenieść pracowników." });
         } finally {
@@ -1039,18 +1040,18 @@ const ExcelImportGuideDialog = ({
     );
 };
 
-const ExcelImport = ({ onImport, title, description, requiredFields, optionalFields, isLoading }: { 
-    onImport: (fileContent: string) => Promise<void>; 
-    title: string; 
-    description: string; 
+const ExcelImport = ({ onImport, title, description, requiredFields, optionalFields, isLoading }: {
+    onImport: (fileContent: string) => Promise<void>;
+    title: string;
+    description: string;
     requiredFields: string[];
     optionalFields: string[];
-    isLoading: boolean; 
+    isLoading: boolean;
 }) => {
-    const fileInputRef = React.useRef<HTMLInputElement>(null);
-    const [isGuideOpen, setIsGuideOpen] = React.useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isGuideOpen, setIsGuideOpen] = useState(false);
 
-    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
 
@@ -1125,6 +1126,9 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
             localities: rawSettings.localities.map(l => ({ value: l })).sort((a, b) => a.value.localeCompare(b.value)),
             paymentTypesNZ: rawSettings.paymentTypesNZ.map(p => ({ value: p })).sort((a, b) => a.value.localeCompare(b.value)),
             statuses: rawSettings.statuses.map(s => ({ value: s })).sort((a, b) => a.value.localeCompare(b.value)),
+            bokRoles: (rawSettings.bokRoles || []).map(r => ({ value: r })).sort((a, b) => a.value.localeCompare(b.value)),
+            bokReturnOptions: (rawSettings.bokReturnOptions || []).map(r => ({ value: r })).sort((a, b) => a.value.localeCompare(b.value)),
+            bokStatuses: (rawSettings.bokStatuses || []).map(s => ({ value: s })).sort((a, b) => a.value.localeCompare(b.value)),
             addresses: [...rawSettings.addresses].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
             coordinators: [...rawSettings.coordinators].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
         },
@@ -1138,6 +1142,9 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
             localities: rawSettings.localities.map(l => ({ value: l })).sort((a, b) => a.value.localeCompare(b.value)),
             paymentTypesNZ: rawSettings.paymentTypesNZ.map(p => ({ value: p })).sort((a, b) => a.value.localeCompare(b.value)),
             statuses: rawSettings.statuses.map(s => ({ value: s })).sort((a, b) => a.value.localeCompare(b.value)),
+            bokRoles: (rawSettings.bokRoles || []).map(r => ({ value: r })).sort((a, b) => a.value.localeCompare(b.value)),
+            bokReturnOptions: (rawSettings.bokReturnOptions || []).map(r => ({ value: r })).sort((a, b) => a.value.localeCompare(b.value)),
+            bokStatuses: (rawSettings.bokStatuses || []).map(s => ({ value: s })).sort((a, b) => a.value.localeCompare(b.value)),
             addresses: [...rawSettings.addresses].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
             coordinators: [...rawSettings.coordinators].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
         });
@@ -1149,6 +1156,9 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
     const { fields: locFields, append: appendLoc, remove: removeLoc } = useFieldArray({ control: form.control, name: 'localities' });
     const { fields: paymentNzFields, append: appendPaymentNz, remove: removePaymentNz } = useFieldArray({ control: form.control, name: 'paymentTypesNZ' });
     const { fields: statusFields, append: appendStatus, remove: removeStatus } = useFieldArray({ control: form.control, name: 'statuses' });
+    const { fields: bokRoleFields, append: appendBokRole, remove: removeBokRole } = useFieldArray({ control: form.control, name: 'bokRoles' });
+    const { fields: bokReturnOptionFields, append: appendBokReturnOption, remove: removeBokReturnOption } = useFieldArray({ control: form.control, name: 'bokReturnOptions' });
+    const { fields: bokStatusFields, append: appendBokStatus, remove: removeBokStatus } = useFieldArray({ control: form.control, name: 'bokStatuses' });
     const { fields: coordFields, append: appendCoord, remove: removeCoord } = useFieldArray({ control: form.control, name: 'coordinators' });
     const { remove: removeAddr } = useFieldArray({ control: form.control, name: 'addresses' });
 
@@ -1165,6 +1175,9 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
             localities: values.localities.map((l) => l.value).sort((a, b) => a.localeCompare(b)),
             paymentTypesNZ: values.paymentTypesNZ.map((p) => p.value).sort((a, b) => a.localeCompare(b)),
             statuses: values.statuses.map((s) => s.value).sort((a, b) => a.localeCompare(b)),
+            bokRoles: values.bokRoles.map((s) => s.value).sort((a, b) => a.localeCompare(b)),
+            bokReturnOptions: values.bokReturnOptions.map((s) => s.value).sort((a, b) => a.localeCompare(b)),
+            bokStatuses: values.bokStatuses.map((s) => s.value).sort((a, b) => a.localeCompare(b)),
             addresses: values.addresses,
             coordinators: values.coordinators.sort((a,b) => a.name.localeCompare(b.name)),
         };
@@ -1229,13 +1242,20 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
                         <Accordion type="single" collapsible className="w-full">
                             <AccordionItem value="lists">
                                 <AccordionTrigger>Zarządzanie listami</AccordionTrigger>
-                                <AccordionContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 p-2">
-                                    <ListManager name="nationalities" title="Narodowości" fields={natFields} append={appendNat} remove={removeNat} control={form.control} />
-                                    <ListManager name="departments" title="Zakłady" fields={depFields} append={appendDep} remove={removeDep} control={form.control} />
-                                    <ListManager name="genders" title="Płcie" fields={genFields} append={appendGen} remove={removeGen} control={form.control} />
-                                    <ListManager name="localities" title="Miejscowości" fields={locFields} append={appendLoc} remove={removeLoc} control={form.control} />
-                                    <ListManager name="paymentTypesNZ" title="Rodzaje płatności NZ" fields={paymentNzFields} append={appendPaymentNz} remove={removePaymentNz} control={form.control} />
-                                    <ListManager name="statuses" title="Statusy" fields={statusFields} append={appendStatus} remove={removeStatus} control={form.control} />
+                                <AccordionContent className="p-2">
+                                    <Accordion type="multiple" className="w-full space-y-2">
+                                        <ListManager name="nationalities" title="Narodowości" fields={natFields} append={appendNat} remove={removeNat} control={form.control} />
+                                        <ListManager name="departments" title="Zakłady" fields={depFields} append={appendDep} remove={removeDep} control={form.control} />
+                                        <ListManager name="genders" title="Płcie" fields={genFields} append={appendGen} remove={removeGen} control={form.control} />
+                                        <ListManager name="localities" title="Miejscowości" fields={locFields} append={appendLoc} remove={removeLoc} control={form.control} />
+                                        <ListManager name="paymentTypesNZ" title="Rodzaje płatności NZ" fields={paymentNzFields} append={appendPaymentNz} remove={removePaymentNz} control={form.control} />
+                                        <ListManager name="statuses" title="Statusy" fields={statusFields} append={appendStatus} remove={removeStatus} control={form.control} />
+                                        <div className="py-2"><div className="border-t"></div></div>
+                                        <p className="text-sm font-semibold text-muted-foreground mb-2">Ustawienia BOK</p>
+                                        <ListManager name="bokRoles" title="Kierowcy BOK" fields={bokRoleFields} append={appendBokRole} remove={removeBokRole} control={form.control} />
+                                        <ListManager name="bokReturnOptions" title="Opcje Powrotu BOK" fields={bokReturnOptionFields} append={appendBokReturnOption} remove={removeBokReturnOption} control={form.control} />
+                                        <ListManager name="bokStatuses" title="Statusy BOK" fields={bokStatusFields} append={appendBokStatus} remove={removeBokStatus} control={form.control} />
+                                    </Accordion>
                                 </AccordionContent>
                             </AccordionItem>
                             <AccordionItem value="coordinators">
@@ -1297,7 +1317,7 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     const [isEmployeeImportLoading, setIsEmployeeImportLoading] = useState(false);
     const [isNonEmployeeImportLoading, setIsNonEmployeeImportLoading] = useState(false);
   
-    const fetchRawSettings = React.useCallback(async () => {
+    const fetchRawSettings = useCallback(async () => {
          if (currentUser.isAdmin) {
             try {
                 const settings = await getOnlySettings();

@@ -1,0 +1,141 @@
+"use client";
+
+import { useState, useEffect, useCallback } from 'react';
+import { useMainLayout } from '@/components/main-layout';
+import { messaging } from '@/lib/firebase';
+import { getToken, deleteToken } from 'firebase/messaging';
+import { useToast } from '@/hooks/use-toast';
+
+export const usePushSubscription = () => {
+    const { toast } = useToast();
+    const {
+        currentUser,
+        handleUpdateCoordinatorSubscription,
+        pushSubscription,
+        setPushSubscription,
+        settings,
+    } = useMainLayout();
+
+    const [isSubscribing, setIsSubscribing] = useState(false);
+    const [isUnsubscribing, setIsUnsubscribing] = useState(false);
+
+    useEffect(() => {
+        const messagingInstance = messaging;
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted' && messagingInstance) {
+             const checkToken = async () => {
+                 try {
+                     if ('serviceWorker' in navigator) {
+                        const registration = await navigator.serviceWorker.ready;
+                        const currentToken = await getToken(messagingInstance, {
+                            vapidKey: process.env.NEXT_PUBLIC_WEBPUSH_PUBLIC_KEY,
+                            serviceWorkerRegistration: registration
+                        });
+                        if (currentToken) {
+                            setPushSubscription(currentToken);
+                            
+                            if (currentUser && settings) {
+                                const coordinator = settings.coordinators.find(c => c.uid === currentUser.uid);
+                                if (coordinator && coordinator.pushSubscription !== currentToken) {
+                                    handleUpdateCoordinatorSubscription(currentToken);
+                                }
+                            }
+                        }
+                    }
+                 } catch (e) {
+                     // ignore
+                 }
+             };
+             checkToken();
+        }
+    }, [setPushSubscription, currentUser, settings, handleUpdateCoordinatorSubscription]);
+
+    const subscribe = useCallback(async () => {
+        if (!process.env.NEXT_PUBLIC_WEBPUSH_PUBLIC_KEY) {
+            toast({
+                variant: 'destructive',
+                title: 'Błąd konfiguracji',
+                description: 'Klucz publiczny Web Push nie jest skonfigurowany.',
+            });
+            return;
+        }
+
+        setIsSubscribing(true);
+        try {
+            const messagingInstance = messaging;
+            if (!messagingInstance) {
+                throw new Error("Firebase Messaging not supported");
+            }
+            
+            if (!('Notification' in window)) {
+                throw new Error("Notifications not supported");
+            }
+
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+                throw new Error("Permission denied");
+            }
+
+            const registration = await navigator.serviceWorker.ready;
+            const token = await getToken(messagingInstance, {
+                vapidKey: process.env.NEXT_PUBLIC_WEBPUSH_PUBLIC_KEY,
+                serviceWorkerRegistration: registration
+            });
+
+            if (token) {
+                await handleUpdateCoordinatorSubscription(token);
+                setPushSubscription(token);
+                toast({
+                    title: 'Sukces!',
+                    description: 'Powiadomienia push zostały włączone.',
+                });
+            } else {
+                throw new Error("No token received");
+            }
+        } catch (error) {
+            console.error('Failed to subscribe:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Błąd',
+                description: 'Nie udało się włączyć powiadomień. Sprawdź uprawnienia w przeglądarce.',
+            });
+        } finally {
+            setIsSubscribing(false);
+        }
+    }, [toast, handleUpdateCoordinatorSubscription, setPushSubscription]);
+
+    const unsubscribe = useCallback(async () => {
+        setIsUnsubscribing(true);
+        try {
+            const messagingInstance = messaging;
+            if (messagingInstance) {
+                await deleteToken(messagingInstance);
+            }
+            await handleUpdateCoordinatorSubscription(null);
+            setPushSubscription(null);
+            toast({
+                title: 'Sukces!',
+                description: 'Powiadomienia push zostały wyłączone.',
+            });
+        } catch (error) {
+            console.error('Failed to unsubscribe:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Błąd',
+                description: 'Nie udało się wyłączyć powiadomień.',
+            });
+        } finally {
+            setIsUnsubscribing(false);
+        }
+    }, [toast, handleUpdateCoordinatorSubscription, setPushSubscription]);
+
+    const isSupported = typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window;
+
+    return {
+        pushSubscription,
+        subscribe,
+        unsubscribe,
+        isSubscribing,
+        isUnsubscribing,
+        isSupported
+    };
+};

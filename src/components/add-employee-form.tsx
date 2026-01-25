@@ -134,6 +134,11 @@ const parseDate = (dateString: string | null | undefined): Date | undefined => {
     return isValid(date) ? date : undefined;
 };
 
+const formatDate = (date: Date | null | undefined): string | null => {
+    if (!date) return null;
+    return format(date, 'yyyy-MM-dd');
+}
+
 const DateInput = ({
   value,
   onChange,
@@ -223,13 +228,15 @@ export function AddEmployeeForm({
   onSave,
   settings,
   employee,
-  currentUser
+  currentUser,
+  initialData
 }: {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onSave: (data: EmployeeFormData) => void;
   settings: Settings;
   employee: Employee | null;
+  initialData?: Partial<EmployeeFormData>;
   currentUser: SessionData;
 }) {
   const { toast } = useToast();
@@ -356,15 +363,15 @@ export function AddEmployeeForm({
         });
     } else {
         form.reset({
-          firstName: '',
-          lastName: '',
-          coordinatorId: currentUser.isAdmin ? '' : currentUser.uid,
+          firstName: initialData?.firstName ?? '',
+          lastName: initialData?.lastName ?? '',
+          coordinatorId: currentUser.isAdmin ? (initialData?.coordinatorId ?? '') : currentUser.uid,
           locality: '',
           address: '',
           ownAddress: '',
           roomNumber: '',
-          zaklad: '',
-          nationality: '',
+          zaklad: initialData?.zaklad ?? '',
+          nationality: initialData?.nationality ?? '',
           gender: '',
           checkInDate: new Date(),
           checkOutDate: null,
@@ -386,7 +393,7 @@ export function AddEmployeeForm({
           deductionEntryDate: null,
         });
     }
-  }, [employee, isOpen, form, settings, currentUser]);
+  }, [employee, isOpen, form, settings, currentUser, initialData]);
 
   const handleOpenCamera = async () => {
     setIsCameraOpen(true);
@@ -442,11 +449,7 @@ export function AddEmployeeForm({
         }
     }
 
-    const formatDate = (date: Date | null | undefined): string | null => {
-        if (!date) return null;
-        return format(date, 'yyyy-MM-dd');
-    }
-
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { locality: _, ...restOfValues } = values;
 
     const formData: EmployeeFormData = {
@@ -503,10 +506,8 @@ export function AddEmployeeForm({
     
     // update the checkout date first
     const values = form.getValues();
-     const formatDate = (date: Date | null | undefined): string | null => {
-        if (!date) return null;
-        return format(date, 'yyyy-MM-dd');
-    }
+    
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { locality: _, ...restOfValues } = values;
      const formData: EmployeeFormData = {
         ...restOfValues,
@@ -932,6 +933,7 @@ export function AddEmployeeForm({
                                             >
                                                 <FormControl>
                                                     <Checkbox
+                                                        id={reason.id}
                                                         checked={field.value}
                                                         onCheckedChange={(checked) => {
                                                             field.onChange(checked)

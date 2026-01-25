@@ -2,12 +2,12 @@
 "use client"
 import React, { useState, useMemo, useTransition } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import type { Employee, Settings, NonEmployee, SessionData, AddressHistory } from '@/types';
+import type { Employee, Settings, NonEmployee, SessionData, AddressHistory, BokResident } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, PlusCircle, SlidersHorizontal, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, X, Users, UserX, LayoutGrid, List, Trash2, ArrowUp, ArrowDown, History } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, SlidersHorizontal, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, X, Users, UserX, LayoutGrid, List, Trash2, ArrowUp, ArrowDown, History, Briefcase } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format, parseISO } from 'date-fns';
@@ -35,25 +35,24 @@ const formatDate = (dateString?: string | null) => {
     }
 }
 
-type Entity = Employee | NonEmployee;
+type Entity = Employee | NonEmployee | BokResident;
 type SortableField = 'lastName' | 'firstName' | 'coordinatorId' | 'address' | 'roomNumber' | 'checkInDate' | 'checkOutDate' | 'coordinatorName' | 'department';
 
 
-const isEmployee = (entity: Entity): entity is Employee => 'zaklad' in entity;
+const isBokResident = (entity: Entity): entity is BokResident => 'role' in entity;
+const isEmployee = (entity: Entity): entity is Employee => 'zaklad' in entity && !('role' in entity);
 
 const EntityActions = ({
   entity,
   onEdit,
-  onDismiss,
   onRestore,
   onPermanentDelete,
   isDismissed,
 }: {
   entity: Entity;
   onEdit: (entity: Entity) => void;
-  onDismiss?: (id: string) => void;
   onRestore?: (entity: Entity) => void;
-  onPermanentDelete: (id: string, type: 'employee' | 'non-employee') => void;
+  onPermanentDelete: (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => void;
   isDismissed: boolean;
 }) => {
   return (
@@ -92,7 +91,7 @@ const EntityActions = ({
                         <AlertDialogCancel>Anuluj</AlertDialogCancel>
                         <AlertDialogAction
                             className="bg-destructive hover:bg-destructive/90"
-                             onClick={() => onPermanentDelete(entity.id, isEmployee(entity) ? 'employee' : 'non-employee')}
+                             onClick={() => onPermanentDelete(entity.id, isBokResident(entity) ? 'bok-resident' : (isEmployee(entity) ? 'employee' : 'non-employee'))}
                         >
                             Potwierdź i usuń
                         </AlertDialogAction>
@@ -162,7 +161,7 @@ const SortableHeader = ({
   );
 };
 
-const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, settings, onPermanentDelete, onSort, sortBy, sortOrder }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onDismiss?: (id: string) => void; onRestore?: (entity: Entity) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee') => void; onSort: (field: SortableField) => void; sortBy: SortableField | null; sortOrder: 'asc' | 'desc'; }) => {
+const EntityTable = ({ entities, onEdit, onRestore, isDismissed, settings, onPermanentDelete, onSort, sortBy, sortOrder }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onRestore?: (entity: Entity) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => void; onSort: (field: SortableField) => void; sortBy: SortableField | null; sortOrder: 'asc' | 'desc'; }) => {
   const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
   
   return (
@@ -187,11 +186,15 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
                 <TableRow key={entity.id} onClick={() => onEdit(entity)} className="cursor-pointer">
                   <TableCell className="font-medium">{entity.lastName}</TableCell>
                   <TableCell className="font-medium">{entity.firstName}</TableCell>
-                  <TableCell>{isEmployee(entity) ? "Pracownik" : "Mieszkaniec (NZ)"}</TableCell>
+                  <TableCell>
+                      {isBokResident(entity)
+                        ? `BOK (${entity.role})`
+                        : (isEmployee(entity) ? "Pracownik" : "Mieszkaniec (NZ)")}
+                  </TableCell>
                   <TableCell>{getCoordinatorName(entity.coordinatorId)}</TableCell>
                   <TableCell>
-                      {isEmployee(entity) && entity.address?.toLowerCase().startsWith('własne mieszkanie') 
-                          ? `Własne (${entity.ownAddress || 'Brak danych'})` 
+                      {isEmployee(entity) && entity.address?.toLowerCase().startsWith('własne mieszkanie')
+                          ? `Własne (${entity.ownAddress || 'Brak danych'})`
                           : entity.address
                       }
                   </TableCell>
@@ -199,7 +202,7 @@ const EntityTable = ({ entities, onEdit, onDismiss, onRestore, isDismissed, sett
                   <TableCell>{formatDate(entity.checkInDate)}</TableCell>
                   <TableCell>{formatDate(entity.checkOutDate)}</TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
-                    <EntityActions {...{ entity, onEdit, onDismiss, onRestore, onPermanentDelete, isDismissed }} />
+                    <EntityActions {...{ entity, onEdit, onRestore, onPermanentDelete, isDismissed }} />
                   </TableCell>
                 </TableRow>
               ))
@@ -280,16 +283,16 @@ const HistoryTable = ({ history, onSort, sortBy, sortOrder, onDelete }: { histor
   );
 };
 
-const EntityCardList = ({ entities, onEdit, onDismiss, onRestore, isDismissed, settings, onPermanentDelete }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onDismiss?: (id: string) => void; onRestore?: (entity: Entity) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee') => void; }) => {
+const EntityCardList = ({ entities, onEdit, onRestore, isDismissed, settings, onPermanentDelete }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onRestore?: (entity: Entity) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => void; }) => {
     const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
     
     return (
         <div className="space-y-4">
              {entities.length > 0 ? (
                 entities.map((entity, index) => (
-                    <Card 
-                        key={entity.id} 
-                        onClick={() => onEdit(entity)} 
+                    <Card
+                        key={entity.id}
+                        onClick={() => onEdit(entity)}
                         className="cursor-pointer animate-fade-in-up"
                         style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}
                     >
@@ -297,17 +300,17 @@ const EntityCardList = ({ entities, onEdit, onDismiss, onRestore, isDismissed, s
                            <div>
                              <CardTitle className="text-base">{`${entity.firstName} ${entity.lastName}`.trim()}</CardTitle>
                              <CardDescription>
-                                {isEmployee(entity) ? getCoordinatorName(entity.coordinatorId) : "Mieszkaniec (NZ)"}
+                                {isBokResident(entity) ? `BOK (${entity.role})` : (isEmployee(entity) ? getCoordinatorName(entity.coordinatorId) : "Mieszkaniec (NZ)")}
                              </CardDescription>
                            </div>
                            <div onClick={(e) => e.stopPropagation()}>
-                                <EntityActions {...{ entity, onEdit, onDismiss, onRestore, onPermanentDelete, isDismissed }} />
+                                <EntityActions {...{ entity, onEdit, onRestore, onPermanentDelete, isDismissed }} />
                            </div>
                         </CardHeader>
                         <CardContent className="text-sm space-y-2">
-                            <p><span className="font-semibold text-muted-foreground">Adres:</span> 
-                                {isEmployee(entity) && entity.address?.toLowerCase().startsWith('własne mieszkanie') 
-                                    ? ` ${entity.ownAddress || 'Własne mieszkanie (brak danych)'}` 
+                            <p><span className="font-semibold text-muted-foreground">Adres:</span>
+                                {isEmployee(entity) && entity.address?.toLowerCase().startsWith('własne mieszkanie')
+                                    ? ` ${entity.ownAddress || 'Własne mieszkanie (brak danych)'}`
                                     : ` ${entity.address}, pok. ${entity.roomNumber}`
                                 }
                             </p>
@@ -474,16 +477,18 @@ const ControlPanel = ({
     isFilterActive,
     onResetFilters,
     showAddButton,
+    isAdmin,
 }: {
     search: string;
     onSearch: (value: string) => void;
-    onAdd: (type: 'employee' | 'non-employee') => void;
+    onAdd: (type: 'employee' | 'non-employee' | 'bok-resident') => void;
     onFilter: () => void;
     onViewChange: (mode: 'list' | 'grid') => void;
     viewMode: 'list' | 'grid';
     isFilterActive: boolean;
     onResetFilters: () => void;
     showAddButton: boolean;
+    isAdmin: boolean;
 }) => {
     const { isMobile } = useIsMobile();
     return (
@@ -516,6 +521,7 @@ const ControlPanel = ({
                             <DropdownMenuContent>
                                 <DropdownMenuItem onClick={() => onAdd('employee')}>Dodaj pracownika</DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => onAdd('non-employee')}>Dodaj mieszkańca (NZ)</DropdownMenuItem>
+                                {isAdmin && <DropdownMenuItem onClick={() => onAdd('bok-resident')}>Dodaj mieszkańca BOK</DropdownMenuItem>}
                             </DropdownMenuContent>
                         </DropdownMenu>
                     )}
@@ -539,6 +545,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     const {
         allEmployees,
         allNonEmployees,
+        allBokResidents,
         addressHistory,
         settings,
         handleRestoreEmployee,
@@ -549,6 +556,9 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         handleAddEmployeeClick,
         handleAddNonEmployeeClick,
         handleDeleteNonEmployee,
+        handleAddBokResidentClick,
+        handleEditBokResidentClick,
+        handleDeleteBokResident,
         handleDeleteAddressHistory,
     } = useMainLayout();
 
@@ -558,7 +568,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     const [isPending, startTransition] = useTransition();
     const { isMobile, isMounted } = useIsMobile();
     
-    const tab = (searchParams.get('tab') as 'active' | 'dismissed' | 'non-employees' | 'history') || 'active';
+    const tab = (searchParams.get('tab') as 'active' | 'dismissed' | 'non-employees' | 'bok-residents' | 'history') || 'active';
     const page = Number(searchParams.get('page') || '1');
     const search = searchParams.get('search') || '';
     const viewMode = (searchParams.get('viewMode') as 'list' | 'grid') || (isMobile ? 'grid' : 'list');
@@ -570,6 +580,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
             case 'dismissed':
             case 'history':
             case 'non-employees':
+            case 'bok-residents':
                 return 'checkOutDate';
             default:
                 return 'lastName';
@@ -611,33 +622,34 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     }
 
     const filteredAndSortedData = useMemo(() => {
-        if (!allEmployees || !allNonEmployees || !addressHistory || !settings) return {};
+        if (!allEmployees || !allNonEmployees || !allBokResidents || !addressHistory || !settings) return {};
 
         const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
         
-        const filterAndSort = (dataToProcess: any[], isHistory: boolean = false) => {
+        const filterAndSort = <T extends Entity | AddressHistory>(dataToProcess: T[], isHistory: boolean = false): T[] => {
             const filtered = dataToProcess.filter(entity => {
-                const searchMatch = search === '' || 
-                    (entity.firstName && entity.firstName.toLowerCase().includes(search.toLowerCase())) ||
-                    (entity.lastName && entity.lastName.toLowerCase().includes(search.toLowerCase())) ||
-                    (isHistory && entity.employeeFirstName && entity.employeeFirstName.toLowerCase().includes(search.toLowerCase())) ||
-                    (isHistory && entity.employeeLastName && entity.employeeLastName.toLowerCase().includes(search.toLowerCase()));
+                const searchMatch = search === '' ||
+                    ('firstName' in entity && entity.firstName && entity.firstName.toLowerCase().includes(search.toLowerCase())) ||
+                    ('lastName' in entity && entity.lastName && entity.lastName.toLowerCase().includes(search.toLowerCase())) ||
+                    (isHistory && 'employeeFirstName' in entity && entity.employeeFirstName && entity.employeeFirstName.toLowerCase().includes(search.toLowerCase())) ||
+                    (isHistory && 'employeeLastName' in entity && entity.employeeLastName && entity.employeeLastName.toLowerCase().includes(search.toLowerCase()));
 
                 if (!searchMatch) return false;
     
                 const coordinatorMatch = filters.coordinator === 'all' || ('coordinatorId' in entity && entity.coordinatorId === filters.coordinator);
                 const addressMatch = filters.address === 'all' || ('address' in entity && entity.address === filters.address);
-                const departmentMatch = !('zaklad' in entity) || filters.department === 'all' || ('zaklad' in entity && entity.zaklad === filters.department);
-                const nationalityMatch = filters.nationality === 'all' || ('nationality' in entity && entity.nationality === filters.nationality);
+                // Modified department match to be permissive for entities without zaklad (like non-employees, unless they get it in future)
+                const departmentMatch = !('zaklad' in entity) || filters.department === 'all' || ('zaklad' in entity && (entity as Employee | BokResident).zaklad === filters.department);
+                const nationalityMatch = filters.nationality === 'all' || ('nationality' in entity && (entity as Entity).nationality === filters.nationality);
                 
                 return coordinatorMatch && addressMatch && departmentMatch && nationalityMatch;
             });
             
             return [...filtered].sort((a, b) => {
-                const aName = isHistory ? a.employeeLastName : a.lastName;
-                const bName = isHistory ? b.employeeLastName : b.lastName;
-                const aFirstName = isHistory ? a.employeeFirstName : a.firstName;
-                const bFirstName = isHistory ? b.employeeFirstName : b.firstName;
+                const aName = isHistory ? (a as unknown as AddressHistory).employeeLastName : (a as unknown as Entity).lastName;
+                const bName = isHistory ? (b as unknown as AddressHistory).employeeLastName : (b as unknown as Entity).lastName;
+                const aFirstName = isHistory ? (a as unknown as AddressHistory).employeeFirstName : (a as unknown as Entity).firstName;
+                const bFirstName = isHistory ? (b as unknown as AddressHistory).employeeFirstName : (b as unknown as Entity).firstName;
                 
                 if (sortBy === 'lastName') {
                     const lastNameCompare = (aName || '').localeCompare(bName || '', 'pl');
@@ -658,8 +670,8 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                      valA = getCoordinatorName(a.coordinatorId);
                      valB = getCoordinatorName(b.coordinatorId);
                 } else {
-                    valA = (a as any)[sortBy];
-                    valB = (b as any)[sortBy];
+                    valA = (a as { [K in SortableField]?: string | number | null })[sortBy];
+                    valB = (b as { [K in SortableField]?: string | number | null })[sortBy];
                 }
     
                 if (valA === null || valA === undefined) return 1;
@@ -677,6 +689,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         
         const filteredEmployees = filterAndSort(allEmployees);
         const filteredNonEmployees = filterAndSort(allNonEmployees);
+        const filteredBokResidents = filterAndSort(allBokResidents);
         const filteredHistory = filterAndSort(addressHistory, true);
 
         return {
@@ -684,16 +697,18 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
             dismissedEmployees: filteredEmployees.filter(e => e.status === 'dismissed'),
             activeNonEmployees: filteredNonEmployees.filter(ne => ne.status !== 'dismissed'),
             dismissedNonEmployees: filteredNonEmployees.filter(ne => ne.status === 'dismissed'),
+            bokResidents: filteredBokResidents, // Show all BOK residents in their tab, filtering by status inside component if needed
             history: filteredHistory,
         }
 
-    }, [allEmployees, allNonEmployees, addressHistory, settings, search, filters, sortBy, sortOrder]);
+    }, [allEmployees, allNonEmployees, allBokResidents, addressHistory, settings, search, filters, sortBy, sortOrder]);
 
 
     const dataMap = useMemo(() => ({
         active: filteredAndSortedData.activeEmployees || [],
         dismissed: [...(filteredAndSortedData.dismissedEmployees || []), ...(filteredAndSortedData.dismissedNonEmployees || [])],
         'non-employees': filteredAndSortedData.activeNonEmployees || [],
+        'bok-residents': filteredAndSortedData.bokResidents || [],
         history: filteredAndSortedData.history || [],
     }), [filteredAndSortedData]);
 
@@ -708,7 +723,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
 
     const isFilterActive = Object.values(filters).some(v => v !== 'all') || search !== '';
 
-    if (!settings || !allEmployees || !allNonEmployees || !addressHistory) {
+    if (!settings || !allEmployees || !allNonEmployees || !allBokResidents || !addressHistory) {
         return (
             <Card>
                 <CardHeader>
@@ -733,25 +748,31 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         }
     };
 
-    const handlePermanentDelete = async (id: string, type: 'employee' | 'non-employee') => {
+    const handlePermanentDelete = async (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => {
         if (type === 'employee') {
             await handleDeleteEmployee(id, currentUser.uid);
+        } else if (type === 'bok-resident') {
+            await handleDeleteBokResident(id, currentUser.uid);
         } else {
             await handleDeleteNonEmployee(id, currentUser.uid);
         }
     };
 
     const handleEdit = (entity: Entity) => {
-        if(isEmployee(entity)) {
+        if(isBokResident(entity)) {
+            handleEditBokResidentClick(entity);
+        } else if(isEmployee(entity)) {
             handleEditEmployeeClick(entity);
         } else {
             handleEditNonEmployeeClick(entity as NonEmployee);
         }
     }
 
-    const handleAdd = (type: 'employee' | 'non-employee') => {
+    const handleAdd = (type: 'employee' | 'non-employee' | 'bok-resident') => {
         if (type === 'non-employee') {
             handleAddNonEmployeeClick();
+        } else if (type === 'bok-resident') {
+            handleAddBokResidentClick();
         } else {
             handleAddEmployeeClick();
         }
@@ -818,12 +839,12 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         </>
     );
 
-    const tabsGridClass = cn("grid w-full", currentUser.isAdmin ? "grid-cols-4" : "grid-cols-3");
+    const tabsGridClass = cn("grid w-full", currentUser.isAdmin ? "grid-cols-5" : "grid-cols-3");
 
     return (
         <Card>
             <CardHeader>
-                <ControlPanel 
+                <ControlPanel
                     search={search}
                     onSearch={(val) => updateSearchParams({ search: val, page: 1 })}
                     onAdd={handleAdd}
@@ -833,6 +854,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                     isFilterActive={isFilterActive}
                     onResetFilters={() => updateSearchParams({ search: '', page: 1, coordinator: '', address: '', department: '', nationality: ''})}
                     showAddButton={tab !== 'history'}
+                    isAdmin={currentUser.isAdmin}
                 />
             </CardHeader>
             <CardContent>
@@ -848,6 +870,11 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                             <UserX className="mr-2 h-4 w-4" />NZ ({dataMap['non-employees'].length})
                         </TabsTrigger>
                         {currentUser.isAdmin && (
+                            <TabsTrigger value="bok-residents" disabled={isPending}>
+                                <Briefcase className="mr-2 h-4 w-4" />BOK ({dataMap['bok-residents'].length})
+                            </TabsTrigger>
+                        )}
+                        {currentUser.isAdmin && (
                             <TabsTrigger value="history" disabled={isPending}>
                                 <History className="mr-2 h-4 w-4" />Historia Adresów ({dataMap.history.length})
                             </TabsTrigger>
@@ -856,6 +883,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                     <TabsContent value="active" className="mt-4">{renderContent(paginatedData as Entity[])}</TabsContent>
                     <TabsContent value="dismissed" className="mt-4">{renderContent(paginatedData as Entity[])}</TabsContent>
                     <TabsContent value="non-employees" className="mt-4">{renderContent(paginatedData as Entity[])}</TabsContent>
+                    {currentUser.isAdmin && <TabsContent value="bok-residents" className="mt-4">{renderContent(paginatedData as Entity[])}</TabsContent>}
                     {currentUser.isAdmin && <TabsContent value="history" className="mt-4">{renderHistoryContent()}</TabsContent>}
                 </Tabs>
             </CardContent>

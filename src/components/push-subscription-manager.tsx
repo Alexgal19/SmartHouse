@@ -1,110 +1,26 @@
-
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { BellRing, Loader2 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 import { useMainLayout } from './main-layout';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-
-const urlBase64ToUint8Array = (base64String: string) => {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding)
-        .replace(/\-/g, '+')
-        .replace(/_/g, '/');
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
-};
+import { usePushSubscription } from '@/hooks/use-push-subscription';
 
 export const PushSubscriptionManager = () => {
-    const { toast } = useToast();
-    const { 
-        currentUser, 
-        handleUpdateCoordinatorSubscription,
+    const { currentUser } = useMainLayout();
+    const {
         pushSubscription,
-        setPushSubscription,
-    } = useMainLayout();
-
-    const [isSubscribing, setIsSubscribing] = useState(false);
-    const [isUnsubscribing, setIsUnsubscribing] = useState(false);
-
-    useEffect(() => {
-        if ('serviceWorker' in navigator && 'PushManager' in window) {
-            navigator.serviceWorker.ready.then(registration => {
-                registration.pushManager.getSubscription().then(subscription => {
-                    setPushSubscription(subscription);
-                });
-            });
-        }
-    }, [setPushSubscription]);
-
-    const handleSubscribe = useCallback(async () => {
-        if (!process.env.NEXT_PUBLIC_WEBPUSH_PUBLIC_KEY) {
-            toast({
-                variant: 'destructive',
-                title: 'Błąd konfiguracji',
-                description: 'Klucz publiczny Web Push nie jest skonfigurowany.',
-            });
-            return;
-        }
-
-        setIsSubscribing(true);
-        try {
-            const registration = await navigator.serviceWorker.ready;
-            const subscription = await registration.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_WEBPUSH_PUBLIC_KEY),
-            });
-            await handleUpdateCoordinatorSubscription(subscription);
-            setPushSubscription(subscription);
-            toast({
-                title: 'Sukces!',
-                description: 'Powiadomienia push zostały włączone.',
-            });
-        } catch (error) {
-            console.error('Failed to subscribe:', error);
-            toast({
-                variant: 'destructive',
-                title: 'Błąd',
-                description: 'Nie udało się włączyć powiadomień. Sprawdź uprawnienia w przeglądarce.',
-            });
-        } finally {
-            setIsSubscribing(false);
-        }
-    }, [toast, handleUpdateCoordinatorSubscription, setPushSubscription]);
-
-    const handleUnsubscribe = useCallback(async () => {
-        if (!pushSubscription) return;
-
-        setIsUnsubscribing(true);
-        try {
-            await pushSubscription.unsubscribe();
-            await handleUpdateCoordinatorSubscription(null);
-            setPushSubscription(null);
-            toast({
-                title: 'Sukces!',
-                description: 'Powiadomienia push zostały wyłączone.',
-            });
-        } catch (error) {
-            console.error('Failed to unsubscribe:', error);
-            toast({
-                variant: 'destructive',
-                title: 'Błąd',
-                description: 'Nie udało się wyłączyć powiadomień.',
-            });
-        } finally {
-            setIsUnsubscribing(false);
-        }
-    }, [pushSubscription, toast, handleUpdateCoordinatorSubscription, setPushSubscription]);
+        subscribe,
+        unsubscribe,
+        isSubscribing,
+        isUnsubscribing,
+        isSupported
+    } = usePushSubscription();
 
     if (!currentUser) return null;
-    if (!('serviceWorker' in navigator && 'PushManager' in window)) return null;
+    if (!isSupported) return null;
 
     return (
         <Popover>
@@ -140,7 +56,7 @@ export const PushSubscriptionManager = () => {
                         <Button 
                             variant="destructive" 
                             className="w-full"
-                            onClick={handleUnsubscribe}
+                            onClick={unsubscribe}
                             disabled={isUnsubscribing}
                         >
                             {isUnsubscribing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
@@ -149,7 +65,7 @@ export const PushSubscriptionManager = () => {
                     ) : (
                         <Button
                             className="w-full"
-                            onClick={handleSubscribe}
+                            onClick={subscribe}
                             disabled={isSubscribing}
                         >
                             {isSubscribing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}

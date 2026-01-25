@@ -1,26 +1,33 @@
 
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, NotificationType, Coordinator, AddressHistory } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, NotificationType, Coordinator, BokResident } from '../types';
 import { getSheet, getAllSheetsData, addAddressHistoryEntry as addHistoryToAction, updateAddressHistoryEntry as updateHistoryToAction, deleteAddressHistoryEntry as deleteHistoryFromSheet } from './sheets';
-import { format, isPast, isValid, getDaysInMonth, parseISO, differenceInDays, max, min, parse as dateFnsParse, lastDayOfMonth } from 'date-fns';
+import { format, isValid, getDaysInMonth, parseISO, differenceInDays, max, min, parse as dateFnsParse, lastDayOfMonth } from 'date-fns';
 import * as XLSX from 'xlsx';
+import { adminMessaging } from './firebase-admin';
 
 const EMPLOYEE_HEADERS = [
-    'id', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'ownAddress', 'roomNumber', 
-    'zaklad', 'checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 
-    'departureReportDate', 'comments', 'status', 'depositReturned', 'depositReturnAmount', 
+    'id', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'ownAddress', 'roomNumber',
+    'zaklad', 'checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate',
+    'departureReportDate', 'comments', 'status', 'depositReturned', 'depositReturnAmount',
     'deductionRegulation', 'deductionNo4Months', 'deductionNo30Days', 'deductionReason', 'deductionEntryDate'
 ];
 
 const NON_EMPLOYEE_HEADERS = [
-    'id', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber', 
-    'checkInDate', 'checkOutDate', 'departureReportDate', 'comments', 'status', 'paymentType', 
+    'id', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'roomNumber',
+    'checkInDate', 'checkOutDate', 'departureReportDate', 'comments', 'status', 'paymentType',
     'paymentAmount'
+];
+
+const BOK_RESIDENT_HEADERS = [
+    'id', 'role', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'address', 'roomNumber',
+    'zaklad', 'gender', 'checkInDate', 'checkOutDate', 'returnStatus', 'status', 'comments'
 ];
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
 const SHEET_NAME_NON_EMPLOYEES = 'NonEmployees';
+const SHEET_NAME_BOK_RESIDENTS = 'BokResidents';
 const SHEET_NAME_NOTIFICATIONS = 'Powiadomienia';
 const SHEET_NAME_AUDIT_LOG = 'AuditLog';
 const SHEET_NAME_ADDRESSES = 'Addresses';
@@ -32,8 +39,9 @@ const SHEET_NAME_GENDERS = 'Genders';
 const SHEET_NAME_LOCALITIES = 'Localities';
 const SHEET_NAME_PAYMENT_TYPES_NZ = 'PaymentTypesNZ';
 const SHEET_NAME_STATUSES = 'Statuses';
-const SHEET_NAME_ADDRESS_HISTORY = 'AddressHistory';
-const SHEET_NAME_ASSIGNMENT_HISTORY = 'AssignmentHistory';
+const SHEET_NAME_BOK_ROLES = 'BokRoles';
+const SHEET_NAME_BOK_RETURN_OPTIONS = 'BokReturnOptions';
+const SHEET_NAME_BOK_STATUSES = 'BokStatuses';
 
 
 const serializeDate = (date?: string | null): string => {
@@ -106,6 +114,32 @@ const serializeNonEmployee = (nonEmployee: Partial<NonEmployee>): Record<string,
     return serialized;
 };
 
+const serializeBokResident = (resident: Partial<BokResident>): Record<string, string | number | boolean> => {
+    const serialized: Record<string, string | number | boolean> = {};
+    const dataToWrite = { ...resident };
+
+    if (dataToWrite.firstName || dataToWrite.lastName) {
+      dataToWrite.fullName = `${dataToWrite.lastName || ''} ${dataToWrite.firstName || ''}`.trim();
+    }
+
+    for (const key of BOK_RESIDENT_HEADERS) {
+        const typedKey = key as keyof BokResident;
+        const value = dataToWrite[typedKey];
+
+        if (value === undefined || value === null) {
+            serialized[key] = '';
+            continue;
+        }
+
+        if (['checkInDate', 'checkOutDate'].includes(key)) {
+            serialized[key] = serializeDate(value as string);
+        } else {
+            serialized[key] = String(value);
+        }
+    }
+    return serialized;
+};
+
 const NOTIFICATION_HEADERS = [
     'id', 'message', 'entityId', 'entityFirstName', 'entityLastName', 'actorName', 'recipientId', 'createdAt', 'isRead', 'type', 'changes'
 ];
@@ -129,8 +163,6 @@ const serializeNotification = (notification: Notification): Record<string, strin
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'departments', 'password', 'visibilityMode', 'pushSubscription'];
 const ADDRESS_HEADERS = ['id', 'locality', 'name', 'coordinatorIds'];
 const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targetType', 'targetId', 'details'];
-const ADDRESS_HISTORY_HEADERS = ['id', 'employeeId', 'employeeFirstName', 'employeeLastName', 'coordinatorName', 'department', 'address', 'checkInDate', 'checkOutDate'];
-const ASSIGNMENT_HISTORY_HEADERS = ['id', 'employeeId', 'employeeFirstName', 'employeeLastName', 'fromCoordinatorId', 'toCoordinatorId', 'assignedBy', 'assignmentDate'];
 
 
 const safeFormat = (dateValue: unknown): string | null => {
@@ -293,12 +325,11 @@ const FIELD_LABELS: Record<string, string> = {
 
 const generateSmartNotificationMessage = (
     actorName: string,
-    entity: (Employee | NonEmployee),
+    entity: (Employee | NonEmployee | BokResident),
     action: 'dodał' | 'zaktualizował' | 'trwale usunął' | 'automatycznie zwolnił' | 'przypisał do Ciebie' | 'przeniósł' | 'wysłał do Ciebie',
-    changes: NotificationChange[] = [],
-    settings?: Settings
+    changes: NotificationChange[] = []
 ): { message: string, type: NotificationType } => {
-    const entityType = 'zaklad' in entity && entity.zaklad ? 'pracownika' : 'mieszkańca';
+    const entityType = 'role' in entity ? 'mieszkańca BOK' : ('zaklad' in entity && entity.zaklad ? 'pracownika' : 'mieszkańca');
     const entityFullName = `${entity.firstName} ${entity.lastName}`.trim();
     let message = '';
     let type: NotificationType = 'info';
@@ -356,10 +387,10 @@ const generateSmartNotificationMessage = (
 const createNotification = async (
     actor: Coordinator,
     action: 'dodał' | 'zaktualizował' | 'trwale usunął' | 'automatycznie zwolnił' | 'przypisał do Ciebie' | 'przeniósł' | 'wysłał do Ciebie',
-    entity: (Employee | NonEmployee),
+    entity: (Employee | NonEmployee | BokResident),
     settings: Settings,
     recipientIdOverride?: string,
-    changes: Omit<NotificationChange, 'field'> & { field: keyof (Employee | NonEmployee) }[] = []
+    changes: NotificationChange[] = []
 ) => {
     try {
         const readableChanges: NotificationChange[] = changes.map(c => ({
@@ -379,7 +410,7 @@ const createNotification = async (
         const recipient = settings.coordinators.find(c => c.uid === recipientId);
         if (!recipient) return;
 
-        const { message, type } = generateSmartNotificationMessage(actor.name, entity, notificationAction, readableChanges, settings);
+        const { message, type } = generateSmartNotificationMessage(actor.name, entity, notificationAction, readableChanges);
         
         const notification: Notification = {
             id: `notif-${Date.now()}-${Math.random()}`,
@@ -398,7 +429,13 @@ const createNotification = async (
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
         await sheet.addRow(serializeNotification(notification));
         
-        await writeToAuditLog(actor.uid, actor.name, action, 'zaklad' in entity && entity.zaklad ? 'pracownika' : 'mieszkańca', entity.id, changes);
+        const entityType = 'role' in entity ? 'bok-resident' : ('zaklad' in entity && entity.zaklad ? 'pracownika' : 'mieszkańca');
+        await writeToAuditLog(actor.uid, actor.name, action, entityType, entity.id, changes);
+
+        // Send Push Notification
+        const pushTitle = 'Powiadomienie SmartHouse';
+        const pushLink = `/dashboard?view=employees&edit=${entity.id}`;
+        await sendPushNotification(recipientId, pushTitle, message, pushLink);
 
     } catch (e: unknown) {
         console.error("Could not create notification:", e);
@@ -441,7 +478,7 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
             ownAddress: employeeData.ownAddress,
             roomNumber: employeeData.roomNumber || '',
             zaklad: employeeData.zaklad || null,
-            checkInDate: employeeData.checkInDate,
+            checkInDate: employeeData.checkInDate || null,
             checkOutDate: employeeData.checkOutDate,
             contractStartDate: employeeData.contractStartDate ?? null,
             contractEndDate: employeeData.contractEndDate ?? null,
@@ -517,7 +554,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         }
         
         const updatedEmployeeData: Employee = { ...originalEmployee, ...updates };
-        const changes: (Omit<NotificationChange, 'field'> & { field: keyof Employee })[] = [];
+        const changes: NotificationChange[] = [];
         const { ...dbUpdates } = updates;
 
         for (const key in dbUpdates) {
@@ -640,6 +677,10 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id' | '
 
 export async function updateNonEmployee(id: string, updates: Partial<NonEmployee>, actorUid: string): Promise<void> {
      try {
+        if (updates.status === 'dismissed' && !updates.checkOutDate) {
+            throw new Error('Data wymeldowania jest wymagana przy zwalnianiu osoby niebędącej pracownikiem.');
+        }
+
         const { settings, addressHistory } = await getAllSheetsData(actorUid, true);
         const actor = findActor(actorUid, settings);
 
@@ -677,7 +718,7 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
         }
         
         const updatedNonEmployeeData: NonEmployee = { ...originalNonEmployee, ...updates };
-        const changes: (Omit<NotificationChange, 'field'> & { field: keyof NonEmployee })[] = [];
+        const changes: NotificationChange[] = [];
         
         for (const key in updates) {
             const typedKey = key as keyof NonEmployee;
@@ -736,6 +777,90 @@ export async function deleteNonEmployee(id: string, actorUid: string): Promise<v
     } catch (e: unknown) {
         console.error("Error deleting non-employee:", e);
         throw new Error(e instanceof Error ? e.message : "Failed to delete non-employee.");
+    }
+}
+
+export async function addBokResident(residentData: Omit<BokResident, 'id'>, actorUid: string): Promise<BokResident> {
+    try {
+        const { settings } = await getAllSheetsData(actorUid, true);
+        const actor = findActor(actorUid, settings);
+
+        const sheet = await getSheet(SHEET_NAME_BOK_RESIDENTS, BOK_RESIDENT_HEADERS);
+        const newResident: BokResident = {
+            id: `bok-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            ...residentData,
+            fullName: `${residentData.lastName} ${residentData.firstName}`.trim(),
+        };
+
+        const serialized = serializeBokResident(newResident);
+        await sheet.addRow(serialized, { raw: false, insert: true });
+        
+        await createNotification(actor, 'dodał', newResident, settings);
+
+        return newResident;
+    } catch (e: unknown) {
+        console.error("Error adding BOK resident:", e);
+        throw new Error(e instanceof Error ? e.message : "Failed to add BOK resident.");
+    }
+}
+
+export async function updateBokResident(id: string, updates: Partial<BokResident>, actorUid: string): Promise<void> {
+    try {
+        const { settings } = await getAllSheetsData(actorUid, true);
+        const actor = findActor(actorUid, settings);
+
+        const sheet = await getSheet(SHEET_NAME_BOK_RESIDENTS, BOK_RESIDENT_HEADERS);
+        const rows = await sheet.getRows();
+        const row = rows.find(r => r.get('id') === id);
+
+        if (!row) {
+            throw new Error('BOK Resident not found');
+        }
+
+        const originalResident = { ...row.toObject(), ...splitFullName(row.get('fullName')) } as BokResident;
+        const updatedResident = { ...originalResident, ...updates };
+        const changes: NotificationChange[] = [];
+
+        for (const key in updates) {
+            const typedKey = key as keyof BokResident;
+            const oldValue = originalResident[typedKey];
+            const newValue = updates[typedKey];
+            
+            if (String(oldValue) !== String(newValue)) {
+                changes.push({ field: typedKey, oldValue: String(oldValue || 'Brak'), newValue: String(newValue || 'Brak') });
+            }
+        }
+
+        const serialized = serializeBokResident(updatedResident);
+        for(const header of BOK_RESIDENT_HEADERS) {
+            row.set(header, serialized[header]);
+        }
+        await row.save();
+
+        if (changes.length > 0) {
+            await createNotification(actor, 'zaktualizował', updatedResident, settings, undefined, changes);
+        }
+
+    } catch (e: unknown) {
+        console.error("Error updating BOK resident:", e);
+        throw new Error(e instanceof Error ? e.message : "Failed to update BOK resident.");
+    }
+}
+
+export async function deleteBokResident(id: string, _actorUid: string): Promise<void> {
+    try {
+        const sheet = await getSheet(SHEET_NAME_BOK_RESIDENTS, BOK_RESIDENT_HEADERS);
+        const rows = await sheet.getRows();
+        const row = rows.find(r => r.get('id') === id);
+
+        if (row) {
+            await row.delete();
+        } else {
+            throw new Error('BOK Resident not found');
+        }
+    } catch (e: unknown) {
+        console.error("Error deleting BOK resident:", e);
+        throw new Error(e instanceof Error ? e.message : "Failed to delete BOK resident.");
     }
 }
 
@@ -940,6 +1065,15 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
         if (newSettings.statuses) {
             await updateSimpleList(SHEET_NAME_STATUSES, newSettings.statuses);
         }
+        if (newSettings.bokRoles) {
+            await updateSimpleList(SHEET_NAME_BOK_ROLES, newSettings.bokRoles);
+        }
+        if (newSettings.bokReturnOptions) {
+            await updateSimpleList(SHEET_NAME_BOK_RETURN_OPTIONS, newSettings.bokReturnOptions);
+        }
+        if (newSettings.bokStatuses) {
+            await updateSimpleList(SHEET_NAME_BOK_STATUSES, newSettings.bokStatuses);
+        }
         if (newSettings.addresses) {
             const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ADDRESS_HEADERS);
             const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity']);
@@ -973,7 +1107,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
              
              const toUpdate = newSettings.coordinators.filter(c => currentRows.some(r => r.get('uid') === c.uid));
              const toAdd = newSettings.coordinators.filter(c => !currentRows.some(r => r.get('uid') === c.uid));
-             const toDelete = currentRows.filter(r => !newSettings.coordinators.some(c => c.uid === r.get('uid')));
+             const toDelete = currentRows.filter(r => !newSettings.coordinators?.some(c => c.uid === r.get('uid')));
  
              for (const row of toDelete.reverse()) {
                  await row.delete();
@@ -999,6 +1133,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
                      departments: c.departments.join(','),
                      isAdmin: String(c.isAdmin).toUpperCase(),
                      visibilityMode: c.visibilityMode || 'department',
+                     pushSubscription: c.pushSubscription || '',
                  })));
              }
         }
@@ -1067,7 +1202,7 @@ export async function generateAccommodationReport(year: number, month: number, c
             filteredEmployees = employees.filter(e => e.coordinatorId === coordinatorId);
         }
 
-        const reportData: any[] = [];
+        const reportData: Record<string, string | number | null>[] = [];
         const formatDateForReport = (dateString: string | null | undefined): string | null => {
             if (!dateString) return null;
             try {
@@ -1178,7 +1313,7 @@ export async function generateNzCostsReport(year: number, month: number, coordin
             filteredNonEmployees = nonEmployees.filter(ne => ne.coordinatorId === coordinatorId);
         }
 
-        const reportData: any[] = [];
+        const reportData: Record<string, string | number | null>[] = [];
         
         filteredNonEmployees.forEach(ne => {
             const monthlyAmount = ne.paymentAmount;
@@ -1275,7 +1410,7 @@ const processImport = async (
         for (const [index, row] of data.entries()) {
             const rowNum = index + 2;
             try {
-                const normalizedRow: Record<string, any> = {};
+                const normalizedRow: Record<string, unknown> = {};
                 for (const key in row) {
                     if(row[key] !== null) {
                        normalizedRow[key.trim().toLowerCase()] = row[key];
@@ -1383,13 +1518,15 @@ const processImport = async (
         }
 
         if (recordsToAdd.length > 0) {
-            const sheetName = type === 'employee' ? SHEET_NAME_EMPLOYEES : SHEET_NAME_NON_EMPLOYEES;
-            const headers = type === 'employee' ? EMPLOYEE_HEADERS : NON_EMPLOYEE_HEADERS;
-            const serializeFn = type === 'employee' ? serializeEmployee : serializeNonEmployee;
-
-            const sheet = await getSheet(sheetName, headers);
-            const serializedRecords = recordsToAdd.map(rec => serializeFn(rec as any));
-            await sheet.addRows(serializedRecords);
+            if (type === 'employee') {
+                const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
+                const serializedRecords = (recordsToAdd as Employee[]).map(rec => serializeEmployee(rec));
+                await sheet.addRows(serializedRecords);
+            } else {
+                const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
+                const serializedRecords = (recordsToAdd as NonEmployee[]).map(rec => serializeNonEmployee(rec));
+                await sheet.addRows(serializedRecords);
+            }
         }
         
         if (notificationsToAdd.length > 0) {
@@ -1489,14 +1626,15 @@ export async function migrateFullNames(actorUid: string): Promise<{ migratedEmpl
     return { migratedEmployees, migratedNonEmployees };
 }
 
-export async function updateCoordinatorSubscription(coordinatorId: string, subscription: PushSubscription | null): Promise<void> {
+export async function updateCoordinatorSubscription(coordinatorId: string, subscription: string | null): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS);
         const rows = await sheet.getRows();
         const coordinatorRow = rows.find(row => row.get('uid') === coordinatorId);
 
         if (coordinatorRow) {
-            coordinatorRow.set('pushSubscription', subscription ? JSON.stringify(subscription) : '');
+            // Save token directly as string
+            coordinatorRow.set('pushSubscription', subscription || '');
             await coordinatorRow.save();
         } else {
             throw new Error('Coordinator not found.');
@@ -1504,5 +1642,48 @@ export async function updateCoordinatorSubscription(coordinatorId: string, subsc
     } catch (e: unknown) {
         console.error("Error updating coordinator subscription:", e);
         throw new Error(e instanceof Error ? e.message : "Failed to update subscription.");
+    }
+}
+
+export async function sendPushNotification(
+    coordinatorId: string,
+    title: string,
+    body: string,
+    link?: string
+): Promise<void> {
+    try {
+        const { settings } = await getAllSheetsData();
+        const coordinator = settings.coordinators.find((c: { uid: string; pushSubscription?: string | null }) => c.uid === coordinatorId);
+        
+        if (!coordinator || !coordinator.pushSubscription) {
+            // console.log('No coordinator or subscription found for', coordinatorId);
+            return;
+        }
+
+        const token = coordinator.pushSubscription;
+        if (!token || token.startsWith('{')) {
+             console.log('Invalid or legacy token, skipping FCM send.');
+             return;
+        }
+
+        if (adminMessaging) {
+             const message = {
+                token: token,
+                notification: {
+                    title: title,
+                    body: body,
+                },
+                webpush: {
+                    fcmOptions: {
+                        link: link || '/dashboard'
+                    }
+                }
+            };
+            
+            await adminMessaging.send(message);
+        }
+
+    } catch (e) {
+        console.error("Error sending push notification:", e);
     }
 }

@@ -36,7 +36,29 @@ export type Settings = {
     localities: string[];
     paymentTypesNZ: string[];
     statuses: string[];
+    bokRoles: string[];
+    bokReturnOptions: string[];
+    bokStatuses: string[];
 }
+
+export type BokResident = {
+    id: string;
+    role: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
+    coordinatorId: string;
+    nationality: string;
+    address: string;
+    roomNumber: string;
+    zaklad: string;
+    gender: string;
+    checkInDate: string | null;
+    checkOutDate: string | null;
+    returnStatus: string;
+    status: string;
+    comments?: string | null;
+};
 
 export type ChartConfig = {
   [key in string]: {

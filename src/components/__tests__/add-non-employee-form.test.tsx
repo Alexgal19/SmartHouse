@@ -34,6 +34,9 @@ const mockSettings: Settings = {
     },
   ],
   paymentTypesNZ: ['Miesięczny'],
+  statuses: [],
+  bokRoles: [],
+  bokReturnOptions: [],
   bokStatuses: [],
 };
 
@@ -41,7 +44,7 @@ const mockCurrentUser: SessionData = {
   isLoggedIn: true,
   uid: 'coord-1',
   name: 'Jan Kowalski',
-  isAdmin: false,
+  isAdmin: true,
 };
 
 const defaultProps = {
@@ -88,13 +91,15 @@ describe('AddNonEmployeeForm', () => {
     // Fill some fields but leave room empty
     fireEvent.change(screen.getByLabelText('Nazwisko'), { target: { value: 'Kowalski' } });
     fireEvent.change(screen.getByLabelText('Imię'), { target: { value: 'Jan' } });
-    fireEvent.change(screen.getByRole('combobox', { name: /Koordynator/i }), { target: { value: 'coord-1' } });
+    
+    fireEvent.click(screen.getByText('Wybierz koordynatora'));
+    fireEvent.click(screen.getByText('Jan Kowalski'));
 
-    const localitySelect = screen.getByRole('combobox', { name: /Miejscowość/i });
-    fireEvent.change(localitySelect, { target: { value: 'Warszawa' } });
+    fireEvent.click(screen.getByText('Wybierz miejscowość'));
+    fireEvent.click(screen.getByText('Warszawa'));
 
-    const addressSelect = screen.getByRole('combobox', { name: /Adres/i });
-    fireEvent.change(addressSelect, { target: { value: 'Testowa 1' } });
+    fireEvent.click(screen.getByText('Wybierz adres'));
+    fireEvent.click(screen.getByText('Testowa 1'));
 
     const submitButton = screen.getByRole('button', { name: 'Zapisz' });
     fireEvent.click(submitButton);

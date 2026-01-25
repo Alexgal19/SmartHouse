@@ -3,7 +3,7 @@
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, Address, Coordinator, NotificationType, AddressHistory } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, Address, Coordinator, NotificationType, AddressHistory, BokResident } from '../types';
 import { format, isValid, parse, parseISO } from 'date-fns';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
@@ -20,8 +20,19 @@ const SHEET_NAME_LOCALITIES = 'Localities';
 const SHEET_NAME_PAYMENT_TYPES_NZ = 'PaymentTypesNZ';
 const SHEET_NAME_STATUSES = 'Statuses';
 const SHEET_NAME_ADDRESS_HISTORY = 'AddressHistory';
-const SHEET_NAME_ASSIGNMENT_HISTORY = 'AssignmentHistory';
+const SHEET_NAME_BOK_RESIDENTS = 'BokResidents';
+const SHEET_NAME_BOK_ROLES = 'BokRoles';
+const SHEET_NAME_BOK_RETURN_OPTIONS = 'BokReturnOptions';
+const SHEET_NAME_BOK_STATUSES = 'BokStatuses';
 
+// Cache for the Google Spreadsheet document (reduces loadInfo calls)
+let cachedDoc: GoogleSpreadsheet | null = null;
+let docLoadTime = 0;
+const DOC_TTL = 5 * 60 * 1000; // 5 minutes
+
+// Cache for settings (reduces calls to dictionary sheets)
+let settingsCache: { data: Settings, timestamp: number } | null = null;
+const SETTINGS_CACHE_TTL = 60 * 1000; // 1 minute
 
 function getAuth(): JWT {
     const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
@@ -42,10 +53,15 @@ function getAuth(): JWT {
 }
 
 async function getDoc(): Promise<GoogleSpreadsheet> {
+    if (cachedDoc && (Date.now() - docLoadTime < DOC_TTL)) {
+        return cachedDoc;
+    }
     try {
         const auth = getAuth();
         const doc = new GoogleSpreadsheet(SPREADSHEET_ID, auth);
         await doc.loadInfo();
+        cachedDoc = doc;
+        docLoadTime = Date.now();
         return doc;
     } catch (error: unknown) {
         console.error("Failed to load Google Sheet document:", error);
@@ -308,15 +324,56 @@ const deserializeAddressHistory = (row: Record<string, unknown>): AddressHistory
         employeeId: row.employeeId as string,
         employeeFirstName: (row.employeeFirstName as string) || '',
         employeeLastName: (row.employeeLastName as string) || '',
-        coordinatorName: (row.coordinatorName as string),
-        department: (row.department as string),
-        address: row.address as string,
+        coordinatorName: (row.coordinatorName as string) || '',
+        department: (row.department as string) || '',
+        address: (row.address as string) || '',
         checkInDate: safeFormat(row.checkInDate),
         checkOutDate: safeFormat(row.checkOutDate),
     }
 };
 
-const getSheetData = async (doc: GoogleSpreadsheet, title: string): Promise<Record<string, string>[]> => {
+const deserializeBokResident = (row: Record<string, unknown>): BokResident | null => {
+    const plainObject = row;
+    const id = plainObject.id;
+    if (!id || (!plainObject.lastName && !plainObject.fullName)) {
+        return null;
+    }
+
+    const { firstName, lastName } = (plainObject.lastName && plainObject.firstName)
+        ? { firstName: plainObject.firstName as string, lastName: plainObject.lastName as string}
+        : splitFullName(plainObject.fullName as string);
+
+    if (!lastName) {
+        console.warn(`[Data Deserialization] Skipping BOK resident record with ID "${id}" due to missing last name.`);
+        return null;
+    }
+    
+    const checkInDate = safeFormat(plainObject.checkInDate);
+    if (!checkInDate) {
+        console.warn(`[Data Deserialization] BOK resident "${lastName}, ${firstName}" (ID: ${id}) has an invalid or missing check-in date.`);
+    }
+
+    return {
+        id: id as string,
+        role: (plainObject.role || '') as string,
+        firstName,
+        lastName,
+        fullName: `${lastName} ${firstName}`.trim(),
+        coordinatorId: (plainObject.coordinatorId || '') as string,
+        nationality: (plainObject.nationality || '') as string,
+        address: (plainObject.address || '') as string,
+        roomNumber: (plainObject.roomNumber || '') as string,
+        zaklad: (plainObject.zaklad || '') as string,
+        gender: (plainObject.gender || '') as string,
+        checkInDate: checkInDate,
+        checkOutDate: safeFormat(plainObject.checkOutDate),
+        returnStatus: (plainObject.returnStatus || '') as string,
+        status: (plainObject.status || '') as string,
+        comments: (plainObject.comments || '') as string,
+    };
+};
+
+const getSheetData = async (doc: GoogleSpreadsheet, title: string, retry = 0): Promise<Record<string, string>[]> => {
     const sheet = doc.sheetsByTitle[title];
     if (!sheet) {
         console.warn(`Sheet "${title}" not found. Returning empty array.`);
@@ -326,7 +383,13 @@ const getSheetData = async (doc: GoogleSpreadsheet, title: string): Promise<Reco
     try {
         const rows = await sheet.getRows();
         return rows.map(r => r.toObject());
-    } catch (e) {
+    } catch (e: unknown) {
+        if (e instanceof Error && (e.message.includes('429') || e.message.includes('Quota exceeded')) && retry < 3) {
+            const delay = 1000 * Math.pow(2, retry);
+            console.warn(`Quota exceeded for ${title}. Retrying in ${delay}ms...`);
+            await new Promise(res => setTimeout(res, delay));
+            return getSheetData(doc, title, retry + 1);
+        }
         console.warn(`Could not get rows from sheet: ${title}. It might be empty or missing headers. Returning empty array.`, e);
         return [];
     }
@@ -334,27 +397,45 @@ const getSheetData = async (doc: GoogleSpreadsheet, title: string): Promise<Reco
 
 
 async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
+     if (settingsCache && (Date.now() - settingsCache.timestamp < SETTINGS_CACHE_TTL)) {
+         return settingsCache.data;
+     }
      try {
+        // Batch requests to avoid hitting rate limits (429)
         const [
             addressRows,
             roomRows,
             nationalityRows,
             departmentRows,
-            coordinatorRows,
-            genderRows,
-            localityRows,
-            paymentTypesNZRows,
-            statusRows,
         ] = await Promise.all([
             getSheetData(doc, SHEET_NAME_ADDRESSES),
             getSheetData(doc, SHEET_NAME_ROOMS),
             getSheetData(doc, SHEET_NAME_NATIONALITIES),
             getSheetData(doc, SHEET_NAME_DEPARTMENTS),
+        ]);
+
+        const [
+            coordinatorRows,
+            genderRows,
+            localityRows,
+            paymentTypesNZRows,
+        ] = await Promise.all([
             getSheetData(doc, SHEET_NAME_COORDINATORS),
             getSheetData(doc, SHEET_NAME_GENDERS),
             getSheetData(doc, SHEET_NAME_LOCALITIES),
             getSheetData(doc, SHEET_NAME_PAYMENT_TYPES_NZ),
+        ]);
+
+        const [
+            statusRows,
+            bokRoleRows,
+            bokReturnOptionRows,
+            bokStatusRows,
+        ] = await Promise.all([
             getSheetData(doc, SHEET_NAME_STATUSES),
+            getSheetData(doc, SHEET_NAME_BOK_ROLES),
+            getSheetData(doc, SHEET_NAME_BOK_RETURN_OPTIONS),
+            getSheetData(doc, SHEET_NAME_BOK_STATUSES),
         ]);
         
         const roomsByAddressId = new Map<string, Room[]>();
@@ -394,7 +475,7 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
             }
         });
         
-        return {
+        const settings: Settings = {
             id: 'global-settings',
             addresses,
             nationalities: nationalityRows.map(row => row.name).filter(Boolean),
@@ -404,7 +485,12 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
             localities: localityRows.map(row => row.name).filter(Boolean),
             paymentTypesNZ: paymentTypesNZRows.map(row => row.name).filter(Boolean),
             statuses: statusRows.map(row => row.name).filter(Boolean),
+            bokRoles: bokRoleRows.map(row => row.name).filter(Boolean),
+            bokReturnOptions: bokReturnOptionRows.map(row => row.name).filter(Boolean),
+            bokStatuses: bokStatusRows.map(row => row.name).filter(Boolean),
         };
+        settingsCache = { data: settings, timestamp: Date.now() };
+        return settings;
     } catch (error: unknown) {
         console.error("Error fetching settings from sheet:", error instanceof Error ? error.message : "Unknown error", error instanceof Error ? error.stack : "");
         throw new Error(`Could not fetch settings. Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -453,18 +539,21 @@ export async function getAllSheetsData(userId?: string, userIsAdmin?: boolean) {
             settings,
             notifications,
             addressHistorySheet,
+            bokResidentsSheet,
         ] = await Promise.all([
             getSheetData(doc, SHEET_NAME_EMPLOYEES),
             getSheetData(doc, SHEET_NAME_NON_EMPLOYEES),
             getSettingsFromSheet(doc),
             userId ? getNotificationsFromSheet(doc, userId, userIsAdmin || false) : Promise.resolve([]),
             getSheetData(doc, SHEET_NAME_ADDRESS_HISTORY),
+            getSheetData(doc, SHEET_NAME_BOK_RESIDENTS),
         ]);
         
         const employees = employeesSheet.map(row => deserializeEmployee(row)).filter((e): e is Employee => e !== null);
         const nonEmployees = nonEmployeesSheet.map(row => deserializeNonEmployee(row)).filter((e): e is NonEmployee => e !== null);
+        const bokResidents = bokResidentsSheet.map(row => deserializeBokResident(row)).filter((e): e is BokResident => e !== null);
         
-        const allPeopleMap = new Map([...employees, ...nonEmployees].map(p => [p.id, p]));
+        const allPeopleMap = new Map([...employees, ...nonEmployees, ...bokResidents].map(p => [p.id, p]));
 
         const addressHistory = addressHistorySheet.map(row => {
             const historyEntry = deserializeAddressHistory(row);
@@ -478,7 +567,7 @@ export async function getAllSheetsData(userId?: string, userIsAdmin?: boolean) {
             return historyEntry;
         }).filter((h): h is AddressHistory => h !== null);
 
-        return { employees, settings, nonEmployees, notifications, addressHistory };
+        return { employees, settings, nonEmployees, notifications, addressHistory, bokResidents };
 
     } catch (error: unknown) {
         console.error("Error fetching all sheets data:", error);
@@ -490,7 +579,9 @@ export async function addAddressHistoryEntry(data: Omit<AddressHistory, 'id'>) {
   const sheet = await getSheet(SHEET_NAME_ADDRESS_HISTORY, ['id', 'employeeId', 'employeeFirstName', 'employeeLastName', 'coordinatorName', 'department', 'address', 'checkInDate', 'checkOutDate']);
   await sheet.addRow({
     id: `hist-${Date.now()}`,
-    ...data
+    ...data,
+    checkInDate: data.checkInDate || '',
+    checkOutDate: data.checkOutDate || '',
   });
 }
 
@@ -499,8 +590,13 @@ export async function updateAddressHistoryEntry(historyId: string, updates: Part
     const rows = await sheet.getRows();
     const row = rows.find(r => r.get('id') === historyId);
     if (row) {
-        for (const key in updates) {
-             row.set(key, (updates as any)[key]);
+        const keys = Object.keys(updates) as Array<keyof AddressHistory>;
+        for (const key of keys) {
+            if (key === 'id') continue;
+            const value = updates[key];
+            if (value !== undefined) {
+                row.set(key, value ?? '');
+            }
         }
         await row.save();
     }

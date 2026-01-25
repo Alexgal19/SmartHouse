@@ -36,6 +36,7 @@ describe('SmartHouse Core Logic Integrity', () => {
     it('pozwala stworzyć poprawny obiekt Employee (Mock)', () => {
       // Tworzymy przykładowy obiekt, aby sprawdzić czy kompilator TS nie krzyczy
       const mockEmployee: Partial<Employee> = {
+        id: '123',
         lastName: 'Kowalski',
         firstName: 'Jan',
         gender: 'Jan Kowalski',
