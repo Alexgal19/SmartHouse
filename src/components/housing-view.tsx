@@ -3,10 +3,10 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import type { Employee, NonEmployee, SessionData, Address, Room, Settings } from "@/types";
+import type { Employee, NonEmployee, SessionData, Room, Settings } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, Bed, Building, User, BarChart2, SlidersHorizontal, Copy } from "lucide-react";
+import { Bed, Building, BarChart2, Copy } from "lucide-react";
 import { useMainLayout } from '@/components/main-layout';
 import { cn } from '@/lib/utils';
 import { Skeleton } from './ui/skeleton';
@@ -15,8 +15,8 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, LabelList, Tooltip as RechartsTooltip, Cell } from "recharts";
-import { ChartConfig, ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, LabelList, Tooltip as RechartsTooltip } from "recharts";
+import { ChartConfig, ChartTooltipContent } from "@/components/ui/chart";
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
@@ -26,7 +26,7 @@ type Occupant = Employee | NonEmployee;
 type RoomWithOccupants = Room & { occupants: Occupant[]; occupantCount: number; available: number; };
 type HousingData = ReturnType<typeof useHousingData>[0];
 
-const isEmployee = (occupant: Occupant): occupant is Employee => 'zaklad' in occupant && occupant.zaklad !== null;
+const isEmployee = (occupant: Occupant): occupant is Employee => 'zaklad' in occupant;
 
 const calculateStats = (occupants: Occupant[]) => {
     const stats = {
@@ -35,13 +35,11 @@ const calculateStats = (occupants: Occupant[]) => {
         departments: new Map<string, number>(),
     };
     occupants.forEach(occ => {
+        stats.nationalities.set(occ.nationality || 'Brak', (stats.nationalities.get(occ.nationality || 'Brak') || 0) + 1);
+        stats.genders.set(occ.gender || 'Brak', (stats.genders.get(occ.gender || 'Brak') || 0) + 1);
+
         if (isEmployee(occ)) {
-            stats.nationalities.set(occ.nationality || 'Brak', (stats.nationalities.get(occ.nationality || 'Brak') || 0) + 1);
-            stats.genders.set(occ.gender || 'Brak', (stats.genders.get(occ.gender || 'Brak') || 0) + 1);
             stats.departments.set(occ.zaklad || 'Brak', (stats.departments.get(occ.zaklad || 'Brak') || 0) + 1);
-        } else {
-             stats.nationalities.set(occ.nationality || 'Brak', (stats.nationalities.get(occ.nationality || 'Brak') || 0) + 1);
-             stats.genders.set(occ.gender || 'Brak', (stats.genders.get(occ.gender || 'Brak') || 0) + 1);
         }
     });
     return {
@@ -228,7 +226,7 @@ const AddressDetailView = ({
                                 <h3 className="font-semibold mb-4">Statystyki indywidualne</h3>
                                 <Accordion type="multiple" className="w-full space-y-3">
                                     {selectedAddressesData.map(address => (
-                                        <Card asChild key={address.id} className="overflow-hidden">
+                                        <Card key={address.id} className="overflow-hidden">
                                             <AccordionItem value={address.id} className="border-b-0">
                                                 <AccordionTrigger className="p-4 hover:no-underline">
                                                     <div className="w-full">
@@ -264,7 +262,8 @@ const AddressDetailView = ({
                                         className={cn(
                                             "rounded-md border p-3 cursor-pointer transition-colors",
                                             selectedRoomIds.includes(room.id) ? "bg-primary/10 border-primary" : "hover:bg-muted/50",
-                                            room.available > 0 && !selectedRoomIds.includes(room.id) && "bg-green-500/10 border-green-500/20"
+                                            !room.isActive && "bg-destructive/10 border-destructive/20",
+                                            room.isActive && room.available > 0 && !selectedRoomIds.includes(room.id) && "bg-green-500/10 border-green-500/20"
                                         )}
                                         onClick={() => onRoomClick(room.id)}
                                     >
@@ -305,7 +304,7 @@ const AddressDetailView = ({
                                                 <h3 className="font-semibold mb-4">Statystyki indywidualne dla pokoi</h3>
                                                 <Accordion type="multiple" className="w-full space-y-3">
                                                     {selectedRoomsData.rooms.map(room => (
-                                                        <Card asChild key={room.id} className="overflow-hidden">
+                                                        <Card key={room.id} className="overflow-hidden">
                                                             <AccordionItem value={room.id} className="border-b-0">
                                                                 <AccordionTrigger className="p-4 hover:no-underline">
                                                                     <div className="w-full">
@@ -381,6 +380,7 @@ const useHousingData = () => {
                     id: room.id,
                     name: room.name,
                     capacity: room.capacity,
+                    isActive: room.isActive,
                     occupants: occupantsInRoom,
                     occupantCount: occupantsInRoom.length,
                     available: room.capacity - occupantsInRoom.length,
@@ -408,7 +408,7 @@ const MobileAddressCard = ({ address, onOccupantClick, style }: { address: Housi
     const { copyToClipboard } = useCopyToClipboard();
 
     return (
-        <Card asChild className={cn("overflow-hidden animate-fade-in-up", address.available > 0 && "border-green-500/30")} style={style}>
+        <Card className={cn("overflow-hidden animate-fade-in-up", address.available > 0 && "border-green-500/30")} style={style}>
             <AccordionItem value={address.id} className="border-b-0">
                 <AccordionTrigger className="p-4 hover:no-underline">
                     <div className="w-full">
@@ -432,7 +432,7 @@ const MobileAddressCard = ({ address, onOccupantClick, style }: { address: Housi
                             <h4 className="text-sm font-semibold mb-2">Pokoje</h4>
                             <div className="space-y-2">
                                 {address.rooms.sort((a,b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true })).map(room => (
-                                    <div key={room.id} className={cn("rounded-md border p-3", room.available > 0 && "bg-green-500/10 border-green-500/20")}>
+                                    <div key={room.id} className={cn("rounded-md border p-3", !room.isActive && "bg-destructive/10 border-destructive/20", room.isActive && room.available > 0 && "bg-green-500/10 border-green-500/20")}>
                                         <div className="flex justify-between items-center font-medium text-sm">
                                             <div className="flex items-center gap-2">
                                                 <Bed className="h-4 w-4 text-muted-foreground" />
@@ -475,7 +475,7 @@ const MobileAddressCard = ({ address, onOccupantClick, style }: { address: Housi
     )
 }
 
-const FilterControls = ({ filters, onFilterChange, settings, currentUser }: { filters: any, onFilterChange: (filters: any) => void, settings: Settings | null, currentUser: SessionData | null }) => {
+export const FilterControls = ({ filters, onFilterChange, settings, currentUser }: { filters: { name: string; locality: string; showOnlyAvailable: boolean }, onFilterChange: (filters: { name: string; locality: string; showOnlyAvailable: boolean }) => void, settings: Settings | null, currentUser: SessionData | null }) => {
     
     const sortedLocalities = useMemo(() => {
         if (!settings || !currentUser) return [];

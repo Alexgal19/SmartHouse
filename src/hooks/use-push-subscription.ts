@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useMainLayout } from '@/components/main-layout';
-import { messaging } from '@/lib/firebase';
-import { getToken, deleteToken } from 'firebase/messaging';
+import { messagingPromise } from '@/lib/firebase';
+import { getToken, deleteToken, onMessage } from 'firebase/messaging';
 import { useToast } from '@/hooks/use-toast';
 
 export const usePushSubscription = () => {
@@ -20,10 +20,41 @@ export const usePushSubscription = () => {
     const [isUnsubscribing, setIsUnsubscribing] = useState(false);
 
     useEffect(() => {
-        const messagingInstance = messaging;
-        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted' && messagingInstance) {
+        let unsubscribe: (() => void) | undefined;
+
+        const setupMessageListener = async () => {
+            const messagingInstance = await messagingPromise;
+            if (!messagingInstance) return;
+
+            unsubscribe = onMessage(messagingInstance, (payload) => {
+                console.log('Foreground message received:', payload);
+                const data = payload.data || {};
+                const title = data.title || payload.notification?.title || 'Nowe powiadomienie';
+                const body = data.body || payload.notification?.body;
+                
+                toast({
+                    title: title,
+                    description: body,
+                });
+            });
+        };
+
+        if (typeof window !== 'undefined') {
+            setupMessageListener();
+        }
+
+        return () => {
+            if (unsubscribe) unsubscribe();
+        };
+    }, [toast]);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
              const checkToken = async () => {
                  try {
+                     const messagingInstance = await messagingPromise;
+                     if (!messagingInstance) return;
+
                      if ('serviceWorker' in navigator) {
                         const registration = await navigator.serviceWorker.ready;
                         const currentToken = await getToken(messagingInstance, {
@@ -61,7 +92,7 @@ export const usePushSubscription = () => {
 
         setIsSubscribing(true);
         try {
-            const messagingInstance = messaging;
+            const messagingInstance = await messagingPromise;
             if (!messagingInstance) {
                 throw new Error("Firebase Messaging not supported");
             }
@@ -106,7 +137,7 @@ export const usePushSubscription = () => {
     const unsubscribe = useCallback(async () => {
         setIsUnsubscribing(true);
         try {
-            const messagingInstance = messaging;
+            const messagingInstance = await messagingPromise;
             if (messagingInstance) {
                 await deleteToken(messagingInstance);
             }

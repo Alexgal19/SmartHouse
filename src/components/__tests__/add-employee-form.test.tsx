@@ -22,6 +22,14 @@ jest.mock('@/ai/flows/extract-passport-data-flow', () => ({
   extractPassportData: jest.fn(),
 }));
 
+// Mock Tabs to avoid JSDOM issues with Radix UI
+jest.mock('@/components/ui/tabs', () => ({
+  Tabs: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  TabsList: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  TabsTrigger: ({ children }: { children: React.ReactNode }) => <button type="button">{children}</button>,
+  TabsContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}));
+
 const mockSettings: Settings = {
   id: 'global-settings',
   coordinators: [
@@ -103,7 +111,7 @@ describe('AddEmployeeForm', () => {
 
     // Select Address
     fireEvent.click(screen.getByText('Wybierz adres'));
-    fireEvent.click(screen.getByText('Testowa 1'));
+    fireEvent.click(screen.getByRole('option', { name: 'Testowa 1' }));
 
     // Leave room empty
     const submitButton = screen.getByRole('button', { name: 'Zapisz' });
@@ -168,10 +176,10 @@ describe('AddEmployeeForm with Own Address', () => {
         fireEvent.click(screen.getByText('Warszawa'));
 
         // Select Own Address
-        fireEvent.click(screen.getByText('Wybierz adres'));
-        fireEvent.click(screen.getByText('Własne mieszkanie'));
-    
-        // Leave own address empty
+            fireEvent.click(screen.getByText('Wybierz adres'));
+            fireEvent.click(screen.getByRole('option', { name: 'Własne mieszkanie' }));
+        
+            // Leave own address empty
         const submitButton = screen.getByRole('button', { name: 'Zapisz' });
         fireEvent.click(submitButton);
     
@@ -193,13 +201,22 @@ describe('AddEmployeeForm Deductions', () => {
     fireEvent.click(screen.getByText('Wybierz koordynatora'));
     fireEvent.click(screen.getByText('Jan Kowalski'));
 
-    // Go to Finance tab
-    fireEvent.click(screen.getByText('Finanse i potrącenia'));
+    // Go to Finance tab (content is always visible with mock, but we click for realism in flow if it mattered)
+    // const financeTab = screen.getByRole('button', { name: 'Finanse i potrącenia' });
+    // fireEvent.click(financeTab);
+    
+    // Wait for tab content to appear - wait for the label "Zwrot kaucji"
+    await screen.findByText('Zwrot kaucji');
+    
+    const comboboxes = screen.getAllByRole('combobox');
+    const depositReturnSelect = comboboxes.find(el => el.textContent?.includes('Status zwrotu kaucji'));
+    
+    if (!depositReturnSelect) {
+        throw new Error('Deposit return select not found');
+    }
 
-    // Add deduction (Select "Nie" for Deposit Returned)
-    // The placeholder is "Status zwrotu kaucji"
-    fireEvent.click(screen.getByText('Status zwrotu kaucji'));
-    fireEvent.click(screen.getByText('Nie'));
+    fireEvent.click(depositReturnSelect);
+    fireEvent.click(screen.getByRole('option', { name: 'Nie' }));
 
     // Leave deduction entry date empty
     const submitButton = screen.getByRole('button', { name: 'Zapisz' });

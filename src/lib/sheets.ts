@@ -34,6 +34,19 @@ const DOC_TTL = 5 * 60 * 1000; // 5 minutes
 let settingsCache: { data: Settings, timestamp: number } | null = null;
 const SETTINGS_CACHE_TTL = 60 * 1000; // 1 minute
 
+// Cache for other data
+let employeesCache: { data: Employee[], timestamp: number } | null = null;
+let nonEmployeesCache: { data: NonEmployee[], timestamp: number } | null = null;
+let bokResidentsCache: { data: BokResident[], timestamp: number } | null = null;
+let addressHistoryCache: { data: AddressHistory[], timestamp: number } | null = null;
+const DATA_CACHE_TTL = 60 * 1000; // 1 minute
+
+export async function invalidateEmployeesCache() { employeesCache = null; }
+export async function invalidateNonEmployeesCache() { nonEmployeesCache = null; }
+export async function invalidateBokResidentsCache() { bokResidentsCache = null; }
+export async function invalidateAddressHistoryCache() { addressHistoryCache = null; }
+export async function invalidateSettingsCache() { settingsCache = null; }
+
 function getAuth(): JWT {
     const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
     const key = process.env.GOOGLE_PRIVATE_KEY;
@@ -445,10 +458,17 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
                 if (!roomsByAddressId.has(addressId)) {
                     roomsByAddressId.set(addressId, []);
                 }
+                const isActiveRaw = rowObj.isActive !== undefined ? rowObj.isActive : rowObj['isactive'];
+                let isActive = true;
+                if (isActiveRaw !== undefined && isActiveRaw !== null && String(isActiveRaw).trim() !== '') {
+                     isActive = String(isActiveRaw).toUpperCase() === 'TRUE';
+                }
+
                 roomsByAddressId.get(addressId)!.push({
                     id: rowObj.id,
                     name: rowObj.name,
                     capacity: Number(rowObj.capacity) || 0,
+                    isActive: isActive,
                 });
             }
         });
@@ -533,39 +553,99 @@ export async function getAllSheetsData(userId?: string, userIsAdmin?: boolean) {
     try {
         const doc = await getDoc();
 
+        // Settings (already cached internally in getSettingsFromSheet)
+        const settingsPromise = getSettingsFromSheet(doc);
+
+        // Notifications (not cached, user specific)
+        const notificationsPromise = userId ? getNotificationsFromSheet(doc, userId, userIsAdmin || false) : Promise.resolve([]);
+
+        // Employees
+        let employeesPromise: Promise<Employee[]>;
+        if (employeesCache && (Date.now() - employeesCache.timestamp < DATA_CACHE_TTL)) {
+            employeesPromise = Promise.resolve(employeesCache.data);
+        } else {
+            employeesPromise = getSheetData(doc, SHEET_NAME_EMPLOYEES).then(rows => {
+                 const data = rows.map(row => deserializeEmployee(row)).filter((e): e is Employee => e !== null);
+                 employeesCache = { data, timestamp: Date.now() };
+                 return data;
+            });
+        }
+
+        // NonEmployees
+        let nonEmployeesPromise: Promise<NonEmployee[]>;
+        if (nonEmployeesCache && (Date.now() - nonEmployeesCache.timestamp < DATA_CACHE_TTL)) {
+             nonEmployeesPromise = Promise.resolve(nonEmployeesCache.data);
+        } else {
+             nonEmployeesPromise = getSheetData(doc, SHEET_NAME_NON_EMPLOYEES).then(rows => {
+                const data = rows.map(row => deserializeNonEmployee(row)).filter((e): e is NonEmployee => e !== null);
+                nonEmployeesCache = { data, timestamp: Date.now() };
+                return data;
+             });
+        }
+
+        // BokResidents
+        let bokResidentsPromise: Promise<BokResident[]>;
+        if (bokResidentsCache && (Date.now() - bokResidentsCache.timestamp < DATA_CACHE_TTL)) {
+            bokResidentsPromise = Promise.resolve(bokResidentsCache.data);
+        } else {
+            bokResidentsPromise = getSheetData(doc, SHEET_NAME_BOK_RESIDENTS).then(rows => {
+                const data = rows.map(row => deserializeBokResident(row)).filter((e): e is BokResident => e !== null);
+                bokResidentsCache = { data, timestamp: Date.now() };
+                return data;
+            });
+        }
+
+        // AddressHistory (needs raw rows first to be deserialized properly later? No, we can deserialize inside the promise)
+        // Wait, addressHistory deserialization logic depends on `allPeopleMap` in the original code.
+        // I need to fetch raw address history first, then combine.
+        // Or I can cache the deserialized address history *after* mapping names?
+        // If I cache address history with names, I need to make sure names are up to date.
+        // Actually, the original code deserializes, then fills missing names from `allPeopleMap`.
+        // If I cache AddressHistory, I should probably cache it "as is" or fully resolved.
+        // Let's cache the raw-ish deserialized version (or fully resolved).
+        // If I cache fully resolved, I need to invalidate it when people change names (rare).
+        // Let's cache the resolved version.
+        
+        // However, `allPeopleMap` is derived from the *current* fetch of employees/nonEmployees.
+        // If I use cached employees, I should use those for the map.
+        
         const [
-            employeesSheet,
-            nonEmployeesSheet,
+            employees,
+            nonEmployees,
             settings,
             notifications,
-            addressHistorySheet,
-            bokResidentsSheet,
+            bokResidents
         ] = await Promise.all([
-            getSheetData(doc, SHEET_NAME_EMPLOYEES),
-            getSheetData(doc, SHEET_NAME_NON_EMPLOYEES),
-            getSettingsFromSheet(doc),
-            userId ? getNotificationsFromSheet(doc, userId, userIsAdmin || false) : Promise.resolve([]),
-            getSheetData(doc, SHEET_NAME_ADDRESS_HISTORY),
-            getSheetData(doc, SHEET_NAME_BOK_RESIDENTS),
+            employeesPromise,
+            nonEmployeesPromise,
+            settingsPromise,
+            notificationsPromise,
+            bokResidentsPromise
         ]);
-        
-        const employees = employeesSheet.map(row => deserializeEmployee(row)).filter((e): e is Employee => e !== null);
-        const nonEmployees = nonEmployeesSheet.map(row => deserializeNonEmployee(row)).filter((e): e is NonEmployee => e !== null);
-        const bokResidents = bokResidentsSheet.map(row => deserializeBokResident(row)).filter((e): e is BokResident => e !== null);
-        
-        const allPeopleMap = new Map([...employees, ...nonEmployees, ...bokResidents].map(p => [p.id, p]));
 
-        const addressHistory = addressHistorySheet.map(row => {
-            const historyEntry = deserializeAddressHistory(row);
-            if (historyEntry && (!historyEntry.employeeFirstName || !historyEntry.employeeLastName)) {
-                const person = allPeopleMap.get(historyEntry.employeeId);
-                if (person) {
-                    historyEntry.employeeFirstName = person.firstName;
-                    historyEntry.employeeLastName = person.lastName;
+        // Address History - slightly more complex due to dependency on people
+        let addressHistory: AddressHistory[];
+        if (addressHistoryCache && (Date.now() - addressHistoryCache.timestamp < DATA_CACHE_TTL)) {
+            addressHistory = addressHistoryCache.data;
+        } else {
+             // We need fresh address history rows
+             const addressHistoryRows = await getSheetData(doc, SHEET_NAME_ADDRESS_HISTORY);
+             const allPeopleMap = new Map([...employees, ...nonEmployees, ...bokResidents].map(p => [p.id, p]));
+             
+             addressHistory = addressHistoryRows.map(row => {
+                const historyEntry = deserializeAddressHistory(row);
+                if (historyEntry && (!historyEntry.employeeFirstName || !historyEntry.employeeLastName)) {
+                    const person = allPeopleMap.get(historyEntry.employeeId);
+                    if (person) {
+                        historyEntry.employeeFirstName = person.firstName;
+                        historyEntry.employeeLastName = person.lastName;
+                    }
                 }
-            }
-            return historyEntry;
-        }).filter((h): h is AddressHistory => h !== null);
+                return historyEntry;
+            }).filter((h): h is AddressHistory => h !== null);
+            
+            addressHistoryCache = { data: addressHistory, timestamp: Date.now() };
+        }
 
         return { employees, settings, nonEmployees, notifications, addressHistory, bokResidents };
 
@@ -583,6 +663,7 @@ export async function addAddressHistoryEntry(data: Omit<AddressHistory, 'id'>) {
     checkInDate: data.checkInDate || '',
     checkOutDate: data.checkOutDate || '',
   });
+  await invalidateAddressHistoryCache();
 }
 
 export async function updateAddressHistoryEntry(historyId: string, updates: Partial<AddressHistory>) {
@@ -599,6 +680,7 @@ export async function updateAddressHistoryEntry(historyId: string, updates: Part
             }
         }
         await row.save();
+        await invalidateAddressHistoryCache();
     }
 }
 export async function deleteAddressHistoryEntry(historyId: string) {
@@ -607,6 +689,7 @@ export async function deleteAddressHistoryEntry(historyId: string) {
     const row = rows.find(r => r.get('id') === historyId);
     if (row) {
         await row.delete();
+        await invalidateAddressHistoryCache();
     } else {
         throw new Error('Address history entry not found');
     }

@@ -511,8 +511,9 @@ export default function MainLayout({
         try {
             if (editingBokResident) {
                 await updateBokResident(editingBokResident.id, data, currentUser.uid);
+                setRawBokResidents(prev => prev ? prev.map(r => r.id === editingBokResident.id ? { ...r, ...data, fullName: `${data.lastName} ${data.firstName}`.trim() } : r) : null);
                 toast({ title: "Sukces", description: "Dane mieszkańca BOK zostały zaktualizowane." });
-                await refreshData(false);
+                // refreshData(false); // Removed to prevent "Zombie Record" issue due to race condition
             } else {
                  const newResidentData = {
                      ...data,
@@ -523,49 +524,49 @@ export default function MainLayout({
                      fullName: `${data.lastName} ${data.firstName}`.trim(),
                  };
                  const newResident = await addBokResident(newResidentData, currentUser.uid);
-                 const refreshedData = await refreshData(false);
-                 if (!refreshedData) return;
-                 const wasAdded = refreshedData.bokResidents.some((b: BokResident) => b.id === newResident.id);
-                 if(wasAdded) {
-                    toast({ title: "Sukces", description: "Nowy mieszkaniec BOK został dodany." });
-                    
-                    if (newResidentData.coordinatorId) {
-                        const link = `/dashboard?view=employees&action=add&firstName=${encodeURIComponent(newResidentData.firstName)}&lastName=${encodeURIComponent(newResidentData.lastName)}&nationality=${encodeURIComponent(newResidentData.nationality)}&zaklad=${encodeURIComponent(newResidentData.zaklad || '')}`;
-                        await sendPushNotification(
-                            newResidentData.coordinatorId,
-                            'Nowe zadanie: Dodaj pracownika',
-                            `Mieszkaniec BOK: ${newResidentData.lastName} ${newResidentData.firstName} - kliknij, aby dodać.`,
-                            link
-                        );
-                    }
-                 } else {
-                    toast({ variant: "destructive", title: "Błąd zapisu", description: "Osoba nie została dodana, proszę poinformować administratora." });
-                 }
+                 setRawBokResidents(prev => prev ? [...prev, newResident] : [newResident]);
+                 
+                 toast({ title: "Sukces", description: "Nowy mieszkaniec BOK został dodany." });
+                 // refreshData(false); // Removed to prevent "Zombie Record" issue due to race condition
+
+                 if (newResidentData.coordinatorId) {
+                    const link = `/dashboard?view=employees&action=add&firstName=${encodeURIComponent(newResidentData.firstName)}&lastName=${encodeURIComponent(newResidentData.lastName)}&nationality=${encodeURIComponent(newResidentData.nationality)}&zaklad=${encodeURIComponent(newResidentData.zaklad || '')}`;
+                    await sendPushNotification(
+                        newResidentData.coordinatorId,
+                        'Nowe zadanie: Dodaj pracownika',
+                        `Mieszkaniec BOK: ${newResidentData.lastName} ${newResidentData.firstName} - kliknij, aby dodać.`,
+                        link
+                    );
+                }
             }
         } catch(e) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać mieszkańca BOK." });
         }
-    }, [editingBokResident, currentUser, refreshData, toast]);
+    }, [editingBokResident, currentUser, toast]);
     
     const handleDeleteNonEmployee = useCallback(async (id: string, actorUid: string) => {
         if (!currentUser) return;
         try {
             await deleteNonEmployee(id, actorUid);
-            await refreshData(false);
+            setRawNonEmployees(prev => prev ? prev.filter(r => r.id !== id) : null);
+            toast({ title: "Sukces", description: "Mieszkaniec został usunięty." });
+            // refreshData(false); // Removed to prevent "Zombie Record" issue due to race condition
         } catch(e) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć mieszkańca." });
         }
-    }, [currentUser, refreshData, toast]);
+    }, [currentUser, toast]);
 
     const handleDeleteBokResident = useCallback(async (id: string, actorUid: string) => {
         if (!currentUser) return;
         try {
             await deleteBokResident(id, actorUid);
-            await refreshData(false);
+            setRawBokResidents(prev => prev ? prev.filter(r => r.id !== id) : null);
+            toast({ title: "Sukces", description: "Mieszkaniec BOK został usunięty." });
+            // refreshData(false); // Removed to prevent "Zombie Record" issue due to race condition
         } catch(e) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć mieszkańca BOK." });
         }
-    }, [currentUser, refreshData, toast]);
+    }, [currentUser, toast]);
     
     const handleUpdateSettings = useCallback(async (newSettings: Partial<Settings>) => {
         if (!rawSettings || !currentUser?.isAdmin) {
@@ -644,14 +645,15 @@ export default function MainLayout({
         
         try {
             await bulkDeleteEmployees(status, currentUser.uid);
+            setRawEmployees(prev => prev ? prev.filter(e => e.status !== status) : null);
             toast({ title: "Sukces", description: `Wszyscy ${status === 'active' ? 'aktywni' : 'zwolnieni'} pracownicy zostali usunięci.` });
-            await refreshData(false);
+            // refreshData(false); // Removed to prevent "Zombie Record" issue due to race condition
             return true;
         } catch(e) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć pracowników." });
             return false;
         }
-    }, [currentUser, refreshData, toast]);
+    }, [currentUser, toast]);
 
     const handleBulkDeleteEmployeesByCoordinator = useCallback(async (coordinatorId: string) => {
         if (!currentUser || !currentUser.isAdmin) {
@@ -661,14 +663,15 @@ export default function MainLayout({
         
         try {
             await bulkDeleteEmployeesByCoordinator(coordinatorId, currentUser.uid);
+            setRawEmployees(prev => prev ? prev.filter(e => e.coordinatorId !== coordinatorId) : null);
             toast({ title: "Sukces", description: `Wszyscy pracownicy wybranego koordynatora zostali usunięci.` });
-            await refreshData(false);
+            // refreshData(false); // Removed to prevent "Zombie Record" issue due to race condition
             return true;
         } catch(e) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć pracowników." });
             return false;
         }
-    }, [currentUser, refreshData, toast]);
+    }, [currentUser, toast]);
 
     const handleBulkDeleteEmployeesByDepartment = useCallback(async (department: string) => {
         if (!currentUser || !currentUser.isAdmin) {
@@ -678,14 +681,15 @@ export default function MainLayout({
         
         try {
             await bulkDeleteEmployeesByDepartment(department, currentUser.uid);
+            setRawEmployees(prev => prev ? prev.filter(e => e.zaklad !== department) : null);
             toast({ title: "Sukces", description: `Wszyscy pracownicy z zakładu "${department}" zostali usunięci.` });
-            await refreshData(false);
+            // refreshData(false); // Removed to prevent "Zombie Record" issue due to race condition
             return true;
         } catch(e) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć pracowników." });
             return false;
         }
-    }, [currentUser, refreshData, toast]);
+    }, [currentUser, toast]);
     
     const handleDismissEmployee = useCallback(async (employeeId: string, checkOutDate: Date) => {
         if (!currentUser) return;
@@ -735,11 +739,13 @@ export default function MainLayout({
         if (!currentUser) return;
         try {
             await deleteEmployee(employeeId, actorUid);
-            await refreshData(false);
+            setRawEmployees(prev => prev ? prev.filter(e => e.id !== employeeId) : null);
+            toast({ title: "Sukces", description: "Pracownik został usunięty." });
+            // refreshData(false); // Removed to prevent "Zombie Record" issue due to race condition
         } catch (e: unknown) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć pracownika." });
         }
-    }, [currentUser, refreshData, toast]);
+    }, [currentUser, toast]);
 
     const handleDeleteAddressHistory = useCallback(async (historyId: string, actorUid: string) => {
         if (!currentUser) return;

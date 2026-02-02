@@ -7,15 +7,17 @@ import { PWAInstaller } from '@/components/pwa-installer';
 
 const inter = Inter({ subsets: ['latin'] })
 
-export const metadata: Metadata = {
-  title: 'SmartHouse',
-  description: 'Zarządzanie pracownikami i inspekcjami',
-  manifest: '/manifest.json',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "SmartHouse",
-  },
+export function generateMetadata(): Metadata {
+  return {
+    title: 'SmartHouse',
+    description: 'Zarządzanie pracownikami i inspekcjami',
+    manifest: '/manifest.json',
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "default",
+      title: "SmartHouse",
+    },
+  };
 }
 
 export default function RootLayout({

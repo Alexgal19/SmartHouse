@@ -1,6 +1,6 @@
 /* eslint-disable no-undef */
-importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
 
 const firebaseConfig = {
   apiKey: "AIzaSyDQzoMbd1jAjEqmEzkk0uSrNbJ793yXljk",
@@ -16,18 +16,23 @@ firebase.initializeApp(firebaseConfig);
 
 const messaging = firebase.messaging();
 
+// Handle background messages
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
-  const notificationTitle = payload.notification?.title || 'Powiadomienie';
+  
+  const data = payload.data || {};
+  const notificationTitle = data.title || payload.notification?.title || 'Powiadomienie';
   const notificationOptions = {
-    body: payload.notification?.body,
-    icon: '/icon-192x192.png',
-    data: payload.data // Pass data payload to the notification
+    body: data.body || payload.notification?.body,
+    icon: data.icon || '/icon-192x192.png',
+    badge: data.badge || '/icon-192x192.png',
+    data: data // Pass data payload to the notification
   };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  return self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
+// Handle notification click
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   
@@ -36,22 +41,35 @@ self.addEventListener('notificationclick', (event) => {
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // Check if the app is already open
-      // We can try to focus an existing window, ideally one that matches the URL, 
-      // but matching exactly might be hard due to query params.
-      // Let's focus the first open window and navigate it, or open a new one.
-      
+      // Check if there is already a window/tab open with the target URL
       for (let i = 0; i < windowClients.length; i++) {
         const client = windowClients[i];
+        // If we find a client that matches our scope and is focusable
         if (client.url.includes(self.registration.scope) && 'focus' in client) {
-            // Focus and navigate
-            return client.focus().then(c => c.navigate(urlToOpen));
+            return client.focus().then(focusedClient => {
+                // If the URL is different, navigate
+                if (focusedClient.url !== urlToOpen) {
+                    return focusedClient.navigate(urlToOpen);
+                }
+                return focusedClient;
+            });
         }
       }
-      
+      // If no window is open, open a new one
       if (self.clients.openWindow) {
         return self.clients.openWindow(urlToOpen);
       }
     })
   );
+});
+
+// Force immediate activation
+self.addEventListener('install', (_event) => {
+    console.log('[firebase-messaging-sw.js] Installing SW...');
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+    console.log('[firebase-messaging-sw.js] Activating SW...');
+    event.waitUntil(self.clients.claim());
 });

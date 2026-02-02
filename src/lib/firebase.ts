@@ -1,6 +1,6 @@
 
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getMessaging, isSupported, type Messaging } from "firebase/messaging";
+import { getMessaging, isSupported } from "firebase/messaging";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDQzoMbd1jAjEqmEzkk0uSrNbJ793yXljk",
@@ -14,14 +14,8 @@ const firebaseConfig = {
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-let messaging: Messaging | null = null;
+const messagingPromise = typeof window !== 'undefined'
+    ? isSupported().then(supported => supported ? getMessaging(app) : null)
+    : Promise.resolve(null);
 
-if (typeof window !== 'undefined') {
-    isSupported().then(supported => {
-        if (supported) {
-            messaging = getMessaging(app);
-        }
-    });
-}
-
-export { app, messaging };
+export { app, messagingPromise };

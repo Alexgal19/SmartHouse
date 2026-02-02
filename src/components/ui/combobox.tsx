@@ -28,16 +28,18 @@ type ComboboxProps = {
     searchPlaceholder?: string;
     notFoundMessage?: string;
     className?: string;
+    id?: string;
 }
 
-export function Combobox({ 
-    options, 
-    value, 
-    onChange, 
-    placeholder = "Wybierz opcję...", 
+export function Combobox({
+    options,
+    value,
+    onChange,
+    placeholder = "Wybierz opcję...",
     searchPlaceholder = "Szukaj...",
     notFoundMessage = "Nie znaleziono.",
-    className
+    className,
+    id
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
 
@@ -47,6 +49,7 @@ export function Combobox({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          id={id}
           variant="outline"
           role="combobox"
           aria-expanded={open}

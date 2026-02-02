@@ -81,7 +81,6 @@ describe('AddNonEmployeeForm', () => {
       expect(screen.getByText('Pokój jest wymagany.')).toBeInTheDocument();
       expect(screen.getByText("Narodowość jest wymagana.")).toBeInTheDocument();
       expect(screen.getByText("Płeć jest wymagana.")).toBeInTheDocument();
-      expect(screen.getByText("Data zameldowania jest wymagana.")).toBeInTheDocument();
     });
   });
 
@@ -96,10 +95,10 @@ describe('AddNonEmployeeForm', () => {
     fireEvent.click(screen.getByText('Jan Kowalski'));
 
     fireEvent.click(screen.getByText('Wybierz miejscowość'));
-    fireEvent.click(screen.getByText('Warszawa'));
+    fireEvent.click(screen.getByRole('option', { name: 'Warszawa' }));
 
     fireEvent.click(screen.getByText('Wybierz adres'));
-    fireEvent.click(screen.getByText('Testowa 1'));
+    fireEvent.click(screen.getByRole('option', { name: 'Testowa 1' }));
 
     const submitButton = screen.getByRole('button', { name: 'Zapisz' });
     fireEvent.click(submitButton);

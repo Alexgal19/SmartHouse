@@ -43,7 +43,7 @@ export const formSchema = z.object({
   role: z.string().min(1, "Rola (Kierowca/Recepcja) jest wymagana."),
   firstName: z.string().min(1, "Imię jest wymagane."),
   lastName: z.string().min(1, "Nazwisko jest wymagane."),
-  coordinatorId: z.string().optional(),
+  coordinatorId: z.string().min(1, "Koordynator jest wymagany."),
   nationality: z.string().min(1, "Narodowość jest wymagana."),
   address: z.string().min(1, "Adres jest wymagany."),
   roomNumber: z.string().min(1, "Pokój jest wymagany."),
@@ -72,10 +72,12 @@ const DateInput = ({
   value,
   onChange,
   disabled,
+  id,
 }: {
   value?: Date | null;
   onChange: (date?: Date | null) => void;
   disabled?: (date: Date) => boolean;
+  id?: string;
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
@@ -121,6 +123,7 @@ const DateInput = ({
       <PopoverTrigger asChild>
         <div className="relative">
           <Input
+            id={id}
             type="text"
             value={inputValue}
             onChange={handleInputChange}
@@ -220,7 +223,7 @@ export function AddBokResidentForm({
             role: resident.role || '',
             firstName: resident.firstName || '',
             lastName: resident.lastName || '',
-            coordinatorId: resident.coordinatorId || '',
+            coordinatorId: resident.coordinatorId || currentUser.uid,
             nationality: resident.nationality || '',
             address: resident.address || '',
             roomNumber: resident.roomNumber || '',
@@ -237,7 +240,7 @@ export function AddBokResidentForm({
           role: '',
           firstName: '',
           lastName: '',
-          coordinatorId: '',
+          coordinatorId: currentUser.uid || '',
           nationality: '',
           address: '',
           roomNumber: '',
@@ -346,17 +349,19 @@ export function AddBokResidentForm({
                     render={({ field }) => (
                     <FormItem className="flex flex-col">
                         <FormLabel>Koordynator</FormLabel>
-                        <Combobox
-                            options={coordinatorOptions}
-                            value={field.value || ''}
-                            onChange={(val) => {
-                                field.onChange(val);
-                                form.setValue('address', '');
-                                form.setValue('roomNumber', '');
-                            }}
-                            placeholder="Wybierz koordynatora"
-                            searchPlaceholder="Szukaj koordynatora..."
-                        />
+                        <FormControl>
+                            <Combobox
+                                options={coordinatorOptions}
+                                value={field.value || ''}
+                                onChange={(val) => {
+                                    field.onChange(val);
+                                    form.setValue('address', '');
+                                    form.setValue('roomNumber', '');
+                                }}
+                                placeholder="Wybierz koordynatora"
+                                searchPlaceholder="Szukaj koordynatora..."
+                            />
+                        </FormControl>
                         <FormMessage />
                     </FormItem>
                     )}
@@ -369,13 +374,15 @@ export function AddBokResidentForm({
                         render={({ field }) => (
                         <FormItem className="flex flex-col">
                             <FormLabel>Narodowość</FormLabel>
+                            <FormControl>
                                 <Combobox
-                                options={nationalityOptions}
-                                value={field.value || ''}
-                                onChange={field.onChange}
-                                placeholder="Wybierz narodowość"
-                                searchPlaceholder="Szukaj narodowości..."
-                            />
+                                    options={nationalityOptions}
+                                    value={field.value || ''}
+                                    onChange={field.onChange}
+                                    placeholder="Wybierz narodowość"
+                                    searchPlaceholder="Szukaj narodowości..."
+                                />
+                            </FormControl>
                             <FormMessage />
                         </FormItem>
                         )}
@@ -427,7 +434,11 @@ export function AddBokResidentForm({
                             <Select onValueChange={field.onChange} value={field.value || ''} disabled={!selectedAddress}>
                             <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : "Wybierz pokój"} /></SelectTrigger></FormControl>
                             <SelectContent>
-                                {availableRooms.map(r => <SelectItem key={r.id} value={r.name}>{r.name} (Pojemność: {r.capacity})</SelectItem>)}
+                                {availableRooms.map(r => (
+                                    <SelectItem key={r.id} value={r.name} disabled={r.isActive === false}>
+                                        {r.name} {r.isActive !== false ? `(Pojemność: ${r.capacity})` : '(Niedostępny)'}
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                             </Select>
                             <FormMessage />
@@ -456,13 +467,15 @@ export function AddBokResidentForm({
                                  </Button>
                              )}
                          </div>
-                         <Combobox
-                             options={departmentOptions}
-                             value={field.value || ''}
-                             onChange={field.onChange}
-                             placeholder="Wybierz zakład"
-                             searchPlaceholder="Szukaj zakładu..."
-                         />
+                         <FormControl>
+                             <Combobox
+                                 options={departmentOptions}
+                                 value={field.value || ''}
+                                 onChange={field.onChange}
+                                 placeholder="Wybierz zakład"
+                                 searchPlaceholder="Szukaj zakładu..."
+                             />
+                         </FormControl>
                          <FormMessage />
                      </FormItem>
                      )}
@@ -475,10 +488,12 @@ export function AddBokResidentForm({
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
                                 <FormLabel>Data zameldowania</FormLabel>
-                                <DateInput
-                                    value={field.value ?? undefined}
-                                    onChange={field.onChange}
-                                />
+                                <FormControl>
+                                    <DateInput
+                                        value={field.value ?? undefined}
+                                        onChange={field.onChange}
+                                    />
+                                </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}
@@ -489,7 +504,9 @@ export function AddBokResidentForm({
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
                                 <FormLabel>Data wyjazdu</FormLabel>
-                                <DateInput value={field.value ?? undefined} onChange={field.onChange} />
+                                <FormControl>
+                                    <DateInput value={field.value ?? undefined} onChange={field.onChange} />
+                                </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}

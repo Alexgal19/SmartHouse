@@ -2,7 +2,18 @@
 "use server";
 
 import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, NotificationType, Coordinator, BokResident } from '../types';
-import { getSheet, getAllSheetsData, addAddressHistoryEntry as addHistoryToAction, updateAddressHistoryEntry as updateHistoryToAction, deleteAddressHistoryEntry as deleteHistoryFromSheet } from './sheets';
+import { revalidatePath } from 'next/cache';
+import {
+    getSheet,
+    getAllSheetsData,
+    addAddressHistoryEntry as addHistoryToAction,
+    updateAddressHistoryEntry as updateHistoryToAction,
+    deleteAddressHistoryEntry as deleteHistoryFromSheet,
+    invalidateEmployeesCache,
+    invalidateNonEmployeesCache,
+    invalidateBokResidentsCache,
+    invalidateSettingsCache
+} from './sheets';
 import { format, isValid, getDaysInMonth, parseISO, differenceInDays, max, min, parse as dateFnsParse, lastDayOfMonth } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { adminMessaging } from './firebase-admin';
@@ -459,10 +470,24 @@ const findActor = (actorUid: string | undefined, settings: Settings): Coordinato
     return actor;
 }
 
+const validateRoomAvailability = (settings: Settings, addressName: string | undefined | null, roomName: string | undefined | null) => {
+    if (addressName && roomName) {
+        const address = settings.addresses.find(a => a.name === addressName);
+        if (address) {
+            const room = address.rooms.find(r => r.name === roomName);
+            if (room && room.isActive === false) {
+                 throw new Error(`Pokój "${room.name}" w adresie "${address.name}" jest wyłączony z użytku.`);
+            }
+        }
+    }
+}
+
 export async function addEmployee(employeeData: Partial<Employee>, actorUid: string): Promise<Employee> {
     try {
         const { settings } = await getAllSheetsData(actorUid, true);
         const actor = findActor(actorUid, settings);
+
+        validateRoomAvailability(settings, employeeData.address, employeeData.roomNumber);
 
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const newEmployee: Employee = {
@@ -497,7 +522,9 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
         await sheet.addRow(serialized, { raw: false, insert: true });
         
         await createNotification(actor, 'dodał', newEmployee, settings);
-
+        
+        await invalidateEmployeesCache();
+        revalidatePath('/dashboard');
         return newEmployee;
     } catch (e: unknown) {
         console.error("Error adding employee:", e);
@@ -514,6 +541,8 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
 
         const { settings, addressHistory } = await getAllSheetsData(actorUid, true);
         const actor = findActor(actorUid, settings);
+
+        validateRoomAvailability(settings, updates.address, updates.roomNumber);
 
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows();
@@ -606,6 +635,9 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         if (changes.length > 0) {
             await createNotification(actor, 'zaktualizował', updatedEmployeeData, settings, undefined, changes);
         }
+        
+        await invalidateEmployeesCache();
+        revalidatePath('/dashboard');
 
     } catch (e: unknown) {
         console.error("Error updating employee:", e);
@@ -631,6 +663,9 @@ export async function deleteEmployee(employeeId: string, actorUid: string): Prom
         for (const historyEntry of historyToDelete) {
             await deleteHistoryFromSheet(historyEntry.id);
         }
+        
+        await invalidateEmployeesCache();
+        revalidatePath('/dashboard');
 
     } catch (e: unknown) {
         console.error("Error deleting employee:", e);
@@ -642,6 +677,8 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id' | '
     try {
         const { settings } = await getAllSheetsData(actorUid, true);
         const actor = findActor(actorUid, settings);
+
+        validateRoomAvailability(settings, nonEmployeeData.address, nonEmployeeData.roomNumber);
 
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
         const newNonEmployee: NonEmployee = {
@@ -667,6 +704,9 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id' | '
         await sheet.addRow(serialized, { raw: false, insert: true });
         
         await createNotification(actor, 'dodał', newNonEmployee, settings);
+        
+        await invalidateNonEmployeesCache();
+        revalidatePath('/dashboard');
 
         return newNonEmployee;
     } catch (e: unknown) {
@@ -683,6 +723,8 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
 
         const { settings, addressHistory } = await getAllSheetsData(actorUid, true);
         const actor = findActor(actorUid, settings);
+
+        validateRoomAvailability(settings, updates.address, updates.roomNumber);
 
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
         const rows = await sheet.getRows();
@@ -750,6 +792,9 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
         if (changes.length > 0) {
             await createNotification(actor, 'zaktualizował', updatedNonEmployeeData, settings, undefined, changes);
         }
+        
+        await invalidateNonEmployeesCache();
+        revalidatePath('/dashboard');
 
      } catch (e: unknown) {
          console.error("Error updating non-employee:", e);
@@ -771,6 +816,8 @@ export async function deleteNonEmployee(id: string, actorUid: string): Promise<v
             for (const historyEntry of historyToDelete) {
                 await deleteHistoryFromSheet(historyEntry.id);
             }
+            await invalidateNonEmployeesCache();
+            revalidatePath('/dashboard');
         } else {
             throw new Error('Non-employee not found');
         }
@@ -785,6 +832,8 @@ export async function addBokResident(residentData: Omit<BokResident, 'id'>, acto
         const { settings } = await getAllSheetsData(actorUid, true);
         const actor = findActor(actorUid, settings);
 
+        validateRoomAvailability(settings, residentData.address, residentData.roomNumber);
+
         const sheet = await getSheet(SHEET_NAME_BOK_RESIDENTS, BOK_RESIDENT_HEADERS);
         const newResident: BokResident = {
             id: `bok-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
@@ -796,6 +845,9 @@ export async function addBokResident(residentData: Omit<BokResident, 'id'>, acto
         await sheet.addRow(serialized, { raw: false, insert: true });
         
         await createNotification(actor, 'dodał', newResident, settings);
+        
+        await invalidateBokResidentsCache();
+        revalidatePath('/dashboard');
 
         return newResident;
     } catch (e: unknown) {
@@ -808,6 +860,8 @@ export async function updateBokResident(id: string, updates: Partial<BokResident
     try {
         const { settings } = await getAllSheetsData(actorUid, true);
         const actor = findActor(actorUid, settings);
+
+        validateRoomAvailability(settings, updates.address, updates.roomNumber);
 
         const sheet = await getSheet(SHEET_NAME_BOK_RESIDENTS, BOK_RESIDENT_HEADERS);
         const rows = await sheet.getRows();
@@ -840,6 +894,9 @@ export async function updateBokResident(id: string, updates: Partial<BokResident
         if (changes.length > 0) {
             await createNotification(actor, 'zaktualizował', updatedResident, settings, undefined, changes);
         }
+        
+        await invalidateBokResidentsCache();
+        revalidatePath('/dashboard');
 
     } catch (e: unknown) {
         console.error("Error updating BOK resident:", e);
@@ -855,6 +912,8 @@ export async function deleteBokResident(id: string, _actorUid: string): Promise<
 
         if (row) {
             await row.delete();
+            await invalidateBokResidentsCache();
+            revalidatePath('/dashboard');
         } else {
             throw new Error('BOK Resident not found');
         }
@@ -879,6 +938,9 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', _actor
         for (let i = rowsToDelete.length - 1; i >= 0; i--) {
             await rowsToDelete[i].delete();
         }
+        
+        await invalidateEmployeesCache();
+        revalidatePath('/dashboard');
 
     } catch (e: unknown) {
         console.error("Error bulk deleting employees:", e);
@@ -899,6 +961,9 @@ export async function bulkDeleteEmployeesByCoordinator(coordinatorId: string, ac
         for (let i = rowsToDelete.length - 1; i >= 0; i--) {
             await rowsToDelete[i].delete();
         }
+        
+        await invalidateEmployeesCache();
+        revalidatePath('/dashboard');
         
         // Audit logging
         const { settings } = await getAllSheetsData(actorUid, true);
@@ -930,6 +995,9 @@ export async function bulkDeleteEmployeesByDepartment(department: string, actorU
         for (let i = rowsToDelete.length - 1; i >= 0; i--) {
             await rowsToDelete[i].delete();
         }
+        
+        await invalidateEmployeesCache();
+        revalidatePath('/dashboard');
         
         // Audit logging
         const { settings } = await getAllSheetsData(actorUid, true);
@@ -967,6 +1035,9 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
             row.set('coordinatorId', toCoordinatorId);
             await row.save();
         }
+        
+        await invalidateEmployeesCache();
+        revalidatePath('/dashboard');
 
     } catch (e: unknown) {
         console.error("Error transferring employees:", e);
@@ -1027,6 +1098,12 @@ export async function checkAndUpdateStatuses(actorUid?: string): Promise<{ updat
             }
         }
         
+        if (updatedCount > 0) {
+             await invalidateEmployeesCache();
+             await invalidateNonEmployeesCache();
+             revalidatePath('/dashboard');
+        }
+        
         return { updated: updatedCount };
     } catch (e: unknown) {
         console.error("Error updating statuses:", e);
@@ -1076,7 +1153,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
         }
         if (newSettings.addresses) {
             const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ADDRESS_HEADERS);
-            const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity']);
+            const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity', 'isActive']);
             
             await addressesSheet.clearRows();
             await roomsSheet.clearRows();
@@ -1098,7 +1175,11 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
                 await addressesSheet.addRows(addressesData, { raw: false, insert: true });
             }
             if (allRooms.length > 0) {
-                await roomsSheet.addRows(allRooms.map(r => ({...r, capacity: String(r.capacity)})), { raw: false, insert: true });
+                await roomsSheet.addRows(allRooms.map(r => ({
+                    ...r,
+                    capacity: String(r.capacity),
+                    isActive: r.isActive !== false ? 'TRUE' : 'FALSE' // Default to TRUE if undefined
+                })), { raw: false, insert: true });
             }
         }
         if (newSettings.coordinators) {
@@ -1137,6 +1218,9 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
                  })));
              }
         }
+        
+        await invalidateSettingsCache();
+        revalidatePath('/dashboard');
 
     } catch (error: unknown) {
         console.error("Error updating settings:", error);
@@ -1153,6 +1237,7 @@ export async function updateNotificationReadStatus(notificationId: string, isRea
         if (row) {
             row.set('isRead', String(isRead).toUpperCase());
             await row.save();
+            revalidatePath('/dashboard');
         } else {
             throw new Error('Notification not found');
         }
@@ -1166,6 +1251,7 @@ export async function clearAllNotifications(): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
         await sheet.clearRows();
+        revalidatePath('/dashboard');
     } catch (e: unknown) {
         console.error("Could not clear notifications:", e);
         throw new Error(e instanceof Error ? e.message : "Failed to clear notifications.");
@@ -1179,6 +1265,7 @@ export async function deleteNotification(notificationId: string): Promise<void> 
         const rowToDelete = rows.find(row => row.get('id') === notificationId);
         if (rowToDelete) {
             await rowToDelete.delete();
+            revalidatePath('/dashboard');
         } else {
             throw new Error('Notification not found');
         }
@@ -1540,6 +1627,13 @@ const processImport = async (
             await updateSettings({ localities: updatedLocalities });
         }
         
+        if (type === 'employee') {
+            await invalidateEmployeesCache();
+        } else {
+            await invalidateNonEmployeesCache();
+        }
+        
+        revalidatePath('/dashboard');
         return { importedCount: recordsToAdd.length, totalRows: data.length, errors };
 
     } catch (e) {
@@ -1572,6 +1666,7 @@ export async function deleteAddressHistoryEntry(historyId: string, actorUid: str
         await writeToAuditLog(actor.uid, actor.name, 'delete-address-history', 'address-history', historyId, {
             message: `Usunięto wpis z historii adresów.`,
         });
+        revalidatePath('/dashboard');
     } catch (e: unknown) {
         console.error("Error deleting address history entry:", e);
         throw new Error(e instanceof Error ? e.message : "Failed to delete address history entry.");
@@ -1622,6 +1717,10 @@ export async function migrateFullNames(actorUid: string): Promise<{ migratedEmpl
         migratedEmployees,
         migratedNonEmployees
     });
+    
+    await invalidateEmployeesCache();
+    await invalidateNonEmployeesCache();
+    revalidatePath('/dashboard');
 
     return { migratedEmployees, migratedNonEmployees };
 }
@@ -1636,6 +1735,8 @@ export async function updateCoordinatorSubscription(coordinatorId: string, subsc
             // Save token directly as string
             coordinatorRow.set('pushSubscription', subscription || '');
             await coordinatorRow.save();
+            await invalidateSettingsCache();
+            revalidatePath('/dashboard');
         } else {
             throw new Error('Coordinator not found.');
         }
@@ -1673,7 +1774,22 @@ export async function sendPushNotification(
                     title: title,
                     body: body,
                 },
+                data: {
+                    title: title,
+                    body: body,
+                    url: link || '/dashboard',
+                    icon: '/icon-192x192.png',
+                    badge: '/icon-192x192.png'
+                },
                 webpush: {
+                    headers: {
+                        Urgency: 'high',
+                        TTL: '86400'
+                    },
+                    notification: {
+                        icon: '/icon-192x192.png',
+                        badge: '/icon-192x192.png'
+                    },
                     fcmOptions: {
                         link: link || '/dashboard'
                     }

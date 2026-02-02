@@ -31,7 +31,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { Address, Coordinator, Settings } from '@/types';
+import { Switch } from '@/components/ui/switch';
+import type { Address, Settings } from '@/types';
 import { PlusCircle, Trash2 } from 'lucide-react';
 
 
@@ -39,13 +40,14 @@ const roomSchema = z.object({
   id: z.string().min(1, 'ID pokoju jest wymagane.'),
   name: z.string().min(1, 'Nazwa pokoju jest wymagana.'),
   capacity: z.coerce.number().min(1, 'Pojemność musi być większa od 0.'),
+  isActive: z.boolean().default(true),
 });
 
 const addressSchema = z.object({
   id: z.string(),
   locality: z.string().min(1, "Miejscowość jest wymagana."),
   name: z.string().min(1, 'Nazwa adresu jest wymagana.'),
-  coordinatorIds: z.array(z.string()).min(1, 'Przypisz co najmniej jednego koordynatora.'),
+  coordinatorIds: z.array(z.object({ value: z.string() })).min(1, 'Przypisz co najmniej jednego koordynatora.'),
   rooms: z.array(roomSchema),
 });
 
@@ -81,7 +83,7 @@ export function AddressForm({
     if (address) {
         form.reset({
             ...address,
-            coordinatorIds: address.coordinatorIds || []
+            coordinatorIds: (address.coordinatorIds || []).map(id => ({ value: id }))
         });
     } else {
         form.reset({
@@ -95,12 +97,15 @@ export function AddressForm({
   }, [address, isOpen, form]);
   
   const onSubmit = (values: z.infer<typeof addressSchema>) => {
-    onSave(values);
+    onSave({
+      ...values,
+      coordinatorIds: values.coordinatorIds.map(c => c.value)
+    });
     onOpenChange(false);
   };
   
   const availableCoordinators = settings.coordinators.filter(
-      c => !(form.watch('coordinatorIds') || []).includes(c.uid)
+      c => !(form.watch('coordinatorIds') || []).some(coord => coord.value === c.uid)
   );
 
   return (
@@ -153,7 +158,7 @@ export function AddressForm({
                             <div key={field.id} className="flex items-center gap-2">
                                 <FormField
                                     control={form.control}
-                                    name={`coordinatorIds.${index}`}
+                                    name={`coordinatorIds.${index}.value`}
                                     render={({ field }) => (
                                         <FormItem className="flex-1">
                                             <Select onValueChange={(val) => field.onChange(val)} value={field.value}>
@@ -178,7 +183,7 @@ export function AddressForm({
                             variant="outline"
                             size="sm"
                             className="mt-2 w-full"
-                            onClick={() => appendCoord('')}
+                            onClick={() => appendCoord({ value: '' })}
                             disabled={availableCoordinators.length === 0}
                         >
                             <PlusCircle className="mr-2 h-4 w-4" />
@@ -191,7 +196,7 @@ export function AddressForm({
                     <div className="space-y-2 rounded-md border p-4">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="font-medium">Pokoje</h3>
-                            <Button type="button" variant="outline" size="sm" onClick={() => appendRoom({ id: `room-${Date.now()}`, name: '', capacity: 1 })}>
+                            <Button type="button" variant="outline" size="sm" onClick={() => appendRoom({ id: `room-${Date.now()}`, name: '', capacity: 1, isActive: true })}>
                                 <PlusCircle className="mr-2 h-4 w-4" /> Dodaj pokój
                             </Button>
                         </div>
@@ -216,6 +221,23 @@ export function AddressForm({
                                              <FormLabel className="sr-only">Pojemność</FormLabel>
                                             <FormControl><Input type="number" placeholder="Pojemność" {...capacityField} /></FormControl>
                                             <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name={`rooms.${index}.isActive`}
+                                    render={({ field: switchField }) => (
+                                        <FormItem className="flex flex-row items-center space-x-2 space-y-0 p-2 border rounded-md h-10">
+                                            <FormControl>
+                                                <Switch
+                                                    checked={switchField.value}
+                                                    onCheckedChange={switchField.onChange}
+                                                />
+                                            </FormControl>
+                                            <FormLabel className="text-xs font-normal whitespace-nowrap sr-only">
+                                                Aktywny
+                                            </FormLabel>
                                         </FormItem>
                                     )}
                                 />

@@ -6,7 +6,9 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { SessionData, Settings } from '@/types';
 
 // Mock dependencies
-jest.mock('../main-layout');
+jest.mock('../main-layout', () => ({
+  useMainLayout: jest.fn(),
+}));
 jest.mock('@/hooks/use-mobile');
 jest.mock('../dashboard/kpi-cards', () => ({
   DashboardKPIs: () => <div data-testid="dashboard-kpis">KPI Cards</div>,
@@ -84,7 +86,7 @@ describe('DashboardView', () => {
 
     expect(screen.getByTestId('dashboard-kpis')).toBeInTheDocument();
     expect(screen.getByTestId('quick-actions')).toBeInTheDocument();
-    expect(screen.getAllByTestId('dynamic-chart')).toHaveLength(2); // Charts + Occupancy (if admin) or just Charts?
+    expect(screen.getAllByTestId('dynamic-chart')).toHaveLength(1); // Charts only (not admin)
     // Wait, DashboardCharts is one dynamic component. CoordinatorOccupancyChart is another.
     // If not admin, CoordinatorOccupancyChart is not rendered?
     // Let's check logic:

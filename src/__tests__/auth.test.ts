@@ -1,5 +1,7 @@
 import { login, logout, getSession } from '@/lib/auth';
 import * as sheets from '@/lib/sheets';
+import { redirect } from 'next/navigation';
+import { getIronSession } from 'iron-session';
 
 jest.mock('iron-session');
 jest.mock('next/headers');
@@ -21,8 +23,16 @@ describe('Authentication', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         // Mock getIronSession to return our mock session
-        const { getIronSession } = require('iron-session');
-        getIronSession.mockResolvedValue(mockSession);
+        (getIronSession as jest.Mock).mockResolvedValue(mockSession);
+        
+        // Default return for getAllSheetsData to avoid destructuring error
+        mockedGetAllSheetsData.mockResolvedValue({
+            settings: { coordinators: [] },
+            employees: [],
+            nonEmployees: [],
+            bokResidents: [],
+            addressHistory: [],
+        });
     });
 
     describe('getSession', () => {
@@ -123,9 +133,6 @@ describe('Authentication', () => {
 
     describe('logout', () => {
         it('should destroy the session and redirect', async () => {
-            const { redirect } = require('next/navigation');
-            redirect.mockImplementation(() => {});
-
             await logout();
             expect(mockSession.destroy).toHaveBeenCalled();
             expect(redirect).toHaveBeenCalledWith('/');

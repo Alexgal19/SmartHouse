@@ -5,9 +5,6 @@ runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.
   maxInstances: 1
-rewrites:
-  - source: '**'
-    destination: /_next/server/server.js
 build:
   command: 'npm run build'
 serve:

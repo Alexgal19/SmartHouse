@@ -6,13 +6,29 @@
         "-y",
         "@modelcontextprotocol/server-filesystem",
         "/home/user/studio/.idx/mcp.json"
-      ]
+      ],
+      "disabled": false,
+      "alwaysAllow": []
     },
     "sequentialthinking": {
       "command": "npx",
       "args": [
         "-y",
         "@modelcontextprotocol/server-sequential-thinking"
+      ]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@0.0.38"
+      ]
+    },
+    "genkit": {
+      "command": "npm",
+      "args": [
+        "install",
+        "@genkit-ai/mcp"
       ]
     }
   }

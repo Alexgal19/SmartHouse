@@ -52,7 +52,7 @@ const formSchema = z.object({
   roomNumber: z.string().min(1, 'Pokój jest wymagany.'),
   nationality: z.string().min(1, "Narodowość jest wymagana."),
   gender: z.string().min(1, "Płeć jest wymagana."),
-  checkInDate: z.date({ required_error: "Data zameldowania jest wymagana." }).nullable(),
+  checkInDate: z.date({ required_error: "Data zameldowania jest wymagana.", invalid_type_error: "Data zameldowania jest wymagana." }),
   checkOutDate: z.date().nullable().optional(),
   departureReportDate: z.date().nullable().optional(),
   comments: z.string().optional(),
@@ -76,10 +76,12 @@ const DateInput = ({
   value,
   onChange,
   disabled,
+  id,
 }: {
   value?: Date | null;
   onChange: (date?: Date | null) => void;
   disabled?: (date: Date) => boolean;
+  id?: string;
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
@@ -121,6 +123,7 @@ const DateInput = ({
       <PopoverTrigger asChild>
         <div className="relative">
           <Input
+            id={id}
             type="text"
             value={inputValue}
             onChange={handleInputChange}
@@ -181,7 +184,7 @@ export function AddNonEmployeeForm({
       roomNumber: '',
       nationality: '',
       gender: '',
-      checkInDate: null,
+      checkInDate: undefined,
       checkOutDate: null,
       departureReportDate: null,
       comments: '',
@@ -252,7 +255,7 @@ export function AddNonEmployeeForm({
       form.reset({
         ...nonEmployee,
         locality: neLocality,
-        checkInDate: parseDate(nonEmployee.checkInDate),
+        checkInDate: parseDate(nonEmployee.checkInDate) || undefined,
         checkOutDate: parseDate(nonEmployee.checkOutDate),
         departureReportDate: parseDate(nonEmployee.departureReportDate),
         paymentType: nonEmployee.paymentType ?? null,
@@ -439,13 +442,15 @@ export function AddNonEmployeeForm({
                   render={({ field }) => (
                   <FormItem className="flex flex-col">
                       <FormLabel>Koordynator</FormLabel>
-                      <Combobox
-                          options={coordinatorOptions}
-                          value={field.value}
-                          onChange={handleCoordinatorChange}
-                          placeholder="Wybierz koordynatora"
-                          searchPlaceholder="Szukaj koordynatora..."
-                      />
+                      <FormControl>
+                          <Combobox
+                              options={coordinatorOptions}
+                              value={field.value}
+                              onChange={handleCoordinatorChange}
+                              placeholder="Wybierz koordynatora"
+                              searchPlaceholder="Szukaj koordynatora..."
+                          />
+                      </FormControl>
                       <FormMessage />
                   </FormItem>
                   )}
@@ -457,13 +462,15 @@ export function AddNonEmployeeForm({
                       render={({ field }) => (
                       <FormItem className="flex flex-col">
                           <FormLabel>Narodowość</FormLabel>
-                          <Combobox
-                              options={nationalityOptions}
-                              value={field.value || ''}
-                              onChange={field.onChange}
-                              placeholder="Wybierz narodowość"
-                              searchPlaceholder="Szukaj narodowości..."
-                          />
+                          <FormControl>
+                              <Combobox
+                                  options={nationalityOptions}
+                                  value={field.value || ''}
+                                  onChange={field.onChange}
+                                  placeholder="Wybierz narodowość"
+                                  searchPlaceholder="Szukaj narodowości..."
+                              />
+                          </FormControl>
                           <FormMessage />
                       </FormItem>
                       )}
@@ -529,7 +536,11 @@ export function AddNonEmployeeForm({
                           <Select onValueChange={field.onChange} value={field.value || ''} disabled={!selectedAddress}>
                           <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : "Wybierz pokój"} /></SelectTrigger></FormControl>
                           <SelectContent>
-                              {availableRooms.map(r => <SelectItem key={r.id} value={r.name}>{r.name} (Pojemność: {r.capacity})</SelectItem>)}
+                              {availableRooms.map(r => (
+                                <SelectItem key={r.id} value={r.name} disabled={r.isActive === false}>
+                                    {r.name} {r.isActive !== false ? `(Pojemność: ${r.capacity})` : '(Niedostępny)'}
+                                </SelectItem>
+                              ))}
                           </SelectContent>
                           </Select>
                           <FormMessage />
@@ -573,10 +584,12 @@ export function AddNonEmployeeForm({
                       render={({ field }) => (
                           <FormItem className="flex flex-col">
                               <FormLabel>Data zameldowania</FormLabel>
-                              <DateInput 
-                                  value={field.value} 
-                                  onChange={field.onChange}
-                              />
+                              <FormControl>
+                                  <DateInput
+                                      value={field.value}
+                                      onChange={field.onChange}
+                                  />
+                              </FormControl>
                               <FormMessage />
                           </FormItem>
                       )}
@@ -587,7 +600,9 @@ export function AddNonEmployeeForm({
                       render={({ field }) => (
                           <FormItem className="flex flex-col">
                               <FormLabel>Data wymeldowania</FormLabel>
-                              <DateInput value={field.value} onChange={d => field.onChange(d)} />
+                              <FormControl>
+                                  <DateInput value={field.value} onChange={d => field.onChange(d)} />
+                              </FormControl>
                               <FormMessage />
                           </FormItem>
                       )}
@@ -598,7 +613,9 @@ export function AddNonEmployeeForm({
                       render={({ field }) => (
                           <FormItem className="flex flex-col">
                               <FormLabel>Data zgłoszenia wyjazdu</FormLabel>
-                              <DateInput value={field.value} onChange={d => field.onChange(d)} />
+                              <FormControl>
+                                  <DateInput value={field.value} onChange={d => field.onChange(d)} />
+                              </FormControl>
                               <FormMessage />
                           </FormItem>
                       )}

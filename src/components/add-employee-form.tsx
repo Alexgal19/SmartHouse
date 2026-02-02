@@ -59,7 +59,7 @@ export const formSchema = z.object({
   zaklad: z.string().min(1, "Zakład jest wymagany."),
   nationality: z.string().min(1, "Narodowość jest wymagana."),
   gender: z.string().min(1, "Płeć jest wymagana."),
-  checkInDate: z.date({ required_error: "Data zameldowania jest wymagana." }),
+  checkInDate: z.date({ required_error: "Data zameldowania jest wymagana.", invalid_type_error: "Data zameldowania jest wymagana." }),
   checkOutDate: z.date().nullable().optional(),
   contractStartDate: z.date().nullable().optional(),
   contractEndDate: z.date().nullable().optional(),
@@ -143,10 +143,12 @@ const DateInput = ({
   value,
   onChange,
   disabled,
+  id,
 }: {
   value?: Date | null;
   onChange: (date?: Date | null) => void;
   disabled?: (date: Date) => boolean;
+  id?: string;
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
@@ -192,6 +194,7 @@ const DateInput = ({
       <PopoverTrigger asChild>
         <div className="relative">
           <Input
+            id={id}
             type="text"
             value={inputValue}
             onChange={handleInputChange}
@@ -412,10 +415,16 @@ export function AddEmployeeForm({
         })
         .catch((error) => {
           console.error('OCR Error:', error);
+          let description = 'Nie udało się odczytać danych z dokumentu.';
+          
+          if (error.message?.includes('API key') || error.message?.includes('400')) {
+            description = 'Błąd konfiguracji API (Nieprawidłowy klucz API). Skontaktuj się z administratorem.';
+          }
+
           toast({
             variant: 'destructive',
             title: 'Błąd skanowania',
-            description: 'Nie udało się odczytać danych z dokumentu.'
+            description,
           });
         })
         .finally(() => {
@@ -599,13 +608,15 @@ export function AddEmployeeForm({
                                 render={({ field }) => (
                                 <FormItem className="flex flex-col">
                                     <FormLabel>Koordynator</FormLabel>
-                                    <Combobox
-                                        options={coordinatorOptions}
-                                        value={field.value}
-                                        onChange={handleCoordinatorChange}
-                                        placeholder="Wybierz koordynatora"
-                                        searchPlaceholder="Szukaj koordynatora..."
-                                    />
+                                    <FormControl>
+                                        <Combobox
+                                            options={coordinatorOptions}
+                                            value={field.value}
+                                            onChange={handleCoordinatorChange}
+                                            placeholder="Wybierz koordynatora"
+                                            searchPlaceholder="Szukaj koordynatora..."
+                                        />
+                                    </FormControl>
                                     <FormMessage />
                                 </FormItem>
                                 )}
@@ -616,13 +627,15 @@ export function AddEmployeeForm({
                                 render={({ field }) => (
                                 <FormItem className="flex flex-col">
                                     <FormLabel>Narodowość</FormLabel>
-                                     <Combobox
-                                        options={nationalityOptions}
-                                        value={field.value || ''}
-                                        onChange={field.onChange}
-                                        placeholder="Wybierz narodowość"
-                                        searchPlaceholder="Szukaj narodowości..."
-                                    />
+                                    <FormControl>
+                                        <Combobox
+                                            options={nationalityOptions}
+                                            value={field.value || ''}
+                                            onChange={field.onChange}
+                                            placeholder="Wybierz narodowość"
+                                            searchPlaceholder="Szukaj narodowości..."
+                                        />
+                                    </FormControl>
                                     <FormMessage />
                                 </FormItem>
                                 )}
@@ -652,13 +665,15 @@ export function AddEmployeeForm({
                                 render={({ field }) => (
                                 <FormItem className="flex flex-col">
                                     <FormLabel>Miejscowość</FormLabel>
-                                    <Combobox
-                                        options={localityOptions}
-                                        value={field.value || ''}
-                                        onChange={handleLocalityChange}
-                                        placeholder={!selectedCoordinatorId ? "Najpierw wybierz koordynatora" : "Wybierz miejscowość"}
-                                        searchPlaceholder="Szukaj miejscowości..."
-                                    />
+                                    <FormControl>
+                                        <Combobox
+                                            options={localityOptions}
+                                            value={field.value || ''}
+                                            onChange={handleLocalityChange}
+                                            placeholder={!selectedCoordinatorId ? "Najpierw wybierz koordynatora" : "Wybierz miejscowość"}
+                                            searchPlaceholder="Szukaj miejscowości..."
+                                        />
+                                    </FormControl>
                                     <FormMessage />
                                 </FormItem>
                                 )}
@@ -701,7 +716,11 @@ export function AddEmployeeForm({
                                     <Select onValueChange={field.onChange} value={field.value || ''} disabled={!selectedAddress || isOwnAddressSelected}>
                                     <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : (isOwnAddressSelected ? "1" : "Wybierz pokój")} /></SelectTrigger></FormControl>
                                     <SelectContent>
-                                        {availableRooms.map(r => <SelectItem key={r.id} value={r.name}>{r.name} (Pojemność: {r.capacity})</SelectItem>)}
+                                        {availableRooms.map(r => (
+                                            <SelectItem key={r.id} value={r.name} disabled={r.isActive === false}>
+                                                {r.name} {r.isActive !== false ? `(Pojemność: ${r.capacity})` : '(Niedostępny)'}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                     </Select>
                                     <FormMessage />
@@ -714,13 +733,15 @@ export function AddEmployeeForm({
                                 render={({ field }) => (
                                 <FormItem className="flex flex-col">
                                     <FormLabel>Zakład</FormLabel>
-                                    <Combobox
-                                        options={departmentOptions}
-                                        value={field.value || ''}
-                                        onChange={field.onChange}
-                                        placeholder={!selectedCoordinatorId ? "Najpierw wybierz koordynatora" : "Wybierz zakład"}
-                                        searchPlaceholder="Szukaj zakładu..."
-                                    />
+                                    <FormControl>
+                                        <Combobox
+                                            options={departmentOptions}
+                                            value={field.value || ''}
+                                            onChange={field.onChange}
+                                            placeholder={!selectedCoordinatorId ? "Najpierw wybierz koordynatora" : "Wybierz zakład"}
+                                            searchPlaceholder="Szukaj zakładu..."
+                                        />
+                                    </FormControl>
                                     <FormMessage />
                                 </FormItem>
                                 )}
@@ -734,10 +755,12 @@ export function AddEmployeeForm({
                                 render={({ field }) => (
                                     <FormItem className="flex flex-col">
                                         <FormLabel>Data zameldowania</FormLabel>
-                                        <DateInput
-                                          value={field.value ?? undefined}
-                                          onChange={field.onChange}
-                                        />
+                                        <FormControl>
+                                            <DateInput
+                                            value={field.value ?? undefined}
+                                            onChange={field.onChange}
+                                            />
+                                        </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -748,7 +771,9 @@ export function AddEmployeeForm({
                                 render={({ field }) => (
                                     <FormItem className="flex flex-col">
                                         <FormLabel>Data wymeldowania</FormLabel>
-                                        <DateInput value={field.value ?? undefined} onChange={field.onChange} />
+                                        <FormControl>
+                                            <DateInput value={field.value ?? undefined} onChange={field.onChange} />
+                                        </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -759,7 +784,9 @@ export function AddEmployeeForm({
                                 render={({ field }) => (
                                     <FormItem className="flex flex-col">
                                         <FormLabel>Data zgłoszenia wyjazdu</FormLabel>
-                                        <DateInput value={field.value ?? undefined} onChange={field.onChange} />
+                                        <FormControl>
+                                            <DateInput value={field.value ?? undefined} onChange={field.onChange} />
+                                        </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -772,7 +799,9 @@ export function AddEmployeeForm({
                                 render={({ field }) => (
                                     <FormItem className="flex flex-col">
                                         <FormLabel>Umowa od</FormLabel>
-                                        <DateInput value={field.value ?? undefined} onChange={field.onChange} />
+                                        <FormControl>
+                                            <DateInput value={field.value ?? undefined} onChange={field.onChange} />
+                                        </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -783,7 +812,9 @@ export function AddEmployeeForm({
                                 render={({ field }) => (
                                     <FormItem className="flex flex-col">
                                         <FormLabel>Umowa do</FormLabel>
-                                        <DateInput value={field.value ?? undefined} onChange={field.onChange} />
+                                        <FormControl>
+                                            <DateInput value={field.value ?? undefined} onChange={field.onChange} />
+                                        </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -812,10 +843,12 @@ export function AddEmployeeForm({
                                 render={({ field }) => (
                                     <FormItem className="flex flex-col">
                                         <FormLabel>Data wpisania potrącenia</FormLabel>
-                                        <DateInput
-                                          value={field.value ?? undefined}
-                                          onChange={field.onChange}
-                                        />
+                                        <FormControl>
+                                            <DateInput
+                                            value={field.value ?? undefined}
+                                            onChange={field.onChange}
+                                            />
+                                        </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
