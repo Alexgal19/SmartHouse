@@ -46,7 +46,6 @@ const formSchema = z.object({
   statuses: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
   bokRoles: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
   bokReturnOptions: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
-  bokStatuses: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
   addresses: z.array(z.any()),
   coordinators: z.array(coordinatorSchema),
 });
@@ -1125,10 +1124,9 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
             genders: rawSettings.genders.map(g => ({ value: g })).sort((a, b) => a.value.localeCompare(b.value)),
             localities: rawSettings.localities.map(l => ({ value: l })).sort((a, b) => a.value.localeCompare(b.value)),
             paymentTypesNZ: rawSettings.paymentTypesNZ.map(p => ({ value: p })).sort((a, b) => a.value.localeCompare(b.value)),
-            statuses: rawSettings.statuses.map(s => ({ value: s })).sort((a, b) => a.value.localeCompare(b.value)),
+            statuses: (rawSettings.statuses || []).map(s => ({ value: s })).sort((a, b) => a.value.localeCompare(b.value)),
             bokRoles: (rawSettings.bokRoles || []).map(r => ({ value: r })).sort((a, b) => a.value.localeCompare(b.value)),
             bokReturnOptions: (rawSettings.bokReturnOptions || []).map(r => ({ value: r })).sort((a, b) => a.value.localeCompare(b.value)),
-            bokStatuses: (rawSettings.bokStatuses || []).map(s => ({ value: s })).sort((a, b) => a.value.localeCompare(b.value)),
             addresses: [...rawSettings.addresses].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
             coordinators: [...rawSettings.coordinators].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
         },
@@ -1141,10 +1139,9 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
             genders: rawSettings.genders.map(g => ({ value: g })).sort((a, b) => a.value.localeCompare(b.value)),
             localities: rawSettings.localities.map(l => ({ value: l })).sort((a, b) => a.value.localeCompare(b.value)),
             paymentTypesNZ: rawSettings.paymentTypesNZ.map(p => ({ value: p })).sort((a, b) => a.value.localeCompare(b.value)),
-            statuses: rawSettings.statuses.map(s => ({ value: s })).sort((a, b) => a.value.localeCompare(b.value)),
+            statuses: (rawSettings.statuses || []).map(s => ({ value: s })).sort((a, b) => a.value.localeCompare(b.value)),
             bokRoles: (rawSettings.bokRoles || []).map(r => ({ value: r })).sort((a, b) => a.value.localeCompare(b.value)),
             bokReturnOptions: (rawSettings.bokReturnOptions || []).map(r => ({ value: r })).sort((a, b) => a.value.localeCompare(b.value)),
-            bokStatuses: (rawSettings.bokStatuses || []).map(s => ({ value: s })).sort((a, b) => a.value.localeCompare(b.value)),
             addresses: [...rawSettings.addresses].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
             coordinators: [...rawSettings.coordinators].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
         });
@@ -1158,7 +1155,6 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
     const { fields: statusFields, append: appendStatus, remove: removeStatus } = useFieldArray({ control: form.control, name: 'statuses' });
     const { fields: bokRoleFields, append: appendBokRole, remove: removeBokRole } = useFieldArray({ control: form.control, name: 'bokRoles' });
     const { fields: bokReturnOptionFields, append: appendBokReturnOption, remove: removeBokReturnOption } = useFieldArray({ control: form.control, name: 'bokReturnOptions' });
-    const { fields: bokStatusFields, append: appendBokStatus, remove: removeBokStatus } = useFieldArray({ control: form.control, name: 'bokStatuses' });
     const { fields: coordFields, append: appendCoord, remove: removeCoord } = useFieldArray({ control: form.control, name: 'coordinators' });
     const { remove: removeAddr } = useFieldArray({ control: form.control, name: 'addresses' });
 
@@ -1177,7 +1173,6 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
             statuses: values.statuses.map((s) => s.value).sort((a, b) => a.localeCompare(b)),
             bokRoles: values.bokRoles.map((s) => s.value).sort((a, b) => a.localeCompare(b)),
             bokReturnOptions: values.bokReturnOptions.map((s) => s.value).sort((a, b) => a.localeCompare(b)),
-            bokStatuses: values.bokStatuses.map((s) => s.value).sort((a, b) => a.localeCompare(b)),
             addresses: values.addresses,
             coordinators: values.coordinators.sort((a,b) => a.name.localeCompare(b.name)),
         };
@@ -1254,7 +1249,6 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
                                         <p className="text-sm font-semibold text-muted-foreground mb-2">Ustawienia BOK</p>
                                         <ListManager name="bokRoles" title="Kierowcy BOK" fields={bokRoleFields} append={appendBokRole} remove={removeBokRole} control={form.control} />
                                         <ListManager name="bokReturnOptions" title="Opcje Powrotu BOK" fields={bokReturnOptionFields} append={appendBokReturnOption} remove={removeBokReturnOption} control={form.control} />
-                                        <ListManager name="bokStatuses" title="Statusy BOK" fields={bokStatusFields} append={appendBokStatus} remove={removeBokStatus} control={form.control} />
                                     </Accordion>
                                 </AccordionContent>
                             </AccordionItem>
@@ -1298,6 +1292,7 @@ function SettingsManager({ rawSettings, onSettingsChange, onRefresh }: { rawSett
                 </Form>
                  {rawSettings && (
                      <AddressForm
+                        key={editingAddress ? editingAddress.id : 'new-address'}
                         isOpen={isAddressFormOpen}
                         onOpenChange={setIsAddressFormOpen}
                         onSave={handleSaveAddress}
