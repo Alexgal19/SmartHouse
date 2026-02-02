@@ -5,6 +5,7 @@ import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadshee
 import { JWT } from 'google-auth-library';
 import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, Address, Coordinator, NotificationType, AddressHistory, BokResident } from '../types';
 import { format, isValid, parse, parseISO } from 'date-fns';
+import * as XLSX from 'xlsx';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
 const SHEET_NAME_EMPLOYEES = 'Employees';
@@ -23,7 +24,6 @@ const SHEET_NAME_ADDRESS_HISTORY = 'AddressHistory';
 const SHEET_NAME_BOK_RESIDENTS = 'BokResidents';
 const SHEET_NAME_BOK_ROLES = 'BokRoles';
 const SHEET_NAME_BOK_RETURN_OPTIONS = 'BokReturnOptions';
-const SHEET_NAME_BOK_STATUSES = 'BokStatuses';
 
 // Cache for the Google Spreadsheet document (reduces loadInfo calls)
 let cachedDoc: GoogleSpreadsheet | null = null;
@@ -97,14 +97,22 @@ export async function getSheet(title: string, headers: string[]): Promise<Google
             if (headers) {
                 const missingHeaders = headers.filter(h => !currentHeaders.includes(h));
                 if (missingHeaders.length > 0) {
-                    const newHeaders = [...currentHeaders, ...missingHeaders];
-                    if (newHeaders.length > sheet.columnCount) {
-                        await sheet.resize({
-                            rowCount: sheet.rowCount,
-                            columnCount: newHeaders.length
-                        });
-                    }
-                    await sheet.setHeaderRow(newHeaders);
+                    // This is a safer way to add headers without resizing the entire sheet,
+                    // which can fail on very large sheets that are close to the cell limit.
+                    // It loads only the header row, writes the new header values, and saves them.
+                    const lastCol = XLSX.utils.encode_col(currentHeaders.length + missingHeaders.length - 1);
+                    await sheet.loadCells(`A1:${lastCol}1`);
+
+                    missingHeaders.forEach((header, index) => {
+                        const cell = sheet.getCell(0, currentHeaders.length + index);
+                        cell.value = header;
+                    });
+
+                    await sheet.saveUpdatedCells();
+                    
+                    // Manually update the headerValues on the sheet object to avoid another network call
+                    // This is safe because we just added them.
+                    sheet.headerValues.push(...missingHeaders);
                 }
             }
         }
@@ -602,7 +610,6 @@ export async function getAllSheetsData(userId?: string, userIsAdmin?: boolean) {
         // If I cache address history with names, I need to make sure names are up to date.
         // Actually, the original code deserializes, then fills missing names from `allPeopleMap`.
         // If I cache AddressHistory, I should probably cache it "as is" or fully resolved.
-        // Let's cache the raw-ish deserialized version (or fully resolved).
         // If I cache fully resolved, I need to invalidate it when people change names (rare).
         // Let's cache the resolved version.
         
