@@ -1,4 +1,5 @@
 
+
 "use server";
 
 import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, NotificationType, Coordinator, BokResident, AddressHistory } from '../types';
@@ -1120,131 +1121,148 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
         const toAdd = items.filter(item => !existingItems.includes(item));
         const toDeleteRows = currentRows.filter(r => !items.includes(r.get('name')));
 
+        const promises: Promise<any>[] = [];
+
         if (toDeleteRows.length > 0) {
-            for (const row of toDeleteRows.reverse()) {
-                await row.delete();
-            }
+            toDeleteRows.reverse().forEach(row => promises.push(row.delete()));
         }
 
         if (toAdd.length > 0) {
-            await sheet.addRows(toAdd.map(name => ({ name })), { raw: false, insert: true });
+            promises.push(sheet.addRows(toAdd.map(name => ({ name })), { raw: false, insert: true }));
+        }
+
+        if (promises.length > 0) {
+            await Promise.all(promises);
         }
     };
     
     try {
-        if (newSettings.nationalities) await updateSimpleList(SHEET_NAME_NATIONALITIES, newSettings.nationalities);
-        if (newSettings.departments) await updateSimpleList(SHEET_NAME_DEPARTMENTS, newSettings.departments);
-        if (newSettings.genders) await updateSimpleList(SHEET_NAME_GENDERS, newSettings.genders);
-        if (newSettings.localities) await updateSimpleList(SHEET_NAME_LOCALITIES, newSettings.localities);
-        if (newSettings.paymentTypesNZ) await updateSimpleList(SHEET_NAME_PAYMENT_TYPES_NZ, newSettings.paymentTypesNZ);
-        if (newSettings.statuses) await updateSimpleList(SHEET_NAME_STATUSES, newSettings.statuses);
-        if (newSettings.bokRoles) await updateSimpleList(SHEET_NAME_BOK_ROLES, newSettings.bokRoles);
-        if (newSettings.bokReturnOptions) await updateSimpleList(SHEET_NAME_BOK_RETURN_OPTIONS, newSettings.bokReturnOptions);
+        const allPromises: Promise<any>[] = [];
+
+        if (newSettings.nationalities) allPromises.push(updateSimpleList(SHEET_NAME_NATIONALITIES, newSettings.nationalities));
+        if (newSettings.departments) allPromises.push(updateSimpleList(SHEET_NAME_DEPARTMENTS, newSettings.departments));
+        if (newSettings.genders) allPromises.push(updateSimpleList(SHEET_NAME_GENDERS, newSettings.genders));
+        if (newSettings.localities) allPromises.push(updateSimpleList(SHEET_NAME_LOCALITIES, newSettings.localities));
+        if (newSettings.paymentTypesNZ) allPromises.push(updateSimpleList(SHEET_NAME_PAYMENT_TYPES_NZ, newSettings.paymentTypesNZ));
+        if (newSettings.statuses) allPromises.push(updateSimpleList(SHEET_NAME_STATUSES, newSettings.statuses));
+        if (newSettings.bokRoles) allPromises.push(updateSimpleList(SHEET_NAME_BOK_ROLES, newSettings.bokRoles));
+        if (newSettings.bokReturnOptions) allPromises.push(updateSimpleList(SHEET_NAME_BOK_RETURN_OPTIONS, newSettings.bokReturnOptions));
 
         if (newSettings.addresses) {
-            const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ADDRESS_HEADERS);
-            const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity', 'isActive']);
-            
-            // Differential update for addresses
-            const currentAddressRows = await addressesSheet.getRows();
-            const toUpdateAddr = newSettings.addresses.filter(a => currentAddressRows.some(r => r.get('id') === a.id));
-            const toAddAddr = newSettings.addresses.filter(a => !currentAddressRows.some(r => r.get('id') === a.id));
-            const toDeleteAddrRows = currentAddressRows.filter(r => !newSettings.addresses.some(a => a.id === r.get('id')));
+            allPromises.push((async () => {
+                const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ADDRESS_HEADERS);
+                const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity', 'isActive']);
+                
+                const addressPromises: Promise<any>[] = [];
 
-            for (const row of toDeleteAddrRows.reverse()) {
-                await row.delete();
-            }
+                const currentAddressRows = await addressesSheet.getRows();
+                const toUpdateAddr = newSettings.addresses!.filter(a => currentAddressRows.some(r => r.get('id') === a.id));
+                const toAddAddr = newSettings.addresses!.filter(a => !currentAddressRows.some(r => r.get('id') === a.id));
+                const toDeleteAddrRows = currentAddressRows.filter(r => !newSettings.addresses!.some(a => a.id === r.get('id')));
 
-            for (const addr of toUpdateAddr) {
-                const row = currentAddressRows.find(r => r.get('id') === addr.id)!;
-                row.set('name', addr.name);
-                row.set('locality', addr.locality);
-                row.set('coordinatorIds', (addr.coordinatorIds || []).join(','));
-                await row.save();
-            }
+                toDeleteAddrRows.reverse().forEach(row => addressPromises.push(row.delete()));
 
-            if (toAddAddr.length > 0) {
-                await addressesSheet.addRows(toAddAddr.map(addr => ({
-                    id: addr.id,
-                    name: addr.name,
-                    locality: addr.locality,
-                    coordinatorIds: (addr.coordinatorIds || []).join(','),
-                })), { raw: false, insert: true });
-            }
+                toUpdateAddr.forEach(addr => {
+                    const row = currentAddressRows.find(r => r.get('id') === addr.id)!;
+                    row.set('name', addr.name);
+                    row.set('locality', addr.locality);
+                    row.set('coordinatorIds', (addr.coordinatorIds || []).join(','));
+                    addressPromises.push(row.save());
+                });
 
-            // Differential update for rooms
-            const currentRoomRows = await roomsSheet.getRows();
-            const newRooms = newSettings.addresses.flatMap(addr => addr.rooms.map(room => ({ ...room, addressId: addr.id })));
-            
-            const toUpdateRooms = newRooms.filter(room => currentRoomRows.some(r => r.get('id') === room.id));
-            const toAddRooms = newRooms.filter(room => !currentRoomRows.some(r => r.get('id') === room.id));
-            const toDeleteRoomRows = currentRoomRows.filter(r => !newRooms.some(room => room.id === r.get('id')));
+                if (toAddAddr.length > 0) {
+                    addressPromises.push(addressesSheet.addRows(toAddAddr.map(addr => ({
+                        id: addr.id,
+                        name: addr.name,
+                        locality: addr.locality,
+                        coordinatorIds: (addr.coordinatorIds || []).join(','),
+                    })), { raw: false, insert: true }));
+                }
 
-            for (const row of toDeleteRoomRows.reverse()) {
-                await row.delete();
-            }
+                // Differential update for rooms
+                const roomPromises: Promise<any>[] = [];
+                const currentRoomRows = await roomsSheet.getRows();
+                const newRooms = newSettings.addresses!.flatMap(addr => addr.rooms.map(room => ({ ...room, addressId: addr.id })));
+                
+                const toUpdateRooms = newRooms.filter(room => currentRoomRows.some(r => r.get('id') === room.id));
+                const toAddRooms = newRooms.filter(room => !currentRoomRows.some(r => r.get('id') === room.id));
+                const toDeleteRoomRows = currentRoomRows.filter(r => !newRooms.some(room => room.id === r.get('id')));
 
-            for (const room of toUpdateRooms) {
-                const row = currentRoomRows.find(r => r.get('id') === room.id)!;
-                row.set('addressId', room.addressId);
-                row.set('name', room.name);
-                row.set('capacity', String(room.capacity));
-                row.set('isActive', room.isActive !== false ? 'TRUE' : 'FALSE');
-                await row.save();
-            }
+                toDeleteRoomRows.reverse().forEach(row => roomPromises.push(row.delete()));
 
-            if (toAddRooms.length > 0) {
-                await roomsSheet.addRows(toAddRooms.map(room => ({
-                    id: room.id,
-                    addressId: room.addressId,
-                    name: room.name,
-                    capacity: String(room.capacity),
-                    isActive: room.isActive !== false ? 'TRUE' : 'FALSE',
-                })), { raw: false, insert: true });
-            }
+                toUpdateRooms.forEach(room => {
+                    const row = currentRoomRows.find(r => r.get('id') === room.id)!;
+                    row.set('addressId', room.addressId);
+                    row.set('name', room.name);
+                    row.set('capacity', String(room.capacity));
+                    row.set('isActive', room.isActive !== false ? 'TRUE' : 'FALSE');
+                    roomPromises.push(row.save());
+                });
+
+                if (toAddRooms.length > 0) {
+                    roomPromises.push(roomsSheet.addRows(toAddRooms.map(room => ({
+                        id: room.id,
+                        addressId: room.addressId,
+                        name: room.name,
+                        capacity: String(room.capacity),
+                        isActive: room.isActive !== false ? 'TRUE' : 'FALSE',
+                    })), { raw: false, insert: true }));
+                }
+                
+                await Promise.all([...addressPromises, ...roomPromises]);
+            })());
         }
         if (newSettings.coordinators) {
-             const sheet = await getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS);
-             const currentRows = await sheet.getRows();
-             
-             const toUpdate = newSettings.coordinators.filter(c => currentRows.some(r => r.get('uid') === c.uid));
-             const toAdd = newSettings.coordinators.filter(c => !currentRows.some(r => r.get('uid') === c.uid));
-             const toDelete = currentRows.filter(r => !newSettings.coordinators?.some(c => c.uid === r.get('uid')));
- 
-             for (const row of toDelete.reverse()) {
-                 await row.delete();
-             }
- 
-             for (const coord of toUpdate) {
-                 const row = currentRows.find(r => r.get('uid') === coord.uid);
-                 if (row) {
-                     row.set('name', coord.name);
-                     row.set('isAdmin', String(coord.isAdmin).toUpperCase());
-                     row.set('departments', coord.departments.join(','));
-                     row.set('visibilityMode', coord.visibilityMode || 'department');
-                     if (coord.password) {
-                         row.set('password', coord.password);
-                     }
-                     await row.save();
-                 }
-             }
- 
-             if (toAdd.length > 0) {
-                 await sheet.addRows(toAdd.map(c => ({
-                     ...c,
-                     departments: c.departments.join(','),
-                     isAdmin: String(c.isAdmin).toUpperCase(),
-                     visibilityMode: c.visibilityMode || 'department',
-                     pushSubscription: c.pushSubscription || '',
-                 })), { raw: false, insert: true });
-             }
+             allPromises.push((async () => {
+                const sheet = await getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS);
+                const currentRows = await sheet.getRows();
+                
+                const toUpdate = newSettings.coordinators!.filter(c => currentRows.some(r => r.get('uid') === c.uid));
+                const toAdd = newSettings.coordinators!.filter(c => !currentRows.some(r => r.get('uid') === c.uid));
+                const toDeleteRows = currentRows.filter(r => !newSettings.coordinators!.some(c => c.uid === r.get('uid')));
+
+                const coordinatorPromises: Promise<any>[] = [];
+
+                toDeleteRows.reverse().forEach(row => coordinatorPromises.push(row.delete()));
+                
+                toUpdate.forEach(coord => {
+                    const row = currentRows.find(r => r.get('uid') === coord.uid);
+                    if (row) {
+                        row.set('name', coord.name);
+                        row.set('isAdmin', String(coord.isAdmin).toUpperCase());
+                        row.set('departments', coord.departments.join(','));
+                        row.set('visibilityMode', coord.visibilityMode || 'department');
+                        if (coord.password) {
+                            row.set('password', coord.password);
+                        }
+                        coordinatorPromises.push(row.save());
+                    }
+                });
+
+                if (toAdd.length > 0) {
+                    coordinatorPromises.push(sheet.addRows(toAdd.map(c => ({
+                        ...c,
+                        departments: c.departments.join(','),
+                        isAdmin: String(c.isAdmin).toUpperCase(),
+                        visibilityMode: c.visibilityMode || 'department',
+                        pushSubscription: c.pushSubscription || '',
+                    })), { raw: false, insert: true }));
+                }
+                
+                await Promise.all(coordinatorPromises);
+             })());
         }
         
+        await Promise.all(allPromises);
+
         await invalidateSettingsCache();
         revalidatePath('/dashboard');
 
     } catch (error: unknown) {
         console.error("Error updating settings:", error);
+        if (error instanceof Error && (error.message.includes('429') || error.message.includes('Quota'))) {
+            throw new Error("Przekroczono limit zapytań do Google Sheets API. Spróbuj ponownie za chwilę, zapisując mniejszą liczbę zmian na raz.");
+        }
         throw new Error(error instanceof Error ? error.message : "Failed to update settings.");
     }
 }
