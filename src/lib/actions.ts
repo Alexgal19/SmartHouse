@@ -52,7 +52,6 @@ const SHEET_NAME_PAYMENT_TYPES_NZ = 'PaymentTypesNZ';
 const SHEET_NAME_STATUSES = 'Statuses';
 const SHEET_NAME_BOK_ROLES = 'BokRoles';
 const SHEET_NAME_BOK_RETURN_OPTIONS = 'BokReturnOptions';
-const SHEET_NAME_BOK_STATUSES = 'BokStatuses';
 
 
 const serializeDate = (date?: string | null): string => {
@@ -1147,9 +1146,6 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
         }
         if (newSettings.bokReturnOptions) {
             await updateSimpleList(SHEET_NAME_BOK_RETURN_OPTIONS, newSettings.bokReturnOptions);
-        }
-        if (newSettings.bokStatuses) {
-            await updateSimpleList(SHEET_NAME_BOK_STATUSES, newSettings.bokStatuses);
         }
         if (newSettings.addresses) {
             const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ADDRESS_HEADERS);
