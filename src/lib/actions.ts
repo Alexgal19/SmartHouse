@@ -1,7 +1,7 @@
 
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, NotificationType, Coordinator, BokResident } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, NotificationType, Coordinator, BokResident, AddressHistory } from '../types';
 import { revalidatePath } from 'next/cache';
 import {
     getSheet,
@@ -1113,68 +1113,93 @@ export async function checkAndUpdateStatuses(actorUid?: string): Promise<{ updat
 
 export async function updateSettings(newSettings: Partial<Settings>): Promise<void> {
     const updateSimpleList = async (sheetName: string, items: string[]) => {
-        const headers = ['name'];
-        const sheet = await getSheet(sheetName, headers);
-        await sheet.clearRows();
-        if (items.length > 0) {
-            const dataToAdd = items.map(name => ({ name }));
-            await sheet.addRows(dataToAdd, { raw: false, insert: true });
+        const sheet = await getSheet(sheetName, ['name']);
+        const currentRows = await sheet.getRows();
+        const existingItems = currentRows.map(r => r.get('name'));
+
+        const toAdd = items.filter(item => !existingItems.includes(item));
+        const toDeleteRows = currentRows.filter(r => !items.includes(r.get('name')));
+
+        if (toDeleteRows.length > 0) {
+            for (const row of toDeleteRows.reverse()) {
+                await row.delete();
+            }
+        }
+
+        if (toAdd.length > 0) {
+            await sheet.addRows(toAdd.map(name => ({ name })), { raw: false, insert: true });
         }
     };
     
     try {
-        if (newSettings.nationalities) {
-            await updateSimpleList(SHEET_NAME_NATIONALITIES, newSettings.nationalities);
-        }
-        if (newSettings.departments) {
-            await updateSimpleList(SHEET_NAME_DEPARTMENTS, newSettings.departments);
-        }
-        if (newSettings.genders) {
-            await updateSimpleList(SHEET_NAME_GENDERS, newSettings.genders);
-        }
-        if (newSettings.localities) {
-            await updateSimpleList(SHEET_NAME_LOCALITIES, newSettings.localities);
-        }
-        if (newSettings.paymentTypesNZ) {
-            await updateSimpleList(SHEET_NAME_PAYMENT_TYPES_NZ, newSettings.paymentTypesNZ);
-        }
-        if (newSettings.statuses) {
-            await updateSimpleList(SHEET_NAME_STATUSES, newSettings.statuses);
-        }
-        if (newSettings.bokRoles) {
-            await updateSimpleList(SHEET_NAME_BOK_ROLES, newSettings.bokRoles);
-        }
-        if (newSettings.bokReturnOptions) {
-            await updateSimpleList(SHEET_NAME_BOK_RETURN_OPTIONS, newSettings.bokReturnOptions);
-        }
+        if (newSettings.nationalities) await updateSimpleList(SHEET_NAME_NATIONALITIES, newSettings.nationalities);
+        if (newSettings.departments) await updateSimpleList(SHEET_NAME_DEPARTMENTS, newSettings.departments);
+        if (newSettings.genders) await updateSimpleList(SHEET_NAME_GENDERS, newSettings.genders);
+        if (newSettings.localities) await updateSimpleList(SHEET_NAME_LOCALITIES, newSettings.localities);
+        if (newSettings.paymentTypesNZ) await updateSimpleList(SHEET_NAME_PAYMENT_TYPES_NZ, newSettings.paymentTypesNZ);
+        if (newSettings.statuses) await updateSimpleList(SHEET_NAME_STATUSES, newSettings.statuses);
+        if (newSettings.bokRoles) await updateSimpleList(SHEET_NAME_BOK_ROLES, newSettings.bokRoles);
+        if (newSettings.bokReturnOptions) await updateSimpleList(SHEET_NAME_BOK_RETURN_OPTIONS, newSettings.bokReturnOptions);
+
         if (newSettings.addresses) {
             const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ADDRESS_HEADERS);
             const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity', 'isActive']);
             
-            await addressesSheet.clearRows();
-            await roomsSheet.clearRows();
+            // Differential update for addresses
+            const currentAddressRows = await addressesSheet.getRows();
+            const toUpdateAddr = newSettings.addresses.filter(a => currentAddressRows.some(r => r.get('id') === a.id));
+            const toAddAddr = newSettings.addresses.filter(a => !currentAddressRows.some(r => r.get('id') === a.id));
+            const toDeleteAddrRows = currentAddressRows.filter(r => !newSettings.addresses.some(a => a.id === r.get('id')));
 
-            const allRooms: (Room & {addressId: string})[] = [];
-            const addressesData = newSettings.addresses.map(addr => {
-                addr.rooms.forEach(room => {
-                    allRooms.push({ ...room, addressId: addr.id });
-                });
-                return { 
-                    id: addr.id, 
-                    locality: addr.locality,
-                    name: addr.name, 
-                    coordinatorIds: addr.coordinatorIds.join(',') 
-                };
-            });
-
-            if (addressesData.length > 0) {
-                await addressesSheet.addRows(addressesData, { raw: false, insert: true });
+            for (const row of toDeleteAddrRows.reverse()) {
+                await row.delete();
             }
-            if (allRooms.length > 0) {
-                await roomsSheet.addRows(allRooms.map(r => ({
-                    ...r,
-                    capacity: String(r.capacity),
-                    isActive: r.isActive !== false ? 'TRUE' : 'FALSE' // Default to TRUE if undefined
+
+            for (const addr of toUpdateAddr) {
+                const row = currentAddressRows.find(r => r.get('id') === addr.id)!;
+                row.set('name', addr.name);
+                row.set('locality', addr.locality);
+                row.set('coordinatorIds', (addr.coordinatorIds || []).join(','));
+                await row.save();
+            }
+
+            if (toAddAddr.length > 0) {
+                await addressesSheet.addRows(toAddAddr.map(addr => ({
+                    id: addr.id,
+                    name: addr.name,
+                    locality: addr.locality,
+                    coordinatorIds: (addr.coordinatorIds || []).join(','),
+                })), { raw: false, insert: true });
+            }
+
+            // Differential update for rooms
+            const currentRoomRows = await roomsSheet.getRows();
+            const newRooms = newSettings.addresses.flatMap(addr => addr.rooms.map(room => ({ ...room, addressId: addr.id })));
+            
+            const toUpdateRooms = newRooms.filter(room => currentRoomRows.some(r => r.get('id') === room.id));
+            const toAddRooms = newRooms.filter(room => !currentRoomRows.some(r => r.get('id') === room.id));
+            const toDeleteRoomRows = currentRoomRows.filter(r => !newRooms.some(room => room.id === r.get('id')));
+
+            for (const row of toDeleteRoomRows.reverse()) {
+                await row.delete();
+            }
+
+            for (const room of toUpdateRooms) {
+                const row = currentRoomRows.find(r => r.get('id') === room.id)!;
+                row.set('addressId', room.addressId);
+                row.set('name', room.name);
+                row.set('capacity', String(room.capacity));
+                row.set('isActive', room.isActive !== false ? 'TRUE' : 'FALSE');
+                await row.save();
+            }
+
+            if (toAddRooms.length > 0) {
+                await roomsSheet.addRows(toAddRooms.map(room => ({
+                    id: room.id,
+                    addressId: room.addressId,
+                    name: room.name,
+                    capacity: String(room.capacity),
+                    isActive: room.isActive !== false ? 'TRUE' : 'FALSE',
                 })), { raw: false, insert: true });
             }
         }
@@ -1211,7 +1236,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
                      isAdmin: String(c.isAdmin).toUpperCase(),
                      visibilityMode: c.visibilityMode || 'department',
                      pushSubscription: c.pushSubscription || '',
-                 })));
+                 })), { raw: false, insert: true });
              }
         }
         
