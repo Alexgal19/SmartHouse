@@ -34,7 +34,8 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { Employee, Settings, SessionData } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Info, X, Camera, Loader2 } from 'lucide-react';
+import { CalendarIcon, Info, X, Camera, Loader2, Eye } from 'lucide-react';
+import { AddressPreviewDialog } from '@/components/address-preview-dialog';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parse, isValid, parseISO } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -262,12 +263,13 @@ export function AddEmployeeForm({
   currentUser: SessionData;
 }) {
   const { toast } = useToast();
-  const { handleDismissEmployee } = useMainLayout();
+  const { handleDismissEmployee, allEmployees, allNonEmployees } = useMainLayout();
   const webcamRef = useRef<ReactWebcam>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isDismissing, setIsDismissing] = useState(false);
+  const [isAddressPreviewOpen, setIsAddressPreviewOpen] = useState(false);
 
   // Cleanup webcam stream on unmount to prevent memory leaks
   useEffect(() => {
@@ -622,14 +624,24 @@ export function AddEmployeeForm({
                 Wypełnij poniższe pola, aby {employee ? 'zaktualizować' : 'dodać'} pracownika.
               </DialogDescription>
             </div>
-            <Button variant="outline" onClick={handleOpenCamera} disabled={isScanning}>
-              {isScanning ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Camera className="mr-2 h-4 w-4" />
-              )}
-              Zrób zdjęcie paszportu
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsAddressPreviewOpen(true)}
+                type="button"
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                Podgląd miejsc
+              </Button>
+              <Button variant="outline" onClick={handleOpenCamera} disabled={isScanning} type="button">
+                {isScanning ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Camera className="mr-2 h-4 w-4" />
+                )}
+                Zrób zdjęcie paszportu
+              </Button>
+            </div>
           </div>
         </DialogHeader>
         <Form {...form}>
@@ -1151,6 +1163,24 @@ export function AddEmployeeForm({
         </div>
       </DialogContent>
     </Dialog>
+
+    <AddressPreviewDialog
+      isOpen={isAddressPreviewOpen}
+      onOpenChange={setIsAddressPreviewOpen}
+      settings={settings}
+      allEmployees={allEmployees}
+      allNonEmployees={allNonEmployees}
+      coordinatorId={selectedCoordinatorId}
+      onApplySelection={(locality, address, roomNumber) => {
+        form.setValue('locality', locality);
+        form.setValue('address', address);
+        form.setValue('roomNumber', roomNumber);
+        toast({
+          title: "Wybór zastosowany",
+          description: `${address}, pokój ${roomNumber} został wybrany.`
+        });
+      }}
+    />
     </>
   );
 }
