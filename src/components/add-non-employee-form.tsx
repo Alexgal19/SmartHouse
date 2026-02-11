@@ -188,8 +188,20 @@ export function AddNonEmployeeForm({
   const { toast } = useToast();
   const { handleDismissNonEmployee } = useMainLayout();
   const webcamRef = useRef<ReactWebcam>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isDismissing, setIsDismissing] = useState(false);
+
+  // Cleanup webcam stream on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+    };
+  }, []);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -333,7 +345,7 @@ export function AddNonEmployeeForm({
     setIsCameraOpen(false);
   };
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     const formatDate = (date: Date | null | undefined): string | null => {
         if (!date) return null;
         return format(date, 'yyyy-MM-dd');
@@ -350,8 +362,12 @@ export function AddNonEmployeeForm({
       paymentAmount: values.paymentAmount ?? null,
     };
 
-    onSave(formData);
-    onOpenChange(false);
+    try {
+        await onSave(formData);
+        onOpenChange(false);
+    } catch (e) {
+        console.error('Form submission failed:', e);
+    }
   };
   
   const handleCoordinatorChange = (value: string) => {
@@ -373,34 +389,54 @@ export function AddNonEmployeeForm({
   }
 
   const handleDismissClick = async () => {
-    if (!nonEmployee) return;
+    if (!nonEmployee || isDismissing) return;
 
     const checkOutDate = form.getValues('checkOutDate');
-    if (!checkOutDate) {
+    
+    // Validate type and existence
+    if (!checkOutDate || !(checkOutDate instanceof Date) || !isValid(checkOutDate)) {
         form.setError('checkOutDate', {
             type: 'manual',
-            message: 'Data wymeldowania jest wymagana, aby zwolnić mieszkańca.',
+            message: 'Data wymeldowania jest wymagana i musi być poprawna, aby zwolnić mieszkańca.',
         });
         return;
     }
     
-    const values = form.getValues();
-    const formatDateFn = (date: Date | null | undefined): string | null => {
-        if (!date) return null;
-        return format(date, 'yyyy-MM-dd');
+    // Validate chronology
+    if (nonEmployee.checkInDate) {
+        const checkInDate = parseISO(nonEmployee.checkInDate);
+        if (isValid(checkInDate) && checkOutDate < checkInDate) {
+            form.setError('checkOutDate', {
+                type: 'manual',
+                message: 'Data wymeldowania nie może być wcześniejsza niż data zameldowania.',
+            });
+            return;
+        }
     }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { locality, ...restOfValues } = values;
-    const formData: NonEmployeeFormData = {
-        ...restOfValues,
-        checkInDate: formatDateFn(values.checkInDate),
-        checkOutDate: formatDateFn(values.checkOutDate),
-        departureReportDate: formatDateFn(values.departureReportDate),
-    };
-    onSave(formData);
     
-    await handleDismissNonEmployee(nonEmployee.id, checkOutDate);
-    onOpenChange(false);
+    setIsDismissing(true);
+    try {
+        const values = form.getValues();
+        const formatDateFn = (date: Date | null | undefined): string | null => {
+            if (!date) return null;
+            return format(date, 'yyyy-MM-dd');
+        }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { locality, ...restOfValues } = values;
+        const formData: NonEmployeeFormData = {
+            ...restOfValues,
+            checkInDate: formatDateFn(values.checkInDate),
+            checkOutDate: formatDateFn(values.checkOutDate),
+            departureReportDate: formatDateFn(values.departureReportDate),
+        };
+        await onSave(formData);
+        await handleDismissNonEmployee(nonEmployee.id, checkOutDate);
+        onOpenChange(false);
+    } catch (e) {
+        console.error('Dismiss failed:', e);
+    } finally {
+        setIsDismissing(false);
+    }
   };
 
   return (
@@ -669,7 +705,10 @@ export function AddNonEmployeeForm({
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                     Anuluj
                 </Button>
-                <Button type="submit">Zapisz</Button>
+                <Button type="submit" disabled={form.formState.isSubmitting}>
+                    {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Zapisz
+                </Button>
               </div>
             </DialogFooter>
           </form>
@@ -697,7 +736,9 @@ export function AddNonEmployeeForm({
             forceScreenshotSourceSize
             imageSmoothing
             disablePictureInPicture
-            onUserMedia={() => {}}
+            onUserMedia={(stream) => {
+              streamRef.current = stream;
+            }}
             screenshotQuality={0.92}
           />
           <div className="flex gap-2">

@@ -33,7 +33,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import type { Address, Settings } from '@/types';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, Loader2 } from 'lucide-react';
 
 
 const roomSchema = z.object({
@@ -100,12 +100,16 @@ export function AddressForm({
     }
   }, [address, isOpen, form]);
   
-  const onSubmit = (values: z.infer<typeof addressSchema>) => {
-    onSave({
-      ...values,
-      coordinatorIds: values.coordinatorIds.map(c => c.value)
-    });
-    onOpenChange(false);
+  const onSubmit = async (values: z.infer<typeof addressSchema>) => {
+    try {
+        await onSave({
+          ...values,
+          coordinatorIds: values.coordinatorIds.map(c => c.value)
+        });
+        onOpenChange(false);
+    } catch (e) {
+        console.error('Form submission failed:', e);
+    }
   };
   
   const availableCoordinators = settings.coordinators.filter(
@@ -290,7 +294,10 @@ export function AddressForm({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Anuluj
               </Button>
-              <Button type="submit">Zapisz</Button>
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                  {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Zapisz
+              </Button>
             </DialogFooter>
           </form>
         </Form>

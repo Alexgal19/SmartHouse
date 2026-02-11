@@ -264,8 +264,20 @@ export function AddEmployeeForm({
   const { toast } = useToast();
   const { handleDismissEmployee } = useMainLayout();
   const webcamRef = useRef<ReactWebcam>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isDismissing, setIsDismissing] = useState(false);
+
+  // Cleanup webcam stream on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+    };
+  }, []);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema, {
@@ -341,6 +353,16 @@ export function AddEmployeeForm({
     const coordinator = settings.coordinators.find(c => c.uid === selectedCoordinatorId);
     return coordinator ? [...coordinator.departments].sort((a, b) => a.localeCompare(b)) : [];
   }, [settings.coordinators, selectedCoordinatorId]);
+
+  // Cleanup webcam stream on unmount
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (employee) {
@@ -461,7 +483,7 @@ export function AddEmployeeForm({
 
 
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     
     if (employee) {
         const addressChanged = values.address !== employee.address;
@@ -490,8 +512,12 @@ export function AddEmployeeForm({
         deductionEntryDate: formatDate(values.deductionEntryDate),
     };
 
-    onSave(formData);
-    onOpenChange(false);
+    try {
+        await onSave(formData);
+        onOpenChange(false);
+    } catch (e) {
+        console.error('Form submission failed:', e);
+    }
   };
   
   const handleCoordinatorChange = (value: string) => {
@@ -521,15 +547,29 @@ export function AddEmployeeForm({
   };
 
   const handleDismissClick = async () => {
-    if (!employee) return;
+    if (!employee || isDismissing) return;
 
     const checkOutDate = form.getValues('checkOutDate');
-    if (!checkOutDate) {
+    
+    // Validate type and existence
+    if (!checkOutDate || !(checkOutDate instanceof Date) || !isValid(checkOutDate)) {
         form.setError('checkOutDate', {
             type: 'manual',
-            message: 'Data wymeldowania jest wymagana, aby zwolnić pracownika.',
+            message: 'Data wymeldowania jest wymagana i musi być poprawna, aby zwolnić pracownika.',
         });
         return;
+    }
+    
+    // Validate chronology
+    if (employee.checkInDate) {
+        const checkInDate = parseISO(employee.checkInDate);
+        if (isValid(checkInDate) && checkOutDate < checkInDate) {
+            form.setError('checkOutDate', {
+                type: 'manual',
+                message: 'Data wymeldowania nie może być wcześniejsza niż data zameldowania.',
+            });
+            return;
+        }
     }
     
     // update the checkout date first
@@ -546,10 +586,17 @@ export function AddEmployeeForm({
         departureReportDate: formatDate(values.departureReportDate),
         deductionEntryDate: formatDate(values.deductionEntryDate),
     };
-    onSave(formData);
     
-    await handleDismissEmployee(employee.id, checkOutDate);
-    onOpenChange(false);
+    setIsDismissing(true);
+    try {
+        await onSave(formData);
+        await handleDismissEmployee(employee.id, checkOutDate);
+        onOpenChange(false);
+    } catch (e) {
+        console.error('Dismiss failed:', e);
+    } finally {
+        setIsDismissing(false);
+    }
   };
   
   const sortedCoordinators = useMemo(() => {
@@ -1041,7 +1088,8 @@ export function AddEmployeeForm({
             <DialogFooter className="p-6 pt-4 flex flex-row justify-between">
               <div>
                   {employee && employee.status === 'active' && (
-                      <Button type="button" variant="destructive" onClick={handleDismissClick}>
+                      <Button type="button" variant="destructive" onClick={handleDismissClick} disabled={isDismissing}>
+                          {isDismissing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                           Zwolnij
                       </Button>
                   )}
@@ -1050,7 +1098,10 @@ export function AddEmployeeForm({
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                     Anuluj
                 </Button>
-                <Button type="submit">Zapisz</Button>
+                <Button type="submit" disabled={form.formState.isSubmitting}>
+                    {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Zapisz
+                </Button>
               </div>
             </DialogFooter>
           </form>
@@ -1074,7 +1125,10 @@ export function AddEmployeeForm({
             videoConstraints={{ facingMode: 'environment' }}
             className="w-full max-w-sm rounded-lg border"
             onUserMediaError={(err) => console.error("Webcam error:", err)}
-            onUserMedia={() => console.log("User media accessed")}
+            onUserMedia={(stream) => {
+              streamRef.current = stream;
+              console.log("User media accessed");
+            }}
             screenshotQuality={0.8}
            mirrored={false}
            disablePictureInPicture={true}

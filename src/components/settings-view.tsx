@@ -656,7 +656,13 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                     <AlertDialogCancel>Anuluj</AlertDialogCancel>
-                                    <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => handleBulkDelete('active')}>Potwierdź i usuń</AlertDialogAction>
+                                    <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={async () => {
+                                        try {
+                                            await handleBulkDelete('active');
+                                        } catch (e) {
+                                            console.error('Bulk delete failed:', e);
+                                        }
+                                    }}>Potwierdź i usuń</AlertDialogAction>
                                 </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
@@ -674,7 +680,13 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                     <AlertDialogCancel>Anuluj</AlertDialogCancel>
-                                    <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => handleBulkDelete('dismissed')}>Potwierdź i usuń</AlertDialogAction>
+                                    <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={async () => {
+                                        try {
+                                            await handleBulkDelete('dismissed');
+                                        } catch (e) {
+                                            console.error('Bulk delete failed:', e);
+                                        }
+                                    }}>Potwierdź i usuń</AlertDialogAction>
                                 </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
@@ -745,7 +757,13 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
                                         <AlertDialogCancel>Anuluj</AlertDialogCancel>
-                                        <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleCoordinatorDelete}>Potwierdź i usuń</AlertDialogAction>
+                                        <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={async () => {
+                                            try {
+                                                await handleCoordinatorDelete();
+                                            } catch (e) {
+                                                console.error('Coordinator delete failed:', e);
+                                            }
+                                        }}>Potwierdź i usuń</AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
                             </AlertDialog>
@@ -784,7 +802,13 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
                                         <AlertDialogCancel>Anuluj</AlertDialogCancel>
-                                        <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDepartmentDelete}>Potwierdź i usuń</AlertDialogAction>
+                                        <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={async () => {
+                                            try {
+                                                await handleDepartmentDelete();
+                                            } catch (e) {
+                                                console.error('Department delete failed:', e);
+                                            }
+                                        }}>Potwierdź i usuń</AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
                             </AlertDialog>

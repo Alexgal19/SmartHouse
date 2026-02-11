@@ -33,7 +33,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { BokResident, Settings, SessionData } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, X } from 'lucide-react';
+import { CalendarIcon, X, Loader2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parse, isValid, parseISO } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -256,7 +256,7 @@ export function AddBokResidentForm({
   }, [resident, isOpen, form, settings, currentUser]);
 
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     const formatDate = (date: Date | null | undefined): string | null => {
         if (!date) return null;
         return format(date, 'yyyy-MM-dd');
@@ -269,8 +269,12 @@ export function AddBokResidentForm({
         checkOutDate: formatDate(values.checkOutDate),
     };
 
-    onSave(formData);
-    onOpenChange(false);
+    try {
+        await onSave(formData);
+        onOpenChange(false);
+    } catch (e) {
+        console.error('Form submission failed:', e);
+    }
   };
   
   const sortedCoordinators = useMemo(() => {
@@ -598,7 +602,10 @@ export function AddBokResidentForm({
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                     Anuluj
                 </Button>
-                <Button type="submit">Zapisz</Button>
+                <Button type="submit" disabled={form.formState.isSubmitting}>
+                    {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Zapisz
+                </Button>
             </DialogFooter>
           </form>
         </Form>
