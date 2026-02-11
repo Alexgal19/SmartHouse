@@ -1896,7 +1896,6 @@ export async function sendPushNotification(
         const coordinator = settings.coordinators.find((c: { uid: string; pushSubscription?: string | null }) => c.uid === coordinatorId);
         
         if (!coordinator || !coordinator.pushSubscription) {
-            // console.log('No coordinator or subscription found for', coordinatorId);
             return;
         }
 
@@ -1938,7 +1937,28 @@ export async function sendPushNotification(
             await adminMessaging.send(message);
         }
 
-    } catch (e) {
-        console.error("Error sending push notification:", e);
+    } catch (e: unknown) {
+        // Auto-cleanup expired/invalid FCM tokens (410 Gone, token-not-registered)
+        const errorCode = (e as { code?: string })?.code;
+        if (
+            errorCode === 'messaging/registration-token-not-registered' ||
+            errorCode === 'messaging/invalid-registration-token'
+        ) {
+            console.warn(`FCM token expired for coordinator ${coordinatorId}, clearing subscription.`);
+            try {
+                const sheet = await getSheet('Coordinators', COORDINATOR_HEADERS);
+                const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Coordinators)');
+                const coordRow = rows.find(r => r.get('uid') === coordinatorId);
+                if (coordRow) {
+                    coordRow.set('pushSubscription', '');
+                    await withTimeout(coordRow.save(), TIMEOUT_MS, 'row.save(Coordinators)');
+                    await invalidateSettingsCache();
+                }
+            } catch (cleanupErr) {
+                console.error("Error cleaning up expired FCM token:", cleanupErr);
+            }
+        } else {
+            console.error("Error sending push notification:", e);
+        }
     }
 }

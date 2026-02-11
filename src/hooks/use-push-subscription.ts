@@ -1,13 +1,16 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useMainLayout } from '@/components/main-layout';
 import { messagingPromise } from '@/lib/firebase';
 import { getToken, deleteToken, onMessage } from 'firebase/messaging';
 import { useToast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 
 export const usePushSubscription = () => {
     const { toast } = useToast();
+    const router = useRouter();
     const {
         currentUser,
         handleUpdateCoordinatorSubscription,
@@ -31,10 +34,19 @@ export const usePushSubscription = () => {
                 const data = payload.data || {};
                 const title = data.title || payload.notification?.title || 'Nowe powiadomienie';
                 const body = data.body || payload.notification?.body;
+                const url = data.url || data.click_action;
                 
                 toast({
                     title: title,
                     description: body,
+                    duration: 10000,
+                    // Add "Otwórz" (Open) action button if URL is present in push data
+                    ...(url ? {
+                        action: React.createElement(ToastAction, {
+                            altText: 'Otwórz',
+                            onClick: () => router.push(url),
+                        }, 'Otwórz'),
+                    } : {}),
                 });
             });
         };
