@@ -87,7 +87,7 @@ export function AddressPreviewDialog({
           capacity: room.capacity,
           occupied,
           available,
-          isActive: address.isActive && room.isActive,
+          isActive: address.isActive && room.isActive && !room.isLocked,
         });
       });
     });
@@ -272,12 +272,12 @@ export function AddressPreviewDialog({
                   </SelectTrigger>
                   <SelectContent>
                     {availableRooms.map(room => (
-                      <SelectItem 
-                        key={room.roomName} 
+                      <SelectItem
+                        key={room.roomName}
                         value={room.roomName}
-                        disabled={room.available === 0}
+                        disabled={room.available === 0 || !room.isActive}
                       >
-                        {room.roomName} - Dostępne: {room.available}/{room.capacity}
+                        {room.roomName} - {room.isActive ? `Dostępne: ${room.available}/${room.capacity}` : '(Zablokowany)'}
                       </SelectItem>
                     ))}
                   </SelectContent>

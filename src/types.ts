@@ -16,6 +16,7 @@ export type Room = {
     name: string;
     capacity: number;
     isActive: boolean;
+    isLocked?: boolean;
 }
 
 export type Coordinator = {

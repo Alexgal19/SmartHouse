@@ -121,12 +121,6 @@ const AddressDetailView = ({
   onRoomClick: (roomId: string) => void;
   selectedRoomIds: string[];
 }) => {
-    const isAnySelectedBlocked = useMemo(() => {
-        return addresses
-            .filter(a => selectedAddressIds.includes(a.id))
-            .some(a => a.isActive === false);
-    }, [addresses, selectedAddressIds]);
-
     const isSingleSelectedBlocked = useMemo(() => {
         const selected = addresses.filter(a => selectedAddressIds.includes(a.id));
         return selected.length === 1 && selected[0].isActive === false;
@@ -428,7 +422,7 @@ const useHousingData = () => {
 }
 
 
-const MobileAddressCard = ({ address, onOccupantClick, style }: { address: HousingData; onOccupantClick: (occupant: Occupant) => void; style?: React.CSSProperties }) => {
+const MobileAddressCard = ({ address, onOccupantClick, currentUser, settings, handleUpdateSettings, style }: { address: HousingData; onOccupantClick: (occupant: Occupant) => void; currentUser: SessionData; settings: Settings; handleUpdateSettings: (updates: Partial<Settings>) => Promise<void>; style?: React.CSSProperties }) => {
     const { copyToClipboard } = useCopyToClipboard();
 
     return (
@@ -466,15 +460,37 @@ const MobileAddressCard = ({ address, onOccupantClick, style }: { address: Housi
                             <h4 className="text-sm font-semibold mb-2">Pokoje</h4>
                             <div className="space-y-2">
                                 {address.rooms.sort((a,b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true })).map(room => (
-                                    <div key={room.id} className={cn("rounded-md border p-3", !room.isActive && "bg-destructive/10 border-destructive/20", room.isActive && room.available > 0 && "bg-green-500/10 border-green-500/20")}>
+                                    <div key={room.id} className={cn("rounded-md border p-3", !room.isActive && "bg-destructive/10 border-destructive/20", room.isLocked && "bg-yellow-500/10 border-yellow-500/30", room.isActive && !room.isLocked && room.available > 0 && "bg-green-500/10 border-green-500/20")}>
                                         <div className="flex justify-between items-center font-medium text-sm">
                                             <div className="flex items-center gap-2">
                                                 <Bed className="h-4 w-4 text-muted-foreground" />
                                                 Pokój {room.name}
+                                                {room.isLocked && <Lock className="h-3 w-3 text-yellow-600" />}
                                             </div>
-                                            <span className="text-sm">
-                                                <span>{room.occupantCount} / {room.capacity}</span>
-                                            </span>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-sm">
+                                                    <span>{room.occupantCount} / {room.capacity}</span>
+                                                </span>
+                                                {currentUser.isAdmin && (
+                                                    <div className="flex items-center gap-2">
+                                                        <Label htmlFor={`lock-${room.id}`} className="text-xs text-muted-foreground cursor-pointer">
+                                                            {room.isLocked ? 'Odblokuj' : 'Zablokuj'}
+                                                        </Label>
+                                                        <Switch
+                                                            id={`lock-${room.id}`}
+                                                            checked={room.isLocked || false}
+                                                            onCheckedChange={async (checked) => {
+                                                                const updatedAddresses = settings!.addresses.map(a =>
+                                                                    a.id === address.id
+                                                                        ? { ...a, rooms: a.rooms.map(r => r.id === room.id ? { ...r, isLocked: checked } : r) }
+                                                                        : a
+                                                                );
+                                                                await handleUpdateSettings({ addresses: updatedAddresses });
+                                                            }}
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                          <div className="pl-4 mt-2 space-y-1">
                                             {room.occupants.map(o => {
@@ -568,7 +584,7 @@ export const FilterControls = ({ filters, onFilterChange, settings, currentUser 
 
 
 export default function HousingView({ currentUser }: { currentUser: SessionData }) {
-    const { settings, handleEditEmployeeClick, handleEditNonEmployeeClick } = useMainLayout();
+    const { settings, handleEditEmployeeClick, handleEditNonEmployeeClick, handleUpdateSettings } = useMainLayout();
     const { isMobile } = useIsMobile();
     const [selectedAddressIds, setSelectedAddressIds] = useState<string[]>([]);
     const [selectedRoomIds, setSelectedRoomIds] = useState<string[]>([]);
@@ -684,10 +700,13 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                                     </h2>
                                     <div className="space-y-3">
                                         {addresses.map((address, index) => (
-                                            <MobileAddressCard 
+                                            <MobileAddressCard
                                                 key={address.id}
                                                 address={address}
                                                 onOccupantClick={handleOccupantClick}
+                                                currentUser={currentUser}
+                                                settings={settings}
+                                                handleUpdateSettings={handleUpdateSettings}
                                                 style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}
                                             />
                                         ))}

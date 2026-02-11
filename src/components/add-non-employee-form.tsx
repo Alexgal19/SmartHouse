@@ -607,9 +607,9 @@ export function AddNonEmployeeForm({
                           <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : "Wybierz pokój"} /></SelectTrigger></FormControl>
                           <SelectContent>
                               {availableRooms.filter(r => r.name).map(r => (
-                                <SelectItem key={r.id} value={r.name} disabled={!r.isActive}>
-                                    {r.name} {r.isActive ? `(Pojemność: ${r.capacity})` : '(Niedostępny)'}
-                                </SelectItem>
+                                  <SelectItem key={r.id} value={r.name} disabled={!r.isActive || r.isLocked}>
+                                      {r.name} {r.isActive ? (r.isLocked ? '(Zablokowany)' : `(Pojemność: ${r.capacity})`) : '(Niedostępny)'}
+                                  </SelectItem>
                               ))}
                           </SelectContent>
                           </Select>
