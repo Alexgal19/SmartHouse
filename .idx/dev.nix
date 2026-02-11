@@ -7,6 +7,50 @@
   packages = [
     pkgs.nodejs_20
     pkgs.zulu
+    pkgs.playwright
+    # System dependencies for Playwright browsers
+    pkgs.glib
+    pkgs.nss
+    pkgs.nspr
+    pkgs.atk
+    pkgs.gtk3
+    pkgs.pango
+    pkgs.cairo
+    pkgs.gdk-pixbuf
+    pkgs.libdrm
+    pkgs.mesa
+    pkgs.alsa-lib
+    pkgs.xorg.libX11
+    pkgs.xorg.libxcb
+    pkgs.xorg.libXcomposite
+    pkgs.xorg.libXcursor
+    pkgs.xorg.libXdamage
+    pkgs.xorg.libXext
+    pkgs.xorg.libXfixes
+    pkgs.xorg.libXi
+    pkgs.xorg.libXrender
+    pkgs.xorg.libXrandr
+    pkgs.libxkbcommon
+    pkgs.dbus
+    pkgs.at-spi2-atk
+    pkgs.at-spi2-core
+    pkgs.wayland
+    pkgs.systemd
+    pkgs.freetype
+    pkgs.fontconfig
+    pkgs.gtk4
+    pkgs.gst_all_1.gstreamer
+    pkgs.gst_all_1.gst-plugins-base
+    pkgs.gst_all_1.gst-plugins-good
+    pkgs.gst_all_1.gst-plugins-bad
+    pkgs.gst_all_1.gst-plugins-ugly
+    pkgs.harfbuzz
+    pkgs.icu
+    pkgs.libxml2
+    pkgs.sqlite
+    pkgs.libxslt
+    pkgs.lcms2
+    pkgs.vulkan-loader
   ];
   # Sets environment variables in the workspace
   env = {};

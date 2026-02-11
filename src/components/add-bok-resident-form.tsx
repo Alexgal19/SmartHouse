@@ -310,7 +310,7 @@ export function AddBokResidentForm({
                         <Select onValueChange={field.onChange} value={field.value || ''}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Wybierz rolę" /></SelectTrigger></FormControl>
                         <SelectContent>
-                            {sortedBokRoles.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                            {sortedBokRoles.filter(Boolean).map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                         </SelectContent>
                         </Select>
                         <FormMessage />
@@ -396,7 +396,7 @@ export function AddBokResidentForm({
                             <Select onValueChange={field.onChange} value={field.value || ''}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Wybierz płeć" /></SelectTrigger></FormControl>
                             <SelectContent>
-                                {sortedGenders.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                                {sortedGenders.filter(Boolean).map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
                             </SelectContent>
                             </Select>
                             <FormMessage />
@@ -418,7 +418,7 @@ export function AddBokResidentForm({
                             }} value={field.value || ''}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="Wybierz adres" /></SelectTrigger></FormControl>
                                 <SelectContent>
-                                    {availableAddresses.map(a => (
+                                    {availableAddresses.filter(a => a.name).map(a => (
                                         <SelectItem key={a.id} value={a.name} disabled={!a.isActive}>
                                             {a.name} {!a.isActive ? '(Niedostępny)' : ''}
                                         </SelectItem>
@@ -438,7 +438,7 @@ export function AddBokResidentForm({
                             <Select onValueChange={field.onChange} value={field.value || ''} disabled={!selectedAddress}>
                             <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : "Wybierz pokój"} /></SelectTrigger></FormControl>
                             <SelectContent>
-                                {availableRooms.map(r => (
+                                {availableRooms.filter(r => r.name).map(r => (
                                     <SelectItem key={r.id} value={r.name} disabled={!r.isActive}>
                                         {r.name} {r.isActive ? `(Pojemność: ${r.capacity})` : '(Niedostępny)'}
                                     </SelectItem>
@@ -541,7 +541,7 @@ export function AddBokResidentForm({
                             <Select onValueChange={field.onChange} value={field.value || ''}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Wybierz opcję" /></SelectTrigger></FormControl>
                             <SelectContent>
-                                {sortedBokReturnOptions.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                                {sortedBokReturnOptions.filter(Boolean).map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                             </SelectContent>
                             </Select>
                             <FormMessage />
@@ -571,7 +571,7 @@ export function AddBokResidentForm({
                             <Select onValueChange={field.onChange} value={field.value || ''}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Wybierz status" /></SelectTrigger></FormControl>
                             <SelectContent>
-                                {sortedBokStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                                {sortedBokStatuses.filter(Boolean).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                             </SelectContent>
                             </Select>
                             <FormMessage />

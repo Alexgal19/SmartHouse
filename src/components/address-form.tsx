@@ -136,7 +136,7 @@ export function AddressForm({
                                     <SelectTrigger><SelectValue placeholder="Wybierz miejscowość" /></SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                    {settings.localities.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                                    {settings.localities.filter(Boolean).map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                             <FormMessage />

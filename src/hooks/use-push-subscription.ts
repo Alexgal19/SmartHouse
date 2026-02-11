@@ -58,7 +58,7 @@ export const usePushSubscription = () => {
         return () => {
             if (unsubscribe) unsubscribe();
         };
-    }, [toast]);
+    }, [toast, router]);
 
     useEffect(() => {
         if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {

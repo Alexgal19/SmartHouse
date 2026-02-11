@@ -432,7 +432,7 @@ const FilterDialog = ({ isOpen, onOpenChange, settings, onApply, initialFilters 
                         <SelectTrigger><SelectValue placeholder="Filtruj wg adresu" /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Wszystkie adresy</SelectItem>
-                            {settings.addresses.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
+                            {settings.addresses.filter(a => a.name).map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
                         </SelectContent>
                         </Select>
                       </div>
@@ -442,7 +442,7 @@ const FilterDialog = ({ isOpen, onOpenChange, settings, onApply, initialFilters 
                         <SelectTrigger><SelectValue placeholder="Filtruj wg zakładu" /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Wszystkie zakłady</SelectItem>
-                            {settings.departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                            {settings.departments.filter(Boolean).map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
                         </SelectContent>
                         </Select>
                       </div>
@@ -452,7 +452,7 @@ const FilterDialog = ({ isOpen, onOpenChange, settings, onApply, initialFilters 
                         <SelectTrigger><SelectValue placeholder="Filtruj wg narodowości" /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Wszystkie narodowości</SelectItem>
-                            {settings.nationalities.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                            {settings.nationalities.filter(Boolean).map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
                         </SelectContent>
                         </Select>
                       </div>

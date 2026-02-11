@@ -269,7 +269,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                                                             </SelectTrigger>
                                                                         </FormControl>
                                                                         <SelectContent>
-                                                                            {departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                                                                            {departments.filter(Boolean).map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
                                                                         </SelectContent>
                                                                     </Select>
                                                                 </FormItem>
@@ -431,7 +431,7 @@ const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove,
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Wszystkie miejscowości</SelectItem>
-                            {sortedLocalities.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                            {sortedLocalities.filter(Boolean).map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
                         </SelectContent>
                     </Select>
                     <Select value={filterCoordinatorId} onValueChange={setFilterCoordinatorId}>
@@ -764,7 +764,7 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
                                 <Select value={deleteDepartment} onValueChange={setDeleteDepartment}>
                                     <SelectTrigger><SelectValue placeholder="Wybierz zakład" /></SelectTrigger>
                                     <SelectContent>
-                                        {sortedDepartments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                                        {sortedDepartments.filter(Boolean).map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>

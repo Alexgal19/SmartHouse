@@ -550,7 +550,7 @@ export const FilterControls = ({ filters, onFilterChange, settings, currentUser 
                     <SelectTrigger id="search-locality"><SelectValue placeholder="Wszystkie miejscowości" /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">Wszystkie miejscowości</SelectItem>
-                        {sortedLocalities.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                        {sortedLocalities.filter(Boolean).map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
                     </SelectContent>
                 </Select>
             </div>

@@ -668,7 +668,7 @@ export function AddEmployeeForm({
                                     <Select onValueChange={field.onChange} value={field.value || ''}>
                                     <FormControl><SelectTrigger><SelectValue placeholder="Wybierz płeć" /></SelectTrigger></FormControl>
                                     <SelectContent>
-                                        {sortedGenders.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                                        {sortedGenders.filter(Boolean).map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
                                     </SelectContent>
                                     </Select>
                                     <FormMessage />
@@ -706,7 +706,7 @@ export function AddEmployeeForm({
                                     <Select onValueChange={handleAddressChange} value={field.value || ''} disabled={!selectedLocality}>
                                         <FormControl><SelectTrigger><SelectValue placeholder={!selectedLocality ? "Najpierw wybierz miejscowość" : "Wybierz adres"} /></SelectTrigger></FormControl>
                                         <SelectContent>
-                                            {availableAddresses.map(a => (
+                                            {availableAddresses.filter(a => a.name).map(a => (
                                                 <SelectItem key={a.id} value={a.name} disabled={!a.isActive}>
                                                     {a.name} {!a.isActive ? '(Niedostępny)' : ''}
                                                 </SelectItem>
@@ -739,7 +739,7 @@ export function AddEmployeeForm({
                                     <Select onValueChange={field.onChange} value={field.value || ''} disabled={!selectedAddress || isOwnAddressSelected}>
                                     <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : (isOwnAddressSelected ? "1" : "Wybierz pokój")} /></SelectTrigger></FormControl>
                                     <SelectContent>
-                                        {availableRooms.map(r => (
+                                        {availableRooms.filter(r => r.name).map(r => (
                                             <SelectItem key={r.id} value={r.name} disabled={!r.isActive}>
                                                 {r.name} {r.isActive ? `(Pojemność: ${r.capacity})` : '(Niedostępny)'}
                                             </SelectItem>

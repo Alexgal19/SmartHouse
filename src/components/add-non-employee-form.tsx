@@ -229,8 +229,8 @@ export function AddNonEmployeeForm({
     settings.genders.sort((a, b) => a.localeCompare(b)),
   [settings.genders]);
   
-  const paymentTypesNZOptions = useMemo(() => 
-    settings.paymentTypesNZ.map(p => ({ value: p, label: p })).sort((a,b) => a.label.localeCompare(b.label)), 
+  const paymentTypesNZOptions = useMemo(() =>
+    settings.paymentTypesNZ.filter(Boolean).map(p => ({ value: p, label: p })).sort((a,b) => a.label.localeCompare(b.label)),
   [settings.paymentTypesNZ]);
 
     const availableLocalities = useMemo(() => {
@@ -502,7 +502,7 @@ export function AddNonEmployeeForm({
                           <Select onValueChange={field.onChange} value={field.value || ''}>
                           <FormControl><SelectTrigger><SelectValue placeholder="Wybierz płeć" /></SelectTrigger></FormControl>
                           <SelectContent>
-                              {genderOptions.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                              {genderOptions.filter(Boolean).map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
                           </SelectContent>
                           </Select>
                           <FormMessage />
@@ -522,7 +522,7 @@ export function AddNonEmployeeForm({
                           <Select onValueChange={handleLocalityChange} value={field.value || ''}>
                               <FormControl><SelectTrigger><SelectValue placeholder="Wybierz miejscowość" /></SelectTrigger></FormControl>
                               <SelectContent>
-                                  {availableLocalities.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                                  {availableLocalities.filter(Boolean).map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
                               </SelectContent>
                           </Select>
                           <FormMessage />
@@ -538,7 +538,7 @@ export function AddNonEmployeeForm({
                           <Select onValueChange={handleAddressChange} value={field.value || ''} disabled={!selectedLocality}>
                               <FormControl><SelectTrigger><SelectValue placeholder={!selectedLocality ? "Najpierw wybierz miejscowość" : "Wybierz adres"} /></SelectTrigger></FormControl>
                               <SelectContent>
-                                  {availableAddresses.map(a => (
+                                  {availableAddresses.filter(a => a.name).map(a => (
                                       <SelectItem key={a.id} value={a.name} disabled={!a.isActive}>
                                           {a.name} {!a.isActive ? '(Niedostępny)' : ''}
                                       </SelectItem>
@@ -558,7 +558,7 @@ export function AddNonEmployeeForm({
                           <Select onValueChange={field.onChange} value={field.value || ''} disabled={!selectedAddress}>
                           <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : "Wybierz pokój"} /></SelectTrigger></FormControl>
                           <SelectContent>
-                              {availableRooms.map(r => (
+                              {availableRooms.filter(r => r.name).map(r => (
                                 <SelectItem key={r.id} value={r.name} disabled={!r.isActive}>
                                     {r.name} {r.isActive ? `(Pojemność: ${r.capacity})` : '(Niedostępny)'}
                                 </SelectItem>
