@@ -671,7 +671,17 @@ export default function MainLayout({
     const handleAddEmployeeClick = useCallback(() => {
         setEditingEmployee(null);
         setEditingNonEmployee(null);
+        setInitialEmployeeData({});
         setIsFormOpen(true);
+    }, []);
+
+    const handleEmployeeFormOpenChange = useCallback((open: boolean) => {
+        setIsFormOpen(open);
+        if (!open) {
+            // Clear initial data when form closes
+            setInitialEmployeeData({});
+            setEditingEmployee(null);
+        }
     }, []);
 
     const handleAddNonEmployeeClick = useCallback(() => {
@@ -1059,7 +1069,7 @@ export default function MainLayout({
             {rawSettings && currentUser && (
                  <AddEmployeeForm
                     isOpen={isFormOpen}
-                    onOpenChange={setIsFormOpen}
+                    onOpenChange={handleEmployeeFormOpenChange}
                     onSave={handleSaveEmployee}
                     settings={currentUser.isAdmin ? rawSettings : settings}
                     employee={editingEmployee}
