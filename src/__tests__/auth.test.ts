@@ -8,7 +8,7 @@ jest.mock('next/headers');
 jest.mock('@/lib/sheets');
 jest.mock('@/lib/session');
 
-const mockedGetAllSheetsData = sheets.getAllSheetsData as jest.Mock;
+const mockedGetSettings = sheets.getSettings as jest.Mock;
 
 describe('Authentication', () => {
     const mockSession = {
@@ -25,14 +25,7 @@ describe('Authentication', () => {
         // Mock getIronSession to return our mock session
         (getIronSession as jest.Mock).mockResolvedValue(mockSession);
         
-        // Default return for getAllSheetsData to avoid destructuring error
-        mockedGetAllSheetsData.mockResolvedValue({
-            settings: { coordinators: [] },
-            employees: [],
-            nonEmployees: [],
-            bokResidents: [],
-            addressHistory: [],
-        });
+        mockedGetSettings.mockResolvedValue({ coordinators: [] });
     });
 
     describe('getSession', () => {
@@ -84,12 +77,10 @@ describe('Authentication', () => {
         });
 
         it('should login coordinator with correct credentials', async () => {
-            mockedGetAllSheetsData.mockResolvedValue({
-                settings: {
-                    coordinators: [
-                        { uid: 'coord-1', name: 'Jan Kowalski', password: 'coordpass', isAdmin: false },
-                    ],
-                },
+            mockedGetSettings.mockResolvedValue({
+                coordinators: [
+                    { uid: 'coord-1', name: 'Jan Kowalski', password: 'coordpass', isAdmin: false },
+                ],
             });
 
             const result = await login('Jan Kowalski', 'coordpass');
@@ -107,12 +98,10 @@ describe('Authentication', () => {
         });
 
         it('should fail login for invalid coordinator credentials', async () => {
-            mockedGetAllSheetsData.mockResolvedValue({
-                settings: {
-                    coordinators: [
-                        { uid: 'coord-1', name: 'Jan Kowalski', password: 'coordpass', isAdmin: false },
-                    ],
-                },
+            mockedGetSettings.mockResolvedValue({
+                coordinators: [
+                    { uid: 'coord-1', name: 'Jan Kowalski', password: 'coordpass', isAdmin: false },
+                ],
             });
 
             await expect(login('Jan Kowalski', 'wrongpass')).rejects.toThrow('Nieprawidłowa nazwa użytkownika lub hasło.');
@@ -120,10 +109,8 @@ describe('Authentication', () => {
         });
 
         it('should fail login for non-existent coordinator', async () => {
-            mockedGetAllSheetsData.mockResolvedValue({
-                settings: {
-                    coordinators: [],
-                },
+            mockedGetSettings.mockResolvedValue({
+                coordinators: [],
             });
 
             await expect(login('Unknown', 'pass')).rejects.toThrow('Nieprawidłowa nazwa użytkownika lub hasło.');

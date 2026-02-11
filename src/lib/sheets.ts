@@ -1,4 +1,3 @@
-
 "use server";
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
@@ -24,6 +23,26 @@ const SHEET_NAME_ADDRESS_HISTORY = 'AddressHistory';
 const SHEET_NAME_BOK_RESIDENTS = 'BokResidents';
 const SHEET_NAME_BOK_ROLES = 'BokRoles';
 const SHEET_NAME_BOK_RETURN_OPTIONS = 'BokReturnOptions';
+const SHEET_NAME_BOK_STATUSES = 'BokStatuses';
+
+const TIMEOUT_MS = 15000; // 15 seconds
+
+export async function withTimeout<T>(promise: Promise<T>, timeoutMs: number = TIMEOUT_MS, operationName: string = 'Operation'): Promise<T> {
+    let timeoutHandle: NodeJS.Timeout;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutHandle = setTimeout(() => {
+            reject(new Error(`${operationName} timed out after ${timeoutMs}ms`));
+        }, timeoutMs);
+    });
+
+    return Promise.race([
+        promise.then((result) => {
+            clearTimeout(timeoutHandle);
+            return result;
+        }),
+        timeoutPromise
+    ]);
+}
 
 // Cache for the Google Spreadsheet document (reduces loadInfo calls)
 let cachedDoc: GoogleSpreadsheet | null = null;
@@ -72,7 +91,7 @@ async function getDoc(): Promise<GoogleSpreadsheet> {
     try {
         const auth = getAuth();
         const doc = new GoogleSpreadsheet(SPREADSHEET_ID, auth);
-        await doc.loadInfo();
+        await withTimeout(doc.loadInfo(), TIMEOUT_MS, 'doc.loadInfo');
         cachedDoc = doc;
         docLoadTime = Date.now();
         return doc;
@@ -90,25 +109,33 @@ export async function getSheet(title: string, headers: string[]): Promise<Google
             if (!headers) {
                 throw new Error(`Cannot create sheet "${title}" without headers.`);
             }
-            sheet = await doc.addSheet({ title, headerValues: headers });
+            sheet = await withTimeout(doc.addSheet({ title, headerValues: headers }), TIMEOUT_MS, `doc.addSheet(${title})`);
         } else {
-            await sheet.loadHeaderRow();
+            await withTimeout(sheet.loadHeaderRow(), TIMEOUT_MS, `sheet.loadHeaderRow(${title})`);
             const currentHeaders = sheet.headerValues || [];
             if (headers) {
                 const missingHeaders = headers.filter(h => !currentHeaders.includes(h));
                 if (missingHeaders.length > 0) {
+                    // Calculate required columns
+                    const requiredCols = currentHeaders.length + missingHeaders.length;
+                    
+                    // Resize if necessary to accommodate new headers
+                    if (sheet.columnCount < requiredCols) {
+                         await withTimeout(sheet.resize({ columnCount: requiredCols, rowCount: sheet.rowCount }), TIMEOUT_MS, `sheet.resize(${title})`);
+                    }
+
                     // This is a safer way to add headers without resizing the entire sheet,
                     // which can fail on very large sheets that are close to the cell limit.
                     // It loads only the header row, writes the new header values, and saves them.
-                    const lastCol = XLSX.utils.encode_col(currentHeaders.length + missingHeaders.length - 1);
-                    await sheet.loadCells(`A1:${lastCol}1`);
+                    const lastCol = XLSX.utils.encode_col(requiredCols - 1);
+                    await withTimeout(sheet.loadCells(`A1:${lastCol}1`), TIMEOUT_MS, `sheet.loadCells(${title})`);
 
                     missingHeaders.forEach((header, index) => {
                         const cell = sheet.getCell(0, currentHeaders.length + index);
                         cell.value = header;
                     });
 
-                    await sheet.saveUpdatedCells();
+                    await withTimeout(sheet.saveUpdatedCells(), TIMEOUT_MS, `sheet.saveUpdatedCells(${title})`);
                     
                     // Manually update the headerValues on the sheet object to avoid another network call
                     // This is safe because we just added them.
@@ -402,7 +429,7 @@ const getSheetData = async (doc: GoogleSpreadsheet, title: string, retry = 0): P
     }
 
     try {
-        const rows = await sheet.getRows();
+        const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, `sheet.getRows(${title})`);
         return rows.map(r => r.toObject());
     } catch (e: unknown) {
         if (e instanceof Error && (e.message.includes('429') || e.message.includes('Quota exceeded')) && retry < 3) {
@@ -423,30 +450,37 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
      }
      try {
         // Batch requests to avoid hitting rate limits (429)
-        const [
-            addressRows,
-            roomRows,
-            nationalityRows,
-            departmentRows,
-        ] = await Promise.all([
+        // Batch 1: Core Definitions (Addresses, Rooms, Coords) - These are largest
+        const [addressRows, roomRows] = await Promise.all([
             getSheetData(doc, SHEET_NAME_ADDRESSES),
             getSheetData(doc, SHEET_NAME_ROOMS),
-            getSheetData(doc, SHEET_NAME_NATIONALITIES),
-            getSheetData(doc, SHEET_NAME_DEPARTMENTS),
         ]);
 
+        await new Promise(res => setTimeout(res, 300)); // Throttling
+
+        // Batch 2: Simple Lists (Nationalities, Departments, Coords)
+        const [nationalityRows, departmentRows, coordinatorRows] = await Promise.all([
+            getSheetData(doc, SHEET_NAME_NATIONALITIES),
+            getSheetData(doc, SHEET_NAME_DEPARTMENTS),
+            getSheetData(doc, SHEET_NAME_COORDINATORS),
+        ]);
+
+        await new Promise(res => setTimeout(res, 300)); // Throttling
+
+        // Batch 3: More Simple Lists
         const [
-            coordinatorRows,
             genderRows,
             localityRows,
             paymentTypesNZRows,
         ] = await Promise.all([
-            getSheetData(doc, SHEET_NAME_COORDINATORS),
             getSheetData(doc, SHEET_NAME_GENDERS),
             getSheetData(doc, SHEET_NAME_LOCALITIES),
             getSheetData(doc, SHEET_NAME_PAYMENT_TYPES_NZ),
         ]);
 
+        await new Promise(res => setTimeout(res, 300)); // Throttling
+
+        // Batch 4: BOK and Statuses
         const [
             statusRows,
             bokRoleRows,
@@ -461,7 +495,7 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
         
         const roomsByAddressId = new Map<string, Room[]>();
         roomRows.forEach(rowObj => {
-            const addressId = rowObj.addressId;
+            const addressId = rowObj.addressId as string;
             if (addressId) {
                 if (!roomsByAddressId.has(addressId)) {
                     roomsByAddressId.set(addressId, []);
@@ -473,8 +507,8 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
                 }
 
                 roomsByAddressId.get(addressId)!.push({
-                    id: rowObj.id,
-                    name: rowObj.name,
+                    id: rowObj.id as string,
+                    name: rowObj.name as string,
                     capacity: Number(rowObj.capacity) || 0,
                     isActive: isActive,
                 });
@@ -482,22 +516,29 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
         });
 
         const addresses: Address[] = addressRows.map(rowObj => {
+            const isActiveRaw = rowObj.isActive !== undefined ? rowObj.isActive : rowObj['isactive'];
+            let isActive = true;
+            if (isActiveRaw !== undefined && isActiveRaw !== null && String(isActiveRaw).trim() !== '') {
+                 isActive = String(isActiveRaw).toUpperCase() === 'TRUE';
+            }
+
             return {
-                id: rowObj.id,
-                name: rowObj.name,
-                locality: rowObj.locality,
-                coordinatorIds: (rowObj?.coordinatorIds || '').split(',').filter(Boolean),
-                rooms: [...(roomsByAddressId.get(rowObj.id) || [])],
+                id: rowObj.id as string,
+                name: rowObj.name as string,
+                locality: rowObj.locality as string,
+                coordinatorIds: (rowObj?.coordinatorIds as string || '').split(',').filter(Boolean),
+                rooms: [...(roomsByAddressId.get(rowObj.id as string) || [])],
+                isActive
             }
         });
 
         const coordinators: Coordinator[] = coordinatorRows.map(rowObj => {
              return {
-                uid: rowObj.uid,
-                name: rowObj.name,
+                uid: rowObj.uid as string,
+                name: rowObj.name as string,
                 isAdmin: rowObj.isAdmin === 'TRUE',
-                departments: (rowObj?.departments || '').split(',').filter(Boolean),
-                password: rowObj.password,
+                departments: (rowObj?.departments as string || '').split(',').filter(Boolean),
+                password: rowObj.password as string,
                 visibilityMode: (rowObj.visibilityMode as 'department' | 'strict') || 'department',
                 pushSubscription: (rowObj.pushSubscription as string | null) || null,
             }
@@ -506,16 +547,16 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
         const settings: Settings = {
             id: 'global-settings',
             addresses,
-            nationalities: nationalityRows.map(row => row.name).filter(Boolean),
-            departments: departmentRows.map(row => row.name).filter(Boolean),
+            nationalities: nationalityRows.map(row => row.name as string).filter(Boolean),
+            departments: departmentRows.map(row => row.name as string).filter(Boolean),
             coordinators,
-            genders: genderRows.map(row => row.name).filter(Boolean),
-            localities: localityRows.map(row => row.name).filter(Boolean),
-            paymentTypesNZ: paymentTypesNZRows.map(row => row.name).filter(Boolean),
-            statuses: statusRows.map(row => row.name).filter(Boolean),
-            bokRoles: bokRoleRows.map(row => row.name).filter(Boolean),
-            bokReturnOptions: bokReturnOptionRows.map(row => row.name).filter(Boolean),
-            bokStatuses: bokStatusRows.map(row => row.name).filter(Boolean),
+            genders: genderRows.map(row => row.name as string).filter(Boolean),
+            localities: localityRows.map(row => row.name as string).filter(Boolean),
+            paymentTypesNZ: paymentTypesNZRows.map(row => row.name as string).filter(Boolean),
+            statuses: statusRows.map(row => row.name as string).filter(Boolean),
+            bokRoles: bokRoleRows.map(row => row.name as string).filter(Boolean),
+            bokReturnOptions: bokReturnOptionRows.map(row => row.name as string).filter(Boolean),
+            bokStatuses: bokStatusRows.map(row => row.name as string).filter(Boolean),
         };
         settingsCache = { data: settings, timestamp: Date.now() };
         return settings;
@@ -524,12 +565,6 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
         throw new Error(`Could not fetch settings. Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
 }
-
-export async function getOnlySettings(): Promise<Settings> {
-    const doc = await getDoc();
-    return await getSettingsFromSheet(doc);
-}
-
 
 async function getNotificationsFromSheet(doc: GoogleSpreadsheet, recipientId: string, isAdmin: boolean): Promise<Notification[]> {
     try {
@@ -557,102 +592,98 @@ async function getNotificationsFromSheet(doc: GoogleSpreadsheet, recipientId: st
     }
 }
 
+// --- Granular Exported Functions ---
+
+export async function getSettings(): Promise<Settings> {
+    const doc = await getDoc();
+    return await getSettingsFromSheet(doc);
+}
+
+export async function getEmployees(): Promise<Employee[]> {
+    if (employeesCache && (Date.now() - employeesCache.timestamp < DATA_CACHE_TTL)) {
+        return employeesCache.data;
+    }
+    const doc = await getDoc();
+    const rows = await getSheetData(doc, SHEET_NAME_EMPLOYEES);
+    const data = rows.map(row => deserializeEmployee(row)).filter((e): e is Employee => e !== null);
+    employeesCache = { data, timestamp: Date.now() };
+    return data;
+}
+
+export async function getNonEmployees(): Promise<NonEmployee[]> {
+    if (nonEmployeesCache && (Date.now() - nonEmployeesCache.timestamp < DATA_CACHE_TTL)) {
+        return nonEmployeesCache.data;
+    }
+    const doc = await getDoc();
+    const rows = await getSheetData(doc, SHEET_NAME_NON_EMPLOYEES);
+    const data = rows.map(row => deserializeNonEmployee(row)).filter((e): e is NonEmployee => e !== null);
+    nonEmployeesCache = { data, timestamp: Date.now() };
+    return data;
+}
+
+export async function getBokResidents(): Promise<BokResident[]> {
+    if (bokResidentsCache && (Date.now() - bokResidentsCache.timestamp < DATA_CACHE_TTL)) {
+        return bokResidentsCache.data;
+    }
+    const doc = await getDoc();
+    const rows = await getSheetData(doc, SHEET_NAME_BOK_RESIDENTS);
+    const data = rows.map(row => deserializeBokResident(row)).filter((e): e is BokResident => e !== null);
+    bokResidentsCache = { data, timestamp: Date.now() };
+    return data;
+}
+
+export async function getNotifications(userId: string, userIsAdmin: boolean): Promise<Notification[]> {
+    const doc = await getDoc();
+    return getNotificationsFromSheet(doc, userId, userIsAdmin);
+}
+
+export async function getRawAddressHistory(): Promise<AddressHistory[]> {
+    if (addressHistoryCache && (Date.now() - addressHistoryCache.timestamp < DATA_CACHE_TTL)) {
+        return addressHistoryCache.data;
+    }
+    const doc = await getDoc();
+    const rows = await getSheetData(doc, SHEET_NAME_ADDRESS_HISTORY);
+    // Return raw history without enrichment
+    const data = rows.map(row => deserializeAddressHistory(row)).filter((h): h is AddressHistory => h !== null);
+    
+    addressHistoryCache = { data, timestamp: Date.now() };
+    return data;
+}
+
 export async function getAllSheetsData(userId?: string, userIsAdmin?: boolean) {
     try {
-        const doc = await getDoc();
-
-        // Settings (already cached internally in getSettingsFromSheet)
-        const settingsPromise = getSettingsFromSheet(doc);
-
-        // Notifications (not cached, user specific)
-        const notificationsPromise = userId ? getNotificationsFromSheet(doc, userId, userIsAdmin || false) : Promise.resolve([]);
-
-        // Employees
-        let employeesPromise: Promise<Employee[]>;
-        if (employeesCache && (Date.now() - employeesCache.timestamp < DATA_CACHE_TTL)) {
-            employeesPromise = Promise.resolve(employeesCache.data);
-        } else {
-            employeesPromise = getSheetData(doc, SHEET_NAME_EMPLOYEES).then(rows => {
-                 const data = rows.map(row => deserializeEmployee(row)).filter((e): e is Employee => e !== null);
-                 employeesCache = { data, timestamp: Date.now() };
-                 return data;
-            });
-        }
-
-        // NonEmployees
-        let nonEmployeesPromise: Promise<NonEmployee[]>;
-        if (nonEmployeesCache && (Date.now() - nonEmployeesCache.timestamp < DATA_CACHE_TTL)) {
-             nonEmployeesPromise = Promise.resolve(nonEmployeesCache.data);
-        } else {
-             nonEmployeesPromise = getSheetData(doc, SHEET_NAME_NON_EMPLOYEES).then(rows => {
-                const data = rows.map(row => deserializeNonEmployee(row)).filter((e): e is NonEmployee => e !== null);
-                nonEmployeesCache = { data, timestamp: Date.now() };
-                return data;
-             });
-        }
-
-        // BokResidents
-        let bokResidentsPromise: Promise<BokResident[]>;
-        if (bokResidentsCache && (Date.now() - bokResidentsCache.timestamp < DATA_CACHE_TTL)) {
-            bokResidentsPromise = Promise.resolve(bokResidentsCache.data);
-        } else {
-            bokResidentsPromise = getSheetData(doc, SHEET_NAME_BOK_RESIDENTS).then(rows => {
-                const data = rows.map(row => deserializeBokResident(row)).filter((e): e is BokResident => e !== null);
-                bokResidentsCache = { data, timestamp: Date.now() };
-                return data;
-            });
-        }
-
-        // AddressHistory (needs raw rows first to be deserialized properly later? No, we can deserialize inside the promise)
-        // Wait, addressHistory deserialization logic depends on `allPeopleMap` in the original code.
-        // I need to fetch raw address history first, then combine.
-        // Or I can cache the deserialized address history *after* mapping names?
-        // If I cache address history with names, I need to make sure names are up to date.
-        // Actually, the original code deserializes, then fills missing names from `allPeopleMap`.
-        // If I cache AddressHistory, I should probably cache it "as is" or fully resolved.
-        // If I cache fully resolved, I need to invalidate it when people change names (rare).
-        // Let's cache the resolved version.
-        
-        // However, `allPeopleMap` is derived from the *current* fetch of employees/nonEmployees.
-        // If I use cached employees, I should use those for the map.
-        
         const [
+            settings,
             employees,
             nonEmployees,
-            settings,
+            bokResidents,
             notifications,
-            bokResidents
+            rawAddressHistory
         ] = await Promise.all([
-            employeesPromise,
-            nonEmployeesPromise,
-            settingsPromise,
-            notificationsPromise,
-            bokResidentsPromise
+            getSettings(),
+            getEmployees(),
+            getNonEmployees(),
+            getBokResidents(),
+            userId ? getNotifications(userId, userIsAdmin || false) : Promise.resolve([]),
+            getRawAddressHistory()
         ]);
 
-        // Address History - slightly more complex due to dependency on people
-        let addressHistory: AddressHistory[];
-        if (addressHistoryCache && (Date.now() - addressHistoryCache.timestamp < DATA_CACHE_TTL)) {
-            addressHistory = addressHistoryCache.data;
-        } else {
-             // We need fresh address history rows
-             const addressHistoryRows = await getSheetData(doc, SHEET_NAME_ADDRESS_HISTORY);
-             const allPeopleMap = new Map([...employees, ...nonEmployees, ...bokResidents].map(p => [p.id, p]));
-             
-             addressHistory = addressHistoryRows.map(row => {
-                const historyEntry = deserializeAddressHistory(row);
-                if (historyEntry && (!historyEntry.employeeFirstName || !historyEntry.employeeLastName)) {
-                    const person = allPeopleMap.get(historyEntry.employeeId);
-                    if (person) {
-                        historyEntry.employeeFirstName = person.firstName;
-                        historyEntry.employeeLastName = person.lastName;
-                    }
-                }
-                return historyEntry;
-            }).filter((h): h is AddressHistory => h !== null);
+        // Address History Enrichment (for backward compatibility)
+        const allPeopleMap = new Map([...employees, ...nonEmployees, ...bokResidents].map(p => [p.id, p]));
+        
+        const addressHistory = rawAddressHistory.map(historyEntry => {
+            // Clone to avoid mutating the cached object if it came from cache
+            const entry = { ...historyEntry }; 
             
-            addressHistoryCache = { data: addressHistory, timestamp: Date.now() };
-        }
+            if (!entry.employeeFirstName || !entry.employeeLastName) {
+                const person = allPeopleMap.get(entry.employeeId);
+                if (person) {
+                    entry.employeeFirstName = person.firstName;
+                    entry.employeeLastName = person.lastName;
+                }
+            }
+            return entry;
+        });
 
         return { employees, settings, nonEmployees, notifications, addressHistory, bokResidents };
 
@@ -664,18 +695,18 @@ export async function getAllSheetsData(userId?: string, userIsAdmin?: boolean) {
 
 export async function addAddressHistoryEntry(data: Omit<AddressHistory, 'id'>) {
   const sheet = await getSheet(SHEET_NAME_ADDRESS_HISTORY, ['id', 'employeeId', 'employeeFirstName', 'employeeLastName', 'coordinatorName', 'department', 'address', 'checkInDate', 'checkOutDate']);
-  await sheet.addRow({
+  await withTimeout(sheet.addRow({
     id: `hist-${Date.now()}`,
     ...data,
     checkInDate: data.checkInDate || '',
     checkOutDate: data.checkOutDate || '',
-  });
+  }), TIMEOUT_MS, 'sheet.addRow(AddressHistory)');
   await invalidateAddressHistoryCache();
 }
 
 export async function updateAddressHistoryEntry(historyId: string, updates: Partial<AddressHistory>) {
     const sheet = await getSheet(SHEET_NAME_ADDRESS_HISTORY, ['id', 'employeeId', 'address', 'checkInDate', 'checkOutDate']);
-    const rows = await sheet.getRows();
+    const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(AddressHistory)');
     const row = rows.find(r => r.get('id') === historyId);
     if (row) {
         const keys = Object.keys(updates) as Array<keyof AddressHistory>;
@@ -686,16 +717,16 @@ export async function updateAddressHistoryEntry(historyId: string, updates: Part
                 row.set(key, value ?? '');
             }
         }
-        await row.save();
+        await withTimeout(row.save(), TIMEOUT_MS, 'row.save(AddressHistory)');
         await invalidateAddressHistoryCache();
     }
 }
 export async function deleteAddressHistoryEntry(historyId: string) {
     const sheet = await getSheet(SHEET_NAME_ADDRESS_HISTORY, ['id']);
-    const rows = await sheet.getRows();
+    const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(AddressHistory)');
     const row = rows.find(r => r.get('id') === historyId);
     if (row) {
-        await row.delete();
+        await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(AddressHistory)');
         await invalidateAddressHistoryCache();
     } else {
         throw new Error('Address history entry not found');

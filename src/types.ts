@@ -8,6 +8,7 @@ export type Address = {
     name: string;
     coordinatorIds: string[];
     rooms: Room[];
+    isActive: boolean;
 }
 
 export type Room = {

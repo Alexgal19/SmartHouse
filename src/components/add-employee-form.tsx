@@ -46,7 +46,26 @@ import { Combobox } from '@/components/ui/combobox';
 import { useToast } from '@/hooks/use-toast';
 import { useMainLayout } from './main-layout';
 import { extractPassportData } from '@/ai/flows/extract-passport-data-flow';
-import Webcam from 'react-webcam';
+import dynamic from 'next/dynamic';
+import type ReactWebcam from 'react-webcam';
+import type { WebcamProps } from 'react-webcam';
+
+const WebcamInternal = dynamic(
+  () => import('react-webcam').then((mod) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const Cmp = mod.default as any;
+    const Wrapper = ({ forwardedRef, ...props }: WebcamProps & { forwardedRef?: React.Ref<ReactWebcam> }) => {
+      return <Cmp {...props} ref={forwardedRef} />;
+    };
+    return Wrapper;
+  }),
+  { ssr: false }
+);
+
+const Webcam = React.forwardRef<ReactWebcam, WebcamProps>((props, ref) => (
+  <WebcamInternal {...props} forwardedRef={ref} />
+));
+Webcam.displayName = 'Webcam';
 
 export const formSchema = z.object({
   firstName: z.string().min(1, "Imię jest wymagane."),
@@ -244,7 +263,7 @@ export function AddEmployeeForm({
 }) {
   const { toast } = useToast();
   const { handleDismissEmployee } = useMainLayout();
-  const webcamRef = useRef<Webcam>(null);
+  const webcamRef = useRef<ReactWebcam>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
 
@@ -687,7 +706,11 @@ export function AddEmployeeForm({
                                     <Select onValueChange={handleAddressChange} value={field.value || ''} disabled={!selectedLocality}>
                                         <FormControl><SelectTrigger><SelectValue placeholder={!selectedLocality ? "Najpierw wybierz miejscowość" : "Wybierz adres"} /></SelectTrigger></FormControl>
                                         <SelectContent>
-                                            {availableAddresses.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
+                                            {availableAddresses.map(a => (
+                                                <SelectItem key={a.id} value={a.name} disabled={!a.isActive}>
+                                                    {a.name} {!a.isActive ? '(Niedostępny)' : ''}
+                                                </SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                     <FormMessage />
@@ -717,8 +740,8 @@ export function AddEmployeeForm({
                                     <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : (isOwnAddressSelected ? "1" : "Wybierz pokój")} /></SelectTrigger></FormControl>
                                     <SelectContent>
                                         {availableRooms.map(r => (
-                                            <SelectItem key={r.id} value={r.name} disabled={r.isActive === false}>
-                                                {r.name} {r.isActive !== false ? `(Pojemność: ${r.capacity})` : '(Niedostępny)'}
+                                            <SelectItem key={r.id} value={r.name} disabled={!r.isActive}>
+                                                {r.name} {r.isActive ? `(Pojemność: ${r.capacity})` : '(Niedostępny)'}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -1050,6 +1073,13 @@ export function AddEmployeeForm({
             screenshotFormat="image/jpeg"
             videoConstraints={{ facingMode: 'environment' }}
             className="w-full max-w-sm rounded-lg border"
+            onUserMediaError={(err) => console.error("Webcam error:", err)}
+            onUserMedia={() => console.log("User media accessed")}
+            screenshotQuality={0.8}
+           mirrored={false}
+           disablePictureInPicture={true}
+           forceScreenshotSourceSize={false}
+           imageSmoothing={true}
           />
           <div className="flex gap-2">
             <Button onClick={handleCapture} disabled={isScanning}>

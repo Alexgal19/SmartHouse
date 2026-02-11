@@ -44,7 +44,7 @@ import {
     sendPushNotification,
     updateCoordinatorSubscription,
 } from '@/lib/actions';
-import { getAllSheetsData } from '@/lib/sheets';
+import { getSettings, getEmployees, getNonEmployees, getBokResidents, getNotifications, getRawAddressHistory } from '@/lib/sheets';
 import { logout } from '../lib/auth';
 import { useToast } from '../hooks/use-toast';
 import { AddEmployeeForm, type EmployeeFormData } from './add-employee-form';
@@ -327,17 +327,65 @@ export default function MainLayout({
     const refreshData = useCallback(async (showToast = true) => {
         if (!currentUser) return;
         try {
-            // Fetch critical data first
-            const data = await getAllSheetsData(currentUser.uid, currentUser.isAdmin);
-            setRawSettings(data.settings);
-            setAllNotifications(data.notifications);
-            setRawNonEmployees(data.nonEmployees);
-            setRawBokResidents(data.bokResidents);
-            setRawEmployees(data.employees);
-            setAddressHistory(data.addressHistory);
+            // Fetch data strategically to avoid timeouts and improve UX
+            
+            // 1. Fetch Settings FIRST (Critical & Fast)
+            const settings = await getSettings();
+            setRawSettings(settings);
+
+            // 2. Fetch other data SEQUENTIALLY/BATCHED to reduce burst on Google Sheets API (429 errors)
+            // Fetch largest datasets first individually
+            
+            const employeesResult = await getEmployees().catch(e => {
+                console.error("Failed to fetch employees:", e);
+                return [] as Employee[];
+            });
+            
+            // Short delay to let the API breathe
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            const nonEmployeesResult = await getNonEmployees().catch(e => {
+                console.error("Failed to fetch non-employees:", e);
+                return [] as NonEmployee[];
+            });
+
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            // Fetch remaining smaller datasets in parallel
+            const [bokResidentsResult, notificationsResult, addressHistoryResult] = await Promise.all([
+                 getBokResidents().catch(e => { console.error("Failed to fetch BOK:", e); return [] as BokResident[]; }),
+                 getNotifications(currentUser.uid, currentUser.isAdmin).catch(e => { console.error("Failed to fetch notifications:", e); return [] as Notification[]; }),
+                 getRawAddressHistory().catch(e => { console.error("Failed to fetch history:", e); return [] as AddressHistory[]; })
+            ]);
+
+            const employees = employeesResult;
+            const nonEmployees = nonEmployeesResult;
+            const bokResidents = bokResidentsResult;
+            const notifications = notificationsResult;
+            const rawAddressHistory = addressHistoryResult;
+
+            // Client-side enrichment of Address History
+            const allPeopleMap = new Map([...employees, ...nonEmployees, ...bokResidents].map(p => [p.id, p]));
+            const enrichedAddressHistory = rawAddressHistory.map(historyEntry => {
+                const entry = { ...historyEntry };
+                if (!entry.employeeFirstName || !entry.employeeLastName) {
+                    const person = allPeopleMap.get(entry.employeeId);
+                    if (person) {
+                        entry.employeeFirstName = person.firstName;
+                        entry.employeeLastName = person.lastName;
+                    }
+                }
+                return entry;
+            });
+
+            setAllNotifications(notifications);
+            setRawNonEmployees(nonEmployees);
+            setRawBokResidents(bokResidents);
+            setRawEmployees(employees);
+            setAddressHistory(enrichedAddressHistory);
 
             if (currentUser.isAdmin) {
-                const allActive = [...(data.employees || []).filter(e => e.status === 'active'), ...(data.nonEmployees || [])];
+                const allActive = [...(employees || []).filter(e => e.status === 'active'), ...(nonEmployees || [])];
                 const upcoming = allActive
                     .filter(o => {
                         if (!o.checkOutDate) return false;
@@ -359,7 +407,16 @@ export default function MainLayout({
             if(showToast) {
                 toast({ title: "Sukces", description: "Dane zostały odświeżone." });
             }
-            return data;
+            
+            // Return structure compatible with previous implementation if needed by callers
+            return {
+                employees,
+                settings,
+                nonEmployees,
+                notifications,
+                addressHistory: enrichedAddressHistory,
+                bokResidents
+            };
         } catch (error) {
             console.error(error);
             toast({
@@ -460,132 +517,145 @@ export default function MainLayout({
 
     const handleSaveEmployee = useCallback(async (data: EmployeeFormData) => {
         if (!currentUser) return;
-        
-        try {
-            if (editingEmployee) {
-                const updatedData: Partial<Employee> = { ...data };
-                await updateEmployee(editingEmployee.id, updatedData, currentUser.uid)
+    
+        if (editingEmployee) {
+            const originalEmployees = rawEmployees;
+            setRawEmployees(prev => prev ? prev.map(e => e.id === editingEmployee.id ? { ...e, ...data, fullName: `${data.lastName} ${data.firstName}`.trim() } : e) : null);
+            try {
+                const updatedEmployee = await updateEmployee(editingEmployee.id, { ...data }, currentUser.uid);
+                setRawEmployees(prev => prev ? prev.map(e => e.id === updatedEmployee.id ? updatedEmployee : e) : null);
                 toast({ title: "Sukces", description: "Dane pracownika zostały zaktualizowane." });
-                await refreshData(false);
-            } else {
-                const newEmployee = await addEmployee(data, currentUser.uid);
-                const refreshedData = await refreshData(false);
-                if (!refreshedData) return;
-                const wasAdded = refreshedData.employees.some((e: Employee) => e.id === newEmployee.id);
-                if (wasAdded) {
-                    toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
-                } else {
-                    toast({ variant: "destructive", title: "Błąd zapisu", description: "Osoba nie została dodana, proszę poinformować administratora." });
-                }
+            } catch (e: unknown) {
+                setRawEmployees(originalEmployees);
+                toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zaktualizować pracownika." });
             }
-        } catch (e: unknown) {
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać pracownika." });
+        } else {
+            try {
+                const newEmployee = await addEmployee(data, currentUser.uid);
+                setRawEmployees(prev => prev ? [...prev, newEmployee] : [newEmployee]);
+                toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
+            } catch (e: unknown) {
+                toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się dodać pracownika." });
+            }
         }
-    }, [currentUser, editingEmployee, refreshData, toast]);
+    }, [currentUser, editingEmployee, rawEmployees, toast]);
 
     const handleSaveNonEmployee = useCallback(async (data: Omit<NonEmployee, 'id' | 'status'>) => {
         if (!currentUser) return;
-        try {
-            if (editingNonEmployee) {
-                await updateNonEmployee(editingNonEmployee.id, data, currentUser.uid);
+    
+        if (editingNonEmployee) {
+            const originalNonEmployees = rawNonEmployees;
+            setRawNonEmployees(prev => prev ? prev.map(e => e.id === editingNonEmployee.id ? { ...e, ...data, fullName: `${data.lastName} ${data.firstName}`.trim() } : e) : null);
+            try {
+                const updatedNonEmployee = await updateNonEmployee(editingNonEmployee.id, data, currentUser.uid);
+                setRawNonEmployees(prev => prev ? prev.map(e => e.id === updatedNonEmployee.id ? updatedNonEmployee : e) : null);
                 toast({ title: "Sukces", description: "Dane mieszkańca zostały zaktualizowane." });
-                await refreshData(false);
-            } else {
-                 const newNonEmployee = await addNonEmployee(data, currentUser.uid);
-                 const refreshedData = await refreshData(false);
-                 if (!refreshedData) return;
-                 const wasAdded = refreshedData.nonEmployees.some((ne: NonEmployee) => ne.id === newNonEmployee.id);
-                 if(wasAdded) {
-                    toast({ title: "Sukces", description: "Nowy mieszkaniec został dodany." });
-                 } else {
-                    toast({ variant: "destructive", title: "Błąd zapisu", description: "Osoba nie została dodana, proszę poinformować administratora." });
-                 }
+            } catch (e) {
+                setRawNonEmployees(originalNonEmployees);
+                toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zaktualizować mieszkańca." });
             }
-        } catch(e) {
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać mieszkańca." });
+        } else {
+            try {
+                const newNonEmployee = await addNonEmployee(data, currentUser.uid);
+                setRawNonEmployees(prev => prev ? [...prev, newNonEmployee] : [newNonEmployee]);
+                toast({ title: "Sukces", description: "Nowy mieszkaniec został dodany." });
+            } catch (e) {
+                toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się dodać mieszkańca." });
+            }
         }
-    }, [editingNonEmployee, currentUser, refreshData, toast]);
+    }, [editingNonEmployee, currentUser, rawNonEmployees, toast]);
 
     const handleSaveBokResident = useCallback(async (data: BokResidentFormData) => {
         if (!currentUser) return;
-        try {
-            if (editingBokResident) {
-                await updateBokResident(editingBokResident.id, data, currentUser.uid);
-                setRawBokResidents(prev => prev ? prev.map(r => r.id === editingBokResident.id ? { ...r, ...data, fullName: `${data.lastName} ${data.firstName}`.trim() } : r) : null);
+    
+        if (editingBokResident) {
+            const originalBokResidents = rawBokResidents;
+            setRawBokResidents(prev => prev ? prev.map(r => r.id === editingBokResident.id ? { ...r, ...data, fullName: `${data.lastName} ${data.firstName}`.trim() } : r) : null);
+            try {
+                const updatedResident = await updateBokResident(editingBokResident.id, data, currentUser.uid);
+                setRawBokResidents(prev => prev ? prev.map(r => r.id === updatedResident.id ? updatedResident : r) : null);
                 toast({ title: "Sukces", description: "Dane mieszkańca BOK zostały zaktualizowane." });
-                // refreshData(false); // Removed to prevent "Zombie Record" issue due to race condition
-            } else {
-                 const newResidentData = {
-                     ...data,
-                     checkOutDate: data.checkOutDate ?? null,
-                     returnStatus: data.returnStatus ?? '',
-                     zaklad: data.zaklad ?? '',
-                     status: data.status ?? '',
-                     fullName: `${data.lastName} ${data.firstName}`.trim(),
-                 };
-                 const newResident = await addBokResident(newResidentData, currentUser.uid);
-                 setRawBokResidents(prev => prev ? [...prev, newResident] : [newResident]);
-                 
-                 toast({ title: "Sukces", description: "Nowy mieszkaniec BOK został dodany." });
-                 // refreshData(false); // Removed to prevent "Zombie Record" issue due to race condition
-
-                 if (newResidentData.coordinatorId) {
-                    const link = `/dashboard?view=employees&action=add&firstName=${encodeURIComponent(newResidentData.firstName)}&lastName=${encodeURIComponent(newResidentData.lastName)}&nationality=${encodeURIComponent(newResidentData.nationality)}&zaklad=${encodeURIComponent(newResidentData.zaklad || '')}`;
-                    await sendPushNotification(
-                        newResidentData.coordinatorId,
-                        'Nowe zadanie: Dodaj pracownika',
-                        `Mieszkaniec BOK: ${newResidentData.lastName} ${newResidentData.firstName} - kliknij, aby dodać.`,
-                        link
-                    );
-                }
+            } catch (e) {
+                setRawBokResidents(originalBokResidents);
+                toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zaktualizować mieszkańca BOK." });
             }
-        } catch(e) {
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać mieszkańca BOK." });
+        } else {
+            try {
+                const newResidentData = {
+                    ...data,
+                    checkOutDate: data.checkOutDate ?? null,
+                    returnStatus: data.returnStatus ?? '',
+                    zaklad: data.zaklad ?? '',
+                    status: data.status ?? '',
+                    fullName: `${data.lastName} ${data.firstName}`.trim(),
+                };
+                const newResident = await addBokResident(newResidentData, currentUser.uid);
+                setRawBokResidents(prev => prev ? [...prev, newResident] : [newResident]);
+                toast({ title: "Sukces", description: "Nowy mieszkaniec BOK został dodany." });
+    
+                if (newResidentData.coordinatorId) {
+                   const link = `/dashboard?view=employees&action=add&firstName=${encodeURIComponent(newResidentData.firstName)}&lastName=${encodeURIComponent(newResidentData.lastName)}&nationality=${encodeURIComponent(newResidentData.nationality)}&zaklad=${encodeURIComponent(newResidentData.zaklad || '')}`;
+                   await sendPushNotification(
+                       newResidentData.coordinatorId,
+                       'Nowe zadanie: Dodaj pracownika',
+                       `Mieszkaniec BOK: ${newResidentData.lastName} ${newResidentData.firstName} - kliknij, aby dodać.`,
+                       link
+                   );
+               }
+            } catch (e) {
+                toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać mieszkańca BOK." });
+            }
         }
-    }, [editingBokResident, currentUser, toast]);
+    }, [editingBokResident, currentUser, rawBokResidents, toast]);
     
     const handleDeleteNonEmployee = useCallback(async (id: string, actorUid: string) => {
         if (!currentUser) return;
+        const originalNonEmployees = rawNonEmployees;
+        setRawNonEmployees(prev => prev ? prev.filter(r => r.id !== id) : null);
+    
         try {
             await deleteNonEmployee(id, actorUid);
-            setRawNonEmployees(prev => prev ? prev.filter(r => r.id !== id) : null);
             toast({ title: "Sukces", description: "Mieszkaniec został usunięty." });
-            // refreshData(false); // Removed to prevent "Zombie Record" issue due to race condition
         } catch(e) {
+            setRawNonEmployees(originalNonEmployees);
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć mieszkańca." });
         }
-    }, [currentUser, toast]);
+    }, [currentUser, rawNonEmployees, toast]);
 
     const handleDeleteBokResident = useCallback(async (id: string, actorUid: string) => {
         if (!currentUser) return;
+        const originalBokResidents = rawBokResidents;
+        setRawBokResidents(prev => prev ? prev.filter(r => r.id !== id) : null);
+    
         try {
             await deleteBokResident(id, actorUid);
-            setRawBokResidents(prev => prev ? prev.filter(r => r.id !== id) : null);
             toast({ title: "Sukces", description: "Mieszkaniec BOK został usunięty." });
-            // refreshData(false); // Removed to prevent "Zombie Record" issue due to race condition
         } catch(e) {
+            setRawBokResidents(originalBokResidents);
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć mieszkańca BOK." });
         }
-    }, [currentUser, toast]);
+    }, [currentUser, rawBokResidents, toast]);
     
     const handleUpdateSettings = useCallback(async (newSettings: Partial<Settings>) => {
         if (!rawSettings || !currentUser?.isAdmin) {
-             toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administrator może zmieniać ustawienia." });
+            toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administrator może zmieniać ustawienia." });
             return;
         }
-
+    
         const originalSettings = rawSettings;
         setRawSettings(prev => ({ ...prev!, ...newSettings }));
-
+    
         try {
-            await updateSettings(newSettings);
+            const updatedSettings = await updateSettings(newSettings);
+            setRawSettings(prev => ({ ...prev!, ...updatedSettings }));
             toast({ title: "Sukces", description: "Ustawienia zostały zaktualizowane." });
-            await refreshData(false);
-        } catch(e) {
+            router.refresh(); // Ensure server-side cache is invalidated and fresh data is fetched
+        } catch (e) {
             setRawSettings(originalSettings); // Revert on error
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać ustawień." });
+            throw e; // Re-throw to inform caller of failure
         }
-    }, [rawSettings, currentUser, toast, refreshData]);
+    }, [rawSettings, currentUser, toast, router]);
 
     const handleAddEmployeeClick = useCallback(() => {
         setEditingEmployee(null);
@@ -737,15 +807,17 @@ export default function MainLayout({
     
     const handleDeleteEmployee = useCallback(async (employeeId: string, actorUid: string) => {
         if (!currentUser) return;
+        const originalEmployees = rawEmployees;
+        setRawEmployees(prev => prev ? prev.filter(e => e.id !== employeeId) : null);
+    
         try {
             await deleteEmployee(employeeId, actorUid);
-            setRawEmployees(prev => prev ? prev.filter(e => e.id !== employeeId) : null);
             toast({ title: "Sukces", description: "Pracownik został usunięty." });
-            // refreshData(false); // Removed to prevent "Zombie Record" issue due to race condition
         } catch (e: unknown) {
+            setRawEmployees(originalEmployees);
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć pracownika." });
         }
-    }, [currentUser, toast]);
+    }, [currentUser, rawEmployees, toast]);
 
     const handleDeleteAddressHistory = useCallback(async (historyId: string, actorUid: string) => {
         if (!currentUser) return;

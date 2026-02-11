@@ -45,7 +45,8 @@ const mockSettings: Settings = {
       locality: 'Warszawa',
       name: 'Testowa 1',
       coordinatorIds: ['coord-1'],
-      rooms: [{ id: 'room-1', name: '101', capacity: 2 }],
+      rooms: [{ id: 'room-1', name: '101', capacity: 2, isActive: true }],
+      isActive: true,
     },
   ],
   paymentTypesNZ: [],
@@ -111,7 +112,7 @@ describe('AddEmployeeForm', () => {
 
     // Select Address
     fireEvent.click(screen.getByText('Wybierz adres'));
-    fireEvent.click(screen.getByRole('option', { name: 'Testowa 1' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Testowa 1' }));
 
     // Leave room empty
     const submitButton = screen.getByRole('button', { name: 'Zapisz' });
@@ -155,7 +156,8 @@ describe('AddEmployeeForm with Own Address', () => {
                 locality: 'Warszawa',
                 name: 'Własne mieszkanie',
                 coordinatorIds: ['coord-1'],
-                rooms: [{ id: 'room-own', name: '1', capacity: 1 }],
+                rooms: [{ id: 'room-own', name: '1', capacity: 1, isActive: true }],
+                isActive: true,
             }
         ]
     };
@@ -177,7 +179,7 @@ describe('AddEmployeeForm with Own Address', () => {
 
         // Select Own Address
             fireEvent.click(screen.getByText('Wybierz adres'));
-            fireEvent.click(screen.getByRole('option', { name: 'Własne mieszkanie' }));
+            fireEvent.click(await screen.findByRole('option', { name: 'Własne mieszkanie' }));
         
             // Leave own address empty
         const submitButton = screen.getByRole('button', { name: 'Zapisz' });

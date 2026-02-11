@@ -1,23 +1,28 @@
-
-
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, NotificationType, Coordinator, BokResident, AddressHistory } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, NonEmployee, DeductionReason, NotificationType, Coordinator, BokResident } from '../types';
 import { revalidatePath } from 'next/cache';
 import {
     getSheet,
-    getAllSheetsData,
+    getSettings,
+    getEmployees,
+    getNonEmployees,
+    getRawAddressHistory,
     addAddressHistoryEntry as addHistoryToAction,
     updateAddressHistoryEntry as updateHistoryToAction,
     deleteAddressHistoryEntry as deleteHistoryFromSheet,
     invalidateEmployeesCache,
     invalidateNonEmployeesCache,
     invalidateBokResidentsCache,
-    invalidateSettingsCache
+    invalidateSettingsCache,
+    withTimeout
 } from './sheets';
 import { format, isValid, getDaysInMonth, parseISO, differenceInDays, max, min, parse as dateFnsParse, lastDayOfMonth } from 'date-fns';
+
+const TIMEOUT_MS = 45000;
 import * as XLSX from 'xlsx';
 import { adminMessaging } from './firebase-admin';
+import { batchPromises } from './utils';
 
 const EMPLOYEE_HEADERS = [
     'id', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'ownAddress', 'roomNumber',
@@ -172,7 +177,7 @@ const serializeNotification = (notification: Notification): Record<string, strin
 };
 
 const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'departments', 'password', 'visibilityMode', 'pushSubscription'];
-const ADDRESS_HEADERS = ['id', 'locality', 'name', 'coordinatorIds'];
+const ADDRESS_HEADERS = ['id', 'locality', 'name', 'coordinatorIds', 'isActive'];
 const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targetType', 'targetId', 'details'];
 
 
@@ -305,7 +310,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
 const writeToAuditLog = async (actorId: string, actorName: string, action: string, targetType: string, targetId: string, details: unknown) => {
     try {
         const sheet = await getSheet(SHEET_NAME_AUDIT_LOG, AUDIT_LOG_HEADERS);
-        await sheet.addRow({
+        await withTimeout(sheet.addRow({
             timestamp: new Date().toISOString(),
             actorId,
             actorName,
@@ -313,7 +318,7 @@ const writeToAuditLog = async (actorId: string, actorName: string, action: strin
             targetType,
             targetId,
             details: JSON.stringify(details),
-        }, { raw: false, insert: true });
+        }, { raw: false, insert: true }), TIMEOUT_MS, 'sheet.addRow(AuditLog)');
     } catch (e: unknown) {
         console.error("Failed to write to audit log:", e instanceof Error ? e.message : "Unknown error");
     }
@@ -438,7 +443,7 @@ const createNotification = async (
         };
         
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
-        await sheet.addRow(serializeNotification(notification));
+        await withTimeout(sheet.addRow(serializeNotification(notification)), TIMEOUT_MS, 'sheet.addRow(Notification)');
         
         const entityType = 'role' in entity ? 'bok-resident' : ('zaklad' in entity && entity.zaklad ? 'pracownika' : 'mieszkańca');
         await writeToAuditLog(actor.uid, actor.name, action, entityType, entity.id, changes);
@@ -484,7 +489,7 @@ const validateRoomAvailability = (settings: Settings, addressName: string | unde
 
 export async function addEmployee(employeeData: Partial<Employee>, actorUid: string): Promise<Employee> {
     try {
-        const { settings } = await getAllSheetsData(actorUid, true);
+        const settings = await getSettings();
         const actor = findActor(actorUid, settings);
 
         validateRoomAvailability(settings, employeeData.address, employeeData.roomNumber);
@@ -519,12 +524,11 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
         };
 
         const serialized = serializeEmployee(newEmployee);
-        await sheet.addRow(serialized, { raw: false, insert: true });
+        await withTimeout(sheet.addRow(serialized, { raw: false, insert: true }), TIMEOUT_MS, 'sheet.addRow(Employee)');
         
         await createNotification(actor, 'dodał', newEmployee, settings);
         
         await invalidateEmployeesCache();
-        revalidatePath('/dashboard');
         return newEmployee;
     } catch (e: unknown) {
         console.error("Error adding employee:", e);
@@ -533,19 +537,19 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
 }
 
 
-export async function updateEmployee(employeeId: string, updates: Partial<Employee>, actorUid: string): Promise<void> {
+export async function updateEmployee(employeeId: string, updates: Partial<Employee>, actorUid: string): Promise<Employee> {
     try {
         if (updates.status === 'dismissed' && !updates.checkOutDate) {
             throw new Error('Data wymeldowania jest wymagana przy zwalnianiu pracownika.');
         }
 
-        const { settings, addressHistory } = await getAllSheetsData(actorUid, true);
+        const [settings, addressHistory] = await Promise.all([getSettings(), getRawAddressHistory()]);
         const actor = findActor(actorUid, settings);
 
         validateRoomAvailability(settings, updates.address, updates.roomNumber);
 
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows();
+        const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Employee)');
         const rowIndex = rows.findIndex((row) => row.get('id') === employeeId);
 
         if (rowIndex === -1) {
@@ -630,14 +634,14 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
             row.set(header, serialized[header]);
         }
 
-        await row.save();
+        await withTimeout(row.save(), TIMEOUT_MS, 'row.save(Employee)');
         
         if (changes.length > 0) {
             await createNotification(actor, 'zaktualizował', updatedEmployeeData, settings, undefined, changes);
         }
         
         await invalidateEmployeesCache();
-        revalidatePath('/dashboard');
+        return updatedEmployeeData;
 
     } catch (e: unknown) {
         console.error("Error updating employee:", e);
@@ -645,19 +649,19 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
     }
 }
 
-export async function deleteEmployee(employeeId: string, actorUid: string): Promise<void> {
+export async function deleteEmployee(employeeId: string, _actorUid: string): Promise<string> {
     try {
-        const { addressHistory } = await getAllSheetsData(actorUid, true);
+        const addressHistory = await getRawAddressHistory();
         
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows();
+        const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Employee)');
         const row = rows.find((r) => r.get('id') === employeeId);
 
         if (!row) {
             throw new Error('Employee not found for deletion.');
         }
 
-        await row.delete();
+        await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(Employee)');
         
         const historyToDelete = (addressHistory || []).filter(h => h.employeeId === employeeId);
         for (const historyEntry of historyToDelete) {
@@ -665,7 +669,7 @@ export async function deleteEmployee(employeeId: string, actorUid: string): Prom
         }
         
         await invalidateEmployeesCache();
-        revalidatePath('/dashboard');
+        return employeeId;
 
     } catch (e: unknown) {
         console.error("Error deleting employee:", e);
@@ -675,7 +679,7 @@ export async function deleteEmployee(employeeId: string, actorUid: string): Prom
 
 export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id' | 'status'>, actorUid: string): Promise<NonEmployee> {
     try {
-        const { settings } = await getAllSheetsData(actorUid, true);
+        const settings = await getSettings();
         const actor = findActor(actorUid, settings);
 
         validateRoomAvailability(settings, nonEmployeeData.address, nonEmployeeData.roomNumber);
@@ -701,12 +705,11 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id' | '
         };
 
         const serialized = serializeNonEmployee(newNonEmployee);
-        await sheet.addRow(serialized, { raw: false, insert: true });
+        await withTimeout(sheet.addRow(serialized, { raw: false, insert: true }), TIMEOUT_MS, 'sheet.addRow(NonEmployee)');
         
         await createNotification(actor, 'dodał', newNonEmployee, settings);
         
         await invalidateNonEmployeesCache();
-        revalidatePath('/dashboard');
 
         return newNonEmployee;
     } catch (e: unknown) {
@@ -715,19 +718,19 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id' | '
     }
 }
 
-export async function updateNonEmployee(id: string, updates: Partial<NonEmployee>, actorUid: string): Promise<void> {
+export async function updateNonEmployee(id: string, updates: Partial<NonEmployee>, actorUid: string): Promise<NonEmployee> {
      try {
         if (updates.status === 'dismissed' && !updates.checkOutDate) {
             throw new Error('Data wymeldowania jest wymagana przy zwalnianiu osoby niebędącej pracownikiem.');
         }
 
-        const { settings, addressHistory } = await getAllSheetsData(actorUid, true);
+        const [settings, addressHistory] = await Promise.all([getSettings(), getRawAddressHistory()]);
         const actor = findActor(actorUid, settings);
 
         validateRoomAvailability(settings, updates.address, updates.roomNumber);
 
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows();
+        const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(NonEmployee)');
         const rowIndex = rows.findIndex((row) => row.get('id') === id);
 
         if (rowIndex === -1) {
@@ -787,14 +790,14 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
             row.set(header, serializedData[header]);
         }
 
-        await row.save();
+        await withTimeout(row.save(), TIMEOUT_MS, 'row.save(NonEmployee)');
         
         if (changes.length > 0) {
             await createNotification(actor, 'zaktualizował', updatedNonEmployeeData, settings, undefined, changes);
         }
         
         await invalidateNonEmployeesCache();
-        revalidatePath('/dashboard');
+        return updatedNonEmployeeData;
 
      } catch (e: unknown) {
          console.error("Error updating non-employee:", e);
@@ -802,22 +805,22 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
      }
 }
 
-export async function deleteNonEmployee(id: string, actorUid: string): Promise<void> {
+export async function deleteNonEmployee(id: string, _actorUid: string): Promise<string> {
     try {
-        const { addressHistory } = await getAllSheetsData(actorUid, true);
+        const addressHistory = await getRawAddressHistory();
 
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
-        const rows = await sheet.getRows();
+        const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(NonEmployee)');
         const row = rows.find((row) => row.get('id') === id);
         if (row) {
-            await row.delete();
+            await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(NonEmployee)');
 
             const historyToDelete = (addressHistory || []).filter(h => h.employeeId === id);
             for (const historyEntry of historyToDelete) {
                 await deleteHistoryFromSheet(historyEntry.id);
             }
             await invalidateNonEmployeesCache();
-            revalidatePath('/dashboard');
+            return id;
         } else {
             throw new Error('Non-employee not found');
         }
@@ -829,7 +832,7 @@ export async function deleteNonEmployee(id: string, actorUid: string): Promise<v
 
 export async function addBokResident(residentData: Omit<BokResident, 'id'>, actorUid: string): Promise<BokResident> {
     try {
-        const { settings } = await getAllSheetsData(actorUid, true);
+        const settings = await getSettings();
         const actor = findActor(actorUid, settings);
 
         validateRoomAvailability(settings, residentData.address, residentData.roomNumber);
@@ -842,12 +845,11 @@ export async function addBokResident(residentData: Omit<BokResident, 'id'>, acto
         };
 
         const serialized = serializeBokResident(newResident);
-        await sheet.addRow(serialized, { raw: false, insert: true });
+        await withTimeout(sheet.addRow(serialized, { raw: false, insert: true }), TIMEOUT_MS, 'sheet.addRow(BokResident)');
         
         await createNotification(actor, 'dodał', newResident, settings);
         
         await invalidateBokResidentsCache();
-        revalidatePath('/dashboard');
 
         return newResident;
     } catch (e: unknown) {
@@ -856,15 +858,15 @@ export async function addBokResident(residentData: Omit<BokResident, 'id'>, acto
     }
 }
 
-export async function updateBokResident(id: string, updates: Partial<BokResident>, actorUid: string): Promise<void> {
+export async function updateBokResident(id: string, updates: Partial<BokResident>, actorUid: string): Promise<BokResident> {
     try {
-        const { settings } = await getAllSheetsData(actorUid, true);
+        const settings = await getSettings();
         const actor = findActor(actorUid, settings);
 
         validateRoomAvailability(settings, updates.address, updates.roomNumber);
 
         const sheet = await getSheet(SHEET_NAME_BOK_RESIDENTS, BOK_RESIDENT_HEADERS);
-        const rows = await sheet.getRows();
+        const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(BokResident)');
         const row = rows.find(r => r.get('id') === id);
 
         if (!row) {
@@ -889,14 +891,14 @@ export async function updateBokResident(id: string, updates: Partial<BokResident
         for(const header of BOK_RESIDENT_HEADERS) {
             row.set(header, serialized[header]);
         }
-        await row.save();
-
+        await withTimeout(row.save(), TIMEOUT_MS, 'row.save(BokResident)');
+        
         if (changes.length > 0) {
             await createNotification(actor, 'zaktualizował', updatedResident, settings, undefined, changes);
         }
         
         await invalidateBokResidentsCache();
-        revalidatePath('/dashboard');
+        return updatedResident;
 
     } catch (e: unknown) {
         console.error("Error updating BOK resident:", e);
@@ -904,16 +906,16 @@ export async function updateBokResident(id: string, updates: Partial<BokResident
     }
 }
 
-export async function deleteBokResident(id: string, _actorUid: string): Promise<void> {
+export async function deleteBokResident(id: string, _actorUid: string): Promise<string> {
     try {
         const sheet = await getSheet(SHEET_NAME_BOK_RESIDENTS, BOK_RESIDENT_HEADERS);
-        const rows = await sheet.getRows();
+        const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(BokResident)');
         const row = rows.find(r => r.get('id') === id);
 
         if (row) {
-            await row.delete();
+            await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(BokResident)');
             await invalidateBokResidentsCache();
-            revalidatePath('/dashboard');
+            return id;
         } else {
             throw new Error('BOK Resident not found');
         }
@@ -936,7 +938,7 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', _actor
 
         // Deleting rows in reverse order to avoid index shifting issues
         for (let i = rowsToDelete.length - 1; i >= 0; i--) {
-            await rowsToDelete[i].delete();
+            await withTimeout(rowsToDelete[i].delete(), TIMEOUT_MS, 'row.delete(Employee)');
         }
         
         await invalidateEmployeesCache();
@@ -959,14 +961,14 @@ export async function bulkDeleteEmployeesByCoordinator(coordinatorId: string, ac
         }
 
         for (let i = rowsToDelete.length - 1; i >= 0; i--) {
-            await rowsToDelete[i].delete();
+            await withTimeout(rowsToDelete[i].delete(), TIMEOUT_MS, 'row.delete(Employee)');
         }
         
         await invalidateEmployeesCache();
         revalidatePath('/dashboard');
         
         // Audit logging
-        const { settings } = await getAllSheetsData(actorUid, true);
+        const settings = await getSettings();
         const actor = findActor(actorUid, settings);
         if (actor) {
             const deletedForCoordinator = settings.coordinators.find(c => c.uid === coordinatorId);
@@ -993,14 +995,14 @@ export async function bulkDeleteEmployeesByDepartment(department: string, actorU
         }
 
         for (let i = rowsToDelete.length - 1; i >= 0; i--) {
-            await rowsToDelete[i].delete();
+            await withTimeout(rowsToDelete[i].delete(), TIMEOUT_MS, 'row.delete(Employee)');
         }
         
         await invalidateEmployeesCache();
         revalidatePath('/dashboard');
         
         // Audit logging
-        const { settings } = await getAllSheetsData(actorUid, true);
+        const settings = await getSettings();
         const actor = findActor(actorUid, settings);
         if (actor) {
             await writeToAuditLog(actor.uid, actor.name, 'bulk-delete-by-department', 'employee', department, {
@@ -1025,7 +1027,7 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
             return;
         }
 
-        const { settings } = await getAllSheetsData();
+        const settings = await getSettings();
         const toCoordinator = settings.coordinators.find((c: { uid: string; name: string; }) => c.uid === toCoordinatorId);
         if (!toCoordinator) {
             throw new Error("Target coordinator not found.");
@@ -1033,7 +1035,7 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
 
         for (const row of rowsToTransfer) {
             row.set('coordinatorId', toCoordinatorId);
-            await row.save();
+            await withTimeout(row.save(), TIMEOUT_MS, 'row.save(Employee)');
         }
         
         await invalidateEmployeesCache();
@@ -1047,8 +1049,8 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
 
 export async function checkAndUpdateStatuses(actorUid?: string): Promise<{ updated: number }> {
     try {
-        const { settings } = await getAllSheetsData(actorUid, true);
-        const actor = findActor('system', settings);
+        const settings = await getSettings();
+        const actor = findActor(actorUid || 'system', settings);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         let updatedCount = 0;
@@ -1064,7 +1066,7 @@ export async function checkAndUpdateStatuses(actorUid?: string): Promise<{ updat
                 const checkOutDate = parseISO(checkOutDateString);
                 if (isValid(checkOutDate) && checkOutDate < today) {
                     row.set('status', 'dismissed');
-                    await row.save();
+                    await withTimeout(row.save(), TIMEOUT_MS, 'row.save(Employee)');
                     updatedCount++;
 
                     const originalEmployee = deserializeEmployee(row.toObject());
@@ -1088,7 +1090,7 @@ export async function checkAndUpdateStatuses(actorUid?: string): Promise<{ updat
                 const checkOutDate = parseISO(checkOutDateString);
                 if (isValid(checkOutDate) && checkOutDate < today) {
                     row.set('status', 'dismissed');
-                    await row.save();
+                    await withTimeout(row.save(), TIMEOUT_MS, 'row.save(NonEmployee)');
                     updatedCount++;
                     const originalNonEmployee = { ...row.toObject(), ...splitFullName(row.get('fullName')) } as NonEmployee;
                     await createNotification(actor, 'automatycznie zwolnił', originalNonEmployee, settings, undefined, [
@@ -1112,151 +1114,230 @@ export async function checkAndUpdateStatuses(actorUid?: string): Promise<{ updat
 }
 
 
-export async function updateSettings(newSettings: Partial<Settings>): Promise<void> {
+export async function updateSettings(newSettings: Partial<Settings>): Promise<Partial<Settings>> {
     const updateSimpleList = async (sheetName: string, items: string[]) => {
         const sheet = await getSheet(sheetName, ['name']);
-        const currentRows = await sheet.getRows();
+        const currentRows = await withTimeout(sheet.getRows(), TIMEOUT_MS, `sheet.getRows(${sheetName})`);
         const existingItems = currentRows.map(r => r.get('name'));
 
         const toAdd = items.filter(item => !existingItems.includes(item));
         const toDeleteRows = currentRows.filter(r => !items.includes(r.get('name')));
 
-        const promises: Promise<any>[] = [];
+        // Batch deletion
+        // Use a separate function for deletion to avoid 'then' on undefined in tests if delete returns void/undefined
+        await batchPromises(toDeleteRows.reverse(), 5, async (row) => {
+             await withTimeout(row.delete(), TIMEOUT_MS, `row.delete(${sheetName})`);
+        }, 100);
 
-        if (toDeleteRows.length > 0) {
-            toDeleteRows.reverse().forEach(row => promises.push(row.delete()));
-        }
-
+        // Batch addition
         if (toAdd.length > 0) {
-            promises.push(sheet.addRows(toAdd.map(name => ({ name })), { raw: false, insert: true }));
-        }
-
-        if (promises.length > 0) {
-            await Promise.all(promises);
+           await withTimeout(sheet.addRows(toAdd.map(name => ({ name })), { raw: false, insert: true }), TIMEOUT_MS, `sheet.addRows(${sheetName})`);
         }
     };
     
     try {
-        const allPromises: Promise<any>[] = [];
+        // Parallelize simple lists update with concurrency control (max 3 concurrent)
+        const simpleListTasks: (() => Promise<void>)[] = [];
+        if (newSettings.nationalities) simpleListTasks.push(() => updateSimpleList(SHEET_NAME_NATIONALITIES, newSettings.nationalities!));
+        if (newSettings.departments) simpleListTasks.push(() => updateSimpleList(SHEET_NAME_DEPARTMENTS, newSettings.departments!));
+        if (newSettings.genders) simpleListTasks.push(() => updateSimpleList(SHEET_NAME_GENDERS, newSettings.genders!));
+        if (newSettings.localities) simpleListTasks.push(() => updateSimpleList(SHEET_NAME_LOCALITIES, newSettings.localities!));
+        if (newSettings.paymentTypesNZ) simpleListTasks.push(() => updateSimpleList(SHEET_NAME_PAYMENT_TYPES_NZ, newSettings.paymentTypesNZ!));
+        if (newSettings.statuses) simpleListTasks.push(() => updateSimpleList(SHEET_NAME_STATUSES, newSettings.statuses!));
+        if (newSettings.bokRoles) simpleListTasks.push(() => updateSimpleList(SHEET_NAME_BOK_ROLES, newSettings.bokRoles!));
+        if (newSettings.bokReturnOptions) simpleListTasks.push(() => updateSimpleList(SHEET_NAME_BOK_RETURN_OPTIONS, newSettings.bokReturnOptions!));
 
-        if (newSettings.nationalities) allPromises.push(updateSimpleList(SHEET_NAME_NATIONALITIES, newSettings.nationalities));
-        if (newSettings.departments) allPromises.push(updateSimpleList(SHEET_NAME_DEPARTMENTS, newSettings.departments));
-        if (newSettings.genders) allPromises.push(updateSimpleList(SHEET_NAME_GENDERS, newSettings.genders));
-        if (newSettings.localities) allPromises.push(updateSimpleList(SHEET_NAME_LOCALITIES, newSettings.localities));
-        if (newSettings.paymentTypesNZ) allPromises.push(updateSimpleList(SHEET_NAME_PAYMENT_TYPES_NZ, newSettings.paymentTypesNZ));
-        if (newSettings.statuses) allPromises.push(updateSimpleList(SHEET_NAME_STATUSES, newSettings.statuses));
-        if (newSettings.bokRoles) allPromises.push(updateSimpleList(SHEET_NAME_BOK_ROLES, newSettings.bokRoles));
-        if (newSettings.bokReturnOptions) allPromises.push(updateSimpleList(SHEET_NAME_BOK_RETURN_OPTIONS, newSettings.bokReturnOptions));
+        await batchPromises(simpleListTasks, 3, async (task) => { await task() }, 0);
 
         if (newSettings.addresses) {
-            allPromises.push((async () => {
+            await (async () => {
                 const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ADDRESS_HEADERS);
                 const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity', 'isActive']);
                 
-                const addressPromises: Promise<any>[] = [];
-
-                const currentAddressRows = await addressesSheet.getRows();
-                const toUpdateAddr = newSettings.addresses!.filter(a => currentAddressRows.some(r => r.get('id') === a.id));
+                const currentAddressRows = await withTimeout(addressesSheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Addresses)');
                 const toAddAddr = newSettings.addresses!.filter(a => !currentAddressRows.some(r => r.get('id') === a.id));
                 const toDeleteAddrRows = currentAddressRows.filter(r => !newSettings.addresses!.some(a => a.id === r.get('id')));
+                
+                // Identify modified addresses only
+                const toUpdateAddr = newSettings.addresses!
+                    .filter(a => currentAddressRows.some(r => r.get('id') === a.id))
+                    .filter(addr => {
+                        const row = currentAddressRows.find(r => r.get('id') === addr.id)!;
+                        const newCoordinatorIds = (addr.coordinatorIds || []).join(',');
+                        
+                        const currentName = String(row.get('name') || '');
+                        const currentLocality = String(row.get('locality') || '');
+                        const currentCoordinatorIds = String(row.get('coordinatorIds') || '');
+                        
+                        const isActiveRaw = row.get('isActive');
+                        // Default to TRUE if missing or empty, otherwise parse the value
+                        const currentIsActive = (isActiveRaw === undefined || isActiveRaw === null || String(isActiveRaw).trim() === '')
+                            ? true
+                            : String(isActiveRaw).toUpperCase() === 'TRUE';
+                        
+                        const newIsActive = addr.isActive !== false;
 
-                toDeleteAddrRows.reverse().forEach(row => addressPromises.push(row.delete()));
+                        return (
+                            currentName !== addr.name ||
+                            currentLocality !== addr.locality ||
+                            currentCoordinatorIds !== newCoordinatorIds ||
+                            currentIsActive !== newIsActive
+                        );
+                    });
 
-                toUpdateAddr.forEach(addr => {
+                // Throttled Deletions
+                // Sort by rowNumber descending to avoid index shifting issues during deletion
+                const sortedToDeleteAddr = toDeleteAddrRows.sort((a, b) => b.rowNumber - a.rowNumber);
+                // Limit the number of deletions to prevent timeouts if there are many orphan rows
+                const safeBatchToDeleteAddr = sortedToDeleteAddr.slice(0, 20);
+                
+                await batchPromises(safeBatchToDeleteAddr, 1, async (row) => {
+                    await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(Addresses)');
+                }, 100);
+
+                // Throttled Updates
+                await batchPromises(toUpdateAddr, 5, async (addr) => {
                     const row = currentAddressRows.find(r => r.get('id') === addr.id)!;
+                    const newCoordinatorIds = (addr.coordinatorIds || []).join(',');
+                    const newIsActive = addr.isActive !== false ? 'TRUE' : 'FALSE';
+                    
                     row.set('name', addr.name);
                     row.set('locality', addr.locality);
-                    row.set('coordinatorIds', (addr.coordinatorIds || []).join(','));
-                    addressPromises.push(row.save());
-                });
+                    row.set('coordinatorIds', newCoordinatorIds);
+                    row.set('isActive', newIsActive);
+                    await withTimeout(row.save(), TIMEOUT_MS, 'row.save(Addresses)');
+                }, 100);
 
                 if (toAddAddr.length > 0) {
-                    addressPromises.push(addressesSheet.addRows(toAddAddr.map(addr => ({
+                    await withTimeout(addressesSheet.addRows(toAddAddr.map(addr => ({
                         id: addr.id,
                         name: addr.name,
                         locality: addr.locality,
                         coordinatorIds: (addr.coordinatorIds || []).join(','),
-                    })), { raw: false, insert: true }));
+                        isActive: addr.isActive !== false ? 'TRUE' : 'FALSE',
+                    })), { raw: false, insert: true }), TIMEOUT_MS, 'sheet.addRows(Addresses)');
                 }
 
                 // Differential update for rooms
-                const roomPromises: Promise<any>[] = [];
-                const currentRoomRows = await roomsSheet.getRows();
+                const currentRoomRows = await withTimeout(roomsSheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Rooms)');
                 const newRooms = newSettings.addresses!.flatMap(addr => addr.rooms.map(room => ({ ...room, addressId: addr.id })));
                 
-                const toUpdateRooms = newRooms.filter(room => currentRoomRows.some(r => r.get('id') === room.id));
                 const toAddRooms = newRooms.filter(room => !currentRoomRows.some(r => r.get('id') === room.id));
                 const toDeleteRoomRows = currentRoomRows.filter(r => !newRooms.some(room => room.id === r.get('id')));
 
-                toDeleteRoomRows.reverse().forEach(row => roomPromises.push(row.delete()));
+                // Identify modified rooms only
+                const toUpdateRooms = newRooms
+                    .filter(room => currentRoomRows.some(r => r.get('id') === room.id))
+                    .filter(room => {
+                        const row = currentRoomRows.find(r => r.get('id') === room.id)!;
+                        const newIsActive = room.isActive !== false ? 'TRUE' : 'FALSE';
+                        const newCapacity = String(room.capacity);
+                        
+                        return (
+                            row.get('addressId') !== room.addressId ||
+                            row.get('name') !== room.name ||
+                            String(row.get('capacity')) !== newCapacity ||
+                            String(row.get('isActive')).toUpperCase() !== newIsActive
+                        );
+                    });
 
-                toUpdateRooms.forEach(room => {
+                // Throttled Room Deletions
+                // Sort by rowNumber descending to avoid index shifting issues during deletion
+                const sortedToDeleteRooms = toDeleteRoomRows.sort((a, b) => b.rowNumber - a.rowNumber);
+                // Limit the number of deletions to prevent timeouts if there are many orphan rows
+                const safeBatchToDeleteRooms = sortedToDeleteRooms.slice(0, 50);
+
+                await batchPromises(safeBatchToDeleteRooms, 1, async (row) => {
+                    await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(Rooms)');
+                }, 100);
+
+                // Throttled Room Updates
+                await batchPromises(toUpdateRooms, 5, async (room) => {
                     const row = currentRoomRows.find(r => r.get('id') === room.id)!;
+                    const newIsActive = room.isActive !== false ? 'TRUE' : 'FALSE';
+                    const newCapacity = String(room.capacity);
+
                     row.set('addressId', room.addressId);
                     row.set('name', room.name);
-                    row.set('capacity', String(room.capacity));
-                    row.set('isActive', room.isActive !== false ? 'TRUE' : 'FALSE');
-                    roomPromises.push(row.save());
-                });
+                    row.set('capacity', newCapacity);
+                    row.set('isActive', newIsActive);
+                    await withTimeout(row.save(), TIMEOUT_MS, 'row.save(Rooms)');
+                }, 100);
 
                 if (toAddRooms.length > 0) {
-                    roomPromises.push(roomsSheet.addRows(toAddRooms.map(room => ({
-                        id: room.id,
-                        addressId: room.addressId,
-                        name: room.name,
-                        capacity: String(room.capacity),
-                        isActive: room.isActive !== false ? 'TRUE' : 'FALSE',
-                    })), { raw: false, insert: true }));
+                   // Add rows in chunks to prevent huge payload
+                    const chunkSize = 20;
+                    for (let i = 0; i < toAddRooms.length; i += chunkSize) {
+                        const chunk = toAddRooms.slice(i, i + chunkSize);
+                        await withTimeout(roomsSheet.addRows(chunk.map(room => ({
+                            id: room.id,
+                            addressId: room.addressId,
+                            name: room.name,
+                            capacity: String(room.capacity),
+                            isActive: room.isActive !== false ? 'TRUE' : 'FALSE',
+                        })), { raw: false, insert: true }), TIMEOUT_MS, 'sheet.addRows(Rooms)');
+                        if (i + chunkSize < toAddRooms.length) await new Promise(r => setTimeout(r, 200));
+                    }
                 }
-                
-                await Promise.all([...addressPromises, ...roomPromises]);
-            })());
+            })();
         }
         if (newSettings.coordinators) {
-             allPromises.push((async () => {
+             await (async () => {
                 const sheet = await getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS);
-                const currentRows = await sheet.getRows();
+                const currentRows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Coordinators)');
                 
                 const toUpdate = newSettings.coordinators!.filter(c => currentRows.some(r => r.get('uid') === c.uid));
                 const toAdd = newSettings.coordinators!.filter(c => !currentRows.some(r => r.get('uid') === c.uid));
                 const toDeleteRows = currentRows.filter(r => !newSettings.coordinators!.some(c => c.uid === r.get('uid')));
 
-                const coordinatorPromises: Promise<any>[] = [];
-
-                toDeleteRows.reverse().forEach(row => coordinatorPromises.push(row.delete()));
+                // Throttled Coordinator Deletions
+                await batchPromises(toDeleteRows.reverse(), 1, async (row) => {
+                    await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(Coordinators)');
+                }, 1000);
                 
-                toUpdate.forEach(coord => {
+                // Throttled Coordinator Updates
+                await batchPromises(toUpdate, 1, async (coord) => {
                     const row = currentRows.find(r => r.get('uid') === coord.uid);
                     if (row) {
-                        row.set('name', coord.name);
-                        row.set('isAdmin', String(coord.isAdmin).toUpperCase());
-                        row.set('departments', coord.departments.join(','));
-                        row.set('visibilityMode', coord.visibilityMode || 'department');
-                        if (coord.password) {
-                            row.set('password', coord.password);
+                        const newIsAdmin = String(coord.isAdmin).toUpperCase();
+                        const newDepartments = coord.departments.join(',');
+                        const newVisibilityMode = coord.visibilityMode || 'department';
+                        
+                        let hasChanges = false;
+                        if (row.get('name') !== coord.name) hasChanges = true;
+                        if (String(row.get('isAdmin')).toUpperCase() !== newIsAdmin) hasChanges = true;
+                        if (row.get('departments') !== newDepartments) hasChanges = true;
+                        if (row.get('visibilityMode') !== newVisibilityMode) hasChanges = true;
+                        if (coord.password && row.get('password') !== coord.password) hasChanges = true;
+
+                        if (hasChanges) {
+                            row.set('name', coord.name);
+                            row.set('isAdmin', newIsAdmin);
+                            row.set('departments', newDepartments);
+                            row.set('visibilityMode', newVisibilityMode);
+                            if (coord.password) {
+                                row.set('password', coord.password);
+                            }
+                            await withTimeout(row.save(), TIMEOUT_MS, 'row.save(Coordinators)');
                         }
-                        coordinatorPromises.push(row.save());
                     }
-                });
+                }, 1000);
 
                 if (toAdd.length > 0) {
-                    coordinatorPromises.push(sheet.addRows(toAdd.map(c => ({
+                    await withTimeout(sheet.addRows(toAdd.map(c => ({
                         ...c,
                         departments: c.departments.join(','),
                         isAdmin: String(c.isAdmin).toUpperCase(),
                         visibilityMode: c.visibilityMode || 'department',
                         pushSubscription: c.pushSubscription || '',
-                    })), { raw: false, insert: true }));
+                    })), { raw: false, insert: true }), TIMEOUT_MS, 'sheet.addRows(Coordinators)');
                 }
-                
-                await Promise.all(coordinatorPromises);
-             })());
+             })();
         }
-        
-        await Promise.all(allPromises);
 
         await invalidateSettingsCache();
         revalidatePath('/dashboard');
+        return newSettings;
 
     } catch (error: unknown) {
         console.error("Error updating settings:", error);
@@ -1269,15 +1350,15 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<vo
 
 
 export async function updateNotificationReadStatus(notificationId: string, isRead: boolean): Promise<void> {
-    try {
-        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
-        const rows = await sheet.getRows();
-        const row = rows.find((r) => r.get('id') === notificationId);
-        if (row) {
-            row.set('isRead', String(isRead).toUpperCase());
-            await row.save();
-            revalidatePath('/dashboard');
-        } else {
+try {
+    const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
+    const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Notifications)');
+    const row = rows.find((r) => r.get('id') === notificationId);
+    if (row) {
+        row.set('isRead', String(isRead).toUpperCase());
+        await withTimeout(row.save(), TIMEOUT_MS, 'row.save(Notifications)');
+        revalidatePath('/dashboard');
+    } else {
             throw new Error('Notification not found');
         }
     } catch (e: unknown) {
@@ -1289,7 +1370,7 @@ export async function updateNotificationReadStatus(notificationId: string, isRea
 export async function clearAllNotifications(): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
-        await sheet.clearRows();
+        await withTimeout(sheet.clearRows(), TIMEOUT_MS, 'sheet.clearRows(Notifications)');
         revalidatePath('/dashboard');
     } catch (e: unknown) {
         console.error("Could not clear notifications:", e);
@@ -1300,10 +1381,10 @@ export async function clearAllNotifications(): Promise<void> {
 export async function deleteNotification(notificationId: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
-        const rows = await sheet.getRows();
+        const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Notifications)');
         const rowToDelete = rows.find(row => row.get('id') === notificationId);
         if (rowToDelete) {
-            await rowToDelete.delete();
+            await withTimeout(rowToDelete.delete(), TIMEOUT_MS, 'row.delete(Notifications)');
             revalidatePath('/dashboard');
         } else {
             throw new Error('Notification not found');
@@ -1317,7 +1398,11 @@ export async function deleteNotification(notificationId: string): Promise<void> 
 
 export async function generateAccommodationReport(year: number, month: number, coordinatorId: string, includeAddressHistory: boolean): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
     try {
-        const { employees, settings, addressHistory } = await getAllSheetsData();
+        const [employees, settings, addressHistory] = await Promise.all([
+            getEmployees(),
+            getSettings(),
+            getRawAddressHistory()
+        ]);
         const coordinatorMap = new Map(settings.coordinators.map((c: { uid: string; name: string; }) => [c.uid, c.name]));
 
         const reportStart = new Date(year, month - 1, 1);
@@ -1428,7 +1513,7 @@ export async function generateAccommodationReport(year: number, month: number, c
 
 export async function generateNzCostsReport(year: number, month: number, coordinatorId: string): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
     try {
-        const { nonEmployees, settings } = await getAllSheetsData();
+        const [nonEmployees, settings] = await Promise.all([getNonEmployees(), getSettings()]);
         const coordinatorMap = new Map(settings.coordinators.map((c: { uid: string; name: string; }) => [c.uid, c.name]));
 
         const reportStart = new Date(year, month - 1, 1);
@@ -1647,18 +1732,18 @@ const processImport = async (
             if (type === 'employee') {
                 const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
                 const serializedRecords = (recordsToAdd as Employee[]).map(rec => serializeEmployee(rec));
-                await sheet.addRows(serializedRecords);
+                await withTimeout(sheet.addRows(serializedRecords), TIMEOUT_MS, 'sheet.addRows(Employees)');
             } else {
                 const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
                 const serializedRecords = (recordsToAdd as NonEmployee[]).map(rec => serializeNonEmployee(rec));
-                await sheet.addRows(serializedRecords);
+                await withTimeout(sheet.addRows(serializedRecords), TIMEOUT_MS, 'sheet.addRows(NonEmployees)');
             }
         }
         
         if (notificationsToAdd.length > 0) {
             const notificationsSheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
             const serializedNotifications = notificationsToAdd.map(serializeNotification);
-            await notificationsSheet.addRows(serializedNotifications);
+            await withTimeout(notificationsSheet.addRows(serializedNotifications), TIMEOUT_MS, 'sheet.addRows(Notifications)');
         }
 
         if (newLocalities.size > 0) {
@@ -1697,7 +1782,7 @@ export async function importNonEmployeesFromExcel(fileContent: string, actorUid:
 
 export async function deleteAddressHistoryEntry(historyId: string, actorUid: string): Promise<void> {
     try {
-        const { settings } = await getAllSheetsData(actorUid, true);
+        const settings = await getSettings();
         const actor = findActor(actorUid, settings);
 
         await deleteHistoryFromSheet(historyId);
@@ -1714,7 +1799,7 @@ export async function deleteAddressHistoryEntry(historyId: string, actorUid: str
 
 
 export async function migrateFullNames(actorUid: string): Promise<{ migratedEmployees: number; migratedNonEmployees: number }> {
-    const { settings } = await getAllSheetsData(actorUid, true);
+    const settings = await getSettings();
     const actor = findActor(actorUid, settings);
 
     let migratedEmployees = 0;
@@ -1722,7 +1807,7 @@ export async function migrateFullNames(actorUid: string): Promise<{ migratedEmpl
 
     // Migrate Employees
     const employeeSheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
-    const employeeRows = await employeeSheet.getRows();
+    const employeeRows = await withTimeout(employeeSheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Employees)');
     for (const row of employeeRows) {
         const fullName = row.get('fullName') as string;
         const firstName = row.get('firstName') as string;
@@ -1731,14 +1816,14 @@ export async function migrateFullNames(actorUid: string): Promise<{ migratedEmpl
             const { firstName: newFirstName, lastName: newLastName } = splitFullName(fullName);
             row.set('firstName', newFirstName);
             row.set('lastName', newLastName);
-            await row.save();
+            await withTimeout(row.save(), TIMEOUT_MS, 'row.save(Employees)');
             migratedEmployees++;
         }
     }
     
     // Migrate Non-Employees
     const nonEmployeeSheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
-    const nonEmployeeRows = await nonEmployeeSheet.getRows();
+    const nonEmployeeRows = await withTimeout(nonEmployeeSheet.getRows(), TIMEOUT_MS, 'sheet.getRows(NonEmployees)');
     for (const row of nonEmployeeRows) {
         const fullName = row.get('fullName') as string;
         const firstName = row.get('firstName') as string;
@@ -1747,7 +1832,7 @@ export async function migrateFullNames(actorUid: string): Promise<{ migratedEmpl
             const { firstName: newFirstName, lastName: newLastName } = splitFullName(fullName);
             row.set('firstName', newFirstName);
             row.set('lastName', newLastName);
-            await row.save();
+            await withTimeout(row.save(), TIMEOUT_MS, 'row.save(NonEmployees)');
             migratedNonEmployees++;
         }
     }
@@ -1765,18 +1850,18 @@ export async function migrateFullNames(actorUid: string): Promise<{ migratedEmpl
 }
 
 export async function updateCoordinatorSubscription(coordinatorId: string, subscription: string | null): Promise<void> {
-    try {
-        const sheet = await getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS);
-        const rows = await sheet.getRows();
-        const coordinatorRow = rows.find(row => row.get('uid') === coordinatorId);
+try {
+    const sheet = await getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS);
+    const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Coordinators)');
+    const coordinatorRow = rows.find(row => row.get('uid') === coordinatorId);
 
-        if (coordinatorRow) {
-            // Save token directly as string
-            coordinatorRow.set('pushSubscription', subscription || '');
-            await coordinatorRow.save();
-            await invalidateSettingsCache();
-            revalidatePath('/dashboard');
-        } else {
+    if (coordinatorRow) {
+        // Save token directly as string
+        coordinatorRow.set('pushSubscription', subscription || '');
+        await withTimeout(coordinatorRow.save(), TIMEOUT_MS, 'row.save(Coordinators)');
+        await invalidateSettingsCache();
+        revalidatePath('/dashboard');
+    } else {
             throw new Error('Coordinator not found.');
         }
     } catch (e: unknown) {
@@ -1792,7 +1877,7 @@ export async function sendPushNotification(
     link?: string
 ): Promise<void> {
     try {
-        const { settings } = await getAllSheetsData();
+        const settings = await getSettings();
         const coordinator = settings.coordinators.find((c: { uid: string; pushSubscription?: string | null }) => c.uid === coordinatorId);
         
         if (!coordinator || !coordinator.pushSubscription) {

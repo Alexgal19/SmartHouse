@@ -20,6 +20,7 @@ const config = {
   transformIgnorePatterns: [
     '/node_modules/(?!(uncrypto|iron-session|jose|jsonpath-plus|@genkit-ai)/)',
   ],
+  testPathIgnorePatterns: ['<rootDir>/tests/'],
 };
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async

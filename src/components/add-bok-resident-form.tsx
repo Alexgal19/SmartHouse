@@ -418,7 +418,11 @@ export function AddBokResidentForm({
                             }} value={field.value || ''}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="Wybierz adres" /></SelectTrigger></FormControl>
                                 <SelectContent>
-                                    {availableAddresses.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
+                                    {availableAddresses.map(a => (
+                                        <SelectItem key={a.id} value={a.name} disabled={!a.isActive}>
+                                            {a.name} {!a.isActive ? '(Niedostępny)' : ''}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                             <FormMessage />
@@ -435,8 +439,8 @@ export function AddBokResidentForm({
                             <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : "Wybierz pokój"} /></SelectTrigger></FormControl>
                             <SelectContent>
                                 {availableRooms.map(r => (
-                                    <SelectItem key={r.id} value={r.name} disabled={r.isActive === false}>
-                                        {r.name} {r.isActive !== false ? `(Pojemność: ${r.capacity})` : '(Niedostępny)'}
+                                    <SelectItem key={r.id} value={r.name} disabled={!r.isActive}>
+                                        {r.name} {r.isActive ? `(Pojemność: ${r.capacity})` : '(Niedostępny)'}
                                     </SelectItem>
                                 ))}
                             </SelectContent>

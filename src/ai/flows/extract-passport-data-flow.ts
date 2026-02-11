@@ -7,7 +7,7 @@
  * - ExtractPassportDataOutput - The return type for the extractPassportData function.
  */
 
-import { ai } from '@/lib/genkit';
+import { ai, GEMINI_MODEL } from '@/lib/genkit';
 import { z } from 'zod';
 
 const ExtractPassportDataInputSchema = z.object({
@@ -31,6 +31,7 @@ export async function extractPassportData(input: ExtractPassportDataInput): Prom
 
 const prompt = ai.definePrompt({
   name: 'extractPassportDataPrompt',
+  model: GEMINI_MODEL,
   input: { schema: ExtractPassportDataInputSchema },
   output: { schema: ExtractPassportDataOutputSchema },
   prompt: `You are an expert OCR system specialized in reading identity documents.

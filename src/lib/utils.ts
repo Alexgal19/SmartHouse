@@ -8,6 +8,23 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+export async function batchPromises<T>(
+    items: T[],
+    batchSize: number,
+    fn: (item: T) => Promise<void>,
+    delayMs: number = 0
+): Promise<void> {
+    if (!items || items.length === 0) return;
+    
+    for (let i = 0; i < items.length; i += batchSize) {
+        const batch = items.slice(i, i + batchSize);
+        await Promise.all(batch.map(item => fn(item)));
+        if (delayMs > 0 && i + batchSize < items.length) {
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+    }
+}
+
 type NotificationFilters = {
     selectedCoordinatorId?: string;
     employeeNameFilter?: string;

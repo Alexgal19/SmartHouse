@@ -40,8 +40,26 @@ import { format, parse, isValid, parseISO } from 'date-fns';
 import { Combobox } from './ui/combobox';
 import { useToast } from '@/hooks/use-toast';
 import { extractPassportData } from '@/ai/flows/extract-passport-data-flow';
-import Webcam from 'react-webcam';
+import dynamic from 'next/dynamic';
 import { useMainLayout } from './main-layout';
+import type ReactWebcam from 'react-webcam';
+import type { WebcamProps } from 'react-webcam';
+const WebcamInternal = dynamic(
+  () => import('react-webcam').then((mod) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const Cmp = mod.default as any;
+    const Wrapper = ({ forwardedRef, ...props }: WebcamProps & { forwardedRef?: React.Ref<ReactWebcam> }) => {
+      return <Cmp {...props} ref={forwardedRef} />;
+    };
+    return Wrapper;
+  }),
+  { ssr: false }
+);
+
+const Webcam = React.forwardRef<ReactWebcam, WebcamProps>((props, ref) => (
+  <WebcamInternal {...props} forwardedRef={ref} />
+));
+Webcam.displayName = 'Webcam';
 
 const formSchema = z.object({
   firstName: z.string().min(1, "Imię jest wymagane."),
@@ -169,7 +187,7 @@ export function AddNonEmployeeForm({
 }) {
   const { toast } = useToast();
   const { handleDismissNonEmployee } = useMainLayout();
-  const webcamRef = useRef<Webcam>(null);
+  const webcamRef = useRef<ReactWebcam>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
 
@@ -329,7 +347,7 @@ export function AddNonEmployeeForm({
       checkInDate: formatDate(values.checkInDate),
       checkOutDate: formatDate(values.checkOutDate),
       departureReportDate: formatDate(values.departureReportDate),
-      paymentAmount: values.paymentAmount ? Number(values.paymentAmount) : null,
+      paymentAmount: values.paymentAmount ?? null,
     };
 
     onSave(formData);
@@ -520,7 +538,11 @@ export function AddNonEmployeeForm({
                           <Select onValueChange={handleAddressChange} value={field.value || ''} disabled={!selectedLocality}>
                               <FormControl><SelectTrigger><SelectValue placeholder={!selectedLocality ? "Najpierw wybierz miejscowość" : "Wybierz adres"} /></SelectTrigger></FormControl>
                               <SelectContent>
-                                  {availableAddresses.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
+                                  {availableAddresses.map(a => (
+                                      <SelectItem key={a.id} value={a.name} disabled={!a.isActive}>
+                                          {a.name} {!a.isActive ? '(Niedostępny)' : ''}
+                                      </SelectItem>
+                                  ))}
                               </SelectContent>
                           </Select>
                           <FormMessage />
@@ -537,8 +559,8 @@ export function AddNonEmployeeForm({
                           <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : "Wybierz pokój"} /></SelectTrigger></FormControl>
                           <SelectContent>
                               {availableRooms.map(r => (
-                                <SelectItem key={r.id} value={r.name} disabled={r.isActive === false}>
-                                    {r.name} {r.isActive !== false ? `(Pojemność: ${r.capacity})` : '(Niedostępny)'}
+                                <SelectItem key={r.id} value={r.name} disabled={!r.isActive}>
+                                    {r.name} {r.isActive ? `(Pojemność: ${r.capacity})` : '(Niedostępny)'}
                                 </SelectItem>
                               ))}
                           </SelectContent>
@@ -670,6 +692,13 @@ export function AddNonEmployeeForm({
             screenshotFormat="image/jpeg"
             videoConstraints={{ facingMode: 'environment' }}
             className="w-full max-w-sm rounded-lg border"
+            onUserMediaError={(err: unknown) => console.error("Webcam error:", err)}
+            mirrored={false}
+            forceScreenshotSourceSize
+            imageSmoothing
+            disablePictureInPicture
+            onUserMedia={() => {}}
+            screenshotQuality={0.92}
           />
           <div className="flex gap-2">
             <Button onClick={handleCapture} disabled={isScanning}>

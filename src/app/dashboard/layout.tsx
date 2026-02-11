@@ -3,6 +3,8 @@ import { getSession } from '@/lib/auth';
 import type { SessionData } from '@/types';
 import ClientLayout from './client-layout';
 
+export const maxDuration = 60;
+
 export default async function DashboardLayout({
   children,
 }: {

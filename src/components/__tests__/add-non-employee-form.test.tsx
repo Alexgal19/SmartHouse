@@ -30,7 +30,8 @@ const mockSettings: Settings = {
       locality: 'Warszawa',
       name: 'Testowa 1',
       coordinatorIds: ['coord-1'],
-      rooms: [{ id: 'room-1', name: '101', capacity: 2 }],
+      rooms: [{ id: 'room-1', name: '101', capacity: 2, isActive: true }],
+      isActive: true,
     },
   ],
   paymentTypesNZ: ['Miesięczny'],
@@ -98,7 +99,8 @@ describe('AddNonEmployeeForm', () => {
     fireEvent.click(screen.getByRole('option', { name: 'Warszawa' }));
 
     fireEvent.click(screen.getByText('Wybierz adres'));
-    fireEvent.click(screen.getByRole('option', { name: 'Testowa 1' }));
+    const option = await screen.findByRole('option', { name: 'Testowa 1' });
+    fireEvent.click(option);
 
     const submitButton = screen.getByRole('button', { name: 'Zapisz' });
     fireEvent.click(submitButton);

@@ -47,6 +47,7 @@ const addressSchema = z.object({
   id: z.string(),
   locality: z.string().min(1, "Miejscowość jest wymagana."),
   name: z.string().min(1, 'Nazwa adresu jest wymagana.'),
+  isActive: z.boolean().default(true),
   coordinatorIds: z.array(z.object({ value: z.string() })).min(1, 'Przypisz co najmniej jednego koordynatora.'),
   rooms: z.array(roomSchema),
 });
@@ -83,13 +84,16 @@ export function AddressForm({
     if (address) {
         form.reset({
             ...address,
-            coordinatorIds: (address.coordinatorIds || []).map(id => ({ value: id }))
+            isActive: address.isActive !== undefined ? address.isActive : true,
+            coordinatorIds: (address.coordinatorIds || []).map(id => ({ value: id })),
+            rooms: address.rooms || []
         });
     } else {
         form.reset({
             id: `addr-${Date.now()}`,
             locality: '',
             name: '',
+            isActive: true,
             coordinatorIds: [],
             rooms: [],
         });
@@ -148,6 +152,27 @@ export function AddressForm({
                             <FormControl><Input placeholder="np. ul. Słoneczna 5" {...field} /></FormControl>
                             <FormMessage />
                         </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="isActive"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                <div className="space-y-0.5">
+                                    <FormLabel className="text-base">Aktywny</FormLabel>
+                                    <DialogDescription>
+                                        Wyłącz, aby ukryć ten adres na listach wyboru (nie usuwa danych).
+                                    </DialogDescription>
+                                </div>
+                                <FormControl>
+                                    <Switch
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                    />
+                                </FormControl>
+                            </FormItem>
                         )}
                     />
                     
@@ -219,7 +244,17 @@ export function AddressForm({
                                     render={({ field: capacityField }) => (
                                         <FormItem className="w-28">
                                              <FormLabel className="sr-only">Pojemność</FormLabel>
-                                            <FormControl><Input type="number" placeholder="Pojemność" {...capacityField} /></FormControl>
+                                            <FormControl>
+                                                <Input
+                                                    type="number"
+                                                    placeholder="Pojemność"
+                                                    {...capacityField}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value === '' ? '' : Number(e.target.value);
+                                                        capacityField.onChange(val);
+                                                    }}
+                                                />
+                                            </FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}

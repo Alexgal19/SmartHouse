@@ -4,7 +4,7 @@
 import { getIronSession, type IronSession } from 'iron-session';
 import { cookies } from 'next/headers';
 import type { SessionData } from '@/types';
-import { getAllSheetsData } from '@/lib/sheets';
+import { getSettings } from '@/lib/sheets';
 import { redirect } from 'next/navigation';
 import { sessionOptions } from '@/lib/session';
 
@@ -34,7 +34,7 @@ export async function login(name: string, password_input: string) {
     return { success: true, user: { uid: 'admin-hardcoded', name: 'Admin', isAdmin: true } };
   }
 
-  const { settings } = await getAllSheetsData();
+  const settings = await getSettings();
   const user = settings.coordinators.find(c => c.name.toLowerCase() === name.toLowerCase() && c.password === password_input);
 
   if (user) {
