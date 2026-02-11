@@ -6,7 +6,7 @@ import React, { useState, useMemo } from 'react';
 import type { Employee, NonEmployee, SessionData, Room, Settings } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Bed, Building, BarChart2, Copy } from "lucide-react";
+import { Bed, Building, BarChart2, Copy, Lock } from "lucide-react";
 import { useMainLayout } from '@/components/main-layout';
 import { cn } from '@/lib/utils';
 import { Skeleton } from './ui/skeleton';
@@ -121,6 +121,16 @@ const AddressDetailView = ({
   onRoomClick: (roomId: string) => void;
   selectedRoomIds: string[];
 }) => {
+    const isAnySelectedBlocked = useMemo(() => {
+        return addresses
+            .filter(a => selectedAddressIds.includes(a.id))
+            .some(a => a.isActive === false);
+    }, [addresses, selectedAddressIds]);
+
+    const isSingleSelectedBlocked = useMemo(() => {
+        const selected = addresses.filter(a => selectedAddressIds.includes(a.id));
+        return selected.length === 1 && selected[0].isActive === false;
+    }, [addresses, selectedAddressIds]);
     const { copyToClipboard } = useCopyToClipboard();
     
     const selectedAddressesData = useMemo(() => {
@@ -202,9 +212,17 @@ const AddressDetailView = ({
     }
 
     return (
-        <Card className="lg:col-span-2 h-full">
+        <Card className={cn("lg:col-span-2 h-full", isSingleSelectedBlocked && "border-destructive/50 bg-destructive/5")}>
             <CardHeader>
-                <CardTitle>{selectedRoomsData ? selectedRoomsData.name : aggregatedAddressesData.name}</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                    {selectedRoomsData ? selectedRoomsData.name : aggregatedAddressesData.name}
+                    {isSingleSelectedBlocked && (
+                        <Badge variant="destructive" className="ml-2 text-xs">
+                            <Lock className="h-3 w-3 mr-1" />
+                            Zablokowany
+                        </Badge>
+                    )}
+                </CardTitle>
                 <CardDescription>
                     <span>
                       {(selectedRoomsData || aggregatedAddressesData).occupantCount} / {(selectedRoomsData || aggregatedAddressesData).capacity} mieszkańców
@@ -281,10 +299,15 @@ const AddressDetailView = ({
                                                 const fullName = `${o.firstName} ${o.lastName}`.trim();
                                                 return (
                                                     <div key={o.id} className="flex items-center justify-between text-xs text-muted-foreground group">
-                                                        <span onClick={(e) => { e.stopPropagation(); onOccupantClick(o); }} className="cursor-pointer hover:text-primary flex-1">{fullName}</span>
-                                                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); copyToClipboard(fullName, `Skopiowano: ${fullName}`)}}>
-                                                            <Copy className="h-3 w-3" />
-                                                        </Button>
+                                                        <span
+                                                            onClick={(e) => { e.stopPropagation(); if (!isSingleSelectedBlocked) onOccupantClick(o); }}
+                                                            className={cn("flex-1", isSingleSelectedBlocked ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:text-primary")}
+                                                        >{fullName}</span>
+                                                        {!isSingleSelectedBlocked && (
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); copyToClipboard(fullName, `Skopiowano: ${fullName}`)}}>
+                                                                <Copy className="h-3 w-3" />
+                                                            </Button>
+                                                        )}
                                                     </div>
                                                 )
                                             })}
@@ -391,6 +414,7 @@ const useHousingData = () => {
                 id: address.id,
                 name: address.name,
                 locality: address.locality,
+                isActive: address.isActive,
                 occupants: occupantsInAddress,
                 occupantCount: occupantCount,
                 capacity: totalCapacity,
@@ -408,14 +432,24 @@ const MobileAddressCard = ({ address, onOccupantClick, style }: { address: Housi
     const { copyToClipboard } = useCopyToClipboard();
 
     return (
-        <Card className={cn("overflow-hidden animate-fade-in-up", address.available > 0 && "border-green-500/30")} style={style}>
+        <Card className={cn(
+            "overflow-hidden animate-fade-in-up",
+            !address.isActive && "border-destructive/50 bg-destructive/5",
+            address.isActive && address.available > 0 && "border-green-500/30"
+        )} style={style}>
             <AccordionItem value={address.id} className="border-b-0">
                 <AccordionTrigger className="p-4 hover:no-underline">
                     <div className="w-full">
                         <div className="flex justify-between items-start">
                             <CardTitle className="text-base font-semibold flex items-center gap-2">
-                                <Building className="h-5 w-5 text-primary" />
+                                <Building className={cn("h-5 w-5", address.isActive ? "text-primary" : "text-destructive")} />
                                 {address.name}
+                                {!address.isActive && (
+                                    <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                                        <Lock className="h-3 w-3 mr-0.5" />
+                                        Zablokowany
+                                    </Badge>
+                                )}
                             </CardTitle>
                             <span className="text-base">
                                 <span>{address.occupantCount} / {address.capacity}</span>
@@ -447,10 +481,15 @@ const MobileAddressCard = ({ address, onOccupantClick, style }: { address: Housi
                                                 const fullName = `${o.firstName} ${o.lastName}`.trim();
                                                 return (
                                                     <div key={o.id} className="flex items-center justify-between text-xs text-muted-foreground group">
-                                                        <span onClick={() => onOccupantClick(o)} className="cursor-pointer hover:text-primary">{fullName}</span>
-                                                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); copyToClipboard(fullName, `Skopiowano: ${fullName}`)}}>
-                                                            <Copy className="h-3 w-3" />
-                                                        </Button>
+                                                        <span
+                                                            onClick={() => { if (address.isActive) onOccupantClick(o); }}
+                                                            className={cn(!address.isActive ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:text-primary")}
+                                                        >{fullName}</span>
+                                                        {address.isActive && (
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); copyToClipboard(fullName, `Skopiowano: ${fullName}`)}}>
+                                                                <Copy className="h-3 w-3" />
+                                                            </Button>
+                                                        )}
                                                     </div>
                                                 )
                                             })}
@@ -691,8 +730,9 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                                                 key={address.id}
                                                 className={cn(
                                                     "cursor-pointer transition-colors animate-fade-in-up",
-                                                    selectedAddressIds.includes(address.id) ? "bg-primary/10 border-primary" : "hover:bg-muted/50",
-                                                    address.available > 0 && !selectedAddressIds.includes(address.id) && "bg-green-500/10 border-green-500/20"
+                                                    !address.isActive && "border-destructive/50 bg-destructive/10",
+                                                    address.isActive && selectedAddressIds.includes(address.id) ? "bg-primary/10 border-primary" : address.isActive && "hover:bg-muted/50",
+                                                    address.isActive && address.available > 0 && !selectedAddressIds.includes(address.id) && "bg-green-500/10 border-green-500/20"
                                                 )}
                                                 onClick={() => handleAddressClick(address.id)}
                                                 style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}
@@ -700,8 +740,14 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                                                 <CardHeader className="p-2">
                                                     <div className="flex justify-between items-start">
                                                         <CardTitle className="text-sm font-medium flex items-center gap-2">
-                                                            <Building className="h-4 w-4 text-primary" />
+                                                            <Building className={cn("h-4 w-4", address.isActive ? "text-primary" : "text-destructive")} />
                                                             {address.name}
+                                                            {!address.isActive && (
+                                                                <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                                                                    <Lock className="h-3 w-3 mr-0.5" />
+                                                                    Zablokowany
+                                                                </Badge>
+                                                            )}
                                                         </CardTitle>
                                                         <span className="text-sm">
                                                             <span>{address.occupantCount} / {address.capacity}</span>
