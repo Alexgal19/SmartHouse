@@ -741,7 +741,10 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     }
     
     const handleRestore = async (entity: Entity) => {
-        if (isEmployee(entity)) {
+        if (isBokResident(entity)) {
+            // BOK residents don't have a dedicated restore flow — open edit form instead
+            handleEditBokResidentClick(entity);
+        } else if (isEmployee(entity)) {
             await handleRestoreEmployee(entity);
         } else {
             await handleRestoreNonEmployee(entity as NonEmployee);

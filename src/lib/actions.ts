@@ -476,9 +476,12 @@ const findActor = (actorUid: string | undefined, settings: Settings): Coordinato
 }
 
 const validateRoomAvailability = (settings: Settings, addressName: string | undefined | null, roomName: string | undefined | null) => {
-    if (addressName && roomName) {
+    if (addressName) {
         const address = settings.addresses.find(a => a.name === addressName);
-        if (address) {
+        if (address && address.isActive === false) {
+            throw new Error(`Adres "${address.name}" jest zablokowany i nie można do niego przypisywać mieszkańców.`);
+        }
+        if (address && roomName) {
             const room = address.rooms.find(r => r.name === roomName);
             if (room && room.isActive === false) {
                  throw new Error(`Pokój "${room.name}" w adresie "${address.name}" jest wyłączony z użytku.`);
@@ -875,6 +878,9 @@ export async function updateBokResident(id: string, updates: Partial<BokResident
 
         const originalResident = { ...row.toObject(), ...splitFullName(row.get('fullName')) } as BokResident;
         const updatedResident = { ...originalResident, ...updates };
+        // Recompute fullName to avoid stale value when firstName/lastName change
+        updatedResident.fullName = `${updatedResident.lastName} ${updatedResident.firstName}`.trim();
+
         const changes: NotificationChange[] = [];
 
         for (const key in updates) {
@@ -908,12 +914,21 @@ export async function updateBokResident(id: string, updates: Partial<BokResident
 
 export async function deleteBokResident(id: string, _actorUid: string): Promise<string> {
     try {
+        // Clean up associated address history entries (same as deleteEmployee/deleteNonEmployee)
+        const addressHistory = await getRawAddressHistory();
+
         const sheet = await getSheet(SHEET_NAME_BOK_RESIDENTS, BOK_RESIDENT_HEADERS);
         const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(BokResident)');
         const row = rows.find(r => r.get('id') === id);
 
         if (row) {
             await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(BokResident)');
+
+            const historyToDelete = (addressHistory || []).filter(h => h.employeeId === id);
+            for (const historyEntry of historyToDelete) {
+                await deleteHistoryFromSheet(historyEntry.id);
+            }
+
             await invalidateBokResidentsCache();
             return id;
         } else {

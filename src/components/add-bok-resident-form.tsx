@@ -523,7 +523,21 @@ export function AddBokResidentForm({
                         name="returnStatus"
                         render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Powrót</FormLabel>
+                            <div className="flex justify-between items-center">
+                                <FormLabel>Powrót</FormLabel>
+                                {field.value && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 w-6 p-0 hover:bg-transparent"
+                                        onClick={() => field.onChange('')}
+                                    >
+                                        <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                                        <span className="sr-only">Wyczyść</span>
+                                    </Button>
+                                )}
+                            </div>
                             <Select onValueChange={field.onChange} value={field.value || ''}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Wybierz opcję" /></SelectTrigger></FormControl>
                             <SelectContent>

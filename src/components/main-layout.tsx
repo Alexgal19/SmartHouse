@@ -575,6 +575,17 @@ export default function MainLayout({
                 const updatedResident = await updateBokResident(editingBokResident.id, data, currentUser.uid);
                 setRawBokResidents(prev => prev ? prev.map(r => r.id === updatedResident.id ? updatedResident : r) : null);
                 toast({ title: "Sukces", description: "Dane mieszkańca BOK zostały zaktualizowane." });
+
+                // Send push notification to coordinator when coordinator is assigned/changed
+                if (data.coordinatorId && data.coordinatorId !== editingBokResident.coordinatorId) {
+                    const link = `/dashboard?view=employees&action=add&firstName=${encodeURIComponent(data.firstName)}&lastName=${encodeURIComponent(data.lastName)}&nationality=${encodeURIComponent(data.nationality)}&zaklad=${encodeURIComponent(data.zaklad || '')}`;
+                    await sendPushNotification(
+                        data.coordinatorId,
+                        'Nowe zadanie: Dodaj pracownika',
+                        `Mieszkaniec BOK: ${data.lastName} ${data.firstName} - kliknij, aby dodać.`,
+                        link
+                    );
+                }
             } catch (e) {
                 setRawBokResidents(originalBokResidents);
                 toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zaktualizować mieszkańca BOK." });
