@@ -128,18 +128,23 @@ const DateInput = ({
             value={inputValue}
             onChange={handleInputChange}
             placeholder="rrrr-mm-dd"
-            className="pr-10"
+            className="pr-10 min-h-[44px]"
           />
-           <div className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 flex items-center">
+           <button
+            type="button"
+            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center rounded hover:bg-muted touch-manipulation"
+            onClick={handleClear}
+            aria-label={value ? "Wyczyść datę" : "Wybierz datę"}
+          >
             {value ? (
-                <X className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-pointer" onClick={handleClear}/>
+                <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
             ) : (
                 <CalendarIcon className="h-4 w-4 text-muted-foreground" />
             )}
-           </div>
+           </button>
         </div>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="center" sideOffset={5}>
         <Calendar
           locale={pl}
           mode="single"
@@ -147,6 +152,7 @@ const DateInput = ({
           onSelect={(d) => handleDateSelect(d ?? null)}
           disabled={disabled}
           initialFocus
+          className="rounded-md border"
         />
       </PopoverContent>
     </Popover>
@@ -293,7 +299,7 @@ export function AddBokResidentForm({
   
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="max-w-[95vw] sm:max-w-xl lg:max-w-2xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
             <DialogTitle>{resident ? 'Edytuj Mieszkańca BOK' : 'Dodaj Mieszkańca BOK'}</DialogTitle>
             <DialogDescription>
@@ -302,7 +308,7 @@ export function AddBokResidentForm({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
-            <ScrollArea className="h-[60vh] mt-4 px-2">
+            <ScrollArea className="h-[50vh] sm:h-[60vh] lg:h-[65vh] mt-4 px-2">
                 <div className="space-y-4 p-1">
                 
                 <FormField
@@ -322,7 +328,7 @@ export function AddBokResidentForm({
                     )}
                 />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                     <FormField
                         control={form.control}
                         name="lastName"
@@ -371,7 +377,7 @@ export function AddBokResidentForm({
                     )}
                 />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                      <FormField
                         control={form.control}
                         name="nationality"
@@ -409,7 +415,7 @@ export function AddBokResidentForm({
                     />
                 </div>
                 
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                      <FormField
                         control={form.control}
                         name="address"
@@ -467,8 +473,9 @@ export function AddBokResidentForm({
                                      type="button"
                                      variant="ghost"
                                      size="sm"
-                                     className="h-6 w-6 p-0 hover:bg-transparent"
+                                     className="h-8 w-8 min-h-[44px] min-w-[44px] sm:h-6 sm:w-6 sm:min-h-0 sm:min-w-0 p-0 hover:bg-muted flex items-center justify-center"
                                      onClick={() => field.onChange('')}
+                                     aria-label="Wyczyść pole"
                                  >
                                      <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
                                      <span className="sr-only">Wyczyść</span>
@@ -489,7 +496,7 @@ export function AddBokResidentForm({
                      )}
                  />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                         <FormField
                         control={form.control}
                         name="checkInDate"
@@ -521,7 +528,7 @@ export function AddBokResidentForm({
                         />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                      <FormField
                         control={form.control}
                         name="returnStatus"
@@ -534,8 +541,9 @@ export function AddBokResidentForm({
                                         type="button"
                                         variant="ghost"
                                         size="sm"
-                                        className="h-6 w-6 p-0 hover:bg-transparent"
+                                        className="h-8 w-8 min-h-[44px] min-w-[44px] sm:h-6 sm:w-6 sm:min-h-0 sm:min-w-0 p-0 hover:bg-muted flex items-center justify-center"
                                         onClick={() => field.onChange('')}
+                                        aria-label="Wyczyść pole"
                                     >
                                         <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
                                         <span className="sr-only">Wyczyść</span>
@@ -564,8 +572,9 @@ export function AddBokResidentForm({
                                         type="button"
                                         variant="ghost"
                                         size="sm"
-                                        className="h-6 w-6 p-0 hover:bg-transparent"
+                                        className="h-8 w-8 min-h-[44px] min-w-[44px] sm:h-6 sm:w-6 sm:min-h-0 sm:min-w-0 p-0 hover:bg-muted flex items-center justify-center"
                                         onClick={() => field.onChange('')}
+                                        aria-label="Wyczyść pole"
                                     >
                                         <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
                                         <span className="sr-only">Wyczyść</span>
@@ -598,11 +607,20 @@ export function AddBokResidentForm({
 
                 </div>
             </ScrollArea>
-            <DialogFooter className="mt-4">
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <DialogFooter className="mt-4 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  className="w-full sm:w-auto min-h-[44px]"
+                >
                     Anuluj
                 </Button>
-                <Button type="submit" disabled={form.formState.isSubmitting}>
+                <Button
+                  type="submit"
+                  disabled={form.formState.isSubmitting}
+                  className="w-full sm:w-auto min-h-[44px]"
+                >
                     {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Zapisz
                 </Button>

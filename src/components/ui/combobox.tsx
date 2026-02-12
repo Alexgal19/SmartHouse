@@ -53,7 +53,7 @@ export function Combobox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn("w-full justify-between", className)}
+          className={cn("w-full justify-between min-h-[44px]", className)}
         >
           <span className="truncate">
             {selectedOption ? selectedOption.label : placeholder}
@@ -61,10 +61,10 @@ export function Combobox({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-        <Command>
-          <CommandInput placeholder={searchPlaceholder} />
-          <CommandList>
+      <PopoverContent className="w-full min-w-[200px] max-w-[calc(100vw-2rem)] p-0" align="start" sideOffset={5}>
+        <Command className="max-h-[40vh] overflow-auto">
+          <CommandInput placeholder={searchPlaceholder} className="h-10" />
+          <CommandList className="max-h-[30vh]">
             <CommandEmpty>{notFoundMessage}</CommandEmpty>
             <CommandGroup>
               {options.map((option) => (
@@ -78,14 +78,15 @@ export function Combobox({
                     }
                     setOpen(false)
                   }}
+                  className="min-h-[44px] sm:min-h-0"
                 >
                   <Check
                     className={cn(
-                      "mr-2 h-4 w-4",
+                      "mr-2 h-4 w-4 shrink-0",
                       value?.toLowerCase() === option.value?.toLowerCase() ? "opacity-100" : "opacity-0"
                     )}
                   />
-                  {option.label}
+                  <span className="truncate">{option.label}</span>
                 </CommandItem>
               ))}
             </CommandGroup>

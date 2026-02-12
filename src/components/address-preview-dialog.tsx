@@ -17,6 +17,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { Settings, Employee, NonEmployee } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
+import { isRoomActive } from '@/lib/address-filters';
 
 type AddressOccupancy = {
   locality: string;
@@ -70,7 +72,7 @@ export function AddressPreviewDialog({
 
     const result: AddressOccupancy[] = [];
     
-    const filteredAddresses = coordinatorId 
+    const filteredAddresses = coordinatorId
       ? settings.addresses.filter(addr => addr.coordinatorIds.includes(coordinatorId))
       : settings.addresses;
 
@@ -80,6 +82,9 @@ export function AddressPreviewDialog({
         const occupied = occupancyMap.get(key) || 0;
         const available = Math.max(0, room.capacity - occupied);
         
+        // Check if room is active using the centralized filter logic
+        const roomActive = isRoomActive(room, address);
+        
         result.push({
           locality: address.locality,
           address: address.name,
@@ -87,7 +92,7 @@ export function AddressPreviewDialog({
           capacity: room.capacity,
           occupied,
           available,
-          isActive: address.isActive && room.isActive && !room.isLocked,
+          isActive: roomActive,
         });
       });
     });
@@ -152,6 +157,7 @@ export function AddressPreviewDialog({
   const localitySummary = useMemo(() => {
     const summary = new Map<string, { total: number; occupied: number; available: number }>();
     
+    // Only include active (non-blocked) rooms in the summary
     addressOccupancy.forEach(item => {
       if (!item.isActive) return;
       
@@ -204,19 +210,20 @@ export function AddressPreviewDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-5xl max-h-[90vh]">
+      <DialogContent className="max-w-[96vw] sm:max-w-3xl lg:max-w-5xl max-h-[92vh] p-3 sm:p-6 gap-3 sm:gap-4">
         <DialogHeader>
-          <DialogTitle>Podgląd i wybór dostępności miejsc</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-base sm:text-lg">Podgląd i wybór dostępności miejsc</DialogTitle>
+          <DialogDescription className="text-xs sm:text-sm">
             Wybierz miejscowość, adres i pokój, aby zastosować w formularzu
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="h-[70vh] pr-4">
+        <ScrollArea className="h-[52vh] sm:h-[60vh] lg:h-[70vh]">
+          <div className="pr-3 space-y-4 sm:space-y-6">
           {/* Interactive Selection Section */}
-          <div className="mb-6 p-4 border rounded-lg bg-muted/50">
-            <h3 className="text-sm font-semibold mb-4">Wybierz zakwaterowanie</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="p-3 sm:p-4 border rounded-lg bg-muted/50">
+            <h3 className="text-sm font-semibold mb-3 sm:mb-4">Wybierz zakwaterowanie</h3>
+            <div className="flex flex-col gap-3 sm:grid sm:grid-cols-3 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="locality-select">Miejscowość</Label>
                 <Select value={selectedLocality} onValueChange={(value) => {
@@ -286,8 +293,8 @@ export function AddressPreviewDialog({
             </div>
 
             {selectedRoomInfo && (
-              <div className="mt-4 p-3 border rounded-lg bg-background">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div className="mt-3 sm:mt-4 p-3 border rounded-lg bg-background">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 text-xs sm:text-sm">
                   <div>
                     <span className="text-muted-foreground">Pojemność:</span>
                     <span className="ml-2 font-medium">{selectedRoomInfo.capacity}</span>
@@ -310,16 +317,16 @@ export function AddressPreviewDialog({
 
           {/* Summary Cards */}
           {localitySummary.length > 0 && (
-            <div className="mb-6">
+            <div>
               <h3 className="text-sm font-semibold mb-3">Podsumowanie według miejscowości</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
                 {localitySummary.map((summary) => (
                   <Card key={summary.locality}>
-                    <CardHeader className="pb-3">
+                    <CardHeader className="p-3 sm:pb-3">
                       <CardTitle className="text-sm font-medium">{summary.locality}</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <div className="space-y-1 text-sm">
+                    <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+                      <div className="space-y-1 text-xs sm:text-sm">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Całkowita pojemność:</span>
                           <span className="font-medium">{summary.total}</span>
@@ -342,45 +349,81 @@ export function AddressPreviewDialog({
 
           {/* Detailed Table by Locality */}
           {groupedByLocality.map(([locality, items]) => (
-            <div key={locality} className="mb-6">
-              <h3 className="text-sm font-semibold mb-2 sticky top-0 bg-background py-2">
+            <div key={locality}>
+              <h3 className="text-sm font-semibold mb-2 sticky top-0 bg-background py-2 z-10">
                 {locality}
               </h3>
-              <div className="border rounded-lg">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Adres</TableHead>
-                      <TableHead>Pokój</TableHead>
-                      <TableHead className="text-center">Pojemność</TableHead>
-                      <TableHead className="text-center">Zajęte</TableHead>
-                      <TableHead className="text-center">Wolne</TableHead>
-                      <TableHead className="text-center">Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {items.map((item, idx) => (
-                      <TableRow key={idx} className={!item.isActive ? 'opacity-50' : ''}>
-                        <TableCell className="font-medium">
-                          {item.address}
-                          {!item.isActive && <span className="ml-2 text-xs text-muted-foreground">(Niedostępny)</span>}
-                        </TableCell>
-                        <TableCell>{item.roomName}</TableCell>
-                        <TableCell className="text-center">{item.capacity}</TableCell>
-                        <TableCell className="text-center text-orange-600 font-medium">
-                          {item.occupied}
-                        </TableCell>
-                        <TableCell className="text-center text-green-600 font-medium">
-                          {item.available}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {item.isActive && getAvailabilityBadge(item.available, item.capacity)}
-                          {!item.isActive && <Badge variant="secondary">Nieaktywny</Badge>}
-                        </TableCell>
+              {/* Mobile: Card layout */}
+              <div className="sm:hidden space-y-2">
+                {items.map((item, idx) => (
+                  <div key={idx} className={cn("border rounded-lg p-3", !item.isActive && 'opacity-50 bg-muted')}>
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="font-medium text-sm">
+                        {item.address}
+                        {!item.isActive && <span className="ml-2 text-xs text-muted-foreground">(Niedostępny)</span>}
+                      </div>
+                      <div className="text-sm font-medium">Pokój {item.roomName}</div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div>
+                        <div className="text-muted-foreground">Pojemność</div>
+                        <div className="font-medium">{item.capacity}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Zajęte</div>
+                        <div className="font-medium text-orange-600">{item.occupied}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Wolne</div>
+                        <div className="font-medium text-green-600">{item.available}</div>
+                      </div>
+                    </div>
+                    {item.isActive && (
+                      <div className="mt-2">
+                        {getAvailabilityBadge(item.available, item.capacity)}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {/* Desktop: Table layout */}
+              <div className="hidden sm:block border rounded-lg overflow-hidden">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-xs sm:text-sm whitespace-nowrap">Adres</TableHead>
+                        <TableHead className="text-xs sm:text-sm whitespace-nowrap">Pokój</TableHead>
+                        <TableHead className="text-center text-xs sm:text-sm whitespace-nowrap">Pojemność</TableHead>
+                        <TableHead className="text-center text-xs sm:text-sm whitespace-nowrap">Zajęte</TableHead>
+                        <TableHead className="text-center text-xs sm:text-sm whitespace-nowrap">Wolne</TableHead>
+                        <TableHead className="text-center text-xs sm:text-sm whitespace-nowrap">Status</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {items.map((item, idx) => (
+                        <TableRow key={idx} className={!item.isActive ? 'opacity-50' : ''}>
+                          <TableCell className="font-medium text-xs sm:text-sm whitespace-nowrap">
+                            {item.address}
+                            {!item.isActive && <span className="ml-2 text-xs text-muted-foreground">(Niedostępny)</span>}
+                          </TableCell>
+                          <TableCell className="text-xs sm:text-sm">{item.roomName}</TableCell>
+                          <TableCell className="text-center text-xs sm:text-sm">{item.capacity}</TableCell>
+                          <TableCell className="text-center text-orange-600 font-medium text-xs sm:text-sm">
+                            {item.occupied}
+                          </TableCell>
+                          <TableCell className="text-center text-green-600 font-medium text-xs sm:text-sm">
+                            {item.available}
+                          </TableCell>
+                          <TableCell className="text-center whitespace-nowrap">
+                            {item.isActive && getAvailabilityBadge(item.available, item.capacity)}
+                            {!item.isActive && <Badge variant="secondary" className="text-xs">Nieaktywny</Badge>}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
             </div>
           ))}
@@ -390,16 +433,22 @@ export function AddressPreviewDialog({
               Brak danych o adresach
             </div>
           )}
+          </div>
         </ScrollArea>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>
+        <DialogFooter className="gap-2 flex-col sm:flex-row">
+          <Button
+            variant="outline"
+            onClick={handleClose}
+            className="w-full sm:w-auto min-h-[44px] order-2 sm:order-1"
+          >
             Anuluj
           </Button>
           {onApplySelection && (
-            <Button 
-              onClick={handleApply} 
+            <Button
+              onClick={handleApply}
               disabled={!selectedLocality || !selectedAddress || !selectedRoom}
+              className="w-full sm:w-auto min-h-[44px] order-1 sm:order-2"
             >
               Zastosuj wybór
             </Button>

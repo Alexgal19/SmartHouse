@@ -1,14 +1,14 @@
 
 "use client";
 
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList } from "recharts";
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
-import { BarChart2, Copy, Users, ArrowLeft, Loader2 } from "lucide-react";
-import type { Employee, Settings, ChartConfig, Coordinator, Address, NonEmployee } from "@/types";
+import { BarChart2, Copy, Users, ArrowLeft } from "lucide-react";
+import type { Employee, Settings, ChartConfig, Coordinator, NonEmployee } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useMainLayout } from '@/components/main-layout';
-import { format, getYear, eachDayOfInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, eachMonthOfInterval, parseISO, getDaysInMonth, differenceInDays } from 'date-fns';
+import { format, getYear, eachDayOfInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, eachMonthOfInterval, parseISO } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { pl } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 import { Combobox } from '../ui/combobox';
 import { Label } from '../ui/label';
+import { isAddressActive } from '@/lib/address-filters';
 
 const NoDataState = ({ message }: { message: string }) => (
     <div className="flex h-64 w-full items-center justify-center rounded-lg border border-dashed border-border/50">
@@ -223,7 +224,7 @@ export function DashboardCharts({
             return acc;
         }, {} as Record<string, { departures: number }>);
         
-        let departuresData;
+        let departuresData: Array<{ label: string; departures: number }>;
         if (departureMonth === 'all') {
             const yearStartDate = startOfYear(new Date(departureYear, 0, 1));
             const yearEndDate = endOfYear(new Date(departureYear, 11, 31));
@@ -252,10 +253,14 @@ export function DashboardCharts({
             })
         }
 
+        // Only include non-employees in active (non-blocked) addresses
         const occupancyByLocation = (nonEmployees || []).filter(ne => ne.status === 'active').reduce((acc, nonEmployee) => {
             if (!nonEmployee.address) return acc;
             const addressInfo = settings.addresses.find(a => a.name === nonEmployee.address);
             if (!addressInfo) return acc;
+            
+            // Skip blocked addresses
+            if (!isAddressActive(addressInfo)) return acc;
             
             const locality = addressInfo.locality || "Brak miejscowości";
             
@@ -273,7 +278,7 @@ export function DashboardCharts({
         }, {} as Record<string, { name: string, personCount: number, addresses: Record<string, {name: string, personCount: number}> }> );
 
 
-        let nzOccupancyByLocationChartData;
+        let nzOccupancyByLocationChartData: Array<{ name: string; personCount: number }>;
         if (nzOccupancyView.level === 'localities') {
             nzOccupancyByLocationChartData = Object.values(occupancyByLocation)
                 .map(l => ({ name: l.name, personCount: l.personCount }))
@@ -289,6 +294,7 @@ export function DashboardCharts({
             }
         }
         
+        // Only include deductions for employees in active (non-blocked) addresses
         const deductionsByLocation = employees.reduce((acc, employee) => {
             const totalDeduction = (employee.deductionRegulation || 0) +
                                   (employee.deductionNo4Months || 0) +
@@ -306,6 +312,10 @@ export function DashboardCharts({
             if (!matchesPeriod) return acc;
             
             const addressInfo = settings.addresses.find(a => a.name === employee.address);
+            
+            // Skip blocked addresses
+            if (addressInfo && !isAddressActive(addressInfo)) return acc;
+            
             const locality = addressInfo?.locality || "Brak miejscowości";
             const address = employee.address || "Brak adresu";
 
@@ -321,7 +331,7 @@ export function DashboardCharts({
             return acc;
         }, {} as Record<string, { name: string, total: number, addresses: Record<string, { name: string, total: number, employees: Record<string, {name: string, total: number}> }> }>);
         
-        let deductionsChartData;
+        let deductionsChartData: Array<{ name: string; deductions: number }>;
         if (deductionsView.level === 'localities') {
             deductionsChartData = Object.values(deductionsByLocation)
                 .map(l => ({ name: l.name, deductions: l.total }))
@@ -379,20 +389,20 @@ export function DashboardCharts({
     }, [employees]);
     const months = Array.from({ length: 12 }, (_, i) => i + 1);
 
-    const handleDepartmentClick = (data: any) => {
+    const handleDepartmentClick = (data: { department: string; employees: number }) => {
         const departmentName = data.department;
         const departmentEmployees = employees.filter(e => (e.zaklad || "Brak zakładu") === departmentName && e.status === 'active');
         setSelectedDepartment({ name: departmentName, employees: departmentEmployees });
         setIsEmployeeListDialogOpen(true);
     };
 
-    const handleNzOccupancyClick = (data: any) => {
+    const handleNzOccupancyClick = (data: { name: string; personCount: number }) => {
         if (nzOccupancyView.level === 'localities') {
             setNzOccupancyView({ level: 'addresses', filter: data.name });
         }
     };
     
-    const handleDeductionsClick = (data: any) => {
+    const handleDeductionsClick = (data: { name: string; deductions: number }) => {
         if (deductionsView.level === 'localities') {
             setDeductionsView({ level: 'addresses', filter: data.name, parentFilter: null });
         } else if (deductionsView.level === 'addresses') {
@@ -467,9 +477,9 @@ export function DashboardCharts({
                                     <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50" />
                                     <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
                                     <XAxis type="number" hide={true} />
-                                    <Tooltip 
-                                        cursor={{fill: 'hsl(var(--muted))'}} 
-                                        content={<ChartTooltipContent config={chartConfig} formatter={(value) => `${value} os.`} />} 
+                                    <Tooltip
+                                        cursor={{fill: 'hsl(var(--muted))'}}
+                                        content={<ChartTooltipContent config={chartConfig} />}
                                     />
                                     <Bar dataKey="personCount" radius={[0, 4, 4, 0]} fill="url(#chart-nzoccupancy-gradient)" onClick={handleNzOccupancyClick} className={nzOccupancyView.level === 'localities' ? 'cursor-pointer' : ''}>
                                         <LabelList dataKey="personCount" position="right" offset={8} className="fill-foreground text-xs" formatter={(value: number) => value > 0 ? `${value}` : ''}/>
@@ -737,8 +747,8 @@ export function DashboardCharts({
                                     <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50"/>
                                     <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
                                     <XAxis type="number" hide={true} />
-                                    <Tooltip cursor={{fill: 'hsl(var(--muted))'}} content={<ChartTooltipContent config={chartConfig} formatter={(value) => `${(value as number).toFixed(2)} PLN`}/>} />
-                                    <Bar dataKey="deductions" radius={[4, 4, 0, 0]} fill="url(#chart-deductions-gradient)" onClick={handleDeductionsClick} className={deductionsView.level !== 'employees' ? 'cursor-pointer' : ''}>
+                                    <Tooltip cursor={{fill: 'hsl(var(--muted))'}} content={<ChartTooltipContent config={chartConfig} />} />
+                                    <Bar dataKey="deductions" radius={[0, 4, 4, 0]} fill="url(#chart-deductions-gradient)" onClick={handleDeductionsClick} className={deductionsView.level !== 'employees' ? 'cursor-pointer' : ''}>
                                        <LabelList dataKey="deductions" position="right" offset={8} className="fill-foreground text-xs" formatter={(value: number) => value > 0 ? `${value.toFixed(2)}` : ''}/>
                                     </Bar>
                                 </BarChart>

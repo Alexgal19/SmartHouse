@@ -21,6 +21,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 import { Badge } from './ui/badge';
+import { getActiveAddressCapacity } from '@/lib/address-filters';
 
 type Occupant = Employee | NonEmployee;
 type RoomWithOccupants = Room & { occupants: Occupant[]; occupantCount: number; available: number; };
@@ -275,7 +276,8 @@ const AddressDetailView = ({
                                             "rounded-md border p-3 cursor-pointer transition-colors",
                                             selectedRoomIds.includes(room.id) ? "bg-primary/10 border-primary" : "hover:bg-muted/50",
                                             !room.isActive && "bg-destructive/10 border-destructive/20",
-                                            room.isActive && room.available > 0 && !selectedRoomIds.includes(room.id) && "bg-green-500/10 border-green-500/20"
+                                            room.isLocked && "bg-yellow-500/10 border-yellow-500/30",
+                                            room.isActive && !room.isLocked && room.available > 0 && !selectedRoomIds.includes(room.id) && "bg-green-500/10 border-green-500/20"
                                         )}
                                         onClick={() => onRoomClick(room.id)}
                                     >
@@ -283,6 +285,7 @@ const AddressDetailView = ({
                                             <div className="flex items-center gap-2">
                                                 <Bed className="h-4 w-4 text-muted-foreground" />
                                                 Pokój {room.name}
+                                                {room.isLocked && <Lock className="h-3 w-3 ml-1 text-yellow-600" />}
                                             </div>
                                             <span className="text-sm">
                                                 <span>{room.occupantCount} / {room.capacity}</span>
@@ -291,13 +294,14 @@ const AddressDetailView = ({
                                         <div className="pl-4 mt-2 space-y-1">
                                             {room.occupants.map(o => {
                                                 const fullName = `${o.firstName} ${o.lastName}`.trim();
+                                                const isBlocked = isSingleSelectedBlocked || room.isLocked || !room.isActive;
                                                 return (
                                                     <div key={o.id} className="flex items-center justify-between text-xs text-muted-foreground group">
                                                         <span
-                                                            onClick={(e) => { e.stopPropagation(); if (!isSingleSelectedBlocked) onOccupantClick(o); }}
-                                                            className={cn("flex-1", isSingleSelectedBlocked ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:text-primary")}
+                                                            onClick={(e) => { e.stopPropagation(); if (!isBlocked) onOccupantClick(o); }}
+                                                            className={cn("flex-1", isBlocked ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:text-primary")}
                                                         >{fullName}</span>
-                                                        {!isSingleSelectedBlocked && (
+                                                        {!isBlocked && (
                                                             <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); copyToClipboard(fullName, `Skopiowano: ${fullName}`)}}>
                                                                 <Copy className="h-3 w-3" />
                                                             </Button>
@@ -388,7 +392,8 @@ const useHousingData = () => {
 
         return addressesToDisplay.map(address => {
             const occupantsInAddress = allActiveOccupants.filter(o => o.address === address.name);
-            const totalCapacity = address.rooms.reduce((sum, room) => sum + room.capacity, 0);
+            // Only count capacity from active (non-blocked) rooms
+            const totalCapacity = getActiveAddressCapacity(address);
             const occupantCount = occupantsInAddress.length;
 
             const rooms: RoomWithOccupants[] = address.rooms.map(room => {
@@ -398,6 +403,7 @@ const useHousingData = () => {
                     name: room.name,
                     capacity: room.capacity,
                     isActive: room.isActive,
+                    isLocked: room.isLocked,
                     occupants: occupantsInRoom,
                     occupantCount: occupantsInRoom.length,
                     available: room.capacity - occupantsInRoom.length,
@@ -495,13 +501,14 @@ const MobileAddressCard = ({ address, onOccupantClick, currentUser, settings, ha
                                          <div className="pl-4 mt-2 space-y-1">
                                             {room.occupants.map(o => {
                                                 const fullName = `${o.firstName} ${o.lastName}`.trim();
+                                                const isBlocked = !address.isActive || room.isLocked || !room.isActive;
                                                 return (
                                                     <div key={o.id} className="flex items-center justify-between text-xs text-muted-foreground group">
                                                         <span
-                                                            onClick={() => { if (address.isActive) onOccupantClick(o); }}
-                                                            className={cn(!address.isActive ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:text-primary")}
+                                                            onClick={() => { if (!isBlocked) onOccupantClick(o); }}
+                                                            className={cn(isBlocked ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:text-primary")}
                                                         >{fullName}</span>
-                                                        {address.isActive && (
+                                                        {!isBlocked && (
                                                             <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); copyToClipboard(fullName, `Skopiowano: ${fullName}`)}}>
                                                                 <Copy className="h-3 w-3" />
                                                             </Button>
@@ -637,10 +644,14 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
             return acc;
         }, {} as Record<string, { addresses: HousingData[]; availablePlaces: number }>);
         
-        // Calculate available places per locality
+        // Calculate available places per locality (only from active addresses/rooms)
         for (const locality in grouped) {
             grouped[locality].availablePlaces = grouped[locality].addresses.reduce((sum, address) => {
                 if (address.name.toLowerCase().startsWith('własne mieszkanie')) {
+                    return sum;
+                }
+                // Only count available places if address is active
+                if (!address.isActive) {
                     return sum;
                 }
                 return sum + address.available;

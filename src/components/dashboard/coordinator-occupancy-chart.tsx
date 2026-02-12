@@ -2,12 +2,13 @@
 "use client";
 
 import React, { useMemo } from 'react';
-import type { Employee, NonEmployee, Settings, ChartConfig } from "@/types";
+import type { Employee, NonEmployee } from "@/types";
 import { useMainLayout } from '@/components/main-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, LabelList, Tooltip as RechartsTooltip, Cell } from "recharts";
 import { BarChart2, BedDouble, UserRoundCheck, Users } from "lucide-react";
 import { cn } from '@/lib/utils';
+import { getActiveAddressCapacity } from '@/lib/address-filters';
 
 type OccupancyData = {
     name: string;
@@ -15,6 +16,7 @@ type OccupancyData = {
     occupantCount: number;
     capacity: number;
     available: number;
+    isBlocked: boolean;
 }
 
 const NoDataState = ({ message, className }: { message: string, className?: string }) => (
@@ -26,7 +28,10 @@ const NoDataState = ({ message, className }: { message: string, className?: stri
     </div>
 );
 
-const getOccupancyColor = (percentage: number) => {
+const getOccupancyColor = (percentage: number, isBlocked: boolean) => {
+    if (isBlocked) {
+        return 'hsl(0 84% 60%)'; // red for blocked addresses
+    }
     if (percentage < 30) {
         return 'hsl(var(--chart-5))'; // red
     }
@@ -62,6 +67,7 @@ export function CoordinatorOccupancyChart() {
             return { data: [], coordinatorName: '', totals: null };
         }
         
+        // Include ALL addresses (both active and blocked) for visibility
         const coordinatorAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
 
         const allActiveOccupants: (Employee | NonEmployee)[] = [
@@ -70,8 +76,10 @@ export function CoordinatorOccupancyChart() {
         ];
 
         const occupancyByAddress: OccupancyData[] = coordinatorAddresses.map(address => {
+            const isBlocked = !address.isActive;
             const occupantsInAddress = allActiveOccupants.filter(o => o.address === address.name);
-            const totalCapacity = address.rooms.reduce((sum, room) => sum + room.capacity, 0);
+            // Only count capacity from active (non-blocked) rooms
+            const totalCapacity = getActiveAddressCapacity(address);
             const occupantCount = occupantsInAddress.length;
             const occupancy = totalCapacity > 0 ? (occupantCount / totalCapacity) * 100 : 0;
             
@@ -80,15 +88,23 @@ export function CoordinatorOccupancyChart() {
                 occupancy: occupancy,
                 occupantCount,
                 capacity: totalCapacity,
-                available: totalCapacity - occupantCount
+                available: totalCapacity - occupantCount,
+                isBlocked
             }
-        }).sort((a,b) => b.occupancy - a.occupancy);
+        }).sort((a,b) => {
+            // Sort blocked addresses to the bottom, then by occupancy
+            if (a.isBlocked !== b.isBlocked) {
+                return a.isBlocked ? 1 : -1;
+            }
+            return b.occupancy - a.occupancy;
+        });
         
         const managedAddresses = occupancyByAddress.filter(
             (address) => !address.name.toLowerCase().startsWith('własne mieszkanie')
         );
 
-        const totals = managedAddresses.reduce((acc, address) => {
+        // Calculate totals excluding blocked addresses
+        const totals = managedAddresses.filter(addr => !addr.isBlocked).reduce((acc, address) => {
             acc.capacity += address.capacity;
             acc.occupantCount += address.occupantCount;
             acc.available += address.available;
@@ -98,12 +114,6 @@ export function CoordinatorOccupancyChart() {
         return { data: occupancyByAddress, coordinatorName: coordinator.name, totals };
 
     }, [allEmployees, allNonEmployees, settings, selectedCoordinatorId]);
-
-     const chartConfig = {
-      occupancy: {
-        label: "Obłożenie (%)",
-      },
-    } satisfies ChartConfig;
 
     if (!chartData.coordinatorName || chartData.data.length === 0) {
         return null;
@@ -143,20 +153,76 @@ export function CoordinatorOccupancyChart() {
                             <BarChart
                                 data={chartData.data}
                                 layout="vertical"
-                                margin={{ top: 5, right: 50, bottom: 5, left: 10 }}
+                                margin={{ top: 5, right: 80, bottom: 5, left: 10 }}
                                 barCategoryGap="25%"
                             >
                                 <CartesianGrid horizontal={false} strokeDasharray="3 3" className="stroke-border/50" />
-                                <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickMargin={8} width={150} className="text-xs" interval={0} />
+                                <YAxis
+                                    dataKey="name"
+                                    type="category"
+                                    tickLine={false}
+                                    axisLine={false}
+                                    tickMargin={10}
+                                    width={200}
+                                    className="text-xs"
+                                    interval={0}
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    tick={(props: any) => {
+                                        const { x, y, payload } = props;
+                                        const data = chartData.data.find(d => d.name === payload.value);
+                                        const isBlocked = data?.isBlocked || false;
+                                        const text = payload.value || '';
+                                        
+                                        // Truncate text if too long and add ellipsis
+                                        const maxLength = 28;
+                                        const displayText = text.length > maxLength
+                                            ? text.substring(0, maxLength) + '...'
+                                            : text;
+                                        
+                                        return (
+                                            <g>
+                                                <title>{text}</title>
+                                                <text
+                                                    x={x}
+                                                    y={y}
+                                                    dy={4}
+                                                    textAnchor="end"
+                                                    fill={isBlocked ? 'hsl(0 84% 60%)' : 'currentColor'}
+                                                    className="text-xs"
+                                                    style={{ opacity: isBlocked ? 0.7 : 1 }}
+                                                >
+                                                    {displayText}
+                                                </text>
+                                            </g>
+                                        );
+                                    }}
+                                />
                                 <XAxis type="number" domain={[0, 100]} hide={true} />
-                                <RechartsTooltip 
-                                    cursor={{fill: 'hsl(var(--muted))'}} 
-                                    content={({ active, payload }) => {
+                                <RechartsTooltip
+                                    cursor={{fill: 'hsl(var(--muted))'}}
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    content={(props: any) => {
+                                        const { active, payload } = props;
                                         if (active && payload && payload.length) {
                                             const data = payload[0].payload as OccupancyData;
                                             return (
-                                                <div className="min-w-[12rem] rounded-lg border bg-background/95 p-2 text-sm shadow-xl">
-                                                    <div className="font-bold">{data.name}</div>
+                                                <div className={cn(
+                                                    "min-w-[12rem] rounded-lg border bg-background/95 p-2 text-sm shadow-xl",
+                                                    data.isBlocked && "border-red-500"
+                                                )}>
+                                                    <div className="font-bold flex items-center gap-2">
+                                                        {data.name}
+                                                        {data.isBlocked && (
+                                                            <span className="text-xs font-semibold text-red-500 bg-red-50 dark:bg-red-950/30 px-1.5 py-0.5 rounded">
+                                                                Zablokowany
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {data.isBlocked && (
+                                                        <div className="mt-1 text-xs text-muted-foreground italic">
+                                                            Ten adres jest nieaktywny
+                                                        </div>
+                                                    )}
                                                     <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1">
                                                         <span className="text-muted-foreground">Zajęte:</span>
                                                         <span>{data.occupantCount}</span>
@@ -175,14 +241,43 @@ export function CoordinatorOccupancyChart() {
                                 />
                                 <Bar dataKey="occupancy" radius={[0, 4, 4, 0]}>
                                      {chartData.data.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={getOccupancyColor(entry.occupancy)} />
+                                        <Cell
+                                            key={`cell-${index}`}
+                                            fill={getOccupancyColor(entry.occupancy, entry.isBlocked)}
+                                            opacity={entry.isBlocked ? 0.5 : 1}
+                                        />
                                     ))}
-                                    <LabelList 
-                                        dataKey="occupancy" 
-                                        position="right" 
-                                        offset={8} 
-                                        className="fill-foreground text-xs"
-                                        formatter={(value: number) => `${value.toFixed(0)}%`}
+                                    <LabelList
+                                        dataKey="occupancy"
+                                        position="right"
+                                        offset={10}
+                                        className="fill-foreground text-xs font-medium"
+                                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                        content={(props: any) => {
+                                            const { x, y, value, index, width } = props;
+                                            const data = chartData.data[index as number];
+                                            if (!data) return null;
+                                            
+                                            // Calculate position at the end of the bar
+                                            const barEndX = Number(x) + Number(width || 0);
+                                            
+                                            return (
+                                                <g>
+                                                    <text
+                                                        x={barEndX}
+                                                        y={y}
+                                                        dx={10}
+                                                        dy={4}
+                                                        textAnchor="start"
+                                                        fill={data.isBlocked ? 'hsl(0 84% 60%)' : 'currentColor'}
+                                                        className="text-xs font-medium"
+                                                        style={{ opacity: data.isBlocked ? 0.7 : 1 }}
+                                                    >
+                                                        {data.isBlocked ? 'Zablokowany' : `${(value as number).toFixed(0)}%`}
+                                                    </text>
+                                                </g>
+                                            );
+                                        }}
                                     />
                                 </Bar>
                             </BarChart>

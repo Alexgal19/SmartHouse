@@ -8,6 +8,8 @@ import type { Employee, NonEmployee } from "@/types";
 import { differenceInDays, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ModernHouseIcon } from '../icons/modern-house-icon';
+import { countActiveAddressesInUse } from '@/lib/address-filters';
+import { useMainLayout } from '../main-layout';
 
 const kpiIcons = {
     housedEmployees: <Users className="h-6 w-6 text-primary" />,
@@ -56,6 +58,7 @@ export function DashboardKPIs({
     onUpcomingCheckoutsClick: () => void,
     hasNewCheckouts: boolean
 }) {
+    const { settings } = useMainLayout();
 
     const stats = useMemo(() => {
         const activeEmployees = employees.filter(e => e.status === 'active');
@@ -70,7 +73,10 @@ export function DashboardKPIs({
             return diff >= 0 && diff <= 30;
         });
         
-        const apartmentsInUse = new Set(activeEmployees.map(o => o.address).filter(Boolean)).size;
+        // Only count apartments that are active (not blocked)
+        const apartmentsInUse = settings
+            ? countActiveAddressesInUse(activeEmployees, settings.addresses)
+            : new Set(activeEmployees.map(o => o.address).filter(Boolean)).size;
 
         return {
             totalEmployees: activeEmployees.length,
@@ -78,7 +84,7 @@ export function DashboardKPIs({
             apartmentsInUse,
             upcomingCheckouts: upcomingCheckoutsList.length,
         };
-    }, [employees, nonEmployees]);
+    }, [employees, nonEmployees, settings]);
 
     const kpiData = [
         { title: 'Wszyscy pracownicy', value: stats.totalEmployees.toString(), icon: kpiIcons.housedEmployees },

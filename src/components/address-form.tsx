@@ -234,34 +234,49 @@ export function AddressForm({
                                 <FormField
                                     control={form.control}
                                     name={`rooms.${index}.name`}
-                                    render={({ field: nameField }) => (
-                                        <FormItem className="flex-1">
-                                            <FormLabel className="sr-only">Nazwa pokoju</FormLabel>
-                                            <FormControl><Input placeholder="Nazwa pokoju" {...nameField} /></FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
+                                    render={({ field: nameField }) => {
+                                        const isRoomActive = form.watch(`rooms.${index}.isActive`);
+                                        return (
+                                            <FormItem className="flex-1">
+                                                <FormLabel className="sr-only">Nazwa pokoju</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        placeholder="Nazwa pokoju"
+                                                        {...nameField}
+                                                        disabled={!isRoomActive}
+                                                        className={!isRoomActive ? 'opacity-50 cursor-not-allowed' : ''}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        );
+                                    }}
                                 />
                                 <FormField
                                     control={form.control}
                                     name={`rooms.${index}.capacity`}
-                                    render={({ field: capacityField }) => (
-                                        <FormItem className="w-28">
-                                             <FormLabel className="sr-only">Pojemność</FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    type="number"
-                                                    placeholder="Pojemność"
-                                                    {...capacityField}
-                                                    onChange={(e) => {
-                                                        const val = e.target.value === '' ? '' : Number(e.target.value);
-                                                        capacityField.onChange(val);
-                                                    }}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
+                                    render={({ field: capacityField }) => {
+                                        const isRoomActive = form.watch(`rooms.${index}.isActive`);
+                                        return (
+                                            <FormItem className="w-28">
+                                                <FormLabel className="sr-only">Pojemność</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        type="number"
+                                                        placeholder="Pojemność"
+                                                        {...capacityField}
+                                                        disabled={!isRoomActive}
+                                                        className={!isRoomActive ? 'opacity-50 cursor-not-allowed' : ''}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value === '' ? '' : Number(e.target.value);
+                                                            capacityField.onChange(val);
+                                                        }}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        );
+                                    }}
                                 />
                                 <FormField
                                     control={form.control}

@@ -219,18 +219,23 @@ const DateInput = ({
             value={inputValue}
             onChange={handleInputChange}
             placeholder="rrrr-mm-dd"
-            className="pr-10"
+            className="pr-10 min-h-[44px]"
           />
-           <div className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 flex items-center">
+           <button
+            type="button"
+            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center rounded hover:bg-muted touch-manipulation"
+            onClick={handleClear}
+            aria-label={value ? "Wyczyść datę" : "Wybierz datę"}
+          >
             {value ? (
-                <X className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-pointer" onClick={handleClear}/>
+                <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
             ) : (
                 <CalendarIcon className="h-4 w-4 text-muted-foreground" />
             )}
-           </div>
+           </button>
         </div>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="center" sideOffset={5}>
         <Calendar
           locale={pl}
           mode="single"
@@ -238,6 +243,7 @@ const DateInput = ({
           onSelect={(d) => handleDateSelect(d ?? null)}
           disabled={disabled}
           initialFocus
+          className="rounded-md border"
         />
       </PopoverContent>
     </Popover>
@@ -615,31 +621,39 @@ export function AddEmployeeForm({
   return (
     <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
+      <DialogContent className="max-w-[95vw] sm:max-w-2xl lg:max-w-4xl max-h-[90vh] overflow-hidden data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
         <DialogHeader>
-          <div className="flex justify-between items-start">
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
             <div>
               <DialogTitle>{employee ? 'Edytuj dane pracownika' : 'Dodaj nowego pracownika'}</DialogTitle>
-              <DialogDescription>
+              <DialogDescription className="text-xs sm:text-sm">
                 Wypełnij poniższe pola, aby {employee ? 'zaktualizować' : 'dodać'} pracownika.
               </DialogDescription>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <Button
                 variant="outline"
                 onClick={() => setIsAddressPreviewOpen(true)}
                 type="button"
+                className="w-full sm:w-auto min-h-[44px]"
               >
-                <Eye className="mr-2 h-4 w-4" />
-                Podgląd miejsc
+                <Eye className="h-4 w-4 sm:mr-2" />
+                <span className="ml-2">Podgląd miejsc</span>
               </Button>
-              <Button variant="outline" onClick={handleOpenCamera} disabled={isScanning} type="button">
+              <Button
+                variant="outline"
+                onClick={handleOpenCamera}
+                disabled={isScanning}
+                type="button"
+                className="w-full sm:w-auto min-h-[44px]"
+              >
                 {isScanning ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
                 ) : (
-                  <Camera className="mr-2 h-4 w-4" />
+                  <Camera className="h-4 w-4 sm:mr-2" />
                 )}
-                Zrób zdjęcie paszportu
+                <span className="ml-2 hidden sm:inline">Zrób zdjęcie paszportu</span>
+                <span className="ml-2 sm:hidden">Zdjęcie</span>
               </Button>
             </div>
           </div>
@@ -647,14 +661,14 @@ export function AddEmployeeForm({
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <Tabs defaultValue="basic" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="basic">Dane podstawowe</TabsTrigger>
-                    <TabsTrigger value="finance">Finanse i potrącenia</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-2 h-auto">
+                    <TabsTrigger value="basic" className="text-xs sm:text-sm px-2 py-3">Dane podstawowe</TabsTrigger>
+                    <TabsTrigger value="finance" className="text-xs sm:text-sm px-2 py-3">Finanse i potrącenia</TabsTrigger>
                 </TabsList>
-                <ScrollArea className="h-[60vh] mt-4">
+                <ScrollArea className="h-[50vh] sm:h-[60vh] lg:h-[65vh] mt-4">
                     <TabsContent value="basic">
                         <div className="space-y-4 px-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                           <FormField
                               control={form.control}
                               name="lastName"
@@ -679,7 +693,7 @@ export function AddEmployeeForm({
                           />
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
                             <FormField
                                 control={form.control}
                                 name="coordinatorId"
@@ -736,7 +750,7 @@ export function AddEmployeeForm({
                             />
                         </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                              <FormField
                                 control={form.control}
                                 name="locality"
@@ -830,7 +844,7 @@ export function AddEmployeeForm({
                             />
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
                              <FormField
                                 control={form.control}
                                 name="checkInDate"
@@ -874,7 +888,7 @@ export function AddEmployeeForm({
                                 )}
                                 />
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                             <FormField
                                 control={form.control}
                                 name="contractStartDate"
@@ -935,7 +949,7 @@ export function AddEmployeeForm({
                                     </FormItem>
                                 )}
                                 />
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                                 <FormField
                                     control={form.control}
                                     name="depositReturned"
@@ -966,7 +980,7 @@ export function AddEmployeeForm({
                                     )}
                                 />
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
                                 <FormField
                                     control={form.control}
                                     name="deductionRegulation"
@@ -1044,7 +1058,7 @@ export function AddEmployeeForm({
                                             render={({ field }) => (
                                             <FormItem
                                                 key={reason.id}
-                                                className="flex flex-row items-start space-x-3 space-y-0"
+                                                className="flex flex-row items-start space-x-3 space-y-0 mb-3"
                                             >
                                                 <FormControl>
                                                     <Checkbox
@@ -1056,20 +1070,22 @@ export function AddEmployeeForm({
                                                                 form.setValue(`deductionReason.${index}.amount`, null)
                                                             }
                                                         }}
+                                                        className="mt-1"
                                                     />
                                                 </FormControl>
-                                                <div className="space-y-1 leading-none w-full grid grid-cols-2 gap-x-4 items-center">
-                                                    <Label htmlFor={reason.id} className="font-normal">
+                                                <div className="flex flex-col sm:grid sm:grid-cols-2 gap-2 sm:gap-x-4 w-full">
+                                                    <Label htmlFor={reason.id} className="font-normal text-sm">
                                                         {reason.label}
                                                     </Label>
                                                     <FormField
                                                         control={form.control}
                                                         name={`deductionReason.${index}.amount`}
                                                         render={({ field: amountField }) => (
-                                                            <Input 
-                                                                type="number" 
+                                                            <Input
+                                                                type="number"
                                                                 placeholder="PLN"
-                                                                className="h-8"
+                                                                className="h-10 sm:h-9 min-h-[44px] sm:min-h-0"
+                                                                inputMode="decimal"
                                                                 {...amountField}
                                                                 onChange={e => {
                                                                     const value = e.target.value;
@@ -1097,20 +1113,35 @@ export function AddEmployeeForm({
                 </ScrollArea>
             </Tabs>
 
-            <DialogFooter className="p-6 pt-4 flex flex-row justify-between">
-              <div>
+            <DialogFooter className="p-4 sm:p-6 pt-4 flex flex-col sm:flex-row justify-between gap-3">
+              <div className="order-2 sm:order-1">
                   {employee && employee.status === 'active' && (
-                      <Button type="button" variant="destructive" onClick={handleDismissClick} disabled={isDismissing}>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={handleDismissClick}
+                        disabled={isDismissing}
+                        className="w-full sm:w-auto min-h-[44px]"
+                      >
                           {isDismissing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                           Zwolnij
                       </Button>
                   )}
               </div>
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <div className="flex flex-col sm:flex-row gap-2 order-1 sm:order-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  className="w-full sm:w-auto min-h-[44px] order-2 sm:order-1"
+                >
                     Anuluj
                 </Button>
-                <Button type="submit" disabled={form.formState.isSubmitting}>
+                <Button
+                  type="submit"
+                  disabled={form.formState.isSubmitting}
+                  className="w-full sm:w-auto min-h-[44px] order-1 sm:order-2"
+                >
                     {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Zapisz
                 </Button>
@@ -1122,11 +1153,11 @@ export function AddEmployeeForm({
     </Dialog>
 
     <Dialog open={isCameraOpen} onOpenChange={handleCloseCamera}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Zrób zdjęcie paszportu</DialogTitle>
-          <DialogDescription>
-            Umieść paszport w kadrze i zrób zdjęcie.
+          <DialogDescription className="text-xs sm:text-sm">
+            Umieść paszport w kadrze. Dla najlepszych wyników, obróć urządzenie poziomo.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col items-center space-y-4">
@@ -1135,7 +1166,7 @@ export function AddEmployeeForm({
             audio={false}
             screenshotFormat="image/jpeg"
             videoConstraints={{ facingMode: 'environment' }}
-            className="w-full max-w-sm rounded-lg border"
+            className="w-full max-w-full sm:max-w-sm rounded-lg border"
             onUserMediaError={(err) => console.error("Webcam error:", err)}
             onUserMedia={(stream) => {
               streamRef.current = stream;
@@ -1147,8 +1178,12 @@ export function AddEmployeeForm({
            forceScreenshotSourceSize={false}
            imageSmoothing={true}
           />
-          <div className="flex gap-2">
-            <Button onClick={handleCapture} disabled={isScanning}>
+          <div className="flex flex-col sm:flex-row gap-2 w-full">
+            <Button
+              onClick={handleCapture}
+              disabled={isScanning}
+              className="w-full sm:w-auto min-h-[44px]"
+            >
               {isScanning ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
@@ -1156,7 +1191,11 @@ export function AddEmployeeForm({
               )}
               Zrób zdjęcie
             </Button>
-            <Button variant="outline" onClick={handleCloseCamera}>
+            <Button
+              variant="outline"
+              onClick={handleCloseCamera}
+              className="w-full sm:w-auto min-h-[44px]"
+            >
               Anuluj
             </Button>
           </div>
