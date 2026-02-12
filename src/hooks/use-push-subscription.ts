@@ -136,10 +136,26 @@ export const usePushSubscription = () => {
             }
         } catch (error) {
             console.error('Failed to subscribe:', error);
+            
+            let errorMessage = 'Nie udało się włączyć powiadomień. Sprawdź uprawnienia w przeglądarce.';
+            
+            // Check for specific Firebase errors
+            if (error && typeof error === 'object' && 'code' in error) {
+                const firebaseError = error as { code: string; message: string };
+                
+                if (firebaseError.code === 'messaging/token-subscribe-failed') {
+                    errorMessage = 'Powiadomienia push nie są skonfigurowane w Firebase. Skontaktuj się z administratorem systemu.';
+                } else if (firebaseError.message?.includes('authentication credential')) {
+                    errorMessage = 'Firebase Cloud Messaging wymaga konfiguracji w konsoli Firebase. Skontaktuj się z administratorem.';
+                } else if (firebaseError.code === 'messaging/permission-blocked') {
+                    errorMessage = 'Powiadomienia są zablokowane w przeglądarce. Odblokuj je w ustawieniach strony.';
+                }
+            }
+            
             toast({
                 variant: 'destructive',
-                title: 'Błąd',
-                description: 'Nie udało się włączyć powiadomień. Sprawdź uprawnienia w przeglądarce.',
+                title: 'Błąd powiadomień push',
+                description: errorMessage,
             });
         } finally {
             setIsSubscribing(false);
