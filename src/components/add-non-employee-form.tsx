@@ -405,17 +405,7 @@ export function AddNonEmployeeForm({
       return;
     }
 
-    // Validate chronology
-    if (nonEmployee.checkInDate) {
-      const checkInDate = parseISO(nonEmployee.checkInDate);
-      if (isValid(checkInDate) && checkOutDate < checkInDate) {
-        form.setError('checkOutDate', {
-          type: 'manual',
-          message: 'Data wymeldowania nie może być wcześniejsza niż data zameldowania.',
-        });
-        return;
-      }
-    }
+
 
     setIsDismissing(true);
     try {

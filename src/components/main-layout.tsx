@@ -69,12 +69,12 @@ const HouseLoader = () => {
                         <path d="M10 50 L50 10 L90 50 L90 90 L65 90 L65 65 L35 65 L35 90 L10 90 Z" fill="white" />
                     </mask>
                 </defs>
-                <rect 
-                    x="-50" 
-                    y="-50" 
-                    width="200" 
-                    height="200" 
-                    fill="url(#liquidGradient)" 
+                <rect
+                    x="-50"
+                    y="-50"
+                    width="200"
+                    height="200"
+                    fill="url(#liquidGradient)"
                     mask="url(#houseMask)"
                     className="animate-liquid-gradient"
                 />
@@ -151,22 +151,22 @@ export const useMainLayout = () => {
 };
 
 export default function MainLayout({
-  initialSession,
-  children
+    initialSession,
+    children
 }: {
-  initialSession: SessionData;
-  children: React.ReactNode;
+    initialSession: SessionData;
+    children: React.ReactNode;
 }) {
     const router = useRouter();
     const routerRef = useRef(router);
     const searchParams = useSearchParams();
-    
+
     const navItems = useMemo(() => [
         { view: 'dashboard', icon: Home, label: 'Pulpit' },
         { view: 'employees', icon: Users, label: 'Mieszkańcy' },
         { view: 'housing', icon: Building, label: 'Zakwaterowanie' },
         { view: 'settings', icon: SettingsIcon, label: 'Ustawienia' },
-    ], [])  as { view: View; icon: React.ElementType; label: string }[];
+    ], []) as { view: View; icon: React.ElementType; label: string }[];
 
     const activeView = useMemo(() => {
         return (searchParams.get('view') as View) || 'dashboard';
@@ -176,7 +176,7 @@ export default function MainLayout({
 
     const [currentUser] = useState<SessionData | null>(initialSession);
     const [allNotifications, setAllNotifications] = useState<Notification[]>([]);
-    
+
     const [rawEmployees, setRawEmployees] = useState<Employee[] | null>(null);
     const [rawNonEmployees, setRawNonEmployees] = useState<NonEmployee[] | null>(null);
     const [rawBokResidents, setRawBokResidents] = useState<BokResident[] | null>(null);
@@ -186,20 +186,20 @@ export default function MainLayout({
     const [pushSubscription, setPushSubscription] = useState<string | null>(null);
 
     const [hasNewCheckouts, setHasNewCheckouts] = useState(false);
-    
+
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isNonEmployeeFormOpen, setIsNonEmployeeFormOpen] = useState(false);
     const [isBokResidentFormOpen, setIsBokResidentFormOpen] = useState(false);
     const [isAddressFormOpen, setIsAddressFormOpen] = useState(false);
-    
+
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
     const [editingNonEmployee, setEditingNonEmployee] = useState<NonEmployee | null>(null);
     const [editingBokResident, setEditingBokResident] = useState<BokResident | null>(null);
     const [editingAddress, setEditingAddress] = useState<Address | null>(null);
     const [initialEmployeeData, setInitialEmployeeData] = useState<Partial<EmployeeFormData>>({});
-    
+
     const [selectedCoordinatorId, _setSelectedCoordinatorId] = useState(initialSession.isAdmin ? 'all' : initialSession.uid);
-    
+
     const { toast } = useToast();
 
     const filteredData = useMemo(() => {
@@ -214,7 +214,7 @@ export default function MainLayout({
         if (!shouldFilter) {
             return { employees: rawEmployees, nonEmployees: rawNonEmployees, bokResidents: rawBokResidents, settings: rawSettings, addressHistory: addressHistory };
         }
-        
+
         if (!coordinator) {
             return { employees: [], nonEmployees: [], bokResidents: [], settings: { ...rawSettings, addresses: [] }, addressHistory: [] };
         }
@@ -223,7 +223,7 @@ export default function MainLayout({
         let nonEmployees: NonEmployee[];
         let bokResidents: BokResident[];
         let filteredAddresses = rawSettings.addresses;
-        
+
         if (isStrict) {
             employees = rawEmployees.filter(e => e.coordinatorId === selectedCoordinatorId);
             nonEmployees = rawNonEmployees.filter(ne => ne.coordinatorId === selectedCoordinatorId);
@@ -232,7 +232,7 @@ export default function MainLayout({
         } else { // department mode
             const coordinatorAddresses = new Set(rawSettings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId)).map(a => a.name));
             const coordinatorDepartments = new Set(coordinator.departments || []);
-            
+
             employees = rawEmployees.filter(e => {
                 const livesInCoordinatorsAddress = e.address && coordinatorAddresses.has(e.address);
                 const worksInCoordinatorsDepartment = e.zaklad && coordinatorDepartments.has(e.zaklad);
@@ -258,7 +258,7 @@ export default function MainLayout({
     }, [rawEmployees, rawNonEmployees, rawBokResidents, rawSettings, addressHistory, currentUser, selectedCoordinatorId]);
 
     const { employees: allEmployees, nonEmployees: allNonEmployees, bokResidents: allBokResidents, settings } = filteredData;
-    
+
     const setSelectedCoordinatorId = useCallback((value: React.SetStateAction<string>) => {
         _setSelectedCoordinatorId(value);
     }, []);
@@ -279,10 +279,10 @@ export default function MainLayout({
         const entityId = notification.entityId;
         const pathname = window.location.pathname;
         if (entityId) {
-             const currentSearchParams = new URLSearchParams(window.location.search);
-             currentSearchParams.set('view', 'employees');
-             currentSearchParams.set('edit', entityId);
-             routerRef.current.push(`${pathname}?${currentSearchParams.toString()}`);
+            const currentSearchParams = new URLSearchParams(window.location.search);
+            currentSearchParams.set('view', 'employees');
+            currentSearchParams.set('edit', entityId);
+            routerRef.current.push(`${pathname}?${currentSearchParams.toString()}`);
         }
     }, []);
 
@@ -297,17 +297,17 @@ export default function MainLayout({
         }
     }, [allNotifications, toast]);
 
-     const handleClearNotifications = useCallback(async () => {
+    const handleClearNotifications = useCallback(async () => {
         if (!currentUser?.isAdmin) {
-             toast({ variant: "destructive", title: "Błąd uprawnień", description: "Tylko administratorzy mogą wykonać tę akcję." });
-             return;
+            toast({ variant: "destructive", title: "Błąd uprawnień", description: "Tylko administratorzy mogą wykonać tę akcję." });
+            return;
         }
         try {
             await clearAllNotifications();
             setAllNotifications([]);
             toast({ title: "Sukces", description: "Wszystkie powiadomienia zostały usunięte." });
         } catch (e) {
-             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć powiadomienia." });
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć powiadomienia." });
         }
     }, [currentUser, toast]);
 
@@ -328,19 +328,19 @@ export default function MainLayout({
         if (!currentUser) return;
         try {
             // Fetch data strategically to avoid timeouts and improve UX
-            
+
             // 1. Fetch Settings FIRST (Critical & Fast)
             const settings = await getSettings();
             setRawSettings(settings);
 
             // 2. Fetch other data SEQUENTIALLY/BATCHED to reduce burst on Google Sheets API (429 errors)
             // Fetch largest datasets first individually
-            
+
             const employeesResult = await getEmployees().catch(e => {
                 console.error("Failed to fetch employees:", e);
                 return [] as Employee[];
             });
-            
+
             // Short delay to let the API breathe
             await new Promise(resolve => setTimeout(resolve, 300));
 
@@ -353,9 +353,9 @@ export default function MainLayout({
 
             // Fetch remaining smaller datasets in parallel
             const [bokResidentsResult, notificationsResult, addressHistoryResult] = await Promise.all([
-                 getBokResidents().catch(e => { console.error("Failed to fetch BOK:", e); return [] as BokResident[]; }),
-                 getNotifications(currentUser.uid, currentUser.isAdmin).catch(e => { console.error("Failed to fetch notifications:", e); return [] as Notification[]; }),
-                 getRawAddressHistory().catch(e => { console.error("Failed to fetch history:", e); return [] as AddressHistory[]; })
+                getBokResidents().catch(e => { console.error("Failed to fetch BOK:", e); return [] as BokResident[]; }),
+                getNotifications(currentUser.uid, currentUser.isAdmin).catch(e => { console.error("Failed to fetch notifications:", e); return [] as Notification[]; }),
+                getRawAddressHistory().catch(e => { console.error("Failed to fetch history:", e); return [] as AddressHistory[]; })
             ]);
 
             const employees = employeesResult;
@@ -398,16 +398,16 @@ export default function MainLayout({
 
                 const storedUpcoming = localStorage.getItem('upcomingCheckouts');
                 const storedUpcomingIds = storedUpcoming ? JSON.parse(storedUpcoming) : [];
-                
+
                 if (JSON.stringify(upcoming.sort()) !== JSON.stringify(storedUpcomingIds.sort())) {
                     setHasNewCheckouts(true);
                 }
             }
-            
-            if(showToast) {
+
+            if (showToast) {
                 toast({ title: "Sukces", description: "Dane zostały odświeżone." });
             }
-            
+
             // Return structure compatible with previous implementation if needed by callers
             return {
                 employees,
@@ -434,7 +434,7 @@ export default function MainLayout({
                 toast({ title: "Sukces", description: `Zaktualizowano statusy dla ${updated} osób.` });
                 await refreshData(false);
             } else if (showNoChangesToast) {
-                 toast({ title: "Brak zmian", description: "Wszyscy mają aktualne statusy."});
+                toast({ title: "Brak zmian", description: "Wszyscy mają aktualne statusy." });
             }
         } catch (e) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się odświeżyć statusów." });
@@ -455,9 +455,9 @@ export default function MainLayout({
         if (currentUser) {
             refreshData(false);
             const intervalId = setInterval(() => {
-                 handleRefreshStatuses(false);
+                handleRefreshStatuses(false);
             }, 5 * 60 * 1000); // every 5 minutes
-            
+
             return () => clearInterval(intervalId);
         }
     }, [currentUser, refreshData, handleRefreshStatuses]);
@@ -480,7 +480,7 @@ export default function MainLayout({
                     setIsNonEmployeeFormOpen(true);
                 }
             }
-            
+
             const currentSearchParams = new URLSearchParams(window.location.search);
             currentSearchParams.delete('edit');
             routerRef.current.replace(`${pathname}?${currentSearchParams.toString()}`, { scroll: false });
@@ -494,7 +494,7 @@ export default function MainLayout({
             const lastName = searchParams.get('lastName') || '';
             const nationality = searchParams.get('nationality') || '';
             const zaklad = searchParams.get('zaklad') || '';
-            
+
             setInitialEmployeeData({
                 firstName,
                 lastName,
@@ -504,7 +504,7 @@ export default function MainLayout({
             setEditingEmployee(null);
             setEditingNonEmployee(null);
             setIsFormOpen(true);
-            
+
             const currentSearchParams = new URLSearchParams(window.location.search);
             currentSearchParams.delete('action');
             currentSearchParams.delete('firstName');
@@ -517,7 +517,7 @@ export default function MainLayout({
 
     const handleSaveEmployee = useCallback(async (data: EmployeeFormData) => {
         if (!currentUser) return;
-    
+
         if (editingEmployee) {
             const originalEmployees = rawEmployees;
             setRawEmployees(prev => prev ? prev.map(e => e.id === editingEmployee.id ? { ...e, ...data, fullName: `${data.lastName} ${data.firstName}`.trim() } : e) : null);
@@ -542,7 +542,7 @@ export default function MainLayout({
 
     const handleSaveNonEmployee = useCallback(async (data: Omit<NonEmployee, 'id' | 'status'>) => {
         if (!currentUser) return;
-    
+
         if (editingNonEmployee) {
             const originalNonEmployees = rawNonEmployees;
             setRawNonEmployees(prev => prev ? prev.map(e => e.id === editingNonEmployee.id ? { ...e, ...data, fullName: `${data.lastName} ${data.firstName}`.trim() } : e) : null);
@@ -567,7 +567,7 @@ export default function MainLayout({
 
     const handleSaveBokResident = useCallback(async (data: BokResidentFormData) => {
         if (!currentUser) return;
-    
+
         if (editingBokResident) {
             const originalBokResidents = rawBokResidents;
             setRawBokResidents(prev => prev ? prev.map(r => r.id === editingBokResident.id ? { ...r, ...data, fullName: `${data.lastName} ${data.firstName}`.trim() } : r) : null);
@@ -603,31 +603,31 @@ export default function MainLayout({
                 const newResident = await addBokResident(newResidentData, currentUser.uid);
                 setRawBokResidents(prev => prev ? [...prev, newResident] : [newResident]);
                 toast({ title: "Sukces", description: "Nowy mieszkaniec BOK został dodany." });
-    
+
                 if (newResidentData.coordinatorId) {
-                   const link = `/dashboard?view=employees&action=add&firstName=${encodeURIComponent(newResidentData.firstName)}&lastName=${encodeURIComponent(newResidentData.lastName)}&nationality=${encodeURIComponent(newResidentData.nationality)}&zaklad=${encodeURIComponent(newResidentData.zaklad || '')}`;
-                   await sendPushNotification(
-                       newResidentData.coordinatorId,
-                       'Nowe zadanie: Dodaj pracownika',
-                       `Mieszkaniec BOK: ${newResidentData.lastName} ${newResidentData.firstName} - kliknij, aby dodać.`,
-                       link
-                   );
-               }
+                    const link = `/dashboard?view=employees&action=add&firstName=${encodeURIComponent(newResidentData.firstName)}&lastName=${encodeURIComponent(newResidentData.lastName)}&nationality=${encodeURIComponent(newResidentData.nationality)}&zaklad=${encodeURIComponent(newResidentData.zaklad || '')}`;
+                    await sendPushNotification(
+                        newResidentData.coordinatorId,
+                        'Nowe zadanie: Dodaj pracownika',
+                        `Mieszkaniec BOK: ${newResidentData.lastName} ${newResidentData.firstName} - kliknij, aby dodać.`,
+                        link
+                    );
+                }
             } catch (e) {
                 toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać mieszkańca BOK." });
             }
         }
     }, [editingBokResident, currentUser, rawBokResidents, toast]);
-    
+
     const handleDeleteNonEmployee = useCallback(async (id: string, actorUid: string) => {
         if (!currentUser) return;
         const originalNonEmployees = rawNonEmployees;
         setRawNonEmployees(prev => prev ? prev.filter(r => r.id !== id) : null);
-    
+
         try {
             await deleteNonEmployee(id, actorUid);
             toast({ title: "Sukces", description: "Mieszkaniec został usunięty." });
-        } catch(e) {
+        } catch (e) {
             setRawNonEmployees(originalNonEmployees);
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć mieszkańca." });
         }
@@ -637,36 +637,37 @@ export default function MainLayout({
         if (!currentUser) return;
         const originalBokResidents = rawBokResidents;
         setRawBokResidents(prev => prev ? prev.filter(r => r.id !== id) : null);
-    
+
         try {
             await deleteBokResident(id, actorUid);
             toast({ title: "Sukces", description: "Mieszkaniec BOK został usunięty." });
-        } catch(e) {
+        } catch (e) {
             setRawBokResidents(originalBokResidents);
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć mieszkańca BOK." });
         }
     }, [currentUser, rawBokResidents, toast]);
-    
+
     const handleUpdateSettings = useCallback(async (newSettings: Partial<Settings>) => {
         if (!rawSettings || !currentUser?.isAdmin) {
             toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administrator może zmieniać ustawienia." });
             return;
         }
-    
+
         const originalSettings = rawSettings;
         setRawSettings(prev => ({ ...prev!, ...newSettings }));
-    
+
         try {
             const updatedSettings = await updateSettings(newSettings);
             setRawSettings(prev => ({ ...prev!, ...updatedSettings }));
             toast({ title: "Sukces", description: "Ustawienia zostały zaktualizowane." });
             router.refresh(); // Ensure server-side cache is invalidated and fresh data is fetched
+            await refreshData(false); // Force client-side data refresh to update dependent components like HousingView
         } catch (e) {
             setRawSettings(originalSettings); // Revert on error
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać ustawień." });
             throw e; // Re-throw to inform caller of failure
         }
-    }, [rawSettings, currentUser, toast, router]);
+    }, [rawSettings, currentUser, toast, router, refreshData]);
 
     const handleAddEmployeeClick = useCallback(() => {
         setEditingEmployee(null);
@@ -701,8 +702,8 @@ export default function MainLayout({
     }, []);
 
     const handleEditNonEmployeeClick = useCallback((nonEmployee: NonEmployee) => {
-      setEditingNonEmployee(nonEmployee);
-      setIsNonEmployeeFormOpen(true);
+        setEditingNonEmployee(nonEmployee);
+        setIsNonEmployeeFormOpen(true);
     }, []);
 
     const handleEditBokResidentClick = useCallback((resident: BokResident) => {
@@ -733,14 +734,14 @@ export default function MainLayout({
             toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administratorzy mogą wykonać tę akcję." });
             return false;
         }
-        
+
         try {
             await bulkDeleteEmployees(status, currentUser.uid);
             setRawEmployees(prev => prev ? prev.filter(e => e.status !== status) : null);
             toast({ title: "Sukces", description: `Wszyscy ${status === 'active' ? 'aktywni' : 'zwolnieni'} pracownicy zostali usunięci.` });
             // refreshData(false); // Removed to prevent "Zombie Record" issue due to race condition
             return true;
-        } catch(e) {
+        } catch (e) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć pracowników." });
             return false;
         }
@@ -751,14 +752,14 @@ export default function MainLayout({
             toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administratorzy mogą wykonać tę akcję." });
             return false;
         }
-        
+
         try {
             await bulkDeleteEmployeesByCoordinator(coordinatorId, currentUser.uid);
             setRawEmployees(prev => prev ? prev.filter(e => e.coordinatorId !== coordinatorId) : null);
             toast({ title: "Sukces", description: `Wszyscy pracownicy wybranego koordynatora zostali usunięci.` });
             // refreshData(false); // Removed to prevent "Zombie Record" issue due to race condition
             return true;
-        } catch(e) {
+        } catch (e) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć pracowników." });
             return false;
         }
@@ -769,19 +770,19 @@ export default function MainLayout({
             toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administratorzy mogą wykonać tę akcję." });
             return false;
         }
-        
+
         try {
             await bulkDeleteEmployeesByDepartment(department, currentUser.uid);
             setRawEmployees(prev => prev ? prev.filter(e => e.zaklad !== department) : null);
             toast({ title: "Sukces", description: `Wszyscy pracownicy z zakładu "${department}" zostali usunięci.` });
             // refreshData(false); // Removed to prevent "Zombie Record" issue due to race condition
             return true;
-        } catch(e) {
+        } catch (e) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć pracowników." });
             return false;
         }
     }, [currentUser, toast]);
-    
+
     const handleDismissEmployee = useCallback(async (employeeId: string, checkOutDate: Date) => {
         if (!currentUser) return;
         try {
@@ -825,12 +826,12 @@ export default function MainLayout({
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się przywrócić mieszkańca." });
         }
     }, [currentUser, refreshData, toast]);
-    
+
     const handleDeleteEmployee = useCallback(async (employeeId: string, actorUid: string) => {
         if (!currentUser) return;
         const originalEmployees = rawEmployees;
         setRawEmployees(prev => prev ? prev.filter(e => e.id !== employeeId) : null);
-    
+
         try {
             await deleteEmployee(employeeId, actorUid);
             toast({ title: "Sukces", description: "Pracownik został usunięty." });
@@ -850,17 +851,17 @@ export default function MainLayout({
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć wpisu z historii." });
         }
     }, [currentUser, refreshData, toast]);
-    
+
     const handleImportEmployees = useCallback(async (fileContent: string, settings: Settings) => {
         if (!currentUser) return;
         try {
             const result = await importEmployeesFromExcel(fileContent, currentUser.uid, settings);
-            
+
             let description = `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} wierszy.`;
             if (result.errors.length > 0) {
                 description += ` Błędy: ${result.errors.join('; ')}`;
             }
-            
+
             toast({
                 title: "Import zakończony",
                 description: description,
@@ -868,7 +869,7 @@ export default function MainLayout({
             });
             await refreshData(false);
         } catch (e) {
-             toast({
+            toast({
                 variant: "destructive",
                 title: "Błąd importu",
                 description: e instanceof Error ? e.message : 'Nieznany błąd serwera.'
@@ -885,7 +886,7 @@ export default function MainLayout({
                 if (result.errors.length > 0) {
                     description += ` Błędy: ${result.errors.join('; ')}`;
                 }
-                
+
                 toast({
                     title: "Import zakończony",
                     description: description,
@@ -909,7 +910,7 @@ export default function MainLayout({
             toast({ title: "Sukces", description: `Zmigrowano ${result.migratedEmployees} pracowników i ${result.migratedNonEmployees} mieszkańców.` });
             await refreshData(false);
         } catch (e) {
-             toast({
+            toast({
                 variant: "destructive",
                 title: "Błąd migracji",
                 description: e instanceof Error ? e.message : 'Nieznany błąd serwera.'
@@ -960,7 +961,7 @@ export default function MainLayout({
         pushSubscription,
         setPushSubscription,
         handleUpdateCoordinatorSubscription,
-    } ), [
+    }), [
         allEmployees,
         allNonEmployees,
         allBokResidents,
@@ -1013,102 +1014,101 @@ export default function MainLayout({
     }
 
     return (
-       <SidebarProvider>
-         <MainLayoutContext.Provider value={contextValue}>
-            <div className="flex h-screen w-full bg-muted/50">
-                <Sidebar>
-                    <SidebarHeader>
-                         <div className="flex items-center gap-3">
-                            <ModernHouseIcon className="h-7 w-7 text-primary" />
-                            <span className={cn("font-semibold text-xl whitespace-nowrap transition-all duration-300", "group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0")}>SmartHouse</span>
-                        </div>
-                    </SidebarHeader>
-                    <SidebarContent>
-                        <SidebarMenu>
-                            {visibleNavItems.map(item => (
-                                <SidebarMenuItem key={item.view}>
-                                    <Link href={`/dashboard?view=${item.view}`} legacyBehavior passHref>
-                                        <SidebarMenuButton
-                                            isActive={activeView === item.view}
-                                            tooltip={item.label}
-                                            aria-disabled={item.view === 'settings' && !currentUser?.isAdmin}
-                                            tabIndex={item.view === 'settings' && !currentUser?.isAdmin ? -1 : undefined}
-                                            className={item.view === 'settings' && !currentUser?.isAdmin ? 'opacity-50 pointer-events-none' : undefined}
-                                        >
-                                            <item.icon />
-                                            <span>{item.label}</span>
-                                        </SidebarMenuButton>
-                                    </Link>
-                                </SidebarMenuItem>
-                            ))}
-                        </SidebarMenu>
-                    </SidebarContent>
-                    <SidebarFooter>
-                    </SidebarFooter>
-                </Sidebar>
-                <div className="flex flex-1 flex-col">
-                    {currentUser && <Header 
-                        user={currentUser} 
-                        activeView={activeView} 
-                        notifications={allNotifications}
-                        settings={settings}
-                        onNotificationClick={handleNotificationClick} 
-                        onLogout={handleLogout} 
-                        onClearNotifications={handleClearNotifications}
-                        onDeleteNotification={handleDeleteNotification}
-                        onToggleNotificationReadStatus={handleToggleNotificationReadStatus}
-                    />}
-                    <main className="flex-1 overflow-y-auto px-2 sm:px-6 pb-20 sm:pb-6 pt-4">
-                        {children}
-                    </main>
+        <SidebarProvider>
+            <MainLayoutContext.Provider value={contextValue}>
+                <div className="flex h-screen w-full bg-muted/50">
+                    <Sidebar>
+                        <SidebarHeader>
+                            <div className="flex items-center gap-3">
+                                <ModernHouseIcon className="h-7 w-7 text-primary" />
+                                <span className={cn("font-semibold text-xl whitespace-nowrap transition-all duration-300", "group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0")}>SmartHouse</span>
+                            </div>
+                        </SidebarHeader>
+                        <SidebarContent>
+                            <SidebarMenu>
+                                {visibleNavItems.map(item => (
+                                    <SidebarMenuItem key={item.view}>
+                                        <Link href={`/dashboard?view=${item.view}`} legacyBehavior passHref>
+                                            <SidebarMenuButton
+                                                isActive={activeView === item.view}
+                                                tooltip={item.label}
+                                                aria-disabled={item.view === 'settings' && !currentUser?.isAdmin}
+                                                tabIndex={item.view === 'settings' && !currentUser?.isAdmin ? -1 : undefined}
+                                                className={item.view === 'settings' && !currentUser?.isAdmin ? 'opacity-50 pointer-events-none' : undefined}
+                                            >
+                                                <item.icon />
+                                                <span>{item.label}</span>
+                                            </SidebarMenuButton>
+                                        </Link>
+                                    </SidebarMenuItem>
+                                ))}
+                            </SidebarMenu>
+                        </SidebarContent>
+                        <SidebarFooter>
+                        </SidebarFooter>
+                    </Sidebar>
+                    <div className="flex flex-1 flex-col">
+                        {currentUser && <Header
+                            user={currentUser}
+                            activeView={activeView}
+                            notifications={allNotifications}
+                            settings={settings}
+                            onNotificationClick={handleNotificationClick}
+                            onLogout={handleLogout}
+                            onClearNotifications={handleClearNotifications}
+                            onDeleteNotification={handleDeleteNotification}
+                            onToggleNotificationReadStatus={handleToggleNotificationReadStatus}
+                        />}
+                        <main className="flex-1 overflow-y-auto px-2 sm:px-6 pb-20 sm:pb-6 pt-4">
+                            {children}
+                        </main>
+                    </div>
+
+                    {currentUser && <MobileNav activeView={activeView} navItems={visibleNavItems} currentUser={currentUser} />}
                 </div>
-                
-                {currentUser && <MobileNav activeView={activeView} navItems={visibleNavItems} currentUser={currentUser}/>}
-            </div>
-            
-            {rawSettings && currentUser && (
-                 <AddEmployeeForm
-                    isOpen={isFormOpen}
-                    onOpenChange={handleEmployeeFormOpenChange}
-                    onSave={handleSaveEmployee}
-                    settings={currentUser.isAdmin ? rawSettings : settings}
-                    employee={editingEmployee}
-                    initialData={initialEmployeeData}
-                    currentUser={currentUser}
-                />
-            )}
-            {rawSettings && currentUser && (
-                <AddNonEmployeeForm
-                    isOpen={isNonEmployeeFormOpen}
-                    onOpenChange={setIsNonEmployeeFormOpen}
-                    onSave={(data) => handleSaveNonEmployee(data as Omit<NonEmployee, 'id' | 'status'>)}
-                    settings={currentUser.isAdmin ? rawSettings : settings}
-                    nonEmployee={editingNonEmployee}
-                    currentUser={currentUser}
-                />
-            )}
-            {rawSettings && currentUser && (
-                <AddBokResidentForm
-                    isOpen={isBokResidentFormOpen}
-                    onOpenChange={setIsBokResidentFormOpen}
-                    onSave={handleSaveBokResident}
-                    settings={currentUser.isAdmin ? rawSettings : settings}
-                    resident={editingBokResident}
-                    currentUser={currentUser}
-                />
-            )}
-            {rawSettings && currentUser && (
-                <AddressForm
-                    isOpen={isAddressFormOpen}
-                    onOpenChange={setIsAddressFormOpen}
-                    onSave={handleSaveAddress}
-                    settings={rawSettings}
-                    address={editingAddress}
-                />
-            )}
-        </MainLayoutContext.Provider>
+
+                {rawSettings && currentUser && (
+                    <AddEmployeeForm
+                        isOpen={isFormOpen}
+                        onOpenChange={handleEmployeeFormOpenChange}
+                        onSave={handleSaveEmployee}
+                        settings={currentUser.isAdmin ? rawSettings : settings}
+                        employee={editingEmployee}
+                        initialData={initialEmployeeData}
+                        currentUser={currentUser}
+                    />
+                )}
+                {rawSettings && currentUser && (
+                    <AddNonEmployeeForm
+                        isOpen={isNonEmployeeFormOpen}
+                        onOpenChange={setIsNonEmployeeFormOpen}
+                        onSave={(data) => handleSaveNonEmployee(data as Omit<NonEmployee, 'id' | 'status'>)}
+                        settings={currentUser.isAdmin ? rawSettings : settings}
+                        nonEmployee={editingNonEmployee}
+                        currentUser={currentUser}
+                    />
+                )}
+                {rawSettings && currentUser && (
+                    <AddBokResidentForm
+                        isOpen={isBokResidentFormOpen}
+                        onOpenChange={setIsBokResidentFormOpen}
+                        onSave={handleSaveBokResident}
+                        settings={currentUser.isAdmin ? rawSettings : settings}
+                        resident={editingBokResident}
+                        currentUser={currentUser}
+                    />
+                )}
+                {rawSettings && currentUser && (
+                    <AddressForm
+                        isOpen={isAddressFormOpen}
+                        onOpenChange={setIsAddressFormOpen}
+                        onSave={handleSaveAddress}
+                        settings={rawSettings}
+                        address={editingAddress}
+                    />
+                )}
+            </MainLayoutContext.Provider>
         </SidebarProvider>
     );
 }
 
-    

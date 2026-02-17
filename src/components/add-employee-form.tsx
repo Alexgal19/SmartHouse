@@ -569,17 +569,7 @@ export function AddEmployeeForm({
       return;
     }
 
-    // Validate chronology
-    if (employee.checkInDate) {
-      const checkInDate = parseISO(employee.checkInDate);
-      if (isValid(checkInDate) && checkOutDate < checkInDate) {
-        form.setError('checkOutDate', {
-          type: 'manual',
-          message: 'Data wymeldowania nie może być wcześniejsza niż data zameldowania.',
-        });
-        return;
-      }
-    }
+
 
     // update the checkout date first
     const values = form.getValues();
