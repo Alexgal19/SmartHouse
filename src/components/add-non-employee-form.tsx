@@ -1,5 +1,6 @@
 
 
+// DESIGN LOCKED: The layout and styling of this form, especially the footer buttons, is finalized (2026-02-17). Do not modify unless strictly necessary for new functionality.
 "use client";
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
@@ -86,9 +87,9 @@ type NonEmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'che
 };
 
 const parseDate = (dateString: string | null | undefined): Date | null => {
-    if (!dateString) return null;
-    const date = parseISO(dateString);
-    return isValid(date) ? date : null;
+  if (!dateString) return null;
+  const date = parseISO(dateString);
+  return isValid(date) ? date : null;
 };
 
 const DateInput = ({
@@ -151,9 +152,9 @@ const DateInput = ({
           />
           <div className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 flex items-center">
             {value ? (
-                <X className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-pointer" onClick={handleClear}/>
+              <X className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-pointer" onClick={handleClear} />
             ) : (
-                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+              <CalendarIcon className="h-4 w-4 text-muted-foreground" />
             )}
           </div>
         </div>
@@ -230,60 +231,60 @@ export function AddNonEmployeeForm({
   const selectedAddress = form.watch('address');
 
   const coordinatorOptions = useMemo(() => {
-     return settings.coordinators
+    return settings.coordinators
       .map(c => ({ value: c.uid, label: c.name }))
-      .sort((a,b) => a.label.localeCompare(b.label));
-  },[settings.coordinators]);
-  
-  const nationalityOptions = useMemo(() => 
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [settings.coordinators]);
+
+  const nationalityOptions = useMemo(() =>
     settings.nationalities.map(n => ({ value: n, label: n })).sort((a, b) => a.label.localeCompare(b.label)),
-  [settings.nationalities]);
-  
-  const genderOptions = useMemo(() => 
+    [settings.nationalities]);
+
+  const genderOptions = useMemo(() =>
     settings.genders.sort((a, b) => a.localeCompare(b)),
-  [settings.genders]);
-  
+    [settings.genders]);
+
   const paymentTypesNZOptions = useMemo(() =>
-    settings.paymentTypesNZ.filter(Boolean).map(p => ({ value: p, label: p })).sort((a,b) => a.label.localeCompare(b.label)),
-  [settings.paymentTypesNZ]);
+    settings.paymentTypesNZ.filter(Boolean).map(p => ({ value: p, label: p })).sort((a, b) => a.label.localeCompare(b.label)),
+    [settings.paymentTypesNZ]);
 
-    const availableLocalities = useMemo(() => {
-        if (!settings) return [];
-        let userAddresses = settings.addresses;
-        if (selectedCoordinatorId) {
-            userAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
-        } else if (!currentUser.isAdmin) {
-            userAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(currentUser.uid));
-        }
-        
-        const localities = [...new Set(userAddresses.map(a => a.locality))];
-        return localities.sort((a,b) => a.localeCompare(b));
-    }, [settings, currentUser, selectedCoordinatorId]);
+  const availableLocalities = useMemo(() => {
+    if (!settings) return [];
+    let userAddresses = settings.addresses;
+    if (selectedCoordinatorId) {
+      userAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
+    } else if (!currentUser.isAdmin) {
+      userAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(currentUser.uid));
+    }
 
-    const availableAddresses = useMemo(() => {
-        if (!settings) return [];
-        let userAddresses = settings.addresses;
-        if (selectedCoordinatorId) {
-            userAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
-        } else if (!currentUser.isAdmin) {
-            userAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(currentUser.uid));
-        }
-        
-        if (!selectedLocality) return userAddresses;
+    const localities = [...new Set(userAddresses.map(a => a.locality))];
+    return localities.sort((a, b) => a.localeCompare(b));
+  }, [settings, currentUser, selectedCoordinatorId]);
 
-        const filtered = userAddresses.filter(a => a.locality === selectedLocality);
-        return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
-    }, [settings, selectedLocality, currentUser, selectedCoordinatorId]);
+  const availableAddresses = useMemo(() => {
+    if (!settings) return [];
+    let userAddresses = settings.addresses;
+    if (selectedCoordinatorId) {
+      userAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
+    } else if (!currentUser.isAdmin) {
+      userAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(currentUser.uid));
+    }
+
+    if (!selectedLocality) return userAddresses;
+
+    const filtered = userAddresses.filter(a => a.locality === selectedLocality);
+    return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
+  }, [settings, selectedLocality, currentUser, selectedCoordinatorId]);
 
   const availableRooms = useMemo(() => {
     const rooms = settings.addresses.find(a => a.name === selectedAddress)?.rooms || [];
-    return [...rooms].sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    return [...rooms].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
   }, [settings.addresses, selectedAddress]);
 
   useEffect(() => {
     if (nonEmployee) {
-        const neAddress = settings.addresses.find(a => a.name === nonEmployee.address);
-        const neLocality = neAddress ? neAddress.locality : '';
+      const neAddress = settings.addresses.find(a => a.name === nonEmployee.address);
+      const neLocality = neAddress ? neAddress.locality : '';
       form.reset({
         ...nonEmployee,
         locality: neLocality,
@@ -349,8 +350,8 @@ export function AddNonEmployeeForm({
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     const formatDate = (date: Date | null | undefined): string | null => {
-        if (!date) return null;
-        return format(date, 'yyyy-MM-dd');
+      if (!date) return null;
+      return format(date, 'yyyy-MM-dd');
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -365,13 +366,13 @@ export function AddNonEmployeeForm({
     };
 
     try {
-        await onSave(formData);
-        onOpenChange(false);
+      await onSave(formData);
+      onOpenChange(false);
     } catch (e) {
-        console.error('Form submission failed:', e);
+      console.error('Form submission failed:', e);
     }
   };
-  
+
   const handleCoordinatorChange = (value: string) => {
     form.setValue('coordinatorId', value);
     form.setValue('locality', '');
@@ -394,401 +395,401 @@ export function AddNonEmployeeForm({
     if (!nonEmployee || isDismissing) return;
 
     const checkOutDate = form.getValues('checkOutDate');
-    
+
     // Validate type and existence
     if (!checkOutDate || !(checkOutDate instanceof Date) || !isValid(checkOutDate)) {
-        form.setError('checkOutDate', {
-            type: 'manual',
-            message: 'Data wymeldowania jest wymagana i musi być poprawna, aby zwolnić mieszkańca.',
-        });
-        return;
+      form.setError('checkOutDate', {
+        type: 'manual',
+        message: 'Data wymeldowania jest wymagana i musi być poprawna, aby zwolnić mieszkańca.',
+      });
+      return;
     }
-    
+
     // Validate chronology
     if (nonEmployee.checkInDate) {
-        const checkInDate = parseISO(nonEmployee.checkInDate);
-        if (isValid(checkInDate) && checkOutDate < checkInDate) {
-            form.setError('checkOutDate', {
-                type: 'manual',
-                message: 'Data wymeldowania nie może być wcześniejsza niż data zameldowania.',
-            });
-            return;
-        }
+      const checkInDate = parseISO(nonEmployee.checkInDate);
+      if (isValid(checkInDate) && checkOutDate < checkInDate) {
+        form.setError('checkOutDate', {
+          type: 'manual',
+          message: 'Data wymeldowania nie może być wcześniejsza niż data zameldowania.',
+        });
+        return;
+      }
     }
-    
+
     setIsDismissing(true);
     try {
-        const values = form.getValues();
-        const formatDateFn = (date: Date | null | undefined): string | null => {
-            if (!date) return null;
-            return format(date, 'yyyy-MM-dd');
-        }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { locality, ...restOfValues } = values;
-        const formData: NonEmployeeFormData = {
-            ...restOfValues,
-            checkInDate: formatDateFn(values.checkInDate),
-            checkOutDate: formatDateFn(values.checkOutDate),
-            departureReportDate: formatDateFn(values.departureReportDate),
-        };
-        await onSave(formData);
-        await handleDismissNonEmployee(nonEmployee.id, checkOutDate);
-        onOpenChange(false);
+      const values = form.getValues();
+      const formatDateFn = (date: Date | null | undefined): string | null => {
+        if (!date) return null;
+        return format(date, 'yyyy-MM-dd');
+      }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { locality, ...restOfValues } = values;
+      const formData: NonEmployeeFormData = {
+        ...restOfValues,
+        checkInDate: formatDateFn(values.checkInDate),
+        checkOutDate: formatDateFn(values.checkOutDate),
+        departureReportDate: formatDateFn(values.departureReportDate),
+      };
+      await onSave(formData);
+      await handleDismissNonEmployee(nonEmployee.id, checkOutDate);
+      onOpenChange(false);
     } catch (e) {
-        console.error('Dismiss failed:', e);
+      console.error('Dismiss failed:', e);
     } finally {
-        setIsDismissing(false);
+      setIsDismissing(false);
     }
   };
 
   return (
     <>
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
-        <DialogHeader>
-          <div className="flex justify-between items-start">
-            <div>
-              <DialogTitle>{nonEmployee ? 'Edytuj dane mieszkańca (NZ)' : 'Dodaj nowego mieszkańca (NZ)'}</DialogTitle>
-              <DialogDescription>
-                Wypełnij poniższe pola, aby {nonEmployee ? 'zaktualizować' : 'dodać'} mieszkańca.
-              </DialogDescription>
+      <Dialog open={isOpen} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-[95vw] sm:max-w-xl h-[90vh] max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
+          <DialogHeader className="p-4 sm:p-6 pb-2 sm:pb-4 flex-shrink-0">
+            <div className="flex justify-between items-start">
+              <div>
+                <DialogTitle>{nonEmployee ? 'Edytuj dane mieszkańca (NZ)' : 'Dodaj nowego mieszkańca (NZ)'}</DialogTitle>
+                <DialogDescription>
+                  Wypełnij poniższe pola, aby {nonEmployee ? 'zaktualizować' : 'dodać'} mieszkańca.
+                </DialogDescription>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsAddressPreviewOpen(true)}
+                  type="button"
+                  className="h-8 text-xs sm:text-sm px-3"
+                >
+                  <Eye className="mr-2 h-3 w-3" />
+                  Podgląd miejsc
+                </Button>
+                <Button variant="outline" onClick={handleOpenCamera} disabled={isScanning} type="button" className="h-8 text-xs sm:text-sm px-3">
+                  {isScanning ? (
+                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                  ) : (
+                    <Camera className="mr-2 h-3 w-3" />
+                  )}
+                  Zrób zdjęcie paszportu
+                </Button>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setIsAddressPreviewOpen(true)}
-                type="button"
-              >
-                <Eye className="mr-2 h-4 w-4" />
-                Podgląd miejsc
-              </Button>
-              <Button variant="outline" onClick={handleOpenCamera} disabled={isScanning} type="button">
-                {isScanning ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Camera className="mr-2 h-4 w-4" />
-                )}
-                Zrób zdjęcie paszportu
-              </Button>
-            </div>
-          </div>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <ScrollArea className="h-[65vh] p-1 mt-4">
-              <div className="space-y-4 px-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+              <ScrollArea className="flex-1 mt-4">
+                <div className="space-y-4 px-4 sm:px-6 pb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="lastName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nazwisko</FormLabel>
+                          <FormControl><Input placeholder="Nowak" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="firstName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Imię</FormLabel>
+                          <FormControl><Input placeholder="Anna" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
                   <FormField
                     control={form.control}
-                    name="lastName"
+                    name="coordinatorId"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nazwisko</FormLabel>
-                        <FormControl><Input placeholder="Nowak" {...field} /></FormControl>
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Koordynator</FormLabel>
+                        <FormControl>
+                          <Combobox
+                            options={coordinatorOptions}
+                            value={field.value}
+                            onChange={handleCoordinatorChange}
+                            placeholder="Wybierz koordynatora"
+                            searchPlaceholder="Szukaj koordynatora..."
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="nationality"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Narodowość</FormLabel>
+                          <FormControl>
+                            <Combobox
+                              options={nationalityOptions}
+                              value={field.value || ''}
+                              onChange={field.onChange}
+                              placeholder="Wybierz narodowość"
+                              searchPlaceholder="Szukaj narodowości..."
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="gender"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Płeć</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || ''}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz płeć" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              {genderOptions.filter(Boolean).map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="locality"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Miejscowość</FormLabel>
+                          <Select onValueChange={handleLocalityChange} value={field.value || ''}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz miejscowość" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              {availableLocalities.filter(Boolean).map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="address"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Adres</FormLabel>
+                          <Select onValueChange={handleAddressChange} value={field.value || ''} disabled={!selectedLocality}>
+                            <FormControl><SelectTrigger><SelectValue placeholder={!selectedLocality ? "Najpierw wybierz miejscowość" : "Wybierz adres"} /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              {availableAddresses.filter(a => a.name).map(a => (
+                                <SelectItem key={a.id} value={a.name} disabled={!a.isActive}>
+                                  {a.name} {!a.isActive ? '(Niedostępny)' : ''}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="roomNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Pokój</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || ''} disabled={!selectedAddress}>
+                            <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : "Wybierz pokój"} /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              {availableRooms.filter(r => r.name).map(r => (
+                                <SelectItem key={r.id} value={r.name} disabled={!r.isActive || r.isLocked}>
+                                  {r.name} {r.isActive ? (r.isLocked ? '(Zablokowany)' : `(Pojemność: ${r.capacity})`) : '(Niedostępny)'}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="paymentType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Rodzaj płatności NZ</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || ''}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz rodzaj płatności" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              {paymentTypesNZOptions.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="paymentAmount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Kwota</FormLabel>
+                          <FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))} value={field.value ?? ''} placeholder="PLN" /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="checkInDate"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Data zameldowania</FormLabel>
+                          <FormControl>
+                            <DateInput
+                              value={field.value}
+                              onChange={field.onChange}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="checkOutDate"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Data wymeldowania</FormLabel>
+                          <FormControl>
+                            <DateInput value={field.value} onChange={d => field.onChange(d)} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="departureReportDate"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Data zgłoszenia wyjazdu</FormLabel>
+                          <FormControl>
+                            <DateInput value={field.value} onChange={d => field.onChange(d)} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
                   <FormField
                     control={form.control}
-                    name="firstName"
+                    name="comments"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Imię</FormLabel>
-                        <FormControl><Input placeholder="Anna" {...field} /></FormControl>
+                        <FormLabel>Komentarze</FormLabel>
+                        <FormControl><Input placeholder="Dodatkowe informacje..." {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
-                
-              <FormField
-                  control={form.control}
-                  name="coordinatorId"
-                  render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                      <FormLabel>Koordynator</FormLabel>
-                      <FormControl>
-                          <Combobox
-                              options={coordinatorOptions}
-                              value={field.value}
-                              onChange={handleCoordinatorChange}
-                              placeholder="Wybierz koordynatora"
-                              searchPlaceholder="Szukaj koordynatora..."
-                          />
-                      </FormControl>
-                      <FormMessage />
-                  </FormItem>
-                  )}
-              />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                      control={form.control}
-                      name="nationality"
-                      render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                          <FormLabel>Narodowość</FormLabel>
-                          <FormControl>
-                              <Combobox
-                                  options={nationalityOptions}
-                                  value={field.value || ''}
-                                  onChange={field.onChange}
-                                  placeholder="Wybierz narodowość"
-                                  searchPlaceholder="Szukaj narodowości..."
-                              />
-                          </FormControl>
-                          <FormMessage />
-                      </FormItem>
-                      )}
-                  />
-                  <FormField
-                      control={form.control}
-                      name="gender"
-                      render={({ field }) => (
-                      <FormItem>
-                          <FormLabel>Płeć</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value || ''}>
-                          <FormControl><SelectTrigger><SelectValue placeholder="Wybierz płeć" /></SelectTrigger></FormControl>
-                          <SelectContent>
-                              {genderOptions.filter(Boolean).map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-                          </SelectContent>
-                          </Select>
-                          <FormMessage />
-                      </FormItem>
-                      )}
-                  />
-              </div>
-
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                      control={form.control}
-                      name="locality"
-                      render={({ field }) => (
-                      <FormItem>
-                          <FormLabel>Miejscowość</FormLabel>
-                          <Select onValueChange={handleLocalityChange} value={field.value || ''}>
-                              <FormControl><SelectTrigger><SelectValue placeholder="Wybierz miejscowość" /></SelectTrigger></FormControl>
-                              <SelectContent>
-                                  {availableLocalities.filter(Boolean).map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-                              </SelectContent>
-                          </Select>
-                          <FormMessage />
-                      </FormItem>
-                      )}
-                  />
-                  <FormField
-                      control={form.control}
-                      name="address"
-                      render={({ field }) => (
-                      <FormItem>
-                          <FormLabel>Adres</FormLabel>
-                          <Select onValueChange={handleAddressChange} value={field.value || ''} disabled={!selectedLocality}>
-                              <FormControl><SelectTrigger><SelectValue placeholder={!selectedLocality ? "Najpierw wybierz miejscowość" : "Wybierz adres"} /></SelectTrigger></FormControl>
-                              <SelectContent>
-                                  {availableAddresses.filter(a => a.name).map(a => (
-                                      <SelectItem key={a.id} value={a.name} disabled={!a.isActive}>
-                                          {a.name} {!a.isActive ? '(Niedostępny)' : ''}
-                                      </SelectItem>
-                                  ))}
-                              </SelectContent>
-                          </Select>
-                          <FormMessage />
-                      </FormItem>
-                      )}
-                  />
-                  <FormField
-                      control={form.control}
-                      name="roomNumber"
-                      render={({ field }) => (
-                      <FormItem>
-                          <FormLabel>Pokój</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value || ''} disabled={!selectedAddress}>
-                          <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : "Wybierz pokój"} /></SelectTrigger></FormControl>
-                          <SelectContent>
-                              {availableRooms.filter(r => r.name).map(r => (
-                                  <SelectItem key={r.id} value={r.name} disabled={!r.isActive || r.isLocked}>
-                                      {r.name} {r.isActive ? (r.isLocked ? '(Zablokowany)' : `(Pojemność: ${r.capacity})`) : '(Niedostępny)'}
-                                  </SelectItem>
-                              ))}
-                          </SelectContent>
-                          </Select>
-                          <FormMessage />
-                      </FormItem>
-                      )}
-                  />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                      control={form.control}
-                      name="paymentType"
-                      render={({ field }) => (
-                      <FormItem>
-                          <FormLabel>Rodzaj płatności NZ</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value || ''}>
-                          <FormControl><SelectTrigger><SelectValue placeholder="Wybierz rodzaj płatności" /></SelectTrigger></FormControl>
-                          <SelectContent>
-                              {paymentTypesNZOptions.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
-                          </SelectContent>
-                          </Select>
-                          <FormMessage />
-                      </FormItem>
-                      )}
-                  />
-                  <FormField
-                      control={form.control}
-                      name="paymentAmount"
-                      render={({ field }) => (
-                      <FormItem>
-                          <FormLabel>Kwota</FormLabel>
-                          <FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))} value={field.value ?? ''} placeholder="PLN" /></FormControl>
-                          <FormMessage />
-                      </FormItem>
-                      )}
-                  />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                      control={form.control}
-                      name="checkInDate"
-                      render={({ field }) => (
-                          <FormItem className="flex flex-col">
-                              <FormLabel>Data zameldowania</FormLabel>
-                              <FormControl>
-                                  <DateInput
-                                      value={field.value}
-                                      onChange={field.onChange}
-                                  />
-                              </FormControl>
-                              <FormMessage />
-                          </FormItem>
-                      )}
-                      />
-                  <FormField
-                      control={form.control}
-                      name="checkOutDate"
-                      render={({ field }) => (
-                          <FormItem className="flex flex-col">
-                              <FormLabel>Data wymeldowania</FormLabel>
-                              <FormControl>
-                                  <DateInput value={field.value} onChange={d => field.onChange(d)} />
-                              </FormControl>
-                              <FormMessage />
-                          </FormItem>
-                      )}
-                      />
-                  <FormField
-                      control={form.control}
-                      name="departureReportDate"
-                      render={({ field }) => (
-                          <FormItem className="flex flex-col">
-                              <FormLabel>Data zgłoszenia wyjazdu</FormLabel>
-                              <FormControl>
-                                  <DateInput value={field.value} onChange={d => field.onChange(d)} />
-                              </FormControl>
-                              <FormMessage />
-                          </FormItem>
-                      )}
-                      />
-              </div>
-              
-              <FormField
-                  control={form.control}
-                  name="comments"
-                  render={({ field }) => (
-                  <FormItem>
-                      <FormLabel>Komentarze</FormLabel>
-                      <FormControl><Input placeholder="Dodatkowe informacje..." {...field} /></FormControl>
-                      <FormMessage />
-                  </FormItem>
-                  )}
-              />
-            </div>
-            </ScrollArea>
-            <DialogFooter className="p-6 pt-4 flex flex-row justify-between">
-                <div>
+              </ScrollArea>
+              <div className="p-4 sm:p-6 pt-4 flex-shrink-0 flex flex-row items-center justify-between gap-3 bg-background border-t mt-auto">
+                <div className="flex justify-start">
                   {nonEmployee && nonEmployee.status === 'active' && (
-                      <Button type="button" variant="destructive" onClick={handleDismissClick}>
-                          Zwolnij
-                      </Button>
+                    <Button type="button" variant="destructive" onClick={handleDismissClick} className="h-8 text-xs sm:text-sm px-3 sm:px-4">
+                      Zwolnij
+                    </Button>
                   )}
-              </div>
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                </div>
+                <div className="flex flex-row gap-2">
+                  <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="h-8 text-xs sm:text-sm px-3 sm:px-4">
                     Anuluj
-                </Button>
-                <Button type="submit" disabled={form.formState.isSubmitting}>
-                    {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  </Button>
+                  <Button type="submit" disabled={form.formState.isSubmitting} className="h-8 text-xs sm:text-sm px-3 sm:px-4">
+                    {form.formState.isSubmitting && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
                     Zapisz
-                </Button>
+                  </Button>
+                </div>
               </div>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
-    <Dialog open={isCameraOpen} onOpenChange={handleCloseCamera}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Zrób zdjęcie paszportu</DialogTitle>
-          <DialogDescription>
-            Umieść paszport w kadrze i zrób zdjęcie.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col items-center space-y-4">
-          <Webcam
-            ref={webcamRef}
-            audio={false}
-            screenshotFormat="image/jpeg"
-            videoConstraints={{ facingMode: 'environment' }}
-            className="w-full max-w-sm rounded-lg border"
-            onUserMediaError={(err: unknown) => console.error("Webcam error:", err)}
-            mirrored={false}
-            forceScreenshotSourceSize
-            imageSmoothing
-            disablePictureInPicture
-            onUserMedia={(stream) => {
-              streamRef.current = stream;
-            }}
-            screenshotQuality={0.92}
-          />
-          <div className="flex gap-2">
-            <Button onClick={handleCapture} disabled={isScanning}>
-              {isScanning ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Camera className="mr-2 h-4 w-4" />
-              )}
-              Zrób zdjęcie
-            </Button>
-            <Button variant="outline" onClick={handleCloseCamera}>
-              Anuluj
-            </Button>
+      <Dialog open={isCameraOpen} onOpenChange={handleCloseCamera}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Zrób zdjęcie paszportu</DialogTitle>
+            <DialogDescription>
+              Umieść paszport w kadrze i zrób zdjęcie.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center space-y-4">
+            <Webcam
+              ref={webcamRef}
+              audio={false}
+              screenshotFormat="image/jpeg"
+              videoConstraints={{ facingMode: 'environment' }}
+              className="w-full max-w-sm rounded-lg border"
+              onUserMediaError={(err: unknown) => console.error("Webcam error:", err)}
+              mirrored={false}
+              forceScreenshotSourceSize
+              imageSmoothing
+              disablePictureInPicture
+              onUserMedia={(stream) => {
+                streamRef.current = stream;
+              }}
+              screenshotQuality={0.92}
+            />
+            <div className="flex gap-2">
+              <Button onClick={handleCapture} disabled={isScanning}>
+                {isScanning ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Camera className="mr-2 h-4 w-4" />
+                )}
+                Zrób zdjęcie
+              </Button>
+              <Button variant="outline" onClick={handleCloseCamera}>
+                Anuluj
+              </Button>
+            </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
 
-    <AddressPreviewDialog
-      isOpen={isAddressPreviewOpen}
-      onOpenChange={setIsAddressPreviewOpen}
-      settings={settings}
-      allEmployees={allEmployees}
-      allNonEmployees={allNonEmployees}
-      coordinatorId={selectedCoordinatorId}
-      onApplySelection={(locality, address, roomNumber) => {
-        form.setValue('locality', locality);
-        form.setValue('address', address);
-        form.setValue('roomNumber', roomNumber);
-        toast({
-          title: "Wybór zastosowany",
-          description: `${address}, pokój ${roomNumber} został wybrany.`
-        });
-      }}
-    />
+      <AddressPreviewDialog
+        isOpen={isAddressPreviewOpen}
+        onOpenChange={setIsAddressPreviewOpen}
+        settings={settings}
+        allEmployees={allEmployees}
+        allNonEmployees={allNonEmployees}
+        coordinatorId={selectedCoordinatorId}
+        onApplySelection={(locality, address, roomNumber) => {
+          form.setValue('locality', locality);
+          form.setValue('address', address);
+          form.setValue('roomNumber', roomNumber);
+          toast({
+            title: "Wybór zastosowany",
+            description: `${address}, pokój ${roomNumber} został wybrany.`
+          });
+        }}
+      />
     </>
   );
 }
 
-    

@@ -1,0 +1,3600 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - navigation [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e7]:
+            - img [ref=e8]
+            - generic [ref=e11]: SmartHouse
+          - button [ref=e12] [cursor=pointer]:
+            - img [ref=e13]
+        - list [ref=e16]:
+          - listitem [ref=e17]:
+            - link "Pulpit" [ref=e18]:
+              - /url: /dashboard?view=dashboard
+              - img [ref=e20]
+              - generic [ref=e23]: Pulpit
+          - listitem [ref=e24]:
+            - link "Mieszkańcy" [ref=e25]:
+              - /url: /dashboard?view=employees
+              - img [ref=e27]
+              - generic [ref=e32]: Mieszkańcy
+          - listitem [ref=e33]:
+            - link "Zakwaterowanie" [ref=e34]:
+              - /url: /dashboard?view=housing
+              - img [ref=e36]
+              - generic [ref=e39]: Zakwaterowanie
+          - listitem [ref=e40]:
+            - link "Ustawienia" [ref=e41]:
+              - /url: /dashboard?view=settings
+              - img [ref=e43]
+              - generic [ref=e46]: Ustawienia
+    - generic [ref=e48]:
+      - banner [ref=e49]:
+        - generic [ref=e50]:
+          - img [ref=e51]
+          - heading "SmartHouse" [level=1] [ref=e54]
+        - generic [ref=e55]:
+          - button "77" [ref=e56] [cursor=pointer]:
+            - img [ref=e57]
+            - generic [ref=e60]: "77"
+          - button [ref=e61] [cursor=pointer]:
+            - img [ref=e62]
+      - main [ref=e65]:
+        - generic [ref=e66]:
+          - generic [ref=e67]:
+            - generic [ref=e68]:
+              - heading "Ustawienia aplikacji" [level=3] [ref=e69]
+              - paragraph [ref=e70]: Zarządzaj globalnymi ustawieniami aplikacji, takimi jak listy, adresy i koordynatorzy.
+            - generic [ref=e72]:
+              - generic [ref=e73]:
+                - heading "Zarządzanie listami" [level=3] [ref=e75]:
+                  - button "Zarządzanie listami" [ref=e76] [cursor=pointer]:
+                    - text: Zarządzanie listami
+                    - img [ref=e77]
+                - heading "Zarządzanie koordynatorami" [level=3] [ref=e80]:
+                  - button "Zarządzanie koordynatorami" [ref=e81] [cursor=pointer]:
+                    - text: Zarządzanie koordynatorami
+                    - img [ref=e82]
+                - generic [ref=e84]:
+                  - heading "Zarządzanie adresami" [level=3] [ref=e85]:
+                    - button "Zarządzanie adresami" [expanded] [ref=e86] [cursor=pointer]:
+                      - text: Zarządzanie adresami
+                      - img [ref=e87]
+                  - region "Zarządzanie adresami" [ref=e89]:
+                    - generic [ref=e91]:
+                      - generic [ref=e92]:
+                        - heading "Adresy i pokoje" [level=3] [ref=e93]
+                        - generic [ref=e94]:
+                          - textbox "Szukaj adresu..." [ref=e95]
+                          - combobox [ref=e96] [cursor=pointer]:
+                            - generic: Wszystkie miejscowości
+                            - img [ref=e97]
+                          - combobox [ref=e99]
+                          - combobox [ref=e100] [cursor=pointer]:
+                            - generic: Wszyscy koordynatorzy
+                            - img [ref=e101]
+                          - combobox [ref=e103]
+                          - button "Dodaj" [ref=e104] [cursor=pointer]:
+                            - img [ref=e105]
+                            - text: Dodaj
+                      - generic [ref=e107]:
+                        - generic [ref=e108]:
+                          - generic [ref=e109]:
+                            - generic [ref=e110]:
+                              - paragraph [ref=e111]:
+                                - text: Os. XXlecia 24/6
+                                - generic [ref=e112]: (Ząbkowice Śląskie)
+                              - paragraph [ref=e113]: Hetman Yevhen, 3 pokoi, 4/6 miejsc
+                            - generic [ref=e114]:
+                              - button [ref=e115] [cursor=pointer]:
+                                - img [ref=e116]
+                              - button [ref=e119] [cursor=pointer]:
+                                - img [ref=e120]
+                          - generic [ref=e123]:
+                            - progressbar [ref=e124]
+                            - generic [ref=e126]: 67%
+                        - generic [ref=e127]:
+                          - generic [ref=e128]:
+                            - generic [ref=e129]:
+                              - paragraph [ref=e130]:
+                                - text: .1 Maja 17
+                                - generic [ref=e131]: (Oborniki)
+                              - paragraph [ref=e132]: Kalashnyk Oleksandr, 5 pokoi, 11/14 miejsc
+                            - generic [ref=e133]:
+                              - button [ref=e134] [cursor=pointer]:
+                                - img [ref=e135]
+                              - button [ref=e138] [cursor=pointer]:
+                                - img [ref=e139]
+                          - generic [ref=e142]:
+                            - progressbar [ref=e143]
+                            - generic [ref=e145]: 79%
+                        - generic [ref=e146]:
+                          - generic [ref=e147]:
+                            - generic [ref=e148]:
+                              - paragraph [ref=e149]:
+                                - text: 1 Maja 8/15
+                                - generic [ref=e150]: (Oława)
+                              - paragraph [ref=e151]: Khayal, 2 pokoi, 4/4 miejsc
+                            - generic [ref=e152]:
+                              - button [ref=e153] [cursor=pointer]:
+                                - img [ref=e154]
+                              - button [ref=e157] [cursor=pointer]:
+                                - img [ref=e158]
+                          - generic [ref=e161]:
+                            - progressbar [ref=e162]
+                            - generic [ref=e164]: 100%
+                        - generic [ref=e165]:
+                          - generic [ref=e166]:
+                            - generic [ref=e167]:
+                              - paragraph [ref=e168]:
+                                - text: 1 Maja 9/3 (Oława)
+                                - generic [ref=e169]: (Oława)
+                              - paragraph [ref=e170]: Khayal, 3 pokoi, 6/7 miejsc
+                            - generic [ref=e171]:
+                              - button [ref=e172] [cursor=pointer]:
+                                - img [ref=e173]
+                              - button [ref=e176] [cursor=pointer]:
+                                - img [ref=e177]
+                          - generic [ref=e180]:
+                            - progressbar [ref=e181]
+                            - generic [ref=e183]: 86%
+                        - generic [ref=e184]:
+                          - generic [ref=e185]:
+                            - generic [ref=e186]:
+                              - paragraph [ref=e187]:
+                                - text: 1go Maja 40
+                                - generic [ref=e188]: (Kożuchów)
+                              - paragraph [ref=e189]: Melnychuk Roman, 1 pokoi, 5/5 miejsc
+                            - generic [ref=e190]:
+                              - button [ref=e191] [cursor=pointer]:
+                                - img [ref=e192]
+                              - button [ref=e195] [cursor=pointer]:
+                                - img [ref=e196]
+                          - generic [ref=e199]:
+                            - progressbar [ref=e200]
+                            - generic [ref=e202]: 100%
+                        - generic [ref=e203]:
+                          - generic [ref=e204]:
+                            - generic [ref=e205]:
+                              - paragraph [ref=e206]:
+                                - text: 3 maja 10/15
+                                - generic [ref=e207]: (Oława)
+                              - paragraph [ref=e208]: Khayal, 4 pokoi, 4/8 miejsc
+                            - generic [ref=e209]:
+                              - button [ref=e210] [cursor=pointer]:
+                                - img [ref=e211]
+                              - button [ref=e214] [cursor=pointer]:
+                                - img [ref=e215]
+                          - generic [ref=e218]:
+                            - progressbar [ref=e219]
+                            - generic [ref=e221]: 50%
+                        - generic [ref=e222]:
+                          - generic [ref=e223]:
+                            - generic [ref=e224]:
+                              - paragraph [ref=e225]:
+                                - text: 9 Maja 4/11
+                                - generic [ref=e226]: (Rawa Mazowiecka)
+                              - paragraph [ref=e227]: Beqa Darbaidze, Zaiats Yevhenii, 3 pokoi, 8/8 miejsc
+                            - generic [ref=e228]:
+                              - button [ref=e229] [cursor=pointer]:
+                                - img [ref=e230]
+                              - button [ref=e233] [cursor=pointer]:
+                                - img [ref=e234]
+                          - generic [ref=e237]:
+                            - progressbar [ref=e238]
+                            - generic [ref=e240]: 100%
+                        - generic [ref=e241]:
+                          - generic [ref=e242]:
+                            - generic [ref=e243]:
+                              - paragraph [ref=e244]:
+                                - text: Adelajdy 62/1
+                                - generic [ref=e245]: (Strumień)
+                              - paragraph [ref=e246]: Holiadynets Oleksandr, 12 pokoi, 46/47 miejsc
+                            - generic [ref=e247]:
+                              - button [ref=e248] [cursor=pointer]:
+                                - img [ref=e249]
+                              - button [ref=e252] [cursor=pointer]:
+                                - img [ref=e253]
+                          - generic [ref=e256]:
+                            - progressbar [ref=e257]
+                            - generic [ref=e259]: 98%
+                        - generic [ref=e260]:
+                          - generic [ref=e261]:
+                            - generic [ref=e262]:
+                              - paragraph [ref=e263]:
+                                - text: Antonińska 2b
+                                - generic [ref=e264]: (Leszno)
+                              - paragraph [ref=e265]: Kalashnyk Oleksandr, 7 pokoi, 17/17 miejsc
+                            - generic [ref=e266]:
+                              - button [ref=e267] [cursor=pointer]:
+                                - img [ref=e268]
+                              - button [ref=e271] [cursor=pointer]:
+                                - img [ref=e272]
+                          - generic [ref=e275]:
+                            - progressbar [ref=e276]
+                            - generic [ref=e278]: 100%
+                        - generic [ref=e279]:
+                          - generic [ref=e280]:
+                            - generic [ref=e281]:
+                              - paragraph [ref=e282]:
+                                - text: Armii Krajowej 21/45
+                                - generic [ref=e283]: (Oborniki)
+                              - paragraph [ref=e284]: Kalashnyk Oleksandr, 2 pokoi, 5/5 miejsc
+                            - generic [ref=e285]:
+                              - button [ref=e286] [cursor=pointer]:
+                                - img [ref=e287]
+                              - button [ref=e290] [cursor=pointer]:
+                                - img [ref=e291]
+                          - generic [ref=e294]:
+                            - progressbar [ref=e295]
+                            - generic [ref=e297]: 100%
+                        - generic [ref=e298]:
+                          - generic [ref=e299]:
+                            - generic [ref=e300]:
+                              - paragraph [ref=e301]:
+                                - text: Armii Krajowej 7/45
+                                - generic [ref=e302]: (Strzegom)
+                              - paragraph [ref=e303]: Hetman Yevhen, 1 pokoi, 3/4 miejsc
+                            - generic [ref=e304]:
+                              - button [ref=e305] [cursor=pointer]:
+                                - img [ref=e306]
+                              - button [ref=e309] [cursor=pointer]:
+                                - img [ref=e310]
+                          - generic [ref=e313]:
+                            - progressbar [ref=e314]
+                            - generic [ref=e316]: 75%
+                        - generic [ref=e317]:
+                          - generic [ref=e318]:
+                            - generic [ref=e319]:
+                              - paragraph [ref=e320]:
+                                - text: Baczyńskiego 25
+                                - generic [ref=e321]: (Leszno)
+                              - paragraph [ref=e322]: Kalashnyk Oleksandr, 5 pokoi, 13/16 miejsc
+                            - generic [ref=e323]:
+                              - button [ref=e324] [cursor=pointer]:
+                                - img [ref=e325]
+                              - button [ref=e328] [cursor=pointer]:
+                                - img [ref=e329]
+                          - generic [ref=e332]:
+                            - progressbar [ref=e333]
+                            - generic [ref=e335]: 81%
+                        - generic [ref=e336]:
+                          - generic [ref=e337]:
+                            - generic [ref=e338]:
+                              - paragraph [ref=e339]:
+                                - text: Bażantowa 34
+                                - generic [ref=e340]: (Oława)
+                              - paragraph [ref=e341]: Khayal, 4 pokoi, 7/9 miejsc
+                            - generic [ref=e342]:
+                              - button [ref=e343] [cursor=pointer]:
+                                - img [ref=e344]
+                              - button [ref=e347] [cursor=pointer]:
+                                - img [ref=e348]
+                          - generic [ref=e351]:
+                            - progressbar [ref=e352]
+                            - generic [ref=e354]: 78%
+                        - generic [ref=e355]:
+                          - generic [ref=e356]:
+                            - generic [ref=e357]:
+                              - paragraph [ref=e358]:
+                                - text: Bochnia- ul. Karosek 85
+                                - generic [ref=e359]: (Rzezawa)
+                              - paragraph [ref=e360]: Herasimovych Oleh, 3 pokoi, 3/9 miejsc
+                            - generic [ref=e361]:
+                              - button [ref=e362] [cursor=pointer]:
+                                - img [ref=e363]
+                              - button [ref=e366] [cursor=pointer]:
+                                - img [ref=e367]
+                          - generic [ref=e370]:
+                            - progressbar [ref=e371]
+                            - generic [ref=e373]: 33%
+                        - generic [ref=e374]:
+                          - generic [ref=e375]:
+                            - generic [ref=e376]:
+                              - paragraph [ref=e377]:
+                                - text: Bryły 15/4
+                                - generic [ref=e378]: (Jelcz-Laskowice)
+                              - paragraph [ref=e379]: Khayal, 3 pokoi, 6/6 miejsc
+                            - generic [ref=e380]:
+                              - button [ref=e381] [cursor=pointer]:
+                                - img [ref=e382]
+                              - button [ref=e385] [cursor=pointer]:
+                                - img [ref=e386]
+                          - generic [ref=e389]:
+                            - progressbar [ref=e390]
+                            - generic [ref=e392]: 100%
+                        - generic [ref=e393]:
+                          - generic [ref=e394]:
+                            - generic [ref=e395]:
+                              - paragraph [ref=e396]:
+                                - text: Brzegowa 32a
+                                - generic [ref=e397]: (Strzelin)
+                              - paragraph [ref=e398]: Hertsoh Veronika, 7 pokoi, 31/23 miejsc
+                            - generic [ref=e399]:
+                              - button [ref=e400] [cursor=pointer]:
+                                - img [ref=e401]
+                              - button [ref=e404] [cursor=pointer]:
+                                - img [ref=e405]
+                          - generic [ref=e408]:
+                            - progressbar [ref=e409]
+                            - generic [ref=e411]: 135%
+                        - generic [ref=e412]:
+                          - generic [ref=e413]:
+                            - generic [ref=e414]:
+                              - paragraph [ref=e415]:
+                                - text: Brzozowa 8
+                                - generic [ref=e416]: (Oława)
+                              - paragraph [ref=e417]: Khayal, 3 pokoi, 6/10 miejsc
+                            - generic [ref=e418]:
+                              - button [ref=e419] [cursor=pointer]:
+                                - img [ref=e420]
+                              - button [ref=e423] [cursor=pointer]:
+                                - img [ref=e424]
+                          - generic [ref=e427]:
+                            - progressbar [ref=e428]
+                            - generic [ref=e430]: 60%
+                        - generic [ref=e431]:
+                          - generic [ref=e432]:
+                            - generic [ref=e433]:
+                              - paragraph [ref=e434]:
+                                - text: BUNGALOW Słowiańska 16a
+                                - generic [ref=e435]: (Żarów)
+                              - paragraph [ref=e436]: Yankov Anatolii, Hertsoh Veronika, 10 pokoi, 19/21 miejsc
+                            - generic [ref=e437]:
+                              - button [ref=e438] [cursor=pointer]:
+                                - img [ref=e439]
+                              - button [ref=e442] [cursor=pointer]:
+                                - img [ref=e443]
+                          - generic [ref=e446]:
+                            - progressbar [ref=e447]
+                            - generic [ref=e449]: 90%
+                        - generic [ref=e450]:
+                          - generic [ref=e451]:
+                            - generic [ref=e452]:
+                              - paragraph [ref=e453]:
+                                - text: Chabrowa 4
+                                - generic [ref=e454]: (Gorzów Wielkopolski)
+                              - paragraph [ref=e455]: Melnychuk Roman, 3 pokoi, 2/4 miejsc
+                            - generic [ref=e456]:
+                              - button [ref=e457] [cursor=pointer]:
+                                - img [ref=e458]
+                              - button [ref=e461] [cursor=pointer]:
+                                - img [ref=e462]
+                          - generic [ref=e465]:
+                            - progressbar [ref=e466]
+                            - generic [ref=e468]: 50%
+                        - generic [ref=e469]:
+                          - generic [ref=e470]:
+                            - generic [ref=e471]:
+                              - paragraph [ref=e472]:
+                                - text: Chełstówek 1
+                                - generic [ref=e473]: (Twardogóra)
+                              - paragraph [ref=e474]: Krakhin Mykyta, Sushchenko Oleksandra, 11 pokoi, 22/24 miejsc
+                            - generic [ref=e475]:
+                              - button [ref=e476] [cursor=pointer]:
+                                - img [ref=e477]
+                              - button [ref=e480] [cursor=pointer]:
+                                - img [ref=e481]
+                          - generic [ref=e484]:
+                            - progressbar [ref=e485]
+                            - generic [ref=e487]: 92%
+                        - generic [ref=e488]:
+                          - generic [ref=e489]:
+                            - generic [ref=e490]:
+                              - paragraph [ref=e491]:
+                                - text: Chopina 11a
+                                - generic [ref=e492]: (Barlinek)
+                              - paragraph [ref=e493]: Melnychuk Roman, 1 pokoi, 2/4 miejsc
+                            - generic [ref=e494]:
+                              - button [ref=e495] [cursor=pointer]:
+                                - img [ref=e496]
+                              - button [ref=e499] [cursor=pointer]:
+                                - img [ref=e500]
+                          - generic [ref=e503]:
+                            - progressbar [ref=e504]
+                            - generic [ref=e506]: 50%
+                        - generic [ref=e507]:
+                          - generic [ref=e508]:
+                            - generic [ref=e509]:
+                              - paragraph [ref=e510]:
+                                - text: Czarnkowska 17/2
+                                - generic [ref=e511]: (Oborniki)
+                              - paragraph [ref=e512]: Kalashnyk Oleksandr, 2 pokoi, 4/4 miejsc
+                            - generic [ref=e513]:
+                              - button [ref=e514] [cursor=pointer]:
+                                - img [ref=e515]
+                              - button [ref=e518] [cursor=pointer]:
+                                - img [ref=e519]
+                          - generic [ref=e522]:
+                            - progressbar [ref=e523]
+                            - generic [ref=e525]: 100%
+                        - generic [ref=e526]:
+                          - generic [ref=e527]:
+                            - generic [ref=e528]:
+                              - paragraph [ref=e529]:
+                                - text: Czerńczyce - Lotnicza 20
+                                - generic [ref=e530]: (Kąty Wrocławskie)
+                              - paragraph [ref=e531]: Vaskou Dzmitry, 4 pokoi, 0/14 miejsc
+                            - generic [ref=e532]:
+                              - button [ref=e533] [cursor=pointer]:
+                                - img [ref=e534]
+                              - button [ref=e537] [cursor=pointer]:
+                                - img [ref=e538]
+                          - generic [ref=e541]:
+                            - progressbar [ref=e542]
+                            - generic [ref=e544]: 0%
+                        - generic [ref=e545]:
+                          - generic [ref=e546]:
+                            - generic [ref=e547]:
+                              - paragraph [ref=e548]:
+                                - text: Czerńczyce - Lotnicza 20 (wejście tylne)
+                                - generic [ref=e549]: (Kąty Wrocławskie)
+                              - paragraph [ref=e550]: Vaskou Dzmitry, 7 pokoi, 11/21 miejsc
+                            - generic [ref=e551]:
+                              - button [ref=e552] [cursor=pointer]:
+                                - img [ref=e553]
+                              - button [ref=e556] [cursor=pointer]:
+                                - img [ref=e557]
+                          - generic [ref=e560]:
+                            - progressbar [ref=e561]
+                            - generic [ref=e563]: 52%
+                        - generic [ref=e564]:
+                          - generic [ref=e565]:
+                            - generic [ref=e566]:
+                              - paragraph [ref=e567]:
+                                - text: Daszyńskiego 27a/2
+                                - generic [ref=e568]: (Wschowa)
+                              - paragraph [ref=e569]: Kalashnyk Oleksandr, 3 pokoi, 3/6 miejsc
+                            - generic [ref=e570]:
+                              - button [ref=e571] [cursor=pointer]:
+                                - img [ref=e572]
+                              - button [ref=e575] [cursor=pointer]:
+                                - img [ref=e576]
+                          - generic [ref=e579]:
+                            - progressbar [ref=e580]
+                            - generic [ref=e582]: 50%
+                        - generic [ref=e583]:
+                          - generic [ref=e584]:
+                            - generic [ref=e585]:
+                              - paragraph [ref=e586]:
+                                - text: Domasławice 35A
+                                - generic [ref=e587]: (Twardogóra)
+                              - paragraph [ref=e588]: Krakhin Mykyta, 5 pokoi, 11/15 miejsc
+                            - generic [ref=e589]:
+                              - button [ref=e590] [cursor=pointer]:
+                                - img [ref=e591]
+                              - button [ref=e594] [cursor=pointer]:
+                                - img [ref=e595]
+                          - generic [ref=e598]:
+                            - progressbar [ref=e599]
+                            - generic [ref=e601]: 73%
+                        - generic [ref=e602]:
+                          - generic [ref=e603]:
+                            - generic [ref=e604]:
+                              - paragraph [ref=e605]:
+                                - text: Duboisa 11/1
+                                - generic [ref=e606]: (Strzelin)
+                              - paragraph [ref=e607]: Hertsoh Veronika, 2 pokoi, 4/4 miejsc
+                            - generic [ref=e608]:
+                              - button [ref=e609] [cursor=pointer]:
+                                - img [ref=e610]
+                              - button [ref=e613] [cursor=pointer]:
+                                - img [ref=e614]
+                          - generic [ref=e617]:
+                            - progressbar [ref=e618]
+                            - generic [ref=e620]: 100%
+                        - generic [ref=e621]:
+                          - generic [ref=e622]:
+                            - generic [ref=e623]:
+                              - paragraph [ref=e624]:
+                                - text: Dunikowskiego 56
+                                - generic [ref=e625]: (Imielin)
+                              - paragraph [ref=e626]: Herasimovych Oleh, 2 pokoi, 5/12 miejsc
+                            - generic [ref=e627]:
+                              - button [ref=e628] [cursor=pointer]:
+                                - img [ref=e629]
+                              - button [ref=e632] [cursor=pointer]:
+                                - img [ref=e633]
+                          - generic [ref=e636]:
+                            - progressbar [ref=e637]
+                            - generic [ref=e639]: 42%
+                        - generic [ref=e640]:
+                          - generic [ref=e641]:
+                            - generic [ref=e642]:
+                              - paragraph [ref=e643]:
+                                - text: Dworcowa 16/5
+                                - generic [ref=e644]: (Kościan)
+                              - paragraph [ref=e645]: Kalashnyk Oleksandr, 1 pokoi, 0/4 miejsc
+                            - generic [ref=e646]:
+                              - button [ref=e647] [cursor=pointer]:
+                                - img [ref=e648]
+                              - button [ref=e651] [cursor=pointer]:
+                                - img [ref=e652]
+                          - generic [ref=e655]:
+                            - progressbar [ref=e656]
+                            - generic [ref=e658]: 0%
+                        - generic [ref=e659]:
+                          - generic [ref=e660]:
+                            - generic [ref=e661]:
+                              - paragraph [ref=e662]:
+                                - text: Dworcowa 18/16
+                                - generic [ref=e663]: (Kościan)
+                              - paragraph [ref=e664]: Kalashnyk Oleksandr, 2 pokoi, 0/4 miejsc
+                            - generic [ref=e665]:
+                              - button [ref=e666] [cursor=pointer]:
+                                - img [ref=e667]
+                              - button [ref=e670] [cursor=pointer]:
+                                - img [ref=e671]
+                          - generic [ref=e674]:
+                            - progressbar [ref=e675]
+                            - generic [ref=e677]: 0%
+                        - generic [ref=e678]:
+                          - generic [ref=e679]:
+                            - generic [ref=e680]:
+                              - paragraph [ref=e681]:
+                                - text: Dworcowa 18/18
+                                - generic [ref=e682]: (Kościan)
+                              - paragraph [ref=e683]: Kalashnyk Oleksandr, 1 pokoi, 0/4 miejsc
+                            - generic [ref=e684]:
+                              - button [ref=e685] [cursor=pointer]:
+                                - img [ref=e686]
+                              - button [ref=e689] [cursor=pointer]:
+                                - img [ref=e690]
+                          - generic [ref=e693]:
+                            - progressbar [ref=e694]
+                            - generic [ref=e696]: 0%
+                        - generic [ref=e697]:
+                          - generic [ref=e698]:
+                            - generic [ref=e699]:
+                              - paragraph [ref=e700]:
+                                - text: Dworcowa 18/25
+                                - generic [ref=e701]: (Kościan)
+                              - paragraph [ref=e702]: Kalashnyk Oleksandr, 1 pokoi, 0/4 miejsc
+                            - generic [ref=e703]:
+                              - button [ref=e704] [cursor=pointer]:
+                                - img [ref=e705]
+                              - button [ref=e708] [cursor=pointer]:
+                                - img [ref=e709]
+                          - generic [ref=e712]:
+                            - progressbar [ref=e713]
+                            - generic [ref=e715]: 0%
+                        - generic [ref=e716]:
+                          - generic [ref=e717]:
+                            - generic [ref=e718]:
+                              - paragraph [ref=e719]:
+                                - text: Dywizionu 303 5/7
+                                - generic [ref=e720]: (Gorzów Wielkopolski)
+                              - paragraph [ref=e721]: Melnychuk Roman, 3 pokoi, 4/6 miejsc
+                            - generic [ref=e722]:
+                              - button [ref=e723] [cursor=pointer]:
+                                - img [ref=e724]
+                              - button [ref=e727] [cursor=pointer]:
+                                - img [ref=e728]
+                          - generic [ref=e731]:
+                            - progressbar [ref=e732]
+                            - generic [ref=e734]: 67%
+                        - generic [ref=e735]:
+                          - generic [ref=e736]:
+                            - generic [ref=e737]:
+                              - paragraph [ref=e738]:
+                                - text: Dziadowa Kłoda - 1 Maja 1a
+                                - generic [ref=e739]: (Twardogóra)
+                              - paragraph [ref=e740]: Krakhin Mykyta, 2 pokoi, 7/8 miejsc
+                            - generic [ref=e741]:
+                              - button [ref=e742] [cursor=pointer]:
+                                - img [ref=e743]
+                              - button [ref=e746] [cursor=pointer]:
+                                - img [ref=e747]
+                          - generic [ref=e750]:
+                            - progressbar [ref=e751]
+                            - generic [ref=e753]: 88%
+                        - generic [ref=e754]:
+                          - generic [ref=e755]:
+                            - generic [ref=e756]:
+                              - paragraph [ref=e757]:
+                                - text: Górna 35/1
+                                - generic [ref=e758]: (Kutno)
+                              - paragraph [ref=e759]: Yachminnyk Roman, 4 pokoi, 8/8 miejsc
+                            - generic [ref=e760]:
+                              - button [ref=e761] [cursor=pointer]:
+                                - img [ref=e762]
+                              - button [ref=e765] [cursor=pointer]:
+                                - img [ref=e766]
+                          - generic [ref=e769]:
+                            - progressbar [ref=e770]
+                            - generic [ref=e772]: 100%
+                        - generic [ref=e773]:
+                          - generic [ref=e774]:
+                            - generic [ref=e775]:
+                              - paragraph [ref=e776]:
+                                - text: Górna 35/2
+                                - generic [ref=e777]: (Kutno)
+                              - paragraph [ref=e778]: Yachminnyk Roman, 7 pokoi, 16/16 miejsc
+                            - generic [ref=e779]:
+                              - button [ref=e780] [cursor=pointer]:
+                                - img [ref=e781]
+                              - button [ref=e784] [cursor=pointer]:
+                                - img [ref=e785]
+                          - generic [ref=e788]:
+                            - progressbar [ref=e789]
+                            - generic [ref=e791]: 100%
+                        - generic [ref=e792]:
+                          - generic [ref=e793]:
+                            - generic [ref=e794]:
+                              - paragraph [ref=e795]:
+                                - text: Górna 35/3
+                                - generic [ref=e796]: (Kutno)
+                              - paragraph [ref=e797]: Yachminnyk Roman, 6 pokoi, 15/18 miejsc
+                            - generic [ref=e798]:
+                              - button [ref=e799] [cursor=pointer]:
+                                - img [ref=e800]
+                              - button [ref=e803] [cursor=pointer]:
+                                - img [ref=e804]
+                          - generic [ref=e807]:
+                            - progressbar [ref=e808]
+                            - generic [ref=e810]: 83%
+                        - generic [ref=e811]:
+                          - generic [ref=e812]:
+                            - generic [ref=e813]:
+                              - paragraph [ref=e814]:
+                                - text: Górna 35/4
+                                - generic [ref=e815]: (Kutno)
+                              - paragraph [ref=e816]: Yachminnyk Roman, 6 pokoi, 16/16 miejsc
+                            - generic [ref=e817]:
+                              - button [ref=e818] [cursor=pointer]:
+                                - img [ref=e819]
+                              - button [ref=e822] [cursor=pointer]:
+                                - img [ref=e823]
+                          - generic [ref=e826]:
+                            - progressbar [ref=e827]
+                            - generic [ref=e829]: 100%
+                        - generic [ref=e830]:
+                          - generic [ref=e831]:
+                            - generic [ref=e832]:
+                              - paragraph [ref=e833]:
+                                - text: Górna 35/5
+                                - generic [ref=e834]: (Kutno)
+                              - paragraph [ref=e835]: Yachminnyk Roman, 2 pokoi, 7/7 miejsc
+                            - generic [ref=e836]:
+                              - button [ref=e837] [cursor=pointer]:
+                                - img [ref=e838]
+                              - button [ref=e841] [cursor=pointer]:
+                                - img [ref=e842]
+                          - generic [ref=e845]:
+                            - progressbar [ref=e846]
+                            - generic [ref=e848]: 100%
+                        - generic [ref=e849]:
+                          - generic [ref=e850]:
+                            - generic [ref=e851]:
+                              - paragraph [ref=e852]:
+                                - text: Górna 35/6
+                                - generic [ref=e853]: (Kutno)
+                              - paragraph [ref=e854]: Yachminnyk Roman, 2 pokoi, 9/9 miejsc
+                            - generic [ref=e855]:
+                              - button [ref=e856] [cursor=pointer]:
+                                - img [ref=e857]
+                              - button [ref=e860] [cursor=pointer]:
+                                - img [ref=e861]
+                          - generic [ref=e864]:
+                            - progressbar [ref=e865]
+                            - generic [ref=e867]: 100%
+                        - generic [ref=e868]:
+                          - generic [ref=e869]:
+                            - generic [ref=e870]:
+                              - paragraph [ref=e871]:
+                                - text: Górna 35/7
+                                - generic [ref=e872]: (Kutno)
+                              - paragraph [ref=e873]: Yachminnyk Roman, 2 pokoi, 2/6 miejsc
+                            - generic [ref=e874]:
+                              - button [ref=e875] [cursor=pointer]:
+                                - img [ref=e876]
+                              - button [ref=e879] [cursor=pointer]:
+                                - img [ref=e880]
+                          - generic [ref=e883]:
+                            - progressbar [ref=e884]
+                            - generic [ref=e886]: 33%
+                        - generic [ref=e887]:
+                          - generic [ref=e888]:
+                            - generic [ref=e889]:
+                              - paragraph [ref=e890]:
+                                - text: Górna 35/8
+                                - generic [ref=e891]: (Kutno)
+                              - paragraph [ref=e892]: Yachminnyk Roman, 2 pokoi, 8/7 miejsc
+                            - generic [ref=e893]:
+                              - button [ref=e894] [cursor=pointer]:
+                                - img [ref=e895]
+                              - button [ref=e898] [cursor=pointer]:
+                                - img [ref=e899]
+                          - generic [ref=e902]:
+                            - progressbar [ref=e903]
+                            - generic [ref=e905]: 114%
+                        - generic [ref=e906]:
+                          - generic [ref=e907]:
+                            - generic [ref=e908]:
+                              - paragraph [ref=e909]:
+                                - text: Górna 35A/1
+                                - generic [ref=e910]: (Kutno)
+                              - paragraph [ref=e911]: Yachminnyk Roman, 3 pokoi, 7/7 miejsc
+                            - generic [ref=e912]:
+                              - button [ref=e913] [cursor=pointer]:
+                                - img [ref=e914]
+                              - button [ref=e917] [cursor=pointer]:
+                                - img [ref=e918]
+                          - generic [ref=e921]:
+                            - progressbar [ref=e922]
+                            - generic [ref=e924]: 100%
+                        - generic [ref=e925]:
+                          - generic [ref=e926]:
+                            - generic [ref=e927]:
+                              - paragraph [ref=e928]:
+                                - text: Górna 35A/2
+                                - generic [ref=e929]: (Kutno)
+                              - paragraph [ref=e930]: Yachminnyk Roman, 4 pokoi, 10/11 miejsc
+                            - generic [ref=e931]:
+                              - button [ref=e932] [cursor=pointer]:
+                                - img [ref=e933]
+                              - button [ref=e936] [cursor=pointer]:
+                                - img [ref=e937]
+                          - generic [ref=e940]:
+                            - progressbar [ref=e941]
+                            - generic [ref=e943]: 91%
+                        - generic [ref=e944]:
+                          - generic [ref=e945]:
+                            - generic [ref=e946]:
+                              - paragraph [ref=e947]:
+                                - text: Grabska 12Ł
+                                - generic [ref=e948]: (Niepołomice)
+                              - paragraph [ref=e949]: Herasimovych Oleh, 1 pokoi, 1/1 miejsc
+                            - generic [ref=e950]:
+                              - button [ref=e951] [cursor=pointer]:
+                                - img [ref=e952]
+                              - button [ref=e955] [cursor=pointer]:
+                                - img [ref=e956]
+                          - generic [ref=e959]:
+                            - progressbar [ref=e960]
+                            - generic [ref=e962]: 100%
+                        - generic [ref=e963]:
+                          - generic [ref=e964]:
+                            - generic [ref=e965]:
+                              - paragraph [ref=e966]:
+                                - text: Gronowska 44
+                                - generic [ref=e967]: (Leszno)
+                              - paragraph [ref=e968]: Kalashnyk Oleksandr, 4 pokoi, 10/10 miejsc
+                            - generic [ref=e969]:
+                              - button [ref=e970] [cursor=pointer]:
+                                - img [ref=e971]
+                              - button [ref=e974] [cursor=pointer]:
+                                - img [ref=e975]
+                          - generic [ref=e978]:
+                            - progressbar [ref=e979]
+                            - generic [ref=e981]: 100%
+                        - generic [ref=e982]:
+                          - generic [ref=e983]:
+                            - generic [ref=e984]:
+                              - paragraph [ref=e985]:
+                                - text: Gronowska 44/ D
+                                - generic [ref=e986]: (Leszno)
+                              - paragraph [ref=e987]: Kalashnyk Oleksandr, 3 pokoi, 7/7 miejsc
+                            - generic [ref=e988]:
+                              - button [ref=e989] [cursor=pointer]:
+                                - img [ref=e990]
+                              - button [ref=e993] [cursor=pointer]:
+                                - img [ref=e994]
+                          - generic [ref=e997]:
+                            - progressbar [ref=e998]
+                            - generic [ref=e1000]: 100%
+                        - generic [ref=e1001]:
+                          - generic [ref=e1002]:
+                            - generic [ref=e1003]:
+                              - paragraph [ref=e1004]:
+                                - text: Gronowska 44/2b
+                                - generic [ref=e1005]: (Leszno)
+                              - paragraph [ref=e1006]: Kalashnyk Oleksandr, 3 pokoi, 6/6 miejsc
+                            - generic [ref=e1007]:
+                              - button [ref=e1008] [cursor=pointer]:
+                                - img [ref=e1009]
+                              - button [ref=e1012] [cursor=pointer]:
+                                - img [ref=e1013]
+                          - generic [ref=e1016]:
+                            - progressbar [ref=e1017]
+                            - generic [ref=e1019]: 100%
+                        - generic [ref=e1020]:
+                          - generic [ref=e1021]:
+                            - generic [ref=e1022]:
+                              - paragraph [ref=e1023]:
+                                - text: Gronowska 44/2C
+                                - generic [ref=e1024]: (Leszno)
+                              - paragraph [ref=e1025]: Kalashnyk Oleksandr, 1 pokoi, 4/4 miejsc
+                            - generic [ref=e1026]:
+                              - button [ref=e1027] [cursor=pointer]:
+                                - img [ref=e1028]
+                              - button [ref=e1031] [cursor=pointer]:
+                                - img [ref=e1032]
+                          - generic [ref=e1035]:
+                            - progressbar [ref=e1036]
+                            - generic [ref=e1038]: 100%
+                        - generic [ref=e1039]:
+                          - generic [ref=e1040]:
+                            - generic [ref=e1041]:
+                              - paragraph [ref=e1042]:
+                                - text: Gronowska 44C/1
+                                - generic [ref=e1043]: (Leszno)
+                              - paragraph [ref=e1044]: Kalashnyk Oleksandr, 3 pokoi, 9/8 miejsc
+                            - generic [ref=e1045]:
+                              - button [ref=e1046] [cursor=pointer]:
+                                - img [ref=e1047]
+                              - button [ref=e1050] [cursor=pointer]:
+                                - img [ref=e1051]
+                          - generic [ref=e1054]:
+                            - progressbar [ref=e1055]
+                            - generic [ref=e1057]: 113%
+                        - generic [ref=e1058]:
+                          - generic [ref=e1059]:
+                            - generic [ref=e1060]:
+                              - paragraph [ref=e1061]:
+                                - text: Grunwaldzki plac 3A/11
+                                - generic [ref=e1062]: (Świdnica)
+                              - paragraph [ref=e1063]: Yankov Anatolii, 5 pokoi, 11/15 miejsc
+                            - generic [ref=e1064]:
+                              - button [ref=e1065] [cursor=pointer]:
+                                - img [ref=e1066]
+                              - button [ref=e1069] [cursor=pointer]:
+                                - img [ref=e1070]
+                          - generic [ref=e1073]:
+                            - progressbar [ref=e1074]
+                            - generic [ref=e1076]: 73%
+                        - generic [ref=e1077]:
+                          - generic [ref=e1078]:
+                            - generic [ref=e1079]:
+                              - paragraph [ref=e1080]:
+                                - text: Hańcówka 31
+                                - generic [ref=e1081]: (Żory)
+                              - paragraph [ref=e1082]: Herasimovych Oleh, 5 pokoi, 0/16 miejsc
+                            - generic [ref=e1083]:
+                              - button [ref=e1084] [cursor=pointer]:
+                                - img [ref=e1085]
+                              - button [ref=e1088] [cursor=pointer]:
+                                - img [ref=e1089]
+                          - generic [ref=e1092]:
+                            - progressbar [ref=e1093]
+                            - generic [ref=e1095]: 0%
+                        - generic [ref=e1096]:
+                          - generic [ref=e1097]:
+                            - generic [ref=e1098]:
+                              - paragraph [ref=e1099]:
+                                - text: Herberta 7
+                                - generic [ref=e1100]: (Leszno)
+                              - paragraph [ref=e1101]: Kalashnyk Oleksandr, 7 pokoi, 15/16 miejsc
+                            - generic [ref=e1102]:
+                              - button [ref=e1103] [cursor=pointer]:
+                                - img [ref=e1104]
+                              - button [ref=e1107] [cursor=pointer]:
+                                - img [ref=e1108]
+                          - generic [ref=e1111]:
+                            - progressbar [ref=e1112]
+                            - generic [ref=e1114]: 94%
+                        - generic [ref=e1115]:
+                          - generic [ref=e1116]:
+                            - generic [ref=e1117]:
+                              - paragraph [ref=e1118]:
+                                - text: Hostel Szczecińska 32
+                                - generic [ref=e1119]: (Koszalin)
+                              - paragraph [ref=e1120]: Melnychuk Roman, 4 pokoi, 4/8 miejsc
+                            - generic [ref=e1121]:
+                              - button [ref=e1122] [cursor=pointer]:
+                                - img [ref=e1123]
+                              - button [ref=e1126] [cursor=pointer]:
+                                - img [ref=e1127]
+                          - generic [ref=e1130]:
+                            - progressbar [ref=e1131]
+                            - generic [ref=e1133]: 50%
+                        - generic [ref=e1134]:
+                          - generic [ref=e1135]:
+                            - generic [ref=e1136]:
+                              - paragraph [ref=e1137]:
+                                - text: Iwaszkiewicza 27/14
+                                - generic [ref=e1138]: (Oława)
+                              - paragraph [ref=e1139]: Khayal, 4 pokoi, 4/8 miejsc
+                            - generic [ref=e1140]:
+                              - button [ref=e1141] [cursor=pointer]:
+                                - img [ref=e1142]
+                              - button [ref=e1145] [cursor=pointer]:
+                                - img [ref=e1146]
+                          - generic [ref=e1149]:
+                            - progressbar [ref=e1150]
+                            - generic [ref=e1152]: 50%
+                        - generic [ref=e1153]:
+                          - generic [ref=e1154]:
+                            - generic [ref=e1155]:
+                              - paragraph [ref=e1156]:
+                                - text: Iwaszkiewicza 29/10
+                                - generic [ref=e1157]: (Oława)
+                              - paragraph [ref=e1158]: Khayal, 3 pokoi, 7/8 miejsc
+                            - generic [ref=e1159]:
+                              - button [ref=e1160] [cursor=pointer]:
+                                - img [ref=e1161]
+                              - button [ref=e1164] [cursor=pointer]:
+                                - img [ref=e1165]
+                          - generic [ref=e1168]:
+                            - progressbar [ref=e1169]
+                            - generic [ref=e1171]: 88%
+                        - generic [ref=e1172]:
+                          - generic [ref=e1173]:
+                            - generic [ref=e1174]:
+                              - paragraph [ref=e1175]:
+                                - text: Iwaszkiewicza 72/2
+                                - generic [ref=e1176]: (Oława)
+                              - paragraph [ref=e1177]: Khayal, 2 pokoi, 5/5 miejsc
+                            - generic [ref=e1178]:
+                              - button [ref=e1179] [cursor=pointer]:
+                                - img [ref=e1180]
+                              - button [ref=e1183] [cursor=pointer]:
+                                - img [ref=e1184]
+                          - generic [ref=e1187]:
+                            - progressbar [ref=e1188]
+                            - generic [ref=e1190]: 100%
+                        - generic [ref=e1191]:
+                          - generic [ref=e1192]:
+                            - generic [ref=e1193]:
+                              - paragraph [ref=e1194]:
+                                - text: Jana Pawła II 17/9
+                                - generic [ref=e1195]: (Strzelin)
+                              - paragraph [ref=e1196]: Hertsoh Veronika, 4 pokoi, 8/9 miejsc
+                            - generic [ref=e1197]:
+                              - button [ref=e1198] [cursor=pointer]:
+                                - img [ref=e1199]
+                              - button [ref=e1202] [cursor=pointer]:
+                                - img [ref=e1203]
+                          - generic [ref=e1206]:
+                            - progressbar [ref=e1207]
+                            - generic [ref=e1209]: 89%
+                        - generic [ref=e1210]:
+                          - generic [ref=e1211]:
+                            - generic [ref=e1212]:
+                              - paragraph [ref=e1213]:
+                                - text: Jasna 15
+                                - generic [ref=e1214]: (Oleśnica)
+                              - paragraph [ref=e1215]: Sushchenko Oleksandra, 2 pokoi, 6/6 miejsc
+                            - generic [ref=e1216]:
+                              - button [ref=e1217] [cursor=pointer]:
+                                - img [ref=e1218]
+                              - button [ref=e1221] [cursor=pointer]:
+                                - img [ref=e1222]
+                          - generic [ref=e1225]:
+                            - progressbar [ref=e1226]
+                            - generic [ref=e1228]: 100%
+                        - generic [ref=e1229]:
+                          - generic [ref=e1230]:
+                            - generic [ref=e1231]:
+                              - paragraph [ref=e1232]:
+                                - text: Jastrzębie-Zdrój - Opolska 1P
+                                - generic [ref=e1233]: (Strumień)
+                              - paragraph [ref=e1234]: Holiadynets Oleksandr, Herasimovych Oleh, 3 pokoi, 9/11 miejsc
+                            - generic [ref=e1235]:
+                              - button [ref=e1236] [cursor=pointer]:
+                                - img [ref=e1237]
+                              - button [ref=e1240] [cursor=pointer]:
+                                - img [ref=e1241]
+                          - generic [ref=e1244]:
+                            - progressbar [ref=e1245]
+                            - generic [ref=e1247]: 82%
+                        - generic [ref=e1248]:
+                          - generic [ref=e1249]:
+                            - generic [ref=e1250]:
+                              - paragraph [ref=e1251]:
+                                - text: Jaszkowa Dolna 13
+                                - generic [ref=e1252]: (Kłodzko)
+                              - paragraph [ref=e1253]: Hetman Yevhen, 2 pokoi, 5/11 miejsc
+                            - generic [ref=e1254]:
+                              - button [ref=e1255] [cursor=pointer]:
+                                - img [ref=e1256]
+                              - button [ref=e1259] [cursor=pointer]:
+                                - img [ref=e1260]
+                          - generic [ref=e1263]:
+                            - progressbar [ref=e1264]
+                            - generic [ref=e1266]: 45%
+                        - generic [ref=e1267]:
+                          - generic [ref=e1268]:
+                            - generic [ref=e1269]:
+                              - paragraph [ref=e1270]:
+                                - text: Karmelkowa 28
+                                - generic [ref=e1271]: (Wrocław)
+                              - paragraph [ref=e1272]: Fedchenko Artem, 6 pokoi, 21/24 miejsc
+                            - generic [ref=e1273]:
+                              - button [ref=e1274] [cursor=pointer]:
+                                - img [ref=e1275]
+                              - button [ref=e1278] [cursor=pointer]:
+                                - img [ref=e1279]
+                          - generic [ref=e1282]:
+                            - progressbar [ref=e1283]
+                            - generic [ref=e1285]: 88%
+                        - generic [ref=e1286]:
+                          - generic [ref=e1287]:
+                            - generic [ref=e1288]:
+                              - paragraph [ref=e1289]:
+                                - text: Kasprowicza 16/10
+                                - generic [ref=e1290]: (Oława)
+                              - paragraph [ref=e1291]: Khayal, 4 pokoi, 6/8 miejsc
+                            - generic [ref=e1292]:
+                              - button [ref=e1293] [cursor=pointer]:
+                                - img [ref=e1294]
+                              - button [ref=e1297] [cursor=pointer]:
+                                - img [ref=e1298]
+                          - generic [ref=e1301]:
+                            - progressbar [ref=e1302]
+                            - generic [ref=e1304]: 75%
+                        - generic [ref=e1305]:
+                          - generic [ref=e1306]:
+                            - generic [ref=e1307]:
+                              - paragraph [ref=e1308]:
+                                - text: Kasprowicza 18/13
+                                - generic [ref=e1309]: (Oława)
+                              - paragraph [ref=e1310]: Khayal, 3 pokoi, 4/7 miejsc
+                            - generic [ref=e1311]:
+                              - button [ref=e1312] [cursor=pointer]:
+                                - img [ref=e1313]
+                              - button [ref=e1316] [cursor=pointer]:
+                                - img [ref=e1317]
+                          - generic [ref=e1320]:
+                            - progressbar [ref=e1321]
+                            - generic [ref=e1323]: 57%
+                        - generic [ref=e1324]:
+                          - generic [ref=e1325]:
+                            - generic [ref=e1326]:
+                              - paragraph [ref=e1327]:
+                                - text: Kasprowicza 8/20
+                                - generic [ref=e1328]: (Oława)
+                              - paragraph [ref=e1329]: Khayal, 2 pokoi, 4/5 miejsc
+                            - generic [ref=e1330]:
+                              - button [ref=e1331] [cursor=pointer]:
+                                - img [ref=e1332]
+                              - button [ref=e1335] [cursor=pointer]:
+                                - img [ref=e1336]
+                          - generic [ref=e1339]:
+                            - progressbar [ref=e1340]
+                            - generic [ref=e1342]: 80%
+                        - generic [ref=e1343]:
+                          - generic [ref=e1344]:
+                            - generic [ref=e1345]:
+                              - paragraph [ref=e1346]:
+                                - text: Kilińskiego 27/7
+                                - generic [ref=e1347]: (Świdnica)
+                              - paragraph [ref=e1348]: Yankov Anatolii, 2 pokoi, 5/5 miejsc
+                            - generic [ref=e1349]:
+                              - button [ref=e1350] [cursor=pointer]:
+                                - img [ref=e1351]
+                              - button [ref=e1354] [cursor=pointer]:
+                                - img [ref=e1355]
+                          - generic [ref=e1358]:
+                            - progressbar [ref=e1359]
+                            - generic [ref=e1361]: 100%
+                        - generic [ref=e1362]:
+                          - generic [ref=e1363]:
+                            - generic [ref=e1364]:
+                              - paragraph [ref=e1365]:
+                                - text: Kolejowa 15
+                                - generic [ref=e1366]: (Świdnica)
+                              - paragraph [ref=e1367]: Yankov Anatolii, Kashkarov Yaroslav, 4 pokoi, 10/10 miejsc
+                            - generic [ref=e1368]:
+                              - button [ref=e1369] [cursor=pointer]:
+                                - img [ref=e1370]
+                              - button [ref=e1373] [cursor=pointer]:
+                                - img [ref=e1374]
+                          - generic [ref=e1377]:
+                            - progressbar [ref=e1378]
+                            - generic [ref=e1380]: 100%
+                        - generic [ref=e1381]:
+                          - generic [ref=e1382]:
+                            - generic [ref=e1383]:
+                              - paragraph [ref=e1384]:
+                                - text: Kolejowa 3
+                                - generic [ref=e1385]: (Strumień)
+                              - paragraph [ref=e1386]: Holiadynets Oleksandr, 4 pokoi, 16/15 miejsc
+                            - generic [ref=e1387]:
+                              - button [ref=e1388] [cursor=pointer]:
+                                - img [ref=e1389]
+                              - button [ref=e1392] [cursor=pointer]:
+                                - img [ref=e1393]
+                          - generic [ref=e1396]:
+                            - progressbar [ref=e1397]
+                            - generic [ref=e1399]: 107%
+                        - generic [ref=e1400]:
+                          - generic [ref=e1401]:
+                            - generic [ref=e1402]:
+                              - paragraph [ref=e1403]:
+                                - text: Kopernika 2/5
+                                - generic [ref=e1404]: (Strzelin)
+                              - paragraph [ref=e1405]: Hertsoh Veronika, 2 pokoi, 6/6 miejsc
+                            - generic [ref=e1406]:
+                              - button [ref=e1407] [cursor=pointer]:
+                                - img [ref=e1408]
+                              - button [ref=e1411] [cursor=pointer]:
+                                - img [ref=e1412]
+                          - generic [ref=e1415]:
+                            - progressbar [ref=e1416]
+                            - generic [ref=e1418]: 100%
+                        - generic [ref=e1419]:
+                          - generic [ref=e1420]:
+                            - generic [ref=e1421]:
+                              - paragraph [ref=e1422]:
+                                - text: Kopernika 2/8
+                                - generic [ref=e1423]: (Grodzisk Mazowiecki)
+                              - paragraph [ref=e1424]: Zaiats Yevhenii, 2 pokoi, 4/7 miejsc
+                            - generic [ref=e1425]:
+                              - button [ref=e1426] [cursor=pointer]:
+                                - img [ref=e1427]
+                              - button [ref=e1430] [cursor=pointer]:
+                                - img [ref=e1431]
+                          - generic [ref=e1434]:
+                            - progressbar [ref=e1435]
+                            - generic [ref=e1437]: 57%
+                        - generic [ref=e1438]:
+                          - generic [ref=e1439]:
+                            - generic [ref=e1440]:
+                              - paragraph [ref=e1441]:
+                                - text: Kopernika 20
+                                - generic [ref=e1442]: (Leszno)
+                              - paragraph [ref=e1443]: Kalashnyk Oleksandr, 2 pokoi, 5/5 miejsc
+                            - generic [ref=e1444]:
+                              - button [ref=e1445] [cursor=pointer]:
+                                - img [ref=e1446]
+                              - button [ref=e1449] [cursor=pointer]:
+                                - img [ref=e1450]
+                          - generic [ref=e1453]:
+                            - progressbar [ref=e1454]
+                            - generic [ref=e1456]: 100%
+                        - generic [ref=e1457]:
+                          - generic [ref=e1458]:
+                            - generic [ref=e1459]:
+                              - paragraph [ref=e1460]:
+                                - text: Korczka 7e/1
+                                - generic [ref=e1461]: (Gorzów Wielkopolski)
+                              - paragraph [ref=e1462]: Melnychuk Roman, 2 pokoi, 2/3 miejsc
+                            - generic [ref=e1463]:
+                              - button [ref=e1464] [cursor=pointer]:
+                                - img [ref=e1465]
+                              - button [ref=e1468] [cursor=pointer]:
+                                - img [ref=e1469]
+                          - generic [ref=e1472]:
+                            - progressbar [ref=e1473]
+                            - generic [ref=e1475]: 67%
+                        - generic [ref=e1476]:
+                          - generic [ref=e1477]:
+                            - generic [ref=e1478]:
+                              - paragraph [ref=e1479]:
+                                - text: Kościelna 4/2
+                                - generic [ref=e1480]: (Oleśnica)
+                              - paragraph [ref=e1481]: Sushchenko Oleksandra, 4 pokoi, 10/10 miejsc
+                            - generic [ref=e1482]:
+                              - button [ref=e1483] [cursor=pointer]:
+                                - img [ref=e1484]
+                              - button [ref=e1487] [cursor=pointer]:
+                                - img [ref=e1488]
+                          - generic [ref=e1491]:
+                            - progressbar [ref=e1492]
+                            - generic [ref=e1494]: 100%
+                        - generic [ref=e1495]:
+                          - generic [ref=e1496]:
+                            - generic [ref=e1497]:
+                              - paragraph [ref=e1498]:
+                                - text: Kosmonautów 6
+                                - generic [ref=e1499]: (Kutno)
+                              - paragraph [ref=e1500]: Yachminnyk Roman, 5 pokoi, 16/18 miejsc
+                            - generic [ref=e1501]:
+                              - button [ref=e1502] [cursor=pointer]:
+                                - img [ref=e1503]
+                              - button [ref=e1506] [cursor=pointer]:
+                                - img [ref=e1507]
+                          - generic [ref=e1510]:
+                            - progressbar [ref=e1511]
+                            - generic [ref=e1513]: 89%
+                        - generic [ref=e1514]:
+                          - generic [ref=e1515]:
+                            - generic [ref=e1516]:
+                              - paragraph [ref=e1517]:
+                                - text: Koszarowa 21/1
+                                - generic [ref=e1518]: (Szczecin)
+                              - paragraph [ref=e1519]: Melnychuk Roman, 3 pokoi, 8/8 miejsc
+                            - generic [ref=e1520]:
+                              - button [ref=e1521] [cursor=pointer]:
+                                - img [ref=e1522]
+                              - button [ref=e1525] [cursor=pointer]:
+                                - img [ref=e1526]
+                          - generic [ref=e1529]:
+                            - progressbar [ref=e1530]
+                            - generic [ref=e1532]: 100%
+                        - generic [ref=e1533]:
+                          - generic [ref=e1534]:
+                            - generic [ref=e1535]:
+                              - paragraph [ref=e1536]:
+                                - text: Krasiejów - ul. Zamoście 20
+                                - generic [ref=e1537]: (Schodnia)
+                              - paragraph [ref=e1538]: Hetman Yevhen, 2 pokoi, 1/4 miejsc
+                            - generic [ref=e1539]:
+                              - button [ref=e1540] [cursor=pointer]:
+                                - img [ref=e1541]
+                              - button [ref=e1544] [cursor=pointer]:
+                                - img [ref=e1545]
+                          - generic [ref=e1548]:
+                            - progressbar [ref=e1549]
+                            - generic [ref=e1551]: 25%
+                        - generic [ref=e1552]:
+                          - generic [ref=e1553]:
+                            - generic [ref=e1554]:
+                              - paragraph [ref=e1555]:
+                                - text: Królewska Wola 17a
+                                - generic [ref=e1556]: (Twardogóra)
+                              - paragraph [ref=e1557]: Krakhin Mykyta, 4 pokoi, 6/10 miejsc
+                            - generic [ref=e1558]:
+                              - button [ref=e1559] [cursor=pointer]:
+                                - img [ref=e1560]
+                              - button [ref=e1563] [cursor=pointer]:
+                                - img [ref=e1564]
+                          - generic [ref=e1567]:
+                            - progressbar [ref=e1568]
+                            - generic [ref=e1570]: 60%
+                        - generic [ref=e1571]:
+                          - generic [ref=e1572]:
+                            - generic [ref=e1573]:
+                              - paragraph [ref=e1574]:
+                                - text: Królowej Marysieńki 11/1
+                                - generic [ref=e1575]: (Warszawa)
+                              - paragraph [ref=e1576]: Zaiats Yevhenii, 4 pokoi, 12/12 miejsc
+                            - generic [ref=e1577]:
+                              - button [ref=e1578] [cursor=pointer]:
+                                - img [ref=e1579]
+                              - button [ref=e1582] [cursor=pointer]:
+                                - img [ref=e1583]
+                          - generic [ref=e1586]:
+                            - progressbar [ref=e1587]
+                            - generic [ref=e1589]: 100%
+                        - generic [ref=e1590]:
+                          - generic [ref=e1591]:
+                            - generic [ref=e1592]:
+                              - paragraph [ref=e1593]:
+                                - text: Królowej Marysieńki 11/2
+                                - generic [ref=e1594]: (Warszawa)
+                              - paragraph [ref=e1595]: Zaiats Yevhenii, 5 pokoi, 14/15 miejsc
+                            - generic [ref=e1596]:
+                              - button [ref=e1597] [cursor=pointer]:
+                                - img [ref=e1598]
+                              - button [ref=e1601] [cursor=pointer]:
+                                - img [ref=e1602]
+                          - generic [ref=e1605]:
+                            - progressbar [ref=e1606]
+                            - generic [ref=e1608]: 93%
+                        - generic [ref=e1609]:
+                          - generic [ref=e1610]:
+                            - generic [ref=e1611]:
+                              - paragraph [ref=e1612]:
+                                - text: Królowej Marysieńki 11/3
+                                - generic [ref=e1613]: (Warszawa)
+                              - paragraph [ref=e1614]: Zaiats Yevhenii, 5 pokoi, 15/16 miejsc
+                            - generic [ref=e1615]:
+                              - button [ref=e1616] [cursor=pointer]:
+                                - img [ref=e1617]
+                              - button [ref=e1620] [cursor=pointer]:
+                                - img [ref=e1621]
+                          - generic [ref=e1624]:
+                            - progressbar [ref=e1625]
+                            - generic [ref=e1627]: 94%
+                        - generic [ref=e1628]:
+                          - generic [ref=e1629]:
+                            - generic [ref=e1630]:
+                              - paragraph [ref=e1631]:
+                                - text: Królowej Marysieńki 11/4
+                                - generic [ref=e1632]: (Warszawa)
+                              - paragraph [ref=e1633]: Zaiats Yevhenii, 5 pokoi, 9/11 miejsc
+                            - generic [ref=e1634]:
+                              - button [ref=e1635] [cursor=pointer]:
+                                - img [ref=e1636]
+                              - button [ref=e1639] [cursor=pointer]:
+                                - img [ref=e1640]
+                          - generic [ref=e1643]:
+                            - progressbar [ref=e1644]
+                            - generic [ref=e1646]: 82%
+                        - generic [ref=e1647]:
+                          - generic [ref=e1648]:
+                            - generic [ref=e1649]:
+                              - paragraph [ref=e1650]:
+                                - text: Królowej Marysieńki 11/6
+                                - generic [ref=e1651]: (Warszawa)
+                              - paragraph [ref=e1652]: Zaiats Yevhenii, 5 pokoi, 14/15 miejsc
+                            - generic [ref=e1653]:
+                              - button [ref=e1654] [cursor=pointer]:
+                                - img [ref=e1655]
+                              - button [ref=e1658] [cursor=pointer]:
+                                - img [ref=e1659]
+                          - generic [ref=e1662]:
+                            - progressbar [ref=e1663]
+                            - generic [ref=e1665]: 93%
+                        - generic [ref=e1666]:
+                          - generic [ref=e1667]:
+                            - generic [ref=e1668]:
+                              - paragraph [ref=e1669]:
+                                - text: Królowej Marysieńki 19/58
+                                - generic [ref=e1670]: (Warszawa)
+                              - paragraph [ref=e1671]: Zaiats Yevhenii, 3 pokoi, 8/8 miejsc
+                            - generic [ref=e1672]:
+                              - button [ref=e1673] [cursor=pointer]:
+                                - img [ref=e1674]
+                              - button [ref=e1677] [cursor=pointer]:
+                                - img [ref=e1678]
+                          - generic [ref=e1681]:
+                            - progressbar [ref=e1682]
+                            - generic [ref=e1684]: 100%
+                        - generic [ref=e1685]:
+                          - generic [ref=e1686]:
+                            - generic [ref=e1687]:
+                              - paragraph [ref=e1688]:
+                                - text: Kubickiego 13
+                                - generic [ref=e1689]: (Warszawa)
+                              - paragraph [ref=e1690]: Zaiats Yevhenii, 3 pokoi, 2/10 miejsc
+                            - generic [ref=e1691]:
+                              - button [ref=e1692] [cursor=pointer]:
+                                - img [ref=e1693]
+                              - button [ref=e1696] [cursor=pointer]:
+                                - img [ref=e1697]
+                          - generic [ref=e1700]:
+                            - progressbar [ref=e1701]
+                            - generic [ref=e1703]: 20%
+                        - generic [ref=e1704]:
+                          - generic [ref=e1705]:
+                            - generic [ref=e1706]:
+                              - paragraph [ref=e1707]:
+                                - text: Kubickiego 15
+                                - generic [ref=e1708]: (Warszawa)
+                              - paragraph [ref=e1709]: Zaiats Yevhenii, 3 pokoi, 9/11 miejsc
+                            - generic [ref=e1710]:
+                              - button [ref=e1711] [cursor=pointer]:
+                                - img [ref=e1712]
+                              - button [ref=e1715] [cursor=pointer]:
+                                - img [ref=e1716]
+                          - generic [ref=e1719]:
+                            - progressbar [ref=e1720]
+                            - generic [ref=e1722]: 82%
+                        - generic [ref=e1723]:
+                          - generic [ref=e1724]:
+                            - generic [ref=e1725]:
+                              - paragraph [ref=e1726]:
+                                - text: Łączna 40
+                                - generic [ref=e1727]: (Świebodzice)
+                              - paragraph [ref=e1728]: Hertsoh Veronika, 1 pokoi, 0/1 miejsc
+                            - generic [ref=e1729]:
+                              - button [ref=e1730] [cursor=pointer]:
+                                - img [ref=e1731]
+                              - button [ref=e1734] [cursor=pointer]:
+                                - img [ref=e1735]
+                          - generic [ref=e1738]:
+                            - progressbar [ref=e1739]
+                            - generic [ref=e1741]: 0%
+                        - generic [ref=e1742]:
+                          - generic [ref=e1743]:
+                            - generic [ref=e1744]:
+                              - paragraph [ref=e1745]:
+                                - text: Lelewela 2/3
+                                - generic [ref=e1746]: (Świdnica)
+                              - paragraph [ref=e1747]: Yankov Anatolii, Kashkarov Yaroslav, 5 pokoi, 15/15 miejsc
+                            - generic [ref=e1748]:
+                              - button [ref=e1749] [cursor=pointer]:
+                                - img [ref=e1750]
+                              - button [ref=e1753] [cursor=pointer]:
+                                - img [ref=e1754]
+                          - generic [ref=e1757]:
+                            - progressbar [ref=e1758]
+                            - generic [ref=e1760]: 100%
+                        - generic [ref=e1761]:
+                          - generic [ref=e1762]:
+                            - generic [ref=e1763]:
+                              - paragraph [ref=e1764]:
+                                - text: Lelewela 6a/5
+                                - generic [ref=e1765]: (Świdnica)
+                              - paragraph [ref=e1766]: Yankov Anatolii, 2 pokoi, 5/5 miejsc
+                            - generic [ref=e1767]:
+                              - button [ref=e1768] [cursor=pointer]:
+                                - img [ref=e1769]
+                              - button [ref=e1772] [cursor=pointer]:
+                                - img [ref=e1773]
+                          - generic [ref=e1776]:
+                            - progressbar [ref=e1777]
+                            - generic [ref=e1779]: 100%
+                        - generic [ref=e1780]:
+                          - generic [ref=e1781]:
+                            - generic [ref=e1782]:
+                              - paragraph [ref=e1783]:
+                                - text: Łódzka 169
+                                - generic [ref=e1784]: (Kalisz)
+                              - paragraph [ref=e1785]: Veklyak Oleksandr, 5 pokoi, 9/14 miejsc
+                            - generic [ref=e1786]:
+                              - button [ref=e1787] [cursor=pointer]:
+                                - img [ref=e1788]
+                              - button [ref=e1791] [cursor=pointer]:
+                                - img [ref=e1792]
+                          - generic [ref=e1795]:
+                            - progressbar [ref=e1796]
+                            - generic [ref=e1798]: 64%
+                        - generic [ref=e1799]:
+                          - generic [ref=e1800]:
+                            - generic [ref=e1801]:
+                              - paragraph [ref=e1802]:
+                                - text: Łowiecka 7b/9
+                                - generic [ref=e1803]: (Leszno)
+                              - paragraph [ref=e1804]: Kalashnyk Oleksandr, 3 pokoi, 7/7 miejsc
+                            - generic [ref=e1805]:
+                              - button [ref=e1806] [cursor=pointer]:
+                                - img [ref=e1807]
+                              - button [ref=e1810] [cursor=pointer]:
+                                - img [ref=e1811]
+                          - generic [ref=e1814]:
+                            - progressbar [ref=e1815]
+                            - generic [ref=e1817]: 100%
+                        - generic [ref=e1818]:
+                          - generic [ref=e1819]:
+                            - generic [ref=e1820]:
+                              - paragraph [ref=e1821]:
+                                - text: Łuczkiewicza 3/1
+                                - generic [ref=e1822]: (Strumień)
+                              - paragraph [ref=e1823]: Holiadynets Oleksandr, 3 pokoi, 8/8 miejsc
+                            - generic [ref=e1824]:
+                              - button [ref=e1825] [cursor=pointer]:
+                                - img [ref=e1826]
+                              - button [ref=e1829] [cursor=pointer]:
+                                - img [ref=e1830]
+                          - generic [ref=e1833]:
+                            - progressbar [ref=e1834]
+                            - generic [ref=e1836]: 100%
+                        - generic [ref=e1837]:
+                          - generic [ref=e1838]:
+                            - generic [ref=e1839]:
+                              - paragraph [ref=e1840]:
+                                - text: Łuczkiewicza 3/2
+                                - generic [ref=e1841]: (Strumień)
+                              - paragraph [ref=e1842]: Holiadynets Oleksandr, 1 pokoi, 5/5 miejsc
+                            - generic [ref=e1843]:
+                              - button [ref=e1844] [cursor=pointer]:
+                                - img [ref=e1845]
+                              - button [ref=e1848] [cursor=pointer]:
+                                - img [ref=e1849]
+                          - generic [ref=e1852]:
+                            - progressbar [ref=e1853]
+                            - generic [ref=e1855]: 100%
+                        - generic [ref=e1856]:
+                          - generic [ref=e1857]:
+                            - generic [ref=e1858]:
+                              - paragraph [ref=e1859]:
+                                - text: Łuczkiewicza 3/3
+                                - generic [ref=e1860]: (Strumień)
+                              - paragraph [ref=e1861]: Holiadynets Oleksandr, 2 pokoi, 8/8 miejsc
+                            - generic [ref=e1862]:
+                              - button [ref=e1863] [cursor=pointer]:
+                                - img [ref=e1864]
+                              - button [ref=e1867] [cursor=pointer]:
+                                - img [ref=e1868]
+                          - generic [ref=e1871]:
+                            - progressbar [ref=e1872]
+                            - generic [ref=e1874]: 100%
+                        - generic [ref=e1875]:
+                          - generic [ref=e1876]:
+                            - generic [ref=e1877]:
+                              - paragraph [ref=e1878]:
+                                - text: Łuczkiewicza 3/4
+                                - generic [ref=e1879]: (Strumień)
+                              - paragraph [ref=e1880]: Holiadynets Oleksandr, 2 pokoi, 9/9 miejsc
+                            - generic [ref=e1881]:
+                              - button [ref=e1882] [cursor=pointer]:
+                                - img [ref=e1883]
+                              - button [ref=e1886] [cursor=pointer]:
+                                - img [ref=e1887]
+                          - generic [ref=e1890]:
+                            - progressbar [ref=e1891]
+                            - generic [ref=e1893]: 100%
+                        - generic [ref=e1894]:
+                          - generic [ref=e1895]:
+                            - generic [ref=e1896]:
+                              - paragraph [ref=e1897]:
+                                - text: Łuczkiewicza 3/5
+                                - generic [ref=e1898]: (Strumień)
+                              - paragraph [ref=e1899]: Holiadynets Oleksandr, 2 pokoi, 5/5 miejsc
+                            - generic [ref=e1900]:
+                              - button [ref=e1901] [cursor=pointer]:
+                                - img [ref=e1902]
+                              - button [ref=e1905] [cursor=pointer]:
+                                - img [ref=e1906]
+                          - generic [ref=e1909]:
+                            - progressbar [ref=e1910]
+                            - generic [ref=e1912]: 100%
+                        - generic [ref=e1913]:
+                          - generic [ref=e1914]:
+                            - generic [ref=e1915]:
+                              - paragraph [ref=e1916]:
+                                - text: Łuczkiewicza 3/6
+                                - generic [ref=e1917]: (Strumień)
+                              - paragraph [ref=e1918]: Holiadynets Oleksandr, 2 pokoi, 6/6 miejsc
+                            - generic [ref=e1919]:
+                              - button [ref=e1920] [cursor=pointer]:
+                                - img [ref=e1921]
+                              - button [ref=e1924] [cursor=pointer]:
+                                - img [ref=e1925]
+                          - generic [ref=e1928]:
+                            - progressbar [ref=e1929]
+                            - generic [ref=e1931]: 100%
+                        - generic [ref=e1932]:
+                          - generic [ref=e1933]:
+                            - generic [ref=e1934]:
+                              - paragraph [ref=e1935]:
+                                - text: Łuczkiewicza 3/7
+                                - generic [ref=e1936]: (Strumień)
+                              - paragraph [ref=e1937]: Holiadynets Oleksandr, 1 pokoi, 4/4 miejsc
+                            - generic [ref=e1938]:
+                              - button [ref=e1939] [cursor=pointer]:
+                                - img [ref=e1940]
+                              - button [ref=e1943] [cursor=pointer]:
+                                - img [ref=e1944]
+                          - generic [ref=e1947]:
+                            - progressbar [ref=e1948]
+                            - generic [ref=e1950]: 100%
+                        - generic [ref=e1951]:
+                          - generic [ref=e1952]:
+                            - generic [ref=e1953]:
+                              - paragraph [ref=e1954]:
+                                - text: Łuczkiewicza 3/8
+                                - generic [ref=e1955]: (Strumień)
+                              - paragraph [ref=e1956]: Holiadynets Oleksandr, 1 pokoi, 4/4 miejsc
+                            - generic [ref=e1957]:
+                              - button [ref=e1958] [cursor=pointer]:
+                                - img [ref=e1959]
+                              - button [ref=e1962] [cursor=pointer]:
+                                - img [ref=e1963]
+                          - generic [ref=e1966]:
+                            - progressbar [ref=e1967]
+                            - generic [ref=e1969]: 100%
+                        - generic [ref=e1970]:
+                          - generic [ref=e1971]:
+                            - generic [ref=e1972]:
+                              - paragraph [ref=e1973]:
+                                - text: Łukasińskiego 11/8
+                                - generic [ref=e1974]: (Świdnica)
+                              - paragraph [ref=e1975]: Yankov Anatolii, Kashkarov Yaroslav, 3 pokoi, 7/7 miejsc
+                            - generic [ref=e1976]:
+                              - button [ref=e1977] [cursor=pointer]:
+                                - img [ref=e1978]
+                              - button [ref=e1981] [cursor=pointer]:
+                                - img [ref=e1982]
+                          - generic [ref=e1985]:
+                            - progressbar [ref=e1986]
+                            - generic [ref=e1988]: 100%
+                        - generic [ref=e1989]:
+                          - generic [ref=e1990]:
+                            - generic [ref=e1991]:
+                              - paragraph [ref=e1992]:
+                                - text: Mączna 4b/4
+                                - generic [ref=e1993]: (Szczecin)
+                              - paragraph [ref=e1994]: Melnychuk Roman, 3 pokoi, 6/7 miejsc
+                            - generic [ref=e1995]:
+                              - button [ref=e1996] [cursor=pointer]:
+                                - img [ref=e1997]
+                              - button [ref=e2000] [cursor=pointer]:
+                                - img [ref=e2001]
+                          - generic [ref=e2004]:
+                            - progressbar [ref=e2005]
+                            - generic [ref=e2007]: 86%
+                        - generic [ref=e2008]:
+                          - generic [ref=e2009]:
+                            - generic [ref=e2010]:
+                              - paragraph [ref=e2011]:
+                                - text: Magazynowa 22/18
+                                - generic [ref=e2012]: (Oława)
+                              - paragraph [ref=e2013]: Khayal, 2 pokoi, 2/4 miejsc
+                            - generic [ref=e2014]:
+                              - button [ref=e2015] [cursor=pointer]:
+                                - img [ref=e2016]
+                              - button [ref=e2019] [cursor=pointer]:
+                                - img [ref=e2020]
+                          - generic [ref=e2023]:
+                            - progressbar [ref=e2024]
+                            - generic [ref=e2026]: 50%
+                        - generic [ref=e2027]:
+                          - generic [ref=e2028]:
+                            - generic [ref=e2029]:
+                              - paragraph [ref=e2030]:
+                                - text: Marcinkowskiego 15A
+                                - generic [ref=e2031]: (Leszno)
+                              - paragraph [ref=e2032]: Kalashnyk Oleksandr, 6 pokoi, 24/24 miejsc
+                            - generic [ref=e2033]:
+                              - button [ref=e2034] [cursor=pointer]:
+                                - img [ref=e2035]
+                              - button [ref=e2038] [cursor=pointer]:
+                                - img [ref=e2039]
+                          - generic [ref=e2042]:
+                            - progressbar [ref=e2043]
+                            - generic [ref=e2045]: 100%
+                        - generic [ref=e2046]:
+                          - generic [ref=e2047]:
+                            - generic [ref=e2048]:
+                              - paragraph [ref=e2049]:
+                                - text: Marcinkowskiego 31/1
+                                - generic [ref=e2050]: (Świdnica)
+                              - paragraph [ref=e2051]: Yankov Anatolii, 3 pokoi, 5/5 miejsc
+                            - generic [ref=e2052]:
+                              - button [ref=e2053] [cursor=pointer]:
+                                - img [ref=e2054]
+                              - button [ref=e2057] [cursor=pointer]:
+                                - img [ref=e2058]
+                          - generic [ref=e2061]:
+                            - progressbar [ref=e2062]
+                            - generic [ref=e2064]: 100%
+                        - generic [ref=e2065]:
+                          - generic [ref=e2066]:
+                            - generic [ref=e2067]:
+                              - paragraph [ref=e2068]:
+                                - text: Marconich 11/2
+                                - generic [ref=e2069]: (Warszawa)
+                              - paragraph [ref=e2070]: Zaiats Yevhenii, 1 pokoi, 2/2 miejsc
+                            - generic [ref=e2071]:
+                              - button [ref=e2072] [cursor=pointer]:
+                                - img [ref=e2073]
+                              - button [ref=e2076] [cursor=pointer]:
+                                - img [ref=e2077]
+                          - generic [ref=e2080]:
+                            - progressbar [ref=e2081]
+                            - generic [ref=e2083]: 100%
+                        - generic [ref=e2084]:
+                          - generic [ref=e2085]:
+                            - generic [ref=e2086]:
+                              - paragraph [ref=e2087]:
+                                - text: Marconich 11/3
+                                - generic [ref=e2088]: (Warszawa)
+                              - paragraph [ref=e2089]: Zaiats Yevhenii, 6 pokoi, 17/16 miejsc
+                            - generic [ref=e2090]:
+                              - button [ref=e2091] [cursor=pointer]:
+                                - img [ref=e2092]
+                              - button [ref=e2095] [cursor=pointer]:
+                                - img [ref=e2096]
+                          - generic [ref=e2099]:
+                            - progressbar [ref=e2100]
+                            - generic [ref=e2102]: 106%
+                        - generic [ref=e2103]:
+                          - generic [ref=e2104]:
+                            - generic [ref=e2105]:
+                              - paragraph [ref=e2106]:
+                                - text: Marconich 11/5
+                                - generic [ref=e2107]: (Warszawa)
+                              - paragraph [ref=e2108]: Zaiats Yevhenii, 5 pokoi, 10/17 miejsc
+                            - generic [ref=e2109]:
+                              - button [ref=e2110] [cursor=pointer]:
+                                - img [ref=e2111]
+                              - button [ref=e2114] [cursor=pointer]:
+                                - img [ref=e2115]
+                          - generic [ref=e2118]:
+                            - progressbar [ref=e2119]
+                            - generic [ref=e2121]: 59%
+                        - generic [ref=e2122]:
+                          - generic [ref=e2123]:
+                            - generic [ref=e2124]:
+                              - paragraph [ref=e2125]:
+                                - text: Marconich 11/6
+                                - generic [ref=e2126]: (Warszawa)
+                              - paragraph [ref=e2127]: Zaiats Yevhenii, 5 pokoi, 13/14 miejsc
+                            - generic [ref=e2128]:
+                              - button [ref=e2129] [cursor=pointer]:
+                                - img [ref=e2130]
+                              - button [ref=e2133] [cursor=pointer]:
+                                - img [ref=e2134]
+                          - generic [ref=e2137]:
+                            - progressbar [ref=e2138]
+                            - generic [ref=e2140]: 93%
+                        - generic [ref=e2141]:
+                          - generic [ref=e2142]:
+                            - generic [ref=e2143]:
+                              - paragraph [ref=e2144]:
+                                - text: Marka z Jemielnice 8
+                                - generic [ref=e2145]: (Opole)
+                              - paragraph [ref=e2146]: Hetman Yevhen, Brovdi Ivan, 2 pokoi, 3/5 miejsc
+                            - generic [ref=e2147]:
+                              - button [ref=e2148] [cursor=pointer]:
+                                - img [ref=e2149]
+                              - button [ref=e2152] [cursor=pointer]:
+                                - img [ref=e2153]
+                          - generic [ref=e2156]:
+                            - progressbar [ref=e2157]
+                            - generic [ref=e2159]: 60%
+                        - generic [ref=e2160]:
+                          - generic [ref=e2161]:
+                            - generic [ref=e2162]:
+                              - paragraph [ref=e2163]:
+                                - text: Młyńska 9
+                                - generic [ref=e2164]: (Strumień)
+                              - paragraph [ref=e2165]: Holiadynets Oleksandr, 7 pokoi, 23/24 miejsc
+                            - generic [ref=e2166]:
+                              - button [ref=e2167] [cursor=pointer]:
+                                - img [ref=e2168]
+                              - button [ref=e2171] [cursor=pointer]:
+                                - img [ref=e2172]
+                          - generic [ref=e2175]:
+                            - progressbar [ref=e2176]
+                            - generic [ref=e2178]: 96%
+                        - generic [ref=e2179]:
+                          - generic [ref=e2180]:
+                            - generic [ref=e2181]:
+                              - paragraph [ref=e2182]:
+                                - text: Młyńska19
+                                - generic [ref=e2183]: (Strumień)
+                              - paragraph [ref=e2184]: Holiadynets Oleksandr, 10 pokoi, 28/28 miejsc
+                            - generic [ref=e2185]:
+                              - button [ref=e2186] [cursor=pointer]:
+                                - img [ref=e2187]
+                              - button [ref=e2190] [cursor=pointer]:
+                                - img [ref=e2191]
+                          - generic [ref=e2194]:
+                            - progressbar [ref=e2195]
+                            - generic [ref=e2197]: 100%
+                        - generic [ref=e2198]:
+                          - generic [ref=e2199]:
+                            - generic [ref=e2200]:
+                              - paragraph [ref=e2201]:
+                                - text: Moniuszki 17
+                                - generic [ref=e2202]: (Oleśnica)
+                              - paragraph [ref=e2203]: Krakhin Mykyta, Sushchenko Oleksandra, 4 pokoi, 7/9 miejsc
+                            - generic [ref=e2204]:
+                              - button [ref=e2205] [cursor=pointer]:
+                                - img [ref=e2206]
+                              - button [ref=e2209] [cursor=pointer]:
+                                - img [ref=e2210]
+                          - generic [ref=e2213]:
+                            - progressbar [ref=e2214]
+                            - generic [ref=e2216]: 78%
+                        - generic [ref=e2217]:
+                          - generic [ref=e2218]:
+                            - generic [ref=e2219]:
+                              - paragraph [ref=e2220]:
+                                - text: Morelowa 4
+                                - generic [ref=e2221]: (Gorzów Wielkopolski)
+                              - paragraph [ref=e2222]: Melnychuk Roman, 2 pokoi, 4/8 miejsc
+                            - generic [ref=e2223]:
+                              - button [ref=e2224] [cursor=pointer]:
+                                - img [ref=e2225]
+                              - button [ref=e2228] [cursor=pointer]:
+                                - img [ref=e2229]
+                          - generic [ref=e2232]:
+                            - progressbar [ref=e2233]
+                            - generic [ref=e2235]: 50%
+                        - generic [ref=e2236]:
+                          - generic [ref=e2237]:
+                            - generic [ref=e2238]:
+                              - paragraph [ref=e2239]:
+                                - text: Narutowicza 1-3
+                                - generic [ref=e2240]: (Kalisz)
+                              - paragraph [ref=e2241]: Veklyak Oleksandr, 1 pokoi, 2/1 miejsc
+                            - generic [ref=e2242]:
+                              - button [ref=e2243] [cursor=pointer]:
+                                - img [ref=e2244]
+                              - button [ref=e2247] [cursor=pointer]:
+                                - img [ref=e2248]
+                          - generic [ref=e2251]:
+                            - progressbar [ref=e2252]
+                            - generic [ref=e2254]: 200%
+                        - generic [ref=e2255]:
+                          - generic [ref=e2256]:
+                            - generic [ref=e2257]:
+                              - paragraph [ref=e2258]:
+                                - text: Nowowiejskiego 24
+                                - generic [ref=e2259]: (Strumień)
+                              - paragraph [ref=e2260]: Holiadynets Oleksandr, 2 pokoi, 4/4 miejsc
+                            - generic [ref=e2261]:
+                              - button [ref=e2262] [cursor=pointer]:
+                                - img [ref=e2263]
+                              - button [ref=e2266] [cursor=pointer]:
+                                - img [ref=e2267]
+                          - generic [ref=e2270]:
+                            - progressbar [ref=e2271]
+                            - generic [ref=e2273]: 100%
+                        - generic [ref=e2274]:
+                          - generic [ref=e2275]:
+                            - generic [ref=e2276]:
+                              - paragraph [ref=e2277]:
+                                - text: Ogrodowa 5/2
+                                - generic [ref=e2278]: (Strzelin)
+                              - paragraph [ref=e2279]: Hertsoh Veronika, 3 pokoi, 10/10 miejsc
+                            - generic [ref=e2280]:
+                              - button [ref=e2281] [cursor=pointer]:
+                                - img [ref=e2282]
+                              - button [ref=e2285] [cursor=pointer]:
+                                - img [ref=e2286]
+                          - generic [ref=e2289]:
+                            - progressbar [ref=e2290]
+                            - generic [ref=e2292]: 100%
+                        - generic [ref=e2293]:
+                          - generic [ref=e2294]:
+                            - generic [ref=e2295]:
+                              - paragraph [ref=e2296]:
+                                - text: Ogrodowa 68
+                                - generic [ref=e2297]: (Rawa Mazowiecka)
+                              - paragraph [ref=e2298]: Beqa Darbaidze, Zaiats Yevhenii, 9 pokoi, 24/25 miejsc
+                            - generic [ref=e2299]:
+                              - button [ref=e2300] [cursor=pointer]:
+                                - img [ref=e2301]
+                              - button [ref=e2304] [cursor=pointer]:
+                                - img [ref=e2305]
+                          - generic [ref=e2308]:
+                            - progressbar [ref=e2309]
+                            - generic [ref=e2311]: 96%
+                        - generic [ref=e2312]:
+                          - generic [ref=e2313]:
+                            - generic [ref=e2314]:
+                              - paragraph [ref=e2315]:
+                                - text: Oławska 16/8
+                                - generic [ref=e2316]: (Jelcz-Laskowice)
+                              - paragraph [ref=e2317]: Khayal, 4 pokoi, 9/9 miejsc
+                            - generic [ref=e2318]:
+                              - button [ref=e2319] [cursor=pointer]:
+                                - img [ref=e2320]
+                              - button [ref=e2323] [cursor=pointer]:
+                                - img [ref=e2324]
+                          - generic [ref=e2327]:
+                            - progressbar [ref=e2328]
+                            - generic [ref=e2330]: 100%
+                        - generic [ref=e2331]:
+                          - generic [ref=e2332]:
+                            - generic [ref=e2333]:
+                              - paragraph [ref=e2334]:
+                                - text: Oławska 62/1
+                                - generic [ref=e2335]: (Jelcz-Laskowice)
+                              - paragraph [ref=e2336]: Khayal, 3 pokoi, 3/6 miejsc
+                            - generic [ref=e2337]:
+                              - button [ref=e2338] [cursor=pointer]:
+                                - img [ref=e2339]
+                              - button [ref=e2342] [cursor=pointer]:
+                                - img [ref=e2343]
+                          - generic [ref=e2346]:
+                            - progressbar [ref=e2347]
+                            - generic [ref=e2349]: 50%
+                        - generic [ref=e2350]:
+                          - generic [ref=e2351]:
+                            - generic [ref=e2352]:
+                              - paragraph [ref=e2353]:
+                                - text: Orłowskiego 32
+                                - generic [ref=e2354]: (Leszno)
+                              - paragraph [ref=e2355]: Kalashnyk Oleksandr, 5 pokoi, 9/10 miejsc
+                            - generic [ref=e2356]:
+                              - button [ref=e2357] [cursor=pointer]:
+                                - img [ref=e2358]
+                              - button [ref=e2361] [cursor=pointer]:
+                                - img [ref=e2362]
+                          - generic [ref=e2365]:
+                            - progressbar [ref=e2366]
+                            - generic [ref=e2368]: 90%
+                        - generic [ref=e2369]:
+                          - generic [ref=e2370]:
+                            - generic [ref=e2371]:
+                              - paragraph [ref=e2372]:
+                                - text: Os. XXlecia 35/9
+                                - generic [ref=e2373]: (Ząbkowice Śląskie)
+                              - paragraph [ref=e2374]: Hetman Yevhen, 2 pokoi, 3/3 miejsc
+                            - generic [ref=e2375]:
+                              - button [ref=e2376] [cursor=pointer]:
+                                - img [ref=e2377]
+                              - button [ref=e2380] [cursor=pointer]:
+                                - img [ref=e2381]
+                          - generic [ref=e2384]:
+                            - progressbar [ref=e2385]
+                            - generic [ref=e2387]: 100%
+                        - generic [ref=e2388]:
+                          - generic [ref=e2389]:
+                            - generic [ref=e2390]:
+                              - paragraph [ref=e2391]:
+                                - text: Osiedle Niewiadow 64A
+                                - generic [ref=e2392]: (Ujazd)
+                              - paragraph [ref=e2393]: Zaiats Yevhenii, Beqa Darbaidze, 3 pokoi, 6/7 miejsc
+                            - generic [ref=e2394]:
+                              - button [ref=e2395] [cursor=pointer]:
+                                - img [ref=e2396]
+                              - button [ref=e2399] [cursor=pointer]:
+                                - img [ref=e2400]
+                          - generic [ref=e2403]:
+                            - progressbar [ref=e2404]
+                            - generic [ref=e2406]: 86%
+                        - generic [ref=e2407]:
+                          - generic [ref=e2408]:
+                            - generic [ref=e2409]:
+                              - paragraph [ref=e2410]:
+                                - text: Ozimek - Wyzwolenia 12
+                                - generic [ref=e2411]: (Schodnia)
+                              - paragraph [ref=e2412]: Hetman Yevhen, 1 pokoi, 3/2 miejsc
+                            - generic [ref=e2413]:
+                              - button [ref=e2414] [cursor=pointer]:
+                                - img [ref=e2415]
+                              - button [ref=e2418] [cursor=pointer]:
+                                - img [ref=e2419]
+                          - generic [ref=e2422]:
+                            - progressbar [ref=e2423]
+                            - generic [ref=e2425]: 150%
+                        - generic [ref=e2426]:
+                          - generic [ref=e2427]:
+                            - generic [ref=e2428]:
+                              - paragraph [ref=e2429]:
+                                - text: Pałacowa 4 (Bliż)
+                                - generic [ref=e2430]: (Wrocław)
+                              - paragraph [ref=e2431]: Fedchenko Artem, 2 pokoi, 4/4 miejsc
+                            - generic [ref=e2432]:
+                              - button [ref=e2433] [cursor=pointer]:
+                                - img [ref=e2434]
+                              - button [ref=e2437] [cursor=pointer]:
+                                - img [ref=e2438]
+                          - generic [ref=e2441]:
+                            - progressbar [ref=e2442]
+                            - generic [ref=e2444]: 100%
+                        - generic [ref=e2445]:
+                          - generic [ref=e2446]:
+                            - generic [ref=e2447]:
+                              - paragraph [ref=e2448]:
+                                - text: Partyzantów 9
+                                - generic [ref=e2449]: (Ząbkowice Śląskie)
+                              - paragraph [ref=e2450]: Hetman Yevhen, 1 pokoi, 0/2 miejsc
+                            - generic [ref=e2451]:
+                              - button [ref=e2452] [cursor=pointer]:
+                                - img [ref=e2453]
+                              - button [ref=e2456] [cursor=pointer]:
+                                - img [ref=e2457]
+                          - generic [ref=e2460]:
+                            - progressbar [ref=e2461]
+                            - generic [ref=e2463]: 0%
+                        - generic [ref=e2464]:
+                          - generic [ref=e2465]:
+                            - generic [ref=e2466]:
+                              - paragraph [ref=e2467]:
+                                - text: Piastowska 45/2
+                                - generic [ref=e2468]: (Bielawa)
+                              - paragraph [ref=e2469]: Kashkarov Yaroslav, 1 pokoi, 0/2 miejsc
+                            - generic [ref=e2470]:
+                              - button [ref=e2471] [cursor=pointer]:
+                                - img [ref=e2472]
+                              - button [ref=e2475] [cursor=pointer]:
+                                - img [ref=e2476]
+                          - generic [ref=e2479]:
+                            - progressbar [ref=e2480]
+                            - generic [ref=e2482]: 0%
+                        - generic [ref=e2483]:
+                          - generic [ref=e2484]:
+                            - generic [ref=e2485]:
+                              - paragraph [ref=e2486]:
+                                - text: Piłsudskiego 4/2
+                                - generic [ref=e2487]: (Strzelin)
+                              - paragraph [ref=e2488]: Hertsoh Veronika, 3 pokoi, 8/6 miejsc
+                            - generic [ref=e2489]:
+                              - button [ref=e2490] [cursor=pointer]:
+                                - img [ref=e2491]
+                              - button [ref=e2494] [cursor=pointer]:
+                                - img [ref=e2495]
+                          - generic [ref=e2498]:
+                            - progressbar [ref=e2499]
+                            - generic [ref=e2501]: 133%
+                        - generic [ref=e2502]:
+                          - generic [ref=e2503]:
+                            - generic [ref=e2504]:
+                              - paragraph [ref=e2505]:
+                                - text: pl. św. Małgorzaty 8/2a
+                                - generic [ref=e2506]: (Świdnica)
+                              - paragraph [ref=e2507]: Yankov Anatolii, 4 pokoi, 4/9 miejsc
+                            - generic [ref=e2508]:
+                              - button [ref=e2509] [cursor=pointer]:
+                                - img [ref=e2510]
+                              - button [ref=e2513] [cursor=pointer]:
+                                - img [ref=e2514]
+                          - generic [ref=e2517]:
+                            - progressbar [ref=e2518]
+                            - generic [ref=e2520]: 44%
+                        - generic [ref=e2521]:
+                          - generic [ref=e2522]:
+                            - generic [ref=e2523]:
+                              - paragraph [ref=e2524]:
+                                - text: Plac Zamkowy 26/5
+                                - generic [ref=e2525]: (Oława)
+                              - paragraph [ref=e2526]: Khayal, 3 pokoi, 4/7 miejsc
+                            - generic [ref=e2527]:
+                              - button [ref=e2528] [cursor=pointer]:
+                                - img [ref=e2529]
+                              - button [ref=e2532] [cursor=pointer]:
+                                - img [ref=e2533]
+                          - generic [ref=e2536]:
+                            - progressbar [ref=e2537]
+                            - generic [ref=e2539]: 57%
+                        - generic [ref=e2540]:
+                          - generic [ref=e2541]:
+                            - generic [ref=e2542]:
+                              - paragraph [ref=e2543]:
+                                - text: Pogodna 18
+                                - generic [ref=e2544]: (Kudowa-Zdrój)
+                              - paragraph [ref=e2545]: Hetman Yevhen, 5 pokoi, 3/10 miejsc
+                            - generic [ref=e2546]:
+                              - button [ref=e2547] [cursor=pointer]:
+                                - img [ref=e2548]
+                              - button [ref=e2551] [cursor=pointer]:
+                                - img [ref=e2552]
+                          - generic [ref=e2555]:
+                            - progressbar [ref=e2556]
+                            - generic [ref=e2558]: 30%
+                        - generic [ref=e2559]:
+                          - generic [ref=e2560]:
+                            - generic [ref=e2561]:
+                              - paragraph [ref=e2562]:
+                                - text: Polna 4
+                                - generic [ref=e2563]: (Strzelin)
+                              - paragraph [ref=e2564]: Hertsoh Veronika, 1 pokoi, 0/2 miejsc
+                            - generic [ref=e2565]:
+                              - button [ref=e2566] [cursor=pointer]:
+                                - img [ref=e2567]
+                              - button [ref=e2570] [cursor=pointer]:
+                                - img [ref=e2571]
+                          - generic [ref=e2574]:
+                            - progressbar [ref=e2575]
+                            - generic [ref=e2577]: 0%
+                        - generic [ref=e2578]:
+                          - generic [ref=e2579]:
+                            - generic [ref=e2580]:
+                              - paragraph [ref=e2581]:
+                                - text: Poludniowa 19
+                                - generic [ref=e2582]: (Prusice)
+                              - paragraph [ref=e2583]: Fedchenko Artem, 1 pokoi, 1/11 miejsc
+                            - generic [ref=e2584]:
+                              - button [ref=e2585] [cursor=pointer]:
+                                - img [ref=e2586]
+                              - button [ref=e2589] [cursor=pointer]:
+                                - img [ref=e2590]
+                          - generic [ref=e2593]:
+                            - progressbar [ref=e2594]
+                            - generic [ref=e2596]: 9%
+                        - generic [ref=e2597]:
+                          - generic [ref=e2598]:
+                            - generic [ref=e2599]:
+                              - paragraph [ref=e2600]:
+                                - text: Portowa 17A
+                                - generic [ref=e2601]: (Niepołomice)
+                              - paragraph [ref=e2602]: Herasimovych Oleh, 4 pokoi, 15/17 miejsc
+                            - generic [ref=e2603]:
+                              - button [ref=e2604] [cursor=pointer]:
+                                - img [ref=e2605]
+                              - button [ref=e2608] [cursor=pointer]:
+                                - img [ref=e2609]
+                          - generic [ref=e2612]:
+                            - progressbar [ref=e2613]
+                            - generic [ref=e2615]: 88%
+                        - generic [ref=e2616]:
+                          - generic [ref=e2617]:
+                            - generic [ref=e2618]:
+                              - paragraph [ref=e2619]:
+                                - text: Powstańców Warszawy 4
+                                - generic [ref=e2620]: (Ząbkowice Śląskie)
+                              - paragraph [ref=e2621]: Hetman Yevhen, 9 pokoi, 18/17 miejsc
+                            - generic [ref=e2622]:
+                              - button [ref=e2623] [cursor=pointer]:
+                                - img [ref=e2624]
+                              - button [ref=e2627] [cursor=pointer]:
+                                - img [ref=e2628]
+                          - generic [ref=e2631]:
+                            - progressbar [ref=e2632]
+                            - generic [ref=e2634]: 106%
+                        - generic [ref=e2635]:
+                          - generic [ref=e2636]:
+                            - generic [ref=e2637]:
+                              - paragraph [ref=e2638]:
+                                - text: Prosta 37
+                                - generic [ref=e2639]: (Wieluń)
+                              - paragraph [ref=e2640]: Krakhin Mykyta, 1 pokoi, 5/6 miejsc
+                            - generic [ref=e2641]:
+                              - button [ref=e2642] [cursor=pointer]:
+                                - img [ref=e2643]
+                              - button [ref=e2646] [cursor=pointer]:
+                                - img [ref=e2647]
+                          - generic [ref=e2650]:
+                            - progressbar [ref=e2651]
+                            - generic [ref=e2653]: 83%
+                        - generic [ref=e2654]:
+                          - generic [ref=e2655]:
+                            - generic [ref=e2656]:
+                              - paragraph [ref=e2657]:
+                                - text: Prusa 6
+                                - generic [ref=e2658]: (Jelcz-Laskowice)
+                              - paragraph [ref=e2659]: Khayal, 5 pokoi, 13/17 miejsc
+                            - generic [ref=e2660]:
+                              - button [ref=e2661] [cursor=pointer]:
+                                - img [ref=e2662]
+                              - button [ref=e2665] [cursor=pointer]:
+                                - img [ref=e2666]
+                          - generic [ref=e2669]:
+                            - progressbar [ref=e2670]
+                            - generic [ref=e2672]: 76%
+                        - generic [ref=e2673]:
+                          - generic [ref=e2674]:
+                            - generic [ref=e2675]:
+                              - paragraph [ref=e2676]:
+                                - text: Przyjaciół Żołnierza 1
+                                - generic [ref=e2677]: (Twardogóra)
+                              - paragraph [ref=e2678]: Krakhin Mykyta, Sushchenko Oleksandra, 7 pokoi, 17/20 miejsc
+                            - generic [ref=e2679]:
+                              - button [ref=e2680] [cursor=pointer]:
+                                - img [ref=e2681]
+                              - button [ref=e2684] [cursor=pointer]:
+                                - img [ref=e2685]
+                          - generic [ref=e2688]:
+                            - progressbar [ref=e2689]
+                            - generic [ref=e2691]: 85%
+                        - generic [ref=e2692]:
+                          - generic [ref=e2693]:
+                            - generic [ref=e2694]:
+                              - paragraph [ref=e2695]:
+                                - text: Pszenna 12A
+                                - generic [ref=e2696]: (Kalisz)
+                              - paragraph [ref=e2697]: Veklyak Oleksandr, 1 pokoi, 1/1 miejsc
+                            - generic [ref=e2698]:
+                              - button [ref=e2699] [cursor=pointer]:
+                                - img [ref=e2700]
+                              - button [ref=e2703] [cursor=pointer]:
+                                - img [ref=e2704]
+                          - generic [ref=e2707]:
+                            - progressbar [ref=e2708]
+                            - generic [ref=e2710]: 100%
+                        - generic [ref=e2711]:
+                          - generic [ref=e2712]:
+                            - generic [ref=e2713]:
+                              - paragraph [ref=e2714]:
+                                - text: Reymonta 2
+                                - generic [ref=e2715]: (Wieluń)
+                              - paragraph [ref=e2716]: Krakhin Mykyta, 1 pokoi, 0/1 miejsc
+                            - generic [ref=e2717]:
+                              - button [ref=e2718] [cursor=pointer]:
+                                - img [ref=e2719]
+                              - button [ref=e2722] [cursor=pointer]:
+                                - img [ref=e2723]
+                          - generic [ref=e2726]:
+                            - progressbar [ref=e2727]
+                            - generic [ref=e2729]: 0%
+                        - generic [ref=e2730]:
+                          - generic [ref=e2731]:
+                            - generic [ref=e2732]:
+                              - paragraph [ref=e2733]:
+                                - text: Rynek 6
+                                - generic [ref=e2734]: (Strumień)
+                              - paragraph [ref=e2735]: Holiadynets Oleksandr, 2 pokoi, 7/7 miejsc
+                            - generic [ref=e2736]:
+                              - button [ref=e2737] [cursor=pointer]:
+                                - img [ref=e2738]
+                              - button [ref=e2741] [cursor=pointer]:
+                                - img [ref=e2742]
+                          - generic [ref=e2745]:
+                            - progressbar [ref=e2746]
+                            - generic [ref=e2748]: 100%
+                        - generic [ref=e2749]:
+                          - generic [ref=e2750]:
+                            - generic [ref=e2751]:
+                              - paragraph [ref=e2752]:
+                                - text: S. Staszica 2
+                                - generic [ref=e2753]: (Twardogóra)
+                              - paragraph [ref=e2754]: Krakhin Mykyta, Sushchenko Oleksandra, 7 pokoi, 18/20 miejsc
+                            - generic [ref=e2755]:
+                              - button [ref=e2756] [cursor=pointer]:
+                                - img [ref=e2757]
+                              - button [ref=e2760] [cursor=pointer]:
+                                - img [ref=e2761]
+                          - generic [ref=e2764]:
+                            - progressbar [ref=e2765]
+                            - generic [ref=e2767]: 90%
+                        - generic [ref=e2768]:
+                          - generic [ref=e2769]:
+                            - generic [ref=e2770]:
+                              - paragraph [ref=e2771]:
+                                - text: Sadowa
+                                - generic [ref=e2772]: (Kutno)
+                              - paragraph [ref=e2773]: Yachminnyk Roman, 8 pokoi, 25/26 miejsc
+                            - generic [ref=e2774]:
+                              - button [ref=e2775] [cursor=pointer]:
+                                - img [ref=e2776]
+                              - button [ref=e2779] [cursor=pointer]:
+                                - img [ref=e2780]
+                          - generic [ref=e2783]:
+                            - progressbar [ref=e2784]
+                            - generic [ref=e2786]: 96%
+                        - generic [ref=e2787]:
+                          - generic [ref=e2788]:
+                            - generic [ref=e2789]:
+                              - paragraph [ref=e2790]:
+                                - text: Sądrożyce 25A
+                                - generic [ref=e2791]: (Twardogóra)
+                              - paragraph [ref=e2792]: Krakhin Mykyta, Sushchenko Oleksandra, 4 pokoi, 7/12 miejsc
+                            - generic [ref=e2793]:
+                              - button [ref=e2794] [cursor=pointer]:
+                                - img [ref=e2795]
+                              - button [ref=e2798] [cursor=pointer]:
+                                - img [ref=e2799]
+                          - generic [ref=e2802]:
+                            - progressbar [ref=e2803]
+                            - generic [ref=e2805]: 58%
+                        - generic [ref=e2806]:
+                          - generic [ref=e2807]:
+                            - generic [ref=e2808]:
+                              - paragraph [ref=e2809]:
+                                - text: Sienkiewicza 12 (Długoleka)
+                                - generic [ref=e2810]: (Wrocław)
+                              - paragraph [ref=e2811]: Fedchenko Artem, 3 pokoi, 4/7 miejsc
+                            - generic [ref=e2812]:
+                              - button [ref=e2813] [cursor=pointer]:
+                                - img [ref=e2814]
+                              - button [ref=e2817] [cursor=pointer]:
+                                - img [ref=e2818]
+                          - generic [ref=e2821]:
+                            - progressbar [ref=e2822]
+                            - generic [ref=e2824]: 57%
+                        - generic [ref=e2825]:
+                          - generic [ref=e2826]:
+                            - generic [ref=e2827]:
+                              - paragraph [ref=e2828]:
+                                - text: Sienkiewicza 2
+                                - generic [ref=e2829]: (Złotoryja)
+                              - paragraph [ref=e2830]: Kashkarov Yaroslav, 3 pokoi, 10/7 miejsc
+                            - generic [ref=e2831]:
+                              - button [ref=e2832] [cursor=pointer]:
+                                - img [ref=e2833]
+                              - button [ref=e2836] [cursor=pointer]:
+                                - img [ref=e2837]
+                          - generic [ref=e2840]:
+                            - progressbar [ref=e2841]
+                            - generic [ref=e2843]: 143%
+                        - generic [ref=e2844]:
+                          - generic [ref=e2845]:
+                            - generic [ref=e2846]:
+                              - paragraph [ref=e2847]:
+                                - text: Sieradzka 45
+                                - generic [ref=e2848]: (Wieluń)
+                              - paragraph [ref=e2849]: Krakhin Mykyta, 4 pokoi, 9/9 miejsc
+                            - generic [ref=e2850]:
+                              - button [ref=e2851] [cursor=pointer]:
+                                - img [ref=e2852]
+                              - button [ref=e2855] [cursor=pointer]:
+                                - img [ref=e2856]
+                          - generic [ref=e2859]:
+                            - progressbar [ref=e2860]
+                            - generic [ref=e2862]: 100%
+                        - generic [ref=e2863]:
+                          - generic [ref=e2864]:
+                            - generic [ref=e2865]:
+                              - paragraph [ref=e2866]:
+                                - text: Sikorskiego 4/1
+                                - generic [ref=e2867]: (Strzelin)
+                              - paragraph [ref=e2868]: Hertsoh Veronika, 4 pokoi, 11/11 miejsc
+                            - generic [ref=e2869]:
+                              - button [ref=e2870] [cursor=pointer]:
+                                - img [ref=e2871]
+                              - button [ref=e2874] [cursor=pointer]:
+                                - img [ref=e2875]
+                          - generic [ref=e2878]:
+                            - progressbar [ref=e2879]
+                            - generic [ref=e2881]: 100%
+                        - generic [ref=e2882]:
+                          - generic [ref=e2883]:
+                            - generic [ref=e2884]:
+                              - paragraph [ref=e2885]:
+                                - text: Słowackiego 11
+                                - generic [ref=e2886]: (Strzelin)
+                              - paragraph [ref=e2887]: Hertsoh Veronika, 5 pokoi, 9/11 miejsc
+                            - generic [ref=e2888]:
+                              - button [ref=e2889] [cursor=pointer]:
+                                - img [ref=e2890]
+                              - button [ref=e2893] [cursor=pointer]:
+                                - img [ref=e2894]
+                          - generic [ref=e2897]:
+                            - progressbar [ref=e2898]
+                            - generic [ref=e2900]: 82%
+                        - generic [ref=e2901]:
+                          - generic [ref=e2902]:
+                            - generic [ref=e2903]:
+                              - paragraph [ref=e2904]:
+                                - text: Słowackiego 20
+                                - generic [ref=e2905]: (Strzelin)
+                              - paragraph [ref=e2906]: Hertsoh Veronika, 3 pokoi, 8/8 miejsc
+                            - generic [ref=e2907]:
+                              - button [ref=e2908] [cursor=pointer]:
+                                - img [ref=e2909]
+                              - button [ref=e2912] [cursor=pointer]:
+                                - img [ref=e2913]
+                          - generic [ref=e2916]:
+                            - progressbar [ref=e2917]
+                            - generic [ref=e2919]: 100%
+                        - generic [ref=e2920]:
+                          - generic [ref=e2921]:
+                            - generic [ref=e2922]:
+                              - paragraph [ref=e2923]:
+                                - text: Słowiańska 3
+                                - generic [ref=e2924]: (Żarów)
+                              - paragraph [ref=e2925]: Yankov Anatolii, 4 pokoi, 7/10 miejsc
+                            - generic [ref=e2926]:
+                              - button [ref=e2927] [cursor=pointer]:
+                                - img [ref=e2928]
+                              - button [ref=e2931] [cursor=pointer]:
+                                - img [ref=e2932]
+                          - generic [ref=e2935]:
+                            - progressbar [ref=e2936]
+                            - generic [ref=e2938]: 70%
+                        - generic [ref=e2939]:
+                          - generic [ref=e2940]:
+                            - generic [ref=e2941]:
+                              - paragraph [ref=e2942]:
+                                - text: Sobieskiego 33
+                                - generic [ref=e2943]: (Rawa Mazowiecka)
+                              - paragraph [ref=e2944]: Beqa Darbaidze, Zaiats Yevhenii, 2 pokoi, 11/5 miejsc
+                            - generic [ref=e2945]:
+                              - button [ref=e2946] [cursor=pointer]:
+                                - img [ref=e2947]
+                              - button [ref=e2950] [cursor=pointer]:
+                                - img [ref=e2951]
+                          - generic [ref=e2954]:
+                            - progressbar [ref=e2955]
+                            - generic [ref=e2957]: 220%
+                        - generic [ref=e2958]:
+                          - generic [ref=e2959]:
+                            - generic [ref=e2960]:
+                              - paragraph [ref=e2961]:
+                                - text: Spokojna 1
+                                - generic [ref=e2962]: (Leszno)
+                              - paragraph [ref=e2963]: Kalashnyk Oleksandr, 5 pokoi, 12/10 miejsc
+                            - generic [ref=e2964]:
+                              - button [ref=e2965] [cursor=pointer]:
+                                - img [ref=e2966]
+                              - button [ref=e2969] [cursor=pointer]:
+                                - img [ref=e2970]
+                          - generic [ref=e2973]:
+                            - progressbar [ref=e2974]
+                            - generic [ref=e2976]: 120%
+                        - generic [ref=e2977]:
+                          - generic [ref=e2978]:
+                            - generic [ref=e2979]:
+                              - paragraph [ref=e2980]:
+                                - text: Spółdzielcza 5
+                                - generic [ref=e2981]: (Leszno)
+                              - paragraph [ref=e2982]: Kalashnyk Oleksandr, 3 pokoi, 4/9 miejsc
+                            - generic [ref=e2983]:
+                              - button [ref=e2984] [cursor=pointer]:
+                                - img [ref=e2985]
+                              - button [ref=e2988] [cursor=pointer]:
+                                - img [ref=e2989]
+                          - generic [ref=e2992]:
+                            - progressbar [ref=e2993]
+                            - generic [ref=e2995]: 44%
+                        - generic [ref=e2996]:
+                          - generic [ref=e2997]:
+                            - generic [ref=e2998]:
+                              - paragraph [ref=e2999]:
+                                - text: Stanisławskiego 3
+                                - generic [ref=e3000]: (Leszno)
+                              - paragraph [ref=e3001]: Kalashnyk Oleksandr, 6 pokoi, 19/19 miejsc
+                            - generic [ref=e3002]:
+                              - button [ref=e3003] [cursor=pointer]:
+                                - img [ref=e3004]
+                              - button [ref=e3007] [cursor=pointer]:
+                                - img [ref=e3008]
+                          - generic [ref=e3011]:
+                            - progressbar [ref=e3012]
+                            - generic [ref=e3014]: 100%
+                        - generic [ref=e3015]:
+                          - generic [ref=e3016]:
+                            - generic [ref=e3017]:
+                              - paragraph [ref=e3018]:
+                                - text: Staszica 23/7
+                                - generic [ref=e3019]: (Strzelin)
+                              - paragraph [ref=e3020]: Hertsoh Veronika, 3 pokoi, 8/9 miejsc
+                            - generic [ref=e3021]:
+                              - button [ref=e3022] [cursor=pointer]:
+                                - img [ref=e3023]
+                              - button [ref=e3026] [cursor=pointer]:
+                                - img [ref=e3027]
+                          - generic [ref=e3030]:
+                            - progressbar [ref=e3031]
+                            - generic [ref=e3033]: 89%
+                        - generic [ref=e3034]:
+                          - generic [ref=e3035]:
+                            - generic [ref=e3036]:
+                              - paragraph [ref=e3037]:
+                                - text: Steńclowka 34/13
+                                - generic [ref=e3038]: (Strumień)
+                              - paragraph [ref=e3039]: Holiadynets Oleksandr, 3 pokoi, 7/8 miejsc
+                            - generic [ref=e3040]:
+                              - button [ref=e3041] [cursor=pointer]:
+                                - img [ref=e3042]
+                              - button [ref=e3045] [cursor=pointer]:
+                                - img [ref=e3046]
+                          - generic [ref=e3049]:
+                            - progressbar [ref=e3050]
+                            - generic [ref=e3052]: 88%
+                        - generic [ref=e3053]:
+                          - generic [ref=e3054]:
+                            - generic [ref=e3055]:
+                              - paragraph [ref=e3056]:
+                                - text: Strzelecka 2
+                                - generic [ref=e3057]: (Zwierzyn)
+                              - paragraph [ref=e3058]: Melnychuk Roman, 3 pokoi, 1/9 miejsc
+                            - generic [ref=e3059]:
+                              - button [ref=e3060] [cursor=pointer]:
+                                - img [ref=e3061]
+                              - button [ref=e3064] [cursor=pointer]:
+                                - img [ref=e3065]
+                          - generic [ref=e3068]:
+                            - progressbar [ref=e3069]
+                            - generic [ref=e3071]: 11%
+                        - generic [ref=e3072]:
+                          - generic [ref=e3073]:
+                            - generic [ref=e3074]:
+                              - paragraph [ref=e3075]:
+                                - text: Św Rocha 4A/10 (Oława)
+                                - generic [ref=e3076]: (Oława)
+                              - paragraph [ref=e3077]: Khayal, 3 pokoi, 6/8 miejsc
+                            - generic [ref=e3078]:
+                              - button [ref=e3079] [cursor=pointer]:
+                                - img [ref=e3080]
+                              - button [ref=e3083] [cursor=pointer]:
+                                - img [ref=e3084]
+                          - generic [ref=e3087]:
+                            - progressbar [ref=e3088]
+                            - generic [ref=e3090]: 75%
+                        - generic [ref=e3091]:
+                          - generic [ref=e3092]:
+                            - generic [ref=e3093]:
+                              - paragraph [ref=e3094]:
+                                - text: Św Rocha 6B/1 (Oława)
+                                - generic [ref=e3095]: (Oława)
+                              - paragraph [ref=e3096]: Khayal, 2 pokoi, 4/4 miejsc
+                            - generic [ref=e3097]:
+                              - button [ref=e3098] [cursor=pointer]:
+                                - img [ref=e3099]
+                              - button [ref=e3102] [cursor=pointer]:
+                                - img [ref=e3103]
+                          - generic [ref=e3106]:
+                            - progressbar [ref=e3107]
+                            - generic [ref=e3109]: 100%
+                        - generic [ref=e3110]:
+                          - generic [ref=e3111]:
+                            - generic [ref=e3112]:
+                              - paragraph [ref=e3113]:
+                                - text: Św. Michała Archanioła 1/15
+                                - generic [ref=e3114]: (Strzelin)
+                              - paragraph [ref=e3115]: Hertsoh Veronika, 2 pokoi, 4/4 miejsc
+                            - generic [ref=e3116]:
+                              - button [ref=e3117] [cursor=pointer]:
+                                - img [ref=e3118]
+                              - button [ref=e3121] [cursor=pointer]:
+                                - img [ref=e3122]
+                          - generic [ref=e3125]:
+                            - progressbar [ref=e3126]
+                            - generic [ref=e3128]: 100%
+                        - generic [ref=e3129]:
+                          - generic [ref=e3130]:
+                            - generic [ref=e3131]:
+                              - paragraph [ref=e3132]:
+                                - text: Św.Jadwigi 10
+                                - generic [ref=e3133]: (Twardogóra)
+                              - paragraph [ref=e3134]: Krakhin Mykyta, Sushchenko Oleksandra, 4 pokoi, 12/13 miejsc
+                            - generic [ref=e3135]:
+                              - button [ref=e3136] [cursor=pointer]:
+                                - img [ref=e3137]
+                              - button [ref=e3140] [cursor=pointer]:
+                                - img [ref=e3141]
+                          - generic [ref=e3144]:
+                            - progressbar [ref=e3145]
+                            - generic [ref=e3147]: 92%
+                        - generic [ref=e3148]:
+                          - generic [ref=e3149]:
+                            - generic [ref=e3150]:
+                              - paragraph [ref=e3151]:
+                                - text: Świdnicka 1
+                                - generic [ref=e3152]: (Wierzbna)
+                              - paragraph [ref=e3153]: Yankov Anatolii, Kashkarov Yaroslav, Hetman Yevhen, 4 pokoi, 4/10 miejsc
+                            - generic [ref=e3154]:
+                              - button [ref=e3155] [cursor=pointer]:
+                                - img [ref=e3156]
+                              - button [ref=e3159] [cursor=pointer]:
+                                - img [ref=e3160]
+                          - generic [ref=e3163]:
+                            - progressbar [ref=e3164]
+                            - generic [ref=e3166]: 40%
+                        - generic [ref=e3167]:
+                          - generic [ref=e3168]:
+                            - generic [ref=e3169]:
+                              - paragraph [ref=e3170]:
+                                - text: Tańskiego 11/2
+                                - generic [ref=e3171]: (Jelcz-Laskowice)
+                              - paragraph [ref=e3172]: Khayal, 3 pokoi, 6/8 miejsc
+                            - generic [ref=e3173]:
+                              - button [ref=e3174] [cursor=pointer]:
+                                - img [ref=e3175]
+                              - button [ref=e3178] [cursor=pointer]:
+                                - img [ref=e3179]
+                          - generic [ref=e3182]:
+                            - progressbar [ref=e3183]
+                            - generic [ref=e3185]: 75%
+                        - generic [ref=e3186]:
+                          - generic [ref=e3187]:
+                            - generic [ref=e3188]:
+                              - paragraph [ref=e3189]:
+                                - text: Tarkowskiego 16F/5
+                                - generic [ref=e3190]: (Leszno)
+                              - paragraph [ref=e3191]: Kalashnyk Oleksandr, 3 pokoi, 5/6 miejsc
+                            - generic [ref=e3192]:
+                              - button [ref=e3193] [cursor=pointer]:
+                                - img [ref=e3194]
+                              - button [ref=e3197] [cursor=pointer]:
+                                - img [ref=e3198]
+                          - generic [ref=e3201]:
+                            - progressbar [ref=e3202]
+                            - generic [ref=e3204]: 83%
+                        - generic [ref=e3205]:
+                          - generic [ref=e3206]:
+                            - generic [ref=e3207]:
+                              - paragraph [ref=e3208]:
+                                - text: Tarnowska 2
+                                - generic [ref=e3209]: (Opole)
+                              - paragraph [ref=e3210]: Hetman Yevhen, Brovdi Ivan, 1 pokoi, 5/5 miejsc
+                            - generic [ref=e3211]:
+                              - button [ref=e3212] [cursor=pointer]:
+                                - img [ref=e3213]
+                              - button [ref=e3216] [cursor=pointer]:
+                                - img [ref=e3217]
+                          - generic [ref=e3220]:
+                            - progressbar [ref=e3221]
+                            - generic [ref=e3223]: 100%
+                        - generic [ref=e3224]:
+                          - generic [ref=e3225]:
+                            - generic [ref=e3226]:
+                              - paragraph [ref=e3227]:
+                                - text: Tęczowa 5a
+                                - generic [ref=e3228]: (Strumień)
+                              - paragraph [ref=e3229]: Holiadynets Oleksandr, 8 pokoi, 24/25 miejsc
+                            - generic [ref=e3230]:
+                              - button [ref=e3231] [cursor=pointer]:
+                                - img [ref=e3232]
+                              - button [ref=e3235] [cursor=pointer]:
+                                - img [ref=e3236]
+                          - generic [ref=e3239]:
+                            - progressbar [ref=e3240]
+                            - generic [ref=e3242]: 96%
+                        - generic [ref=e3243]:
+                          - generic [ref=e3244]:
+                            - generic [ref=e3245]:
+                              - paragraph [ref=e3246]:
+                                - text: Tetmajera 7
+                                - generic [ref=e3247]: (Leszno)
+                              - paragraph [ref=e3248]: Kalashnyk Oleksandr, 5 pokoi, 13/14 miejsc
+                            - generic [ref=e3249]:
+                              - button [ref=e3250] [cursor=pointer]:
+                                - img [ref=e3251]
+                              - button [ref=e3254] [cursor=pointer]:
+                                - img [ref=e3255]
+                          - generic [ref=e3258]:
+                            - progressbar [ref=e3259]
+                            - generic [ref=e3261]: 93%
+                        - generic [ref=e3262]:
+                          - generic [ref=e3263]:
+                            - generic [ref=e3264]:
+                              - paragraph [ref=e3265]:
+                                - text: Turkusowa 12/11
+                                - generic [ref=e3266]: (Szczecin)
+                              - paragraph [ref=e3267]: Melnychuk Roman, 2 pokoi, 5/7 miejsc
+                            - generic [ref=e3268]:
+                              - button [ref=e3269] [cursor=pointer]:
+                                - img [ref=e3270]
+                              - button [ref=e3273] [cursor=pointer]:
+                                - img [ref=e3274]
+                          - generic [ref=e3277]:
+                            - progressbar [ref=e3278]
+                            - generic [ref=e3280]: 71%
+                        - generic [ref=e3281]:
+                          - generic [ref=e3282]:
+                            - generic [ref=e3283]:
+                              - paragraph [ref=e3284]:
+                                - text: Tuwima 17
+                                - generic [ref=e3285]: (Oława)
+                              - paragraph [ref=e3286]: Khayal, 6 pokoi, 15/15 miejsc
+                            - generic [ref=e3287]:
+                              - button [ref=e3288] [cursor=pointer]:
+                                - img [ref=e3289]
+                              - button [ref=e3292] [cursor=pointer]:
+                                - img [ref=e3293]
+                          - generic [ref=e3296]:
+                            - progressbar [ref=e3297]
+                            - generic [ref=e3299]: 100%
+                        - generic [ref=e3300]:
+                          - generic [ref=e3301]:
+                            - generic [ref=e3302]:
+                              - paragraph [ref=e3303]:
+                                - text: ul. 1 Maja 15 - Amore Mio
+                                - generic [ref=e3304]: (Strumień)
+                              - paragraph [ref=e3305]: Holiadynets Oleksandr, 1 pokoi, 0/15 miejsc
+                            - generic [ref=e3306]:
+                              - button [ref=e3307] [cursor=pointer]:
+                                - img [ref=e3308]
+                              - button [ref=e3311] [cursor=pointer]:
+                                - img [ref=e3312]
+                          - generic [ref=e3315]:
+                            - progressbar [ref=e3316]
+                            - generic [ref=e3318]: 0%
+                        - generic [ref=e3319]:
+                          - generic [ref=e3320]:
+                            - generic [ref=e3321]:
+                              - paragraph [ref=e3322]:
+                                - text: Wałowa 11
+                                - generic [ref=e3323]: (Leszno)
+                              - paragraph [ref=e3324]: Kalashnyk Oleksandr, 2 pokoi, 4/4 miejsc
+                            - generic [ref=e3325]:
+                              - button [ref=e3326] [cursor=pointer]:
+                                - img [ref=e3327]
+                              - button [ref=e3330] [cursor=pointer]:
+                                - img [ref=e3331]
+                          - generic [ref=e3334]:
+                            - progressbar [ref=e3335]
+                            - generic [ref=e3337]: 100%
+                        - generic [ref=e3338]:
+                          - generic [ref=e3339]:
+                            - generic [ref=e3340]:
+                              - paragraph [ref=e3341]:
+                                - text: Widok 24/11
+                                - generic [ref=e3342]: (Gorzów Wielkopolski)
+                              - paragraph [ref=e3343]: Melnychuk Roman, 3 pokoi, 6/6 miejsc
+                            - generic [ref=e3344]:
+                              - button [ref=e3345] [cursor=pointer]:
+                                - img [ref=e3346]
+                              - button [ref=e3349] [cursor=pointer]:
+                                - img [ref=e3350]
+                          - generic [ref=e3353]:
+                            - progressbar [ref=e3354]
+                            - generic [ref=e3356]: 100%
+                        - generic [ref=e3357]:
+                          - generic [ref=e3358]:
+                            - generic [ref=e3359]:
+                              - paragraph [ref=e3360]:
+                                - text: Wiejska 139
+                                - generic [ref=e3361]: (Opole)
+                              - paragraph [ref=e3362]: Hetman Yevhen, Brovdi Ivan, 1 pokoi, 5/5 miejsc
+                            - generic [ref=e3363]:
+                              - button [ref=e3364] [cursor=pointer]:
+                                - img [ref=e3365]
+                              - button [ref=e3368] [cursor=pointer]:
+                                - img [ref=e3369]
+                          - generic [ref=e3372]:
+                            - progressbar [ref=e3373]
+                            - generic [ref=e3375]: 100%
+                        - generic [ref=e3376]:
+                          - generic [ref=e3377]:
+                            - generic [ref=e3378]:
+                              - paragraph [ref=e3379]:
+                                - text: Wiejska 21 (Żmigród)
+                                - generic [ref=e3380]: (Żmigród)
+                              - paragraph [ref=e3381]: Fedchenko Artem, 1 pokoi, 1/2 miejsc
+                            - generic [ref=e3382]:
+                              - button [ref=e3383] [cursor=pointer]:
+                                - img [ref=e3384]
+                              - button [ref=e3387] [cursor=pointer]:
+                                - img [ref=e3388]
+                          - generic [ref=e3391]:
+                            - progressbar [ref=e3392]
+                            - generic [ref=e3394]: 50%
+                        - generic [ref=e3395]:
+                          - generic [ref=e3396]:
+                            - generic [ref=e3397]:
+                              - paragraph [ref=e3398]:
+                                - text: Wiejska 36b
+                                - generic [ref=e3399]: (Opole)
+                              - paragraph [ref=e3400]: Hetman Yevhen, Brovdi Ivan, 3 pokoi, 9/9 miejsc
+                            - generic [ref=e3401]:
+                              - button [ref=e3402] [cursor=pointer]:
+                                - img [ref=e3403]
+                              - button [ref=e3406] [cursor=pointer]:
+                                - img [ref=e3407]
+                          - generic [ref=e3410]:
+                            - progressbar [ref=e3411]
+                            - generic [ref=e3413]: 100%
+                        - generic [ref=e3414]:
+                          - generic [ref=e3415]:
+                            - generic [ref=e3416]:
+                              - paragraph [ref=e3417]:
+                                - text: Wiejska 44
+                                - generic [ref=e3418]: (Opole)
+                              - paragraph [ref=e3419]: Hetman Yevhen, Brovdi Ivan, 1 pokoi, 5/5 miejsc
+                            - generic [ref=e3420]:
+                              - button [ref=e3421] [cursor=pointer]:
+                                - img [ref=e3422]
+                              - button [ref=e3425] [cursor=pointer]:
+                                - img [ref=e3426]
+                          - generic [ref=e3429]:
+                            - progressbar [ref=e3430]
+                            - generic [ref=e3432]: 100%
+                        - generic [ref=e3433]:
+                          - generic [ref=e3434]:
+                            - generic [ref=e3435]:
+                              - paragraph [ref=e3436]:
+                                - text: Wiejska 44/8
+                                - generic [ref=e3437]: (Oława)
+                              - paragraph [ref=e3438]: Khayal, 4 pokoi, 7/9 miejsc
+                            - generic [ref=e3439]:
+                              - button [ref=e3440] [cursor=pointer]:
+                                - img [ref=e3441]
+                              - button [ref=e3444] [cursor=pointer]:
+                                - img [ref=e3445]
+                          - generic [ref=e3448]:
+                            - progressbar [ref=e3449]
+                            - generic [ref=e3451]: 78%
+                        - generic [ref=e3452]:
+                          - generic [ref=e3453]:
+                            - generic [ref=e3454]:
+                              - paragraph [ref=e3455]:
+                                - text: Wielkopolska 35
+                                - generic [ref=e3456]: (Twardogóra)
+                              - paragraph [ref=e3457]: Krakhin Mykyta, Sushchenko Oleksandra, 2 pokoi, 6/6 miejsc
+                            - generic [ref=e3458]:
+                              - button [ref=e3459] [cursor=pointer]:
+                                - img [ref=e3460]
+                              - button [ref=e3463] [cursor=pointer]:
+                                - img [ref=e3464]
+                          - generic [ref=e3467]:
+                            - progressbar [ref=e3468]
+                            - generic [ref=e3470]: 100%
+                        - generic [ref=e3471]:
+                          - generic [ref=e3472]:
+                            - generic [ref=e3473]:
+                              - paragraph [ref=e3474]:
+                                - text: Wierzbowa 9
+                                - generic [ref=e3475]: (Świdnica)
+                              - paragraph [ref=e3476]: Yankov Anatolii, 5 pokoi, 9/14 miejsc
+                            - generic [ref=e3477]:
+                              - button [ref=e3478] [cursor=pointer]:
+                                - img [ref=e3479]
+                              - button [ref=e3482] [cursor=pointer]:
+                                - img [ref=e3483]
+                          - generic [ref=e3486]:
+                            - progressbar [ref=e3487]
+                            - generic [ref=e3489]: 64%
+                        - generic [ref=e3490]:
+                          - generic [ref=e3491]:
+                            - generic [ref=e3492]:
+                              - paragraph [ref=e3493]:
+                                - text: Wileńska 37
+                                - generic [ref=e3494]: (Oleśnica)
+                              - paragraph [ref=e3495]: Krakhin Mykyta, 6 pokoi, 13/14 miejsc
+                            - generic [ref=e3496]:
+                              - button [ref=e3497] [cursor=pointer]:
+                                - img [ref=e3498]
+                              - button [ref=e3501] [cursor=pointer]:
+                                - img [ref=e3502]
+                          - generic [ref=e3505]:
+                            - progressbar [ref=e3506]
+                            - generic [ref=e3508]: 93%
+                        - generic [ref=e3509]:
+                          - generic [ref=e3510]:
+                            - generic [ref=e3511]:
+                              - paragraph [ref=e3512]:
+                                - text: Wilkowice - Os. Słoneczne 4c/2
+                                - generic [ref=e3513]: (Leszno)
+                              - paragraph [ref=e3514]: Kalashnyk Oleksandr, 4 pokoi, 0/10 miejsc
+                            - generic [ref=e3515]:
+                              - button [ref=e3516] [cursor=pointer]:
+                                - img [ref=e3517]
+                              - button [ref=e3520] [cursor=pointer]:
+                                - img [ref=e3521]
+                          - generic [ref=e3524]:
+                            - progressbar [ref=e3525]
+                            - generic [ref=e3527]: 0%
+                        - generic [ref=e3528]:
+                          - generic [ref=e3529]:
+                            - generic [ref=e3530]:
+                              - paragraph [ref=e3531]:
+                                - text: Wiśniowa 2/9
+                                - generic [ref=e3532]: (Świdnica)
+                              - paragraph [ref=e3533]: Yankov Anatolii, Hetman Yevhen, 3 pokoi, 5/6 miejsc
+                            - generic [ref=e3534]:
+                              - button [ref=e3535] [cursor=pointer]:
+                                - img [ref=e3536]
+                              - button [ref=e3539] [cursor=pointer]:
+                                - img [ref=e3540]
+                          - generic [ref=e3543]:
+                            - progressbar [ref=e3544]
+                            - generic [ref=e3546]: 83%
+                        - generic [ref=e3547]:
+                          - generic [ref=e3548]:
+                            - generic [ref=e3549]:
+                              - paragraph [ref=e3550]:
+                                - text: Własne mieszkania Bielawa
+                                - generic [ref=e3551]: (Bielawa)
+                              - paragraph [ref=e3552]: Kashkarov Yaroslav, 1 pokoi, 0/2 miejsc
+                            - generic [ref=e3553]:
+                              - button [ref=e3554] [cursor=pointer]:
+                                - img [ref=e3555]
+                              - button [ref=e3558] [cursor=pointer]:
+                                - img [ref=e3559]
+                          - generic [ref=e3562]:
+                            - progressbar [ref=e3563]
+                            - generic [ref=e3565]: 0%
+                        - generic [ref=e3566]:
+                          - generic [ref=e3567]:
+                            - generic [ref=e3568]:
+                              - paragraph [ref=e3569]:
+                                - text: Własne mieszkania Opole
+                                - generic [ref=e3570]: (Opole)
+                              - paragraph [ref=e3571]: Hetman Yevhen, 1 pokoi, 0/10 miejsc
+                            - generic [ref=e3572]:
+                              - button [ref=e3573] [cursor=pointer]:
+                                - img [ref=e3574]
+                              - button [ref=e3577] [cursor=pointer]:
+                                - img [ref=e3578]
+                          - generic [ref=e3581]:
+                            - progressbar [ref=e3582]
+                            - generic [ref=e3584]: 0%
+                        - generic [ref=e3585]:
+                          - generic [ref=e3586]:
+                            - generic [ref=e3587]:
+                              - paragraph [ref=e3588]:
+                                - text: Własne mieszkania Rawa Mazowiecka
+                                - generic [ref=e3589]: (Rawa Mazowiecka)
+                              - paragraph [ref=e3590]: Beqa Darbaidze, Zaiats Yevhenii, 1 pokoi, 5/10 miejsc
+                            - generic [ref=e3591]:
+                              - button [ref=e3592] [cursor=pointer]:
+                                - img [ref=e3593]
+                              - button [ref=e3596] [cursor=pointer]:
+                                - img [ref=e3597]
+                          - generic [ref=e3600]:
+                            - progressbar [ref=e3601]
+                            - generic [ref=e3603]: 50%
+                        - generic [ref=e3604]:
+                          - generic [ref=e3605]:
+                            - generic [ref=e3606]:
+                              - paragraph [ref=e3607]:
+                                - text: Własne mieszkania Twardogóra
+                                - generic [ref=e3608]: (Twardogóra)
+                              - paragraph [ref=e3609]: Sushchenko Oleksandra, Krakhin Mykyta, 1 pokoi, 1/40 miejsc
+                            - generic [ref=e3610]:
+                              - button [ref=e3611] [cursor=pointer]:
+                                - img [ref=e3612]
+                              - button [ref=e3615] [cursor=pointer]:
+                                - img [ref=e3616]
+                          - generic [ref=e3619]:
+                            - progressbar [ref=e3620]
+                            - generic [ref=e3622]: 3%
+                        - generic [ref=e3623]:
+                          - generic [ref=e3624]:
+                            - generic [ref=e3625]:
+                              - paragraph [ref=e3626]:
+                                - text: Własne mieszkanie Barlinek
+                                - generic [ref=e3627]: (Barlinek)
+                              - paragraph [ref=e3628]: Melnychuk Roman, 1 pokoi, 0/50 miejsc
+                            - generic [ref=e3629]:
+                              - button [ref=e3630] [cursor=pointer]:
+                                - img [ref=e3631]
+                              - button [ref=e3634] [cursor=pointer]:
+                                - img [ref=e3635]
+                          - generic [ref=e3638]:
+                            - progressbar [ref=e3639]
+                            - generic [ref=e3641]: 0%
+                        - generic [ref=e3642]:
+                          - generic [ref=e3643]:
+                            - generic [ref=e3644]:
+                              - paragraph [ref=e3645]:
+                                - text: Własne mieszkanie Gorzów Wielkopolski
+                                - generic [ref=e3646]: (Gorzów Wielkopolski)
+                              - paragraph [ref=e3647]: Melnychuk Roman, 1 pokoi, 25/50 miejsc
+                            - generic [ref=e3648]:
+                              - button [ref=e3649] [cursor=pointer]:
+                                - img [ref=e3650]
+                              - button [ref=e3653] [cursor=pointer]:
+                                - img [ref=e3654]
+                          - generic [ref=e3657]:
+                            - progressbar [ref=e3658]
+                            - generic [ref=e3660]: 50%
+                        - generic [ref=e3661]:
+                          - generic [ref=e3662]:
+                            - generic [ref=e3663]:
+                              - paragraph [ref=e3664]:
+                                - text: Własne mieszkanie Jelcz-Laskowice
+                                - generic [ref=e3665]: (Jelcz-Laskowice)
+                              - paragraph [ref=e3666]: Khayal, Sushchenko Oleksandra, 1 pokoi, 52/100 miejsc
+                            - generic [ref=e3667]:
+                              - button [ref=e3668] [cursor=pointer]:
+                                - img [ref=e3669]
+                              - button [ref=e3672] [cursor=pointer]:
+                                - img [ref=e3673]
+                          - generic [ref=e3676]:
+                            - progressbar [ref=e3677]
+                            - generic [ref=e3679]: 52%
+                        - generic [ref=e3680]:
+                          - generic [ref=e3681]:
+                            - generic [ref=e3682]:
+                              - paragraph [ref=e3683]:
+                                - text: Własne mieszkanie Kalisz
+                                - generic [ref=e3684]: (Kalisz)
+                              - paragraph [ref=e3685]: Veklyak Oleksandr, 1 pokoi, 160/200 miejsc
+                            - generic [ref=e3686]:
+                              - button [ref=e3687] [cursor=pointer]:
+                                - img [ref=e3688]
+                              - button [ref=e3691] [cursor=pointer]:
+                                - img [ref=e3692]
+                          - generic [ref=e3695]:
+                            - progressbar [ref=e3696]
+                            - generic [ref=e3698]: 80%
+                        - generic [ref=e3699]:
+                          - generic [ref=e3700]:
+                            - generic [ref=e3701]:
+                              - paragraph [ref=e3702]:
+                                - text: Własne mieszkanie Kąty Wrocławskie
+                                - generic [ref=e3703]: (Kąty Wrocławskie)
+                              - paragraph [ref=e3704]: Vaskou Dzmitry, 1 pokoi, 5/50 miejsc
+                            - generic [ref=e3705]:
+                              - button [ref=e3706] [cursor=pointer]:
+                                - img [ref=e3707]
+                              - button [ref=e3710] [cursor=pointer]:
+                                - img [ref=e3711]
+                          - generic [ref=e3714]:
+                            - progressbar [ref=e3715]
+                            - generic [ref=e3717]: 10%
+                        - generic [ref=e3718]:
+                          - generic [ref=e3719]:
+                            - generic [ref=e3720]:
+                              - paragraph [ref=e3721]:
+                                - text: Własne mieszkanie Kościan
+                                - generic [ref=e3722]: (Kościan)
+                              - paragraph [ref=e3723]: Kalashnyk Oleksandr, 1 pokoi, 1/10 miejsc
+                            - generic [ref=e3724]:
+                              - button [ref=e3725] [cursor=pointer]:
+                                - img [ref=e3726]
+                              - button [ref=e3729] [cursor=pointer]:
+                                - img [ref=e3730]
+                          - generic [ref=e3733]:
+                            - progressbar [ref=e3734]
+                            - generic [ref=e3736]: 10%
+                        - generic [ref=e3737]:
+                          - generic [ref=e3738]:
+                            - generic [ref=e3739]:
+                              - paragraph [ref=e3740]:
+                                - text: Własne mieszkanie Koszalin
+                                - generic [ref=e3741]: (Koszalin)
+                              - paragraph [ref=e3742]: Melnychuk Roman, 1 pokoi, 0/50 miejsc
+                            - generic [ref=e3743]:
+                              - button [ref=e3744] [cursor=pointer]:
+                                - img [ref=e3745]
+                              - button [ref=e3748] [cursor=pointer]:
+                                - img [ref=e3749]
+                          - generic [ref=e3752]:
+                            - progressbar [ref=e3753]
+                            - generic [ref=e3755]: 0%
+                        - generic [ref=e3756]:
+                          - generic [ref=e3757]:
+                            - generic [ref=e3758]:
+                              - paragraph [ref=e3759]:
+                                - text: Własne mieszkanie Kutno
+                                - generic [ref=e3760]: (Kutno)
+                              - paragraph [ref=e3761]: Yachminnyk Roman, 1 pokoi, 31/70 miejsc
+                            - generic [ref=e3762]:
+                              - button [ref=e3763] [cursor=pointer]:
+                                - img [ref=e3764]
+                              - button [ref=e3767] [cursor=pointer]:
+                                - img [ref=e3768]
+                          - generic [ref=e3771]:
+                            - progressbar [ref=e3772]
+                            - generic [ref=e3774]: 44%
+                        - generic [ref=e3775]:
+                          - generic [ref=e3776]:
+                            - generic [ref=e3777]:
+                              - paragraph [ref=e3778]:
+                                - text: Własne mieszkanie Leszno
+                                - generic [ref=e3779]: (Leszno)
+                              - paragraph [ref=e3780]: Kalashnyk Oleksandr, 1 pokoi, 197/247 miejsc
+                            - generic [ref=e3781]:
+                              - button [ref=e3782] [cursor=pointer]:
+                                - img [ref=e3783]
+                              - button [ref=e3786] [cursor=pointer]:
+                                - img [ref=e3787]
+                          - generic [ref=e3790]:
+                            - progressbar [ref=e3791]
+                            - generic [ref=e3793]: 80%
+                        - generic [ref=e3794]:
+                          - generic [ref=e3795]:
+                            - generic [ref=e3796]:
+                              - paragraph [ref=e3797]:
+                                - text: Własne mieszkanie Niepołomice
+                                - generic [ref=e3798]: (Niepołomice)
+                              - paragraph [ref=e3799]: Herasimovych Oleh, 1 pokoi, 2/30 miejsc
+                            - generic [ref=e3800]:
+                              - button [ref=e3801] [cursor=pointer]:
+                                - img [ref=e3802]
+                              - button [ref=e3805] [cursor=pointer]:
+                                - img [ref=e3806]
+                          - generic [ref=e3809]:
+                            - progressbar [ref=e3810]
+                            - generic [ref=e3812]: 7%
+                        - generic [ref=e3813]:
+                          - generic [ref=e3814]:
+                            - generic [ref=e3815]:
+                              - paragraph [ref=e3816]:
+                                - text: Własne mieszkanie Oborniki
+                                - generic [ref=e3817]: (Oborniki)
+                              - paragraph [ref=e3818]: Kalashnyk Oleksandr, 1 pokoi, 5/80 miejsc
+                            - generic [ref=e3819]:
+                              - button [ref=e3820] [cursor=pointer]:
+                                - img [ref=e3821]
+                              - button [ref=e3824] [cursor=pointer]:
+                                - img [ref=e3825]
+                          - generic [ref=e3828]:
+                            - progressbar [ref=e3829]
+                            - generic [ref=e3831]: 6%
+                        - generic [ref=e3832]:
+                          - generic [ref=e3833]:
+                            - generic [ref=e3834]:
+                              - paragraph [ref=e3835]:
+                                - text: Własne mieszkanie Oława
+                                - generic [ref=e3836]: (Oława)
+                              - paragraph [ref=e3837]: Khayal, 1 pokoi, 58/100 miejsc
+                            - generic [ref=e3838]:
+                              - button [ref=e3839] [cursor=pointer]:
+                                - img [ref=e3840]
+                              - button [ref=e3843] [cursor=pointer]:
+                                - img [ref=e3844]
+                          - generic [ref=e3847]:
+                            - progressbar [ref=e3848]
+                            - generic [ref=e3850]: 58%
+                        - generic [ref=e3851]:
+                          - generic [ref=e3852]:
+                            - generic [ref=e3853]:
+                              - paragraph [ref=e3854]:
+                                - text: Własne mieszkanie Oleśnica
+                                - generic [ref=e3855]: (Oleśnica)
+                              - paragraph [ref=e3856]: Krakhin Mykyta, Sushchenko Oleksandra, 1 pokoi, 1/16 miejsc
+                            - generic [ref=e3857]:
+                              - button [ref=e3858] [cursor=pointer]:
+                                - img [ref=e3859]
+                              - button [ref=e3862] [cursor=pointer]:
+                                - img [ref=e3863]
+                          - generic [ref=e3866]:
+                            - progressbar [ref=e3867]
+                            - generic [ref=e3869]: 6%
+                        - generic [ref=e3870]:
+                          - generic [ref=e3871]:
+                            - generic [ref=e3872]:
+                              - paragraph [ref=e3873]:
+                                - text: Własne mieszkanie Prusice
+                                - generic [ref=e3874]: (Prusice)
+                              - paragraph [ref=e3875]: Fedchenko Artem, 1 pokoi, 2/20 miejsc
+                            - generic [ref=e3876]:
+                              - button [ref=e3877] [cursor=pointer]:
+                                - img [ref=e3878]
+                              - button [ref=e3881] [cursor=pointer]:
+                                - img [ref=e3882]
+                          - generic [ref=e3885]:
+                            - progressbar [ref=e3886]
+                            - generic [ref=e3888]: 10%
+                        - generic [ref=e3889]:
+                          - generic [ref=e3890]:
+                            - generic [ref=e3891]:
+                              - paragraph [ref=e3892]:
+                                - text: Własne mieszkanie Rzezawa
+                                - generic [ref=e3893]: (Rzezawa)
+                              - paragraph [ref=e3894]: Herasimovych Oleh, 1 pokoi, 0/30 miejsc
+                            - generic [ref=e3895]:
+                              - button [ref=e3896] [cursor=pointer]:
+                                - img [ref=e3897]
+                              - button [ref=e3900] [cursor=pointer]:
+                                - img [ref=e3901]
+                          - generic [ref=e3904]:
+                            - progressbar [ref=e3905]
+                            - generic [ref=e3907]: 0%
+                        - generic [ref=e3908]:
+                          - generic [ref=e3909]:
+                            - generic [ref=e3910]:
+                              - paragraph [ref=e3911]:
+                                - text: Własne mieszkanie Strumień
+                                - generic [ref=e3912]: (Strumień)
+                              - paragraph [ref=e3913]: Holiadynets Oleksandr, 1 pokoi, 55/100 miejsc
+                            - generic [ref=e3914]:
+                              - button [ref=e3915] [cursor=pointer]:
+                                - img [ref=e3916]
+                              - button [ref=e3919] [cursor=pointer]:
+                                - img [ref=e3920]
+                          - generic [ref=e3923]:
+                            - progressbar [ref=e3924]
+                            - generic [ref=e3926]: 55%
+                        - generic [ref=e3927]:
+                          - generic [ref=e3928]:
+                            - generic [ref=e3929]:
+                              - paragraph [ref=e3930]:
+                                - text: Własne mieszkanie Strzelin
+                                - generic [ref=e3931]: (Strzelin)
+                              - paragraph [ref=e3932]: Hertsoh Veronika, 1 pokoi, 0/12 miejsc
+                            - generic [ref=e3933]:
+                              - button [ref=e3934] [cursor=pointer]:
+                                - img [ref=e3935]
+                              - button [ref=e3938] [cursor=pointer]:
+                                - img [ref=e3939]
+                          - generic [ref=e3942]:
+                            - progressbar [ref=e3943]
+                            - generic [ref=e3945]: 0%
+                        - generic [ref=e3946]:
+                          - generic [ref=e3947]:
+                            - generic [ref=e3948]:
+                              - paragraph [ref=e3949]:
+                                - text: Własne mieszkanie Świdnica
+                                - generic [ref=e3950]: (Świdnica)
+                              - paragraph [ref=e3951]: Yankov Anatolii, Kashkarov Yaroslav, 1 pokoi, 30/40 miejsc
+                            - generic [ref=e3952]:
+                              - button [ref=e3953] [cursor=pointer]:
+                                - img [ref=e3954]
+                              - button [ref=e3957] [cursor=pointer]:
+                                - img [ref=e3958]
+                          - generic [ref=e3961]:
+                            - progressbar [ref=e3962]
+                            - generic [ref=e3964]: 75%
+                        - generic [ref=e3965]:
+                          - generic [ref=e3966]:
+                            - generic [ref=e3967]:
+                              - paragraph [ref=e3968]:
+                                - text: Własne mieszkanie Szczecin
+                                - generic [ref=e3969]: (Szczecin)
+                              - paragraph [ref=e3970]: Melnychuk Roman, 1 pokoi, 0/70 miejsc
+                            - generic [ref=e3971]:
+                              - button [ref=e3972] [cursor=pointer]:
+                                - img [ref=e3973]
+                              - button [ref=e3976] [cursor=pointer]:
+                                - img [ref=e3977]
+                          - generic [ref=e3980]:
+                            - progressbar [ref=e3981]
+                            - generic [ref=e3983]: 0%
+                        - generic [ref=e3984]:
+                          - generic [ref=e3985]:
+                            - generic [ref=e3986]:
+                              - paragraph [ref=e3987]:
+                                - text: Własne mieszkanie Warszawa
+                                - generic [ref=e3988]: (Warszawa)
+                              - paragraph [ref=e3989]: Zaiats Yevhenii, 1 pokoi, 25/50 miejsc
+                            - generic [ref=e3990]:
+                              - button [ref=e3991] [cursor=pointer]:
+                                - img [ref=e3992]
+                              - button [ref=e3995] [cursor=pointer]:
+                                - img [ref=e3996]
+                          - generic [ref=e3999]:
+                            - progressbar [ref=e4000]
+                            - generic [ref=e4002]: 50%
+                        - generic [ref=e4003]:
+                          - generic [ref=e4004]:
+                            - generic [ref=e4005]:
+                              - paragraph [ref=e4006]:
+                                - text: Własne mieszkanie Wrocław
+                                - generic [ref=e4007]: (Wrocław)
+                              - paragraph [ref=e4008]: Fedchenko Artem, 1 pokoi, 20/100 miejsc
+                            - generic [ref=e4009]:
+                              - button [ref=e4010] [cursor=pointer]:
+                                - img [ref=e4011]
+                              - button [ref=e4014] [cursor=pointer]:
+                                - img [ref=e4015]
+                          - generic [ref=e4018]:
+                            - progressbar [ref=e4019]
+                            - generic [ref=e4021]: 20%
+                        - generic [ref=e4022]:
+                          - generic [ref=e4023]:
+                            - generic [ref=e4024]:
+                              - paragraph [ref=e4025]:
+                                - text: Własne mieszkanie Wschowa
+                                - generic [ref=e4026]: (Wschowa)
+                              - paragraph [ref=e4027]: Kalashnyk Oleksandr, 1 pokoi, 8/100 miejsc
+                            - generic [ref=e4028]:
+                              - button [ref=e4029] [cursor=pointer]:
+                                - img [ref=e4030]
+                              - button [ref=e4033] [cursor=pointer]:
+                                - img [ref=e4034]
+                          - generic [ref=e4037]:
+                            - progressbar [ref=e4038]
+                            - generic [ref=e4040]: 8%
+                        - generic [ref=e4041]:
+                          - generic [ref=e4042]:
+                            - generic [ref=e4043]:
+                              - paragraph [ref=e4044]:
+                                - text: Własne mieszkanie Ząbkowice Śląskie
+                                - generic [ref=e4045]: (Ząbkowice Śląskie)
+                              - paragraph [ref=e4046]: Hetman Yevhen, 1 pokoi, 33/40 miejsc
+                            - generic [ref=e4047]:
+                              - button [ref=e4048] [cursor=pointer]:
+                                - img [ref=e4049]
+                              - button [ref=e4052] [cursor=pointer]:
+                                - img [ref=e4053]
+                          - generic [ref=e4056]:
+                            - progressbar [ref=e4057]
+                            - generic [ref=e4059]: 83%
+                        - generic [ref=e4060]:
+                          - generic [ref=e4061]:
+                            - generic [ref=e4062]:
+                              - paragraph [ref=e4063]:
+                                - text: Własne mieszkanie Żagań
+                                - generic [ref=e4064]: (Żagań)
+                              - paragraph [ref=e4065]: Melnychuk Roman, 1 pokoi, 2/50 miejsc
+                            - generic [ref=e4066]:
+                              - button [ref=e4067] [cursor=pointer]:
+                                - img [ref=e4068]
+                              - button [ref=e4071] [cursor=pointer]:
+                                - img [ref=e4072]
+                          - generic [ref=e4075]:
+                            - progressbar [ref=e4076]
+                            - generic [ref=e4078]: 4%
+                        - generic [ref=e4079]:
+                          - generic [ref=e4080]:
+                            - generic [ref=e4081]:
+                              - paragraph [ref=e4082]:
+                                - text: Własne mieszkanie Żarów
+                                - generic [ref=e4083]: (Żarów)
+                              - paragraph [ref=e4084]: Yankov Anatolii, 1 pokoi, 6/30 miejsc
+                            - generic [ref=e4085]:
+                              - button [ref=e4086] [cursor=pointer]:
+                                - img [ref=e4087]
+                              - button [ref=e4090] [cursor=pointer]:
+                                - img [ref=e4091]
+                          - generic [ref=e4094]:
+                            - progressbar [ref=e4095]
+                            - generic [ref=e4097]: 20%
+                        - generic [ref=e4098]:
+                          - generic [ref=e4099]:
+                            - generic [ref=e4100]:
+                              - paragraph [ref=e4101]:
+                                - text: Własne mieszkanie Żmigród
+                                - generic [ref=e4102]: (Żmigród)
+                              - paragraph [ref=e4103]: Fedchenko Artem, 1 pokoi, 0/50 miejsc
+                            - generic [ref=e4104]:
+                              - button [ref=e4105] [cursor=pointer]:
+                                - img [ref=e4106]
+                              - button [ref=e4109] [cursor=pointer]:
+                                - img [ref=e4110]
+                          - generic [ref=e4113]:
+                            - progressbar [ref=e4114]
+                            - generic [ref=e4116]: 0%
+                        - generic [ref=e4117]:
+                          - generic [ref=e4118]:
+                            - generic [ref=e4119]:
+                              - paragraph [ref=e4120]:
+                                - text: Własne mieszkanie Żory
+                                - generic [ref=e4121]: (Żory)
+                              - paragraph [ref=e4122]: Herasimovych Oleh, 1 pokoi, 3/50 miejsc
+                            - generic [ref=e4123]:
+                              - button [ref=e4124] [cursor=pointer]:
+                                - img [ref=e4125]
+                              - button [ref=e4128] [cursor=pointer]:
+                                - img [ref=e4129]
+                          - generic [ref=e4132]:
+                            - progressbar [ref=e4133]
+                            - generic [ref=e4135]: 6%
+                        - generic [ref=e4136]:
+                          - generic [ref=e4137]:
+                            - generic [ref=e4138]:
+                              - paragraph [ref=e4139]:
+                                - text: Wojska Polskiego 3/2
+                                - generic [ref=e4140]: (Strzelin)
+                              - paragraph [ref=e4141]: Hertsoh Veronika, 4 pokoi, 9/9 miejsc
+                            - generic [ref=e4142]:
+                              - button [ref=e4143] [cursor=pointer]:
+                                - img [ref=e4144]
+                              - button [ref=e4147] [cursor=pointer]:
+                                - img [ref=e4148]
+                          - generic [ref=e4151]:
+                            - progressbar [ref=e4152]
+                            - generic [ref=e4154]: 100%
+                        - generic [ref=e4155]:
+                          - generic [ref=e4156]:
+                            - generic [ref=e4157]:
+                              - paragraph [ref=e4158]:
+                                - text: Wolności 12/3
+                                - generic [ref=e4159]: (Strzelin)
+                              - paragraph [ref=e4160]: Hertsoh Veronika, 4 pokoi, 8/8 miejsc
+                            - generic [ref=e4161]:
+                              - button [ref=e4162] [cursor=pointer]:
+                                - img [ref=e4163]
+                              - button [ref=e4166] [cursor=pointer]:
+                                - img [ref=e4167]
+                          - generic [ref=e4170]:
+                            - progressbar [ref=e4171]
+                            - generic [ref=e4173]: 100%
+                        - generic [ref=e4174]:
+                          - generic [ref=e4175]:
+                            - generic [ref=e4176]:
+                              - paragraph [ref=e4177]:
+                                - text: Wolności 17/2
+                                - generic [ref=e4178]: (Strzelin)
+                              - paragraph [ref=e4179]: Hertsoh Veronika, 4 pokoi, 11/11 miejsc
+                            - generic [ref=e4180]:
+                              - button [ref=e4181] [cursor=pointer]:
+                                - img [ref=e4182]
+                              - button [ref=e4185] [cursor=pointer]:
+                                - img [ref=e4186]
+                          - generic [ref=e4189]:
+                            - progressbar [ref=e4190]
+                            - generic [ref=e4192]: 100%
+                        - generic [ref=e4193]:
+                          - generic [ref=e4194]:
+                            - generic [ref=e4195]:
+                              - paragraph [ref=e4196]:
+                                - text: Wrocławska 11a
+                                - generic [ref=e4197]: (Skokowa)
+                              - paragraph [ref=e4198]: Fedchenko Artem, 3 pokoi, 2/11 miejsc
+                            - generic [ref=e4199]:
+                              - button [ref=e4200] [cursor=pointer]:
+                                - img [ref=e4201]
+                              - button [ref=e4204] [cursor=pointer]:
+                                - img [ref=e4205]
+                          - generic [ref=e4208]:
+                            - progressbar [ref=e4209]
+                            - generic [ref=e4211]: 18%
+                        - generic [ref=e4212]:
+                          - generic [ref=e4213]:
+                            - generic [ref=e4214]:
+                              - paragraph [ref=e4215]:
+                                - text: Wyjazdowa 2
+                                - generic [ref=e4216]: (Kalisz)
+                              - paragraph [ref=e4217]: Veklyak Oleksandr, 4 pokoi, 7/8 miejsc
+                            - generic [ref=e4218]:
+                              - button [ref=e4219] [cursor=pointer]:
+                                - img [ref=e4220]
+                              - button [ref=e4223] [cursor=pointer]:
+                                - img [ref=e4224]
+                          - generic [ref=e4227]:
+                            - progressbar [ref=e4228]
+                            - generic [ref=e4230]: 88%
+                        - generic [ref=e4231]:
+                          - generic [ref=e4232]:
+                            - generic [ref=e4233]:
+                              - paragraph [ref=e4234]:
+                                - text: Wyspiańskiego 79
+                                - generic [ref=e4235]: (Kłodzko)
+                              - paragraph [ref=e4236]: Hetman Yevhen, 5 pokoi, 10/10 miejsc
+                            - generic [ref=e4237]:
+                              - button [ref=e4238] [cursor=pointer]:
+                                - img [ref=e4239]
+                              - button [ref=e4242] [cursor=pointer]:
+                                - img [ref=e4243]
+                          - generic [ref=e4246]:
+                            - progressbar [ref=e4247]
+                            - generic [ref=e4249]: 100%
+                        - generic [ref=e4250]:
+                          - generic [ref=e4251]:
+                            - generic [ref=e4252]:
+                              - paragraph [ref=e4253]:
+                                - text: Wyszyńskiego 3/2
+                                - generic [ref=e4254]: (Złotoryja)
+                              - paragraph [ref=e4255]: Kashkarov Yaroslav, 1 pokoi, 0/3 miejsc
+                            - generic [ref=e4256]:
+                              - button [ref=e4257] [cursor=pointer]:
+                                - img [ref=e4258]
+                              - button [ref=e4261] [cursor=pointer]:
+                                - img [ref=e4262]
+                          - generic [ref=e4265]:
+                            - progressbar [ref=e4266]
+                            - generic [ref=e4268]: 0%
+                        - generic [ref=e4269]:
+                          - generic [ref=e4270]:
+                            - generic [ref=e4271]:
+                              - paragraph [ref=e4272]:
+                                - text: Zagań, Chrobrego 16 b
+                                - generic [ref=e4273]: (Żagań)
+                              - paragraph [ref=e4274]: Melnychuk Roman, 1 pokoi, 3/4 miejsc
+                            - generic [ref=e4275]:
+                              - button [ref=e4276] [cursor=pointer]:
+                                - img [ref=e4277]
+                              - button [ref=e4280] [cursor=pointer]:
+                                - img [ref=e4281]
+                          - generic [ref=e4284]:
+                            - progressbar [ref=e4285]
+                            - generic [ref=e4287]: 75%
+                        - generic [ref=e4288]:
+                          - generic [ref=e4289]:
+                            - generic [ref=e4290]:
+                              - paragraph [ref=e4291]:
+                                - text: Zagań, Gimnazjalna 14
+                                - generic [ref=e4292]: (Żagań)
+                              - paragraph [ref=e4293]: Melnychuk Roman, 1 pokoi, 8/40 miejsc
+                            - generic [ref=e4294]:
+                              - button [ref=e4295] [cursor=pointer]:
+                                - img [ref=e4296]
+                              - button [ref=e4299] [cursor=pointer]:
+                                - img [ref=e4300]
+                          - generic [ref=e4303]:
+                            - progressbar [ref=e4304]
+                            - generic [ref=e4306]: 20%
+                        - generic [ref=e4307]:
+                          - generic [ref=e4308]:
+                            - generic [ref=e4309]:
+                              - paragraph [ref=e4310]:
+                                - text: Zamkowa 1a (Hostel)
+                                - generic [ref=e4311]: (Oborniki)
+                              - paragraph [ref=e4312]: Kalashnyk Oleksandr, 3 pokoi, 2/8 miejsc
+                            - generic [ref=e4313]:
+                              - button [ref=e4314] [cursor=pointer]:
+                                - img [ref=e4315]
+                              - button [ref=e4318] [cursor=pointer]:
+                                - img [ref=e4319]
+                          - generic [ref=e4322]:
+                            - progressbar [ref=e4323]
+                            - generic [ref=e4325]: 25%
+                        - generic [ref=e4326]:
+                          - generic [ref=e4327]:
+                            - generic [ref=e4328]:
+                              - paragraph [ref=e4329]:
+                                - text: Zamkowa Wola 2b
+                                - generic [ref=e4330]: (Rawa Mazowiecka)
+                              - paragraph [ref=e4331]: Beqa Darbaidze, Zaiats Yevhenii, 1 pokoi, 6/4 miejsc
+                            - generic [ref=e4332]:
+                              - button [ref=e4333] [cursor=pointer]:
+                                - img [ref=e4334]
+                              - button [ref=e4337] [cursor=pointer]:
+                                - img [ref=e4338]
+                          - generic [ref=e4341]:
+                            - progressbar [ref=e4342]
+                            - generic [ref=e4344]: 150%
+                        - generic [ref=e4345]:
+                          - generic [ref=e4346]:
+                            - generic [ref=e4347]:
+                              - paragraph [ref=e4348]:
+                                - text: Żarów - HOSTEL Słowiańska 16a
+                                - generic [ref=e4349]: (Żarów)
+                              - paragraph [ref=e4350]: Yankov Anatolii, 2 pokoi, 0/4 miejsc
+                            - generic [ref=e4351]:
+                              - button [ref=e4352] [cursor=pointer]:
+                                - img [ref=e4353]
+                              - button [ref=e4356] [cursor=pointer]:
+                                - img [ref=e4357]
+                          - generic [ref=e4360]:
+                            - progressbar [ref=e4361]
+                            - generic [ref=e4363]: 0%
+                        - generic [ref=e4364]:
+                          - generic [ref=e4365]:
+                            - generic [ref=e4366]:
+                              - paragraph [ref=e4367]:
+                                - text: Żarów - Słowiańska 16a (GARAŻ)
+                                - generic [ref=e4368]: (Żarów)
+                              - paragraph [ref=e4369]: Yankov Anatolii, 2 pokoi, 2/6 miejsc
+                            - generic [ref=e4370]:
+                              - button [ref=e4371] [cursor=pointer]:
+                                - img [ref=e4372]
+                              - button [ref=e4375] [cursor=pointer]:
+                                - img [ref=e4376]
+                          - generic [ref=e4379]:
+                            - progressbar [ref=e4380]
+                            - generic [ref=e4382]: 33%
+              - generic [ref=e4383]:
+                - button "Zapisz zmiany" [disabled]
+          - generic [ref=e4384]:
+            - generic [ref=e4385]:
+              - heading "Migracja Danych" [level=3] [ref=e4386]
+              - paragraph [ref=e4387]: Jednorazowe akcje do porządkowania danych w arkuszach.
+            - generic [ref=e4389]:
+              - generic [ref=e4390]:
+                - heading "Migracja Imienia i Nazwiska" [level=3] [ref=e4391]
+                - paragraph [ref=e4392]: "Przeszukuje arkusze i dzieli pole `fullName` na `firstName` i `lastName` dla starych rekordów."
+              - button "Uruchom migrację" [ref=e4393] [cursor=pointer]:
+                - img [ref=e4394]
+                - text: Uruchom migrację
+          - generic [ref=e4399]:
+            - generic [ref=e4400]:
+              - generic [ref=e4401]:
+                - heading "Import Pracowników z Excel" [level=3] [ref=e4402]
+                - paragraph [ref=e4403]: Zaimportuj nowych pracowników z pliku XLSX.
+              - button "Wybierz plik i importuj" [ref=e4405] [cursor=pointer]:
+                - img [ref=e4406]
+                - text: Wybierz plik i importuj
+            - generic [ref=e4409]:
+              - generic [ref=e4410]:
+                - heading "Import Mieszkańców (NZ) z Excel" [level=3] [ref=e4411]
+                - paragraph [ref=e4412]: Zaimportuj nowych mieszkańców (NZ) z pliku XLSX.
+              - button "Wybierz plik i importuj" [ref=e4414] [cursor=pointer]:
+                - img [ref=e4415]
+                - text: Wybierz plik i importuj
+          - generic [ref=e4418]:
+            - generic [ref=e4419]:
+              - generic [ref=e4420]:
+                - heading "Raport zakwaterowania" [level=3] [ref=e4421]
+                - paragraph [ref=e4422]: Generuje raport XLSX pokazujący stan zakwaterowania w wybranym okresie.
+              - generic [ref=e4424]:
+                - generic [ref=e4425]:
+                  - generic [ref=e4426]:
+                    - text: Rok
+                    - combobox [ref=e4427] [cursor=pointer]:
+                      - generic: "2026"
+                      - img [ref=e4428]
+                  - generic [ref=e4430]:
+                    - text: Miesiąc
+                    - combobox [ref=e4431] [cursor=pointer]:
+                      - generic: "2"
+                      - img [ref=e4432]
+                  - generic [ref=e4434]:
+                    - text: Koordynator
+                    - combobox [ref=e4435] [cursor=pointer]:
+                      - generic: Wszyscy koordynatorzy
+                      - img [ref=e4436]
+                  - button "Generuj raport" [ref=e4438] [cursor=pointer]:
+                    - img [ref=e4439]
+                    - generic [ref=e4442]: Generuj raport
+                - generic [ref=e4443]:
+                  - switch "Uwzględnij historię zmian adresów w raporcie" [ref=e4444] [cursor=pointer]
+                  - generic [ref=e4445]: Uwzględnij historię zmian adresów w raporcie
+            - generic [ref=e4446]:
+              - generic [ref=e4447]:
+                - heading "Generowanie raportu kosztów (NZ)" [level=3] [ref=e4448]
+                - paragraph [ref=e4449]: Wygeneruj raport przychodów od mieszkańców (NZ) w formacie XLSX.
+              - generic [ref=e4451]:
+                - generic [ref=e4452]:
+                  - text: Rok
+                  - combobox [ref=e4453] [cursor=pointer]:
+                    - generic: "2026"
+                    - img [ref=e4454]
+                - generic [ref=e4456]:
+                  - text: Miesiąc
+                  - combobox [ref=e4457] [cursor=pointer]:
+                    - generic: "2"
+                    - img [ref=e4458]
+                - generic [ref=e4460]:
+                  - text: Koordynator
+                  - combobox [ref=e4461] [cursor=pointer]:
+                    - generic: Wszyscy koordynatorzy
+                    - img [ref=e4462]
+                - button "Generuj raport (NZ)" [ref=e4464] [cursor=pointer]:
+                  - img [ref=e4465]
+                  - generic [ref=e4468]: Generuj raport (NZ)
+          - generic [ref=e4469]:
+            - generic [ref=e4470]:
+              - heading "Akcje masowe" [level=3] [ref=e4471]
+              - paragraph [ref=e4472]: Zarządzaj danymi pracowników hurtowo.
+            - generic [ref=e4473]:
+              - generic [ref=e4474]:
+                - generic [ref=e4475]:
+                  - heading "Masowe usuwanie" [level=3] [ref=e4476]
+                  - paragraph [ref=e4477]: Te akcje są nieodwracalne.
+                - generic [ref=e4478]:
+                  - button "Usuń wszystkich aktywnych" [ref=e4479] [cursor=pointer]:
+                    - img [ref=e4480]
+                    - text: Usuń wszystkich aktywnych
+                  - button "Usuń wszystkich zwolnionych" [ref=e4483] [cursor=pointer]:
+                    - img [ref=e4484]
+                    - text: Usuń wszystkich zwolnionych
+              - generic [ref=e4487]:
+                - generic [ref=e4488]:
+                  - heading "Przenoszenie pracowników" [level=3] [ref=e4489]
+                  - paragraph [ref=e4490]: Przenieś wszystkich pracowników od jednego koordynatora do drugiego.
+                - generic [ref=e4491]:
+                  - generic [ref=e4492]:
+                    - text: Od koordynatora
+                    - combobox [ref=e4493] [cursor=pointer]:
+                      - generic: Wybierz koordynatora
+                      - img [ref=e4494]
+                  - generic [ref=e4496]:
+                    - text: Do koordynatora
+                    - combobox [ref=e4497] [cursor=pointer]:
+                      - generic: Wybierz koordynatora
+                      - img [ref=e4498]
+                  - button "Przenieś" [ref=e4500] [cursor=pointer]
+              - generic [ref=e4501]:
+                - generic [ref=e4502]:
+                  - heading "Usuwanie pracowników koordynatora" [level=3] [ref=e4503]
+                  - paragraph [ref=e4504]: Trwale usuwa wszystkich pracowników (aktywnych i zwolnionych) przypisanych do wybranego koordynatora. Ta akcja jest nieodwracalna.
+                - generic [ref=e4505]:
+                  - generic [ref=e4506]:
+                    - text: Koordynator
+                    - combobox [ref=e4507] [cursor=pointer]:
+                      - generic: Wybierz koordynatora
+                      - img [ref=e4508]
+                  - button "Usuń pracowników" [disabled]:
+                    - img
+                    - text: Usuń pracowników
+              - generic [ref=e4510]:
+                - generic [ref=e4511]:
+                  - heading "Usuwanie pracowników wg zakładu" [level=3] [ref=e4512]
+                  - paragraph [ref=e4513]: Trwale usuwa wszystkich pracowników (aktywnych i zwolnionych) przypisanych do wybranego zakładu. Ta akcja jest nieodwracalna.
+                - generic [ref=e4514]:
+                  - generic [ref=e4515]:
+                    - text: Zakład
+                    - combobox [ref=e4516] [cursor=pointer]:
+                      - generic: Wybierz zakład
+                      - img [ref=e4517]
+                  - button "Usuń pracowników" [disabled]:
+                    - img
+                    - text: Usuń pracowników
+  - region "Notifications (F8)":
+    - list
+  - alert [ref=e4519]
+```

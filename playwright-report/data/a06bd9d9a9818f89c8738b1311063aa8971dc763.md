@@ -1,0 +1,669 @@
+# Page snapshot
+
+```yaml
+- generic:
+  - generic:
+    - complementary:
+      - navigation:
+        - generic:
+          - generic:
+            - generic:
+              - img
+              - generic: SmartHouse
+          - button:
+            - img
+        - generic:
+          - list:
+            - listitem:
+              - link:
+                - /url: /dashboard?view=dashboard
+                - generic:
+                  - img
+                - generic: Pulpit
+            - listitem:
+              - link:
+                - /url: /dashboard?view=employees
+                - generic:
+                  - img
+                - generic: Mieszkańcy
+            - listitem:
+              - link:
+                - /url: /dashboard?view=housing
+                - generic:
+                  - img
+                - generic: Zakwaterowanie
+            - listitem:
+              - link:
+                - /url: /dashboard?view=settings
+                - generic:
+                  - img
+                - generic: Ustawienia
+    - generic:
+      - banner:
+        - generic:
+          - img
+          - heading [level=1]: SmartHouse
+        - generic:
+          - button:
+            - img
+            - generic: "77"
+          - button:
+            - img
+      - main:
+        - generic:
+          - generic:
+            - generic:
+              - heading [level=3]: Filtry Główne
+              - paragraph: Wybierz koordynatora, aby filtrować dane w całej aplikacji.
+            - generic:
+              - generic:
+                - generic:
+                  - generic: Koordynator
+                  - combobox:
+                    - generic: Wszyscy Koordynatorzy
+                    - img
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - heading [level=3]: Wszyscy pracownicy
+                  - img
+                - generic:
+                  - generic: "2149"
+            - generic:
+              - generic:
+                - generic:
+                  - heading [level=3]: Mieszkańcy (NZ)
+                  - img
+                - generic:
+                  - generic: "109"
+            - generic:
+              - generic:
+                - generic:
+                  - heading [level=3]: Używane mieszkania
+                  - img
+                - generic:
+                  - generic: "201"
+            - generic:
+              - generic:
+                - generic:
+                  - heading [level=3]: Wykwaterowania (30 dni)
+                  - img
+                - generic:
+                  - generic: "38"
+          - generic:
+            - generic:
+              - heading [level=3]: Szybkie działania
+            - generic:
+              - generic:
+                - button:
+                  - img
+                  - generic: Dodaj pracownika
+                - button:
+                  - img
+                  - generic: Dodaj mieszkańca (NZ)
+                - button:
+                  - img
+                  - generic: Wyszukaj mieszkańca
+                - button:
+                  - img
+                  - generic: Przeglądaj mieszkania
+                - button [disabled]:
+                  - img
+                  - generic: Włącz PUSH Powiadomienia
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - heading [level=3]: Ilość osób (NZ) wg Lokalizacji
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: Leszno
+                            - generic:
+                              - generic: Oława
+                            - generic:
+                              - generic: Świdnica
+                            - generic:
+                              - generic: Żarów
+                            - generic:
+                              - generic: Kutno
+                            - generic:
+                              - generic: Jelcz-Laskowice
+                            - generic:
+                              - generic: Strumień
+                            - generic:
+                              - generic: Warszawa
+                            - generic:
+                              - generic: Wrocław
+                            - generic:
+                              - generic: Strzelin
+                            - generic:
+                              - generic: Kalisz
+                            - generic:
+                              - generic: Twardogóra
+                            - generic:
+                              - generic: Oleśnica
+                            - generic:
+                              - generic: Opole
+            - generic:
+              - generic:
+                - heading [level=3]: Pracownicy wg zakładu
+                - generic:
+                  - combobox:
+                    - generic: Wszystkie zakłady
+                    - img
+                  - combobox:
+                    - generic: Wg ilości
+                    - img
+              - generic:
+                - generic:
+                  - generic:
+                    - img:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: STRUMET
+                          - generic:
+                            - generic: EURO - COMFORT
+                          - generic:
+                            - generic: RECO
+                          - generic:
+                            - generic: ANIMEX K3
+                          - generic:
+                            - generic: ANTOLIN
+                          - generic:
+                            - generic: MACZFIT
+                          - generic:
+                            - generic: AUTOLIV(JELCZ-LASKOWICE)
+                          - generic:
+                            - generic: EUROLINE
+                          - generic:
+                            - generic: Gała-Meble
+                          - generic:
+                            - generic: LEGRAND
+                          - generic:
+                            - generic: FAM RAWA
+                          - generic:
+                            - generic: Tomabo
+                          - generic:
+                            - generic: ELECTROLUXŚWIDNICA
+                          - generic:
+                            - generic: ILPEA
+                          - generic:
+                            - generic: FAM - Oborniki
+                          - generic:
+                            - generic: FAM OPOLE
+                          - generic:
+                            - generic: ELECTROLUX(OŁAWA)
+                          - generic:
+                            - generic: TB LOGISTICS
+                          - generic:
+                            - generic: Simoldes Oława
+                          - generic:
+                            - generic: IQ Metal
+                          - generic:
+                            - generic: IDEAL
+                          - generic:
+                            - generic: GKN
+                          - generic:
+                            - generic: HITACHI
+                          - generic:
+                            - generic: Staco
+                          - generic:
+                            - generic: JOTUL
+                          - generic:
+                            - generic: HILWOOD (GAŁA)
+                          - generic:
+                            - generic: WESSEL
+                          - generic:
+                            - generic: PCO
+                          - generic:
+                            - generic: FAM WIELUŃ
+                          - generic:
+                            - generic: Reman
+                          - generic:
+                            - generic: IGOPAK
+                          - generic:
+                            - generic: DOLMEB
+                          - generic:
+                            - generic: JEDNOŚĆ
+                          - generic:
+                            - generic: BARTEX
+                          - generic:
+                            - generic: Simoldes Jelcz
+                          - generic:
+                            - generic: FAM WROCŁAW
+                          - generic:
+                            - generic: Borgers
+                          - generic:
+                            - generic: JONKERS METAL
+                          - generic:
+                            - generic: WAGONY
+                          - generic:
+                            - generic: TEXTIL
+                          - generic:
+                            - generic: EPP
+                          - generic:
+                            - generic: Dyka
+                          - generic:
+                            - generic: WABCO
+                          - generic:
+                            - generic: RED POINT
+                          - generic:
+                            - generic: ATUT PLUS
+                          - generic:
+                            - generic: Bosch
+                          - generic:
+                            - generic: Siatmar
+                          - generic:
+                            - generic: TP REFLEX
+                          - generic:
+                            - generic: Zremb
+                          - generic:
+                            - generic: PEBEK Koszalin
+                          - generic:
+                            - generic: NEFAB
+                          - generic:
+                            - generic: ARO-TUBI
+                          - generic:
+                            - generic: ELECTROLUXŻARÓW
+                          - generic:
+                            - generic: PEBEK
+                          - generic:
+                            - generic: INTERTON
+                          - generic:
+                            - generic: KACZMAREKPRUSICE
+                          - generic:
+                            - generic: SIMOLDES ŻORY
+                          - generic:
+                            - generic: LURGAN
+                          - generic:
+                            - generic: TRIDON CLAMP
+                          - generic:
+                            - generic: POLYTECHNIK
+                          - generic:
+                            - generic: GAŁASIAK
+                          - generic:
+                            - generic: Jaś i Małgosia
+                          - generic:
+                            - generic: BESSER
+                          - generic:
+                            - generic: KONVEYOR
+                          - generic:
+                            - generic: Pebek Świdnica
+                          - generic:
+                            - generic: Altamit
+                          - generic:
+                            - generic: Zotomar
+                          - generic:
+                            - generic: NAMAR
+                          - generic:
+                            - generic: MARKUS
+                          - generic:
+                            - generic: Brak zakładu
+                          - generic:
+                            - generic: MEPROZET
+                          - generic:
+                            - generic: CAST
+            - generic:
+              - generic:
+                - heading [level=3]: Pracownicy wg koordynatora
+                - generic:
+                  - combobox:
+                    - generic: Wszyscy koordynatorzy
+                    - img
+                  - combobox:
+                    - generic: Wg ilości
+                    - img
+              - generic:
+                - generic:
+                  - generic:
+                    - img:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: KalashnykOleksandr
+                          - generic:
+                            - generic: HoliadynetsOleksandr
+                          - generic:
+                            - generic: Khayal
+                          - generic:
+                            - generic: Veklyak Oleksandr
+                          - generic:
+                            - generic: Yachminnyk Roman
+                          - generic:
+                            - generic: Zaiats Yevhenii
+                          - generic:
+                            - generic: Hertsoh Veronika
+                          - generic:
+                            - generic: Yankov Anatolii
+                          - generic:
+                            - generic: Hetman Yevhen
+                          - generic:
+                            - generic: Krakhin Mykyta
+                          - generic:
+                            - generic: Melnychuk Roman
+                          - generic:
+                            - generic: Beqa Darbaidze
+                          - generic:
+                            - generic: Fedchenko Artem
+                          - generic:
+                            - generic: SushchenkoOleksandra
+                          - generic:
+                            - generic: Herasimovych Oleh
+                          - generic:
+                            - generic: Vaskou Dzmitry
+                          - generic:
+                            - generic: Kashkarov Yaroslav
+            - generic:
+              - generic:
+                - heading [level=3]: Pracownicy wg narodowości
+                - generic:
+                  - combobox:
+                    - generic: Wszystkie narodowości
+                    - img
+                  - combobox:
+                    - generic: Wg ilości
+                    - img
+              - generic:
+                - generic:
+                  - generic:
+                    - img:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: ukraińskie
+                          - generic:
+                            - generic: indyjskie
+                          - generic:
+                            - generic: kolumbijskie
+                          - generic:
+                            - generic: filipińskie
+                          - generic:
+                            - generic: gruzińskie
+                          - generic:
+                            - generic: lankijskie
+                          - generic:
+                            - generic: nepalskie
+                          - generic:
+                            - generic: indonezyjskie
+                          - generic:
+                            - generic: białoruskie
+                          - generic:
+                            - generic: mołdawskie
+                          - generic:
+                            - generic: Sri Lanka
+                          - generic:
+                            - generic: peruwiańskie
+                          - generic:
+                            - generic: paragwajskie
+                          - generic:
+                            - generic: NEPAL
+                          - generic:
+                            - generic: polskie
+                          - generic:
+                            - generic: meksykańskie
+                          - generic:
+                            - generic: wenezuelskie
+                          - generic:
+                            - generic: azerbejdżańskie
+                          - generic:
+                            - generic: uzbekistańskie
+                          - generic:
+                            - generic: kazachstańskie
+                          - generic:
+                            - generic: armeńskie
+                          - generic:
+                            - generic: NIEPALSKIE
+                          - generic:
+                            - generic: ormiańskie
+                          - generic:
+                            - generic: banglijskie
+                          - generic:
+                            - generic: INDYJSKIE
+                          - generic:
+                            - generic: Bangladesh
+                          - generic:
+                            - generic: ukraina
+                          - generic:
+                            - generic: kenijskie
+                          - generic:
+                            - generic: gwatemalskie
+                          - generic:
+                            - generic: turkmenistańskie
+                          - generic:
+                            - generic: kolumnijskie
+                          - generic:
+                            - generic: turkmeńskie
+                          - generic:
+                            - generic: marokańskie
+                          - generic:
+                            - generic: honduraskie
+                          - generic:
+                            - generic: argentyńskie
+                          - generic:
+                            - generic: bangladeskie
+            - generic:
+              - generic:
+                - generic:
+                  - heading [level=3]: Statystyka wyjazdów
+                - generic:
+                  - combobox:
+                    - generic: "2026"
+                    - img
+                  - combobox:
+                    - generic: Wszystkie miesiące
+                    - img
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: sty
+                            - generic:
+                              - generic: lut
+                            - generic:
+                              - generic: mar
+                            - generic:
+                              - generic: kwi
+                            - generic:
+                              - generic: maj
+                            - generic:
+                              - generic: cze
+                            - generic:
+                              - generic: lip
+                            - generic:
+                              - generic: sie
+                            - generic:
+                              - generic: wrz
+                            - generic:
+                              - generic: paź
+                            - generic:
+                              - generic: lis
+                            - generic:
+                              - generic: gru
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - heading [level=3]: Potrącenia
+                - generic:
+                  - generic:
+                    - text: Rok
+                    - combobox:
+                      - generic: "2026"
+                      - img
+                  - generic:
+                    - text: Miesiąc
+                    - combobox:
+                      - generic: Wszystkie miesiące
+                      - img
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: Oława
+                            - generic:
+                              - generic: Warszawa
+                            - generic:
+                              - generic: Kościan
+                            - generic:
+                              - generic: Jelcz-Laskowice
+                            - generic:
+                              - generic: Leszno
+                            - generic:
+                              - generic: Wrocław
+                            - generic:
+                              - generic: Strumień
+  - list
+  - alert
+  - dialog:
+    - generic:
+      - generic:
+        - generic:
+          - heading [level=2]: Dodaj nowego pracownika
+          - paragraph: Wypełnij poniższe pola, aby dodać pracownika.
+        - generic:
+          - button:
+            - img
+            - generic: Podgląd miejsc
+          - button:
+            - img
+            - generic: Zrób zdjęcie paszportu
+    - generic:
+      - generic:
+        - generic:
+          - tablist:
+            - tab [selected]: Dane podstawowe
+            - tab: Finanse i potrącenia
+        - generic:
+          - generic:
+            - generic:
+              - tabpanel:
+                - generic:
+                  - generic:
+                    - generic:
+                      - text: Nazwisko
+                      - textbox:
+                        - /placeholder: Kowalski
+                    - generic:
+                      - text: Imię
+                      - textbox:
+                        - /placeholder: Jan
+                  - generic:
+                    - generic:
+                      - generic: Koordynator
+                      - combobox:
+                        - generic: Wybierz koordynatora
+                        - img
+                    - generic:
+                      - generic: Narodowość
+                      - combobox:
+                        - generic: Wybierz narodowość
+                        - img
+                    - generic:
+                      - text: Płeć
+                      - combobox:
+                        - generic: Wybierz płeć
+                        - img
+                      - combobox
+                  - generic:
+                    - generic:
+                      - generic: Miejscowość
+                      - combobox:
+                        - generic: Najpierw wybierz koordynatora
+                        - img
+                    - generic:
+                      - text: Adres
+                      - combobox [disabled]:
+                        - generic: Najpierw wybierz miejscowość
+                        - img
+                      - combobox [disabled]
+                    - generic:
+                      - text: Pokój
+                      - combobox [disabled]:
+                        - generic: Najpierw wybierz adres
+                        - img
+                      - combobox [disabled]
+                    - generic:
+                      - generic: Zakład
+                      - combobox:
+                        - generic: Najpierw wybierz koordynatora
+                        - img
+                  - generic:
+                    - generic:
+                      - generic: Data zameldowania
+                      - generic:
+                        - textbox:
+                          - /placeholder: rrrr-mm-dd
+                          - text: 2026-02-17
+                        - button:
+                          - img
+                    - generic:
+                      - generic: Data wymeldowania
+                      - generic:
+                        - textbox:
+                          - /placeholder: rrrr-mm-dd
+                        - button:
+                          - img
+                    - generic:
+                      - generic: Data zgłoszenia wyjazdu
+                      - generic:
+                        - textbox:
+                          - /placeholder: rrrr-mm-dd
+                        - button:
+                          - img
+                  - generic:
+                    - generic:
+                      - generic: Umowa od
+                      - generic:
+                        - textbox:
+                          - /placeholder: rrrr-mm-dd
+                        - button:
+                          - img
+                    - generic:
+                      - generic: Umowa do
+                      - generic:
+                        - textbox:
+                          - /placeholder: rrrr-mm-dd
+                        - button:
+                          - img
+                  - generic:
+                    - text: Komentarze
+                    - textbox:
+                      - /placeholder: Dodatkowe informacje...
+      - generic:
+        - generic:
+          - button: Anuluj
+          - button: Zapisz
+    - button:
+      - img
+      - generic: Close
+  - generic: sty
+  - dialog "Zrób zdjęcie paszportu" [ref=e3]:
+    - generic [ref=e4]:
+      - heading "Zrób zdjęcie paszportu" [level=2] [ref=e5]
+      - paragraph [ref=e6]: Umieść paszport w kadrze. Dla najlepszych wyników, obróć urządzenie poziomo.
+    - generic [ref=e8]:
+      - button "Zrób zdjęcie" [active] [ref=e9] [cursor=pointer]:
+        - img [ref=e10]
+        - text: Zrób zdjęcie
+      - button "Anuluj" [ref=e13] [cursor=pointer]
+    - button "Close" [ref=e14] [cursor=pointer]:
+      - img [ref=e15]
+      - generic [ref=e18]: Close
+```

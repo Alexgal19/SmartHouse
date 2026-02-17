@@ -9,16 +9,16 @@ import { redirect } from 'next/navigation';
 import { sessionOptions } from '@/lib/session';
 
 export async function getSession(): Promise<IronSession<SessionData>> {
-     const session = await getIronSession<SessionData>(cookies(), sessionOptions);
+  const session = await getIronSession<SessionData>(cookies(), sessionOptions);
 
-     if (!session.isLoggedIn) {
-        session.isLoggedIn = false;
-        session.uid = '';
-        session.name = '';
-        session.isAdmin = false;
-     }
+  if (!session.isLoggedIn) {
+    session.isLoggedIn = false;
+    session.uid = '';
+    session.name = '';
+    session.isAdmin = false;
+  }
 
-     return session;
+  return session;
 }
 
 
@@ -46,7 +46,7 @@ export async function login(name: string, password_input: string) {
     await session.save();
     return { success: true, user: { uid: user.uid, name: user.name, isAdmin: user.isAdmin } };
   }
-  
+
   throw new Error("Nieprawidłowa nazwa użytkownika lub hasło.");
 }
 

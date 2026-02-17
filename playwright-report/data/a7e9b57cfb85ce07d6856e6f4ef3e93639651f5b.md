@@ -1,0 +1,206 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - navigation [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e7]:
+            - img [ref=e8]
+            - generic [ref=e11]: SmartHouse
+          - button [ref=e12] [cursor=pointer]:
+            - img [ref=e13]
+        - list [ref=e16]:
+          - listitem [ref=e17]:
+            - link "Pulpit" [ref=e18]:
+              - /url: /dashboard?view=dashboard
+              - img [ref=e20]
+              - generic [ref=e23]: Pulpit
+          - listitem [ref=e24]:
+            - link "Mieszkańcy" [ref=e25]:
+              - /url: /dashboard?view=employees
+              - img [ref=e27]
+              - generic [ref=e32]: Mieszkańcy
+          - listitem [ref=e33]:
+            - link "Zakwaterowanie" [ref=e34]:
+              - /url: /dashboard?view=housing
+              - img [ref=e36]
+              - generic [ref=e39]: Zakwaterowanie
+          - listitem [ref=e40]:
+            - link "Ustawienia" [ref=e41]:
+              - /url: /dashboard?view=settings
+              - img [ref=e43]
+              - generic [ref=e46]: Ustawienia
+    - generic [ref=e48]:
+      - banner [ref=e49]:
+        - generic [ref=e50]:
+          - img [ref=e51]
+          - heading "SmartHouse" [level=1] [ref=e54]
+        - generic [ref=e55]:
+          - button "77" [ref=e56] [cursor=pointer]:
+            - img [ref=e57]
+            - generic [ref=e60]: "77"
+          - button [ref=e61] [cursor=pointer]:
+            - img [ref=e62]
+      - main [ref=e65]:
+        - generic [ref=e66]:
+          - generic [ref=e67]:
+            - generic [ref=e68]:
+              - heading "Ustawienia aplikacji" [level=3] [ref=e69]
+              - paragraph [ref=e70]: Zarządzaj globalnymi ustawieniami aplikacji, takimi jak listy, adresy i koordynatorzy.
+            - generic [ref=e72]:
+              - generic [ref=e73]:
+                - heading "Zarządzanie listami" [level=3] [ref=e75]:
+                  - button "Zarządzanie listami" [ref=e76] [cursor=pointer]:
+                    - text: Zarządzanie listami
+                    - img [ref=e77]
+                - heading "Zarządzanie koordynatorami" [level=3] [ref=e80]:
+                  - button "Zarządzanie koordynatorami" [ref=e81] [cursor=pointer]:
+                    - text: Zarządzanie koordynatorami
+                    - img [ref=e82]
+                - heading "Zarządzanie adresami" [level=3] [ref=e85]:
+                  - button "Zarządzanie adresami" [ref=e86] [cursor=pointer]:
+                    - text: Zarządzanie adresami
+                    - img [ref=e87]
+              - generic [ref=e89]:
+                - button "Zapisz zmiany" [disabled]
+          - generic [ref=e90]:
+            - generic [ref=e91]:
+              - heading "Migracja Danych" [level=3] [ref=e92]
+              - paragraph [ref=e93]: Jednorazowe akcje do porządkowania danych w arkuszach.
+            - generic [ref=e95]:
+              - generic [ref=e96]:
+                - heading "Migracja Imienia i Nazwiska" [level=3] [ref=e97]
+                - paragraph [ref=e98]: "Przeszukuje arkusze i dzieli pole `fullName` na `firstName` i `lastName` dla starych rekordów."
+              - button "Uruchom migrację" [ref=e99] [cursor=pointer]:
+                - img [ref=e100]
+                - text: Uruchom migrację
+          - generic [ref=e105]:
+            - generic [ref=e106]:
+              - generic [ref=e107]:
+                - heading "Import Pracowników z Excel" [level=3] [ref=e108]
+                - paragraph [ref=e109]: Zaimportuj nowych pracowników z pliku XLSX.
+              - button "Wybierz plik i importuj" [ref=e111] [cursor=pointer]:
+                - img [ref=e112]
+                - text: Wybierz plik i importuj
+            - generic [ref=e115]:
+              - generic [ref=e116]:
+                - heading "Import Mieszkańców (NZ) z Excel" [level=3] [ref=e117]
+                - paragraph [ref=e118]: Zaimportuj nowych mieszkańców (NZ) z pliku XLSX.
+              - button "Wybierz plik i importuj" [ref=e120] [cursor=pointer]:
+                - img [ref=e121]
+                - text: Wybierz plik i importuj
+          - generic [ref=e124]:
+            - generic [ref=e125]:
+              - generic [ref=e126]:
+                - heading "Raport zakwaterowania" [level=3] [ref=e127]
+                - paragraph [ref=e128]: Generuje raport XLSX pokazujący stan zakwaterowania w wybranym okresie.
+              - generic [ref=e130]:
+                - generic [ref=e131]:
+                  - generic [ref=e132]:
+                    - text: Rok
+                    - combobox [ref=e133] [cursor=pointer]:
+                      - generic: "2026"
+                      - img [ref=e134]
+                  - generic [ref=e136]:
+                    - text: Miesiąc
+                    - combobox [ref=e137] [cursor=pointer]:
+                      - generic: "2"
+                      - img [ref=e138]
+                  - generic [ref=e140]:
+                    - text: Koordynator
+                    - combobox [ref=e141] [cursor=pointer]:
+                      - generic: Wszyscy koordynatorzy
+                      - img [ref=e142]
+                  - button "Generuj raport" [ref=e144] [cursor=pointer]:
+                    - img [ref=e145]
+                    - generic [ref=e148]: Generuj raport
+                - generic [ref=e149]:
+                  - switch "Uwzględnij historię zmian adresów w raporcie" [ref=e150] [cursor=pointer]
+                  - generic [ref=e151]: Uwzględnij historię zmian adresów w raporcie
+            - generic [ref=e152]:
+              - generic [ref=e153]:
+                - heading "Generowanie raportu kosztów (NZ)" [level=3] [ref=e154]
+                - paragraph [ref=e155]: Wygeneruj raport przychodów od mieszkańców (NZ) w formacie XLSX.
+              - generic [ref=e157]:
+                - generic [ref=e158]:
+                  - text: Rok
+                  - combobox [ref=e159] [cursor=pointer]:
+                    - generic: "2026"
+                    - img [ref=e160]
+                - generic [ref=e162]:
+                  - text: Miesiąc
+                  - combobox [ref=e163] [cursor=pointer]:
+                    - generic: "2"
+                    - img [ref=e164]
+                - generic [ref=e166]:
+                  - text: Koordynator
+                  - combobox [ref=e167] [cursor=pointer]:
+                    - generic: Wszyscy koordynatorzy
+                    - img [ref=e168]
+                - button "Generuj raport (NZ)" [ref=e170] [cursor=pointer]:
+                  - img [ref=e171]
+                  - generic [ref=e174]: Generuj raport (NZ)
+          - generic [ref=e175]:
+            - generic [ref=e176]:
+              - heading "Akcje masowe" [level=3] [ref=e177]
+              - paragraph [ref=e178]: Zarządzaj danymi pracowników hurtowo.
+            - generic [ref=e179]:
+              - generic [ref=e180]:
+                - generic [ref=e181]:
+                  - heading "Masowe usuwanie" [level=3] [ref=e182]
+                  - paragraph [ref=e183]: Te akcje są nieodwracalne.
+                - generic [ref=e184]:
+                  - button "Usuń wszystkich aktywnych" [ref=e185] [cursor=pointer]:
+                    - img [ref=e186]
+                    - text: Usuń wszystkich aktywnych
+                  - button "Usuń wszystkich zwolnionych" [ref=e189] [cursor=pointer]:
+                    - img [ref=e190]
+                    - text: Usuń wszystkich zwolnionych
+              - generic [ref=e193]:
+                - generic [ref=e194]:
+                  - heading "Przenoszenie pracowników" [level=3] [ref=e195]
+                  - paragraph [ref=e196]: Przenieś wszystkich pracowników od jednego koordynatora do drugiego.
+                - generic [ref=e197]:
+                  - generic [ref=e198]:
+                    - text: Od koordynatora
+                    - combobox [ref=e199] [cursor=pointer]:
+                      - generic: Wybierz koordynatora
+                      - img [ref=e200]
+                  - generic [ref=e202]:
+                    - text: Do koordynatora
+                    - combobox [ref=e203] [cursor=pointer]:
+                      - generic: Wybierz koordynatora
+                      - img [ref=e204]
+                  - button "Przenieś" [ref=e206] [cursor=pointer]
+              - generic [ref=e207]:
+                - generic [ref=e208]:
+                  - heading "Usuwanie pracowników koordynatora" [level=3] [ref=e209]
+                  - paragraph [ref=e210]: Trwale usuwa wszystkich pracowników (aktywnych i zwolnionych) przypisanych do wybranego koordynatora. Ta akcja jest nieodwracalna.
+                - generic [ref=e211]:
+                  - generic [ref=e212]:
+                    - text: Koordynator
+                    - combobox [ref=e213] [cursor=pointer]:
+                      - generic: Wybierz koordynatora
+                      - img [ref=e214]
+                  - button "Usuń pracowników" [disabled]:
+                    - img
+                    - text: Usuń pracowników
+              - generic [ref=e216]:
+                - generic [ref=e217]:
+                  - heading "Usuwanie pracowników wg zakładu" [level=3] [ref=e218]
+                  - paragraph [ref=e219]: Trwale usuwa wszystkich pracowników (aktywnych i zwolnionych) przypisanych do wybranego zakładu. Ta akcja jest nieodwracalna.
+                - generic [ref=e220]:
+                  - generic [ref=e221]:
+                    - text: Zakład
+                    - combobox [ref=e222] [cursor=pointer]:
+                      - generic: Wybierz zakład
+                      - img [ref=e223]
+                  - button "Usuń pracowników" [disabled]:
+                    - img
+                    - text: Usuń pracowników
+  - region "Notifications (F8)":
+    - list
+  - alert [ref=e225]
+```

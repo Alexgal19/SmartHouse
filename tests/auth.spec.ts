@@ -3,8 +3,8 @@ import { test, expect } from '@playwright/test';
 test.describe('Authentication', () => {
   test('should allow a user to log in', async ({ page }) => {
     // TODO: Replace with actual test credentials
-    const username = 'testuser';
-    const password = 'testpassword';
+    const username = 'admin';
+    const password = 'password';
 
     await page.goto('/login');
 

@@ -4,8 +4,8 @@ test.describe('Dashboard', () => {
   // Log in before each test
   test.beforeEach(async ({ page }) => {
     // TODO: Replace with actual test credentials
-    const username = 'testuser';
-    const password = 'testpassword';
+    const username = 'admin';
+    const password = 'password';
 
     await page.goto('/login');
     await page.fill('#name', username);

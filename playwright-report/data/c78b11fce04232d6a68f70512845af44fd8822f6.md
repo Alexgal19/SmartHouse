@@ -1,0 +1,2039 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - navigation [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e7]:
+            - img [ref=e8]
+            - generic [ref=e11]: SmartHouse
+          - button [ref=e12] [cursor=pointer]:
+            - img [ref=e13]
+        - list [ref=e16]:
+          - listitem [ref=e17]:
+            - link "Pulpit" [ref=e18]:
+              - /url: /dashboard?view=dashboard
+              - img [ref=e20]
+              - generic [ref=e23]: Pulpit
+          - listitem [ref=e24]:
+            - link "Mieszkańcy" [ref=e25]:
+              - /url: /dashboard?view=employees
+              - img [ref=e27]
+              - generic [ref=e32]: Mieszkańcy
+          - listitem [ref=e33]:
+            - link "Zakwaterowanie" [ref=e34]:
+              - /url: /dashboard?view=housing
+              - img [ref=e36]
+              - generic [ref=e39]: Zakwaterowanie
+          - listitem [ref=e40]:
+            - link "Ustawienia" [ref=e41]:
+              - /url: /dashboard?view=settings
+              - img [ref=e43]
+              - generic [ref=e46]: Ustawienia
+    - generic [ref=e48]:
+      - banner [ref=e49]:
+        - generic [ref=e50]:
+          - img [ref=e51]
+          - heading "SmartHouse" [level=1] [ref=e54]
+        - generic [ref=e55]:
+          - button "77" [ref=e56] [cursor=pointer]:
+            - img [ref=e57]
+            - generic [ref=e60]: "77"
+          - button [ref=e61] [cursor=pointer]:
+            - img [ref=e62]
+      - main [ref=e65]:
+        - generic [ref=e66]:
+          - generic [ref=e67]:
+            - generic [ref=e68]:
+              - heading "Adresy" [level=3] [ref=e69]
+              - paragraph [ref=e70]: Wybierz adres, aby zobaczyć szczegóły.
+            - generic [ref=e71]:
+              - generic [ref=e73]:
+                - generic [ref=e74]:
+                  - generic [ref=e75]: Szukaj adresu
+                  - textbox "Szukaj adresu" [ref=e76]:
+                    - /placeholder: Wpisz nazwę adresu...
+                - generic [ref=e77]:
+                  - generic [ref=e78]: Miejscowość
+                  - combobox "Miejscowość" [ref=e79] [cursor=pointer]:
+                    - generic: Wszystkie miejscowości
+                    - img [ref=e80]
+                - generic [ref=e82]:
+                  - switch "Tylko z wolnymi miejscami" [ref=e83] [cursor=pointer]
+                  - generic [ref=e84]: Tylko z wolnymi miejscami
+              - generic [ref=e88]:
+                - generic [ref=e89]:
+                  - heading "Barlinek 2 wolnych" [level=3] [ref=e90]:
+                    - button "Barlinek 2 wolnych" [expanded] [ref=e91] [cursor=pointer]:
+                      - generic [ref=e92]:
+                        - text: Barlinek
+                        - generic [ref=e93]: 2 wolnych
+                      - img [ref=e94]
+                  - region "Barlinek 2 wolnych" [ref=e96]:
+                    - generic [ref=e97]:
+                      - generic [ref=e99] [cursor=pointer]:
+                        - generic [ref=e100]:
+                          - heading "Chopina 11a" [level=3] [ref=e101]:
+                            - img [ref=e102]
+                            - text: Chopina 11a
+                          - generic [ref=e106]: 2 / 4
+                        - paragraph [ref=e107]: "Wolne miejsca: 2"
+                      - generic [ref=e109] [cursor=pointer]:
+                        - generic [ref=e110]:
+                          - heading "Własne mieszkanie Barlinek" [level=3] [ref=e111]:
+                            - img [ref=e112]
+                            - text: Własne mieszkanie Barlinek
+                          - generic [ref=e116]: 0 / 50
+                        - paragraph [ref=e117]: "Wolne miejsca: 50"
+                - generic [ref=e118]:
+                  - heading "Bielawa 4 wolnych" [level=3] [ref=e119]:
+                    - button "Bielawa 4 wolnych" [expanded] [ref=e120] [cursor=pointer]:
+                      - generic [ref=e121]:
+                        - text: Bielawa
+                        - generic [ref=e122]: 4 wolnych
+                      - img [ref=e123]
+                  - region "Bielawa 4 wolnych" [ref=e125]:
+                    - generic [ref=e126]:
+                      - generic [ref=e128] [cursor=pointer]:
+                        - generic [ref=e129]:
+                          - heading "Piastowska 45/2" [level=3] [ref=e130]:
+                            - img [ref=e131]
+                            - text: Piastowska 45/2
+                          - generic [ref=e135]: 0 / 2
+                        - paragraph [ref=e136]: "Wolne miejsca: 2"
+                      - generic [ref=e138] [cursor=pointer]:
+                        - generic [ref=e139]:
+                          - heading "Własne mieszkania Bielawa" [level=3] [ref=e140]:
+                            - img [ref=e141]
+                            - text: Własne mieszkania Bielawa
+                          - generic [ref=e145]: 0 / 2
+                        - paragraph [ref=e146]: "Wolne miejsca: 2"
+                - generic [ref=e147]:
+                  - heading "Gorzów Wielkopolski 9 wolnych" [level=3] [ref=e148]:
+                    - button "Gorzów Wielkopolski 9 wolnych" [expanded] [ref=e149] [cursor=pointer]:
+                      - generic [ref=e150]:
+                        - text: Gorzów Wielkopolski
+                        - generic [ref=e151]: 9 wolnych
+                      - img [ref=e152]
+                  - region "Gorzów Wielkopolski 9 wolnych" [ref=e154]:
+                    - generic [ref=e155]:
+                      - generic [ref=e157] [cursor=pointer]:
+                        - generic [ref=e158]:
+                          - heading "Chabrowa 4" [level=3] [ref=e159]:
+                            - img [ref=e160]
+                            - text: Chabrowa 4
+                          - generic [ref=e164]: 2 / 4
+                        - paragraph [ref=e165]: "Wolne miejsca: 2"
+                      - generic [ref=e167] [cursor=pointer]:
+                        - generic [ref=e168]:
+                          - heading "Dywizionu 303 5/7" [level=3] [ref=e169]:
+                            - img [ref=e170]
+                            - text: Dywizionu 303 5/7
+                          - generic [ref=e174]: 4 / 6
+                        - paragraph [ref=e175]: "Wolne miejsca: 2"
+                      - generic [ref=e177] [cursor=pointer]:
+                        - generic [ref=e178]:
+                          - heading "Korczka 7e/1" [level=3] [ref=e179]:
+                            - img [ref=e180]
+                            - text: Korczka 7e/1
+                          - generic [ref=e184]: 2 / 3
+                        - paragraph [ref=e185]: "Wolne miejsca: 1"
+                      - generic [ref=e187] [cursor=pointer]:
+                        - generic [ref=e188]:
+                          - heading "Morelowa 4" [level=3] [ref=e189]:
+                            - img [ref=e190]
+                            - text: Morelowa 4
+                          - generic [ref=e194]: 4 / 8
+                        - paragraph [ref=e195]: "Wolne miejsca: 4"
+                      - generic [ref=e197] [cursor=pointer]:
+                        - generic [ref=e198]:
+                          - heading "Widok 24/11" [level=3] [ref=e199]:
+                            - img [ref=e200]
+                            - text: Widok 24/11
+                          - generic [ref=e204]: 6 / 6
+                        - paragraph [ref=e205]: "Wolne miejsca: 0"
+                      - generic [ref=e207] [cursor=pointer]:
+                        - generic [ref=e208]:
+                          - heading "Własne mieszkanie Gorzów Wielkopolski" [level=3] [ref=e209]:
+                            - img [ref=e210]
+                            - text: Własne mieszkanie Gorzów Wielkopolski
+                          - generic [ref=e214]: 25 / 50
+                        - paragraph [ref=e215]: "Wolne miejsca: 25"
+                - generic [ref=e216]:
+                  - heading "Grodzisk Mazowiecki 3 wolnych" [level=3] [ref=e217]:
+                    - button "Grodzisk Mazowiecki 3 wolnych" [expanded] [ref=e218] [cursor=pointer]:
+                      - generic [ref=e219]:
+                        - text: Grodzisk Mazowiecki
+                        - generic [ref=e220]: 3 wolnych
+                      - img [ref=e221]
+                  - region "Grodzisk Mazowiecki 3 wolnych" [ref=e223]:
+                    - generic [ref=e226] [cursor=pointer]:
+                      - generic [ref=e227]:
+                        - heading "Kopernika 2/8" [level=3] [ref=e228]:
+                          - img [ref=e229]
+                          - text: Kopernika 2/8
+                        - generic [ref=e233]: 4 / 7
+                      - paragraph [ref=e234]: "Wolne miejsca: 3"
+                - generic [ref=e235]:
+                  - heading "Imielin 7 wolnych" [level=3] [ref=e236]:
+                    - button "Imielin 7 wolnych" [expanded] [ref=e237] [cursor=pointer]:
+                      - generic [ref=e238]:
+                        - text: Imielin
+                        - generic [ref=e239]: 7 wolnych
+                      - img [ref=e240]
+                  - region "Imielin 7 wolnych" [ref=e242]:
+                    - generic [ref=e245] [cursor=pointer]:
+                      - generic [ref=e246]:
+                        - heading "Dunikowskiego 56" [level=3] [ref=e247]:
+                          - img [ref=e248]
+                          - text: Dunikowskiego 56
+                        - generic [ref=e252]: 5 / 12
+                      - paragraph [ref=e253]: "Wolne miejsca: 7"
+                - generic [ref=e254]:
+                  - heading "Jelcz-Laskowice 9 wolnych" [level=3] [ref=e255]:
+                    - button "Jelcz-Laskowice 9 wolnych" [expanded] [ref=e256] [cursor=pointer]:
+                      - generic [ref=e257]:
+                        - text: Jelcz-Laskowice
+                        - generic [ref=e258]: 9 wolnych
+                      - img [ref=e259]
+                  - region "Jelcz-Laskowice 9 wolnych" [ref=e261]:
+                    - generic [ref=e262]:
+                      - generic [ref=e264] [cursor=pointer]:
+                        - generic [ref=e265]:
+                          - heading "Bryły 15/4" [level=3] [ref=e266]:
+                            - img [ref=e267]
+                            - text: Bryły 15/4
+                          - generic [ref=e271]: 6 / 6
+                        - paragraph [ref=e272]: "Wolne miejsca: 0"
+                      - generic [ref=e274] [cursor=pointer]:
+                        - generic [ref=e275]:
+                          - heading "Oławska 16/8" [level=3] [ref=e276]:
+                            - img [ref=e277]
+                            - text: Oławska 16/8
+                          - generic [ref=e281]: 9 / 9
+                        - paragraph [ref=e282]: "Wolne miejsca: 0"
+                      - generic [ref=e284] [cursor=pointer]:
+                        - generic [ref=e285]:
+                          - heading "Oławska 62/1" [level=3] [ref=e286]:
+                            - img [ref=e287]
+                            - text: Oławska 62/1
+                          - generic [ref=e291]: 3 / 6
+                        - paragraph [ref=e292]: "Wolne miejsca: 3"
+                      - generic [ref=e294] [cursor=pointer]:
+                        - generic [ref=e295]:
+                          - heading "Prusa 6" [level=3] [ref=e296]:
+                            - img [ref=e297]
+                            - text: Prusa 6
+                          - generic [ref=e301]: 13 / 17
+                        - paragraph [ref=e302]: "Wolne miejsca: 4"
+                      - generic [ref=e304] [cursor=pointer]:
+                        - generic [ref=e305]:
+                          - heading "Tańskiego 11/2" [level=3] [ref=e306]:
+                            - img [ref=e307]
+                            - text: Tańskiego 11/2
+                          - generic [ref=e311]: 6 / 8
+                        - paragraph [ref=e312]: "Wolne miejsca: 2"
+                      - generic [ref=e314] [cursor=pointer]:
+                        - generic [ref=e315]:
+                          - heading "Własne mieszkanie Jelcz-Laskowice" [level=3] [ref=e316]:
+                            - img [ref=e317]
+                            - text: Własne mieszkanie Jelcz-Laskowice
+                          - generic [ref=e321]: 52 / 100
+                        - paragraph [ref=e322]: "Wolne miejsca: 48"
+                - generic [ref=e323]:
+                  - heading "Kalisz 5 wolnych" [level=3] [ref=e324]:
+                    - button "Kalisz 5 wolnych" [expanded] [ref=e325] [cursor=pointer]:
+                      - generic [ref=e326]:
+                        - text: Kalisz
+                        - generic [ref=e327]: 5 wolnych
+                      - img [ref=e328]
+                  - region "Kalisz 5 wolnych" [ref=e330]:
+                    - generic [ref=e331]:
+                      - generic [ref=e333] [cursor=pointer]:
+                        - generic [ref=e334]:
+                          - heading "Łódzka 169" [level=3] [ref=e335]:
+                            - img [ref=e336]
+                            - text: Łódzka 169
+                          - generic [ref=e340]: 9 / 14
+                        - paragraph [ref=e341]: "Wolne miejsca: 5"
+                      - generic [ref=e343] [cursor=pointer]:
+                        - generic [ref=e344]:
+                          - heading "Narutowicza 1-3" [level=3] [ref=e345]:
+                            - img [ref=e346]
+                            - text: Narutowicza 1-3
+                          - generic [ref=e350]: 2 / 1
+                        - paragraph [ref=e351]: "Wolne miejsca: -1"
+                      - generic [ref=e353] [cursor=pointer]:
+                        - generic [ref=e354]:
+                          - heading "Pszenna 12A" [level=3] [ref=e355]:
+                            - img [ref=e356]
+                            - text: Pszenna 12A
+                          - generic [ref=e360]: 1 / 1
+                        - paragraph [ref=e361]: "Wolne miejsca: 0"
+                      - generic [ref=e363] [cursor=pointer]:
+                        - generic [ref=e364]:
+                          - heading "Własne mieszkanie Kalisz" [level=3] [ref=e365]:
+                            - img [ref=e366]
+                            - text: Własne mieszkanie Kalisz
+                          - generic [ref=e370]: 160 / 200
+                        - paragraph [ref=e371]: "Wolne miejsca: 40"
+                      - generic [ref=e373] [cursor=pointer]:
+                        - generic [ref=e374]:
+                          - heading "Wyjazdowa 2" [level=3] [ref=e375]:
+                            - img [ref=e376]
+                            - text: Wyjazdowa 2
+                          - generic [ref=e380]: 7 / 8
+                        - paragraph [ref=e381]: "Wolne miejsca: 1"
+                - generic [ref=e382]:
+                  - heading "Kąty Wrocławskie 10 wolnych" [level=3] [ref=e383]:
+                    - button "Kąty Wrocławskie 10 wolnych" [expanded] [ref=e384] [cursor=pointer]:
+                      - generic [ref=e385]:
+                        - text: Kąty Wrocławskie
+                        - generic [ref=e386]: 10 wolnych
+                      - img [ref=e387]
+                  - region "Kąty Wrocławskie 10 wolnych" [ref=e389]:
+                    - generic [ref=e390]:
+                      - generic [ref=e392] [cursor=pointer]:
+                        - generic [ref=e393]:
+                          - heading "Czerńczyce - Lotnicza 20" [level=3] [ref=e394]:
+                            - img [ref=e395]
+                            - text: Czerńczyce - Lotnicza 20
+                          - generic [ref=e399]: 0 / 0
+                        - paragraph [ref=e400]: "Wolne miejsca: 0"
+                      - generic [ref=e402] [cursor=pointer]:
+                        - generic [ref=e403]:
+                          - heading "Czerńczyce - Lotnicza 20 (wejście tylne)" [level=3] [ref=e404]:
+                            - img [ref=e405]
+                            - text: Czerńczyce - Lotnicza 20 (wejście tylne)
+                          - generic [ref=e409]: 11 / 21
+                        - paragraph [ref=e410]: "Wolne miejsca: 10"
+                      - generic [ref=e412] [cursor=pointer]:
+                        - generic [ref=e413]:
+                          - heading "Własne mieszkanie Kąty Wrocławskie" [level=3] [ref=e414]:
+                            - img [ref=e415]
+                            - text: Własne mieszkanie Kąty Wrocławskie
+                          - generic [ref=e419]: 5 / 50
+                        - paragraph [ref=e420]: "Wolne miejsca: 45"
+                - generic [ref=e421]:
+                  - heading "Kłodzko 6 wolnych" [level=3] [ref=e422]:
+                    - button "Kłodzko 6 wolnych" [expanded] [ref=e423] [cursor=pointer]:
+                      - generic [ref=e424]:
+                        - text: Kłodzko
+                        - generic [ref=e425]: 6 wolnych
+                      - img [ref=e426]
+                  - region "Kłodzko 6 wolnych" [ref=e428]:
+                    - generic [ref=e429]:
+                      - generic [ref=e431] [cursor=pointer]:
+                        - generic [ref=e432]:
+                          - heading "Jaszkowa Dolna 13" [level=3] [ref=e433]:
+                            - img [ref=e434]
+                            - text: Jaszkowa Dolna 13
+                          - generic [ref=e438]: 5 / 11
+                        - paragraph [ref=e439]: "Wolne miejsca: 6"
+                      - generic [ref=e441] [cursor=pointer]:
+                        - generic [ref=e442]:
+                          - heading "Wyspiańskiego 79" [level=3] [ref=e443]:
+                            - img [ref=e444]
+                            - text: Wyspiańskiego 79
+                          - generic [ref=e448]: 10 / 10
+                        - paragraph [ref=e449]: "Wolne miejsca: 0"
+                - generic [ref=e450]:
+                  - heading "Kościan 16 wolnych" [level=3] [ref=e451]:
+                    - button "Kościan 16 wolnych" [expanded] [ref=e452] [cursor=pointer]:
+                      - generic [ref=e453]:
+                        - text: Kościan
+                        - generic [ref=e454]: 16 wolnych
+                      - img [ref=e455]
+                  - region "Kościan 16 wolnych" [ref=e457]:
+                    - generic [ref=e458]:
+                      - generic [ref=e460] [cursor=pointer]:
+                        - generic [ref=e461]:
+                          - heading "Dworcowa 16/5" [level=3] [ref=e462]:
+                            - img [ref=e463]
+                            - text: Dworcowa 16/5
+                          - generic [ref=e467]: 0 / 4
+                        - paragraph [ref=e468]: "Wolne miejsca: 4"
+                      - generic [ref=e470] [cursor=pointer]:
+                        - generic [ref=e471]:
+                          - heading "Dworcowa 18/16" [level=3] [ref=e472]:
+                            - img [ref=e473]
+                            - text: Dworcowa 18/16
+                          - generic [ref=e477]: 0 / 4
+                        - paragraph [ref=e478]: "Wolne miejsca: 4"
+                      - generic [ref=e480] [cursor=pointer]:
+                        - generic [ref=e481]:
+                          - heading "Dworcowa 18/18" [level=3] [ref=e482]:
+                            - img [ref=e483]
+                            - text: Dworcowa 18/18
+                          - generic [ref=e487]: 0 / 4
+                        - paragraph [ref=e488]: "Wolne miejsca: 4"
+                      - generic [ref=e490] [cursor=pointer]:
+                        - generic [ref=e491]:
+                          - heading "Dworcowa 18/25" [level=3] [ref=e492]:
+                            - img [ref=e493]
+                            - text: Dworcowa 18/25
+                          - generic [ref=e497]: 0 / 4
+                        - paragraph [ref=e498]: "Wolne miejsca: 4"
+                      - generic [ref=e500] [cursor=pointer]:
+                        - generic [ref=e501]:
+                          - heading "Własne mieszkanie Kościan" [level=3] [ref=e502]:
+                            - img [ref=e503]
+                            - text: Własne mieszkanie Kościan
+                          - generic [ref=e507]: 1 / 10
+                        - paragraph [ref=e508]: "Wolne miejsca: 9"
+                - generic [ref=e509]:
+                  - heading "Koszalin 4 wolnych" [level=3] [ref=e510]:
+                    - button "Koszalin 4 wolnych" [expanded] [ref=e511] [cursor=pointer]:
+                      - generic [ref=e512]:
+                        - text: Koszalin
+                        - generic [ref=e513]: 4 wolnych
+                      - img [ref=e514]
+                  - region "Koszalin 4 wolnych" [ref=e516]:
+                    - generic [ref=e517]:
+                      - generic [ref=e519] [cursor=pointer]:
+                        - generic [ref=e520]:
+                          - heading "Hostel Szczecińska 32" [level=3] [ref=e521]:
+                            - img [ref=e522]
+                            - text: Hostel Szczecińska 32
+                          - generic [ref=e526]: 4 / 8
+                        - paragraph [ref=e527]: "Wolne miejsca: 4"
+                      - generic [ref=e529] [cursor=pointer]:
+                        - generic [ref=e530]:
+                          - heading "Własne mieszkanie Koszalin" [level=3] [ref=e531]:
+                            - img [ref=e532]
+                            - text: Własne mieszkanie Koszalin
+                          - generic [ref=e536]: 0 / 50
+                        - paragraph [ref=e537]: "Wolne miejsca: 50"
+                - generic [ref=e538]:
+                  - heading "Kożuchów" [level=3] [ref=e539]:
+                    - button "Kożuchów" [expanded] [ref=e540] [cursor=pointer]:
+                      - generic [ref=e541]: Kożuchów
+                      - img [ref=e542]
+                  - region "Kożuchów" [ref=e544]:
+                    - generic [ref=e547] [cursor=pointer]:
+                      - generic [ref=e548]:
+                        - heading "1go Maja 40" [level=3] [ref=e549]:
+                          - img [ref=e550]
+                          - text: 1go Maja 40
+                        - generic [ref=e554]: 5 / 5
+                      - paragraph [ref=e555]: "Wolne miejsca: 0"
+                - generic [ref=e556]:
+                  - heading "Kudowa-Zdrój 7 wolnych" [level=3] [ref=e557]:
+                    - button "Kudowa-Zdrój 7 wolnych" [expanded] [ref=e558] [cursor=pointer]:
+                      - generic [ref=e559]:
+                        - text: Kudowa-Zdrój
+                        - generic [ref=e560]: 7 wolnych
+                      - img [ref=e561]
+                  - region "Kudowa-Zdrój 7 wolnych" [ref=e563]:
+                    - generic [ref=e566] [cursor=pointer]:
+                      - generic [ref=e567]:
+                        - heading "Pogodna 18" [level=3] [ref=e568]:
+                          - img [ref=e569]
+                          - text: Pogodna 18
+                        - generic [ref=e573]: 3 / 10
+                      - paragraph [ref=e574]: "Wolne miejsca: 7"
+                - generic [ref=e575]:
+                  - heading "Kutno 10 wolnych" [level=3] [ref=e576]:
+                    - button "Kutno 10 wolnych" [expanded] [ref=e577] [cursor=pointer]:
+                      - generic [ref=e578]:
+                        - text: Kutno
+                        - generic [ref=e579]: 10 wolnych
+                      - img [ref=e580]
+                  - region "Kutno 10 wolnych" [ref=e582]:
+                    - generic [ref=e583]:
+                      - generic [ref=e585] [cursor=pointer]:
+                        - generic [ref=e586]:
+                          - heading "Górna 35/1" [level=3] [ref=e587]:
+                            - img [ref=e588]
+                            - text: Górna 35/1
+                          - generic [ref=e592]: 8 / 8
+                        - paragraph [ref=e593]: "Wolne miejsca: 0"
+                      - generic [ref=e595] [cursor=pointer]:
+                        - generic [ref=e596]:
+                          - heading "Górna 35/2" [level=3] [ref=e597]:
+                            - img [ref=e598]
+                            - text: Górna 35/2
+                          - generic [ref=e602]: 16 / 16
+                        - paragraph [ref=e603]: "Wolne miejsca: 0"
+                      - generic [ref=e605] [cursor=pointer]:
+                        - generic [ref=e606]:
+                          - heading "Górna 35/3" [level=3] [ref=e607]:
+                            - img [ref=e608]
+                            - text: Górna 35/3
+                          - generic [ref=e612]: 15 / 18
+                        - paragraph [ref=e613]: "Wolne miejsca: 3"
+                      - generic [ref=e615] [cursor=pointer]:
+                        - generic [ref=e616]:
+                          - heading "Górna 35/4" [level=3] [ref=e617]:
+                            - img [ref=e618]
+                            - text: Górna 35/4
+                          - generic [ref=e622]: 16 / 16
+                        - paragraph [ref=e623]: "Wolne miejsca: 0"
+                      - generic [ref=e625] [cursor=pointer]:
+                        - generic [ref=e626]:
+                          - heading "Górna 35/5" [level=3] [ref=e627]:
+                            - img [ref=e628]
+                            - text: Górna 35/5
+                          - generic [ref=e632]: 7 / 7
+                        - paragraph [ref=e633]: "Wolne miejsca: 0"
+                      - generic [ref=e635] [cursor=pointer]:
+                        - generic [ref=e636]:
+                          - heading "Górna 35/6" [level=3] [ref=e637]:
+                            - img [ref=e638]
+                            - text: Górna 35/6
+                          - generic [ref=e642]: 9 / 9
+                        - paragraph [ref=e643]: "Wolne miejsca: 0"
+                      - generic [ref=e645] [cursor=pointer]:
+                        - generic [ref=e646]:
+                          - heading "Górna 35/7" [level=3] [ref=e647]:
+                            - img [ref=e648]
+                            - text: Górna 35/7
+                          - generic [ref=e652]: 2 / 6
+                        - paragraph [ref=e653]: "Wolne miejsca: 4"
+                      - generic [ref=e655] [cursor=pointer]:
+                        - generic [ref=e656]:
+                          - heading "Górna 35/8" [level=3] [ref=e657]:
+                            - img [ref=e658]
+                            - text: Górna 35/8
+                          - generic [ref=e662]: 8 / 7
+                        - paragraph [ref=e663]: "Wolne miejsca: -1"
+                      - generic [ref=e665] [cursor=pointer]:
+                        - generic [ref=e666]:
+                          - heading "Górna 35A/1" [level=3] [ref=e667]:
+                            - img [ref=e668]
+                            - text: Górna 35A/1
+                          - generic [ref=e672]: 7 / 7
+                        - paragraph [ref=e673]: "Wolne miejsca: 0"
+                      - generic [ref=e675] [cursor=pointer]:
+                        - generic [ref=e676]:
+                          - heading "Górna 35A/2" [level=3] [ref=e677]:
+                            - img [ref=e678]
+                            - text: Górna 35A/2
+                          - generic [ref=e682]: 10 / 11
+                        - paragraph [ref=e683]: "Wolne miejsca: 1"
+                      - generic [ref=e685] [cursor=pointer]:
+                        - generic [ref=e686]:
+                          - heading "Kosmonautów 6" [level=3] [ref=e687]:
+                            - img [ref=e688]
+                            - text: Kosmonautów 6
+                          - generic [ref=e692]: 16 / 18
+                        - paragraph [ref=e693]: "Wolne miejsca: 2"
+                      - generic [ref=e695] [cursor=pointer]:
+                        - generic [ref=e696]:
+                          - heading "Sadowa" [level=3] [ref=e697]:
+                            - img [ref=e698]
+                            - text: Sadowa
+                          - generic [ref=e702]: 25 / 26
+                        - paragraph [ref=e703]: "Wolne miejsca: 1"
+                      - generic [ref=e705] [cursor=pointer]:
+                        - generic [ref=e706]:
+                          - heading "Własne mieszkanie Kutno" [level=3] [ref=e707]:
+                            - img [ref=e708]
+                            - text: Własne mieszkanie Kutno
+                          - generic [ref=e712]: 31 / 70
+                        - paragraph [ref=e713]: "Wolne miejsca: 39"
+                - generic [ref=e714]:
+                  - heading "Leszno 14 wolnych" [level=3] [ref=e715]:
+                    - button "Leszno 14 wolnych" [expanded] [ref=e716] [cursor=pointer]:
+                      - generic [ref=e717]:
+                        - text: Leszno
+                        - generic [ref=e718]: 14 wolnych
+                      - img [ref=e719]
+                  - region "Leszno 14 wolnych" [ref=e721]:
+                    - generic [ref=e722]:
+                      - generic [ref=e724] [cursor=pointer]:
+                        - generic [ref=e725]:
+                          - heading "Antonińska 2b" [level=3] [ref=e726]:
+                            - img [ref=e727]
+                            - text: Antonińska 2b
+                          - generic [ref=e731]: 17 / 17
+                        - paragraph [ref=e732]: "Wolne miejsca: 0"
+                      - generic [ref=e734] [cursor=pointer]:
+                        - generic [ref=e735]:
+                          - heading "Baczyńskiego 25" [level=3] [ref=e736]:
+                            - img [ref=e737]
+                            - text: Baczyńskiego 25
+                          - generic [ref=e741]: 13 / 16
+                        - paragraph [ref=e742]: "Wolne miejsca: 3"
+                      - generic [ref=e744] [cursor=pointer]:
+                        - generic [ref=e745]:
+                          - heading "Gronowska 44" [level=3] [ref=e746]:
+                            - img [ref=e747]
+                            - text: Gronowska 44
+                          - generic [ref=e751]: 10 / 10
+                        - paragraph [ref=e752]: "Wolne miejsca: 0"
+                      - generic [ref=e754] [cursor=pointer]:
+                        - generic [ref=e755]:
+                          - heading "Gronowska 44/ D" [level=3] [ref=e756]:
+                            - img [ref=e757]
+                            - text: Gronowska 44/ D
+                          - generic [ref=e761]: 7 / 7
+                        - paragraph [ref=e762]: "Wolne miejsca: 0"
+                      - generic [ref=e764] [cursor=pointer]:
+                        - generic [ref=e765]:
+                          - heading "Gronowska 44/2b" [level=3] [ref=e766]:
+                            - img [ref=e767]
+                            - text: Gronowska 44/2b
+                          - generic [ref=e771]: 6 / 6
+                        - paragraph [ref=e772]: "Wolne miejsca: 0"
+                      - generic [ref=e774] [cursor=pointer]:
+                        - generic [ref=e775]:
+                          - heading "Gronowska 44/2C" [level=3] [ref=e776]:
+                            - img [ref=e777]
+                            - text: Gronowska 44/2C
+                          - generic [ref=e781]: 4 / 4
+                        - paragraph [ref=e782]: "Wolne miejsca: 0"
+                      - generic [ref=e784] [cursor=pointer]:
+                        - generic [ref=e785]:
+                          - heading "Gronowska 44C/1" [level=3] [ref=e786]:
+                            - img [ref=e787]
+                            - text: Gronowska 44C/1
+                          - generic [ref=e791]: 9 / 8
+                        - paragraph [ref=e792]: "Wolne miejsca: -1"
+                      - generic [ref=e794] [cursor=pointer]:
+                        - generic [ref=e795]:
+                          - heading "Herberta 7" [level=3] [ref=e796]:
+                            - img [ref=e797]
+                            - text: Herberta 7
+                          - generic [ref=e801]: 15 / 16
+                        - paragraph [ref=e802]: "Wolne miejsca: 1"
+                      - generic [ref=e804] [cursor=pointer]:
+                        - generic [ref=e805]:
+                          - heading "Kopernika 20" [level=3] [ref=e806]:
+                            - img [ref=e807]
+                            - text: Kopernika 20
+                          - generic [ref=e811]: 5 / 5
+                        - paragraph [ref=e812]: "Wolne miejsca: 0"
+                      - generic [ref=e814] [cursor=pointer]:
+                        - generic [ref=e815]:
+                          - heading "Łowiecka 7b/9" [level=3] [ref=e816]:
+                            - img [ref=e817]
+                            - text: Łowiecka 7b/9
+                          - generic [ref=e821]: 7 / 7
+                        - paragraph [ref=e822]: "Wolne miejsca: 0"
+                      - generic [ref=e824] [cursor=pointer]:
+                        - generic [ref=e825]:
+                          - heading "Marcinkowskiego 15A" [level=3] [ref=e826]:
+                            - img [ref=e827]
+                            - text: Marcinkowskiego 15A
+                          - generic [ref=e831]: 24 / 24
+                        - paragraph [ref=e832]: "Wolne miejsca: 0"
+                      - generic [ref=e834] [cursor=pointer]:
+                        - generic [ref=e835]:
+                          - heading "Orłowskiego 32" [level=3] [ref=e836]:
+                            - img [ref=e837]
+                            - text: Orłowskiego 32
+                          - generic [ref=e841]: 9 / 10
+                        - paragraph [ref=e842]: "Wolne miejsca: 1"
+                      - generic [ref=e844] [cursor=pointer]:
+                        - generic [ref=e845]:
+                          - heading "Spokojna 1" [level=3] [ref=e846]:
+                            - img [ref=e847]
+                            - text: Spokojna 1
+                          - generic [ref=e851]: 12 / 10
+                        - paragraph [ref=e852]: "Wolne miejsca: -2"
+                      - generic [ref=e854] [cursor=pointer]:
+                        - generic [ref=e855]:
+                          - heading "Spółdzielcza 5" [level=3] [ref=e856]:
+                            - img [ref=e857]
+                            - text: Spółdzielcza 5
+                          - generic [ref=e861]: 4 / 4
+                        - paragraph [ref=e862]: "Wolne miejsca: 0"
+                      - generic [ref=e864] [cursor=pointer]:
+                        - generic [ref=e865]:
+                          - heading "Stanisławskiego 3" [level=3] [ref=e866]:
+                            - img [ref=e867]
+                            - text: Stanisławskiego 3
+                          - generic [ref=e871]: 19 / 19
+                        - paragraph [ref=e872]: "Wolne miejsca: 0"
+                      - generic [ref=e874] [cursor=pointer]:
+                        - generic [ref=e875]:
+                          - heading "Tarkowskiego 16F/5" [level=3] [ref=e876]:
+                            - img [ref=e877]
+                            - text: Tarkowskiego 16F/5
+                          - generic [ref=e881]: 5 / 6
+                        - paragraph [ref=e882]: "Wolne miejsca: 1"
+                      - generic [ref=e884] [cursor=pointer]:
+                        - generic [ref=e885]:
+                          - heading "Tetmajera 7" [level=3] [ref=e886]:
+                            - img [ref=e887]
+                            - text: Tetmajera 7
+                          - generic [ref=e891]: 13 / 14
+                        - paragraph [ref=e892]: "Wolne miejsca: 1"
+                      - generic [ref=e894] [cursor=pointer]:
+                        - generic [ref=e895]:
+                          - heading "Wałowa 11" [level=3] [ref=e896]:
+                            - img [ref=e897]
+                            - text: Wałowa 11
+                          - generic [ref=e901]: 4 / 4
+                        - paragraph [ref=e902]: "Wolne miejsca: 0"
+                      - generic [ref=e904] [cursor=pointer]:
+                        - generic [ref=e905]:
+                          - heading "Wilkowice - Os. Słoneczne 4c/2" [level=3] [ref=e906]:
+                            - img [ref=e907]
+                            - text: Wilkowice - Os. Słoneczne 4c/2
+                          - generic [ref=e911]: 0 / 10
+                        - paragraph [ref=e912]: "Wolne miejsca: 10"
+                      - generic [ref=e914] [cursor=pointer]:
+                        - generic [ref=e915]:
+                          - heading "Własne mieszkanie Leszno" [level=3] [ref=e916]:
+                            - img [ref=e917]
+                            - text: Własne mieszkanie Leszno
+                          - generic [ref=e921]: 197 / 247
+                        - paragraph [ref=e922]: "Wolne miejsca: 50"
+                - generic [ref=e923]:
+                  - heading "Niepołomice 2 wolnych" [level=3] [ref=e924]:
+                    - button "Niepołomice 2 wolnych" [expanded] [ref=e925] [cursor=pointer]:
+                      - generic [ref=e926]:
+                        - text: Niepołomice
+                        - generic [ref=e927]: 2 wolnych
+                      - img [ref=e928]
+                  - region "Niepołomice 2 wolnych" [ref=e930]:
+                    - generic [ref=e931]:
+                      - generic [ref=e933] [cursor=pointer]:
+                        - generic [ref=e934]:
+                          - heading "Grabska 12Ł" [level=3] [ref=e935]:
+                            - img [ref=e936]
+                            - text: Grabska 12Ł
+                          - generic [ref=e940]: 1 / 1
+                        - paragraph [ref=e941]: "Wolne miejsca: 0"
+                      - generic [ref=e943] [cursor=pointer]:
+                        - generic [ref=e944]:
+                          - heading "Portowa 17A" [level=3] [ref=e945]:
+                            - img [ref=e946]
+                            - text: Portowa 17A
+                          - generic [ref=e950]: 15 / 17
+                        - paragraph [ref=e951]: "Wolne miejsca: 2"
+                      - generic [ref=e953] [cursor=pointer]:
+                        - generic [ref=e954]:
+                          - heading "Własne mieszkanie Niepołomice" [level=3] [ref=e955]:
+                            - img [ref=e956]
+                            - text: Własne mieszkanie Niepołomice
+                          - generic [ref=e960]: 2 / 30
+                        - paragraph [ref=e961]: "Wolne miejsca: 28"
+                - generic [ref=e962]:
+                  - heading "Oborniki 9 wolnych" [level=3] [ref=e963]:
+                    - button "Oborniki 9 wolnych" [expanded] [ref=e964] [cursor=pointer]:
+                      - generic [ref=e965]:
+                        - text: Oborniki
+                        - generic [ref=e966]: 9 wolnych
+                      - img [ref=e967]
+                  - region "Oborniki 9 wolnych" [ref=e969]:
+                    - generic [ref=e970]:
+                      - generic [ref=e972] [cursor=pointer]:
+                        - generic [ref=e973]:
+                          - heading ".1 Maja 17" [level=3] [ref=e974]:
+                            - img [ref=e975]
+                            - text: .1 Maja 17
+                          - generic [ref=e979]: 11 / 14
+                        - paragraph [ref=e980]: "Wolne miejsca: 3"
+                      - generic [ref=e982] [cursor=pointer]:
+                        - generic [ref=e983]:
+                          - heading "Armii Krajowej 21/45" [level=3] [ref=e984]:
+                            - img [ref=e985]
+                            - text: Armii Krajowej 21/45
+                          - generic [ref=e989]: 5 / 5
+                        - paragraph [ref=e990]: "Wolne miejsca: 0"
+                      - generic [ref=e992] [cursor=pointer]:
+                        - generic [ref=e993]:
+                          - heading "Czarnkowska 17/2" [level=3] [ref=e994]:
+                            - img [ref=e995]
+                            - text: Czarnkowska 17/2
+                          - generic [ref=e999]: 4 / 4
+                        - paragraph [ref=e1000]: "Wolne miejsca: 0"
+                      - generic [ref=e1002] [cursor=pointer]:
+                        - generic [ref=e1003]:
+                          - heading "Własne mieszkanie Oborniki" [level=3] [ref=e1004]:
+                            - img [ref=e1005]
+                            - text: Własne mieszkanie Oborniki
+                          - generic [ref=e1009]: 5 / 80
+                        - paragraph [ref=e1010]: "Wolne miejsca: 75"
+                      - generic [ref=e1012] [cursor=pointer]:
+                        - generic [ref=e1013]:
+                          - heading "Zamkowa 1a (Hostel)" [level=3] [ref=e1014]:
+                            - img [ref=e1015]
+                            - text: Zamkowa 1a (Hostel)
+                          - generic [ref=e1019]: 2 / 8
+                        - paragraph [ref=e1020]: "Wolne miejsca: 6"
+                - generic [ref=e1021]:
+                  - heading "Oława 31 wolnych" [level=3] [ref=e1022]:
+                    - button "Oława 31 wolnych" [expanded] [ref=e1023] [cursor=pointer]:
+                      - generic [ref=e1024]:
+                        - text: Oława
+                        - generic [ref=e1025]: 31 wolnych
+                      - img [ref=e1026]
+                  - region "Oława 31 wolnych" [ref=e1028]:
+                    - generic [ref=e1029]:
+                      - generic [ref=e1031] [cursor=pointer]:
+                        - generic [ref=e1032]:
+                          - heading "1 Maja 8/15" [level=3] [ref=e1033]:
+                            - img [ref=e1034]
+                            - text: 1 Maja 8/15
+                          - generic [ref=e1038]: 4 / 4
+                        - paragraph [ref=e1039]: "Wolne miejsca: 0"
+                      - generic [ref=e1041] [cursor=pointer]:
+                        - generic [ref=e1042]:
+                          - heading "1 Maja 9/3 (Oława)" [level=3] [ref=e1043]:
+                            - img [ref=e1044]
+                            - text: 1 Maja 9/3 (Oława)
+                          - generic [ref=e1048]: 6 / 7
+                        - paragraph [ref=e1049]: "Wolne miejsca: 1"
+                      - generic [ref=e1051] [cursor=pointer]:
+                        - generic [ref=e1052]:
+                          - heading "3 maja 10/15" [level=3] [ref=e1053]:
+                            - img [ref=e1054]
+                            - text: 3 maja 10/15
+                          - generic [ref=e1058]: 4 / 8
+                        - paragraph [ref=e1059]: "Wolne miejsca: 4"
+                      - generic [ref=e1061] [cursor=pointer]:
+                        - generic [ref=e1062]:
+                          - heading "Bażantowa 34" [level=3] [ref=e1063]:
+                            - img [ref=e1064]
+                            - text: Bażantowa 34
+                          - generic [ref=e1068]: 7 / 9
+                        - paragraph [ref=e1069]: "Wolne miejsca: 2"
+                      - generic [ref=e1071] [cursor=pointer]:
+                        - generic [ref=e1072]:
+                          - heading "Brzozowa 8" [level=3] [ref=e1073]:
+                            - img [ref=e1074]
+                            - text: Brzozowa 8
+                          - generic [ref=e1078]: 6 / 10
+                        - paragraph [ref=e1079]: "Wolne miejsca: 4"
+                      - generic [ref=e1081] [cursor=pointer]:
+                        - generic [ref=e1082]:
+                          - heading "Iwaszkiewicza 27/14" [level=3] [ref=e1083]:
+                            - img [ref=e1084]
+                            - text: Iwaszkiewicza 27/14
+                          - generic [ref=e1088]: 4 / 8
+                        - paragraph [ref=e1089]: "Wolne miejsca: 4"
+                      - generic [ref=e1091] [cursor=pointer]:
+                        - generic [ref=e1092]:
+                          - heading "Iwaszkiewicza 29/10" [level=3] [ref=e1093]:
+                            - img [ref=e1094]
+                            - text: Iwaszkiewicza 29/10
+                          - generic [ref=e1098]: 7 / 8
+                        - paragraph [ref=e1099]: "Wolne miejsca: 1"
+                      - generic [ref=e1101] [cursor=pointer]:
+                        - generic [ref=e1102]:
+                          - heading "Iwaszkiewicza 72/2" [level=3] [ref=e1103]:
+                            - img [ref=e1104]
+                            - text: Iwaszkiewicza 72/2
+                          - generic [ref=e1108]: 5 / 5
+                        - paragraph [ref=e1109]: "Wolne miejsca: 0"
+                      - generic [ref=e1111] [cursor=pointer]:
+                        - generic [ref=e1112]:
+                          - heading "Kasprowicza 16/10" [level=3] [ref=e1113]:
+                            - img [ref=e1114]
+                            - text: Kasprowicza 16/10
+                          - generic [ref=e1118]: 6 / 8
+                        - paragraph [ref=e1119]: "Wolne miejsca: 2"
+                      - generic [ref=e1121] [cursor=pointer]:
+                        - generic [ref=e1122]:
+                          - heading "Kasprowicza 18/13" [level=3] [ref=e1123]:
+                            - img [ref=e1124]
+                            - text: Kasprowicza 18/13
+                          - generic [ref=e1128]: 4 / 7
+                        - paragraph [ref=e1129]: "Wolne miejsca: 3"
+                      - generic [ref=e1131] [cursor=pointer]:
+                        - generic [ref=e1132]:
+                          - heading "Kasprowicza 8/20" [level=3] [ref=e1133]:
+                            - img [ref=e1134]
+                            - text: Kasprowicza 8/20
+                          - generic [ref=e1138]: 4 / 5
+                        - paragraph [ref=e1139]: "Wolne miejsca: 1"
+                      - generic [ref=e1141] [cursor=pointer]:
+                        - generic [ref=e1142]:
+                          - heading "Magazynowa 22/18" [level=3] [ref=e1143]:
+                            - img [ref=e1144]
+                            - text: Magazynowa 22/18
+                          - generic [ref=e1148]: 2 / 4
+                        - paragraph [ref=e1149]: "Wolne miejsca: 2"
+                      - generic [ref=e1151] [cursor=pointer]:
+                        - generic [ref=e1152]:
+                          - heading "Plac Zamkowy 26/5" [level=3] [ref=e1153]:
+                            - img [ref=e1154]
+                            - text: Plac Zamkowy 26/5
+                          - generic [ref=e1158]: 4 / 7
+                        - paragraph [ref=e1159]: "Wolne miejsca: 3"
+                      - generic [ref=e1161] [cursor=pointer]:
+                        - generic [ref=e1162]:
+                          - heading "Św Rocha 4A/10 (Oława)" [level=3] [ref=e1163]:
+                            - img [ref=e1164]
+                            - text: Św Rocha 4A/10 (Oława)
+                          - generic [ref=e1168]: 6 / 8
+                        - paragraph [ref=e1169]: "Wolne miejsca: 2"
+                      - generic [ref=e1171] [cursor=pointer]:
+                        - generic [ref=e1172]:
+                          - heading "Św Rocha 6B/1 (Oława)" [level=3] [ref=e1173]:
+                            - img [ref=e1174]
+                            - text: Św Rocha 6B/1 (Oława)
+                          - generic [ref=e1178]: 4 / 4
+                        - paragraph [ref=e1179]: "Wolne miejsca: 0"
+                      - generic [ref=e1181] [cursor=pointer]:
+                        - generic [ref=e1182]:
+                          - heading "Tuwima 17" [level=3] [ref=e1183]:
+                            - img [ref=e1184]
+                            - text: Tuwima 17
+                          - generic [ref=e1188]: 15 / 15
+                        - paragraph [ref=e1189]: "Wolne miejsca: 0"
+                      - generic [ref=e1191] [cursor=pointer]:
+                        - generic [ref=e1192]:
+                          - heading "Wiejska 44/8" [level=3] [ref=e1193]:
+                            - img [ref=e1194]
+                            - text: Wiejska 44/8
+                          - generic [ref=e1198]: 7 / 9
+                        - paragraph [ref=e1199]: "Wolne miejsca: 2"
+                      - generic [ref=e1201] [cursor=pointer]:
+                        - generic [ref=e1202]:
+                          - heading "Własne mieszkanie Oława" [level=3] [ref=e1203]:
+                            - img [ref=e1204]
+                            - text: Własne mieszkanie Oława
+                          - generic [ref=e1208]: 58 / 100
+                        - paragraph [ref=e1209]: "Wolne miejsca: 42"
+                - generic [ref=e1210]:
+                  - heading "Oleśnica 3 wolnych" [level=3] [ref=e1211]:
+                    - button "Oleśnica 3 wolnych" [expanded] [ref=e1212] [cursor=pointer]:
+                      - generic [ref=e1213]:
+                        - text: Oleśnica
+                        - generic [ref=e1214]: 3 wolnych
+                      - img [ref=e1215]
+                  - region "Oleśnica 3 wolnych" [ref=e1217]:
+                    - generic [ref=e1218]:
+                      - generic [ref=e1220] [cursor=pointer]:
+                        - generic [ref=e1221]:
+                          - heading "Jasna 15" [level=3] [ref=e1222]:
+                            - img [ref=e1223]
+                            - text: Jasna 15
+                          - generic [ref=e1227]: 6 / 6
+                        - paragraph [ref=e1228]: "Wolne miejsca: 0"
+                      - generic [ref=e1230] [cursor=pointer]:
+                        - generic [ref=e1231]:
+                          - heading "Kościelna 4/2" [level=3] [ref=e1232]:
+                            - img [ref=e1233]
+                            - text: Kościelna 4/2
+                          - generic [ref=e1237]: 10 / 10
+                        - paragraph [ref=e1238]: "Wolne miejsca: 0"
+                      - generic [ref=e1240] [cursor=pointer]:
+                        - generic [ref=e1241]:
+                          - heading "Moniuszki 17" [level=3] [ref=e1242]:
+                            - img [ref=e1243]
+                            - text: Moniuszki 17
+                          - generic [ref=e1247]: 7 / 9
+                        - paragraph [ref=e1248]: "Wolne miejsca: 2"
+                      - generic [ref=e1250] [cursor=pointer]:
+                        - generic [ref=e1251]:
+                          - heading "Wileńska 37" [level=3] [ref=e1252]:
+                            - img [ref=e1253]
+                            - text: Wileńska 37
+                          - generic [ref=e1257]: 13 / 14
+                        - paragraph [ref=e1258]: "Wolne miejsca: 1"
+                      - generic [ref=e1260] [cursor=pointer]:
+                        - generic [ref=e1261]:
+                          - heading "Własne mieszkanie Oleśnica" [level=3] [ref=e1262]:
+                            - img [ref=e1263]
+                            - text: Własne mieszkanie Oleśnica
+                          - generic [ref=e1267]: 1 / 16
+                        - paragraph [ref=e1268]: "Wolne miejsca: 15"
+                - generic [ref=e1269]:
+                  - heading "Opole 12 wolnych" [level=3] [ref=e1270]:
+                    - button "Opole 12 wolnych" [expanded] [ref=e1271] [cursor=pointer]:
+                      - generic [ref=e1272]:
+                        - text: Opole
+                        - generic [ref=e1273]: 12 wolnych
+                      - img [ref=e1274]
+                  - region "Opole 12 wolnych" [ref=e1276]:
+                    - generic [ref=e1277]:
+                      - generic [ref=e1279] [cursor=pointer]:
+                        - generic [ref=e1280]:
+                          - heading "Marka z Jemielnice 8" [level=3] [ref=e1281]:
+                            - img [ref=e1282]
+                            - text: Marka z Jemielnice 8
+                          - generic [ref=e1286]: 3 / 5
+                        - paragraph [ref=e1287]: "Wolne miejsca: 2"
+                      - generic [ref=e1289] [cursor=pointer]:
+                        - generic [ref=e1290]:
+                          - heading "Tarnowska 2" [level=3] [ref=e1291]:
+                            - img [ref=e1292]
+                            - text: Tarnowska 2
+                          - generic [ref=e1296]: 5 / 5
+                        - paragraph [ref=e1297]: "Wolne miejsca: 0"
+                      - generic [ref=e1299] [cursor=pointer]:
+                        - generic [ref=e1300]:
+                          - heading "Wiejska 139" [level=3] [ref=e1301]:
+                            - img [ref=e1302]
+                            - text: Wiejska 139
+                          - generic [ref=e1306]: 5 / 5
+                        - paragraph [ref=e1307]: "Wolne miejsca: 0"
+                      - generic [ref=e1309] [cursor=pointer]:
+                        - generic [ref=e1310]:
+                          - heading "Wiejska 36b" [level=3] [ref=e1311]:
+                            - img [ref=e1312]
+                            - text: Wiejska 36b
+                          - generic [ref=e1316]: 9 / 9
+                        - paragraph [ref=e1317]: "Wolne miejsca: 0"
+                      - generic [ref=e1319] [cursor=pointer]:
+                        - generic [ref=e1320]:
+                          - heading "Wiejska 44" [level=3] [ref=e1321]:
+                            - img [ref=e1322]
+                            - text: Wiejska 44
+                          - generic [ref=e1326]: 5 / 5
+                        - paragraph [ref=e1327]: "Wolne miejsca: 0"
+                      - generic [ref=e1329] [cursor=pointer]:
+                        - generic [ref=e1330]:
+                          - heading "Własne mieszkania Opole" [level=3] [ref=e1331]:
+                            - img [ref=e1332]
+                            - text: Własne mieszkania Opole
+                          - generic [ref=e1336]: 0 / 10
+                        - paragraph [ref=e1337]: "Wolne miejsca: 10"
+                - generic [ref=e1338]:
+                  - heading "Prusice 10 wolnych" [level=3] [ref=e1339]:
+                    - button "Prusice 10 wolnych" [expanded] [ref=e1340] [cursor=pointer]:
+                      - generic [ref=e1341]:
+                        - text: Prusice
+                        - generic [ref=e1342]: 10 wolnych
+                      - img [ref=e1343]
+                  - region "Prusice 10 wolnych" [ref=e1345]:
+                    - generic [ref=e1346]:
+                      - generic [ref=e1348] [cursor=pointer]:
+                        - generic [ref=e1349]:
+                          - heading "Poludniowa 19" [level=3] [ref=e1350]:
+                            - img [ref=e1351]
+                            - text: Poludniowa 19
+                          - generic [ref=e1355]: 1 / 11
+                        - paragraph [ref=e1356]: "Wolne miejsca: 10"
+                      - generic [ref=e1358] [cursor=pointer]:
+                        - generic [ref=e1359]:
+                          - heading "Własne mieszkanie Prusice" [level=3] [ref=e1360]:
+                            - img [ref=e1361]
+                            - text: Własne mieszkanie Prusice
+                          - generic [ref=e1365]: 2 / 20
+                        - paragraph [ref=e1366]: "Wolne miejsca: 18"
+                - generic [ref=e1367]:
+                  - heading "Rawa Mazowiecka" [level=3] [ref=e1368]:
+                    - button "Rawa Mazowiecka" [expanded] [ref=e1369] [cursor=pointer]:
+                      - generic [ref=e1370]: Rawa Mazowiecka
+                      - img [ref=e1371]
+                  - region "Rawa Mazowiecka" [ref=e1373]:
+                    - generic [ref=e1374]:
+                      - generic [ref=e1376] [cursor=pointer]:
+                        - generic [ref=e1377]:
+                          - heading "9 Maja 4/11" [level=3] [ref=e1378]:
+                            - img [ref=e1379]
+                            - text: 9 Maja 4/11
+                          - generic [ref=e1383]: 8 / 8
+                        - paragraph [ref=e1384]: "Wolne miejsca: 0"
+                      - generic [ref=e1386] [cursor=pointer]:
+                        - generic [ref=e1387]:
+                          - heading "Ogrodowa 68" [level=3] [ref=e1388]:
+                            - img [ref=e1389]
+                            - text: Ogrodowa 68
+                          - generic [ref=e1393]: 24 / 25
+                        - paragraph [ref=e1394]: "Wolne miejsca: 1"
+                      - generic [ref=e1396] [cursor=pointer]:
+                        - generic [ref=e1397]:
+                          - heading "Sobieskiego 33" [level=3] [ref=e1398]:
+                            - img [ref=e1399]
+                            - text: Sobieskiego 33
+                          - generic [ref=e1403]: 11 / 5
+                        - paragraph [ref=e1404]: "Wolne miejsca: -6"
+                      - generic [ref=e1406] [cursor=pointer]:
+                        - generic [ref=e1407]:
+                          - heading "Własne mieszkania Rawa Mazowiecka" [level=3] [ref=e1408]:
+                            - img [ref=e1409]
+                            - text: Własne mieszkania Rawa Mazowiecka
+                          - generic [ref=e1413]: 5 / 10
+                        - paragraph [ref=e1414]: "Wolne miejsca: 5"
+                      - generic [ref=e1416] [cursor=pointer]:
+                        - generic [ref=e1417]:
+                          - heading "Zamkowa Wola 2b" [level=3] [ref=e1418]:
+                            - img [ref=e1419]
+                            - text: Zamkowa Wola 2b
+                          - generic [ref=e1423]: 6 / 4
+                        - paragraph [ref=e1424]: "Wolne miejsca: -2"
+                - generic [ref=e1425]:
+                  - heading "Rzezawa 6 wolnych" [level=3] [ref=e1426]:
+                    - button "Rzezawa 6 wolnych" [expanded] [ref=e1427] [cursor=pointer]:
+                      - generic [ref=e1428]:
+                        - text: Rzezawa
+                        - generic [ref=e1429]: 6 wolnych
+                      - img [ref=e1430]
+                  - region "Rzezawa 6 wolnych" [ref=e1432]:
+                    - generic [ref=e1433]:
+                      - generic [ref=e1435] [cursor=pointer]:
+                        - generic [ref=e1436]:
+                          - heading "Bochnia- ul. Karosek 85" [level=3] [ref=e1437]:
+                            - img [ref=e1438]
+                            - text: Bochnia- ul. Karosek 85
+                          - generic [ref=e1442]: 3 / 9
+                        - paragraph [ref=e1443]: "Wolne miejsca: 6"
+                      - generic [ref=e1445] [cursor=pointer]:
+                        - generic [ref=e1446]:
+                          - heading "Własne mieszkanie Rzezawa" [level=3] [ref=e1447]:
+                            - img [ref=e1448]
+                            - text: Własne mieszkanie Rzezawa
+                          - generic [ref=e1452]: 0 / 30
+                        - paragraph [ref=e1453]: "Wolne miejsca: 30"
+                - generic [ref=e1454]:
+                  - heading "Schodnia 2 wolnych" [level=3] [ref=e1455]:
+                    - button "Schodnia 2 wolnych" [expanded] [ref=e1456] [cursor=pointer]:
+                      - generic [ref=e1457]:
+                        - text: Schodnia
+                        - generic [ref=e1458]: 2 wolnych
+                      - img [ref=e1459]
+                  - region "Schodnia 2 wolnych" [ref=e1461]:
+                    - generic [ref=e1462]:
+                      - generic [ref=e1464] [cursor=pointer]:
+                        - generic [ref=e1465]:
+                          - heading "Krasiejów - ul. Zamoście 20" [level=3] [ref=e1466]:
+                            - img [ref=e1467]
+                            - text: Krasiejów - ul. Zamoście 20
+                          - generic [ref=e1471]: 1 / 4
+                        - paragraph [ref=e1472]: "Wolne miejsca: 3"
+                      - generic [ref=e1474] [cursor=pointer]:
+                        - generic [ref=e1475]:
+                          - heading "Ozimek - Wyzwolenia 12" [level=3] [ref=e1476]:
+                            - img [ref=e1477]
+                            - text: Ozimek - Wyzwolenia 12
+                          - generic [ref=e1481]: 3 / 2
+                        - paragraph [ref=e1482]: "Wolne miejsca: -1"
+                - generic [ref=e1483]:
+                  - heading "Skokowa 9 wolnych" [level=3] [ref=e1484]:
+                    - button "Skokowa 9 wolnych" [expanded] [ref=e1485] [cursor=pointer]:
+                      - generic [ref=e1486]:
+                        - text: Skokowa
+                        - generic [ref=e1487]: 9 wolnych
+                      - img [ref=e1488]
+                  - region "Skokowa 9 wolnych" [ref=e1490]:
+                    - generic [ref=e1493] [cursor=pointer]:
+                      - generic [ref=e1494]:
+                        - heading "Wrocławska 11a" [level=3] [ref=e1495]:
+                          - img [ref=e1496]
+                          - text: Wrocławska 11a
+                        - generic [ref=e1500]: 2 / 11
+                      - paragraph [ref=e1501]: "Wolne miejsca: 9"
+                - generic [ref=e1502]:
+                  - heading "Strumień 20 wolnych" [level=3] [ref=e1503]:
+                    - button "Strumień 20 wolnych" [expanded] [ref=e1504] [cursor=pointer]:
+                      - generic [ref=e1505]:
+                        - text: Strumień
+                        - generic [ref=e1506]: 20 wolnych
+                      - img [ref=e1507]
+                  - region "Strumień 20 wolnych" [ref=e1509]:
+                    - generic [ref=e1510]:
+                      - generic [ref=e1512] [cursor=pointer]:
+                        - generic [ref=e1513]:
+                          - heading "Adelajdy 62/1" [level=3] [ref=e1514]:
+                            - img [ref=e1515]
+                            - text: Adelajdy 62/1
+                          - generic [ref=e1519]: 46 / 47
+                        - paragraph [ref=e1520]: "Wolne miejsca: 1"
+                      - generic [ref=e1522] [cursor=pointer]:
+                        - generic [ref=e1523]:
+                          - heading "Jastrzębie-Zdrój - Opolska 1P" [level=3] [ref=e1524]:
+                            - img [ref=e1525]
+                            - text: Jastrzębie-Zdrój - Opolska 1P
+                          - generic [ref=e1529]: 9 / 11
+                        - paragraph [ref=e1530]: "Wolne miejsca: 2"
+                      - generic [ref=e1532] [cursor=pointer]:
+                        - generic [ref=e1533]:
+                          - heading "Kolejowa 3" [level=3] [ref=e1534]:
+                            - img [ref=e1535]
+                            - text: Kolejowa 3
+                          - generic [ref=e1539]: 16 / 15
+                        - paragraph [ref=e1540]: "Wolne miejsca: -1"
+                      - generic [ref=e1542] [cursor=pointer]:
+                        - generic [ref=e1543]:
+                          - heading "Łuczkiewicza 3/1" [level=3] [ref=e1544]:
+                            - img [ref=e1545]
+                            - text: Łuczkiewicza 3/1
+                          - generic [ref=e1549]: 8 / 8
+                        - paragraph [ref=e1550]: "Wolne miejsca: 0"
+                      - generic [ref=e1552] [cursor=pointer]:
+                        - generic [ref=e1553]:
+                          - heading "Łuczkiewicza 3/2" [level=3] [ref=e1554]:
+                            - img [ref=e1555]
+                            - text: Łuczkiewicza 3/2
+                          - generic [ref=e1559]: 5 / 5
+                        - paragraph [ref=e1560]: "Wolne miejsca: 0"
+                      - generic [ref=e1562] [cursor=pointer]:
+                        - generic [ref=e1563]:
+                          - heading "Łuczkiewicza 3/3" [level=3] [ref=e1564]:
+                            - img [ref=e1565]
+                            - text: Łuczkiewicza 3/3
+                          - generic [ref=e1569]: 8 / 8
+                        - paragraph [ref=e1570]: "Wolne miejsca: 0"
+                      - generic [ref=e1572] [cursor=pointer]:
+                        - generic [ref=e1573]:
+                          - heading "Łuczkiewicza 3/4" [level=3] [ref=e1574]:
+                            - img [ref=e1575]
+                            - text: Łuczkiewicza 3/4
+                          - generic [ref=e1579]: 9 / 9
+                        - paragraph [ref=e1580]: "Wolne miejsca: 0"
+                      - generic [ref=e1582] [cursor=pointer]:
+                        - generic [ref=e1583]:
+                          - heading "Łuczkiewicza 3/5" [level=3] [ref=e1584]:
+                            - img [ref=e1585]
+                            - text: Łuczkiewicza 3/5
+                          - generic [ref=e1589]: 5 / 5
+                        - paragraph [ref=e1590]: "Wolne miejsca: 0"
+                      - generic [ref=e1592] [cursor=pointer]:
+                        - generic [ref=e1593]:
+                          - heading "Łuczkiewicza 3/6" [level=3] [ref=e1594]:
+                            - img [ref=e1595]
+                            - text: Łuczkiewicza 3/6
+                          - generic [ref=e1599]: 6 / 6
+                        - paragraph [ref=e1600]: "Wolne miejsca: 0"
+                      - generic [ref=e1602] [cursor=pointer]:
+                        - generic [ref=e1603]:
+                          - heading "Łuczkiewicza 3/7" [level=3] [ref=e1604]:
+                            - img [ref=e1605]
+                            - text: Łuczkiewicza 3/7
+                          - generic [ref=e1609]: 4 / 4
+                        - paragraph [ref=e1610]: "Wolne miejsca: 0"
+                      - generic [ref=e1612] [cursor=pointer]:
+                        - generic [ref=e1613]:
+                          - heading "Łuczkiewicza 3/8" [level=3] [ref=e1614]:
+                            - img [ref=e1615]
+                            - text: Łuczkiewicza 3/8
+                          - generic [ref=e1619]: 4 / 4
+                        - paragraph [ref=e1620]: "Wolne miejsca: 0"
+                      - generic [ref=e1622] [cursor=pointer]:
+                        - generic [ref=e1623]:
+                          - heading "Młyńska 9" [level=3] [ref=e1624]:
+                            - img [ref=e1625]
+                            - text: Młyńska 9
+                          - generic [ref=e1629]: 23 / 24
+                        - paragraph [ref=e1630]: "Wolne miejsca: 1"
+                      - generic [ref=e1632] [cursor=pointer]:
+                        - generic [ref=e1633]:
+                          - heading "Młyńska19" [level=3] [ref=e1634]:
+                            - img [ref=e1635]
+                            - text: Młyńska19
+                          - generic [ref=e1639]: 28 / 28
+                        - paragraph [ref=e1640]: "Wolne miejsca: 0"
+                      - generic [ref=e1642] [cursor=pointer]:
+                        - generic [ref=e1643]:
+                          - heading "Nowowiejskiego 24" [level=3] [ref=e1644]:
+                            - img [ref=e1645]
+                            - text: Nowowiejskiego 24
+                          - generic [ref=e1649]: 4 / 4
+                        - paragraph [ref=e1650]: "Wolne miejsca: 0"
+                      - generic [ref=e1652] [cursor=pointer]:
+                        - generic [ref=e1653]:
+                          - heading "Rynek 6" [level=3] [ref=e1654]:
+                            - img [ref=e1655]
+                            - text: Rynek 6
+                          - generic [ref=e1659]: 7 / 7
+                        - paragraph [ref=e1660]: "Wolne miejsca: 0"
+                      - generic [ref=e1662] [cursor=pointer]:
+                        - generic [ref=e1663]:
+                          - heading "Steńclowka 34/13" [level=3] [ref=e1664]:
+                            - img [ref=e1665]
+                            - text: Steńclowka 34/13
+                          - generic [ref=e1669]: 7 / 8
+                        - paragraph [ref=e1670]: "Wolne miejsca: 1"
+                      - generic [ref=e1672] [cursor=pointer]:
+                        - generic [ref=e1673]:
+                          - heading "Tęczowa 5a" [level=3] [ref=e1674]:
+                            - img [ref=e1675]
+                            - text: Tęczowa 5a
+                          - generic [ref=e1679]: 24 / 25
+                        - paragraph [ref=e1680]: "Wolne miejsca: 1"
+                      - generic [ref=e1682] [cursor=pointer]:
+                        - generic [ref=e1683]:
+                          - heading "ul. 1 Maja 15 - Amore Mio" [level=3] [ref=e1684]:
+                            - img [ref=e1685]
+                            - text: ul. 1 Maja 15 - Amore Mio
+                          - generic [ref=e1689]: 0 / 15
+                        - paragraph [ref=e1690]: "Wolne miejsca: 15"
+                      - generic [ref=e1692] [cursor=pointer]:
+                        - generic [ref=e1693]:
+                          - heading "Własne mieszkanie Strumień" [level=3] [ref=e1694]:
+                            - img [ref=e1695]
+                            - text: Własne mieszkanie Strumień
+                          - generic [ref=e1699]: 55 / 100
+                        - paragraph [ref=e1700]: "Wolne miejsca: 45"
+                - generic [ref=e1701]:
+                  - heading "Strzegom 1 wolnych" [level=3] [ref=e1702]:
+                    - button "Strzegom 1 wolnych" [expanded] [ref=e1703] [cursor=pointer]:
+                      - generic [ref=e1704]:
+                        - text: Strzegom
+                        - generic [ref=e1705]: 1 wolnych
+                      - img [ref=e1706]
+                  - region "Strzegom 1 wolnych" [ref=e1708]:
+                    - generic [ref=e1711] [cursor=pointer]:
+                      - generic [ref=e1712]:
+                        - heading "Armii Krajowej 7/45" [level=3] [ref=e1713]:
+                          - img [ref=e1714]
+                          - text: Armii Krajowej 7/45
+                        - generic [ref=e1718]: 3 / 4
+                      - paragraph [ref=e1719]: "Wolne miejsca: 1"
+                - generic [ref=e1720]:
+                  - heading "Strzelin" [level=3] [ref=e1721]:
+                    - button "Strzelin" [expanded] [ref=e1722] [cursor=pointer]:
+                      - generic [ref=e1723]: Strzelin
+                      - img [ref=e1724]
+                  - region "Strzelin" [ref=e1726]:
+                    - generic [ref=e1727]:
+                      - generic [ref=e1729] [cursor=pointer]:
+                        - generic [ref=e1730]:
+                          - heading "Brzegowa 32a" [level=3] [ref=e1731]:
+                            - img [ref=e1732]
+                            - text: Brzegowa 32a
+                          - generic [ref=e1736]: 31 / 23
+                        - paragraph [ref=e1737]: "Wolne miejsca: -8"
+                      - generic [ref=e1739] [cursor=pointer]:
+                        - generic [ref=e1740]:
+                          - heading "Duboisa 11/1" [level=3] [ref=e1741]:
+                            - img [ref=e1742]
+                            - text: Duboisa 11/1
+                          - generic [ref=e1746]: 4 / 4
+                        - paragraph [ref=e1747]: "Wolne miejsca: 0"
+                      - generic [ref=e1749] [cursor=pointer]:
+                        - generic [ref=e1750]:
+                          - heading "Jana Pawła II 17/9" [level=3] [ref=e1751]:
+                            - img [ref=e1752]
+                            - text: Jana Pawła II 17/9
+                          - generic [ref=e1756]: 8 / 9
+                        - paragraph [ref=e1757]: "Wolne miejsca: 1"
+                      - generic [ref=e1759] [cursor=pointer]:
+                        - generic [ref=e1760]:
+                          - heading "Kopernika 2/5" [level=3] [ref=e1761]:
+                            - img [ref=e1762]
+                            - text: Kopernika 2/5
+                          - generic [ref=e1766]: 6 / 6
+                        - paragraph [ref=e1767]: "Wolne miejsca: 0"
+                      - generic [ref=e1769] [cursor=pointer]:
+                        - generic [ref=e1770]:
+                          - heading "Ogrodowa 5/2" [level=3] [ref=e1771]:
+                            - img [ref=e1772]
+                            - text: Ogrodowa 5/2
+                          - generic [ref=e1776]: 10 / 10
+                        - paragraph [ref=e1777]: "Wolne miejsca: 0"
+                      - generic [ref=e1779] [cursor=pointer]:
+                        - generic [ref=e1780]:
+                          - heading "Piłsudskiego 4/2" [level=3] [ref=e1781]:
+                            - img [ref=e1782]
+                            - text: Piłsudskiego 4/2
+                          - generic [ref=e1786]: 8 / 6
+                        - paragraph [ref=e1787]: "Wolne miejsca: -2"
+                      - generic [ref=e1789] [cursor=pointer]:
+                        - generic [ref=e1790]:
+                          - heading "Polna 4" [level=3] [ref=e1791]:
+                            - img [ref=e1792]
+                            - text: Polna 4
+                          - generic [ref=e1796]: 0 / 2
+                        - paragraph [ref=e1797]: "Wolne miejsca: 2"
+                      - generic [ref=e1799] [cursor=pointer]:
+                        - generic [ref=e1800]:
+                          - heading "Sikorskiego 4/1" [level=3] [ref=e1801]:
+                            - img [ref=e1802]
+                            - text: Sikorskiego 4/1
+                          - generic [ref=e1806]: 11 / 11
+                        - paragraph [ref=e1807]: "Wolne miejsca: 0"
+                      - generic [ref=e1809] [cursor=pointer]:
+                        - generic [ref=e1810]:
+                          - heading "Słowackiego 11" [level=3] [ref=e1811]:
+                            - img [ref=e1812]
+                            - text: Słowackiego 11
+                          - generic [ref=e1816]: 9 / 11
+                        - paragraph [ref=e1817]: "Wolne miejsca: 2"
+                      - generic [ref=e1819] [cursor=pointer]:
+                        - generic [ref=e1820]:
+                          - heading "Słowackiego 20" [level=3] [ref=e1821]:
+                            - img [ref=e1822]
+                            - text: Słowackiego 20
+                          - generic [ref=e1826]: 8 / 8
+                        - paragraph [ref=e1827]: "Wolne miejsca: 0"
+                      - generic [ref=e1829] [cursor=pointer]:
+                        - generic [ref=e1830]:
+                          - heading "Staszica 23/7" [level=3] [ref=e1831]:
+                            - img [ref=e1832]
+                            - text: Staszica 23/7
+                          - generic [ref=e1836]: 8 / 9
+                        - paragraph [ref=e1837]: "Wolne miejsca: 1"
+                      - generic [ref=e1839] [cursor=pointer]:
+                        - generic [ref=e1840]:
+                          - heading "Św. Michała Archanioła 1/15" [level=3] [ref=e1841]:
+                            - img [ref=e1842]
+                            - text: Św. Michała Archanioła 1/15
+                          - generic [ref=e1846]: 4 / 4
+                        - paragraph [ref=e1847]: "Wolne miejsca: 0"
+                      - generic [ref=e1849] [cursor=pointer]:
+                        - generic [ref=e1850]:
+                          - heading "Własne mieszkanie Strzelin" [level=3] [ref=e1851]:
+                            - img [ref=e1852]
+                            - text: Własne mieszkanie Strzelin
+                          - generic [ref=e1856]: 0 / 12
+                        - paragraph [ref=e1857]: "Wolne miejsca: 12"
+                      - generic [ref=e1859] [cursor=pointer]:
+                        - generic [ref=e1860]:
+                          - heading "Wojska Polskiego 3/2" [level=3] [ref=e1861]:
+                            - img [ref=e1862]
+                            - text: Wojska Polskiego 3/2
+                          - generic [ref=e1866]: 9 / 9
+                        - paragraph [ref=e1867]: "Wolne miejsca: 0"
+                      - generic [ref=e1869] [cursor=pointer]:
+                        - generic [ref=e1870]:
+                          - heading "Wolności 12/3" [level=3] [ref=e1871]:
+                            - img [ref=e1872]
+                            - text: Wolności 12/3
+                          - generic [ref=e1876]: 8 / 8
+                        - paragraph [ref=e1877]: "Wolne miejsca: 0"
+                      - generic [ref=e1879] [cursor=pointer]:
+                        - generic [ref=e1880]:
+                          - heading "Wolności 17/2" [level=3] [ref=e1881]:
+                            - img [ref=e1882]
+                            - text: Wolności 17/2
+                          - generic [ref=e1886]: 11 / 11
+                        - paragraph [ref=e1887]: "Wolne miejsca: 0"
+                - generic [ref=e1888]:
+                  - heading "Świdnica 15 wolnych" [level=3] [ref=e1889]:
+                    - button "Świdnica 15 wolnych" [expanded] [ref=e1890] [cursor=pointer]:
+                      - generic [ref=e1891]:
+                        - text: Świdnica
+                        - generic [ref=e1892]: 15 wolnych
+                      - img [ref=e1893]
+                  - region "Świdnica 15 wolnych" [ref=e1895]:
+                    - generic [ref=e1896]:
+                      - generic [ref=e1898] [cursor=pointer]:
+                        - generic [ref=e1899]:
+                          - heading "Grunwaldzki plac 3A/11" [level=3] [ref=e1900]:
+                            - img [ref=e1901]
+                            - text: Grunwaldzki plac 3A/11
+                          - generic [ref=e1905]: 11 / 15
+                        - paragraph [ref=e1906]: "Wolne miejsca: 4"
+                      - generic [ref=e1908] [cursor=pointer]:
+                        - generic [ref=e1909]:
+                          - heading "Kilińskiego 27/7" [level=3] [ref=e1910]:
+                            - img [ref=e1911]
+                            - text: Kilińskiego 27/7
+                          - generic [ref=e1915]: 5 / 5
+                        - paragraph [ref=e1916]: "Wolne miejsca: 0"
+                      - generic [ref=e1918] [cursor=pointer]:
+                        - generic [ref=e1919]:
+                          - heading "Kolejowa 15" [level=3] [ref=e1920]:
+                            - img [ref=e1921]
+                            - text: Kolejowa 15
+                          - generic [ref=e1925]: 10 / 10
+                        - paragraph [ref=e1926]: "Wolne miejsca: 0"
+                      - generic [ref=e1928] [cursor=pointer]:
+                        - generic [ref=e1929]:
+                          - heading "Lelewela 2/3" [level=3] [ref=e1930]:
+                            - img [ref=e1931]
+                            - text: Lelewela 2/3
+                          - generic [ref=e1935]: 15 / 15
+                        - paragraph [ref=e1936]: "Wolne miejsca: 0"
+                      - generic [ref=e1938] [cursor=pointer]:
+                        - generic [ref=e1939]:
+                          - heading "Lelewela 6a/5" [level=3] [ref=e1940]:
+                            - img [ref=e1941]
+                            - text: Lelewela 6a/5
+                          - generic [ref=e1945]: 5 / 5
+                        - paragraph [ref=e1946]: "Wolne miejsca: 0"
+                      - generic [ref=e1948] [cursor=pointer]:
+                        - generic [ref=e1949]:
+                          - heading "Łukasińskiego 11/8" [level=3] [ref=e1950]:
+                            - img [ref=e1951]
+                            - text: Łukasińskiego 11/8
+                          - generic [ref=e1955]: 7 / 7
+                        - paragraph [ref=e1956]: "Wolne miejsca: 0"
+                      - generic [ref=e1958] [cursor=pointer]:
+                        - generic [ref=e1959]:
+                          - heading "Marcinkowskiego 31/1" [level=3] [ref=e1960]:
+                            - img [ref=e1961]
+                            - text: Marcinkowskiego 31/1
+                          - generic [ref=e1965]: 5 / 5
+                        - paragraph [ref=e1966]: "Wolne miejsca: 0"
+                      - generic [ref=e1968] [cursor=pointer]:
+                        - generic [ref=e1969]:
+                          - heading "pl. św. Małgorzaty 8/2a" [level=3] [ref=e1970]:
+                            - img [ref=e1971]
+                            - text: pl. św. Małgorzaty 8/2a
+                          - generic [ref=e1975]: 4 / 9
+                        - paragraph [ref=e1976]: "Wolne miejsca: 5"
+                      - generic [ref=e1978] [cursor=pointer]:
+                        - generic [ref=e1979]:
+                          - heading "Wierzbowa 9" [level=3] [ref=e1980]:
+                            - img [ref=e1981]
+                            - text: Wierzbowa 9
+                          - generic [ref=e1985]: 9 / 14
+                        - paragraph [ref=e1986]: "Wolne miejsca: 5"
+                      - generic [ref=e1988] [cursor=pointer]:
+                        - generic [ref=e1989]:
+                          - heading "Wiśniowa 2/9" [level=3] [ref=e1990]:
+                            - img [ref=e1991]
+                            - text: Wiśniowa 2/9
+                          - generic [ref=e1995]: 5 / 6
+                        - paragraph [ref=e1996]: "Wolne miejsca: 1"
+                      - generic [ref=e1998] [cursor=pointer]:
+                        - generic [ref=e1999]:
+                          - heading "Własne mieszkanie Świdnica" [level=3] [ref=e2000]:
+                            - img [ref=e2001]
+                            - text: Własne mieszkanie Świdnica
+                          - generic [ref=e2005]: 30 / 40
+                        - paragraph [ref=e2006]: "Wolne miejsca: 10"
+                - generic [ref=e2007]:
+                  - heading "Świebodzice 1 wolnych" [level=3] [ref=e2008]:
+                    - button "Świebodzice 1 wolnych" [expanded] [ref=e2009] [cursor=pointer]:
+                      - generic [ref=e2010]:
+                        - text: Świebodzice
+                        - generic [ref=e2011]: 1 wolnych
+                      - img [ref=e2012]
+                  - region "Świebodzice 1 wolnych" [ref=e2014]:
+                    - generic [ref=e2017] [cursor=pointer]:
+                      - generic [ref=e2018]:
+                        - heading "Łączna 40" [level=3] [ref=e2019]:
+                          - img [ref=e2020]
+                          - text: Łączna 40
+                        - generic [ref=e2024]: 0 / 1
+                      - paragraph [ref=e2025]: "Wolne miejsca: 1"
+                - generic [ref=e2026]:
+                  - heading "Szczecin 3 wolnych" [level=3] [ref=e2027]:
+                    - button "Szczecin 3 wolnych" [expanded] [ref=e2028] [cursor=pointer]:
+                      - generic [ref=e2029]:
+                        - text: Szczecin
+                        - generic [ref=e2030]: 3 wolnych
+                      - img [ref=e2031]
+                  - region "Szczecin 3 wolnych" [ref=e2033]:
+                    - generic [ref=e2034]:
+                      - generic [ref=e2036] [cursor=pointer]:
+                        - generic [ref=e2037]:
+                          - heading "Koszarowa 21/1" [level=3] [ref=e2038]:
+                            - img [ref=e2039]
+                            - text: Koszarowa 21/1
+                          - generic [ref=e2043]: 8 / 8
+                        - paragraph [ref=e2044]: "Wolne miejsca: 0"
+                      - generic [ref=e2046] [cursor=pointer]:
+                        - generic [ref=e2047]:
+                          - heading "Mączna 4b/4" [level=3] [ref=e2048]:
+                            - img [ref=e2049]
+                            - text: Mączna 4b/4
+                          - generic [ref=e2053]: 6 / 7
+                        - paragraph [ref=e2054]: "Wolne miejsca: 1"
+                      - generic [ref=e2056] [cursor=pointer]:
+                        - generic [ref=e2057]:
+                          - heading "Turkusowa 12/11" [level=3] [ref=e2058]:
+                            - img [ref=e2059]
+                            - text: Turkusowa 12/11
+                          - generic [ref=e2063]: 5 / 7
+                        - paragraph [ref=e2064]: "Wolne miejsca: 2"
+                      - generic [ref=e2066] [cursor=pointer]:
+                        - generic [ref=e2067]:
+                          - heading "Własne mieszkanie Szczecin" [level=3] [ref=e2068]:
+                            - img [ref=e2069]
+                            - text: Własne mieszkanie Szczecin
+                          - generic [ref=e2073]: 0 / 70
+                        - paragraph [ref=e2074]: "Wolne miejsca: 70"
+                - generic [ref=e2075]:
+                  - heading "Twardogóra 61 wolnych" [level=3] [ref=e2076]:
+                    - button "Twardogóra 61 wolnych" [expanded] [ref=e2077] [cursor=pointer]:
+                      - generic [ref=e2078]:
+                        - text: Twardogóra
+                        - generic [ref=e2079]: 61 wolnych
+                      - img [ref=e2080]
+                  - region "Twardogóra 61 wolnych" [ref=e2082]:
+                    - generic [ref=e2083]:
+                      - generic [ref=e2085] [cursor=pointer]:
+                        - generic [ref=e2086]:
+                          - heading "Chełstówek 1" [level=3] [ref=e2087]:
+                            - img [ref=e2088]
+                            - text: Chełstówek 1
+                          - generic [ref=e2092]: 22 / 24
+                        - paragraph [ref=e2093]: "Wolne miejsca: 2"
+                      - generic [ref=e2095] [cursor=pointer]:
+                        - generic [ref=e2096]:
+                          - heading "Domasławice 35A" [level=3] [ref=e2097]:
+                            - img [ref=e2098]
+                            - text: Domasławice 35A
+                          - generic [ref=e2102]: 11 / 15
+                        - paragraph [ref=e2103]: "Wolne miejsca: 4"
+                      - generic [ref=e2105] [cursor=pointer]:
+                        - generic [ref=e2106]:
+                          - heading "Dziadowa Kłoda - 1 Maja 1a" [level=3] [ref=e2107]:
+                            - img [ref=e2108]
+                            - text: Dziadowa Kłoda - 1 Maja 1a
+                          - generic [ref=e2112]: 7 / 8
+                        - paragraph [ref=e2113]: "Wolne miejsca: 1"
+                      - generic [ref=e2115] [cursor=pointer]:
+                        - generic [ref=e2116]:
+                          - heading "Królewska Wola 17a" [level=3] [ref=e2117]:
+                            - img [ref=e2118]
+                            - text: Królewska Wola 17a
+                          - generic [ref=e2122]: 6 / 10
+                        - paragraph [ref=e2123]: "Wolne miejsca: 4"
+                      - generic [ref=e2125] [cursor=pointer]:
+                        - generic [ref=e2126]:
+                          - heading "Przyjaciół Żołnierza 1" [level=3] [ref=e2127]:
+                            - img [ref=e2128]
+                            - text: Przyjaciół Żołnierza 1
+                          - generic [ref=e2132]: 17 / 20
+                        - paragraph [ref=e2133]: "Wolne miejsca: 3"
+                      - generic [ref=e2135] [cursor=pointer]:
+                        - generic [ref=e2136]:
+                          - heading "S. Staszica 2" [level=3] [ref=e2137]:
+                            - img [ref=e2138]
+                            - text: S. Staszica 2
+                          - generic [ref=e2142]: 18 / 20
+                        - paragraph [ref=e2143]: "Wolne miejsca: 2"
+                      - generic [ref=e2145] [cursor=pointer]:
+                        - generic [ref=e2146]:
+                          - heading "Sądrożyce 25A" [level=3] [ref=e2147]:
+                            - img [ref=e2148]
+                            - text: Sądrożyce 25A
+                          - generic [ref=e2152]: 7 / 12
+                        - paragraph [ref=e2153]: "Wolne miejsca: 5"
+                      - generic [ref=e2155] [cursor=pointer]:
+                        - generic [ref=e2156]:
+                          - heading "Św.Jadwigi 10" [level=3] [ref=e2157]:
+                            - img [ref=e2158]
+                            - text: Św.Jadwigi 10
+                          - generic [ref=e2162]: 12 / 13
+                        - paragraph [ref=e2163]: "Wolne miejsca: 1"
+                      - generic [ref=e2165] [cursor=pointer]:
+                        - generic [ref=e2166]:
+                          - heading "Wielkopolska 35" [level=3] [ref=e2167]:
+                            - img [ref=e2168]
+                            - text: Wielkopolska 35
+                          - generic [ref=e2172]: 6 / 6
+                        - paragraph [ref=e2173]: "Wolne miejsca: 0"
+                      - generic [ref=e2175] [cursor=pointer]:
+                        - generic [ref=e2176]:
+                          - heading "Własne mieszkania Twardogóra" [level=3] [ref=e2177]:
+                            - img [ref=e2178]
+                            - text: Własne mieszkania Twardogóra
+                          - generic [ref=e2182]: 1 / 40
+                        - paragraph [ref=e2183]: "Wolne miejsca: 39"
+                - generic [ref=e2184]:
+                  - heading "Ujazd 1 wolnych" [level=3] [ref=e2185]:
+                    - button "Ujazd 1 wolnych" [expanded] [ref=e2186] [cursor=pointer]:
+                      - generic [ref=e2187]:
+                        - text: Ujazd
+                        - generic [ref=e2188]: 1 wolnych
+                      - img [ref=e2189]
+                  - region "Ujazd 1 wolnych" [ref=e2191]:
+                    - generic [ref=e2194] [cursor=pointer]:
+                      - generic [ref=e2195]:
+                        - heading "Osiedle Niewiadow 64A" [level=3] [ref=e2196]:
+                          - img [ref=e2197]
+                          - text: Osiedle Niewiadow 64A
+                        - generic [ref=e2201]: 6 / 7
+                      - paragraph [ref=e2202]: "Wolne miejsca: 1"
+                - generic [ref=e2203]:
+                  - heading "Warszawa 22 wolnych" [level=3] [ref=e2204]:
+                    - button "Warszawa 22 wolnych" [expanded] [ref=e2205] [cursor=pointer]:
+                      - generic [ref=e2206]:
+                        - text: Warszawa
+                        - generic [ref=e2207]: 22 wolnych
+                      - img [ref=e2208]
+                  - region "Warszawa 22 wolnych" [ref=e2210]:
+                    - generic [ref=e2211]:
+                      - generic [ref=e2213] [cursor=pointer]:
+                        - generic [ref=e2214]:
+                          - heading "Królowej Marysieńki 11/1" [level=3] [ref=e2215]:
+                            - img [ref=e2216]
+                            - text: Królowej Marysieńki 11/1
+                          - generic [ref=e2220]: 12 / 12
+                        - paragraph [ref=e2221]: "Wolne miejsca: 0"
+                      - generic [ref=e2223] [cursor=pointer]:
+                        - generic [ref=e2224]:
+                          - heading "Królowej Marysieńki 11/2" [level=3] [ref=e2225]:
+                            - img [ref=e2226]
+                            - text: Królowej Marysieńki 11/2
+                          - generic [ref=e2230]: 14 / 15
+                        - paragraph [ref=e2231]: "Wolne miejsca: 1"
+                      - generic [ref=e2233] [cursor=pointer]:
+                        - generic [ref=e2234]:
+                          - heading "Królowej Marysieńki 11/3" [level=3] [ref=e2235]:
+                            - img [ref=e2236]
+                            - text: Królowej Marysieńki 11/3
+                          - generic [ref=e2240]: 15 / 16
+                        - paragraph [ref=e2241]: "Wolne miejsca: 1"
+                      - generic [ref=e2243] [cursor=pointer]:
+                        - generic [ref=e2244]:
+                          - heading "Królowej Marysieńki 11/4" [level=3] [ref=e2245]:
+                            - img [ref=e2246]
+                            - text: Królowej Marysieńki 11/4
+                          - generic [ref=e2250]: 9 / 11
+                        - paragraph [ref=e2251]: "Wolne miejsca: 2"
+                      - generic [ref=e2253] [cursor=pointer]:
+                        - generic [ref=e2254]:
+                          - heading "Królowej Marysieńki 11/6" [level=3] [ref=e2255]:
+                            - img [ref=e2256]
+                            - text: Królowej Marysieńki 11/6
+                          - generic [ref=e2260]: 14 / 15
+                        - paragraph [ref=e2261]: "Wolne miejsca: 1"
+                      - generic [ref=e2263] [cursor=pointer]:
+                        - generic [ref=e2264]:
+                          - heading "Królowej Marysieńki 19/58" [level=3] [ref=e2265]:
+                            - img [ref=e2266]
+                            - text: Królowej Marysieńki 19/58
+                          - generic [ref=e2270]: 8 / 8
+                        - paragraph [ref=e2271]: "Wolne miejsca: 0"
+                      - generic [ref=e2273] [cursor=pointer]:
+                        - generic [ref=e2274]:
+                          - heading "Kubickiego 13" [level=3] [ref=e2275]:
+                            - img [ref=e2276]
+                            - text: Kubickiego 13
+                          - generic [ref=e2280]: 2 / 10
+                        - paragraph [ref=e2281]: "Wolne miejsca: 8"
+                      - generic [ref=e2283] [cursor=pointer]:
+                        - generic [ref=e2284]:
+                          - heading "Kubickiego 15" [level=3] [ref=e2285]:
+                            - img [ref=e2286]
+                            - text: Kubickiego 15
+                          - generic [ref=e2290]: 9 / 11
+                        - paragraph [ref=e2291]: "Wolne miejsca: 2"
+                      - generic [ref=e2293] [cursor=pointer]:
+                        - generic [ref=e2294]:
+                          - heading "Marconich 11/2" [level=3] [ref=e2295]:
+                            - img [ref=e2296]
+                            - text: Marconich 11/2
+                          - generic [ref=e2300]: 2 / 2
+                        - paragraph [ref=e2301]: "Wolne miejsca: 0"
+                      - generic [ref=e2303] [cursor=pointer]:
+                        - generic [ref=e2304]:
+                          - heading "Marconich 11/3" [level=3] [ref=e2305]:
+                            - img [ref=e2306]
+                            - text: Marconich 11/3
+                          - generic [ref=e2310]: 17 / 16
+                        - paragraph [ref=e2311]: "Wolne miejsca: -1"
+                      - generic [ref=e2313] [cursor=pointer]:
+                        - generic [ref=e2314]:
+                          - heading "Marconich 11/5" [level=3] [ref=e2315]:
+                            - img [ref=e2316]
+                            - text: Marconich 11/5
+                          - generic [ref=e2320]: 10 / 17
+                        - paragraph [ref=e2321]: "Wolne miejsca: 7"
+                      - generic [ref=e2323] [cursor=pointer]:
+                        - generic [ref=e2324]:
+                          - heading "Marconich 11/6" [level=3] [ref=e2325]:
+                            - img [ref=e2326]
+                            - text: Marconich 11/6
+                          - generic [ref=e2330]: 13 / 14
+                        - paragraph [ref=e2331]: "Wolne miejsca: 1"
+                      - generic [ref=e2333] [cursor=pointer]:
+                        - generic [ref=e2334]:
+                          - heading "Własne mieszkanie Warszawa" [level=3] [ref=e2335]:
+                            - img [ref=e2336]
+                            - text: Własne mieszkanie Warszawa
+                          - generic [ref=e2340]: 25 / 50
+                        - paragraph [ref=e2341]: "Wolne miejsca: 25"
+                - generic [ref=e2342]:
+                  - heading "Wieluń 2 wolnych" [level=3] [ref=e2343]:
+                    - button "Wieluń 2 wolnych" [expanded] [ref=e2344] [cursor=pointer]:
+                      - generic [ref=e2345]:
+                        - text: Wieluń
+                        - generic [ref=e2346]: 2 wolnych
+                      - img [ref=e2347]
+                  - region "Wieluń 2 wolnych" [ref=e2349]:
+                    - generic [ref=e2350]:
+                      - generic [ref=e2352] [cursor=pointer]:
+                        - generic [ref=e2353]:
+                          - heading "Prosta 37" [level=3] [ref=e2354]:
+                            - img [ref=e2355]
+                            - text: Prosta 37
+                          - generic [ref=e2359]: 5 / 6
+                        - paragraph [ref=e2360]: "Wolne miejsca: 1"
+                      - generic [ref=e2362] [cursor=pointer]:
+                        - generic [ref=e2363]:
+                          - heading "Reymonta 2" [level=3] [ref=e2364]:
+                            - img [ref=e2365]
+                            - text: Reymonta 2
+                          - generic [ref=e2369]: 0 / 1
+                        - paragraph [ref=e2370]: "Wolne miejsca: 1"
+                      - generic [ref=e2372] [cursor=pointer]:
+                        - generic [ref=e2373]:
+                          - heading "Sieradzka 45" [level=3] [ref=e2374]:
+                            - img [ref=e2375]
+                            - text: Sieradzka 45
+                          - generic [ref=e2379]: 9 / 9
+                        - paragraph [ref=e2380]: "Wolne miejsca: 0"
+                - generic [ref=e2381]:
+                  - heading "Wierzbna 6 wolnych" [level=3] [ref=e2382]:
+                    - button "Wierzbna 6 wolnych" [expanded] [ref=e2383] [cursor=pointer]:
+                      - generic [ref=e2384]:
+                        - text: Wierzbna
+                        - generic [ref=e2385]: 6 wolnych
+                      - img [ref=e2386]
+                  - region "Wierzbna 6 wolnych" [ref=e2388]:
+                    - generic [ref=e2391] [cursor=pointer]:
+                      - generic [ref=e2392]:
+                        - heading "Świdnicka 1" [level=3] [ref=e2393]:
+                          - img [ref=e2394]
+                          - text: Świdnicka 1
+                        - generic [ref=e2398]: 4 / 10
+                      - paragraph [ref=e2399]: "Wolne miejsca: 6"
+                - generic [ref=e2400]:
+                  - heading "Wrocław 6 wolnych" [level=3] [ref=e2401]:
+                    - button "Wrocław 6 wolnych" [expanded] [ref=e2402] [cursor=pointer]:
+                      - generic [ref=e2403]:
+                        - text: Wrocław
+                        - generic [ref=e2404]: 6 wolnych
+                      - img [ref=e2405]
+                  - region "Wrocław 6 wolnych" [ref=e2407]:
+                    - generic [ref=e2408]:
+                      - generic [ref=e2410] [cursor=pointer]:
+                        - generic [ref=e2411]:
+                          - heading "Karmelkowa 28" [level=3] [ref=e2412]:
+                            - img [ref=e2413]
+                            - text: Karmelkowa 28
+                          - generic [ref=e2417]: 21 / 24
+                        - paragraph [ref=e2418]: "Wolne miejsca: 3"
+                      - generic [ref=e2420] [cursor=pointer]:
+                        - generic [ref=e2421]:
+                          - heading "Pałacowa 4 (Bliż)" [level=3] [ref=e2422]:
+                            - img [ref=e2423]
+                            - text: Pałacowa 4 (Bliż)
+                          - generic [ref=e2427]: 4 / 4
+                        - paragraph [ref=e2428]: "Wolne miejsca: 0"
+                      - generic [ref=e2430] [cursor=pointer]:
+                        - generic [ref=e2431]:
+                          - heading "Sienkiewicza 12 (Długoleka)" [level=3] [ref=e2432]:
+                            - img [ref=e2433]
+                            - text: Sienkiewicza 12 (Długoleka)
+                          - generic [ref=e2437]: 4 / 7
+                        - paragraph [ref=e2438]: "Wolne miejsca: 3"
+                      - generic [ref=e2440] [cursor=pointer]:
+                        - generic [ref=e2441]:
+                          - heading "Własne mieszkanie Wrocław" [level=3] [ref=e2442]:
+                            - img [ref=e2443]
+                            - text: Własne mieszkanie Wrocław
+                          - generic [ref=e2447]: 20 / 100
+                        - paragraph [ref=e2448]: "Wolne miejsca: 80"
+                - generic [ref=e2449]:
+                  - heading "Wschowa 3 wolnych" [level=3] [ref=e2450]:
+                    - button "Wschowa 3 wolnych" [expanded] [ref=e2451] [cursor=pointer]:
+                      - generic [ref=e2452]:
+                        - text: Wschowa
+                        - generic [ref=e2453]: 3 wolnych
+                      - img [ref=e2454]
+                  - region "Wschowa 3 wolnych" [ref=e2456]:
+                    - generic [ref=e2457]:
+                      - generic [ref=e2459] [cursor=pointer]:
+                        - generic [ref=e2460]:
+                          - heading "Daszyńskiego 27a/2" [level=3] [ref=e2461]:
+                            - img [ref=e2462]
+                            - text: Daszyńskiego 27a/2
+                          - generic [ref=e2466]: 3 / 6
+                        - paragraph [ref=e2467]: "Wolne miejsca: 3"
+                      - generic [ref=e2469] [cursor=pointer]:
+                        - generic [ref=e2470]:
+                          - heading "Własne mieszkanie Wschowa" [level=3] [ref=e2471]:
+                            - img [ref=e2472]
+                            - text: Własne mieszkanie Wschowa
+                          - generic [ref=e2476]: 8 / 100
+                        - paragraph [ref=e2477]: "Wolne miejsca: 92"
+                - generic [ref=e2478]:
+                  - heading "Ząbkowice Śląskie 3 wolnych" [level=3] [ref=e2479]:
+                    - button "Ząbkowice Śląskie 3 wolnych" [expanded] [ref=e2480] [cursor=pointer]:
+                      - generic [ref=e2481]:
+                        - text: Ząbkowice Śląskie
+                        - generic [ref=e2482]: 3 wolnych
+                      - img [ref=e2483]
+                  - region "Ząbkowice Śląskie 3 wolnych" [ref=e2485]:
+                    - generic [ref=e2486]:
+                      - generic [ref=e2488] [cursor=pointer]:
+                        - generic [ref=e2489]:
+                          - heading "Os. XXlecia 24/6" [level=3] [ref=e2490]:
+                            - img [ref=e2491]
+                            - text: Os. XXlecia 24/6
+                          - generic [ref=e2495]: 4 / 6
+                        - paragraph [ref=e2496]: "Wolne miejsca: 2"
+                      - generic [ref=e2498] [cursor=pointer]:
+                        - generic [ref=e2499]:
+                          - heading "Os. XXlecia 35/9" [level=3] [ref=e2500]:
+                            - img [ref=e2501]
+                            - text: Os. XXlecia 35/9
+                          - generic [ref=e2505]: 3 / 3
+                        - paragraph [ref=e2506]: "Wolne miejsca: 0"
+                      - generic [ref=e2508] [cursor=pointer]:
+                        - generic [ref=e2509]:
+                          - heading "Partyzantów 9" [level=3] [ref=e2510]:
+                            - img [ref=e2511]
+                            - text: Partyzantów 9
+                          - generic [ref=e2515]: 0 / 2
+                        - paragraph [ref=e2516]: "Wolne miejsca: 2"
+                      - generic [ref=e2518] [cursor=pointer]:
+                        - generic [ref=e2519]:
+                          - heading "Powstańców Warszawy 4" [level=3] [ref=e2520]:
+                            - img [ref=e2521]
+                            - text: Powstańców Warszawy 4
+                          - generic [ref=e2525]: 18 / 17
+                        - paragraph [ref=e2526]: "Wolne miejsca: -1"
+                      - generic [ref=e2528] [cursor=pointer]:
+                        - generic [ref=e2529]:
+                          - heading "Własne mieszkanie Ząbkowice Śląskie" [level=3] [ref=e2530]:
+                            - img [ref=e2531]
+                            - text: Własne mieszkanie Ząbkowice Śląskie
+                          - generic [ref=e2535]: 33 / 40
+                        - paragraph [ref=e2536]: "Wolne miejsca: 7"
+                - generic [ref=e2537]:
+                  - heading "Żagań 33 wolnych" [level=3] [ref=e2538]:
+                    - button "Żagań 33 wolnych" [expanded] [ref=e2539] [cursor=pointer]:
+                      - generic [ref=e2540]:
+                        - text: Żagań
+                        - generic [ref=e2541]: 33 wolnych
+                      - img [ref=e2542]
+                  - region "Żagań 33 wolnych" [ref=e2544]:
+                    - generic [ref=e2545]:
+                      - generic [ref=e2547] [cursor=pointer]:
+                        - generic [ref=e2548]:
+                          - heading "Własne mieszkanie Żagań" [level=3] [ref=e2549]:
+                            - img [ref=e2550]
+                            - text: Własne mieszkanie Żagań
+                          - generic [ref=e2554]: 2 / 50
+                        - paragraph [ref=e2555]: "Wolne miejsca: 48"
+                      - generic [ref=e2557] [cursor=pointer]:
+                        - generic [ref=e2558]:
+                          - heading "Zagań, Chrobrego 16 b" [level=3] [ref=e2559]:
+                            - img [ref=e2560]
+                            - text: Zagań, Chrobrego 16 b
+                          - generic [ref=e2564]: 3 / 4
+                        - paragraph [ref=e2565]: "Wolne miejsca: 1"
+                      - generic [ref=e2567] [cursor=pointer]:
+                        - generic [ref=e2568]:
+                          - heading "Zagań, Gimnazjalna 14" [level=3] [ref=e2569]:
+                            - img [ref=e2570]
+                            - text: Zagań, Gimnazjalna 14
+                          - generic [ref=e2574]: 8 / 40
+                        - paragraph [ref=e2575]: "Wolne miejsca: 32"
+                - generic [ref=e2576]:
+                  - heading "Żarów 13 wolnych" [level=3] [ref=e2577]:
+                    - button "Żarów 13 wolnych" [expanded] [ref=e2578] [cursor=pointer]:
+                      - generic [ref=e2579]:
+                        - text: Żarów
+                        - generic [ref=e2580]: 13 wolnych
+                      - img [ref=e2581]
+                  - region "Żarów 13 wolnych" [ref=e2583]:
+                    - generic [ref=e2584]:
+                      - generic [ref=e2586] [cursor=pointer]:
+                        - generic [ref=e2587]:
+                          - heading "BUNGALOW Słowiańska 16a" [level=3] [ref=e2588]:
+                            - img [ref=e2589]
+                            - text: BUNGALOW Słowiańska 16a
+                          - generic [ref=e2593]: 19 / 21
+                        - paragraph [ref=e2594]: "Wolne miejsca: 2"
+                      - generic [ref=e2596] [cursor=pointer]:
+                        - generic [ref=e2597]:
+                          - heading "Słowiańska 3" [level=3] [ref=e2598]:
+                            - img [ref=e2599]
+                            - text: Słowiańska 3
+                          - generic [ref=e2603]: 7 / 10
+                        - paragraph [ref=e2604]: "Wolne miejsca: 3"
+                      - generic [ref=e2606] [cursor=pointer]:
+                        - generic [ref=e2607]:
+                          - heading "Własne mieszkanie Żarów" [level=3] [ref=e2608]:
+                            - img [ref=e2609]
+                            - text: Własne mieszkanie Żarów
+                          - generic [ref=e2613]: 6 / 30
+                        - paragraph [ref=e2614]: "Wolne miejsca: 24"
+                      - generic [ref=e2616] [cursor=pointer]:
+                        - generic [ref=e2617]:
+                          - heading "Żarów - HOSTEL Słowiańska 16a" [level=3] [ref=e2618]:
+                            - img [ref=e2619]
+                            - text: Żarów - HOSTEL Słowiańska 16a
+                          - generic [ref=e2623]: 0 / 4
+                        - paragraph [ref=e2624]: "Wolne miejsca: 4"
+                      - generic [ref=e2626] [cursor=pointer]:
+                        - generic [ref=e2627]:
+                          - heading "Żarów - Słowiańska 16a (GARAŻ)" [level=3] [ref=e2628]:
+                            - img [ref=e2629]
+                            - text: Żarów - Słowiańska 16a (GARAŻ)
+                          - generic [ref=e2633]: 2 / 6
+                        - paragraph [ref=e2634]: "Wolne miejsca: 4"
+                - generic [ref=e2635]:
+                  - heading "Złotoryja" [level=3] [ref=e2636]:
+                    - button "Złotoryja" [expanded] [ref=e2637] [cursor=pointer]:
+                      - generic [ref=e2638]: Złotoryja
+                      - img [ref=e2639]
+                  - region "Złotoryja" [ref=e2641]:
+                    - generic [ref=e2642]:
+                      - generic [ref=e2644] [cursor=pointer]:
+                        - generic [ref=e2645]:
+                          - heading "Sienkiewicza 2" [level=3] [ref=e2646]:
+                            - img [ref=e2647]
+                            - text: Sienkiewicza 2
+                          - generic [ref=e2651]: 10 / 7
+                        - paragraph [ref=e2652]: "Wolne miejsca: -3"
+                      - generic [ref=e2654] [cursor=pointer]:
+                        - generic [ref=e2655]:
+                          - heading "Wyszyńskiego 3/2" [level=3] [ref=e2656]:
+                            - img [ref=e2657]
+                            - text: Wyszyńskiego 3/2
+                          - generic [ref=e2661]: 0 / 3
+                        - paragraph [ref=e2662]: "Wolne miejsca: 3"
+                - generic [ref=e2663]:
+                  - heading "Żmigród 1 wolnych" [level=3] [ref=e2664]:
+                    - button "Żmigród 1 wolnych" [expanded] [ref=e2665] [cursor=pointer]:
+                      - generic [ref=e2666]:
+                        - text: Żmigród
+                        - generic [ref=e2667]: 1 wolnych
+                      - img [ref=e2668]
+                  - region "Żmigród 1 wolnych" [ref=e2670]:
+                    - generic [ref=e2671]:
+                      - generic [ref=e2673] [cursor=pointer]:
+                        - generic [ref=e2674]:
+                          - heading "Wiejska 21 (Żmigród)" [level=3] [ref=e2675]:
+                            - img [ref=e2676]
+                            - text: Wiejska 21 (Żmigród)
+                          - generic [ref=e2680]: 1 / 2
+                        - paragraph [ref=e2681]: "Wolne miejsca: 1"
+                      - generic [ref=e2683] [cursor=pointer]:
+                        - generic [ref=e2684]:
+                          - heading "Własne mieszkanie Żmigród" [level=3] [ref=e2685]:
+                            - img [ref=e2686]
+                            - text: Własne mieszkanie Żmigród
+                          - generic [ref=e2690]: 0 / 50
+                        - paragraph [ref=e2691]: "Wolne miejsca: 50"
+                - generic [ref=e2692]:
+                  - heading "Żory 16 wolnych" [level=3] [ref=e2693]:
+                    - button "Żory 16 wolnych" [expanded] [ref=e2694] [cursor=pointer]:
+                      - generic [ref=e2695]:
+                        - text: Żory
+                        - generic [ref=e2696]: 16 wolnych
+                      - img [ref=e2697]
+                  - region "Żory 16 wolnych" [ref=e2699]:
+                    - generic [ref=e2700]:
+                      - generic [ref=e2702] [cursor=pointer]:
+                        - generic [ref=e2703]:
+                          - heading "Hańcówka 31" [level=3] [ref=e2704]:
+                            - img [ref=e2705]
+                            - text: Hańcówka 31
+                          - generic [ref=e2709]: 0 / 16
+                        - paragraph [ref=e2710]: "Wolne miejsca: 16"
+                      - generic [ref=e2712] [cursor=pointer]:
+                        - generic [ref=e2713]:
+                          - heading "Własne mieszkanie Żory" [level=3] [ref=e2714]:
+                            - img [ref=e2715]
+                            - text: Własne mieszkanie Żory
+                          - generic [ref=e2719]: 3 / 50
+                        - paragraph [ref=e2720]: "Wolne miejsca: 47"
+                - generic [ref=e2721]:
+                  - heading "Zwierzyn 8 wolnych" [level=3] [ref=e2722]:
+                    - button "Zwierzyn 8 wolnych" [expanded] [ref=e2723] [cursor=pointer]:
+                      - generic [ref=e2724]:
+                        - text: Zwierzyn
+                        - generic [ref=e2725]: 8 wolnych
+                      - img [ref=e2726]
+                  - region "Zwierzyn 8 wolnych" [ref=e2728]:
+                    - generic [ref=e2731] [cursor=pointer]:
+                      - generic [ref=e2732]:
+                        - heading "Strzelecka 2" [level=3] [ref=e2733]:
+                          - img [ref=e2734]
+                          - text: Strzelecka 2
+                        - generic [ref=e2738]: 1 / 9
+                      - paragraph [ref=e2739]: "Wolne miejsca: 8"
+          - generic [ref=e2740]:
+            - generic [ref=e2741]:
+              - heading "Szczegóły adresu" [level=3] [ref=e2742]
+              - paragraph [ref=e2743]: Wybierz adres z listy, aby zobaczyć szczegóły.
+            - generic [ref=e2746]:
+              - img [ref=e2747]
+              - paragraph [ref=e2748]: Nie wybrano adresu
+  - region "Notifications (F8)":
+    - list
+  - alert [ref=e2749]
+```

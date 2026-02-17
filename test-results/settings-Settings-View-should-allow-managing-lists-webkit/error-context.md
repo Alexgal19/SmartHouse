@@ -1,0 +1,417 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - navigation [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e7]:
+            - img [ref=e8]
+            - generic [ref=e11]: SmartHouse
+          - button [ref=e12] [cursor=pointer]:
+            - img [ref=e13]
+        - list [ref=e16]:
+          - listitem [ref=e17]:
+            - link "Pulpit" [ref=e18]:
+              - /url: /dashboard?view=dashboard
+              - img [ref=e20]
+              - generic [ref=e23]: Pulpit
+          - listitem [ref=e24]:
+            - link "Mieszkańcy" [ref=e25]:
+              - /url: /dashboard?view=employees
+              - img [ref=e27]
+              - generic [ref=e32]: Mieszkańcy
+          - listitem [ref=e33]:
+            - link "Zakwaterowanie" [ref=e34]:
+              - /url: /dashboard?view=housing
+              - img [ref=e36]
+              - generic [ref=e39]: Zakwaterowanie
+          - listitem [ref=e40]:
+            - link "Ustawienia" [ref=e41]:
+              - /url: /dashboard?view=settings
+              - img [ref=e43]
+              - generic [ref=e46]: Ustawienia
+    - generic [ref=e48]:
+      - banner [ref=e49]:
+        - generic [ref=e50]:
+          - img [ref=e51]
+          - heading "SmartHouse" [level=1] [ref=e54]
+        - generic [ref=e55]:
+          - button "77" [ref=e56] [cursor=pointer]:
+            - img [ref=e57]
+            - generic [ref=e60]: "77"
+          - button [ref=e61] [cursor=pointer]:
+            - img [ref=e62]
+      - main [ref=e65]:
+        - generic [ref=e66]:
+          - generic [ref=e67]:
+            - generic [ref=e68]:
+              - heading "Ustawienia aplikacji" [level=3] [ref=e69]
+              - paragraph [ref=e70]: Zarządzaj globalnymi ustawieniami aplikacji, takimi jak listy, adresy i koordynatorzy.
+            - generic [ref=e72]:
+              - generic [ref=e73]:
+                - generic [ref=e74]:
+                  - heading "Zarządzanie listami" [level=3] [ref=e75]:
+                    - button "Zarządzanie listami" [expanded] [ref=e76] [cursor=pointer]:
+                      - text: Zarządzanie listami
+                      - img [ref=e77]
+                  - region "Zarządzanie listami" [ref=e79]:
+                    - generic [ref=e81]:
+                      - generic [ref=e82]:
+                        - heading "Narodowości" [level=3] [ref=e83]:
+                          - button "Narodowości" [expanded] [ref=e84] [cursor=pointer]:
+                            - text: Narodowości
+                            - img [ref=e85]
+                        - region "Narodowości" [ref=e87]:
+                          - generic [ref=e89]:
+                            - generic [ref=e90]:
+                              - textbox "Szukaj..." [ref=e91]
+                              - button "Dodaj" [ref=e92] [cursor=pointer]:
+                                - img [ref=e93]
+                                - text: Dodaj
+                            - generic [ref=e95]:
+                              - textbox [ref=e96]: Angolskie
+                              - button [ref=e97] [cursor=pointer]:
+                                - img [ref=e98]
+                            - generic [ref=e101]:
+                              - textbox [ref=e102]: argentyńskie
+                              - button [ref=e103] [cursor=pointer]:
+                                - img [ref=e104]
+                            - generic [ref=e107]:
+                              - textbox [ref=e108]: armeńskie
+                              - button [ref=e109] [cursor=pointer]:
+                                - img [ref=e110]
+                            - generic [ref=e113]:
+                              - textbox [ref=e114]: azerbejdżańskie
+                              - button [ref=e115] [cursor=pointer]:
+                                - img [ref=e116]
+                            - generic [ref=e119]:
+                              - textbox [ref=e120]: bangladeskie
+                              - button [ref=e121] [cursor=pointer]:
+                                - img [ref=e122]
+                            - generic [ref=e125]:
+                              - textbox [ref=e126]: banglijskie
+                              - button [ref=e127] [cursor=pointer]:
+                                - img [ref=e128]
+                            - generic [ref=e131]:
+                              - textbox [ref=e132]: białoruskie
+                              - button [ref=e133] [cursor=pointer]:
+                                - img [ref=e134]
+                            - generic [ref=e137]:
+                              - textbox [ref=e138]: boliwijskie
+                              - button [ref=e139] [cursor=pointer]:
+                                - img [ref=e140]
+                            - generic [ref=e143]:
+                              - textbox [ref=e144]: egipskie
+                              - button [ref=e145] [cursor=pointer]:
+                                - img [ref=e146]
+                            - generic [ref=e149]:
+                              - textbox [ref=e150]: ekwadorskie
+                              - button [ref=e151] [cursor=pointer]:
+                                - img [ref=e152]
+                            - generic [ref=e155]:
+                              - textbox [ref=e156]: filipińskie
+                              - button [ref=e157] [cursor=pointer]:
+                                - img [ref=e158]
+                            - generic [ref=e161]:
+                              - textbox [ref=e162]: gruzińskie
+                              - button [ref=e163] [cursor=pointer]:
+                                - img [ref=e164]
+                            - generic [ref=e167]:
+                              - textbox [ref=e168]: gwatemalskie
+                              - button [ref=e169] [cursor=pointer]:
+                                - img [ref=e170]
+                            - generic [ref=e173]:
+                              - textbox [ref=e174]: holenderskie
+                              - button [ref=e175] [cursor=pointer]:
+                                - img [ref=e176]
+                            - generic [ref=e179]:
+                              - textbox [ref=e180]: honduraskie
+                              - button [ref=e181] [cursor=pointer]:
+                                - img [ref=e182]
+                            - generic [ref=e185]:
+                              - textbox [ref=e186]: indonezyjskie
+                              - button [ref=e187] [cursor=pointer]:
+                                - img [ref=e188]
+                            - generic [ref=e191]:
+                              - textbox [ref=e192]: indyjskie
+                              - button [ref=e193] [cursor=pointer]:
+                                - img [ref=e194]
+                            - generic [ref=e197]:
+                              - textbox [ref=e198]: kazachstańskie
+                              - button [ref=e199] [cursor=pointer]:
+                                - img [ref=e200]
+                            - generic [ref=e203]:
+                              - textbox [ref=e204]: kenijskie
+                              - button [ref=e205] [cursor=pointer]:
+                                - img [ref=e206]
+                            - generic [ref=e209]:
+                              - textbox [ref=e210]: kirgistańskie
+                              - button [ref=e211] [cursor=pointer]:
+                                - img [ref=e212]
+                            - generic [ref=e215]:
+                              - textbox [ref=e216]: kolumbijskie
+                              - button [ref=e217] [cursor=pointer]:
+                                - img [ref=e218]
+                            - generic [ref=e221]:
+                              - textbox [ref=e222]: kubańskie
+                              - button [ref=e223] [cursor=pointer]:
+                                - img [ref=e224]
+                            - generic [ref=e227]:
+                              - textbox [ref=e228]: lankijskie
+                              - button [ref=e229] [cursor=pointer]:
+                                - img [ref=e230]
+                            - generic [ref=e233]:
+                              - textbox [ref=e234]: marokańskie
+                              - button [ref=e235] [cursor=pointer]:
+                                - img [ref=e236]
+                            - generic [ref=e239]:
+                              - textbox [ref=e240]: meksykańskie
+                              - button [ref=e241] [cursor=pointer]:
+                                - img [ref=e242]
+                            - generic [ref=e245]:
+                              - textbox [ref=e246]: mołdawskie
+                              - button [ref=e247] [cursor=pointer]:
+                                - img [ref=e248]
+                            - generic [ref=e251]:
+                              - textbox [ref=e252]: nepalskie
+                              - button [ref=e253] [cursor=pointer]:
+                                - img [ref=e254]
+                            - generic [ref=e257]:
+                              - textbox [ref=e258]: nikaraguańskie
+                              - button [ref=e259] [cursor=pointer]:
+                                - img [ref=e260]
+                            - generic [ref=e263]:
+                              - textbox [ref=e264]: ormiańskie
+                              - button [ref=e265] [cursor=pointer]:
+                                - img [ref=e266]
+                            - generic [ref=e269]:
+                              - textbox [ref=e270]: paragwajskie
+                              - button [ref=e271] [cursor=pointer]:
+                                - img [ref=e272]
+                            - generic [ref=e275]:
+                              - textbox [ref=e276]: peruwiańskie
+                              - button [ref=e277] [cursor=pointer]:
+                                - img [ref=e278]
+                            - generic [ref=e281]:
+                              - textbox [ref=e282]: polskie
+                              - button [ref=e283] [cursor=pointer]:
+                                - img [ref=e284]
+                            - generic [ref=e287]:
+                              - textbox [ref=e288]: salwadorskie
+                              - button [ref=e289] [cursor=pointer]:
+                                - img [ref=e290]
+                            - generic [ref=e293]:
+                              - textbox [ref=e294]: Sri Lanka
+                              - button [ref=e295] [cursor=pointer]:
+                                - img [ref=e296]
+                            - generic [ref=e299]:
+                              - textbox [ref=e300]: togolaise
+                              - button [ref=e301] [cursor=pointer]:
+                                - img [ref=e302]
+                            - generic [ref=e305]:
+                              - textbox [ref=e306]: turkmeńskie
+                              - button [ref=e307] [cursor=pointer]:
+                                - img [ref=e308]
+                            - generic [ref=e311]:
+                              - textbox [ref=e312]: ukraińskie
+                              - button [ref=e313] [cursor=pointer]:
+                                - img [ref=e314]
+                            - generic [ref=e317]:
+                              - textbox [ref=e318]: uzbeckie
+                              - button [ref=e319] [cursor=pointer]:
+                                - img [ref=e320]
+                            - generic [ref=e323]:
+                              - textbox [ref=e324]: uzbekistańskie
+                              - button [ref=e325] [cursor=pointer]:
+                                - img [ref=e326]
+                            - generic [ref=e329]:
+                              - textbox [ref=e330]: wenezuelskie
+                              - button [ref=e331] [cursor=pointer]:
+                                - img [ref=e332]
+                            - generic [ref=e335]:
+                              - textbox [ref=e336]: wietnamskie
+                              - button [ref=e337] [cursor=pointer]:
+                                - img [ref=e338]
+                            - generic [ref=e341]:
+                              - textbox [active] [ref=e342]: Testlandia
+                              - button [ref=e343] [cursor=pointer]:
+                                - img [ref=e344]
+                      - heading "Zakłady" [level=3] [ref=e348]:
+                        - button "Zakłady" [ref=e349] [cursor=pointer]:
+                          - text: Zakłady
+                          - img [ref=e350]
+                      - heading "Płcie" [level=3] [ref=e353]:
+                        - button "Płcie" [ref=e354] [cursor=pointer]:
+                          - text: Płcie
+                          - img [ref=e355]
+                      - heading "Miejscowości" [level=3] [ref=e358]:
+                        - button "Miejscowości" [ref=e359] [cursor=pointer]:
+                          - text: Miejscowości
+                          - img [ref=e360]
+                      - heading "Rodzaje płatności NZ" [level=3] [ref=e363]:
+                        - button "Rodzaje płatności NZ" [ref=e364] [cursor=pointer]:
+                          - text: Rodzaje płatności NZ
+                          - img [ref=e365]
+                      - heading "Statusy" [level=3] [ref=e368]:
+                        - button "Statusy" [ref=e369] [cursor=pointer]:
+                          - text: Statusy
+                          - img [ref=e370]
+                      - paragraph [ref=e374]: Ustawienia BOK
+                      - heading "Kierowcy BOK" [level=3] [ref=e376]:
+                        - button "Kierowcy BOK" [ref=e377] [cursor=pointer]:
+                          - text: Kierowcy BOK
+                          - img [ref=e378]
+                      - heading "Opcje Powrotu BOK" [level=3] [ref=e381]:
+                        - button "Opcje Powrotu BOK" [ref=e382] [cursor=pointer]:
+                          - text: Opcje Powrotu BOK
+                          - img [ref=e383]
+                - heading "Zarządzanie koordynatorami" [level=3] [ref=e386]:
+                  - button "Zarządzanie koordynatorami" [ref=e387] [cursor=pointer]:
+                    - text: Zarządzanie koordynatorami
+                    - img [ref=e388]
+                - heading "Zarządzanie adresami" [level=3] [ref=e391]:
+                  - button "Zarządzanie adresami" [ref=e392] [cursor=pointer]:
+                    - text: Zarządzanie adresami
+                    - img [ref=e393]
+              - button "Zapisz zmiany" [ref=e396] [cursor=pointer]
+          - generic [ref=e397]:
+            - generic [ref=e398]:
+              - heading "Migracja Danych" [level=3] [ref=e399]
+              - paragraph [ref=e400]: Jednorazowe akcje do porządkowania danych w arkuszach.
+            - generic [ref=e402]:
+              - generic [ref=e403]:
+                - heading "Migracja Imienia i Nazwiska" [level=3] [ref=e404]
+                - paragraph [ref=e405]: "Przeszukuje arkusze i dzieli pole `fullName` na `firstName` i `lastName` dla starych rekordów."
+              - button "Uruchom migrację" [ref=e406] [cursor=pointer]:
+                - img [ref=e407]
+                - text: Uruchom migrację
+          - generic [ref=e412]:
+            - generic [ref=e413]:
+              - generic [ref=e414]:
+                - heading "Import Pracowników z Excel" [level=3] [ref=e415]
+                - paragraph [ref=e416]: Zaimportuj nowych pracowników z pliku XLSX.
+              - button "Wybierz plik i importuj" [ref=e418] [cursor=pointer]:
+                - img [ref=e419]
+                - text: Wybierz plik i importuj
+            - generic [ref=e422]:
+              - generic [ref=e423]:
+                - heading "Import Mieszkańców (NZ) z Excel" [level=3] [ref=e424]
+                - paragraph [ref=e425]: Zaimportuj nowych mieszkańców (NZ) z pliku XLSX.
+              - button "Wybierz plik i importuj" [ref=e427] [cursor=pointer]:
+                - img [ref=e428]
+                - text: Wybierz plik i importuj
+          - generic [ref=e431]:
+            - generic [ref=e432]:
+              - generic [ref=e433]:
+                - heading "Raport zakwaterowania" [level=3] [ref=e434]
+                - paragraph [ref=e435]: Generuje raport XLSX pokazujący stan zakwaterowania w wybranym okresie.
+              - generic [ref=e437]:
+                - generic [ref=e438]:
+                  - generic [ref=e439]:
+                    - text: Rok
+                    - combobox [ref=e440] [cursor=pointer]:
+                      - generic: "2026"
+                      - img [ref=e441]
+                  - generic [ref=e443]:
+                    - text: Miesiąc
+                    - combobox [ref=e444] [cursor=pointer]:
+                      - generic: "2"
+                      - img [ref=e445]
+                  - generic [ref=e447]:
+                    - text: Koordynator
+                    - combobox [ref=e448] [cursor=pointer]:
+                      - generic: Wszyscy koordynatorzy
+                      - img [ref=e449]
+                  - button "Generuj raport" [ref=e451] [cursor=pointer]:
+                    - img [ref=e452]
+                    - generic [ref=e455]: Generuj raport
+                - generic [ref=e456]:
+                  - switch "Uwzględnij historię zmian adresów w raporcie" [ref=e457] [cursor=pointer]
+                  - generic [ref=e458]: Uwzględnij historię zmian adresów w raporcie
+            - generic [ref=e459]:
+              - generic [ref=e460]:
+                - heading "Generowanie raportu kosztów (NZ)" [level=3] [ref=e461]
+                - paragraph [ref=e462]: Wygeneruj raport przychodów od mieszkańców (NZ) w formacie XLSX.
+              - generic [ref=e464]:
+                - generic [ref=e465]:
+                  - text: Rok
+                  - combobox [ref=e466] [cursor=pointer]:
+                    - generic: "2026"
+                    - img [ref=e467]
+                - generic [ref=e469]:
+                  - text: Miesiąc
+                  - combobox [ref=e470] [cursor=pointer]:
+                    - generic: "2"
+                    - img [ref=e471]
+                - generic [ref=e473]:
+                  - text: Koordynator
+                  - combobox [ref=e474] [cursor=pointer]:
+                    - generic: Wszyscy koordynatorzy
+                    - img [ref=e475]
+                - button "Generuj raport (NZ)" [ref=e477] [cursor=pointer]:
+                  - img [ref=e478]
+                  - generic [ref=e481]: Generuj raport (NZ)
+          - generic [ref=e482]:
+            - generic [ref=e483]:
+              - heading "Akcje masowe" [level=3] [ref=e484]
+              - paragraph [ref=e485]: Zarządzaj danymi pracowników hurtowo.
+            - generic [ref=e486]:
+              - generic [ref=e487]:
+                - generic [ref=e488]:
+                  - heading "Masowe usuwanie" [level=3] [ref=e489]
+                  - paragraph [ref=e490]: Te akcje są nieodwracalne.
+                - generic [ref=e491]:
+                  - button "Usuń wszystkich aktywnych" [ref=e492] [cursor=pointer]:
+                    - img [ref=e493]
+                    - text: Usuń wszystkich aktywnych
+                  - button "Usuń wszystkich zwolnionych" [ref=e496] [cursor=pointer]:
+                    - img [ref=e497]
+                    - text: Usuń wszystkich zwolnionych
+              - generic [ref=e500]:
+                - generic [ref=e501]:
+                  - heading "Przenoszenie pracowników" [level=3] [ref=e502]
+                  - paragraph [ref=e503]: Przenieś wszystkich pracowników od jednego koordynatora do drugiego.
+                - generic [ref=e504]:
+                  - generic [ref=e505]:
+                    - text: Od koordynatora
+                    - combobox [ref=e506] [cursor=pointer]:
+                      - generic: Wybierz koordynatora
+                      - img [ref=e507]
+                  - generic [ref=e509]:
+                    - text: Do koordynatora
+                    - combobox [ref=e510] [cursor=pointer]:
+                      - generic: Wybierz koordynatora
+                      - img [ref=e511]
+                  - button "Przenieś" [ref=e513] [cursor=pointer]
+              - generic [ref=e514]:
+                - generic [ref=e515]:
+                  - heading "Usuwanie pracowników koordynatora" [level=3] [ref=e516]
+                  - paragraph [ref=e517]: Trwale usuwa wszystkich pracowników (aktywnych i zwolnionych) przypisanych do wybranego koordynatora. Ta akcja jest nieodwracalna.
+                - generic [ref=e518]:
+                  - generic [ref=e519]:
+                    - text: Koordynator
+                    - combobox [ref=e520] [cursor=pointer]:
+                      - generic: Wybierz koordynatora
+                      - img [ref=e521]
+                  - button "Usuń pracowników" [disabled]:
+                    - img
+                    - text: Usuń pracowników
+              - generic [ref=e523]:
+                - generic [ref=e524]:
+                  - heading "Usuwanie pracowników wg zakładu" [level=3] [ref=e525]
+                  - paragraph [ref=e526]: Trwale usuwa wszystkich pracowników (aktywnych i zwolnionych) przypisanych do wybranego zakładu. Ta akcja jest nieodwracalna.
+                - generic [ref=e527]:
+                  - generic [ref=e528]:
+                    - text: Zakład
+                    - combobox [ref=e529] [cursor=pointer]:
+                      - generic: Wybierz zakład
+                      - img [ref=e530]
+                  - button "Usuń pracowników" [disabled]:
+                    - img
+                    - text: Usuń pracowników
+  - region "Notifications (F8)":
+    - list
+  - alert [ref=e532]
+```

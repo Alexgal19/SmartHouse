@@ -1,0 +1,372 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - navigation [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e7]:
+            - img [ref=e8]
+            - generic [ref=e11]: SmartHouse
+          - button [ref=e12] [cursor=pointer]:
+            - img [ref=e13]
+        - list [ref=e16]:
+          - listitem [ref=e17]:
+            - link "Pulpit" [ref=e18]:
+              - /url: /dashboard?view=dashboard
+              - img [ref=e20]
+              - generic [ref=e23]: Pulpit
+          - listitem [ref=e24]:
+            - link "Mieszkańcy" [ref=e25]:
+              - /url: /dashboard?view=employees
+              - img [ref=e27]
+              - generic [ref=e32]: Mieszkańcy
+          - listitem [ref=e33]:
+            - link "Zakwaterowanie" [ref=e34]:
+              - /url: /dashboard?view=housing
+              - img [ref=e36]
+              - generic [ref=e39]: Zakwaterowanie
+          - listitem [ref=e40]:
+            - link "Ustawienia" [ref=e41]:
+              - /url: /dashboard?view=settings
+              - img [ref=e43]
+              - generic [ref=e46]: Ustawienia
+    - generic [ref=e48]:
+      - banner [ref=e49]:
+        - generic [ref=e50]:
+          - img [ref=e51]
+          - heading "SmartHouse" [level=1] [ref=e54]
+        - generic [ref=e55]:
+          - button "77" [ref=e56] [cursor=pointer]:
+            - img [ref=e57]
+            - generic [ref=e60]: "77"
+          - button [ref=e61] [cursor=pointer]:
+            - img [ref=e62]
+      - main [ref=e65]:
+        - generic [ref=e66]:
+          - generic [ref=e67]:
+            - generic [ref=e68]:
+              - heading "Ustawienia aplikacji" [level=3] [ref=e69]
+              - paragraph [ref=e70]: Zarządzaj globalnymi ustawieniami aplikacji, takimi jak listy, adresy i koordynatorzy.
+            - generic [ref=e72]:
+              - generic [ref=e73]:
+                - heading "Zarządzanie listami" [level=3] [ref=e75]:
+                  - button "Zarządzanie listami" [ref=e76] [cursor=pointer]:
+                    - text: Zarządzanie listami
+                    - img [ref=e77]
+                - generic [ref=e79]:
+                  - heading "Zarządzanie koordynatorami" [level=3] [ref=e80]:
+                    - button "Zarządzanie koordynatorami" [expanded] [ref=e81] [cursor=pointer]:
+                      - text: Zarządzanie koordynatorami
+                      - img [ref=e82]
+                  - region "Zarządzanie koordynatorami" [ref=e84]:
+                    - generic [ref=e86]:
+                      - generic [ref=e87]:
+                        - heading "Koordynatorzy" [level=3] [ref=e88]
+                        - generic [ref=e89]:
+                          - textbox "Szukaj koordynatora..." [ref=e90]
+                          - button "Dodaj koordynatora" [ref=e91] [cursor=pointer]:
+                            - img [ref=e92]
+                            - text: Dodaj koordynatora
+                      - generic [ref=e94]:
+                        - heading "Beqa Darbaidze Koordynator" [level=3] [ref=e96]:
+                          - button "Beqa Darbaidze Koordynator" [ref=e97] [cursor=pointer]:
+                            - generic [ref=e98]:
+                              - generic [ref=e99]: Beqa Darbaidze
+                              - generic [ref=e100]: Koordynator
+                            - img [ref=e101]
+                        - heading "Brovdi Ivan Koordynator" [level=3] [ref=e104]:
+                          - button "Brovdi Ivan Koordynator" [ref=e105] [cursor=pointer]:
+                            - generic [ref=e106]:
+                              - generic [ref=e107]: Brovdi Ivan
+                              - generic [ref=e108]: Koordynator
+                            - img [ref=e109]
+                        - heading "Fedchenko Artem Koordynator" [level=3] [ref=e112]:
+                          - button "Fedchenko Artem Koordynator" [ref=e113] [cursor=pointer]:
+                            - generic [ref=e114]:
+                              - generic [ref=e115]: Fedchenko Artem
+                              - generic [ref=e116]: Koordynator
+                            - img [ref=e117]
+                        - heading "Harutyunyan Gerasim Koordynator" [level=3] [ref=e120]:
+                          - button "Harutyunyan Gerasim Koordynator" [ref=e121] [cursor=pointer]:
+                            - generic [ref=e122]:
+                              - generic [ref=e123]: Harutyunyan Gerasim
+                              - generic [ref=e124]: Koordynator
+                            - img [ref=e125]
+                        - heading "Herasimovych Oleh Koordynator" [level=3] [ref=e128]:
+                          - button "Herasimovych Oleh Koordynator" [ref=e129] [cursor=pointer]:
+                            - generic [ref=e130]:
+                              - generic [ref=e131]: Herasimovych Oleh
+                              - generic [ref=e132]: Koordynator
+                            - img [ref=e133]
+                        - heading "Hertsoh Veronika Koordynator" [level=3] [ref=e136]:
+                          - button "Hertsoh Veronika Koordynator" [ref=e137] [cursor=pointer]:
+                            - generic [ref=e138]:
+                              - generic [ref=e139]: Hertsoh Veronika
+                              - generic [ref=e140]: Koordynator
+                            - img [ref=e141]
+                        - heading "Hetman Yevhen Koordynator" [level=3] [ref=e144]:
+                          - button "Hetman Yevhen Koordynator" [ref=e145] [cursor=pointer]:
+                            - generic [ref=e146]:
+                              - generic [ref=e147]: Hetman Yevhen
+                              - generic [ref=e148]: Koordynator
+                            - img [ref=e149]
+                        - heading "Holiadynets Oleksandr Koordynator" [level=3] [ref=e152]:
+                          - button "Holiadynets Oleksandr Koordynator" [ref=e153] [cursor=pointer]:
+                            - generic [ref=e154]:
+                              - generic [ref=e155]: Holiadynets Oleksandr
+                              - generic [ref=e156]: Koordynator
+                            - img [ref=e157]
+                        - heading "Kalashnyk Oleksandr Koordynator" [level=3] [ref=e160]:
+                          - button "Kalashnyk Oleksandr Koordynator" [ref=e161] [cursor=pointer]:
+                            - generic [ref=e162]:
+                              - generic [ref=e163]: Kalashnyk Oleksandr
+                              - generic [ref=e164]: Koordynator
+                            - img [ref=e165]
+                        - heading "Kashkarov Yaroslav Koordynator" [level=3] [ref=e168]:
+                          - button "Kashkarov Yaroslav Koordynator" [ref=e169] [cursor=pointer]:
+                            - generic [ref=e170]:
+                              - generic [ref=e171]: Kashkarov Yaroslav
+                              - generic [ref=e172]: Koordynator
+                            - img [ref=e173]
+                        - heading "Khayal Koordynator" [level=3] [ref=e176]:
+                          - button "Khayal Koordynator" [ref=e177] [cursor=pointer]:
+                            - generic [ref=e178]:
+                              - generic [ref=e179]: Khayal
+                              - generic [ref=e180]: Koordynator
+                            - img [ref=e181]
+                        - heading "Krakhin Mykyta Koordynator" [level=3] [ref=e184]:
+                          - button "Krakhin Mykyta Koordynator" [ref=e185] [cursor=pointer]:
+                            - generic [ref=e186]:
+                              - generic [ref=e187]: Krakhin Mykyta
+                              - generic [ref=e188]: Koordynator
+                            - img [ref=e189]
+                        - heading "Lazutkina Yevheniia Koordynator" [level=3] [ref=e192]:
+                          - button "Lazutkina Yevheniia Koordynator" [ref=e193] [cursor=pointer]:
+                            - generic [ref=e194]:
+                              - generic [ref=e195]: Lazutkina Yevheniia
+                              - generic [ref=e196]: Koordynator
+                            - img [ref=e197]
+                        - heading "Manoilo Kateryna Koordynator" [level=3] [ref=e200]:
+                          - button "Manoilo Kateryna Koordynator" [ref=e201] [cursor=pointer]:
+                            - generic [ref=e202]:
+                              - generic [ref=e203]: Manoilo Kateryna
+                              - generic [ref=e204]: Koordynator
+                            - img [ref=e205]
+                        - heading "Melnychuk Roman Koordynator" [level=3] [ref=e208]:
+                          - button "Melnychuk Roman Koordynator" [ref=e209] [cursor=pointer]:
+                            - generic [ref=e210]:
+                              - generic [ref=e211]: Melnychuk Roman
+                              - generic [ref=e212]: Koordynator
+                            - img [ref=e213]
+                        - heading "Pankevych Olha Koordynator" [level=3] [ref=e216]:
+                          - button "Pankevych Olha Koordynator" [ref=e217] [cursor=pointer]:
+                            - generic [ref=e218]:
+                              - generic [ref=e219]: Pankevych Olha
+                              - generic [ref=e220]: Koordynator
+                            - img [ref=e221]
+                        - heading "Sorak Roman Koordynator" [level=3] [ref=e224]:
+                          - button "Sorak Roman Koordynator" [ref=e225] [cursor=pointer]:
+                            - generic [ref=e226]:
+                              - generic [ref=e227]: Sorak Roman
+                              - generic [ref=e228]: Koordynator
+                            - img [ref=e229]
+                        - heading "Sushchenko Oleksandra Koordynator" [level=3] [ref=e232]:
+                          - button "Sushchenko Oleksandra Koordynator" [ref=e233] [cursor=pointer]:
+                            - generic [ref=e234]:
+                              - generic [ref=e235]: Sushchenko Oleksandra
+                              - generic [ref=e236]: Koordynator
+                            - img [ref=e237]
+                        - heading "Szymon Drapich Koordynator" [level=3] [ref=e240]:
+                          - button "Szymon Drapich Koordynator" [ref=e241] [cursor=pointer]:
+                            - generic [ref=e242]:
+                              - generic [ref=e243]: Szymon Drapich
+                              - generic [ref=e244]: Koordynator
+                            - img [ref=e245]
+                        - heading "Vaskou Dzmitry Koordynator" [level=3] [ref=e248]:
+                          - button "Vaskou Dzmitry Koordynator" [ref=e249] [cursor=pointer]:
+                            - generic [ref=e250]:
+                              - generic [ref=e251]: Vaskou Dzmitry
+                              - generic [ref=e252]: Koordynator
+                            - img [ref=e253]
+                        - heading "Veklyak Oleksandr Koordynator" [level=3] [ref=e256]:
+                          - button "Veklyak Oleksandr Koordynator" [ref=e257] [cursor=pointer]:
+                            - generic [ref=e258]:
+                              - generic [ref=e259]: Veklyak Oleksandr
+                              - generic [ref=e260]: Koordynator
+                            - img [ref=e261]
+                        - heading "Velychko Andrii Koordynator" [level=3] [ref=e264]:
+                          - button "Velychko Andrii Koordynator" [ref=e265] [cursor=pointer]:
+                            - generic [ref=e266]:
+                              - generic [ref=e267]: Velychko Andrii
+                              - generic [ref=e268]: Koordynator
+                            - img [ref=e269]
+                        - heading "Yachminnyk Roman Koordynator" [level=3] [ref=e272]:
+                          - button "Yachminnyk Roman Koordynator" [ref=e273] [cursor=pointer]:
+                            - generic [ref=e274]:
+                              - generic [ref=e275]: Yachminnyk Roman
+                              - generic [ref=e276]: Koordynator
+                            - img [ref=e277]
+                        - heading "Yankov Anatolii Koordynator" [level=3] [ref=e280]:
+                          - button "Yankov Anatolii Koordynator" [ref=e281] [cursor=pointer]:
+                            - generic [ref=e282]:
+                              - generic [ref=e283]: Yankov Anatolii
+                              - generic [ref=e284]: Koordynator
+                            - img [ref=e285]
+                        - heading "Zaiats Yevhenii Koordynator" [level=3] [ref=e288]:
+                          - button "Zaiats Yevhenii Koordynator" [ref=e289] [cursor=pointer]:
+                            - generic [ref=e290]:
+                              - generic [ref=e291]: Zaiats Yevhenii
+                              - generic [ref=e292]: Koordynator
+                            - img [ref=e293]
+                        - heading "Nowy koordynator Koordynator" [level=3] [ref=e296]:
+                          - button "Nowy koordynator Koordynator" [ref=e297] [cursor=pointer]:
+                            - generic [ref=e298]:
+                              - generic [ref=e299]: Nowy koordynator
+                              - generic [ref=e300]: Koordynator
+                            - img [ref=e301]
+                - heading "Zarządzanie adresami" [level=3] [ref=e304]:
+                  - button "Zarządzanie adresami" [ref=e305] [cursor=pointer]:
+                    - text: Zarządzanie adresami
+                    - img [ref=e306]
+              - button "Zapisz zmiany" [ref=e309] [cursor=pointer]
+          - generic [ref=e310]:
+            - generic [ref=e311]:
+              - heading "Migracja Danych" [level=3] [ref=e312]
+              - paragraph [ref=e313]: Jednorazowe akcje do porządkowania danych w arkuszach.
+            - generic [ref=e315]:
+              - generic [ref=e316]:
+                - heading "Migracja Imienia i Nazwiska" [level=3] [ref=e317]
+                - paragraph [ref=e318]: "Przeszukuje arkusze i dzieli pole `fullName` na `firstName` i `lastName` dla starych rekordów."
+              - button "Uruchom migrację" [ref=e319] [cursor=pointer]:
+                - img [ref=e320]
+                - text: Uruchom migrację
+          - generic [ref=e325]:
+            - generic [ref=e326]:
+              - generic [ref=e327]:
+                - heading "Import Pracowników z Excel" [level=3] [ref=e328]
+                - paragraph [ref=e329]: Zaimportuj nowych pracowników z pliku XLSX.
+              - button "Wybierz plik i importuj" [ref=e331] [cursor=pointer]:
+                - img [ref=e332]
+                - text: Wybierz plik i importuj
+            - generic [ref=e335]:
+              - generic [ref=e336]:
+                - heading "Import Mieszkańców (NZ) z Excel" [level=3] [ref=e337]
+                - paragraph [ref=e338]: Zaimportuj nowych mieszkańców (NZ) z pliku XLSX.
+              - button "Wybierz plik i importuj" [ref=e340] [cursor=pointer]:
+                - img [ref=e341]
+                - text: Wybierz plik i importuj
+          - generic [ref=e344]:
+            - generic [ref=e345]:
+              - generic [ref=e346]:
+                - heading "Raport zakwaterowania" [level=3] [ref=e347]
+                - paragraph [ref=e348]: Generuje raport XLSX pokazujący stan zakwaterowania w wybranym okresie.
+              - generic [ref=e350]:
+                - generic [ref=e351]:
+                  - generic [ref=e352]:
+                    - text: Rok
+                    - combobox [ref=e353] [cursor=pointer]:
+                      - generic: "2026"
+                      - img [ref=e354]
+                  - generic [ref=e356]:
+                    - text: Miesiąc
+                    - combobox [ref=e357] [cursor=pointer]:
+                      - generic: "2"
+                      - img [ref=e358]
+                  - generic [ref=e360]:
+                    - text: Koordynator
+                    - combobox [ref=e361] [cursor=pointer]:
+                      - generic: Wszyscy koordynatorzy
+                      - img [ref=e362]
+                  - button "Generuj raport" [ref=e364] [cursor=pointer]:
+                    - img [ref=e365]
+                    - generic [ref=e368]: Generuj raport
+                - generic [ref=e369]:
+                  - switch "Uwzględnij historię zmian adresów w raporcie" [ref=e370] [cursor=pointer]
+                  - generic [ref=e371]: Uwzględnij historię zmian adresów w raporcie
+            - generic [ref=e372]:
+              - generic [ref=e373]:
+                - heading "Generowanie raportu kosztów (NZ)" [level=3] [ref=e374]
+                - paragraph [ref=e375]: Wygeneruj raport przychodów od mieszkańców (NZ) w formacie XLSX.
+              - generic [ref=e377]:
+                - generic [ref=e378]:
+                  - text: Rok
+                  - combobox [ref=e379] [cursor=pointer]:
+                    - generic: "2026"
+                    - img [ref=e380]
+                - generic [ref=e382]:
+                  - text: Miesiąc
+                  - combobox [ref=e383] [cursor=pointer]:
+                    - generic: "2"
+                    - img [ref=e384]
+                - generic [ref=e386]:
+                  - text: Koordynator
+                  - combobox [ref=e387] [cursor=pointer]:
+                    - generic: Wszyscy koordynatorzy
+                    - img [ref=e388]
+                - button "Generuj raport (NZ)" [ref=e390] [cursor=pointer]:
+                  - img [ref=e391]
+                  - generic [ref=e394]: Generuj raport (NZ)
+          - generic [ref=e395]:
+            - generic [ref=e396]:
+              - heading "Akcje masowe" [level=3] [ref=e397]
+              - paragraph [ref=e398]: Zarządzaj danymi pracowników hurtowo.
+            - generic [ref=e399]:
+              - generic [ref=e400]:
+                - generic [ref=e401]:
+                  - heading "Masowe usuwanie" [level=3] [ref=e402]
+                  - paragraph [ref=e403]: Te akcje są nieodwracalne.
+                - generic [ref=e404]:
+                  - button "Usuń wszystkich aktywnych" [ref=e405] [cursor=pointer]:
+                    - img [ref=e406]
+                    - text: Usuń wszystkich aktywnych
+                  - button "Usuń wszystkich zwolnionych" [ref=e409] [cursor=pointer]:
+                    - img [ref=e410]
+                    - text: Usuń wszystkich zwolnionych
+              - generic [ref=e413]:
+                - generic [ref=e414]:
+                  - heading "Przenoszenie pracowników" [level=3] [ref=e415]
+                  - paragraph [ref=e416]: Przenieś wszystkich pracowników od jednego koordynatora do drugiego.
+                - generic [ref=e417]:
+                  - generic [ref=e418]:
+                    - text: Od koordynatora
+                    - combobox [ref=e419] [cursor=pointer]:
+                      - generic: Wybierz koordynatora
+                      - img [ref=e420]
+                  - generic [ref=e422]:
+                    - text: Do koordynatora
+                    - combobox [ref=e423] [cursor=pointer]:
+                      - generic: Wybierz koordynatora
+                      - img [ref=e424]
+                  - button "Przenieś" [ref=e426] [cursor=pointer]
+              - generic [ref=e427]:
+                - generic [ref=e428]:
+                  - heading "Usuwanie pracowników koordynatora" [level=3] [ref=e429]
+                  - paragraph [ref=e430]: Trwale usuwa wszystkich pracowników (aktywnych i zwolnionych) przypisanych do wybranego koordynatora. Ta akcja jest nieodwracalna.
+                - generic [ref=e431]:
+                  - generic [ref=e432]:
+                    - text: Koordynator
+                    - combobox [ref=e433] [cursor=pointer]:
+                      - generic: Wybierz koordynatora
+                      - img [ref=e434]
+                  - button "Usuń pracowników" [disabled]:
+                    - img
+                    - text: Usuń pracowników
+              - generic [ref=e436]:
+                - generic [ref=e437]:
+                  - heading "Usuwanie pracowników wg zakładu" [level=3] [ref=e438]
+                  - paragraph [ref=e439]: Trwale usuwa wszystkich pracowników (aktywnych i zwolnionych) przypisanych do wybranego zakładu. Ta akcja jest nieodwracalna.
+                - generic [ref=e440]:
+                  - generic [ref=e441]:
+                    - text: Zakład
+                    - combobox [ref=e442] [cursor=pointer]:
+                      - generic: Wybierz zakład
+                      - img [ref=e443]
+                  - button "Usuń pracowników" [disabled]:
+                    - img
+                    - text: Usuń pracowników
+  - region "Notifications (F8)":
+    - list
+  - alert [ref=e445]
+```

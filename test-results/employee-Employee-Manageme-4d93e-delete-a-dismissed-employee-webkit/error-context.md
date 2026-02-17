@@ -1,0 +1,490 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - navigation [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e7]:
+            - img [ref=e8]
+            - generic [ref=e11]: SmartHouse
+          - button [ref=e12] [cursor=pointer]:
+            - img [ref=e13]
+        - list [ref=e16]:
+          - listitem [ref=e17]:
+            - link "Pulpit" [ref=e18]:
+              - /url: /dashboard?view=dashboard
+              - img [ref=e20]
+              - generic [ref=e23]: Pulpit
+          - listitem [ref=e24]:
+            - link "Mieszkańcy" [ref=e25]:
+              - /url: /dashboard?view=employees
+              - img [ref=e27]
+              - generic [ref=e32]: Mieszkańcy
+          - listitem [ref=e33]:
+            - link "Zakwaterowanie" [ref=e34]:
+              - /url: /dashboard?view=housing
+              - img [ref=e36]
+              - generic [ref=e39]: Zakwaterowanie
+          - listitem [ref=e40]:
+            - link "Ustawienia" [ref=e41]:
+              - /url: /dashboard?view=settings
+              - img [ref=e43]
+              - generic [ref=e46]: Ustawienia
+    - generic [ref=e48]:
+      - banner [ref=e49]:
+        - generic [ref=e50]:
+          - img [ref=e51]
+          - heading "SmartHouse" [level=1] [ref=e54]
+        - generic [ref=e55]:
+          - button "77" [ref=e56] [cursor=pointer]:
+            - img [ref=e57]
+            - generic [ref=e60]: "77"
+          - button [ref=e61] [cursor=pointer]:
+            - img [ref=e62]
+      - main [ref=e65]:
+        - generic [ref=e66]:
+          - generic [ref=e67]:
+            - generic [ref=e68]:
+              - heading "Filtry Główne" [level=3] [ref=e69]
+              - paragraph [ref=e70]: Wybierz koordynatora, aby filtrować dane w całej aplikacji.
+            - generic [ref=e73]:
+              - generic [ref=e74]: Koordynator
+              - combobox [ref=e75] [cursor=pointer]:
+                - generic [ref=e76]: Wszyscy Koordynatorzy
+                - img [ref=e77]
+          - generic [ref=e80]:
+            - generic [ref=e82]:
+              - generic [ref=e83]:
+                - heading "Wszyscy pracownicy" [level=3] [ref=e84]
+                - img [ref=e85]
+              - generic [ref=e91]: "2149"
+            - generic [ref=e93]:
+              - generic [ref=e94]:
+                - heading "Mieszkańcy (NZ)" [level=3] [ref=e95]
+                - img [ref=e96]
+              - generic [ref=e100]: "109"
+            - generic [ref=e102]:
+              - generic [ref=e103]:
+                - heading "Używane mieszkania" [level=3] [ref=e104]
+                - img [ref=e105]
+              - generic [ref=e109]: "201"
+            - generic [ref=e111] [cursor=pointer]:
+              - generic [ref=e112]:
+                - heading "Wykwaterowania (30 dni)" [level=3] [ref=e113]
+                - img [ref=e114]
+              - generic [ref=e119]: "38"
+          - generic [ref=e120]:
+            - heading "Szybkie działania" [level=3] [ref=e122]
+            - generic [ref=e124]:
+              - button "Dodaj pracownika" [ref=e125] [cursor=pointer]:
+                - img [ref=e126]
+                - generic [ref=e129]: Dodaj pracownika
+              - button "Dodaj mieszkańca (NZ)" [ref=e130] [cursor=pointer]:
+                - img [ref=e131]
+                - generic [ref=e134]: Dodaj mieszkańca (NZ)
+              - button "Wyszukaj mieszkańca" [ref=e135] [cursor=pointer]:
+                - img [ref=e136]
+                - generic [ref=e139]: Wyszukaj mieszkańca
+              - button "Przeglądaj mieszkania" [ref=e140] [cursor=pointer]:
+                - img [ref=e141]
+                - generic [ref=e144]: Przeglądaj mieszkania
+              - button "Włącz PUSH Powiadomienia" [disabled]:
+                - img
+                - generic: Włącz PUSH Powiadomienia
+          - generic [ref=e145]:
+            - generic [ref=e146]:
+              - heading "Ilość osób (NZ) wg Lokalizacji" [level=3] [ref=e150]
+              - img [ref=e155]:
+                - generic [ref=e160]:
+                  - generic [ref=e162]: Leszno
+                  - generic [ref=e164]: Oława
+                  - generic [ref=e166]: Świdnica
+                  - generic [ref=e168]: Żarów
+                  - generic [ref=e170]: Kutno
+                  - generic [ref=e172]: Jelcz-Laskowice
+                  - generic [ref=e174]: Strumień
+                  - generic [ref=e176]: Warszawa
+                  - generic [ref=e178]: Wrocław
+                  - generic [ref=e180]: Strzelin
+                  - generic [ref=e182]: Kalisz
+                  - generic [ref=e184]: Twardogóra
+                  - generic [ref=e186]: Oleśnica
+                  - generic [ref=e188]: Opole
+                - generic [ref=e220] [cursor=pointer]:
+                  - generic [ref=e221]: "20"
+                  - generic [ref=e222]: "18"
+                  - generic [ref=e223]: "15"
+                  - generic [ref=e224]: "10"
+                  - generic [ref=e225]: "8"
+                  - generic [ref=e226]: "8"
+                  - generic [ref=e227]: "6"
+                  - generic [ref=e228]: "6"
+                  - generic [ref=e229]: "5"
+                  - generic [ref=e230]: "4"
+                  - generic [ref=e231]: "4"
+                  - generic [ref=e232]: "3"
+                  - generic [ref=e233]: "1"
+                  - generic [ref=e234]: "1"
+            - generic [ref=e235]:
+              - generic [ref=e236]:
+                - heading "Pracownicy wg zakładu" [level=3] [ref=e237]
+                - generic [ref=e238]:
+                  - combobox [ref=e239] [cursor=pointer]:
+                    - generic [ref=e240]: Wszystkie zakłady
+                    - img [ref=e241]
+                  - combobox [ref=e244] [cursor=pointer]:
+                    - generic: Wg ilości
+                    - img [ref=e245]
+              - img [ref=e250]:
+                - generic [ref=e255]:
+                  - generic [ref=e257]: STRUMET
+                  - generic [ref=e259]: EURO - COMFORT
+                  - generic [ref=e261]: RECO
+                  - generic [ref=e263]: ANIMEX K3
+                  - generic [ref=e265]: ANTOLIN
+                  - generic [ref=e267]: MACZFIT
+                  - generic [ref=e269]: AUTOLIV(JELCZ-LASKOWICE)
+                  - generic [ref=e271]: EUROLINE
+                  - generic [ref=e273]: Gała-Meble
+                  - generic [ref=e275]: LEGRAND
+                  - generic [ref=e277]: FAM RAWA
+                  - generic [ref=e279]: Tomabo
+                  - generic [ref=e281]: ELECTROLUXŚWIDNICA
+                  - generic [ref=e283]: ILPEA
+                  - generic [ref=e285]: FAM - Oborniki
+                  - generic [ref=e287]: FAM OPOLE
+                  - generic [ref=e289]: ELECTROLUX(OŁAWA)
+                  - generic [ref=e291]: TB LOGISTICS
+                  - generic [ref=e293]: Simoldes Oława
+                  - generic [ref=e295]: IQ Metal
+                  - generic [ref=e297]: IDEAL
+                  - generic [ref=e299]: GKN
+                  - generic [ref=e301]: HITACHI
+                  - generic [ref=e303]: Staco
+                  - generic [ref=e305]: JOTUL
+                  - generic [ref=e307]: HILWOOD (GAŁA)
+                  - generic [ref=e309]: WESSEL
+                  - generic [ref=e311]: PCO
+                  - generic [ref=e313]: FAM WIELUŃ
+                  - generic [ref=e315]: Reman
+                  - generic [ref=e317]: IGOPAK
+                  - generic [ref=e319]: DOLMEB
+                  - generic [ref=e321]: JEDNOŚĆ
+                  - generic [ref=e323]: BARTEX
+                  - generic [ref=e325]: Simoldes Jelcz
+                  - generic [ref=e327]: FAM WROCŁAW
+                  - generic [ref=e329]: Borgers
+                  - generic [ref=e331]: JONKERS METAL
+                  - generic [ref=e333]: WAGONY
+                  - generic [ref=e335]: TEXTIL
+                  - generic [ref=e337]: EPP
+                  - generic [ref=e339]: Dyka
+                  - generic [ref=e341]: WABCO
+                  - generic [ref=e343]: RED POINT
+                  - generic [ref=e345]: ATUT PLUS
+                  - generic [ref=e347]: Bosch
+                  - generic [ref=e349]: Siatmar
+                  - generic [ref=e351]: TP REFLEX
+                  - generic [ref=e353]: Zremb
+                  - generic [ref=e355]: PEBEK Koszalin
+                  - generic [ref=e357]: NEFAB
+                  - generic [ref=e359]: ARO-TUBI
+                  - generic [ref=e361]: ELECTROLUXŻARÓW
+                  - generic [ref=e363]: PEBEK
+                  - generic [ref=e365]: INTERTON
+                  - generic [ref=e367]: KACZMAREKPRUSICE
+                  - generic [ref=e369]: SIMOLDES ŻORY
+                  - generic [ref=e371]: LURGAN
+                  - generic [ref=e373]: TRIDON CLAMP
+                  - generic [ref=e375]: POLYTECHNIK
+                  - generic [ref=e377]: GAŁASIAK
+                  - generic [ref=e379]: Jaś i Małgosia
+                  - generic [ref=e381]: BESSER
+                  - generic [ref=e383]: KONVEYOR
+                  - generic [ref=e385]: Pebek Świdnica
+                  - generic [ref=e387]: Altamit
+                  - generic [ref=e389]: Zotomar
+                  - generic [ref=e391]: NAMAR
+                  - generic [ref=e393]: MARKUS
+                  - generic [ref=e395]: Brak zakładu
+                  - generic [ref=e397]: MEPROZET
+                  - generic [ref=e399]: CAST
+                - generic [ref=e547] [cursor=pointer]:
+                  - generic [ref=e548]: "262"
+                  - generic [ref=e549]: "250"
+                  - generic [ref=e550]: "171"
+                  - generic [ref=e551]: "162"
+                  - generic [ref=e552]: "149"
+                  - generic [ref=e553]: "144"
+                  - generic [ref=e554]: "118"
+                  - generic [ref=e555]: "93"
+                  - generic [ref=e556]: "69"
+                  - generic [ref=e557]: "58"
+                  - generic [ref=e558]: "54"
+                  - generic [ref=e559]: "40"
+                  - generic [ref=e560]: "35"
+                  - generic [ref=e561]: "35"
+                  - generic [ref=e562]: "27"
+                  - generic [ref=e563]: "26"
+                  - generic [ref=e564]: "25"
+                  - generic [ref=e565]: "25"
+                  - generic [ref=e566]: "20"
+                  - generic [ref=e567]: "19"
+                  - generic [ref=e568]: "19"
+                  - generic [ref=e569]: "19"
+                  - generic [ref=e570]: "18"
+                  - generic [ref=e571]: "18"
+                  - generic [ref=e572]: "17"
+                  - generic [ref=e573]: "17"
+                  - generic [ref=e574]: "15"
+                  - generic [ref=e575]: "15"
+                  - generic [ref=e576]: "14"
+                  - generic [ref=e577]: "13"
+                  - generic [ref=e578]: "13"
+                  - generic [ref=e579]: "11"
+                  - generic [ref=e580]: "11"
+                  - generic [ref=e581]: "10"
+                  - generic [ref=e582]: "10"
+                  - generic [ref=e583]: "10"
+                  - generic [ref=e584]: "10"
+                  - generic [ref=e585]: "9"
+                  - generic [ref=e586]: "7"
+                  - generic [ref=e587]: "7"
+                  - generic [ref=e588]: "6"
+                  - generic [ref=e589]: "6"
+                  - generic [ref=e590]: "6"
+                  - generic [ref=e591]: "6"
+                  - generic [ref=e592]: "5"
+                  - generic [ref=e593]: "5"
+                  - generic [ref=e594]: "5"
+                  - generic [ref=e595]: "5"
+                  - generic [ref=e596]: "4"
+                  - generic [ref=e597]: "4"
+                  - generic [ref=e598]: "4"
+                  - generic [ref=e599]: "4"
+                  - generic [ref=e600]: "4"
+                  - generic [ref=e601]: "4"
+                  - generic [ref=e602]: "4"
+                  - generic [ref=e603]: "3"
+                  - generic [ref=e604]: "3"
+                  - generic [ref=e605]: "3"
+                  - generic [ref=e606]: "3"
+                  - generic [ref=e607]: "3"
+                  - generic [ref=e608]: "2"
+                  - generic [ref=e609]: "2"
+                  - generic [ref=e610]: "2"
+                  - generic [ref=e611]: "2"
+                  - generic [ref=e612]: "2"
+                  - generic [ref=e613]: "1"
+                  - generic [ref=e614]: "1"
+                  - generic [ref=e615]: "1"
+                  - generic [ref=e616]: "1"
+                  - generic [ref=e617]: "1"
+                  - generic [ref=e618]: "1"
+                  - generic [ref=e619]: "1"
+            - generic [ref=e620]:
+              - generic [ref=e621]:
+                - heading "Pracownicy wg koordynatora" [level=3] [ref=e622]
+                - generic [ref=e623]:
+                  - combobox [ref=e624] [cursor=pointer]:
+                    - generic [ref=e625]: Wszyscy koordynatorzy
+                    - img [ref=e626]
+                  - combobox [ref=e629] [cursor=pointer]:
+                    - generic: Wg ilości
+                    - img [ref=e630]
+              - img [ref=e635]:
+                - generic [ref=e640]:
+                  - generic [ref=e642]: KalashnykOleksandr
+                  - generic [ref=e644]: HoliadynetsOleksandr
+                  - generic [ref=e646]: Khayal
+                  - generic [ref=e648]: Veklyak Oleksandr
+                  - generic [ref=e650]: Yachminnyk Roman
+                  - generic [ref=e652]: Zaiats Yevhenii
+                  - generic [ref=e654]: Hertsoh Veronika
+                  - generic [ref=e656]: Yankov Anatolii
+                  - generic [ref=e658]: Hetman Yevhen
+                  - generic [ref=e660]: Krakhin Mykyta
+                  - generic [ref=e662]: Melnychuk Roman
+                  - generic [ref=e664]: Beqa Darbaidze
+                  - generic [ref=e666]: Fedchenko Artem
+                  - generic [ref=e668]: SushchenkoOleksandra
+                  - generic [ref=e670]: Herasimovych Oleh
+                  - generic [ref=e672]: Vaskou Dzmitry
+                  - generic [ref=e674]: Kashkarov Yaroslav
+                - generic [ref=e712]:
+                  - generic [ref=e713]: "414"
+                  - generic [ref=e714]: "262"
+                  - generic [ref=e715]: "216"
+                  - generic [ref=e716]: "175"
+                  - generic [ref=e717]: "162"
+                  - generic [ref=e718]: "154"
+                  - generic [ref=e719]: "131"
+                  - generic [ref=e720]: "126"
+                  - generic [ref=e721]: "109"
+                  - generic [ref=e722]: "105"
+                  - generic [ref=e723]: "87"
+                  - generic [ref=e724]: "54"
+                  - generic [ref=e725]: "49"
+                  - generic [ref=e726]: "49"
+                  - generic [ref=e727]: "29"
+                  - generic [ref=e728]: "17"
+                  - generic [ref=e729]: "10"
+            - generic [ref=e730]:
+              - generic [ref=e731]:
+                - heading "Pracownicy wg narodowości" [level=3] [ref=e732]
+                - generic [ref=e733]:
+                  - combobox [ref=e734] [cursor=pointer]:
+                    - generic [ref=e735]: Wszystkie narodowości
+                    - img [ref=e736]
+                  - combobox [ref=e739] [cursor=pointer]:
+                    - generic: Wg ilości
+                    - img [ref=e740]
+              - img [ref=e745]:
+                - generic [ref=e750]:
+                  - generic [ref=e752]: ukraińskie
+                  - generic [ref=e754]: indyjskie
+                  - generic [ref=e756]: kolumbijskie
+                  - generic [ref=e758]: filipińskie
+                  - generic [ref=e760]: gruzińskie
+                  - generic [ref=e762]: lankijskie
+                  - generic [ref=e764]: nepalskie
+                  - generic [ref=e766]: indonezyjskie
+                  - generic [ref=e768]: białoruskie
+                  - generic [ref=e770]: mołdawskie
+                  - generic [ref=e772]: Sri Lanka
+                  - generic [ref=e774]: peruwiańskie
+                  - generic [ref=e776]: paragwajskie
+                  - generic [ref=e778]: NEPAL
+                  - generic [ref=e780]: polskie
+                  - generic [ref=e782]: meksykańskie
+                  - generic [ref=e784]: wenezuelskie
+                  - generic [ref=e786]: azerbejdżańskie
+                  - generic [ref=e788]: uzbekistańskie
+                  - generic [ref=e790]: kazachstańskie
+                  - generic [ref=e792]: armeńskie
+                  - generic [ref=e794]: NIEPALSKIE
+                  - generic [ref=e796]: ormiańskie
+                  - generic [ref=e798]: banglijskie
+                  - generic [ref=e800]: INDYJSKIE
+                  - generic [ref=e802]: Bangladesh
+                  - generic [ref=e804]: ukraina
+                  - generic [ref=e806]: kenijskie
+                  - generic [ref=e808]: gwatemalskie
+                  - generic [ref=e810]: turkmenistańskie
+                  - generic [ref=e812]: kolumnijskie
+                  - generic [ref=e814]: turkmeńskie
+                  - generic [ref=e816]: marokańskie
+                  - generic [ref=e818]: honduraskie
+                  - generic [ref=e820]: argentyńskie
+                  - generic [ref=e822]: bangladeskie
+                - generic [ref=e898]:
+                  - generic [ref=e899]: "1162"
+                  - generic [ref=e900]: "387"
+                  - generic [ref=e901]: "252"
+                  - generic [ref=e902]: "60"
+                  - generic [ref=e903]: "57"
+                  - generic [ref=e904]: "48"
+                  - generic [ref=e905]: "42"
+                  - generic [ref=e906]: "38"
+                  - generic [ref=e907]: "13"
+                  - generic [ref=e908]: "12"
+                  - generic [ref=e909]: "9"
+                  - generic [ref=e910]: "9"
+                  - generic [ref=e911]: "7"
+                  - generic [ref=e912]: "7"
+                  - generic [ref=e913]: "7"
+                  - generic [ref=e914]: "7"
+                  - generic [ref=e915]: "5"
+                  - generic [ref=e916]: "3"
+                  - generic [ref=e917]: "3"
+                  - generic [ref=e918]: "3"
+                  - generic [ref=e919]: "2"
+                  - generic [ref=e920]: "2"
+                  - generic [ref=e921]: "1"
+                  - generic [ref=e922]: "1"
+                  - generic [ref=e923]: "1"
+                  - generic [ref=e924]: "1"
+                  - generic [ref=e925]: "1"
+                  - generic [ref=e926]: "1"
+                  - generic [ref=e927]: "1"
+                  - generic [ref=e928]: "1"
+                  - generic [ref=e929]: "1"
+                  - generic [ref=e930]: "1"
+                  - generic [ref=e931]: "1"
+                  - generic [ref=e932]: "1"
+                  - generic [ref=e933]: "1"
+                  - generic [ref=e934]: "1"
+            - generic [ref=e935]:
+              - generic [ref=e936]:
+                - heading "Statystyka wyjazdów" [level=3] [ref=e938]
+                - generic [ref=e939]:
+                  - combobox [ref=e940] [cursor=pointer]:
+                    - generic: "2026"
+                    - img [ref=e941]
+                  - combobox [ref=e943] [cursor=pointer]:
+                    - generic: Wszystkie miesiące
+                    - img [ref=e944]
+              - img [ref=e950]:
+                - generic [ref=e955]:
+                  - generic [ref=e957]: sty
+                  - generic [ref=e959]: lut
+                  - generic [ref=e961]: mar
+                  - generic [ref=e963]: kwi
+                  - generic [ref=e965]: maj
+                  - generic [ref=e967]: cze
+                  - generic [ref=e969]: lip
+                  - generic [ref=e971]: sie
+                  - generic [ref=e973]: wrz
+                  - generic [ref=e975]: paź
+                  - generic [ref=e977]: lis
+                  - generic [ref=e979]: gru
+                - generic [ref=e1005]:
+                  - generic [ref=e1006]: "191"
+                  - generic [ref=e1007]: "160"
+                  - generic [ref=e1008]: "16"
+                  - generic [ref=e1009]: "2"
+                  - generic [ref=e1010]: "3"
+                  - generic [ref=e1011]: "1"
+                  - generic [ref=e1012]: "1"
+                  - generic [ref=e1013]: "7"
+                  - generic [ref=e1014]: "3"
+                  - generic [ref=e1015]: "4"
+                  - generic [ref=e1016]: "25"
+            - generic [ref=e1017]:
+              - generic [ref=e1018]:
+                - heading "Potrącenia" [level=3] [ref=e1021]
+                - generic [ref=e1022]:
+                  - generic [ref=e1023]:
+                    - text: Rok
+                    - combobox [ref=e1024] [cursor=pointer]:
+                      - generic: "2026"
+                      - img [ref=e1025]
+                  - generic [ref=e1027]:
+                    - text: Miesiąc
+                    - combobox [ref=e1028] [cursor=pointer]:
+                      - generic: Wszystkie miesiące
+                      - img [ref=e1029]
+              - img [ref=e1035]:
+                - generic [ref=e1040]:
+                  - generic [ref=e1042]: Oława
+                  - generic [ref=e1044]: Warszawa
+                  - generic [ref=e1046]: Kościan
+                  - generic [ref=e1048]: Jelcz-Laskowice
+                  - generic [ref=e1050]: Leszno
+                  - generic [ref=e1052]: Wrocław
+                  - generic [ref=e1054]: Strumień
+                - generic [ref=e1072] [cursor=pointer]:
+                  - generic [ref=e1073]: "12600.00"
+                  - generic [ref=e1074]: "9950.00"
+                  - generic [ref=e1075]: "5850.00"
+                  - generic [ref=e1076]: "2850.00"
+                  - generic [ref=e1077]: "2150.00"
+                  - generic [ref=e1078]: "1650.00"
+                  - generic [ref=e1079]: "750.00"
+  - region "Notifications (F8)":
+    - list
+  - alert [ref=e1080]
+  - generic [ref=e1081]: "750.00"
+```

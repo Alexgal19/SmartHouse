@@ -1,0 +1,76 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - navigation [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e7]:
+            - img [ref=e8]
+            - generic [ref=e11]: SmartHouse
+          - button [ref=e12] [cursor=pointer]:
+            - img [ref=e13]
+        - list [ref=e16]:
+          - listitem [ref=e17]:
+            - link "Pulpit" [ref=e18]:
+              - /url: /dashboard?view=dashboard
+              - img [ref=e20]
+              - generic [ref=e23]: Pulpit
+          - listitem [ref=e24]:
+            - link "Mieszkańcy" [ref=e25]:
+              - /url: /dashboard?view=employees
+              - img [ref=e27]
+              - generic [ref=e32]: Mieszkańcy
+          - listitem [ref=e33]:
+            - link "Zakwaterowanie" [ref=e34]:
+              - /url: /dashboard?view=housing
+              - img [ref=e36]
+              - generic [ref=e39]: Zakwaterowanie
+          - listitem [ref=e40]:
+            - link "Ustawienia" [ref=e41]:
+              - /url: /dashboard?view=settings
+              - img [ref=e43]
+              - generic [ref=e46]: Ustawienia
+    - generic [ref=e48]:
+      - banner [ref=e49]:
+        - generic [ref=e50]:
+          - img [ref=e51]
+          - heading "SmartHouse" [level=1] [ref=e54]
+        - generic [ref=e55]:
+          - button "77" [ref=e56] [cursor=pointer]:
+            - img [ref=e57]
+            - generic [ref=e60]: "77"
+          - button [ref=e61] [cursor=pointer]:
+            - img [ref=e62]
+      - main [ref=e65]:
+        - generic [ref=e66]:
+          - generic [ref=e67]:
+            - generic [ref=e68]:
+              - heading "Adresy" [level=3] [ref=e69]
+              - paragraph [ref=e70]: Wybierz adres, aby zobaczyć szczegóły.
+            - generic [ref=e73]:
+              - generic [ref=e74]:
+                - generic [ref=e75]: Szukaj adresu
+                - textbox "Szukaj adresu" [active] [ref=e76]:
+                  - /placeholder: Wpisz nazwę adresu...
+                  - text: Testowa
+              - generic [ref=e77]:
+                - generic [ref=e78]: Miejscowość
+                - combobox "Miejscowość" [ref=e79] [cursor=pointer]:
+                  - generic: Wszystkie miejscowości
+                  - img [ref=e80]
+              - generic [ref=e82]:
+                - switch "Tylko z wolnymi miejscami" [ref=e83] [cursor=pointer]
+                - generic [ref=e84]: Tylko z wolnymi miejscami
+          - generic [ref=e87]:
+            - generic [ref=e88]:
+              - heading "Szczegóły adresu" [level=3] [ref=e89]
+              - paragraph [ref=e90]: Wybierz adres z listy, aby zobaczyć szczegóły.
+            - generic [ref=e93]:
+              - img [ref=e94]
+              - paragraph [ref=e95]: Nie wybrano adresu
+  - region "Notifications (F8)":
+    - list
+  - alert [ref=e96]
+```
