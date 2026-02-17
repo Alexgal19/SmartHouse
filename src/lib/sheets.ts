@@ -78,9 +78,9 @@ function getAuth(): JWT {
     }
 
     return new JWT({
-      email: email,
-      key: key.replace(/\\n/g, '\n'),
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+        email: email,
+        key: key.replace(/\\n/g, '\n'),
+        scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
 }
 
@@ -118,10 +118,10 @@ export async function getSheet(title: string, headers: string[]): Promise<Google
                 if (missingHeaders.length > 0) {
                     // Calculate required columns
                     const requiredCols = currentHeaders.length + missingHeaders.length;
-                    
+
                     // Resize if necessary to accommodate new headers
                     if (sheet.columnCount < requiredCols) {
-                         await withTimeout(sheet.resize({ columnCount: requiredCols, rowCount: sheet.rowCount }), TIMEOUT_MS, `sheet.resize(${title})`);
+                        await withTimeout(sheet.resize({ columnCount: requiredCols, rowCount: sheet.rowCount }), TIMEOUT_MS, `sheet.resize(${title})`);
                     }
 
                     // This is a safer way to add headers without resizing the entire sheet,
@@ -136,7 +136,7 @@ export async function getSheet(title: string, headers: string[]): Promise<Google
                     });
 
                     await withTimeout(sheet.saveUpdatedCells(), TIMEOUT_MS, `sheet.saveUpdatedCells(${title})`);
-                    
+
                     // Manually update the headerValues on the sheet object to avoid another network call
                     // This is safe because we just added them.
                     sheet.headerValues.push(...missingHeaders);
@@ -144,7 +144,7 @@ export async function getSheet(title: string, headers: string[]): Promise<Google
             }
         }
         return sheet;
-    } catch(error: unknown) {
+    } catch (error: unknown) {
         console.error(`Failed to get or create sheet "${title}":`, error);
         throw new Error(`Failed to access sheet "${title}". Original error: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
@@ -223,14 +223,14 @@ const splitFullName = (fullName: string | null | undefined): { firstName: string
 
 const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     const plainObject = row;
-    
+
     const id = plainObject.id;
     if (!id || (!plainObject.lastName && !plainObject.fullName)) {
         return null;
     }
 
     const { firstName, lastName } = (plainObject.lastName && plainObject.firstName)
-        ? { firstName: plainObject.firstName as string, lastName: plainObject.lastName as string}
+        ? { firstName: plainObject.firstName as string, lastName: plainObject.lastName as string }
         : splitFullName(plainObject.fullName as string);
 
     if (!lastName) {
@@ -240,7 +240,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
 
     const checkInDate = safeFormat(plainObject.checkInDate);
     if (!checkInDate) {
-      // Don't skip, just warn and proceed with null.
+        // Don't skip, just warn and proceed with null.
         console.warn(`[Data Deserialization] Employee "${lastName}, ${firstName}" (ID: ${id}) has an invalid or missing check-in date: "${plainObject.checkInDate}". The record will be loaded, but this may affect functionality.`);
     }
 
@@ -248,12 +248,12 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     if (plainObject.deductionReason && typeof plainObject.deductionReason === 'string') {
         try {
             const parsed = JSON.parse(plainObject.deductionReason);
-            if(Array.isArray(parsed)) deductionReason = parsed;
-        } catch(e) {
+            if (Array.isArray(parsed)) deductionReason = parsed;
+        } catch (e) {
             console.warn(`Could not parse deductionReason for employee ${id}:`, e);
         }
     }
-    
+
     const validDepositValues = ['Tak', 'Nie', 'Nie dotyczy'];
     const depositReturned = validDepositValues.includes(plainObject.depositReturned as string) ? plainObject.depositReturned as Employee['depositReturned'] : null;
 
@@ -284,7 +284,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         deductionReason: deductionReason,
         deductionEntryDate: safeFormat(plainObject.deductionEntryDate),
     };
-    
+
     return newEmployee;
 };
 
@@ -296,14 +296,14 @@ const deserializeNonEmployee = (row: Record<string, unknown>): NonEmployee | nul
     }
 
     const { firstName, lastName } = (plainObject.lastName && plainObject.firstName)
-        ? { firstName: plainObject.firstName as string, lastName: plainObject.lastName as string}
+        ? { firstName: plainObject.firstName as string, lastName: plainObject.lastName as string }
         : splitFullName(plainObject.fullName as string);
 
     if (!lastName) {
         console.warn(`[Data Deserialization] Skipping non-employee record with ID "${id}" due to missing last name.`);
         return null;
     }
-    
+
     const checkInDate = safeFormat(plainObject.checkInDate);
     if (!checkInDate) {
         // Don't skip, just warn and proceed with null.
@@ -335,17 +335,17 @@ const deserializeNotification = (row: Record<string, unknown>): Notification | n
 
     const id = plainObject.id;
     if (!id) return null;
-    
+
     const createdAtString = plainObject.createdAt as string;
     const createdAt = createdAtString ? new Date(createdAtString).toISOString() : new Date(0).toISOString();
-    
+
     let changes: NotificationChange[] = [];
     if (plainObject.changes && typeof plainObject.changes === 'string') {
         try {
             const parsed = JSON.parse(plainObject.changes);
             if (Array.isArray(parsed)) changes = parsed;
-        } catch(e) {
-             console.warn(`Could not parse changes for notification ${id}:`, e);
+        } catch (e) {
+            console.warn(`Could not parse changes for notification ${id}:`, e);
         }
     }
 
@@ -388,14 +388,14 @@ const deserializeBokResident = (row: Record<string, unknown>): BokResident | nul
     }
 
     const { firstName, lastName } = (plainObject.lastName && plainObject.firstName)
-        ? { firstName: plainObject.firstName as string, lastName: plainObject.lastName as string}
+        ? { firstName: plainObject.firstName as string, lastName: plainObject.lastName as string }
         : splitFullName(plainObject.fullName as string);
 
     if (!lastName) {
         console.warn(`[Data Deserialization] Skipping BOK resident record with ID "${id}" due to missing last name.`);
         return null;
     }
-    
+
     const checkInDate = safeFormat(plainObject.checkInDate);
     if (!checkInDate) {
         console.warn(`[Data Deserialization] BOK resident "${lastName}, ${firstName}" (ID: ${id}) has an invalid or missing check-in date.`);
@@ -444,11 +444,11 @@ const getSheetData = async (doc: GoogleSpreadsheet, title: string, retry = 0): P
 };
 
 
-async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
-     if (settingsCache && (Date.now() - settingsCache.timestamp < SETTINGS_CACHE_TTL)) {
-         return settingsCache.data;
-     }
-     try {
+async function getSettingsFromSheet(doc: GoogleSpreadsheet, bypassCache = false): Promise<Settings> {
+    if (!bypassCache && settingsCache && (Date.now() - settingsCache.timestamp < SETTINGS_CACHE_TTL)) {
+        return settingsCache.data;
+    }
+    try {
         // Batch requests to avoid hitting rate limits (429)
         // Batch 1: Core Definitions (Addresses, Rooms, Coords) - These are largest
         const [addressRows, roomRows] = await Promise.all([
@@ -492,7 +492,7 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
             getSheetData(doc, SHEET_NAME_BOK_RETURN_OPTIONS),
             getSheetData(doc, SHEET_NAME_BOK_STATUSES),
         ]);
-        
+
         const roomsByAddressId = new Map<string, Room[]>();
         roomRows.forEach(rowObj => {
             const addressId = rowObj.addressId as string;
@@ -503,7 +503,7 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
                 const isActiveRaw = rowObj.isActive !== undefined ? rowObj.isActive : rowObj['isactive'];
                 let isActive = true;
                 if (isActiveRaw !== undefined && isActiveRaw !== null && String(isActiveRaw).trim() !== '') {
-                     isActive = String(isActiveRaw).toUpperCase() === 'TRUE';
+                    isActive = String(isActiveRaw).toUpperCase() === 'TRUE';
                 }
 
                 roomsByAddressId.get(addressId)!.push({
@@ -519,7 +519,7 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
             const isActiveRaw = rowObj.isActive !== undefined ? rowObj.isActive : rowObj['isactive'];
             let isActive = true;
             if (isActiveRaw !== undefined && isActiveRaw !== null && String(isActiveRaw).trim() !== '') {
-                 isActive = String(isActiveRaw).toUpperCase() === 'TRUE';
+                isActive = String(isActiveRaw).toUpperCase() === 'TRUE';
             }
 
             return {
@@ -533,7 +533,7 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
         });
 
         const coordinators: Coordinator[] = coordinatorRows.map(rowObj => {
-             return {
+            return {
                 uid: rowObj.uid as string,
                 name: rowObj.name as string,
                 isAdmin: rowObj.isAdmin === 'TRUE',
@@ -543,7 +543,7 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet): Promise<Settings> {
                 pushSubscription: (rowObj.pushSubscription as string | null) || null,
             }
         });
-        
+
         const settings: Settings = {
             id: 'global-settings',
             addresses,
@@ -576,15 +576,15 @@ async function getNotificationsFromSheet(doc: GoogleSpreadsheet, recipientId: st
 
         const filtered = allNotifications.filter(n => {
             if (isAdmin) {
-                 // Admins see their own notifications + all important ones
-                 const isImportant = ['success', 'destructive', 'warning'].includes(n.type);
-                 return isImportant || n.recipientId === recipientId;
+                // Admins see their own notifications + all important ones
+                const isImportant = ['success', 'destructive', 'warning'].includes(n.type);
+                return isImportant || n.recipientId === recipientId;
             } else {
                 // Regular users only see notifications addressed to them
                 return n.recipientId === recipientId;
             }
         });
-        
+
         return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } catch (error: unknown) {
         console.error("Error fetching notifications from sheet:", error instanceof Error ? error.message : "Unknown error", error instanceof Error ? error.stack : "");
@@ -594,9 +594,9 @@ async function getNotificationsFromSheet(doc: GoogleSpreadsheet, recipientId: st
 
 // --- Granular Exported Functions ---
 
-export async function getSettings(): Promise<Settings> {
+export async function getSettings(bypassCache = false): Promise<Settings> {
     const doc = await getDoc();
-    return await getSettingsFromSheet(doc);
+    return await getSettingsFromSheet(doc, bypassCache);
 }
 
 export async function getEmployees(): Promise<Employee[]> {
@@ -645,7 +645,7 @@ export async function getRawAddressHistory(): Promise<AddressHistory[]> {
     const rows = await getSheetData(doc, SHEET_NAME_ADDRESS_HISTORY);
     // Return raw history without enrichment
     const data = rows.map(row => deserializeAddressHistory(row)).filter((h): h is AddressHistory => h !== null);
-    
+
     addressHistoryCache = { data, timestamp: Date.now() };
     return data;
 }
@@ -670,11 +670,11 @@ export async function getAllSheetsData(userId?: string, userIsAdmin?: boolean) {
 
         // Address History Enrichment (for backward compatibility)
         const allPeopleMap = new Map([...employees, ...nonEmployees, ...bokResidents].map(p => [p.id, p]));
-        
+
         const addressHistory = rawAddressHistory.map(historyEntry => {
             // Clone to avoid mutating the cached object if it came from cache
-            const entry = { ...historyEntry }; 
-            
+            const entry = { ...historyEntry };
+
             if (!entry.employeeFirstName || !entry.employeeLastName) {
                 const person = allPeopleMap.get(entry.employeeId);
                 if (person) {
@@ -694,14 +694,14 @@ export async function getAllSheetsData(userId?: string, userIsAdmin?: boolean) {
 }
 
 export async function addAddressHistoryEntry(data: Omit<AddressHistory, 'id'>) {
-  const sheet = await getSheet(SHEET_NAME_ADDRESS_HISTORY, ['id', 'employeeId', 'employeeFirstName', 'employeeLastName', 'coordinatorName', 'department', 'address', 'checkInDate', 'checkOutDate']);
-  await withTimeout(sheet.addRow({
-    id: `hist-${Date.now()}`,
-    ...data,
-    checkInDate: data.checkInDate || '',
-    checkOutDate: data.checkOutDate || '',
-  }), TIMEOUT_MS, 'sheet.addRow(AddressHistory)');
-  await invalidateAddressHistoryCache();
+    const sheet = await getSheet(SHEET_NAME_ADDRESS_HISTORY, ['id', 'employeeId', 'employeeFirstName', 'employeeLastName', 'coordinatorName', 'department', 'address', 'checkInDate', 'checkOutDate']);
+    await withTimeout(sheet.addRow({
+        id: `hist-${Date.now()}`,
+        ...data,
+        checkInDate: data.checkInDate || '',
+        checkOutDate: data.checkOutDate || '',
+    }), TIMEOUT_MS, 'sheet.addRow(AddressHistory)');
+    await invalidateAddressHistoryCache();
 }
 
 export async function updateAddressHistoryEntry(historyId: string, updates: Partial<AddressHistory>) {

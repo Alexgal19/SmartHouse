@@ -107,7 +107,7 @@ type MainLayoutContextType = {
     handleAddEmployeeClick: () => void;
     handleEditEmployeeClick: (employee: Employee) => void;
     handleUpdateSettings: (newSettings: Partial<Settings>) => Promise<void>;
-    refreshData: (showToast?: boolean) => Promise<RefreshDataResult | undefined>;
+    refreshData: (showToast?: boolean, bypassCache?: boolean) => Promise<RefreshDataResult | undefined>;
     handleAddNonEmployeeClick: () => void;
     handleEditNonEmployeeClick: (nonEmployee: NonEmployee) => void;
     handleDeleteNonEmployee: (id: string, actorUid: string) => Promise<void>;
@@ -324,13 +324,13 @@ export default function MainLayout({
         }
     }, [allNotifications, toast]);
 
-    const refreshData = useCallback(async (showToast = true) => {
+    const refreshData = useCallback(async (showToast = true, bypassCache = false) => {
         if (!currentUser) return;
         try {
             // Fetch data strategically to avoid timeouts and improve UX
 
             // 1. Fetch Settings FIRST (Critical & Fast)
-            const settings = await getSettings();
+            const settings = await getSettings(bypassCache);
             setRawSettings(settings);
 
             // 2. Fetch other data SEQUENTIALLY/BATCHED to reduce burst on Google Sheets API (429 errors)
@@ -661,7 +661,9 @@ export default function MainLayout({
             setRawSettings(prev => ({ ...prev!, ...updatedSettings }));
             toast({ title: "Sukces", description: "Ustawienia zostały zaktualizowane." });
             router.refresh(); // Ensure server-side cache is invalidated and fresh data is fetched
-            await refreshData(false); // Force client-side data refresh to update dependent components like HousingView
+
+            // Force cache bypass to ensure fresh data is fetched after settings update
+            await refreshData(false, true);
         } catch (e) {
             setRawSettings(originalSettings); // Revert on error
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać ustawień." });
