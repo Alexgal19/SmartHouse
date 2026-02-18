@@ -43,65 +43,66 @@ const isBokResident = (entity: Entity): entity is BokResident => 'role' in entit
 const isEmployee = (entity: Entity): entity is Employee => 'zaklad' in entity && !('role' in entity);
 
 const EntityActions = ({
-  entity,
-  onEdit,
-  onRestore,
-  onPermanentDelete,
-  isDismissed,
+    entity,
+    onEdit,
+    onRestore,
+    onPermanentDelete,
+    isDismissed,
 }: {
-  entity: Entity;
-  onEdit: (entity: Entity) => void;
-  onRestore?: (entity: Entity) => void;
-  onPermanentDelete: (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => void;
-  isDismissed: boolean;
+    entity: Entity;
+    onEdit: (entity: Entity) => void;
+    onRestore?: (entity: Entity) => void;
+    onPermanentDelete: (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => void;
+    isDismissed: boolean;
 }) => {
-  return (
-    <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-8 w-8 p-0">
-            <span className="sr-only">Otwórz menu</span>
-            <MoreHorizontal className="h-4 w-4" />
-        </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onEdit(entity)}>Edytuj</DropdownMenuItem>
-            {isDismissed 
-                ? <DropdownMenuItem onClick={() => onRestore?.(entity)}>Przywróć</DropdownMenuItem>
-                : <DropdownMenuItem onClick={() => onEdit(entity)}>Zwolnij</DropdownMenuItem>
-            }
-             <DropdownMenuSeparator />
-             <AlertDialog>
-                <AlertDialogTrigger asChild>
-                    <DropdownMenuItem 
-                        className="text-destructive"
-                        onSelect={(e) => e.preventDefault()}
-                    >
-                       <Trash2 className="mr-2 h-4 w-4" />
-                        Usuń na zawsze
-                    </DropdownMenuItem>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Czy na pewno chcesz trwale usunąć ten wpis?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Ta operacja jest nieodwracalna. Wszystkie dane powiązane z <span className="font-bold">{`${entity.firstName} ${entity.lastName}`}</span> zostaną usunięte na zawsze.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Anuluj</AlertDialogCancel>
-                        <AlertDialogAction
-                            className="bg-destructive hover:bg-destructive/90"
-                             onClick={() => onPermanentDelete(entity.id, isBokResident(entity) ? 'bok-resident' : (isEmployee(entity) ? 'employee' : 'non-employee'))}
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                    <span className="sr-only">Otwórz menu</span>
+                    <MoreHorizontal className="h-4 w-4" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => onEdit(entity)}>Edytuj</DropdownMenuItem>
+                {isDismissed
+                    ? <DropdownMenuItem onClick={() => onRestore?.(entity)}>Przywróć</DropdownMenuItem>
+                    : <DropdownMenuItem onClick={() => onEdit(entity)}>Zwolnij</DropdownMenuItem>
+                }
+                <DropdownMenuSeparator />
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <DropdownMenuItem
+                            className="text-destructive"
+                            onSelect={(e) => e.preventDefault()}
                         >
-                            Potwierdź i usuń
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        </DropdownMenuContent>
-    </DropdownMenu>
-  );
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Usuń na zawsze
+                        </DropdownMenuItem>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Czy na pewno chcesz trwale usunąć ten wpis?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Ta operacja jest nieodwracalna. Wszystkie dane powiązane z <span className="font-bold">{`${entity.firstName} ${entity.lastName}`}</span> zostaną usunięte na zawsze.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                            <AlertDialogAction
+                                className="bg-destructive hover:bg-destructive/90"
+                                onClick={() => onPermanentDelete(entity.id, isBokResident(entity) ? 'bok-resident' : (isEmployee(entity) ? 'employee' : 'non-employee'))}
+                            >
+                                Potwierdź i usuń
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
 };
+
 
 const PaginationControls = ({
     currentPage,
@@ -138,157 +139,157 @@ const PaginationControls = ({
 };
 
 const SortableHeader = ({
-  label,
-  field,
-  currentSortBy,
-  currentSortOrder,
-  onSort,
+    label,
+    field,
+    currentSortBy,
+    currentSortOrder,
+    onSort,
 }: {
-  label: string;
-  field: SortableField;
-  currentSortBy: SortableField | null;
-  currentSortOrder: 'asc' | 'desc';
-  onSort: (field: SortableField) => void;
+    label: string;
+    field: SortableField;
+    currentSortBy: SortableField | null;
+    currentSortOrder: 'asc' | 'desc';
+    onSort: (field: SortableField) => void;
 }) => {
-  const isSorted = currentSortBy === field;
-  return (
-    <TableHead>
-        <Button variant="ghost" onClick={() => onSort(field)} className="px-2 py-1 h-auto -ml-2">
-            {label}
-            {isSorted && (currentSortOrder === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />)}
-        </Button>
-    </TableHead>
-  );
+    const isSorted = currentSortBy === field;
+    return (
+        <TableHead>
+            <Button variant="ghost" onClick={() => onSort(field)} className="px-2 py-1 h-auto -ml-2">
+                {label}
+                {isSorted && (currentSortOrder === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />)}
+            </Button>
+        </TableHead>
+    );
 };
 
 const EntityTable = ({ entities, onEdit, onRestore, isDismissed, settings, onPermanentDelete, onSort, sortBy, sortOrder }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onRestore?: (entity: Entity) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => void; onSort: (field: SortableField) => void; sortBy: SortableField | null; sortOrder: 'asc' | 'desc'; }) => {
-  const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
-  
-  return (
-    <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <SortableHeader label="Nazwisko" field="lastName" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
-              <SortableHeader label="Imię" field="firstName" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
-              <TableHead>Typ</TableHead>
-              <SortableHeader label="Koordynator" field="coordinatorId" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
-              <SortableHeader label="Adres" field="address" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
-              <SortableHeader label="Pokój" field="roomNumber" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
-              <SortableHeader label="Data zameldowania" field="checkInDate" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
-              <SortableHeader label="Data wymeldowania" field="checkOutDate" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
-              <TableHead><span className="sr-only">Akcje</span></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {entities.length > 0 ? (
-              entities.map((entity) => (
-                <TableRow key={entity.id} onClick={() => onEdit(entity)} className="cursor-pointer">
-                  <TableCell className="font-medium">{entity.lastName}</TableCell>
-                  <TableCell className="font-medium">{entity.firstName}</TableCell>
-                  <TableCell>
-                      {isBokResident(entity)
-                        ? `BOK (${entity.role})`
-                        : (isEmployee(entity) ? "Pracownik" : "Mieszkaniec (NZ)")}
-                  </TableCell>
-                  <TableCell>{getCoordinatorName(entity.coordinatorId)}</TableCell>
-                  <TableCell>
-                      {isEmployee(entity) && entity.address?.toLowerCase().startsWith('własne mieszkanie')
-                          ? `Własne (${entity.ownAddress || 'Brak danych'})`
-                          : entity.address
-                      }
-                  </TableCell>
-                  <TableCell>{isEmployee(entity) && entity.address?.toLowerCase().startsWith('własne mieszkanie') ? 'N/A' : entity.roomNumber}</TableCell>
-                  <TableCell>{formatDate(entity.checkInDate)}</TableCell>
-                  <TableCell>{formatDate(entity.checkOutDate)}</TableCell>
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <EntityActions {...{ entity, onEdit, onRestore, onPermanentDelete, isDismissed }} />
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={9} className="text-center">Brak danych do wyświetlenia.</TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-    </div>
-  );
+    const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
+
+    return (
+        <div className="overflow-x-auto">
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <SortableHeader label="Nazwisko" field="lastName" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+                        <SortableHeader label="Imię" field="firstName" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+                        <TableHead>Typ</TableHead>
+                        <SortableHeader label="Koordynator" field="coordinatorId" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+                        <SortableHeader label="Adres" field="address" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+                        <SortableHeader label="Pokój" field="roomNumber" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+                        <SortableHeader label="Data zameldowania" field="checkInDate" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+                        <SortableHeader label="Data wymeldowania" field="checkOutDate" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+                        <TableHead><span className="sr-only">Akcje</span></TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {entities.length > 0 ? (
+                        entities.map((entity) => (
+                            <TableRow key={entity.id} onClick={() => onEdit(entity)} className="cursor-pointer">
+                                <TableCell className="font-medium">{entity.lastName}</TableCell>
+                                <TableCell className="font-medium">{entity.firstName}</TableCell>
+                                <TableCell>
+                                    {isBokResident(entity)
+                                        ? `BOK (${entity.role})`
+                                        : (isEmployee(entity) ? "Pracownik" : "Mieszkaniec (NZ)")}
+                                </TableCell>
+                                <TableCell>{getCoordinatorName(entity.coordinatorId)}</TableCell>
+                                <TableCell>
+                                    {isEmployee(entity) && entity.address?.toLowerCase().startsWith('własne mieszkanie')
+                                        ? `Własne (${entity.ownAddress || 'Brak danych'})`
+                                        : entity.address
+                                    }
+                                </TableCell>
+                                <TableCell>{isEmployee(entity) && entity.address?.toLowerCase().startsWith('własne mieszkanie') ? 'N/A' : entity.roomNumber}</TableCell>
+                                <TableCell>{formatDate(entity.checkInDate)}</TableCell>
+                                <TableCell>{formatDate(entity.checkOutDate)}</TableCell>
+                                <TableCell onClick={(e) => e.stopPropagation()}>
+                                    <EntityActions {...{ entity, onEdit, onRestore, onPermanentDelete, isDismissed }} />
+                                </TableCell>
+                            </TableRow>
+                        ))
+                    ) : (
+                        <TableRow>
+                            <TableCell colSpan={9} className="text-center">Brak danych do wyświetlenia.</TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+        </div>
+    );
 };
 
 const HistoryTable = ({ history, onSort, sortBy, sortOrder, onDelete }: { history: AddressHistory[]; onSort: (field: SortableField) => void; sortBy: SortableField | null; sortOrder: 'asc' | 'desc'; onDelete: (id: string) => void; }) => {
-  return (
-    <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <SortableHeader label="Nazwisko" field="lastName" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
-              <SortableHeader label="Imię" field="firstName" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
-              <SortableHeader label="Koordynator" field="coordinatorName" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
-              <SortableHeader label="Zakład" field="department" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
-              <SortableHeader label="Adres" field="address" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
-              <SortableHeader label="Data zameldowania" field="checkInDate" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
-              <SortableHeader label="Data wymeldowania" field="checkOutDate" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
-              <TableHead><span className="sr-only">Akcje</span></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {history.length > 0 ? (
-              history.map((entry) => (
-                <TableRow key={entry.id}>
-                  <TableCell className="font-medium">{entry.employeeLastName}</TableCell>
-                  <TableCell className="font-medium">{entry.employeeFirstName}</TableCell>
-                  <TableCell>{entry.coordinatorName || 'N/A'}</TableCell>
-                  <TableCell>{entry.department || 'N/A'}</TableCell>
-                  <TableCell>{entry.address}</TableCell>
-                  <TableCell>{formatDate(entry.checkInDate)}</TableCell>
-                  <TableCell>{formatDate(entry.checkOutDate)}</TableCell>
-                  <TableCell>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Czy na pewno chcesz usunąć ten wpis z historii?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Ta operacja jest nieodwracalna i usunie wpis o pobycie <span className="font-bold">{`${entry.employeeFirstName} ${entry.employeeLastName}`.trim()}</span> pod adresem <span className="font-bold">{entry.address}</span>.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Anuluj</AlertDialogCancel>
-                          <AlertDialogAction
-                              className="bg-destructive hover:bg-destructive/90"
-                              onClick={() => onDelete(entry.id)}
-                          >
-                              Potwierdź i usuń
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center">Brak danych do wyświetlenia.</TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-    </div>
-  );
+    return (
+        <div className="overflow-x-auto">
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <SortableHeader label="Nazwisko" field="lastName" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+                        <SortableHeader label="Imię" field="firstName" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+                        <SortableHeader label="Koordynator" field="coordinatorName" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+                        <SortableHeader label="Zakład" field="department" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+                        <SortableHeader label="Adres" field="address" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+                        <SortableHeader label="Data zameldowania" field="checkInDate" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+                        <SortableHeader label="Data wymeldowania" field="checkOutDate" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+                        <TableHead><span className="sr-only">Akcje</span></TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {history.length > 0 ? (
+                        history.map((entry) => (
+                            <TableRow key={entry.id}>
+                                <TableCell className="font-medium">{entry.employeeLastName}</TableCell>
+                                <TableCell className="font-medium">{entry.employeeFirstName}</TableCell>
+                                <TableCell>{entry.coordinatorName || 'N/A'}</TableCell>
+                                <TableCell>{entry.department || 'N/A'}</TableCell>
+                                <TableCell>{entry.address}</TableCell>
+                                <TableCell>{formatDate(entry.checkInDate)}</TableCell>
+                                <TableCell>{formatDate(entry.checkOutDate)}</TableCell>
+                                <TableCell>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Czy na pewno chcesz usunąć ten wpis z historii?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    Ta operacja jest nieodwracalna i usunie wpis o pobycie <span className="font-bold">{`${entry.employeeFirstName} ${entry.employeeLastName}`.trim()}</span> pod adresem <span className="font-bold">{entry.address}</span>.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                                                <AlertDialogAction
+                                                    className="bg-destructive hover:bg-destructive/90"
+                                                    onClick={() => onDelete(entry.id)}
+                                                >
+                                                    Potwierdź i usuń
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </TableCell>
+                            </TableRow>
+                        ))
+                    ) : (
+                        <TableRow>
+                            <TableCell colSpan={8} className="text-center">Brak danych do wyświetlenia.</TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+        </div>
+    );
 };
 
 const EntityCardList = ({ entities, onEdit, onRestore, isDismissed, settings, onPermanentDelete }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onRestore?: (entity: Entity) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => void; }) => {
     const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
-    
+
     return (
         <div className="space-y-4">
-             {entities.length > 0 ? (
+            {entities.length > 0 ? (
                 entities.map((entity, index) => (
                     <Card
                         key={entity.id}
@@ -297,15 +298,15 @@ const EntityCardList = ({ entities, onEdit, onRestore, isDismissed, settings, on
                         style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}
                     >
                         <CardHeader className="flex flex-row items-start justify-between pb-4">
-                           <div>
-                             <CardTitle className="text-base">{`${entity.firstName} ${entity.lastName}`.trim()}</CardTitle>
-                             <CardDescription>
-                                {isBokResident(entity) ? `BOK (${entity.role})` : (isEmployee(entity) ? getCoordinatorName(entity.coordinatorId) : "Mieszkaniec (NZ)")}
-                             </CardDescription>
-                           </div>
-                           <div onClick={(e) => e.stopPropagation()}>
+                            <div>
+                                <CardTitle className="text-base">{`${entity.firstName} ${entity.lastName}`.trim()}</CardTitle>
+                                <CardDescription>
+                                    {isBokResident(entity) ? `BOK (${entity.role})` : (isEmployee(entity) ? getCoordinatorName(entity.coordinatorId) : "Mieszkaniec (NZ)")}
+                                </CardDescription>
+                            </div>
+                            <div onClick={(e) => e.stopPropagation()}>
                                 <EntityActions {...{ entity, onEdit, onRestore, onPermanentDelete, isDismissed }} />
-                           </div>
+                            </div>
                         </CardHeader>
                         <CardContent className="text-sm space-y-2">
                             <p><span className="font-semibold text-muted-foreground">Adres:</span>
@@ -319,9 +320,9 @@ const EntityCardList = ({ entities, onEdit, onRestore, isDismissed, settings, on
                         </CardContent>
                     </Card>
                 ))
-             ) : (
+            ) : (
                 <div className="text-center text-muted-foreground py-8">Brak danych do wyświetlenia.</div>
-             )}
+            )}
         </div>
     )
 };
@@ -331,44 +332,44 @@ const HistoryCardList = ({ history, onDelete }: { history: AddressHistory[]; onD
         <div className="space-y-4">
             {history.length > 0 ? (
                 history.map((entry, index) => (
-                    <Card 
-                        key={entry.id} 
+                    <Card
+                        key={entry.id}
                         className="animate-fade-in-up"
                         style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}
                     >
                         <CardHeader className="flex flex-row items-start justify-between pb-4">
-                           <div>
-                             <CardTitle className="text-base">{`${entry.employeeFirstName} ${entry.employeeLastName}`.trim()}</CardTitle>
-                             <CardDescription>
-                                {entry.coordinatorName} - {entry.department}
-                             </CardDescription>
-                           </div>
-                           <div onClick={(e) => e.stopPropagation()}>
+                            <div>
+                                <CardTitle className="text-base">{`${entry.employeeFirstName} ${entry.employeeLastName}`.trim()}</CardTitle>
+                                <CardDescription>
+                                    {entry.coordinatorName} - {entry.department}
+                                </CardDescription>
+                            </div>
+                            <div onClick={(e) => e.stopPropagation()}>
                                 <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                      <Trash2 className="h-4 w-4 text-destructive" />
-                                    </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Czy na pewno chcesz usunąć ten wpis z historii?</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Ta operacja jest nieodwracalna i usunie wpis o pobycie <span className="font-bold">{`${entry.employeeFirstName} ${entry.employeeLastName}`.trim()}</span> pod adresem <span className="font-bold">{entry.address}</span>.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Anuluj</AlertDialogCancel>
-                                      <AlertDialogAction
-                                          className="bg-destructive hover:bg-destructive/90"
-                                          onClick={() => onDelete(entry.id)}
-                                      >
-                                          Potwierdź i usuń
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Czy na pewno chcesz usunąć ten wpis z historii?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                Ta operacja jest nieodwracalna i usunie wpis o pobycie <span className="font-bold">{`${entry.employeeFirstName} ${entry.employeeLastName}`.trim()}</span> pod adresem <span className="font-bold">{entry.address}</span>.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                                            <AlertDialogAction
+                                                className="bg-destructive hover:bg-destructive/90"
+                                                onClick={() => onDelete(entry.id)}
+                                            >
+                                                Potwierdź i usuń
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
                                 </AlertDialog>
-                           </div>
+                            </div>
                         </CardHeader>
                         <CardContent className="text-sm space-y-2">
                             <p><span className="font-semibold text-muted-foreground">Adres:</span> {entry.address}</p>
@@ -387,9 +388,9 @@ const FilterDialog = ({ isOpen, onOpenChange, settings, onApply, initialFilters 
     const [filters, setFilters] = useState(initialFilters);
 
     const handleFilterChange = (key: string, value: string) => {
-        setFilters(prev => ({...prev, [key]: value}));
+        setFilters(prev => ({ ...prev, [key]: value }));
     }
-    
+
     const handleReset = () => {
         const resetFilters = {
             coordinator: 'all',
@@ -401,7 +402,7 @@ const FilterDialog = ({ isOpen, onOpenChange, settings, onApply, initialFilters 
         onApply(resetFilters);
         onOpenChange(false);
     }
-    
+
     const handleApply = () => {
         onApply(filters);
         onOpenChange(false);
@@ -415,51 +416,51 @@ const FilterDialog = ({ isOpen, onOpenChange, settings, onApply, initialFilters 
                     <DialogDescription>Zawęź listę, aby znaleźć to, czego szukasz.</DialogDescription>
                 </DialogHeader>
                 <ScrollArea className="max-h-[60vh]">
-                  <div className="grid gap-4 p-4">
-                      <div className="space-y-2">
-                        <Label>Koordynator</Label>
-                        <Select value={filters.coordinator} onValueChange={(v) => handleFilterChange('coordinator', v)}>
-                        <SelectTrigger><SelectValue placeholder="Filtruj wg koordynatora" /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
-                            {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
-                        </SelectContent>
-                        </Select>
-                      </div>
-                       <div className="space-y-2">
-                        <Label>Adres</Label>
-                        <Select value={filters.address} onValueChange={(v) => handleFilterChange('address', v)}>
-                        <SelectTrigger><SelectValue placeholder="Filtruj wg adresu" /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Wszystkie adresy</SelectItem>
-                            {settings.addresses.filter(a => a.name).map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
-                        </SelectContent>
-                        </Select>
-                      </div>
-                       <div className="space-y-2">
-                        <Label>Zakład</Label>
-                        <Select value={filters.department} onValueChange={(v) => handleFilterChange('department', v)}>
-                        <SelectTrigger><SelectValue placeholder="Filtruj wg zakładu" /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Wszystkie zakłady</SelectItem>
-                            {settings.departments.filter(Boolean).map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                        </SelectContent>
-                        </Select>
-                      </div>
-                       <div className="space-y-2">
-                        <Label>Narodowość</Label>
-                        <Select value={filters.nationality} onValueChange={(v) => handleFilterChange('nationality', v)}>
-                        <SelectTrigger><SelectValue placeholder="Filtruj wg narodowości" /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Wszystkie narodowości</SelectItem>
-                            {settings.nationalities.filter(Boolean).map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
-                        </SelectContent>
-                        </Select>
-                      </div>
-                  </div>
+                    <div className="grid gap-4 p-4">
+                        <div className="space-y-2">
+                            <Label>Koordynator</Label>
+                            <Select value={filters.coordinator} onValueChange={(v) => handleFilterChange('coordinator', v)}>
+                                <SelectTrigger><SelectValue placeholder="Filtruj wg koordynatora" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
+                                    {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Adres</Label>
+                            <Select value={filters.address} onValueChange={(v) => handleFilterChange('address', v)}>
+                                <SelectTrigger><SelectValue placeholder="Filtruj wg adresu" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Wszystkie adresy</SelectItem>
+                                    {settings.addresses.filter(a => a.name).map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Zakład</Label>
+                            <Select value={filters.department} onValueChange={(v) => handleFilterChange('department', v)}>
+                                <SelectTrigger><SelectValue placeholder="Filtruj wg zakładu" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Wszystkie zakłady</SelectItem>
+                                    {settings.departments.filter(Boolean).map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Narodowość</Label>
+                            <Select value={filters.nationality} onValueChange={(v) => handleFilterChange('nationality', v)}>
+                                <SelectTrigger><SelectValue placeholder="Filtruj wg narodowości" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Wszystkie narodowości</SelectItem>
+                                    {settings.nationalities.filter(Boolean).map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
                 </ScrollArea>
                 <DialogFooter className="flex-row !justify-between p-6 pt-0">
-                     <Button variant="ghost" onClick={handleReset}>Wyczyść wszystko</Button>
+                    <Button variant="ghost" onClick={handleReset}>Wyczyść wszystko</Button>
                     <Button onClick={handleApply}>Zastosuj</Button>
                 </DialogFooter>
             </DialogContent>
@@ -511,7 +512,7 @@ const ControlPanel = ({
                         </Button>
                     )}
                     {showAddButton && (
-                       <DropdownMenu>
+                        <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button size={isMobile ? "icon" : "default"}>
                                     <PlusCircle className={isMobile ? "h-5 w-5" : "mr-2 h-4 w-4"} />
@@ -528,10 +529,10 @@ const ControlPanel = ({
                     {!isMobile && (
                         <>
                             <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => onViewChange('list')}>
-                                <List className="h-4 w-4"/>
+                                <List className="h-4 w-4" />
                             </Button>
                             <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => onViewChange('grid')}>
-                                <LayoutGrid className="h-4 w-4"/>
+                                <LayoutGrid className="h-4 w-4" />
                             </Button>
                         </>
                     )}
@@ -567,12 +568,12 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     const searchParams = useSearchParams();
     const [isPending, startTransition] = useTransition();
     const { isMobile, isMounted } = useIsMobile();
-    
+
     const tab = (searchParams.get('tab') as 'active' | 'dismissed' | 'non-employees' | 'bok-residents' | 'history') || 'active';
     const page = Number(searchParams.get('page') || '1');
     const search = searchParams.get('search') || '';
     const viewMode = (searchParams.get('viewMode') as 'list' | 'grid') || (isMobile ? 'grid' : 'list');
-    
+
     const defaultSortField = useMemo(() => {
         switch (tab) {
             case 'active':
@@ -615,7 +616,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
             router.push(`${pathname}?${current.toString()}`);
         });
     };
-    
+
     const handleSort = (field: SortableField) => {
         const newSortOrder = sortBy === field && sortOrder === 'asc' ? 'desc' : 'asc';
         updateSearchParams({ sortBy: field, sortOrder: newSortOrder });
@@ -625,7 +626,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         if (!allEmployees || !allNonEmployees || !allBokResidents || !addressHistory || !settings) return {};
 
         const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
-        
+
         const filterAndSort = <T extends Entity | AddressHistory>(dataToProcess: T[], isHistory: boolean = false): T[] => {
             const filtered = dataToProcess.filter(entity => {
                 const searchMatch = search === '' ||
@@ -635,58 +636,58 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                     (isHistory && 'employeeLastName' in entity && entity.employeeLastName && entity.employeeLastName.toLowerCase().includes(search.toLowerCase()));
 
                 if (!searchMatch) return false;
-    
+
                 const coordinatorMatch = filters.coordinator === 'all' || ('coordinatorId' in entity && entity.coordinatorId === filters.coordinator);
                 const addressMatch = filters.address === 'all' || ('address' in entity && entity.address === filters.address);
                 // Modified department match to be permissive for entities without zaklad (like non-employees, unless they get it in future)
                 const departmentMatch = !('zaklad' in entity) || filters.department === 'all' || ('zaklad' in entity && (entity as Employee | BokResident).zaklad === filters.department);
                 const nationalityMatch = filters.nationality === 'all' || ('nationality' in entity && (entity as Entity).nationality === filters.nationality);
-                
+
                 return coordinatorMatch && addressMatch && departmentMatch && nationalityMatch;
             });
-            
+
             return [...filtered].sort((a, b) => {
                 const aName = isHistory ? (a as unknown as AddressHistory).employeeLastName : (a as unknown as Entity).lastName;
                 const bName = isHistory ? (b as unknown as AddressHistory).employeeLastName : (b as unknown as Entity).lastName;
                 const aFirstName = isHistory ? (a as unknown as AddressHistory).employeeFirstName : (a as unknown as Entity).firstName;
                 const bFirstName = isHistory ? (b as unknown as AddressHistory).employeeFirstName : (b as unknown as Entity).firstName;
-                
+
                 if (sortBy === 'lastName') {
                     const lastNameCompare = (aName || '').localeCompare(bName || '', 'pl');
                     if (lastNameCompare !== 0) return lastNameCompare * (sortOrder === 'asc' ? 1 : -1);
                     return (aFirstName || '').localeCompare(bFirstName || '', 'pl') * (sortOrder === 'asc' ? 1 : -1);
                 }
-    
+
                 if (sortBy === 'firstName') {
                     const firstNameCompare = (aFirstName || '').localeCompare(bFirstName || '', 'pl');
                     if (firstNameCompare !== 0) return firstNameCompare * (sortOrder === 'asc' ? 1 : -1);
                     return (aName || '').localeCompare(bName || '', 'pl') * (sortOrder === 'asc' ? 1 : -1);
                 }
-    
+
                 let valA: string | number | null | undefined;
                 let valB: string | number | null | undefined;
-                
+
                 if (sortBy === 'coordinatorId' && 'coordinatorId' in a && 'coordinatorId' in b) {
-                     valA = getCoordinatorName(a.coordinatorId);
-                     valB = getCoordinatorName(b.coordinatorId);
+                    valA = getCoordinatorName(a.coordinatorId);
+                    valB = getCoordinatorName(b.coordinatorId);
                 } else {
                     valA = (a as { [K in SortableField]?: string | number | null })[sortBy];
                     valB = (b as { [K in SortableField]?: string | number | null })[sortBy];
                 }
-    
+
                 if (valA === null || valA === undefined) return 1;
                 if (valB === null || valB === undefined) return -1;
-                
+
                 if (sortBy.includes('Date')) {
-                     const dateA = valA ? parseISO(valA as string).getTime() : 0;
-                     const dateB = valB ? parseISO(valB as string).getTime() : 0;
-                     return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+                    const dateA = valA ? parseISO(valA as string).getTime() : 0;
+                    const dateB = valB ? parseISO(valB as string).getTime() : 0;
+                    return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
                 }
-    
+
                 return String(valA).localeCompare(String(valB), 'pl', { numeric: true }) * (sortOrder === 'asc' ? 1 : -1);
             });
         };
-        
+
         const filteredEmployees = filterAndSort(allEmployees);
         const filteredNonEmployees = filterAndSort(allNonEmployees);
         const filteredBokResidents = filterAndSort(allBokResidents);
@@ -714,7 +715,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
 
     const currentData = dataMap[tab];
     const totalPages = Math.ceil((currentData?.length || 0) / ITEMS_PER_PAGE);
-    
+
     const paginatedData = useMemo(() => {
         const start = (page - 1) * ITEMS_PER_PAGE;
         const end = start + ITEMS_PER_PAGE;
@@ -727,10 +728,10 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         return (
             <Card>
                 <CardHeader>
-                     <Skeleton className="h-8 w-1/3" />
+                    <Skeleton className="h-8 w-1/3" />
                 </CardHeader>
                 <CardContent>
-                     <div className="space-y-4">
+                    <div className="space-y-4">
                         <Skeleton className="h-24 w-full" />
                         <Skeleton className="h-24 w-full" />
                         <Skeleton className="h-24 w-full" />
@@ -739,7 +740,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
             </Card>
         );
     }
-    
+
     const handleRestore = async (entity: Entity) => {
         if (isBokResident(entity)) {
             // BOK residents don't have a dedicated restore flow — open edit form instead
@@ -762,9 +763,9 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     };
 
     const handleEdit = (entity: Entity) => {
-        if(isBokResident(entity)) {
+        if (isBokResident(entity)) {
             handleEditBokResidentClick(entity);
-        } else if(isEmployee(entity)) {
+        } else if (isEmployee(entity)) {
             handleEditEmployeeClick(entity);
         } else {
             handleEditNonEmployeeClick(entity as NonEmployee);
@@ -784,9 +785,9 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     const renderContent = (data: Entity[]) => (
         <>
             <ScrollArea className="h-[55vh] overflow-x-auto" style={{ opacity: isPending ? 0.6 : 1 }}>
-                {isMounted ? 
-                    (viewMode === 'list' ? 
-                        <EntityTable 
+                {isMounted ?
+                    (viewMode === 'list' ?
+                        <EntityTable
                             entities={data}
                             settings={settings}
                             onEdit={handleEdit}
@@ -797,8 +798,8 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                             sortBy={sortBy}
                             sortOrder={sortOrder}
                         /> :
-                        <EntityCardList 
-                             entities={data}
+                        <EntityCardList
+                            entities={data}
                             settings={settings}
                             onEdit={handleEdit}
                             onRestore={handleRestore}
@@ -806,13 +807,13 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                             isDismissed={tab === 'dismissed'}
                         />
                     )
-                 : <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
+                    : <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
             </ScrollArea>
-             <PaginationControls currentPage={page} totalPages={totalPages} onPageChange={(p) => updateSearchParams({ page: p })} isDisabled={isPending} />
+            <PaginationControls currentPage={page} totalPages={totalPages} onPageChange={(p) => updateSearchParams({ page: p })} isDisabled={isPending} />
         </>
     );
 
-     const renderHistoryContent = () => (
+    const renderHistoryContent = () => (
         <>
             <ScrollArea className="h-[55vh] overflow-x-auto" style={{ opacity: isPending ? 0.6 : 1 }}>
                 {isMounted ? (
@@ -838,7 +839,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                     </div>
                 )}
             </ScrollArea>
-             <PaginationControls currentPage={page} totalPages={totalPages} onPageChange={(p) => updateSearchParams({ page: p })} isDisabled={isPending} />
+            <PaginationControls currentPage={page} totalPages={totalPages} onPageChange={(p) => updateSearchParams({ page: p })} isDisabled={isPending} />
         </>
     );
 
@@ -855,18 +856,18 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                     viewMode={viewMode}
                     onViewChange={(mode) => updateSearchParams({ viewMode: mode })}
                     isFilterActive={isFilterActive}
-                    onResetFilters={() => updateSearchParams({ search: '', page: 1, coordinator: '', address: '', department: '', nationality: ''})}
+                    onResetFilters={() => updateSearchParams({ search: '', page: 1, coordinator: '', address: '', department: '', nationality: '' })}
                     showAddButton={tab !== 'history'}
                     isAdmin={currentUser.isAdmin}
                 />
             </CardHeader>
             <CardContent>
-                 <Tabs value={tab} onValueChange={(v) => updateSearchParams({ tab: v, page: 1, sortBy: '', sortOrder: '' })}>
+                <Tabs value={tab} onValueChange={(v) => updateSearchParams({ tab: v, page: 1, sortBy: '', sortOrder: '' })}>
                     <TabsList className={tabsGridClass}>
                         <TabsTrigger value="active" disabled={isPending}>
                             <Users className="mr-2 h-4 w-4" />Aktywni ({dataMap.active.length})
                         </TabsTrigger>
-                         <TabsTrigger value="dismissed" disabled={isPending}>
+                        <TabsTrigger value="dismissed" disabled={isPending}>
                             <UserX className="mr-2 h-4 w-4" />Zwolnieni ({dataMap.dismissed.length})
                         </TabsTrigger>
                         <TabsTrigger value="non-employees" disabled={isPending}>
@@ -901,4 +902,3 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     )
 }
 
-    
