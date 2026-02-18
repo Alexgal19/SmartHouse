@@ -406,7 +406,8 @@ const createNotification = async (
     entity: (Employee | NonEmployee | BokResident),
     settings: Settings,
     recipientIdOverride?: string,
-    changes: NotificationChange[] = []
+    changes: NotificationChange[] = [],
+    sendPush: boolean = true
 ) => {
     try {
         const readableChanges: NotificationChange[] = changes.map(c => ({
@@ -448,10 +449,12 @@ const createNotification = async (
         const entityType = 'role' in entity ? 'bok-resident' : ('zaklad' in entity && entity.zaklad ? 'pracownika' : 'mieszkańca');
         await writeToAuditLog(actor.uid, actor.name, action, entityType, entity.id, changes);
 
-        // Send Push Notification
-        const pushTitle = 'Powiadomienie SmartHouse';
-        const pushLink = `/dashboard?view=employees&edit=${entity.id}`;
-        await sendPushNotification(recipientId, pushTitle, message, pushLink);
+        // Send Push Notification (only if explicitly enabled)
+        if (sendPush) {
+            const pushTitle = 'Powiadomienie SmartHouse';
+            const pushLink = `/dashboard?view=employees&edit=${entity.id}`;
+            await sendPushNotification(recipientId, pushTitle, message, pushLink);
+        }
 
     } catch (e: unknown) {
         console.error("Could not create notification:", e);
@@ -850,7 +853,7 @@ export async function addBokResident(residentData: Omit<BokResident, 'id'>, acto
         const serialized = serializeBokResident(newResident);
         await withTimeout(sheet.addRow(serialized, { raw: false, insert: true }), TIMEOUT_MS, 'sheet.addRow(BokResident)');
 
-        await createNotification(actor, 'dodał', newResident, settings);
+        await createNotification(actor, 'dodał', newResident, settings, undefined, [], false);
 
         await invalidateBokResidentsCache();
 
@@ -900,7 +903,7 @@ export async function updateBokResident(id: string, updates: Partial<BokResident
         await withTimeout(row.save(), TIMEOUT_MS, 'row.save(BokResident)');
 
         if (changes.length > 0) {
-            await createNotification(actor, 'zaktualizował', updatedResident, settings, undefined, changes);
+            await createNotification(actor, 'zaktualizował', updatedResident, settings, undefined, changes, false);
         }
 
         await invalidateBokResidentsCache();
@@ -1908,10 +1911,10 @@ export async function sendPushNotification(
         if (adminMessaging) {
             const message = {
                 token: token,
-                notification: {
-                    title: title,
-                    body: body,
-                },
+                // Brak pola `notification` — zapobiega podwójnym powiadomieniom.
+                // FCM z polem `notification` wyświetla powiadomienie automatycznie,
+                // a service worker onBackgroundMessage wyświetlałby je drugi raz.
+                // Używamy tylko `data` — service worker sam wyświetla powiadomienie.
                 data: {
                     title: title,
                     body: body,
@@ -1923,10 +1926,6 @@ export async function sendPushNotification(
                     headers: {
                         Urgency: 'high',
                         TTL: '86400'
-                    },
-                    notification: {
-                        icon: '/icon-192x192.png',
-                        badge: '/icon-192x192.png'
                     },
                     fcmOptions: {
                         link: link || '/dashboard'

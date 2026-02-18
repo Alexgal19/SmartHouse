@@ -33,7 +33,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { BokResident, Settings, SessionData } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, X, Loader2 } from 'lucide-react';
+import { CalendarIcon, X, Loader2, Send } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parse, isValid, parseISO } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -63,9 +63,9 @@ export type BokResidentFormData = Omit<z.infer<typeof formSchema>, 'checkInDate'
 };
 
 const parseDate = (dateString: string | null | undefined): Date | undefined => {
-    if (!dateString) return undefined;
-    const date = parseISO(dateString);
-    return isValid(date) ? date : undefined;
+  if (!dateString) return undefined;
+  const date = parseISO(dateString);
+  return isValid(date) ? date : undefined;
 };
 
 const DateInput = ({
@@ -93,8 +93,8 @@ const DateInput = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
     if (e.target.value === '') {
-        onChange(null);
-        return;
+      onChange(null);
+      return;
     }
     const parsedDate = parse(e.target.value, 'yyyy-MM-dd', new Date());
     if (isValid(parsedDate)) {
@@ -114,8 +114,8 @@ const DateInput = ({
   };
 
   const handleClear = (e: React.MouseEvent) => {
-      e.stopPropagation();
-      handleDateSelect(null);
+    e.stopPropagation();
+    handleDateSelect(null);
   }
 
   return (
@@ -130,18 +130,18 @@ const DateInput = ({
             placeholder="rrrr-mm-dd"
             className="pr-10 min-h-[44px]"
           />
-           <button
+          <button
             type="button"
             className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center rounded hover:bg-muted touch-manipulation"
             onClick={handleClear}
             aria-label={value ? "Wyczyść datę" : "Wybierz datę"}
           >
             {value ? (
-                <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+              <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
             ) : (
-                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+              <CalendarIcon className="h-4 w-4 text-muted-foreground" />
             )}
-           </button>
+          </button>
         </div>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="center" sideOffset={5}>
@@ -166,7 +166,8 @@ export function AddBokResidentForm({
   onSave,
   settings,
   resident,
-  currentUser
+  currentUser,
+  onSendPush,
 }: {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
@@ -174,7 +175,20 @@ export function AddBokResidentForm({
   settings: Settings;
   resident: BokResident | null;
   currentUser: SessionData;
+  onSendPush?: () => Promise<void>;
 }) {
+  const [isSendingPush, setIsSendingPush] = React.useState(false);
+
+  const handleSendPush = async () => {
+    if (!onSendPush) return;
+    setIsSendingPush(true);
+    try {
+      await onSendPush();
+    } finally {
+      setIsSendingPush(false);
+    }
+  };
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -194,95 +208,95 @@ export function AddBokResidentForm({
       comments: '',
     },
   });
-  
+
   const selectedCoordinatorId = form.watch('coordinatorId');
   const selectedAddress = form.watch('address');
 
   const availableAddresses = useMemo(() => {
     if (!selectedCoordinatorId) {
-        return [...settings.addresses].sort((a, b) => a.name.localeCompare(b.name));
+      return [...settings.addresses].sort((a, b) => a.name.localeCompare(b.name));
     }
     // Show all addresses for the coordinator
     const filtered = settings.addresses.filter(a =>
-        a.coordinatorIds.includes(selectedCoordinatorId)
+      a.coordinatorIds.includes(selectedCoordinatorId)
     );
     return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
   }, [settings.addresses, selectedCoordinatorId]);
 
   const availableRooms = useMemo(() => {
     const rooms = settings.addresses.find(a => a.name === selectedAddress)?.rooms || [];
-    return [...rooms].sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    return [...rooms].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
   }, [settings.addresses, selectedAddress]);
 
   const availableDepartments = useMemo(() => {
-     // Departments are global usually, but if we want to filter by coordinator's departments:
-     if (!selectedCoordinatorId) return settings.departments;
-     const coordinator = settings.coordinators.find(c => c.uid === selectedCoordinatorId);
-     // If coordinator has specific departments assigned, use them? Or use global list?
-     // Existing logic suggests using coordinator's departments if available.
-     return coordinator ? [...coordinator.departments].sort((a, b) => a.localeCompare(b)) : settings.departments;
+    // Departments are global usually, but if we want to filter by coordinator's departments:
+    if (!selectedCoordinatorId) return settings.departments;
+    const coordinator = settings.coordinators.find(c => c.uid === selectedCoordinatorId);
+    // If coordinator has specific departments assigned, use them? Or use global list?
+    // Existing logic suggests using coordinator's departments if available.
+    return coordinator ? [...coordinator.departments].sort((a, b) => a.localeCompare(b)) : settings.departments;
   }, [settings.coordinators, settings.departments, selectedCoordinatorId]);
 
   useEffect(() => {
     if (resident) {
-        form.reset({
-            role: resident.role || '',
-            firstName: resident.firstName || '',
-            lastName: resident.lastName || '',
-            coordinatorId: resident.coordinatorId || currentUser.uid,
-            nationality: resident.nationality || '',
-            address: resident.address || '',
-            roomNumber: resident.roomNumber || '',
-            zaklad: resident.zaklad || '',
-            gender: resident.gender || '',
-            checkInDate: parseDate(resident.checkInDate) ?? new Date(),
-            checkOutDate: parseDate(resident.checkOutDate) ?? null,
-            returnStatus: resident.returnStatus || '',
-            status: resident.status || '',
-            comments: resident.comments || '',
-        });
+      form.reset({
+        role: resident.role || '',
+        firstName: resident.firstName || '',
+        lastName: resident.lastName || '',
+        coordinatorId: resident.coordinatorId || currentUser.uid,
+        nationality: resident.nationality || '',
+        address: resident.address || '',
+        roomNumber: resident.roomNumber || '',
+        zaklad: resident.zaklad || '',
+        gender: resident.gender || '',
+        checkInDate: parseDate(resident.checkInDate) ?? new Date(),
+        checkOutDate: parseDate(resident.checkOutDate) ?? null,
+        returnStatus: resident.returnStatus || '',
+        status: resident.status || '',
+        comments: resident.comments || '',
+      });
     } else {
-        form.reset({
-          role: '',
-          firstName: '',
-          lastName: '',
-          coordinatorId: currentUser.uid || '',
-          nationality: '',
-          address: '',
-          roomNumber: '',
-          zaklad: '',
-          gender: '',
-          checkInDate: new Date(),
-          checkOutDate: null,
-          returnStatus: '',
-          status: '',
-          comments: '',
-        });
+      form.reset({
+        role: '',
+        firstName: '',
+        lastName: '',
+        coordinatorId: currentUser.uid || '',
+        nationality: '',
+        address: '',
+        roomNumber: '',
+        zaklad: '',
+        gender: '',
+        checkInDate: new Date(),
+        checkOutDate: null,
+        returnStatus: '',
+        status: '',
+        comments: '',
+      });
     }
   }, [resident, isOpen, form, settings, currentUser]);
 
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     const formatDate = (date: Date | null | undefined): string | null => {
-        if (!date) return null;
-        return format(date, 'yyyy-MM-dd');
+      if (!date) return null;
+      return format(date, 'yyyy-MM-dd');
     }
 
     const formData: BokResidentFormData = {
-        ...values,
-        coordinatorId: values.coordinatorId || '',
-        checkInDate: formatDate(values.checkInDate),
-        checkOutDate: formatDate(values.checkOutDate),
+      ...values,
+      coordinatorId: values.coordinatorId || '',
+      checkInDate: formatDate(values.checkInDate),
+      checkOutDate: formatDate(values.checkOutDate),
     };
 
     try {
-        await onSave(formData);
-        onOpenChange(false);
+      await onSave(formData);
+      onOpenChange(false);
     } catch (e) {
-        console.error('Form submission failed:', e);
+      console.error('Form submission failed:', e);
     }
   };
-  
+
   const sortedCoordinators = useMemo(() => {
     return [...settings.coordinators].sort((a, b) => a.name.localeCompare(b.name));
   }, [settings.coordinators]);
@@ -296,334 +310,348 @@ export function AddBokResidentForm({
   const coordinatorOptions = useMemo(() => sortedCoordinators.map(c => ({ value: c.uid, label: c.name })), [sortedCoordinators]);
   const nationalityOptions = useMemo(() => sortedNationalities.map(n => ({ value: n, label: n })), [sortedNationalities]);
   const departmentOptions = useMemo(() => availableDepartments.map(d => ({ value: d, label: d })), [availableDepartments]);
-  
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] sm:max-w-xl lg:max-w-2xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
-            <DialogTitle>{resident ? 'Edytuj Mieszkańca BOK' : 'Dodaj Mieszkańca BOK'}</DialogTitle>
-            <DialogDescription>
+          <DialogTitle>{resident ? 'Edytuj Mieszkańca BOK' : 'Dodaj Mieszkańca BOK'}</DialogTitle>
+          <DialogDescription>
             Wypełnij poniższe pola.
-            </DialogDescription>
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <ScrollArea className="h-[50vh] sm:h-[60vh] lg:h-[65vh] mt-4 px-2">
-                <div className="space-y-4 p-1">
-                
+              <div className="space-y-4 p-1">
+
                 <FormField
-                    control={form.control}
-                    name="role"
-                    render={({ field }) => (
+                  control={form.control}
+                  name="role"
+                  render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Kierowca-Recepcja</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ''}>
+                      <FormLabel>Kierowca-Recepcja</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || ''}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Wybierz rolę" /></SelectTrigger></FormControl>
                         <SelectContent>
-                            {sortedBokRoles.filter(Boolean).map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                          {sortedBokRoles.filter(Boolean).map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                         </SelectContent>
-                        </Select>
-                        <FormMessage />
+                      </Select>
+                      <FormMessage />
                     </FormItem>
-                    )}
+                  )}
                 />
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                    <FormField
-                        control={form.control}
-                        name="lastName"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Nazwisko</FormLabel>
-                            <FormControl><Input placeholder="Kowalski" {...field} /></FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="firstName"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Imię</FormLabel>
-                            <FormControl><Input placeholder="Jan" {...field} /></FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
+                  <FormField
+                    control={form.control}
+                    name="lastName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nazwisko</FormLabel>
+                        <FormControl><Input placeholder="Kowalski" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="firstName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Imię</FormLabel>
+                        <FormControl><Input placeholder="Jan" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
                 <FormField
-                    control={form.control}
-                    name="coordinatorId"
-                    render={({ field }) => (
+                  control={form.control}
+                  name="coordinatorId"
+                  render={({ field }) => (
                     <FormItem className="flex flex-col">
-                        <FormLabel>Koordynator</FormLabel>
+                      <FormLabel>Koordynator</FormLabel>
+                      <FormControl>
+                        <Combobox
+                          options={coordinatorOptions}
+                          value={field.value || ''}
+                          onChange={(val) => {
+                            field.onChange(val);
+                            form.setValue('address', '');
+                            form.setValue('roomNumber', '');
+                          }}
+                          placeholder="Wybierz koordynatora"
+                          searchPlaceholder="Szukaj koordynatora..."
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                  <FormField
+                    control={form.control}
+                    name="nationality"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Narodowość</FormLabel>
                         <FormControl>
-                            <Combobox
-                                options={coordinatorOptions}
-                                value={field.value || ''}
-                                onChange={(val) => {
-                                    field.onChange(val);
-                                    form.setValue('address', '');
-                                    form.setValue('roomNumber', '');
-                                }}
-                                placeholder="Wybierz koordynatora"
-                                searchPlaceholder="Szukaj koordynatora..."
-                            />
+                          <Combobox
+                            options={nationalityOptions}
+                            value={field.value || ''}
+                            onChange={field.onChange}
+                            placeholder="Wybierz narodowość"
+                            searchPlaceholder="Szukaj narodowości..."
+                          />
                         </FormControl>
                         <FormMessage />
-                    </FormItem>
+                      </FormItem>
                     )}
-                />
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                     <FormField
-                        control={form.control}
-                        name="nationality"
-                        render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                            <FormLabel>Narodowość</FormLabel>
-                            <FormControl>
-                                <Combobox
-                                    options={nationalityOptions}
-                                    value={field.value || ''}
-                                    onChange={field.onChange}
-                                    placeholder="Wybierz narodowość"
-                                    searchPlaceholder="Szukaj narodowości..."
-                                />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="gender"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Płeć</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value || ''}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz płeć" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                                {sortedGenders.filter(Boolean).map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-                            </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                </div>
-                
-                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                     <FormField
-                        control={form.control}
-                        name="address"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Adres</FormLabel>
-                            <Select onValueChange={(val) => {
-                                field.onChange(val);
-                                form.setValue('roomNumber', '');
-                            }} value={field.value || ''}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Wybierz adres" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                    {availableAddresses.filter(a => a.name).map(a => (
-                                        <SelectItem key={a.id} value={a.name} disabled={!a.isActive}>
-                                            {a.name} {!a.isActive ? '(Niedostępny)' : ''}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="roomNumber"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Pokój</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value || ''} disabled={!selectedAddress}>
-                            <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : "Wybierz pokój"} /></SelectTrigger></FormControl>
-                            <SelectContent>
-                                {availableRooms.filter(r => r.name).map(r => (
-                                    <SelectItem key={r.id} value={r.name} disabled={!r.isActive}>
-                                        {r.name} {r.isActive ? `(Pojemność: ${r.capacity})` : '(Niedostępny)'}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                 </div>
-                 
-                 <FormField
-                     control={form.control}
-                     name="zaklad"
-                     render={({ field }) => (
-                     <FormItem className="flex flex-col">
-                         <div className="flex justify-between items-center">
-                             <FormLabel>Zakład</FormLabel>
-                             {field.value && (
-                                 <Button
-                                     type="button"
-                                     variant="ghost"
-                                     size="sm"
-                                     className="h-8 w-8 min-h-[44px] min-w-[44px] sm:h-6 sm:w-6 sm:min-h-0 sm:min-w-0 p-0 hover:bg-muted flex items-center justify-center"
-                                     onClick={() => field.onChange('')}
-                                     aria-label="Wyczyść pole"
-                                 >
-                                     <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                                     <span className="sr-only">Wyczyść</span>
-                                 </Button>
-                             )}
-                         </div>
-                         <FormControl>
-                             <Combobox
-                                 options={departmentOptions}
-                                 value={field.value || ''}
-                                 onChange={field.onChange}
-                                 placeholder="Wybierz zakład"
-                                 searchPlaceholder="Szukaj zakładu..."
-                             />
-                         </FormControl>
-                         <FormMessage />
-                     </FormItem>
-                     )}
-                 />
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                        <FormField
-                        control={form.control}
-                        name="checkInDate"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                                <FormLabel>Data zameldowania</FormLabel>
-                                <FormControl>
-                                    <DateInput
-                                        value={field.value ?? undefined}
-                                        onChange={field.onChange}
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                    <FormField
-                        control={form.control}
-                        name="checkOutDate"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                                <FormLabel>Data wyjazdu</FormLabel>
-                                <FormControl>
-                                    <DateInput value={field.value ?? undefined} onChange={field.onChange} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                        />
+                  />
+                  <FormField
+                    control={form.control}
+                    name="gender"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Płeć</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || ''}>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Wybierz płeć" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {sortedGenders.filter(Boolean).map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                     <FormField
-                        control={form.control}
-                        name="returnStatus"
-                        render={({ field }) => (
-                        <FormItem>
-                            <div className="flex justify-between items-center">
-                                <FormLabel>Powrót</FormLabel>
-                                {field.value && (
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 min-h-[44px] min-w-[44px] sm:h-6 sm:w-6 sm:min-h-0 sm:min-w-0 p-0 hover:bg-muted flex items-center justify-center"
-                                        onClick={() => field.onChange('')}
-                                        aria-label="Wyczyść pole"
-                                    >
-                                        <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                                        <span className="sr-only">Wyczyść</span>
-                                    </Button>
-                                )}
-                            </div>
-                            <Select onValueChange={field.onChange} value={field.value || ''}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz opcję" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                                {sortedBokReturnOptions.filter(Boolean).map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                            </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="status"
-                        render={({ field }) => (
-                        <FormItem>
-                            <div className="flex justify-between items-center">
-                                <FormLabel>Status</FormLabel>
-                                {field.value && (
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 min-h-[44px] min-w-[44px] sm:h-6 sm:w-6 sm:min-h-0 sm:min-w-0 p-0 hover:bg-muted flex items-center justify-center"
-                                        onClick={() => field.onChange('')}
-                                        aria-label="Wyczyść pole"
-                                    >
-                                        <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                                        <span className="sr-only">Wyczyść</span>
-                                    </Button>
-                                )}
-                            </div>
-                            <Select onValueChange={field.onChange} value={field.value || ''}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz status" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                                {sortedBokStatuses.filter(Boolean).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                            </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
+                  <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Adres</FormLabel>
+                        <Select onValueChange={(val) => {
+                          field.onChange(val);
+                          form.setValue('roomNumber', '');
+                        }} value={field.value || ''}>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Wybierz adres" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {availableAddresses.filter(a => a.name).map(a => (
+                              <SelectItem key={a.id} value={a.name} disabled={!a.isActive}>
+                                {a.name} {!a.isActive ? '(Niedostępny)' : ''}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="roomNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Pokój</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || ''} disabled={!selectedAddress}>
+                          <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : "Wybierz pokój"} /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {availableRooms.filter(r => r.name).map(r => (
+                              <SelectItem key={r.id} value={r.name} disabled={!r.isActive}>
+                                {r.name} {r.isActive ? `(Pojemność: ${r.capacity})` : '(Niedostępny)'}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
                 <FormField
-                    control={form.control}
-                    name="comments"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Komentarze</FormLabel>
-                        <FormControl><Input placeholder="Dodatkowe informacje..." {...field} /></FormControl>
-                        <FormMessage />
+                  control={form.control}
+                  name="zaklad"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <div className="flex justify-between items-center">
+                        <FormLabel>Zakład</FormLabel>
+                        {field.value && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 min-h-[44px] min-w-[44px] sm:h-6 sm:w-6 sm:min-h-0 sm:min-w-0 p-0 hover:bg-muted flex items-center justify-center"
+                            onClick={() => field.onChange('')}
+                            aria-label="Wyczyść pole"
+                          >
+                            <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                            <span className="sr-only">Wyczyść</span>
+                          </Button>
+                        )}
+                      </div>
+                      <FormControl>
+                        <Combobox
+                          options={departmentOptions}
+                          value={field.value || ''}
+                          onChange={field.onChange}
+                          placeholder="Wybierz zakład"
+                          searchPlaceholder="Szukaj zakładu..."
+                        />
+                      </FormControl>
+                      <FormMessage />
                     </FormItem>
-                    )}
+                  )}
                 />
 
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                  <FormField
+                    control={form.control}
+                    name="checkInDate"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Data zameldowania</FormLabel>
+                        <FormControl>
+                          <DateInput
+                            value={field.value ?? undefined}
+                            onChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="checkOutDate"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Data wyjazdu</FormLabel>
+                        <FormControl>
+                          <DateInput value={field.value ?? undefined} onChange={field.onChange} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                  <FormField
+                    control={form.control}
+                    name="returnStatus"
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="flex justify-between items-center">
+                          <FormLabel>Powrót</FormLabel>
+                          {field.value && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 min-h-[44px] min-w-[44px] sm:h-6 sm:w-6 sm:min-h-0 sm:min-w-0 p-0 hover:bg-muted flex items-center justify-center"
+                              onClick={() => field.onChange('')}
+                              aria-label="Wyczyść pole"
+                            >
+                              <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                              <span className="sr-only">Wyczyść</span>
+                            </Button>
+                          )}
+                        </div>
+                        <Select onValueChange={field.onChange} value={field.value || ''}>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Wybierz opcję" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {sortedBokReturnOptions.filter(Boolean).map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="flex justify-between items-center">
+                          <FormLabel>Status</FormLabel>
+                          {field.value && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 min-h-[44px] min-w-[44px] sm:h-6 sm:w-6 sm:min-h-0 sm:min-w-0 p-0 hover:bg-muted flex items-center justify-center"
+                              onClick={() => field.onChange('')}
+                              aria-label="Wyczyść pole"
+                            >
+                              <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                              <span className="sr-only">Wyczyść</span>
+                            </Button>
+                          )}
+                        </div>
+                        <Select onValueChange={field.onChange} value={field.value || ''}>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Wybierz status" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {sortedBokStatuses.filter(Boolean).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="comments"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Komentarze</FormLabel>
+                      <FormControl><Input placeholder="Dodatkowe informacje..." {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+              </div>
             </ScrollArea>
             <DialogFooter className="mt-4 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                className="w-full sm:w-auto min-h-[44px]"
+              >
+                Anuluj
+              </Button>
+              {resident && onSendPush && (
                 <Button
                   type="button"
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
+                  variant="secondary"
+                  onClick={handleSendPush}
+                  disabled={isSendingPush || form.formState.isSubmitting}
                   className="w-full sm:w-auto min-h-[44px]"
                 >
-                    Anuluj
+                  {isSendingPush
+                    ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    : <Send className="mr-2 h-4 w-4" />}
+                  Wyślij
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={form.formState.isSubmitting}
-                  className="w-full sm:w-auto min-h-[44px]"
-                >
-                    {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Zapisz
-                </Button>
+              )}
+              <Button
+                type="submit"
+                disabled={form.formState.isSubmitting}
+                className="w-full sm:w-auto min-h-[44px]"
+              >
+                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Zapisz
+              </Button>
             </DialogFooter>
           </form>
         </Form>

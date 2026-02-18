@@ -575,17 +575,6 @@ export default function MainLayout({
                 const updatedResident = await updateBokResident(editingBokResident.id, data, currentUser.uid);
                 setRawBokResidents(prev => prev ? prev.map(r => r.id === updatedResident.id ? updatedResident : r) : null);
                 toast({ title: "Sukces", description: "Dane mieszkańca BOK zostały zaktualizowane." });
-
-                // Send push notification to coordinator when coordinator is assigned/changed
-                if (data.coordinatorId && data.coordinatorId !== editingBokResident.coordinatorId) {
-                    const link = `/dashboard?view=employees&action=add&firstName=${encodeURIComponent(data.firstName)}&lastName=${encodeURIComponent(data.lastName)}&nationality=${encodeURIComponent(data.nationality)}&zaklad=${encodeURIComponent(data.zaklad || '')}`;
-                    await sendPushNotification(
-                        data.coordinatorId,
-                        'Nowe zadanie: Dodaj pracownika',
-                        `Mieszkaniec BOK: ${data.lastName} ${data.firstName} - kliknij, aby dodać.`,
-                        link
-                    );
-                }
             } catch (e) {
                 setRawBokResidents(originalBokResidents);
                 toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zaktualizować mieszkańca BOK." });
@@ -603,21 +592,27 @@ export default function MainLayout({
                 const newResident = await addBokResident(newResidentData, currentUser.uid);
                 setRawBokResidents(prev => prev ? [...prev, newResident] : [newResident]);
                 toast({ title: "Sukces", description: "Nowy mieszkaniec BOK został dodany." });
-
-                if (newResidentData.coordinatorId) {
-                    const link = `/dashboard?view=employees&action=add&firstName=${encodeURIComponent(newResidentData.firstName)}&lastName=${encodeURIComponent(newResidentData.lastName)}&nationality=${encodeURIComponent(newResidentData.nationality)}&zaklad=${encodeURIComponent(newResidentData.zaklad || '')}`;
-                    await sendPushNotification(
-                        newResidentData.coordinatorId,
-                        'Nowe zadanie: Dodaj pracownika',
-                        `Mieszkaniec BOK: ${newResidentData.lastName} ${newResidentData.firstName} - kliknij, aby dodać.`,
-                        link
-                    );
-                }
             } catch (e) {
                 toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać mieszkańca BOK." });
             }
         }
     }, [editingBokResident, currentUser, rawBokResidents, toast]);
+
+    const handleSendBokResidentPush = useCallback(async () => {
+        if (!editingBokResident || !currentUser) return;
+        try {
+            const link = `/dashboard?view=employees&action=add&firstName=${encodeURIComponent(editingBokResident.firstName)}&lastName=${encodeURIComponent(editingBokResident.lastName)}&nationality=${encodeURIComponent(editingBokResident.nationality)}&zaklad=${encodeURIComponent(editingBokResident.zaklad || '')}`;
+            await sendPushNotification(
+                editingBokResident.coordinatorId,
+                'Nowe zadanie: Dodaj pracownika',
+                `Mieszkaniec BOK: ${editingBokResident.lastName} ${editingBokResident.firstName} - kliknij, aby dodać.`,
+                link
+            );
+            toast({ title: 'Sukces', description: 'Powiadomienie PUSH zostało wysłane.' });
+        } catch (e) {
+            toast({ variant: 'destructive', title: 'Błąd', description: e instanceof Error ? e.message : 'Nie udało się wysłać powiadomienia.' });
+        }
+    }, [editingBokResident, currentUser, toast]);
 
     const handleDeleteNonEmployee = useCallback(async (id: string, actorUid: string) => {
         if (!currentUser) return;
@@ -1098,6 +1093,7 @@ export default function MainLayout({
                         settings={currentUser.isAdmin ? rawSettings : settings}
                         resident={editingBokResident}
                         currentUser={currentUser}
+                        onSendPush={editingBokResident ? handleSendBokResidentPush : undefined}
                     />
                 )}
                 {rawSettings && currentUser && (

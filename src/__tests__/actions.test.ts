@@ -1,30 +1,30 @@
 import {
-  addEmployee,
-  updateEmployee,
-  deleteEmployee,
-  addNonEmployee,
-  updateNonEmployee,
-  deleteNonEmployee,
-  bulkDeleteEmployees,
-  bulkDeleteEmployeesByCoordinator,
-  transferEmployees,
-  bulkDeleteEmployeesByDepartment,
-  checkAndUpdateStatuses,
-  importEmployeesFromExcel,
-  updateSettings,
-  updateNotificationReadStatus,
-  clearAllNotifications,
-  deleteNotification,
-  generateAccommodationReport,
-  generateNzCostsReport,
-  importNonEmployeesFromExcel,
-  migrateFullNames,
-  updateCoordinatorSubscription,
-  addBokResident,
-  updateBokResident,
-  deleteBokResident,
-  deleteAddressHistoryEntry,
-  sendPushNotification,
+    addEmployee,
+    updateEmployee,
+    deleteEmployee,
+    addNonEmployee,
+    updateNonEmployee,
+    deleteNonEmployee,
+    bulkDeleteEmployees,
+    bulkDeleteEmployeesByCoordinator,
+    transferEmployees,
+    bulkDeleteEmployeesByDepartment,
+    checkAndUpdateStatuses,
+    importEmployeesFromExcel,
+    updateSettings,
+    updateNotificationReadStatus,
+    clearAllNotifications,
+    deleteNotification,
+    generateAccommodationReport,
+    generateNzCostsReport,
+    importNonEmployeesFromExcel,
+    migrateFullNames,
+    updateCoordinatorSubscription,
+    addBokResident,
+    updateBokResident,
+    deleteBokResident,
+    deleteAddressHistoryEntry,
+    sendPushNotification,
 } from '@/lib/actions';
 import * as sheets from '@/lib/sheets';
 import XLSX from 'xlsx';
@@ -34,29 +34,29 @@ import type { Settings, Employee, NonEmployee, BokResident } from '@/types';
 
 // Mock firebase-admin
 jest.mock('@/lib/firebase-admin', () => ({
-  adminMessaging: {
-    send: jest.fn(),
-  },
+    adminMessaging: {
+        send: jest.fn(),
+    },
 }));
 
 // Mock next/cache
 jest.mock('next/cache', () => ({
-  revalidatePath: jest.fn(),
+    revalidatePath: jest.fn(),
 }));
 
 // Mock the entire sheets module
 jest.mock('@/lib/sheets', () => ({
-  ...jest.requireActual('@/lib/sheets'), // import and retain default behavior
-  getSheet: jest.fn(),
-  getSettings: jest.fn(),
-  getEmployees: jest.fn(),
-  getNonEmployees: jest.fn(),
-  getBokResidents: jest.fn(),
-  getRawAddressHistory: jest.fn(),
-  getNotifications: jest.fn(),
-  addAddressHistoryEntry: jest.fn(),
-  updateAddressHistoryEntry: jest.fn(),
-  deleteAddressHistoryEntry: jest.fn(),
+    ...jest.requireActual('@/lib/sheets'), // import and retain default behavior
+    getSheet: jest.fn(),
+    getSettings: jest.fn(),
+    getEmployees: jest.fn(),
+    getNonEmployees: jest.fn(),
+    getBokResidents: jest.fn(),
+    getRawAddressHistory: jest.fn(),
+    getNotifications: jest.fn(),
+    addAddressHistoryEntry: jest.fn(),
+    updateAddressHistoryEntry: jest.fn(),
+    deleteAddressHistoryEntry: jest.fn(),
 }));
 
 const mockedGetSheet = sheets.getSheet as jest.Mock;
@@ -70,29 +70,29 @@ const mockedDeleteHistory = sheets.deleteAddressHistoryEntry as jest.Mock;
 
 // Helper function to create a mock Excel file in memory (as base64)
 function createMockExcel(data: Record<string, unknown>[]): string {
-  const ws = XLSX.utils.json_to_sheet(data);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Arkusz1');
-  const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-  return buffer.toString('base64');
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Arkusz1');
+    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    return buffer.toString('base64');
 }
 
 const mockSettings: Settings = {
-  id: 'global-settings',
-  coordinators: [
-    { uid: 'coord-1', name: 'Jan Kowalski', isAdmin: false, departments: ['IT', 'HR'], visibilityMode: 'department' },
-    { uid: 'coord-2', name: 'Anna Nowak', isAdmin: false, departments: ['Marketing'], visibilityMode: 'strict' },
-  ],
-  localities: ['Warszawa', 'Kraków'],
-  departments: ['IT', 'HR', 'Marketing'],
-  nationalities: ['Polska', 'Ukraina'],
-  genders: ['Mężczyzna', 'Kobieta'],
-  addresses: [],
-  paymentTypesNZ: [],
-  statuses: [],
-  bokRoles: [],
-  bokReturnOptions: [],
-  bokStatuses: [],
+    id: 'global-settings',
+    coordinators: [
+        { uid: 'coord-1', name: 'Jan Kowalski', isAdmin: false, departments: ['IT', 'HR'], visibilityMode: 'department' },
+        { uid: 'coord-2', name: 'Anna Nowak', isAdmin: false, departments: ['Marketing'], visibilityMode: 'strict' },
+    ],
+    localities: ['Warszawa', 'Kraków'],
+    departments: ['IT', 'HR', 'Marketing'],
+    nationalities: ['Polska', 'Ukraina'],
+    genders: ['Mężczyzna', 'Kobieta'],
+    addresses: [],
+    paymentTypesNZ: [],
+    statuses: [],
+    bokRoles: [],
+    bokReturnOptions: [],
+    bokStatuses: [],
 };
 
 const mockEmployees: Employee[] = [
@@ -140,18 +140,18 @@ describe('Server Actions', () => {
 
             expect(mockedGetSheet).toHaveBeenCalledWith('Employees', expect.any(Array));
             expect(mockAddRowEmployee).toHaveBeenCalledTimes(1);
-            
+
             const addedData = mockAddRowEmployee.mock.calls[0][0];
             expect(addedData.firstName).toBe('Nowy');
             expect(addedData.lastName).toBe('Pracownik');
             expect(addedData.fullName).toBe('Pracownik Nowy');
             expect(addedData.status).toBe('active');
-            
+
             expect(mockedGetSheet).toHaveBeenCalledWith('Powiadomienia', expect.any(Array));
             expect(mockAddRowNotification).toHaveBeenCalledTimes(1);
         });
     });
-    
+
     describe('updateEmployee', () => {
         it('should update an employee and create a notification for changes', async () => {
             const mockRow = {
@@ -163,7 +163,7 @@ describe('Server Actions', () => {
             const mockSheet = { getRows: jest.fn().mockResolvedValue([mockRow]), addRow: jest.fn() };
             const mockNotificationSheet = { addRow: jest.fn().mockResolvedValue(undefined) };
             const mockAuditSheet = { addRow: jest.fn().mockResolvedValue(undefined) };
-            
+
             mockedGetSheet.mockImplementation((sheetName: string) => {
                 if (sheetName === 'Employees') return Promise.resolve(mockSheet);
                 if (sheetName === 'Powiadomienia') return Promise.resolve(mockNotificationSheet);
@@ -172,7 +172,7 @@ describe('Server Actions', () => {
             });
 
             await updateEmployee('emp-1', { comments: 'Nowy komentarz' }, 'coord-1');
-            
+
             expect(mockRow.set).toHaveBeenCalledWith('comments', 'Nowy komentarz');
             expect(mockRow.save).toHaveBeenCalledTimes(1);
             expect(mockNotificationSheet.addRow).toHaveBeenCalledTimes(1);
@@ -193,7 +193,7 @@ describe('Server Actions', () => {
 
             const mockSheet = { getRows: jest.fn().mockResolvedValue([mockRow]), addRow: jest.fn() };
             mockedGetSheet.mockResolvedValue(mockSheet as unknown as GoogleSpreadsheetWorksheet);
-            
+
             mockedGetRawAddressHistory.mockResolvedValue([
                 { id: 'hist-1', employeeId: 'emp-1' },
                 { id: 'hist-2', employeeId: 'emp-2' },
@@ -293,7 +293,7 @@ describe('Server Actions', () => {
             expect(mockRows[2].delete).toHaveBeenCalledTimes(1);
         });
     });
-    
+
     describe('checkAndUpdateEmployeeStatuses', () => {
         it('should dismiss an employee whose checkout date is in the past', async () => {
             const pastDate = new Date();
@@ -325,7 +325,7 @@ describe('Server Actions', () => {
             });
 
             const result = await checkAndUpdateStatuses('system');
-            
+
             expect(result.updated).toBe(1);
             expect(mockEmployeeRow.set).toHaveBeenCalledWith('status', 'dismissed');
             expect(mockEmployeeRow.save).toHaveBeenCalledTimes(1);
@@ -339,7 +339,7 @@ describe('Server Actions', () => {
             const mockAddRowNonEmployee = jest.fn().mockResolvedValue(undefined);
             const mockAddRowNotification = jest.fn().mockResolvedValue(undefined);
             const mockAddRowAudit = jest.fn().mockResolvedValue(undefined);
-            
+
             const mockNonEmployeeSheet = { addRow: mockAddRowNonEmployee, getRows: jest.fn().mockResolvedValue([]) };
             const mockNotificationSheet = { addRow: mockAddRowNotification, getRows: jest.fn().mockResolvedValue([]) };
             const mockAuditSheet = { addRow: mockAddRowAudit, getRows: jest.fn().mockResolvedValue([]) };
@@ -424,15 +424,15 @@ describe('Server Actions', () => {
     describe('importEmployeesFromExcel', () => {
         it('should correctly parse valid rows and report errors for invalid ones', async () => {
             const excelData = [
-              { 'Imię': 'Adam', 'Nazwisko': 'Testowy', 'Koordynator': 'Jan Kowalski', 'Data zameldowania': '01.01.2024', 'Zakład': 'IT', 'Miejscowość': 'Warszawa', 'Adres': 'Testowa 1', 'Pokój': '101', 'Narodowość': 'Polska' },
-              { 'Imię': 'Ewa', 'Nazwisko': 'Błędna', 'Koordynator': 'Nieistniejący', 'Data zameldowania': '02.01.2024', 'Zakład': 'HR', 'Miejscowość': 'Kraków', 'Adres': 'Testowa 2', 'Pokój': '102', 'Narodowość': 'Ukraina' },
-              { 'Imię': 'Jan', 'Nazwisko': 'Niewystarczający' /* Missing fields */ },
+                { 'Imię': 'Adam', 'Nazwisko': 'Testowy', 'Koordynator': 'Jan Kowalski', 'Data zameldowania': '01.01.2024', 'Zakład': 'IT', 'Miejscowość': 'Warszawa', 'Adres': 'Testowa 1', 'Pokój': '101', 'Narodowość': 'Polska' },
+                { 'Imię': 'Ewa', 'Nazwisko': 'Błędna', 'Koordynator': 'Nieistniejący', 'Data zameldowania': '02.01.2024', 'Zakład': 'HR', 'Miejscowość': 'Kraków', 'Adres': 'Testowa 2', 'Pokój': '102', 'Narodowość': 'Ukraina' },
+                { 'Imię': 'Jan', 'Nazwisko': 'Niewystarczający' /* Missing fields */ },
             ];
             const base64Content = createMockExcel(excelData);
-    
+
             const mockAddRowsEmployee = jest.fn().mockResolvedValue(undefined);
             const mockAddRowsNotification = jest.fn().mockResolvedValue(undefined);
-            
+
             mockedGetSheet.mockImplementation((title) => {
                 if (title === 'Employees') return Promise.resolve({ addRows: mockAddRowsEmployee });
                 if (title === 'Powiadomienia') return Promise.resolve({ addRows: mockAddRowsNotification });
@@ -440,15 +440,15 @@ describe('Server Actions', () => {
             });
 
             const result = await importEmployeesFromExcel(base64Content, 'coord-1', mockSettings);
-    
+
             expect(result.importedCount).toBe(1);
             expect(result.totalRows).toBe(3);
             expect(result.errors).toHaveLength(2);
             expect(result.errors[0]).toContain("Wiersz 3 (Błędna): Nie znaleziono koordynatora 'Nieistniejący'.");
             expect(result.errors[1]).toContain("Wiersz 4: Brak wymaganych danych w kolumnach: koordynator, data zameldowania, zakład, miejscowość, adres, pokój, narodowość.");
-            
+
             expect(mockAddRowsEmployee).toHaveBeenCalledTimes(1);
-            
+
             const addedRecords = mockAddRowsEmployee.mock.calls[0][0];
             expect(addedRecords).toHaveLength(1);
             expect(addedRecords[0]).toEqual(expect.objectContaining({
@@ -469,13 +469,13 @@ describe('Server Actions', () => {
 
             const mockAddRowsNonEmployee = jest.fn().mockResolvedValue(undefined);
             const mockAddRowsNotification = jest.fn().mockResolvedValue(undefined);
-            
+
             const mockSheetNonEmployee = { addRows: mockAddRowsNonEmployee };
             const mockSheetNotification = { addRows: mockAddRowsNotification };
-            
+
             mockedGetSheet.mockImplementation((title) => {
-                if(title === 'NonEmployees') return Promise.resolve(mockSheetNonEmployee);
-                if(title === 'Powiadomienia') return Promise.resolve(mockSheetNotification);
+                if (title === 'NonEmployees') return Promise.resolve(mockSheetNonEmployee);
+                if (title === 'Powiadomienia') return Promise.resolve(mockSheetNotification);
                 return Promise.resolve({ addRows: jest.fn() });
             });
 
@@ -694,7 +694,7 @@ describe('Server Actions', () => {
             const mockAddRow = jest.fn().mockResolvedValue(undefined);
             const mockNotificationSheet = { addRow: jest.fn().mockResolvedValue(undefined) };
             const mockAuditSheet = { addRow: jest.fn().mockResolvedValue(undefined) };
-            
+
             mockedGetSheet.mockImplementation((title) => {
                 if (title === 'BokResidents') return Promise.resolve({ addRow: mockAddRow, getRows: jest.fn().mockResolvedValue([]) });
                 if (title === 'Powiadomienia') return Promise.resolve(mockNotificationSheet);
@@ -782,20 +782,20 @@ describe('Server Actions', () => {
         it('should send push notification if token exists', async () => {
             const mockCoordinator = { uid: 'coord-1', name: 'Coord', isAdmin: false, departments: [], pushSubscription: 'valid-token' };
             mockedGetSettings.mockResolvedValue({ coordinators: [mockCoordinator] });
-            
+
             await sendPushNotification('coord-1', 'Test Title', 'Test Body');
 
             expect(adminMessaging!.send).toHaveBeenCalledTimes(1);
             expect(adminMessaging!.send).toHaveBeenCalledWith(expect.objectContaining({
                 token: 'valid-token',
-                notification: { title: 'Test Title', body: 'Test Body' }
+                data: expect.objectContaining({ title: 'Test Title', body: 'Test Body' })
             }));
         });
 
         it('should skip sending if token is missing', async () => {
             const mockCoordinator = { uid: 'coord-1', name: 'Coord', isAdmin: false, departments: [], pushSubscription: '' };
             mockedGetSettings.mockResolvedValue({ coordinators: [mockCoordinator] });
-            
+
             (adminMessaging!.send as jest.Mock).mockClear();
 
             await sendPushNotification('coord-1', 'Test', 'Test');
