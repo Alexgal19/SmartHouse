@@ -68,7 +68,7 @@ const serializeDate = (date?: string | null): string => {
     if (!isValid(d)) {
         return '';
     }
-    return date; 
+    return date;
 };
 
 const serializeEmployee = (employee: Partial<Employee>): Record<string, string | number | boolean> => {
@@ -76,13 +76,13 @@ const serializeEmployee = (employee: Partial<Employee>): Record<string, string |
 
     const dataToWrite = { ...employee };
     if (dataToWrite.firstName || dataToWrite.lastName) {
-      dataToWrite.fullName = `${dataToWrite.lastName || ''} ${dataToWrite.firstName || ''}`.trim();
+        dataToWrite.fullName = `${dataToWrite.lastName || ''} ${dataToWrite.firstName || ''}`.trim();
     }
 
     for (const key of EMPLOYEE_HEADERS) {
         const typedKey = key as keyof Employee;
         const value = dataToWrite[typedKey];
-        
+
         if (value === undefined || value === null) {
             serialized[key] = '';
             continue;
@@ -107,7 +107,7 @@ const serializeNonEmployee = (nonEmployee: Partial<NonEmployee>): Record<string,
     const dataToWrite = { ...nonEmployee };
 
     if (dataToWrite.firstName || dataToWrite.lastName) {
-      dataToWrite.fullName = `${dataToWrite.lastName || ''} ${dataToWrite.firstName || ''}`.trim();
+        dataToWrite.fullName = `${dataToWrite.lastName || ''} ${dataToWrite.firstName || ''}`.trim();
     }
 
     for (const key of NON_EMPLOYEE_HEADERS) {
@@ -135,7 +135,7 @@ const serializeBokResident = (resident: Partial<BokResident>): Record<string, st
     const dataToWrite = { ...resident };
 
     if (dataToWrite.firstName || dataToWrite.lastName) {
-      dataToWrite.fullName = `${dataToWrite.lastName || ''} ${dataToWrite.firstName || ''}`.trim();
+        dataToWrite.fullName = `${dataToWrite.lastName || ''} ${dataToWrite.firstName || ''}`.trim();
     }
 
     for (const key of BOK_RESIDENT_HEADERS) {
@@ -218,7 +218,7 @@ const safeFormat = (dateValue: unknown): string | null => {
             return format(date, 'yyyy-MM-dd');
         }
     }
-    
+
     date = new Date(dateString);
     if (isValid(date)) {
         return format(date, 'yyyy-MM-dd');
@@ -243,14 +243,14 @@ const splitFullName = (fullName: string | null | undefined): { firstName: string
 
 const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     const plainObject = row;
-    
+
     const id = plainObject.id;
     if (!id || (!plainObject.lastName && !plainObject.fullName)) {
         return null;
     }
 
     const { firstName, lastName } = (plainObject.lastName && plainObject.firstName)
-        ? { firstName: plainObject.firstName as string, lastName: plainObject.lastName as string}
+        ? { firstName: plainObject.firstName as string, lastName: plainObject.lastName as string }
         : splitFullName(plainObject.fullName as string);
 
     if (!lastName) {
@@ -267,12 +267,12 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
     if (plainObject.deductionReason && typeof plainObject.deductionReason === 'string') {
         try {
             const parsed = JSON.parse(plainObject.deductionReason);
-            if(Array.isArray(parsed)) deductionReason = parsed;
-        } catch(e) {
+            if (Array.isArray(parsed)) deductionReason = parsed;
+        } catch (e) {
             console.warn(`Could not parse deductionReason for employee ${id}:`, e);
         }
     }
-    
+
     const validDepositValues = ['Tak', 'Nie', 'Nie dotyczy'];
     const depositReturned = validDepositValues.includes(plainObject.depositReturned as string) ? plainObject.depositReturned as Employee['depositReturned'] : null;
 
@@ -303,7 +303,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         deductionReason: deductionReason,
         deductionEntryDate: safeFormat(plainObject.deductionEntryDate),
     };
-    
+
     return newEmployee;
 };
 
@@ -364,9 +364,9 @@ const generateSmartNotificationMessage = (
             type = 'warning';
             break;
         case 'wysłał do Ciebie':
-             message = `Wysłał do Ciebie nowego ${entityType}: ${entityFullName}.`;
-             type = 'info';
-             break;
+            message = `Wysłał do Ciebie nowego ${entityType}: ${entityFullName}.`;
+            type = 'info';
+            break;
         case 'przypisał do Ciebie':
             message = `Przypisał do Ciebie nowego ${entityType}: ${entityFullName}.`;
             type = 'info';
@@ -422,12 +422,12 @@ const createNotification = async (
         } else {
             recipientId = entity.coordinatorId;
         }
-        
+
         const recipient = settings.coordinators.find(c => c.uid === recipientId);
         if (!recipient) return;
 
         const { message, type } = generateSmartNotificationMessage(actor.name, entity, notificationAction, readableChanges);
-        
+
         const notification: Notification = {
             id: `notif-${Date.now()}-${Math.random()}`,
             message,
@@ -441,10 +441,10 @@ const createNotification = async (
             type: type,
             changes: readableChanges
         };
-        
+
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
         await withTimeout(sheet.addRow(serializeNotification(notification)), TIMEOUT_MS, 'sheet.addRow(Notification)');
-        
+
         const entityType = 'role' in entity ? 'bok-resident' : ('zaklad' in entity && entity.zaklad ? 'pracownika' : 'mieszkańca');
         await writeToAuditLog(actor.uid, actor.name, action, entityType, entity.id, changes);
 
@@ -462,11 +462,11 @@ const findActor = (actorUid: string | undefined, settings: Settings): Coordinato
     if (actorUid === 'system') {
         return { uid: 'system', name: 'System', isAdmin: true, departments: [] };
     }
-     if (actorUid === 'admin-hardcoded') {
+    if (actorUid === 'admin-hardcoded') {
         return { uid: 'admin-hardcoded', name: 'Admin', isAdmin: true, departments: [] };
     }
     if (!actorUid) {
-         throw new Error("Could not find acting user.");
+        throw new Error("Could not find acting user.");
     }
     const actor = settings.coordinators.find(c => c.uid === actorUid);
     if (!actor) {
@@ -484,7 +484,7 @@ const validateRoomAvailability = (settings: Settings, addressName: string | unde
         if (address && roomName) {
             const room = address.rooms.find(r => r.name === roomName);
             if (room && room.isActive === false) {
-                 throw new Error(`Pokój "${room.name}" w adresie "${address.name}" jest wyłączony z użytku.`);
+                throw new Error(`Pokój "${room.name}" w adresie "${address.name}" jest wyłączony z użytku.`);
             }
         }
     }
@@ -528,9 +528,9 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
 
         const serialized = serializeEmployee(newEmployee);
         await withTimeout(sheet.addRow(serialized, { raw: false, insert: true }), TIMEOUT_MS, 'sheet.addRow(Employee)');
-        
+
         await createNotification(actor, 'dodał', newEmployee, settings);
-        
+
         await invalidateEmployeesCache();
         return newEmployee;
     } catch (e: unknown) {
@@ -571,11 +571,11 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
             const lastHistoryEntry = (addressHistory || [])
                 .filter(h => h.employeeId === employeeId && h.address === originalEmployee.address && h.checkInDate === originalEmployee.checkInDate)
                 .sort((a, b) => new Date(b.checkInDate || 0).getTime() - new Date(a.checkInDate || 0).getTime())[0];
-            
+
             if (lastHistoryEntry) {
-                 await updateHistoryToAction(lastHistoryEntry.id, { checkOutDate: updates.checkInDate });
+                await updateHistoryToAction(lastHistoryEntry.id, { checkOutDate: updates.checkInDate });
             } else if (originalEmployee.address && originalEmployee.checkInDate) {
-                 const oldCoordinator = settings.coordinators.find(c => c.uid === originalEmployee.coordinatorId);
+                const oldCoordinator = settings.coordinators.find(c => c.uid === originalEmployee.coordinatorId);
                 await addHistoryToAction({
                     employeeId: employeeId,
                     employeeFirstName: originalEmployee.firstName,
@@ -588,7 +588,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
                 });
             }
         }
-        
+
         const updatedEmployeeData: Employee = { ...originalEmployee, ...updates };
         const changes: NotificationChange[] = [];
         const { ...dbUpdates } = updates;
@@ -597,12 +597,12 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
             const typedKey = key as keyof Employee;
             const oldValue = originalEmployee[typedKey];
             const newValue = dbUpdates[typedKey];
-            
+
             const areDates = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'deductionEntryDate'].includes(key);
 
             let oldValStr: string | null = null;
             if (oldValue !== null && oldValue !== undefined) {
-                 if (key === 'deductionReason' && Array.isArray(oldValue)) {
+                if (key === 'deductionReason' && Array.isArray(oldValue)) {
                     oldValStr = JSON.stringify(oldValue);
                 } else if (key === 'coordinatorId') {
                     oldValStr = settings.coordinators.find(c => c.uid === oldValue)?.name || (oldValue as string);
@@ -615,34 +615,34 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
 
             let newValStr: string | null = null;
             if (newValue !== null && newValue !== undefined) {
-                 if (key === 'deductionReason' && Array.isArray(newValue)) {
+                if (key === 'deductionReason' && Array.isArray(newValue)) {
                     newValStr = JSON.stringify(newValue);
                 } else if (key === 'coordinatorId') {
                     newValStr = settings.coordinators.find(c => c.uid === newValue)?.name || (newValue as string);
                 } else if (areDates && isValid(new Date(newValue as string))) {
                     newValStr = format(new Date(newValue as string), 'dd-MM-yyyy');
                 }
-                 else {
+                else {
                     newValStr = String(newValue);
                 }
             }
-            
+
             if (oldValStr !== newValStr) {
                 changes.push({ field: typedKey, oldValue: oldValStr || 'Brak', newValue: newValStr || 'Brak' });
             }
         }
-        
+
         const serialized = serializeEmployee(updatedEmployeeData);
-        for(const header of EMPLOYEE_HEADERS) {
+        for (const header of EMPLOYEE_HEADERS) {
             row.set(header, serialized[header]);
         }
 
         await withTimeout(row.save(), TIMEOUT_MS, 'row.save(Employee)');
-        
+
         if (changes.length > 0) {
             await createNotification(actor, 'zaktualizował', updatedEmployeeData, settings, undefined, changes);
         }
-        
+
         await invalidateEmployeesCache();
         return updatedEmployeeData;
 
@@ -655,7 +655,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
 export async function deleteEmployee(employeeId: string, _actorUid: string): Promise<string> {
     try {
         const addressHistory = await getRawAddressHistory();
-        
+
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Employee)');
         const row = rows.find((r) => r.get('id') === employeeId);
@@ -665,12 +665,12 @@ export async function deleteEmployee(employeeId: string, _actorUid: string): Pro
         }
 
         await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(Employee)');
-        
+
         const historyToDelete = (addressHistory || []).filter(h => h.employeeId === employeeId);
         for (const historyEntry of historyToDelete) {
             await deleteHistoryFromSheet(historyEntry.id);
         }
-        
+
         await invalidateEmployeesCache();
         return employeeId;
 
@@ -709,9 +709,9 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id' | '
 
         const serialized = serializeNonEmployee(newNonEmployee);
         await withTimeout(sheet.addRow(serialized, { raw: false, insert: true }), TIMEOUT_MS, 'sheet.addRow(NonEmployee)');
-        
+
         await createNotification(actor, 'dodał', newNonEmployee, settings);
-        
+
         await invalidateNonEmployeesCache();
 
         return newNonEmployee;
@@ -722,7 +722,7 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id' | '
 }
 
 export async function updateNonEmployee(id: string, updates: Partial<NonEmployee>, actorUid: string): Promise<NonEmployee> {
-     try {
+    try {
         if (updates.status === 'dismissed' && !updates.checkOutDate) {
             throw new Error('Data wymeldowania jest wymagana przy zwalnianiu osoby niebędącej pracownikiem.');
         }
@@ -742,14 +742,14 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
 
         const row = rows[rowIndex];
         const originalNonEmployee = { ...row.toObject(), ...splitFullName(row.get('fullName')) } as NonEmployee;
-        
+
         if (updates.address && updates.address !== originalNonEmployee.address && updates.checkInDate) {
             const lastHistoryEntry = (addressHistory || [])
                 .filter(h => h.employeeId === id && h.address === originalNonEmployee.address && h.checkInDate === originalNonEmployee.checkInDate)
                 .sort((a, b) => new Date(b.checkInDate || 0).getTime() - new Date(a.checkInDate || 0).getTime())[0];
 
             if (lastHistoryEntry) {
-                 await updateHistoryToAction(lastHistoryEntry.id, { checkOutDate: updates.checkInDate });
+                await updateHistoryToAction(lastHistoryEntry.id, { checkOutDate: updates.checkInDate });
             } else if (originalNonEmployee.address && originalNonEmployee.checkInDate) {
                 const oldCoordinator = settings.coordinators.find(c => c.uid === originalNonEmployee.coordinatorId);
                 await addHistoryToAction({
@@ -764,15 +764,15 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
                 });
             }
         }
-        
+
         const updatedNonEmployeeData: NonEmployee = { ...originalNonEmployee, ...updates };
         const changes: NotificationChange[] = [];
-        
+
         for (const key in updates) {
             const typedKey = key as keyof NonEmployee;
             const oldValue = originalNonEmployee[typedKey];
             const newValue = updates[typedKey];
-            
+
             let oldValStr: string | null = null;
             if (oldValue !== null && oldValue !== undefined) {
                 oldValStr = String(oldValue);
@@ -782,30 +782,30 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
             if (newValue !== null && newValue !== undefined) {
                 newValStr = String(newValue);
             }
-            
+
             if (oldValStr !== newValStr) {
                 changes.push({ field: typedKey, oldValue: oldValStr || 'Brak', newValue: newValStr || 'Brak' });
             }
         }
-        
+
         const serializedData = serializeNonEmployee(updatedNonEmployeeData);
-        for(const header of NON_EMPLOYEE_HEADERS) {
+        for (const header of NON_EMPLOYEE_HEADERS) {
             row.set(header, serializedData[header]);
         }
 
         await withTimeout(row.save(), TIMEOUT_MS, 'row.save(NonEmployee)');
-        
+
         if (changes.length > 0) {
             await createNotification(actor, 'zaktualizował', updatedNonEmployeeData, settings, undefined, changes);
         }
-        
+
         await invalidateNonEmployeesCache();
         return updatedNonEmployeeData;
 
-     } catch (e: unknown) {
-         console.error("Error updating non-employee:", e);
-         throw new Error(e instanceof Error ? e.message : "Failed to update non-employee.");
-     }
+    } catch (e: unknown) {
+        console.error("Error updating non-employee:", e);
+        throw new Error(e instanceof Error ? e.message : "Failed to update non-employee.");
+    }
 }
 
 export async function deleteNonEmployee(id: string, _actorUid: string): Promise<string> {
@@ -849,9 +849,9 @@ export async function addBokResident(residentData: Omit<BokResident, 'id'>, acto
 
         const serialized = serializeBokResident(newResident);
         await withTimeout(sheet.addRow(serialized, { raw: false, insert: true }), TIMEOUT_MS, 'sheet.addRow(BokResident)');
-        
+
         await createNotification(actor, 'dodał', newResident, settings);
-        
+
         await invalidateBokResidentsCache();
 
         return newResident;
@@ -887,22 +887,22 @@ export async function updateBokResident(id: string, updates: Partial<BokResident
             const typedKey = key as keyof BokResident;
             const oldValue = originalResident[typedKey];
             const newValue = updates[typedKey];
-            
+
             if (String(oldValue) !== String(newValue)) {
                 changes.push({ field: typedKey, oldValue: String(oldValue || 'Brak'), newValue: String(newValue || 'Brak') });
             }
         }
 
         const serialized = serializeBokResident(updatedResident);
-        for(const header of BOK_RESIDENT_HEADERS) {
+        for (const header of BOK_RESIDENT_HEADERS) {
             row.set(header, serialized[header]);
         }
         await withTimeout(row.save(), TIMEOUT_MS, 'row.save(BokResident)');
-        
+
         if (changes.length > 0) {
             await createNotification(actor, 'zaktualizował', updatedResident, settings, undefined, changes);
         }
-        
+
         await invalidateBokResidentsCache();
         return updatedResident;
 
@@ -946,7 +946,7 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', _actor
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows();
         const rowsToDelete = rows.filter((row) => row.get('status') === status);
-        
+
         if (rowsToDelete.length === 0) {
             return;
         }
@@ -955,7 +955,7 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', _actor
         for (let i = rowsToDelete.length - 1; i >= 0; i--) {
             await withTimeout(rowsToDelete[i].delete(), TIMEOUT_MS, 'row.delete(Employee)');
         }
-        
+
         await invalidateEmployeesCache();
         revalidatePath('/dashboard');
 
@@ -970,7 +970,7 @@ export async function bulkDeleteEmployeesByCoordinator(coordinatorId: string, ac
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows();
         const rowsToDelete = rows.filter((row) => row.get('coordinatorId') === coordinatorId);
-        
+
         if (rowsToDelete.length === 0) {
             return;
         }
@@ -978,10 +978,10 @@ export async function bulkDeleteEmployeesByCoordinator(coordinatorId: string, ac
         for (let i = rowsToDelete.length - 1; i >= 0; i--) {
             await withTimeout(rowsToDelete[i].delete(), TIMEOUT_MS, 'row.delete(Employee)');
         }
-        
+
         await invalidateEmployeesCache();
         revalidatePath('/dashboard');
-        
+
         // Audit logging
         const settings = await getSettings();
         const actor = findActor(actorUid, settings);
@@ -1004,7 +1004,7 @@ export async function bulkDeleteEmployeesByDepartment(department: string, actorU
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows();
         const rowsToDelete = rows.filter((row) => row.get('zaklad') === department);
-        
+
         if (rowsToDelete.length === 0) {
             return;
         }
@@ -1012,10 +1012,10 @@ export async function bulkDeleteEmployeesByDepartment(department: string, actorU
         for (let i = rowsToDelete.length - 1; i >= 0; i--) {
             await withTimeout(rowsToDelete[i].delete(), TIMEOUT_MS, 'row.delete(Employee)');
         }
-        
+
         await invalidateEmployeesCache();
         revalidatePath('/dashboard');
-        
+
         // Audit logging
         const settings = await getSettings();
         const actor = findActor(actorUid, settings);
@@ -1052,7 +1052,7 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
             row.set('coordinatorId', toCoordinatorId);
             await withTimeout(row.save(), TIMEOUT_MS, 'row.save(Employee)');
         }
-        
+
         await invalidateEmployeesCache();
         revalidatePath('/dashboard');
 
@@ -1076,7 +1076,7 @@ export async function checkAndUpdateStatuses(actorUid?: string): Promise<{ updat
         for (const row of employeeRows) {
             const status = String(row.get('status'));
             const checkOutDateString = String(row.get('checkOutDate'));
-            
+
             if (status === 'active' && checkOutDateString) {
                 const checkOutDate = parseISO(checkOutDateString);
                 if (isValid(checkOutDate) && checkOutDate < today) {
@@ -1114,13 +1114,13 @@ export async function checkAndUpdateStatuses(actorUid?: string): Promise<{ updat
                 }
             }
         }
-        
+
         if (updatedCount > 0) {
-             await invalidateEmployeesCache();
-             await invalidateNonEmployeesCache();
-             revalidatePath('/dashboard');
+            await invalidateEmployeesCache();
+            await invalidateNonEmployeesCache();
+            revalidatePath('/dashboard');
         }
-        
+
         return { updated: updatedCount };
     } catch (e: unknown) {
         console.error("Error updating statuses:", e);
@@ -1141,15 +1141,15 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
         // Batch deletion
         // Use a separate function for deletion to avoid 'then' on undefined in tests if delete returns void/undefined
         await batchPromises(toDeleteRows.reverse(), 5, async (row) => {
-             await withTimeout(row.delete(), TIMEOUT_MS, `row.delete(${sheetName})`);
+            await withTimeout(row.delete(), TIMEOUT_MS, `row.delete(${sheetName})`);
         }, 100);
 
         // Batch addition
         if (toAdd.length > 0) {
-           await withTimeout(sheet.addRows(toAdd.map(name => ({ name })), { raw: false, insert: true }), TIMEOUT_MS, `sheet.addRows(${sheetName})`);
+            await withTimeout(sheet.addRows(toAdd.map(name => ({ name })), { raw: false, insert: true }), TIMEOUT_MS, `sheet.addRows(${sheetName})`);
         }
     };
-    
+
     try {
         // Parallelize simple lists update with concurrency control (max 3 concurrent)
         const simpleListTasks: (() => Promise<void>)[] = [];
@@ -1168,28 +1168,28 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
             await (async () => {
                 const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ADDRESS_HEADERS);
                 const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity', 'isActive']);
-                
+
                 const currentAddressRows = await withTimeout(addressesSheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Addresses)');
                 const toAddAddr = newSettings.addresses!.filter(a => !currentAddressRows.some(r => r.get('id') === a.id));
                 const toDeleteAddrRows = currentAddressRows.filter(r => !newSettings.addresses!.some(a => a.id === r.get('id')));
-                
+
                 // Identify modified addresses only
                 const toUpdateAddr = newSettings.addresses!
                     .filter(a => currentAddressRows.some(r => r.get('id') === a.id))
                     .filter(addr => {
                         const row = currentAddressRows.find(r => r.get('id') === addr.id)!;
                         const newCoordinatorIds = (addr.coordinatorIds || []).join(',');
-                        
+
                         const currentName = String(row.get('name') || '');
                         const currentLocality = String(row.get('locality') || '');
                         const currentCoordinatorIds = String(row.get('coordinatorIds') || '');
-                        
+
                         const isActiveRaw = row.get('isActive');
                         // Default to TRUE if missing or empty, otherwise parse the value
                         const currentIsActive = (isActiveRaw === undefined || isActiveRaw === null || String(isActiveRaw).trim() === '')
                             ? true
                             : String(isActiveRaw).toUpperCase() === 'TRUE';
-                        
+
                         const newIsActive = addr.isActive !== false;
 
                         return (
@@ -1205,7 +1205,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                 const sortedToDeleteAddr = toDeleteAddrRows.sort((a, b) => b.rowNumber - a.rowNumber);
                 // Limit the number of deletions to prevent timeouts if there are many orphan rows
                 const safeBatchToDeleteAddr = sortedToDeleteAddr.slice(0, 20);
-                
+
                 await batchPromises(safeBatchToDeleteAddr, 1, async (row) => {
                     await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(Addresses)');
                 }, 100);
@@ -1215,7 +1215,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                     const row = currentAddressRows.find(r => r.get('id') === addr.id)!;
                     const newCoordinatorIds = (addr.coordinatorIds || []).join(',');
                     const newIsActive = addr.isActive !== false ? 'TRUE' : 'FALSE';
-                    
+
                     row.set('name', addr.name);
                     row.set('locality', addr.locality);
                     row.set('coordinatorIds', newCoordinatorIds);
@@ -1236,7 +1236,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                 // Differential update for rooms
                 const currentRoomRows = await withTimeout(roomsSheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Rooms)');
                 const newRooms = newSettings.addresses!.flatMap(addr => addr.rooms.map(room => ({ ...room, addressId: addr.id })));
-                
+
                 const toAddRooms = newRooms.filter(room => !currentRoomRows.some(r => r.get('id') === room.id));
                 const toDeleteRoomRows = currentRoomRows.filter(r => !newRooms.some(room => room.id === r.get('id')));
 
@@ -1247,7 +1247,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                         const row = currentRoomRows.find(r => r.get('id') === room.id)!;
                         const newIsActive = room.isActive !== false ? 'TRUE' : 'FALSE';
                         const newCapacity = String(room.capacity);
-                        
+
                         return (
                             row.get('addressId') !== room.addressId ||
                             row.get('name') !== room.name ||
@@ -1280,7 +1280,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                 }, 100);
 
                 if (toAddRooms.length > 0) {
-                   // Add rows in chunks to prevent huge payload
+                    // Add rows in chunks to prevent huge payload
                     const chunkSize = 20;
                     for (let i = 0; i < toAddRooms.length; i += chunkSize) {
                         const chunk = toAddRooms.slice(i, i + chunkSize);
@@ -1297,10 +1297,10 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
             })();
         }
         if (newSettings.coordinators) {
-             await (async () => {
+            await (async () => {
                 const sheet = await getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS);
                 const currentRows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Coordinators)');
-                
+
                 const toUpdate = newSettings.coordinators!.filter(c => currentRows.some(r => r.get('uid') === c.uid));
                 const toAdd = newSettings.coordinators!.filter(c => !currentRows.some(r => r.get('uid') === c.uid));
                 const toDeleteRows = currentRows.filter(r => !newSettings.coordinators!.some(c => c.uid === r.get('uid')));
@@ -1309,7 +1309,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                 await batchPromises(toDeleteRows.reverse(), 1, async (row) => {
                     await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(Coordinators)');
                 }, 1000);
-                
+
                 // Throttled Coordinator Updates
                 await batchPromises(toUpdate, 1, async (coord) => {
                     const row = currentRows.find(r => r.get('uid') === coord.uid);
@@ -1317,7 +1317,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                         const newIsAdmin = String(coord.isAdmin).toUpperCase();
                         const newDepartments = coord.departments.join(',');
                         const newVisibilityMode = coord.visibilityMode || 'department';
-                        
+
                         let hasChanges = false;
                         if (row.get('name') !== coord.name) hasChanges = true;
                         if (String(row.get('isAdmin')).toUpperCase() !== newIsAdmin) hasChanges = true;
@@ -1347,7 +1347,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                         pushSubscription: c.pushSubscription || '',
                     })), { raw: false, insert: true }), TIMEOUT_MS, 'sheet.addRows(Coordinators)');
                 }
-             })();
+            })();
         }
 
         await invalidateSettingsCache();
@@ -1365,15 +1365,15 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
 
 
 export async function updateNotificationReadStatus(notificationId: string, isRead: boolean): Promise<void> {
-try {
-    const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
-    const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Notifications)');
-    const row = rows.find((r) => r.get('id') === notificationId);
-    if (row) {
-        row.set('isRead', String(isRead).toUpperCase());
-        await withTimeout(row.save(), TIMEOUT_MS, 'row.save(Notifications)');
-        revalidatePath('/dashboard');
-    } else {
+    try {
+        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
+        const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Notifications)');
+        const row = rows.find((r) => r.get('id') === notificationId);
+        if (row) {
+            row.set('isRead', String(isRead).toUpperCase());
+            await withTimeout(row.save(), TIMEOUT_MS, 'row.save(Notifications)');
+            revalidatePath('/dashboard');
+        } else {
             throw new Error('Notification not found');
         }
     } catch (e: unknown) {
@@ -1439,28 +1439,28 @@ export async function generateAccommodationReport(year: number, month: number, c
         };
 
         if (includeAddressHistory) {
-             const employeeIds = new Set(filteredEmployees.map(e => e.id));
-             const relevantHistory = addressHistory.filter(h => employeeIds.has(h.employeeId));
+            const employeeIds = new Set(filteredEmployees.map(e => e.id));
+            const relevantHistory = addressHistory.filter(h => employeeIds.has(h.employeeId));
 
-             for (const employee of filteredEmployees) {
-                 const employeeHistory = relevantHistory.filter(h => h.employeeId === employee.id).sort((a, b) => new Date(a.checkInDate || 0).getTime() - new Date(b.checkInDate || 0).getTime());
-                 
-                 if(employeeHistory.length === 0) continue;
+            for (const employee of filteredEmployees) {
+                const employeeHistory = relevantHistory.filter(h => h.employeeId === employee.id).sort((a, b) => new Date(a.checkInDate || 0).getTime() - new Date(b.checkInDate || 0).getTime());
 
-                 for (const historyEntry of employeeHistory) {
-                     const periodStart = historyEntry.checkInDate ? parseISO(historyEntry.checkInDate) : null;
-                     const periodEnd = historyEntry.checkOutDate ? parseISO(historyEntry.checkOutDate) : reportEnd;
+                if (employeeHistory.length === 0) continue;
 
-                     if (!periodStart) continue;
+                for (const historyEntry of employeeHistory) {
+                    const periodStart = historyEntry.checkInDate ? parseISO(historyEntry.checkInDate) : null;
+                    const periodEnd = historyEntry.checkOutDate ? parseISO(historyEntry.checkOutDate) : reportEnd;
 
-                     const effectiveStart = max([periodStart, reportStart]);
-                     const effectiveEnd = min([periodEnd, reportEnd]);
-                     
-                     if (effectiveStart > effectiveEnd) continue;
+                    if (!periodStart) continue;
 
-                     const daysInMonth = differenceInDays(effectiveEnd, effectiveStart) + 1;
-                     if (daysInMonth > 0) {
-                         reportData.push({
+                    const effectiveStart = max([periodStart, reportStart]);
+                    const effectiveEnd = min([periodEnd, reportEnd]);
+
+                    if (effectiveStart > effectiveEnd) continue;
+
+                    const daysInMonth = differenceInDays(effectiveEnd, effectiveStart) + 1;
+                    if (daysInMonth > 0) {
+                        reportData.push({
                             "Imię": employee.firstName,
                             "Nazwisko": employee.lastName,
                             "Koordynator": coordinatorMap.get(employee.coordinatorId) || 'N/A',
@@ -1470,27 +1470,27 @@ export async function generateAccommodationReport(year: number, month: number, c
                             "Data zameldowania (w adresie)": formatDateForReport(historyEntry.checkInDate),
                             "Data wymeldowania (z adresu)": formatDateForReport(historyEntry.checkOutDate),
                             "Dni w miesiącu pod adresem": daysInMonth,
-                         });
-                     }
-                 }
-             }
+                        });
+                    }
+                }
+            }
 
         } else {
             // Simplified logic for "current state at end of month"
             const monthEndDate = lastDayOfMonth(new Date(year, month - 1));
-            
+
             const employeesInMonth = filteredEmployees.filter(e => {
-                 const checkIn = e.checkInDate ? parseISO(e.checkInDate) : null;
-                 if (!checkIn || checkIn > monthEndDate) return false;
+                const checkIn = e.checkInDate ? parseISO(e.checkInDate) : null;
+                if (!checkIn || checkIn > monthEndDate) return false;
 
-                 const checkOut = e.checkOutDate ? parseISO(e.checkOutDate) : null;
-                 if (checkOut && checkOut < new Date(year, month - 1, 1)) return false;
+                const checkOut = e.checkOutDate ? parseISO(e.checkOutDate) : null;
+                if (checkOut && checkOut < new Date(year, month - 1, 1)) return false;
 
-                 return true;
+                return true;
             });
 
             employeesInMonth.forEach(e => {
-                 reportData.push({
+                reportData.push({
                     "Imię": e.firstName,
                     "Nazwisko": e.lastName,
                     "Koordynator": coordinatorMap.get(e.coordinatorId) || 'N/A',
@@ -1506,7 +1506,7 @@ export async function generateAccommodationReport(year: number, month: number, c
         const worksheet = XLSX.utils.json_to_sheet(reportData);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Raport Zakwaterowania");
-        
+
         if (reportData.length > 0) {
             const cols = Object.keys(reportData[0] || {}).map(key => ({
                 wch: Math.max(key.length, ...reportData.map(row => String(row[key as keyof typeof row] ?? '').length)) + 2
@@ -1540,7 +1540,7 @@ export async function generateNzCostsReport(year: number, month: number, coordin
         }
 
         const reportData: Record<string, string | number | null>[] = [];
-        
+
         filteredNonEmployees.forEach(ne => {
             const monthlyAmount = ne.paymentAmount;
             if (!monthlyAmount || monthlyAmount <= 0) {
@@ -1551,23 +1551,23 @@ export async function generateNzCostsReport(year: number, month: number, coordin
             if (!checkIn || checkIn > reportEnd) {
                 return;
             }
-            
+
             const checkOut = ne.checkOutDate ? parseISO(ne.checkOutDate) : null;
-             if (checkOut && checkOut < reportStart) {
+            if (checkOut && checkOut < reportStart) {
                 return;
             }
 
             const daysInReportMonth = getDaysInMonth(reportStart);
             const dailyRate = monthlyAmount / daysInReportMonth;
-            
+
             const startDateInMonth = max([checkIn, reportStart]);
             const endDateInMonth = min([checkOut || reportEnd, reportEnd]);
-            
+
             if (startDateInMonth > endDateInMonth) return;
 
             const daysStayed = differenceInDays(endDateInMonth, startDateInMonth) + 1;
             const proratedIncome = dailyRate * daysStayed;
-            
+
             if (proratedIncome <= 0) return;
 
             reportData.push({
@@ -1584,7 +1584,7 @@ export async function generateNzCostsReport(year: number, month: number, coordin
         const worksheet = XLSX.utils.json_to_sheet(reportData);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Raport Kosztów (NZ)");
-        
+
         const cols = [
             { wch: 25 }, // Imię
             { wch: 25 }, // Nazwisko
@@ -1609,14 +1609,14 @@ export async function generateNzCostsReport(year: number, month: number, coordin
 
 
 const processImport = async (
-    fileContent: string, 
-    actorUid: string, 
+    fileContent: string,
+    actorUid: string,
     type: 'employee' | 'non-employee',
     settings: Settings,
 ): Promise<{ importedCount: number; totalRows: number; errors: string[] }> => {
-    
+
     const buffer = Buffer.from(fileContent, 'base64');
-    
+
     try {
         const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: false, dateNF: 'dd.mm.yyyy' });
         const sheetName = workbook.SheetNames[0];
@@ -1629,7 +1629,7 @@ const processImport = async (
         const recordsToAdd: (Employee | NonEmployee)[] = [];
         const notificationsToAdd: Notification[] = [];
         const newLocalities = new Set<string>();
-        
+
         const coordinatorMap = new Map(settings.coordinators.map(c => [c.name.toLowerCase().trim(), c.uid]));
         const actor = findActor(actorUid, settings);
 
@@ -1638,16 +1638,16 @@ const processImport = async (
             try {
                 const normalizedRow: Record<string, unknown> = {};
                 for (const key in row) {
-                    if(row[key] !== null) {
-                       normalizedRow[key.trim().toLowerCase()] = row[key];
+                    if (row[key] !== null) {
+                        normalizedRow[key.trim().toLowerCase()] = row[key];
                     }
                 }
-                
+
                 const employeeRequiredFields = ['imię', 'nazwisko', 'koordynator', 'data zameldowania', 'zakład', 'miejscowość', 'adres', 'pokój', 'narodowość'];
                 const nonEmployeeRequiredFields = ['imię', 'nazwisko', 'koordynator', 'data zameldowania', 'miejscowość', 'adres', 'pokój', 'narodowość'];
 
                 const requiredFields = type === 'employee' ? employeeRequiredFields : nonEmployeeRequiredFields;
-                
+
                 const missingFields = requiredFields.filter(field => {
                     const value = normalizedRow[field];
                     return value === undefined || value === null || String(value).trim() === '';
@@ -1660,16 +1660,16 @@ const processImport = async (
 
                 const firstName = (normalizedRow['imię'] as string)?.trim();
                 const lastName = (normalizedRow['nazwisko'] as string)?.trim();
-                
+
                 const coordinatorName = (normalizedRow['koordynator'] as string)?.toLowerCase().trim();
                 const coordinatorId = coordinatorName ? coordinatorMap.get(coordinatorName) : '';
                 if (!coordinatorId) {
-                     errors.push(`Wiersz ${rowNum} (${lastName}): Nie znaleziono koordynatora '${normalizedRow['koordynator']}'.`);
-                     continue;
+                    errors.push(`Wiersz ${rowNum} (${lastName}): Nie znaleziono koordynatora '${normalizedRow['koordynator']}'.`);
+                    continue;
                 }
-                
+
                 const checkInDate = safeFormat(normalizedRow['data zameldowania']);
-                 if (!checkInDate) {
+                if (!checkInDate) {
                     errors.push(`Wiersz ${rowNum} (${lastName}): Nieprawidłowy format daty zameldowania.`);
                     continue;
                 }
@@ -1714,7 +1714,7 @@ const processImport = async (
                         deductionEntryDate: null,
                     };
                 } else {
-                     newRecord = {
+                    newRecord = {
                         ...baseRecord,
                         paymentType: (normalizedRow['rodzaj płatności nz'] as string)?.trim() || null,
                         paymentAmount: normalizedRow['kwota'] ? parseFloat(String(normalizedRow['kwota'])) : null,
@@ -1722,7 +1722,7 @@ const processImport = async (
                 }
 
                 recordsToAdd.push(newRecord);
-                
+
                 const { message, type: notificationType } = generateSmartNotificationMessage(actor.name, newRecord, 'dodał');
                 notificationsToAdd.push({
                     id: `notif-${Date.now()}-${Math.random()}`,
@@ -1754,7 +1754,7 @@ const processImport = async (
                 await withTimeout(sheet.addRows(serializedRecords), TIMEOUT_MS, 'sheet.addRows(NonEmployees)');
             }
         }
-        
+
         if (notificationsToAdd.length > 0) {
             const notificationsSheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
             const serializedNotifications = notificationsToAdd.map(serializeNotification);
@@ -1765,13 +1765,13 @@ const processImport = async (
             const updatedLocalities = [...new Set([...settings.localities, ...Array.from(newLocalities)])];
             await updateSettings({ localities: updatedLocalities });
         }
-        
+
         if (type === 'employee') {
             await invalidateEmployeesCache();
         } else {
             await invalidateNonEmployeesCache();
         }
-        
+
         revalidatePath('/dashboard');
         return { importedCount: recordsToAdd.length, totalRows: data.length, errors };
 
@@ -1779,7 +1779,7 @@ const processImport = async (
         console.error(`Error importing ${type}s from Excel:`, e);
         if (e instanceof Error) {
             if (e.message.includes('[429]')) {
-                 throw new Error("Przekroczono limit zapytań do Google Sheets API. Spróbuj ponownie za chwilę lub zaimportuj mniejszy plik.");
+                throw new Error("Przekroczono limit zapytań do Google Sheets API. Spróbuj ponownie za chwilę lub zaimportuj mniejszy plik.");
             }
             throw e;
         }
@@ -1835,7 +1835,7 @@ export async function migrateFullNames(actorUid: string): Promise<{ migratedEmpl
             migratedEmployees++;
         }
     }
-    
+
     // Migrate Non-Employees
     const nonEmployeeSheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
     const nonEmployeeRows = await withTimeout(nonEmployeeSheet.getRows(), TIMEOUT_MS, 'sheet.getRows(NonEmployees)');
@@ -1856,7 +1856,7 @@ export async function migrateFullNames(actorUid: string): Promise<{ migratedEmpl
         migratedEmployees,
         migratedNonEmployees
     });
-    
+
     await invalidateEmployeesCache();
     await invalidateNonEmployeesCache();
     revalidatePath('/dashboard');
@@ -1865,18 +1865,18 @@ export async function migrateFullNames(actorUid: string): Promise<{ migratedEmpl
 }
 
 export async function updateCoordinatorSubscription(coordinatorId: string, subscription: string | null): Promise<void> {
-try {
-    const sheet = await getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS);
-    const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Coordinators)');
-    const coordinatorRow = rows.find(row => row.get('uid') === coordinatorId);
+    try {
+        const sheet = await getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS);
+        const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Coordinators)');
+        const coordinatorRow = rows.find(row => row.get('uid') === coordinatorId);
 
-    if (coordinatorRow) {
-        // Save token directly as string
-        coordinatorRow.set('pushSubscription', subscription || '');
-        await withTimeout(coordinatorRow.save(), TIMEOUT_MS, 'row.save(Coordinators)');
-        await invalidateSettingsCache();
-        revalidatePath('/dashboard');
-    } else {
+        if (coordinatorRow) {
+            // Save token directly as string
+            coordinatorRow.set('pushSubscription', subscription || '');
+            await withTimeout(coordinatorRow.save(), TIMEOUT_MS, 'row.save(Coordinators)');
+            await invalidateSettingsCache();
+            revalidatePath('/dashboard');
+        } else {
             throw new Error('Coordinator not found.');
         }
     } catch (e: unknown) {
@@ -1894,19 +1894,19 @@ export async function sendPushNotification(
     try {
         const settings = await getSettings();
         const coordinator = settings.coordinators.find((c: { uid: string; pushSubscription?: string | null }) => c.uid === coordinatorId);
-        
+
         if (!coordinator || !coordinator.pushSubscription) {
             return;
         }
 
         const token = coordinator.pushSubscription;
         if (!token || token.startsWith('{')) {
-             console.log('Invalid or legacy token, skipping FCM send.');
-             return;
+            console.log('Invalid or legacy token, skipping FCM send.');
+            return;
         }
 
         if (adminMessaging) {
-             const message = {
+            const message = {
                 token: token,
                 notification: {
                     title: title,
@@ -1933,8 +1933,10 @@ export async function sendPushNotification(
                     }
                 }
             };
-            
+
             await adminMessaging.send(message);
+        } else {
+            console.warn(`[FCM] adminMessaging is null — push notification NOT sent to coordinator ${coordinatorId}. Check Firebase Admin initialization.`);
         }
 
     } catch (e: unknown) {

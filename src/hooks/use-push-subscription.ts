@@ -35,7 +35,7 @@ export const usePushSubscription = () => {
                 const title = data.title || payload.notification?.title || 'Nowe powiadomienie';
                 const body = data.body || payload.notification?.body;
                 const url = data.url || data.click_action;
-                
+
                 toast({
                     title: title,
                     description: body,
@@ -62,12 +62,12 @@ export const usePushSubscription = () => {
 
     useEffect(() => {
         if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-             const checkToken = async () => {
-                 try {
-                     const messagingInstance = await messagingPromise;
-                     if (!messagingInstance) return;
+            const checkToken = async () => {
+                try {
+                    const messagingInstance = await messagingPromise;
+                    if (!messagingInstance) return;
 
-                     if ('serviceWorker' in navigator) {
+                    if ('serviceWorker' in navigator) {
                         const registration = await navigator.serviceWorker.ready;
                         const currentToken = await getToken(messagingInstance, {
                             vapidKey: process.env.NEXT_PUBLIC_WEBPUSH_PUBLIC_KEY,
@@ -75,7 +75,7 @@ export const usePushSubscription = () => {
                         });
                         if (currentToken) {
                             setPushSubscription(currentToken);
-                            
+
                             if (currentUser && settings) {
                                 const coordinator = settings.coordinators.find(c => c.uid === currentUser.uid);
                                 if (coordinator && coordinator.pushSubscription !== currentToken) {
@@ -84,11 +84,11 @@ export const usePushSubscription = () => {
                             }
                         }
                     }
-                 } catch (e) {
-                     // ignore
-                 }
-             };
-             checkToken();
+                } catch (e) {
+                    console.warn('[FCM] Failed to retrieve push token on startup:', e);
+                }
+            };
+            checkToken();
         }
     }, [setPushSubscription, currentUser, settings, handleUpdateCoordinatorSubscription]);
 
@@ -108,7 +108,7 @@ export const usePushSubscription = () => {
             if (!messagingInstance) {
                 throw new Error("Firebase Messaging not supported");
             }
-            
+
             if (!('Notification' in window)) {
                 throw new Error("Notifications not supported");
             }
@@ -136,13 +136,13 @@ export const usePushSubscription = () => {
             }
         } catch (error) {
             console.error('Failed to subscribe:', error);
-            
+
             let errorMessage = 'Nie udało się włączyć powiadomień. Sprawdź uprawnienia w przeglądarce.';
-            
+
             // Check for specific Firebase errors
             if (error && typeof error === 'object' && 'code' in error) {
                 const firebaseError = error as { code: string; message: string };
-                
+
                 if (firebaseError.code === 'messaging/token-subscribe-failed') {
                     errorMessage = 'Powiadomienia push nie są skonfigurowane w Firebase. Skontaktuj się z administratorem systemu.';
                 } else if (firebaseError.message?.includes('authentication credential')) {
@@ -151,7 +151,7 @@ export const usePushSubscription = () => {
                     errorMessage = 'Powiadomienia są zablokowane w przeglądarce. Odblokuj je w ustawieniach strony.';
                 }
             }
-            
+
             toast({
                 variant: 'destructive',
                 title: 'Błąd powiadomień push',

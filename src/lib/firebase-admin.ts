@@ -9,13 +9,17 @@ if (!admin.apps.length) {
   };
 
   if (!serviceAccount.clientEmail || !serviceAccount.privateKey) {
-     console.error("Missing Firebase Admin credentials (GOOGLE_SERVICE_ACCOUNT_EMAIL or GOOGLE_PRIVATE_KEY)");
+    console.error("Missing Firebase Admin credentials (GOOGLE_SERVICE_ACCOUNT_EMAIL or GOOGLE_PRIVATE_KEY)");
   } else {
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        databaseURL: "https://studio-6821761262-fdf39-default-rtdb.europe-west1.firebasedatabase.app"
-      });
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      databaseURL: "https://studio-6821761262-fdf39-default-rtdb.europe-west1.firebasedatabase.app"
+    });
   }
 }
 
 export const adminMessaging = admin.apps.length ? admin.messaging() : null;
+
+if (!adminMessaging) {
+  console.error('[FCM] Firebase Admin Messaging is not initialized. Push notifications will NOT be sent. Check GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_PRIVATE_KEY in .env.local');
+}
