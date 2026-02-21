@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import {
@@ -34,7 +34,7 @@ const ModernHouseIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
-export default function LoginPage() {
+function LoginForm() {
     const router = useRouter();
     const { toast } = useToast();
     const { installPrompt, handleInstallClick } = usePWAInstaller();
@@ -63,20 +63,63 @@ export default function LoginPage() {
                 toast({
                     variant: "destructive",
                     title: "Błąd logowania",
-                    description: "Wystąpił nieznany błąd.",
+                    description: "Nieprawidłowy login lub hasło."
                 });
             }
-        } catch (err: unknown) {
+        } catch (error) {
             toast({
                 variant: "destructive",
-                title: "Błąd serwera",
-                description: err instanceof Error ? err.message : "Nie można było połączyć się z serwerem.",
+                title: "Wystąpił błąd",
+                description: "Spróbuj ponownie później."
             });
         } finally {
             setIsLoading(false);
         }
     };
 
+    return (
+        <form onSubmit={handleLogin}>
+            <CardContent className="grid gap-4 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+                <div className="grid gap-2 text-left">
+                    <Label htmlFor="name">Imię i nazwisko / Login</Label>
+                    <Input
+                        id="name"
+                        type="text"
+                        placeholder="np. admin lub Jan Kowalski"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        required
+                        disabled={isLoading}
+                    />
+                </div>
+                <div className="grid gap-2 text-left">
+                    <Label htmlFor="password">Hasło</Label>
+                    <Input
+                        id="password"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        disabled={isLoading}
+                    />
+                </div>
+            </CardContent>
+            <CardFooter className="flex-col gap-4 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+                <Button className="w-full" type="submit" disabled={isLoading || password === ''}>
+                    {isLoading ? <Loader2 className="animate-spin" /> : "Zaloguj się"}
+                </Button>
+                {installPrompt && (
+                    <Button variant="outline" className="w-full" onClick={handleInstallClick}>
+                        <Download className="mr-2 h-4 w-4" />
+                        Zainstaluj aplikację
+                    </Button>
+                )}
+            </CardFooter>
+        </form>
+    );
+}
+
+export default function LoginPage() {
     return (
         <div className="relative flex h-screen w-full items-center justify-center bg-muted/40 px-4 overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-full z-0">
@@ -85,49 +128,14 @@ export default function LoginPage() {
                 <div className="absolute bottom-1/4 left-1/2 w-72 h-72 bg-secondary/20 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
             </div>
             <Card className="w-full max-w-sm z-10 animate-scale-in">
-                <form onSubmit={handleLogin}>
-                    <CardHeader className="items-center text-center animate-fade-in-up">
-                        <ModernHouseIcon className="h-8 w-8 text-primary" />
-                        <CardTitle>Witaj w SmartHouse</CardTitle>
-                        <CardDescription>Zaloguj się, aby kontynuować</CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid gap-4 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-                        <div className="grid gap-2 text-left">
-                            <Label htmlFor="name">Imię i nazwisko / Login</Label>
-                            <Input
-                                id="name"
-                                type="text"
-                                placeholder="np. admin lub Jan Kowalski"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                required
-                                disabled={isLoading}
-                            />
-                        </div>
-                        <div className="grid gap-2 text-left">
-                            <Label htmlFor="password">Hasło</Label>
-                            <Input
-                                id="password"
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                                disabled={isLoading}
-                            />
-                        </div>
-                    </CardContent>
-                    <CardFooter className="flex-col gap-4 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
-                        <Button className="w-full" type="submit" disabled={isLoading || password === ''}>
-                            {isLoading ? <Loader2 className="animate-spin" /> : "Zaloguj się"}
-                        </Button>
-                        {installPrompt && (
-                            <Button variant="outline" className="w-full" onClick={handleInstallClick}>
-                                <Download className="mr-2 h-4 w-4" />
-                                Zainstaluj aplikację
-                            </Button>
-                        )}
-                    </CardFooter>
-                </form>
+                <CardHeader className="items-center text-center animate-fade-in-up">
+                    <ModernHouseIcon className="h-8 w-8 text-primary" />
+                    <CardTitle>Witaj w SmartHouse</CardTitle>
+                    <CardDescription>Zaloguj się, aby kontynuować</CardDescription>
+                </CardHeader>
+                <Suspense fallback={<div className="h-48 flex items-center justify-center text-muted-foreground">Ładowanie formularza...</div>}>
+                    <LoginForm />
+                </Suspense>
             </Card>
         </div>
     );
