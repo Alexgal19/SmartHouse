@@ -13,6 +13,8 @@ export default async function DashboardLayout({
   const session = await getSession();
 
   if (!session.isLoggedIn) {
+    // Middleware handles redirecting to /login with callbackUrl.
+    // This is a safety fallback in case middleware is bypassed.
     redirect('/login');
   }
 

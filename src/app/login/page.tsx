@@ -1,16 +1,15 @@
-
 "use client";
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,19 +20,19 @@ import { usePWAInstaller } from '@/components/pwa-installer';
 
 const ModernHouseIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        {...props}
     >
-      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-      <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+        <polyline points="9 22 9 12 15 12 15 22"></polyline>
     </svg>
-  );
+);
 
 export default function LoginPage() {
     const router = useRouter();
@@ -43,9 +42,14 @@ export default function LoginPage() {
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
+    const searchParams = useSearchParams();
+
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
+
+        // Check for callbackUrl to redirect back to the original page (e.g. from push notification)
+        const callbackUrl = searchParams.get('callbackUrl') || '/dashboard?view=dashboard';
 
         try {
             const { success, user } = await login(name, password);
@@ -54,16 +58,16 @@ export default function LoginPage() {
                     title: `Witaj z powrotem, ${user.name}!`,
                     duration: 2000,
                 });
-                router.push('/dashboard?view=dashboard');
+                router.push(callbackUrl);
             } else {
-                 toast({
+                toast({
                     variant: "destructive",
                     title: "Błąd logowania",
                     description: "Wystąpił nieznany błąd.",
                 });
             }
         } catch (err: unknown) {
-             toast({
+            toast({
                 variant: "destructive",
                 title: "Błąd serwera",
                 description: err instanceof Error ? err.message : "Nie można było połączyć się z serwerem.",
@@ -72,10 +76,10 @@ export default function LoginPage() {
             setIsLoading(false);
         }
     };
-    
+
     return (
         <div className="relative flex h-screen w-full items-center justify-center bg-muted/40 px-4 overflow-hidden">
-             <div className="absolute top-0 left-0 w-full h-full z-0">
+            <div className="absolute top-0 left-0 w-full h-full z-0">
                 <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-primary/20 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
                 <div className="absolute top-1/2 right-1/4 w-72 h-72 bg-accent/20 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
                 <div className="absolute bottom-1/4 left-1/2 w-72 h-72 bg-secondary/20 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
@@ -90,24 +94,24 @@ export default function LoginPage() {
                     <CardContent className="grid gap-4 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
                         <div className="grid gap-2 text-left">
                             <Label htmlFor="name">Imię i nazwisko / Login</Label>
-                            <Input 
-                                id="name" 
-                                type="text" 
+                            <Input
+                                id="name"
+                                type="text"
                                 placeholder="np. admin lub Jan Kowalski"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                required 
+                                required
                                 disabled={isLoading}
                             />
                         </div>
                         <div className="grid gap-2 text-left">
                             <Label htmlFor="password">Hasło</Label>
-                            <Input 
-                                id="password" 
-                                type="password" 
+                            <Input
+                                id="password"
+                                type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                required 
+                                required
                                 disabled={isLoading}
                             />
                         </div>
