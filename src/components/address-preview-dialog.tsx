@@ -85,13 +85,20 @@ export function AddressPreviewDialog({
       // Skip addresses that are "Własne mieszkanie ..."
       if (isOwnAddressEntry(address.name)) return;
 
+      // Skip blocked/inactive addresses entirely
+      if (!address.isActive) return;
+
       address.rooms.forEach(room => {
+        // Check if room is active using the centralized filter logic
+        const roomActive = isRoomActive(room, address);
+
+        // Skip blocked/inactive rooms entirely
+        if (!roomActive) return;
+
         const key = `${address.name}|${room.name}`;
         const occupied = occupancyMap.get(key) || 0;
         const available = Math.max(0, room.capacity - occupied);
 
-        // Check if room is active using the centralized filter logic
-        const roomActive = isRoomActive(room, address);
 
         result.push({
           locality: address.locality,

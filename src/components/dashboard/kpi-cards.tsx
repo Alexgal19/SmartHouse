@@ -28,8 +28,8 @@ type KpiCardProps = {
 }
 
 const KpiCard = ({ title, value, icon, onClick, description, isHighlighted }: KpiCardProps) => (
-    <Card 
-        onClick={onClick} 
+    <Card
+        onClick={onClick}
         className={cn(
             "transition-all duration-300 animate-in fade-in-0 scale-95",
             onClick && "cursor-pointer hover:shadow-primary/20 hover:shadow-lg hover:-translate-y-1 hover:scale-100",
@@ -72,11 +72,11 @@ export function DashboardKPIs({
             const diff = differenceInDays(date, today);
             return diff >= 0 && diff <= 30;
         });
-        
-        // Only count apartments that are active (not blocked)
+
+        // Count apartments that are active (not blocked) for ALL occupants (employees + non-employees)
         const apartmentsInUse = settings
-            ? countActiveAddressesInUse(activeEmployees, settings.addresses)
-            : new Set(activeEmployees.map(o => o.address).filter(Boolean)).size;
+            ? countActiveAddressesInUse(allActiveOccupants, settings.addresses)
+            : new Set(allActiveOccupants.map(o => o.address).filter(Boolean)).size;
 
         return {
             totalEmployees: activeEmployees.length,
@@ -90,12 +90,12 @@ export function DashboardKPIs({
         { title: 'Wszyscy pracownicy', value: stats.totalEmployees.toString(), icon: kpiIcons.housedEmployees },
         { title: 'Mieszkańcy (NZ)', value: stats.nonEmployeesCount.toString(), icon: kpiIcons.nonEmployees },
         { title: 'Używane mieszkania', value: stats.apartmentsInUse.toString(), icon: kpiIcons.apartmentsInUse },
-        { 
-          title: 'Wykwaterowania (30 dni)', 
-          value: stats.upcomingCheckouts.toString(), 
-          icon: kpiIcons.upcomingCheckouts, 
-          onClick: onUpcomingCheckoutsClick,
-          isHighlighted: hasNewCheckouts
+        {
+            title: 'Wykwaterowania (30 dni)',
+            value: stats.upcomingCheckouts.toString(),
+            icon: kpiIcons.upcomingCheckouts,
+            onClick: onUpcomingCheckoutsClick,
+            isHighlighted: hasNewCheckouts
         },
     ];
 

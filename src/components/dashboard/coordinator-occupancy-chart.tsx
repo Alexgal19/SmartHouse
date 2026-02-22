@@ -66,9 +66,9 @@ export function CoordinatorOccupancyChart() {
         if (!coordinator) {
             return { data: [], coordinatorName: '', totals: null };
         }
-        
-        // Include ALL addresses (both active and blocked) for visibility
-        const coordinatorAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
+
+        // Include ONLY active addresses. Blocked addresses are completely excluded from stats.
+        const coordinatorAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId) && a.isActive);
 
         const allActiveOccupants: (Employee | NonEmployee)[] = [
             ...allEmployees.filter(e => e.status === 'active'),
@@ -82,7 +82,7 @@ export function CoordinatorOccupancyChart() {
             const totalCapacity = getActiveAddressCapacity(address);
             const occupantCount = occupantsInAddress.length;
             const occupancy = totalCapacity > 0 ? (occupantCount / totalCapacity) * 100 : 0;
-            
+
             return {
                 name: address.name,
                 occupancy: occupancy,
@@ -91,20 +91,14 @@ export function CoordinatorOccupancyChart() {
                 available: totalCapacity - occupantCount,
                 isBlocked
             }
-        }).sort((a,b) => {
-            // Sort blocked addresses to the bottom, then by occupancy
-            if (a.isBlocked !== b.isBlocked) {
-                return a.isBlocked ? 1 : -1;
-            }
-            return b.occupancy - a.occupancy;
-        });
-        
+        }).sort((a, b) => b.occupancy - a.occupancy);
+
         const managedAddresses = occupancyByAddress.filter(
             (address) => !address.name.toLowerCase().startsWith('własne mieszkanie')
         );
 
-        // Calculate totals excluding blocked addresses
-        const totals = managedAddresses.filter(addr => !addr.isBlocked).reduce((acc, address) => {
+        // Calculate totals 
+        const totals = managedAddresses.reduce((acc, address) => {
             acc.capacity += address.capacity;
             acc.occupantCount += address.occupantCount;
             acc.available += address.available;
@@ -127,7 +121,7 @@ export function CoordinatorOccupancyChart() {
             </CardHeader>
             <CardContent className="space-y-6">
                 {chartData.totals && (
-                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <KpiCard
                             title="Wszystkie miejsca"
                             value={chartData.totals.capacity}
@@ -172,13 +166,13 @@ export function CoordinatorOccupancyChart() {
                                         const data = chartData.data.find(d => d.name === payload.value);
                                         const isBlocked = data?.isBlocked || false;
                                         const text = payload.value || '';
-                                        
+
                                         // Truncate text if too long and add ellipsis
                                         const maxLength = 28;
                                         const displayText = text.length > maxLength
                                             ? text.substring(0, maxLength) + '...'
                                             : text;
-                                        
+
                                         return (
                                             <g>
                                                 <title>{text}</title>
@@ -199,7 +193,7 @@ export function CoordinatorOccupancyChart() {
                                 />
                                 <XAxis type="number" domain={[0, 100]} hide={true} />
                                 <RechartsTooltip
-                                    cursor={{fill: 'hsl(var(--muted))'}}
+                                    cursor={{ fill: 'hsl(var(--muted))' }}
                                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                     content={(props: any) => {
                                         const { active, payload } = props;
@@ -240,7 +234,7 @@ export function CoordinatorOccupancyChart() {
                                     }}
                                 />
                                 <Bar dataKey="occupancy" radius={[0, 4, 4, 0]}>
-                                     {chartData.data.map((entry, index) => (
+                                    {chartData.data.map((entry, index) => (
                                         <Cell
                                             key={`cell-${index}`}
                                             fill={getOccupancyColor(entry.occupancy, entry.isBlocked)}
@@ -257,10 +251,10 @@ export function CoordinatorOccupancyChart() {
                                             const { x, y, value, index, width } = props;
                                             const data = chartData.data[index as number];
                                             if (!data) return null;
-                                            
+
                                             // Calculate position at the end of the bar
                                             const barEndX = Number(x) + Number(width || 0);
-                                            
+
                                             return (
                                                 <g>
                                                     <text
