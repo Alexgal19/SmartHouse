@@ -61,7 +61,7 @@ const NoDataState = ({ message, className }: { message: string, className?: stri
 
 const StatsCharts = ({ occupants, chartConfig }: { occupants: Occupant[], chartConfig: ChartConfig }) => {
     const statsData = useMemo(() => calculateStats(occupants), [occupants]);
-    
+
     return (
         <div className="space-y-4">
             <Card className="bg-muted/50">
@@ -89,7 +89,7 @@ const StatsCharts = ({ occupants, chartConfig }: { occupants: Occupant[], chartC
                     <CardTitle className="text-sm">Wg płci</CardTitle>
                 </CardHeader>
                 <CardContent>
-                     {statsData.genders.length > 0 ? (
+                    {statsData.genders.length > 0 ? (
                         <ResponsiveContainer width="100%" height={statsData.genders.length * 30 + 20}>
                             <BarChart data={statsData.genders} layout="vertical" margin={{ left: 10, right: 40 }}>
                                 <CartesianGrid horizontal={false} strokeDasharray="3 3" />
@@ -110,28 +110,34 @@ const StatsCharts = ({ occupants, chartConfig }: { occupants: Occupant[], chartC
 
 
 const AddressDetailView = ({
-  addresses,
-  onOccupantClick,
-  selectedAddressIds,
-  onRoomClick,
-  selectedRoomIds
+    addresses,
+    onOccupantClick,
+    selectedAddressIds,
+    onRoomClick,
+    selectedRoomIds,
+    currentUser,
+    settings,
+    handleUpdateSettings
 }: {
-  addresses: HousingData[];
-  onOccupantClick: (occupant: Occupant) => void;
-  selectedAddressIds: string[];
-  onRoomClick: (roomId: string) => void;
-  selectedRoomIds: string[];
+    addresses: HousingData[];
+    onOccupantClick: (occupant: Occupant) => void;
+    selectedAddressIds: string[];
+    onRoomClick: (roomId: string) => void;
+    selectedRoomIds: string[];
+    currentUser: SessionData | null;
+    settings: Settings | null;
+    handleUpdateSettings: (updates: Partial<Settings>) => Promise<void>;
 }) => {
     const isSingleSelectedBlocked = useMemo(() => {
         const selected = addresses.filter(a => selectedAddressIds.includes(a.id));
         return selected.length === 1 && selected[0].isActive === false;
     }, [addresses, selectedAddressIds]);
     const { copyToClipboard } = useCopyToClipboard();
-    
+
     const selectedAddressesData = useMemo(() => {
         return addresses.filter(a => selectedAddressIds.includes(a.id));
     }, [addresses, selectedAddressIds]);
-    
+
     const aggregatedAddressesData = useMemo(() => {
         if (selectedAddressesData.length === 0) return null;
 
@@ -139,6 +145,8 @@ const AddressDetailView = ({
             const singleAddress = selectedAddressesData[0];
             return {
                 isMultiple: false,
+                id: singleAddress.id,
+                isActive: singleAddress.isActive,
                 name: singleAddress.name,
                 occupants: singleAddress.occupants,
                 occupantCount: singleAddress.occupantCount,
@@ -147,7 +155,7 @@ const AddressDetailView = ({
                 rooms: singleAddress.rooms,
             }
         }
-        
+
         const totalOccupantCount = selectedAddressesData.reduce((sum, a) => sum + a.occupantCount, 0);
         const totalCapacity = selectedAddressesData.reduce((sum, a) => sum + a.capacity, 0);
         const allOccupants = selectedAddressesData.flatMap(a => a.occupants);
@@ -166,7 +174,7 @@ const AddressDetailView = ({
 
     const selectedRoomsData = useMemo(() => {
         if (!aggregatedAddressesData || aggregatedAddressesData.isMultiple || selectedRoomIds.length === 0) return null;
-        
+
         const rooms = aggregatedAddressesData.rooms.filter(r => selectedRoomIds.includes(r.id));
         if (rooms.length === 0) return null;
 
@@ -191,7 +199,7 @@ const AddressDetailView = ({
         genders: { label: "Genders", color: "hsl(var(--chart-1))" },
         departments: { label: "Zakłady", color: "hsl(var(--chart-3))" }
     };
-    
+
     if (!aggregatedAddressesData) {
         return (
             <Card className="lg:col-span-2 h-full">
@@ -209,18 +217,40 @@ const AddressDetailView = ({
     return (
         <Card className={cn("lg:col-span-2 h-full", isSingleSelectedBlocked && "border-destructive/50 bg-destructive/5")}>
             <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    {selectedRoomsData ? selectedRoomsData.name : aggregatedAddressesData.name}
-                    {isSingleSelectedBlocked && (
-                        <Badge variant="destructive" className="ml-2 text-xs">
-                            <Lock className="h-3 w-3 mr-1" />
-                            Zablokowany
-                        </Badge>
+                <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        {selectedRoomsData ? selectedRoomsData.name : aggregatedAddressesData.name}
+                        {isSingleSelectedBlocked && (
+                            <Badge variant="destructive" className="ml-2 text-xs">
+                                <Lock className="h-3 w-3 mr-1" />
+                                Zablokowany
+                            </Badge>
+                        )}
+                    </div>
+                    {currentUser?.isAdmin && !aggregatedAddressesData.isMultiple && aggregatedAddressesData.id !== undefined && !selectedRoomsData && (
+                        <div className="flex items-center gap-2">
+                            <Label htmlFor={`lock-address-${aggregatedAddressesData.id}`} className="text-xs text-muted-foreground cursor-pointer font-normal">
+                                {aggregatedAddressesData.isActive ? 'Zablokuj adres' : 'Odblokuj adres'}
+                            </Label>
+                            <Switch
+                                id={`lock-address-${aggregatedAddressesData.id}`}
+                                checked={!aggregatedAddressesData.isActive}
+                                onCheckedChange={async (checked) => {
+                                    if (!settings) return;
+                                    const updatedAddresses = settings.addresses.map(a =>
+                                        a.id === aggregatedAddressesData.id
+                                            ? { ...a, isActive: !checked }
+                                            : a
+                                    );
+                                    await handleUpdateSettings({ addresses: updatedAddresses });
+                                }}
+                            />
+                        </div>
                     )}
                 </CardTitle>
                 <CardDescription>
                     <span>
-                      {(selectedRoomsData || aggregatedAddressesData).occupantCount} / {(selectedRoomsData || aggregatedAddressesData).capacity} mieszkańców
+                        {(selectedRoomsData || aggregatedAddressesData).occupantCount} / {(selectedRoomsData || aggregatedAddressesData).capacity} mieszkańców
                     </span>
                     <span className={cn("ml-2 font-bold", (selectedRoomsData || aggregatedAddressesData).available > 0 ? "text-green-600" : "text-red-600")}>
                         ({(selectedRoomsData || aggregatedAddressesData).available} wolnych miejsc)
@@ -266,7 +296,7 @@ const AddressDetailView = ({
                             </div>
                         </div>
                     ) : (
-                       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
                             <div className="space-y-4">
                                 <h3 className="font-semibold">Pokoje</h3>
                                 {aggregatedAddressesData.rooms.length > 0 ? aggregatedAddressesData.rooms.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true })).map(room => (
@@ -302,7 +332,7 @@ const AddressDetailView = ({
                                                             className={cn("flex-1", isBlocked ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:text-primary")}
                                                         >{fullName}</span>
                                                         {!isBlocked && (
-                                                            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); copyToClipboard(fullName, `Skopiowano: ${fullName}`)}}>
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); copyToClipboard(fullName, `Skopiowano: ${fullName}`) }}>
                                                                 <Copy className="h-3 w-3" />
                                                             </Button>
                                                         )}
@@ -353,8 +383,8 @@ const AddressDetailView = ({
                                         </div>
                                     ) : (
                                         <>
-                                          <h3 className="font-semibold">Statystyki dla pokoju {selectedRoomsData.rooms[0].name}</h3>
-                                          <StatsCharts occupants={selectedRoomsData.occupants} chartConfig={chartConfig} />
+                                            <h3 className="font-semibold">Statystyki dla pokoju {selectedRoomsData.rooms[0].name}</h3>
+                                            <StatsCharts occupants={selectedRoomsData.occupants} chartConfig={chartConfig} />
                                         </>
                                     )
                                 ) : (
@@ -381,10 +411,10 @@ const useHousingData = () => {
 
         let addressesToDisplay = settings.addresses;
         if (!currentUser.isAdmin || (currentUser.isAdmin && selectedCoordinatorId !== 'all')) {
-             const coordId = currentUser.isAdmin ? selectedCoordinatorId : currentUser.uid;
-             addressesToDisplay = settings.addresses.filter(a => a.coordinatorIds.includes(coordId));
+            const coordId = currentUser.isAdmin ? selectedCoordinatorId : currentUser.uid;
+            addressesToDisplay = settings.addresses.filter(a => a.coordinatorIds.includes(coordId));
         }
-        
+
         const allActiveOccupants: Occupant[] = [
             ...allEmployees.filter(e => e.status === 'active'),
             ...allNonEmployees.filter(ne => ne.status === 'active')
@@ -465,7 +495,7 @@ const MobileAddressCard = ({ address, onOccupantClick, currentUser, settings, ha
                         <div>
                             <h4 className="text-sm font-semibold mb-2">Pokoje</h4>
                             <div className="space-y-2">
-                                {address.rooms.sort((a,b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true })).map(room => (
+                                {address.rooms.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true })).map(room => (
                                     <div key={room.id} className={cn("rounded-md border p-3", !room.isActive && "bg-destructive/10 border-destructive/20", room.isLocked && "bg-yellow-500/10 border-yellow-500/30", room.isActive && !room.isLocked && room.available > 0 && "bg-green-500/10 border-green-500/20")}>
                                         <div className="flex justify-between items-center font-medium text-sm">
                                             <div className="flex items-center gap-2">
@@ -498,7 +528,7 @@ const MobileAddressCard = ({ address, onOccupantClick, currentUser, settings, ha
                                                 )}
                                             </div>
                                         </div>
-                                         <div className="pl-4 mt-2 space-y-1">
+                                        <div className="pl-4 mt-2 space-y-1">
                                             {room.occupants.map(o => {
                                                 const fullName = `${o.firstName} ${o.lastName}`.trim();
                                                 const isBlocked = !address.isActive || room.isLocked || !room.isActive;
@@ -509,7 +539,7 @@ const MobileAddressCard = ({ address, onOccupantClick, currentUser, settings, ha
                                                             className={cn(isBlocked ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:text-primary")}
                                                         >{fullName}</span>
                                                         {!isBlocked && (
-                                                            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); copyToClipboard(fullName, `Skopiowano: ${fullName}`)}}>
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); copyToClipboard(fullName, `Skopiowano: ${fullName}`) }}>
                                                                 <Copy className="h-3 w-3" />
                                                             </Button>
                                                         )}
@@ -521,7 +551,7 @@ const MobileAddressCard = ({ address, onOccupantClick, currentUser, settings, ha
                                 ))}
                             </div>
                         </div>
-                         <div>
+                        <div>
                             <h4 className="text-sm font-semibold mb-2">Statystyki</h4>
                             <StatsCharts occupants={address.occupants} chartConfig={{
                                 count: { label: "Ilość" },
@@ -538,14 +568,14 @@ const MobileAddressCard = ({ address, onOccupantClick, currentUser, settings, ha
 }
 
 export const FilterControls = ({ filters, onFilterChange, settings, currentUser }: { filters: { name: string; locality: string; showOnlyAvailable: boolean }, onFilterChange: (filters: { name: string; locality: string; showOnlyAvailable: boolean }) => void, settings: Settings | null, currentUser: SessionData | null }) => {
-    
+
     const sortedLocalities = useMemo(() => {
         if (!settings || !currentUser) return [];
 
         if (currentUser.isAdmin) {
             return [...settings.localities].sort((a, b) => a.localeCompare(b));
         }
-        
+
         const coordinatorAddresses = settings.addresses.filter(a => a.coordinatorIds.includes(currentUser.uid));
         const uniqueLocalities = [...new Set(coordinatorAddresses.map(a => a.locality))];
         return uniqueLocalities.sort((a, b) => a.localeCompare(b));
@@ -560,7 +590,7 @@ export const FilterControls = ({ filters, onFilterChange, settings, currentUser 
         <div className="flex flex-wrap items-end gap-4">
             <div className="grid flex-1 min-w-[150px] items-center gap-1.5">
                 <Label htmlFor="search-address">Szukaj adresu</Label>
-                <Input 
+                <Input
                     id="search-address"
                     placeholder="Wpisz nazwę adresu..."
                     value={filters.name as string}
@@ -578,8 +608,8 @@ export const FilterControls = ({ filters, onFilterChange, settings, currentUser 
                 </Select>
             </div>
             <div className="flex items-center space-x-2 pb-2">
-                <Switch 
-                    id="show-available" 
+                <Switch
+                    id="show-available"
                     checked={filters.showOnlyAvailable as boolean}
                     onCheckedChange={checked => handleValueChange('showOnlyAvailable', checked)}
                 />
@@ -603,7 +633,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
     });
 
     const rawHousingData = useHousingData();
-    
+
     const handleOccupantClick = (occupant: Occupant) => {
         if (isEmployee(occupant)) {
             handleEditEmployeeClick(occupant);
@@ -611,14 +641,14 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
             handleEditNonEmployeeClick(occupant);
         }
     };
-    
+
     const handleFilterChange = (newFilters: Record<string, string | boolean>) => {
-        setFilters(prev => ({...prev, ...newFilters}));
+        setFilters(prev => ({ ...prev, ...newFilters }));
     }
 
     const filteredData = useMemo(() => {
         let items = [...rawHousingData];
-        
+
         if (filters.name) {
             items = items.filter(item => (item.name || '').toLowerCase().includes(filters.name.toLowerCase()));
         }
@@ -628,8 +658,8 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
         if (filters.showOnlyAvailable) {
             items = items.filter(item => item.available > 0);
         }
-        
-        items.sort((a,b) => (a.name || '').localeCompare(b.name || ''));
+
+        items.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
         return items;
     }, [rawHousingData, filters]);
@@ -643,7 +673,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
             acc[locality].addresses.push(address);
             return acc;
         }, {} as Record<string, { addresses: HousingData[]; availablePlaces: number }>);
-        
+
         // Calculate available places per locality (only from active addresses/rooms)
         for (const locality in grouped) {
             grouped[locality].availablePlaces = grouped[locality].addresses.reduce((sum, address) => {
@@ -658,14 +688,14 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
             }, 0);
         }
 
-        return Object.entries(grouped).sort((a,b) => a[0].localeCompare(b[0]));
+        return Object.entries(grouped).sort((a, b) => a[0].localeCompare(b[0]));
     }, [filteredData]);
-    
+
     const handleAddressClick = (addressId: string) => {
         setSelectedRoomIds([]);
         setSelectedAddressIds(prev => {
             const isSelected = prev.includes(addressId);
-            if(isSelected) {
+            if (isSelected) {
                 return prev.filter(id => id !== addressId);
             } else {
                 return [...prev, addressId];
@@ -683,11 +713,11 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
             }
         });
     };
-    
+
     if (!rawHousingData || !settings) {
         return <Card><CardHeader><Skeleton className="h-8 w-1/3" /></CardHeader><CardContent><Skeleton className="h-64 w-full" /></CardContent></Card>;
     }
-    
+
     if (isMobile) {
         return (
             <Card>
@@ -696,7 +726,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                     <CardDescription>Przegląd adresów i mieszkańców</CardDescription>
                 </CardHeader>
                 <CardContent>
-                     <div className="mb-4">
+                    <div className="mb-4">
                         <FilterControls filters={filters} onFilterChange={handleFilterChange} settings={settings} currentUser={currentUser} />
                     </div>
                     <ScrollArea className="h-[calc(100vh-22rem)] -mx-4 px-4">
@@ -734,17 +764,17 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start h-full">
             <Card className="h-full">
-                 <CardHeader className="p-4">
+                <CardHeader className="p-4">
                     <CardTitle>Adresy</CardTitle>
                     <CardDescription>Wybierz adres, aby zobaczyć szczegóły.</CardDescription>
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
                     <div className="space-y-4 mb-4">
-                        <FilterControls filters={filters} onFilterChange={handleFilterChange} settings={settings} currentUser={currentUser}/>
+                        <FilterControls filters={filters} onFilterChange={handleFilterChange} settings={settings} currentUser={currentUser} />
                     </div>
                     <ScrollArea className="h-[calc(100vh-25rem)] lg:h-[calc(100vh-24rem)]">
                         <Accordion type="multiple" className="w-full" defaultValue={groupedByLocality.map(g => g[0])} >
-                             {groupedByLocality.map(([locality, { addresses, availablePlaces }]) => (
+                            {groupedByLocality.map(([locality, { addresses, availablePlaces }]) => (
                                 <AccordionItem value={locality} key={locality} className="border-b-0">
                                     <AccordionTrigger className="text-lg font-bold sticky top-0 bg-background py-3 z-10 hover:no-underline">
                                         <div className="flex items-center">
@@ -756,7 +786,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                                     </AccordionTrigger>
                                     <AccordionContent className="space-y-2">
                                         {addresses.map((address, index) => (
-                                            <Card 
+                                            <Card
                                                 key={address.id}
                                                 className={cn(
                                                     "cursor-pointer transition-colors animate-fade-in-up",
@@ -791,17 +821,20 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                                         ))}
                                     </AccordionContent>
                                 </AccordionItem>
-                             ))}
+                            ))}
                         </Accordion>
                     </ScrollArea>
                 </CardContent>
             </Card>
-            <AddressDetailView 
+            <AddressDetailView
                 addresses={filteredData}
                 onOccupantClick={handleOccupantClick}
                 selectedAddressIds={selectedAddressIds}
                 onRoomClick={handleRoomClick}
                 selectedRoomIds={selectedRoomIds}
+                currentUser={currentUser}
+                settings={settings}
+                handleUpdateSettings={handleUpdateSettings}
             />
         </div>
     );
