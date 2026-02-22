@@ -1614,7 +1614,7 @@ export async function generateNzCostsReport(year: number, month: number, coordin
 const processImport = async (
     fileContent: string,
     actorUid: string,
-    type: 'employee' | 'non-employee',
+    type: 'employee' | 'non-employee' | 'bok-resident',
     settings: Settings,
 ): Promise<{ importedCount: number; totalRows: number; errors: string[] }> => {
 
@@ -1629,7 +1629,7 @@ const processImport = async (
         const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: null });
 
         const errors: string[] = [];
-        const recordsToAdd: (Employee | NonEmployee)[] = [];
+        const recordsToAdd: (Employee | NonEmployee | BokResident)[] = [];
         const notificationsToAdd: Notification[] = [];
         const newLocalities = new Set<string>();
 
@@ -1648,8 +1648,9 @@ const processImport = async (
 
                 const employeeRequiredFields = ['imię', 'nazwisko', 'koordynator', 'data zameldowania', 'zakład', 'miejscowość', 'adres', 'pokój', 'narodowość'];
                 const nonEmployeeRequiredFields = ['imię', 'nazwisko', 'koordynator', 'data zameldowania', 'miejscowość', 'adres', 'pokój', 'narodowość'];
+                const bokRequiredFields = ['imię', 'nazwisko', 'koordynator', 'data zameldowania', 'miejscowość', 'adres', 'pokój', 'narodowość', 'rola', 'zakład'];
 
-                const requiredFields = type === 'employee' ? employeeRequiredFields : nonEmployeeRequiredFields;
+                const requiredFields = type === 'employee' ? employeeRequiredFields : (type === 'bok-resident' ? bokRequiredFields : nonEmployeeRequiredFields);
 
                 const missingFields = requiredFields.filter(field => {
                     const value = normalizedRow[field];
@@ -1683,7 +1684,7 @@ const processImport = async (
                 }
 
                 const baseRecord = {
-                    id: `${type === 'employee' ? 'emp' : 'nonemp'}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                    id: `${type === 'employee' ? 'emp' : (type === 'bok-resident' ? 'bok' : 'nonemp')}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                     firstName,
                     lastName,
                     fullName: `${lastName || ''} ${firstName || ''}`.trim(),
@@ -1699,7 +1700,7 @@ const processImport = async (
                     status: 'active' as const,
                 };
 
-                let newRecord: Employee | NonEmployee;
+                let newRecord: Employee | NonEmployee | BokResident;
 
                 if (type === 'employee') {
                     newRecord = {
@@ -1715,13 +1716,22 @@ const processImport = async (
                         deductionNo30Days: null,
                         deductionReason: undefined,
                         deductionEntryDate: null,
-                    };
+                    } as Employee;
+                } else if (type === 'bok-resident') {
+                    newRecord = {
+                        ...baseRecord,
+                        role: (normalizedRow['rola'] as string)?.trim() || 'Kierowca',
+                        zaklad: (normalizedRow['zakład'] as string)?.trim() || '',
+                        returnStatus: (normalizedRow['opcja powrotu'] as string)?.trim() || 'Brak',
+                    } as BokResident;
+                    // remove non-bok fields to satisfy type if needed
+                    if ('departureReportDate' in newRecord) delete (newRecord as any).departureReportDate;
                 } else {
                     newRecord = {
                         ...baseRecord,
                         paymentType: (normalizedRow['rodzaj płatności nz'] as string)?.trim() || null,
                         paymentAmount: normalizedRow['kwota'] ? parseFloat(String(normalizedRow['kwota'])) : null,
-                    };
+                    } as NonEmployee;
                 }
 
                 recordsToAdd.push(newRecord);
@@ -1751,6 +1761,10 @@ const processImport = async (
                 const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
                 const serializedRecords = (recordsToAdd as Employee[]).map(rec => serializeEmployee(rec));
                 await withTimeout(sheet.addRows(serializedRecords), TIMEOUT_MS, 'sheet.addRows(Employees)');
+            } else if (type === 'bok-resident') {
+                const sheet = await getSheet('BokResidents', BOK_RESIDENT_HEADERS);
+                const serializedRecords = (recordsToAdd as BokResident[]).map(rec => serializeBokResident(rec));
+                await withTimeout(sheet.addRows(serializedRecords), TIMEOUT_MS, 'sheet.addRows(BokResidents)');
             } else {
                 const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
                 const serializedRecords = (recordsToAdd as NonEmployee[]).map(rec => serializeNonEmployee(rec));
@@ -1771,6 +1785,8 @@ const processImport = async (
 
         if (type === 'employee') {
             await invalidateEmployeesCache();
+        } else if (type === 'bok-resident') {
+            await invalidateBokResidentsCache();
         } else {
             await invalidateNonEmployeesCache();
         }
@@ -1796,6 +1812,10 @@ export async function importEmployeesFromExcel(fileContent: string, actorUid: st
 
 export async function importNonEmployeesFromExcel(fileContent: string, actorUid: string, settings: Settings): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
     return processImport(fileContent, actorUid, 'non-employee', settings);
+}
+
+export async function importBokResidentsFromExcel(fileContent: string, actorUid: string, settings: Settings): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
+    return processImport(fileContent, actorUid, 'bok-resident', settings);
 }
 
 export async function deleteAddressHistoryEntry(historyId: string, actorUid: string): Promise<void> {

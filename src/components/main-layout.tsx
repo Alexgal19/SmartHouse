@@ -123,6 +123,7 @@ type MainLayoutContextType = {
     handleRestoreNonEmployee: (nonEmployee: NonEmployee) => Promise<void>;
     handleImportEmployees: (fileContent: string, settings: Settings) => Promise<void>;
     handleImportNonEmployees: (fileContent: string, settings: Settings) => Promise<void>;
+    handleImportBokResidents: (fileContent: string, settings: Settings) => Promise<void>;
     handleDeleteAddressHistory: (historyId: string, actorUid: string) => Promise<void>;
     handleToggleNotificationReadStatus: (notificationId: string, isRead: boolean) => Promise<void>;
     handleMigrateFullNames: () => Promise<void>;
@@ -877,24 +878,50 @@ export default function MainLayout({
     const handleImportNonEmployees = useCallback(async (fileContent: string, settings: Settings) => {
         if (!currentUser) return;
         try {
+            const { importNonEmployeesFromExcel } = await import('@/lib/actions');
             const result = await importNonEmployeesFromExcel(fileContent, currentUser.uid, settings);
-            if (result) {
-                let description = `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} wierszy.`;
-                if (result.errors.length > 0) {
-                    description += ` Błędy: ${result.errors.join('; ')}`;
-                }
 
-                toast({
-                    title: "Import zakończony",
-                    description: description,
-                    duration: result.errors.length > 0 ? 10000 : 5000,
-                });
+            let description = `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} wierszy.`;
+            if (result.errors.length > 0) {
+                description += ` Błędy: ${result.errors.join('; ')}`;
             }
+
+            toast({
+                title: "Import zakończony",
+                description: description,
+                duration: result.errors.length > 0 ? 10000 : 5000,
+            });
             await refreshData(false);
         } catch (e) {
             toast({
                 variant: "destructive",
                 title: "Błąd importu mieszkańców (NZ)",
+                description: e instanceof Error ? e.message : 'Nieznany błąd serwera.'
+            });
+        }
+    }, [currentUser, refreshData, toast]);
+
+    const handleImportBokResidents = useCallback(async (fileContent: string, settings: Settings) => {
+        if (!currentUser) return;
+        try {
+            const { importBokResidentsFromExcel } = await import('@/lib/actions');
+            const result = await importBokResidentsFromExcel(fileContent, currentUser.uid, settings);
+
+            let description = `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} wierszy.`;
+            if (result.errors.length > 0) {
+                description += ` Błędy: ${result.errors.join('; ')}`;
+            }
+
+            toast({
+                title: "Import zakończony",
+                description: description,
+                duration: result.errors.length > 0 ? 10000 : 5000,
+            });
+            await refreshData(false);
+        } catch (e) {
+            toast({
+                variant: "destructive",
+                title: "Błąd importu pracowników BOK",
                 description: e instanceof Error ? e.message : 'Nieznany błąd serwera.'
             });
         }
@@ -952,6 +979,7 @@ export default function MainLayout({
         handleRestoreNonEmployee,
         handleImportEmployees,
         handleImportNonEmployees,
+        handleImportBokResidents,
         handleDeleteAddressHistory,
         handleToggleNotificationReadStatus,
         handleMigrateFullNames,
@@ -994,6 +1022,7 @@ export default function MainLayout({
         handleRestoreNonEmployee,
         handleImportEmployees,
         handleImportNonEmployees,
+        handleImportBokResidents,
         handleDeleteAddressHistory,
         handleToggleNotificationReadStatus,
         handleMigrateFullNames,

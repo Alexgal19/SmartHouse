@@ -37,16 +37,16 @@ const coordinatorSchema = z.object({
 });
 
 const formSchema = z.object({
-  nationalities: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
-  departments: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
-  genders: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
-  localities: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
-  paymentTypesNZ: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
-  statuses: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
-  bokRoles: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
-  bokReturnOptions: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
-  addresses: z.array(z.any()),
-  coordinators: z.array(coordinatorSchema),
+    nationalities: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
+    departments: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
+    genders: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
+    localities: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
+    paymentTypesNZ: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
+    statuses: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
+    bokRoles: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
+    bokReturnOptions: z.array(z.object({ value: z.string().min(1, 'Wartość nie może być pusta.') })),
+    addresses: z.array(z.any()),
+    coordinators: z.array(coordinatorSchema),
 });
 
 const AddMultipleDialog = ({ open, onOpenChange, onAdd, listTitle }: { open: boolean; onOpenChange: (open: boolean) => void; onAdd: (items: string[]) => void; listTitle: string; }) => {
@@ -86,14 +86,14 @@ const AddMultipleDialog = ({ open, onOpenChange, onAdd, listTitle }: { open: boo
 };
 
 
-const ListManager = ({ name, title, fields, append, remove, control }: { name: FieldPath<z.infer<typeof formSchema>>; title: string; fields: Record<"id", string>[]; append: (obj: { value: string} | {value: string}[]) => void; remove: (index: number) => void; control: Control<z.infer<typeof formSchema>> }) => {
+const ListManager = ({ name, title, fields, append, remove, control }: { name: FieldPath<z.infer<typeof formSchema>>; title: string; fields: Record<"id", string>[]; append: (obj: { value: string } | { value: string }[]) => void; remove: (index: number) => void; control: Control<z.infer<typeof formSchema>> }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isAddMultipleOpen, setIsAddMultipleOpen] = useState(false);
     const watchedValues = useWatch({ control, name }) as { value: string }[] | undefined;
 
     const filteredFields = useMemo(() => {
         if (!searchTerm) return fields.map((field, index) => ({ ...field, originalIndex: index }));
-        
+
         return fields
             .map((field, index) => ({ ...field, originalIndex: index, value: watchedValues?.[index]?.value }))
             .filter(field => field.value?.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -150,9 +150,9 @@ const ListManager = ({ name, title, fields, append, remove, control }: { name: F
     );
 };
 
-const CoordinatorManager = ({ form, fields, append, remove, departments }: { form:  ReturnType<typeof useForm<z.infer<typeof formSchema>>>; fields: Record<"id", string>[], append: UseFieldArrayAppend<z.infer<typeof formSchema>, "coordinators">, remove: UseFieldArrayRemove, departments: string[] }) => {
+const CoordinatorManager = ({ form, fields, append, remove, departments }: { form: ReturnType<typeof useForm<z.infer<typeof formSchema>>>; fields: Record<"id", string>[], append: UseFieldArrayAppend<z.infer<typeof formSchema>, "coordinators">, remove: UseFieldArrayRemove, departments: string[] }) => {
     const [searchTerm, setSearchTerm] = useState('');
-    const [visibleFields, setVisibleFields] = useState<Record<string, {name: boolean, pass: boolean}>>({});
+    const [visibleFields, setVisibleFields] = useState<Record<string, { name: boolean, pass: boolean }>>({});
     const watchedCoordinators = useWatch({ control: form.control, name: 'coordinators' });
 
     const toggleVisibility = (id: string, field: 'name' | 'pass', _originalIndex: number) => {
@@ -179,9 +179,9 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
     return (
         <div className="space-y-4 rounded-md border p-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-                 <h3 className="font-medium">Koordynatorzy</h3>
-                 <div className="flex w-full sm:w-auto items-center gap-2 flex-wrap">
-                    <Input 
+                <h3 className="font-medium">Koordynatorzy</h3>
+                <div className="flex w-full sm:w-auto items-center gap-2 flex-wrap">
+                    <Input
                         placeholder="Szukaj koordynatora..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -203,7 +203,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                             </div>
                         </AccordionTrigger>
                         <AccordionContent>
-                             <div className="space-y-4 pt-2">
+                            <div className="space-y-4 pt-2">
                                 <FormField
                                     control={form.control}
                                     name={`coordinators.${field.originalIndex}.name`}
@@ -224,26 +224,26 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                     name={`coordinators.${field.originalIndex}.password`}
                                     render={({ field: passField }) => (
                                         <FormItem>
-                                        <FormLabel>Hasło</FormLabel>
-                                         <div className="relative">
-                                            <FormControl>
-                                                <Input 
-                                                    type={visibleFields[field.id]?.pass ? 'text' : 'password'}
-                                                    {...passField} 
-                                                    placeholder="Kliknij oko, aby wyświetlić lub zmienić" 
-                                                />
-                                            </FormControl>
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
-                                                onClick={() => toggleVisibility(field.id, 'pass', field.originalIndex)}
-                                            >
-                                                {visibleFields[field.id]?.pass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                            </Button>
-                                         </div>
-                                        <FormMessage />
+                                            <FormLabel>Hasło</FormLabel>
+                                            <div className="relative">
+                                                <FormControl>
+                                                    <Input
+                                                        type={visibleFields[field.id]?.pass ? 'text' : 'password'}
+                                                        {...passField}
+                                                        placeholder="Kliknij oko, aby wyświetlić lub zmienić"
+                                                    />
+                                                </FormControl>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
+                                                    onClick={() => toggleVisibility(field.id, 'pass', field.originalIndex)}
+                                                >
+                                                    {visibleFields[field.id]?.pass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                </Button>
+                                            </div>
+                                            <FormMessage />
                                         </FormItem>
                                     )}
                                 />
@@ -256,13 +256,13 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                             <FormLabel>Zakłady</FormLabel>
                                             <div className="space-y-2">
                                                 {(form.getValues(`coordinators.${field.originalIndex}.departments`) || []).map((_dept, deptIndex) => (
-                                                     <div key={deptIndex} className="flex items-center gap-2">
-                                                         <FormField
-                                                             control={form.control}
-                                                             name={`coordinators.${field.originalIndex}.departments.${deptIndex}`}
-                                                             render={({ field: deptField }) => (
+                                                    <div key={deptIndex} className="flex items-center gap-2">
+                                                        <FormField
+                                                            control={form.control}
+                                                            name={`coordinators.${field.originalIndex}.departments.${deptIndex}`}
+                                                            render={({ field: deptField }) => (
                                                                 <FormItem className="flex-1">
-                                                                     <Select onValueChange={deptField.onChange} value={deptField.value}>
+                                                                    <Select onValueChange={deptField.onChange} value={deptField.value}>
                                                                         <FormControl>
                                                                             <SelectTrigger>
                                                                                 <SelectValue placeholder="Wybierz zakład" />
@@ -275,10 +275,10 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                                                 </FormItem>
                                                             )}
                                                         />
-                                                         <Button 
-                                                            type="button" 
-                                                            variant="ghost" 
-                                                            size="icon" 
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
                                                             onClick={() => {
                                                                 const currentDepts = form.getValues(`coordinators.${field.originalIndex}.departments`) || [];
                                                                 form.setValue(`coordinators.${field.originalIndex}.departments`, currentDepts.filter((_, i) => i !== deptIndex));
@@ -286,7 +286,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                                         >
                                                             <Trash2 className="h-4 w-4 text-destructive" />
                                                         </Button>
-                                                     </div>
+                                                    </div>
                                                 ))}
                                                 <Button
                                                     type="button"
@@ -298,7 +298,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                                         form.setValue(`coordinators.${field.originalIndex}.departments`, [...currentDepts, '']);
                                                     }}
                                                 >
-                                                    <PlusCircle className="h-4 w-4 mr-2"/>
+                                                    <PlusCircle className="h-4 w-4 mr-2" />
                                                     Dodaj zakład
                                                 </Button>
                                             </div>
@@ -306,7 +306,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                         </FormItem>
                                     )}
                                 />
-                                
+
                                 <FormField
                                     control={form.control}
                                     name={`coordinators.${field.originalIndex}.visibilityMode`}
@@ -333,7 +333,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                         render={({ field: adminField }) => (
                                             <FormItem className="flex flex-row items-center space-x-3 space-y-0">
                                                 <FormControl>
-                                                     <Switch checked={adminField.value} onCheckedChange={adminField.onChange} />
+                                                    <Switch checked={adminField.value} onCheckedChange={adminField.onChange} />
                                                 </FormControl>
                                                 <FormLabel className="font-normal">
                                                     Uprawnienia administratora
@@ -342,7 +342,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                             </FormItem>
                                         )}
                                     />
-                                     <Button type="button" variant="ghost" size="icon" onClick={() => remove(field.originalIndex)}>
+                                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(field.originalIndex)}>
                                         <Trash2 className="h-4 w-4 text-destructive" />
                                     </Button>
                                 </div>
@@ -362,15 +362,15 @@ const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove,
     const [filterCoordinatorId, setFilterCoordinatorId] = useState('all');
     const [filterLocality, setFilterLocality] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
-    
+
     const coordinatorMap = useMemo(() => new Map(coordinators.map(c => [c.uid, c.name])), [coordinators]);
-    const sortedCoordinators = useMemo(() => [...coordinators].sort((a,b) => a.name.localeCompare(b.name)), [coordinators]);
+    const sortedCoordinators = useMemo(() => [...coordinators].sort((a, b) => a.name.localeCompare(b.name)), [coordinators]);
     const sortedLocalities = useMemo(() => [...localities].sort((a, b) => a.localeCompare(b)), [localities]);
-    
+
     const occupancyData = useMemo(() => {
         const occupancyMap = new Map<string, { occupants: number, capacity: number }>();
         const allOccupants = [...allEmployees, ...allNonEmployees].filter(o => o.status === 'active');
-        
+
         allOccupants.forEach(occupant => {
             if (occupant.address) {
                 const current = occupancyMap.get(occupant.address) || { occupants: 0, capacity: 0 };
@@ -378,7 +378,7 @@ const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove,
                 occupancyMap.set(occupant.address, current);
             }
         });
-        
+
         addresses.forEach(address => {
             const current = occupancyMap.get(address.name) || { occupants: 0, capacity: 0 };
             current.capacity = address.rooms.reduce((sum, room) => sum + room.capacity, 0);
@@ -402,11 +402,11 @@ const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove,
         if (searchTerm) {
             tempAddresses = tempAddresses.filter(a => a.name.toLowerCase().includes(searchTerm.toLowerCase()));
         }
-        
+
         return tempAddresses.sort((a, b) => a.name.localeCompare(b.name));
 
     }, [addresses, filterCoordinatorId, filterLocality, searchTerm]);
-    
+
     const getProgressColor = (value: number) => {
         if (value < 30) return 'hsl(0 84.2% 60.2%)'; // red
         if (value < 70) return 'hsl(var(--primary))'; // orange
@@ -418,8 +418,8 @@ const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove,
         <div className="space-y-4 rounded-md border p-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                 <h3 className="font-medium">Adresy i pokoje</h3>
-                 <div className="flex w-full sm:w-auto items-center gap-2 flex-wrap">
-                    <Input 
+                <div className="flex w-full sm:w-auto items-center gap-2 flex-wrap">
+                    <Input
                         placeholder="Szukaj adresu..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -446,12 +446,12 @@ const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove,
                     <Button type="button" variant="outline" size="sm" onClick={() => onAdd(filterCoordinatorId)}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Dodaj
                     </Button>
-                 </div>
+                </div>
             </div>
             {filteredAddresses && filteredAddresses.length > 0 ? (
                 <div className="space-y-2">
                     {filteredAddresses.map((address: Address, index: number) => {
-                        const data = occupancyData.get(address.name) || { occupants: 0, capacity: 0};
+                        const data = occupancyData.get(address.name) || { occupants: 0, capacity: 0 };
                         const occupancyPercentage = data.capacity > 0 ? (data.occupants / data.capacity) * 100 : 0;
 
                         return (
@@ -473,10 +473,10 @@ const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove,
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2 mt-2">
-                                    <Progress 
-                                        value={occupancyPercentage} 
+                                    <Progress
+                                        value={occupancyPercentage}
                                         className="h-2"
-                                        indicatorStyle={{ backgroundColor: getProgressColor(occupancyPercentage)}}
+                                        indicatorStyle={{ backgroundColor: getProgressColor(occupancyPercentage) }}
                                     />
                                     <span className="text-xs font-semibold w-12 text-right">{occupancyPercentage.toFixed(0)}%</span>
                                 </div>
@@ -500,7 +500,7 @@ const DataMigration = () => {
         await handleMigrateFullNames();
         setIsLoading(false);
     }
-    
+
     return (
         <Card>
             <CardHeader>
@@ -518,7 +518,7 @@ const DataMigration = () => {
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
                             <Button variant="outline" disabled={isLoading}>
-                                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <DatabaseZap className="mr-2 h-4 w-4"/>}
+                                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <DatabaseZap className="mr-2 h-4 w-4" />}
                                 Uruchom migrację
                             </Button>
                         </AlertDialogTrigger>
@@ -548,7 +548,7 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
     const [isDeletingByCoord, setIsDeletingByCoord] = useState(false);
     const [isTransferring, setIsTransferring] = useState(false);
     const [isDeletingByDept, setIsDeletingByDept] = useState(false);
-    
+
     const [transferFrom, setTransferFrom] = useState('');
     const [transferTo, setTransferTo] = useState('');
     const [deleteCoordinatorId, setDeleteCoordinatorId] = useState('');
@@ -556,15 +556,15 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
 
     const { toast } = useToast();
     const { handleBulkDeleteEmployeesByDepartment, handleBulkDeleteEmployees, handleBulkDeleteEmployeesByCoordinator, refreshData } = useMainLayout();
-    
+
     const sortedCoordinators = useMemo(() => {
-      if (!rawSettings?.coordinators) return [];
-      return [...rawSettings.coordinators].sort((a,b) => a.name.localeCompare(b.name));
+        if (!rawSettings?.coordinators) return [];
+        return [...rawSettings.coordinators].sort((a, b) => a.name.localeCompare(b.name));
     }, [rawSettings?.coordinators]);
 
     const sortedDepartments = useMemo(() => {
         if (!rawSettings?.departments) return [];
-        return [...rawSettings.departments].sort((a,b) => a.localeCompare(b));
+        return [...rawSettings.departments].sort((a, b) => a.localeCompare(b));
     }, [rawSettings?.departments]);
 
     const handleBulkDelete = async (status: 'active' | 'dismissed') => {
@@ -573,12 +573,12 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
             return;
         }
 
-        if(status === 'active') setIsDeletingActive(true);
+        if (status === 'active') setIsDeletingActive(true);
         else setIsDeletingDismissed(true);
 
         await handleBulkDeleteEmployees('employee', status);
-        
-        if(status === 'active') setIsDeletingActive(false);
+
+        if (status === 'active') setIsDeletingActive(false);
         else setIsDeletingDismissed(false);
     };
 
@@ -607,7 +607,7 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
         }
         setIsDeletingByDept(false);
     };
-    
+
     const handleTransfer = async () => {
         if (!transferFrom || !transferTo) {
             toast({ variant: 'destructive', title: 'Błąd', description: 'Wybierz obu koordynatorów.' });
@@ -636,16 +636,16 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
                 <CardDescription>Zarządzaj danymi pracowników hurtowo.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                  <div className="flex flex-col sm:flex-row items-start justify-between rounded-lg border border-destructive/50 bg-destructive/10 p-4 gap-4">
+                <div className="flex flex-col sm:flex-row items-start justify-between rounded-lg border border-destructive/50 bg-destructive/10 p-4 gap-4">
                     <div className="flex-1">
                         <h3 className="font-medium text-destructive">Masowe usuwanie</h3>
                         <p className="text-sm text-destructive/80">Te akcje są nieodwracalne.</p>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                         <AlertDialog>
+                        <AlertDialog>
                             <AlertDialogTrigger asChild>
                                 <Button variant="destructive" disabled={isDeletingActive} className="w-full">
-                                    {isDeletingActive ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Trash2 className="mr-2 h-4 w-4" />}
+                                    {isDeletingActive ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
                                     Usuń wszystkich aktywnych
                                 </Button>
                             </AlertDialogTrigger>
@@ -666,14 +666,14 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
                                 </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
-                         <AlertDialog>
+                        <AlertDialog>
                             <AlertDialogTrigger asChild>
                                 <Button variant="destructive" disabled={isDeletingDismissed} className="w-full">
-                                     {isDeletingDismissed ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Trash2 className="mr-2 h-4 w-4" />}
+                                    {isDeletingDismissed ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
                                     Usuń wszystkich zwolnionych
                                 </Button>
                             </AlertDialogTrigger>
-                             <AlertDialogContent>
+                            <AlertDialogContent>
                                 <AlertDialogHeader>
                                     <AlertDialogTitle>Czy na pewno chcesz usunąć WSZYSTKICH zwolnionych pracowników?</AlertDialogTitle>
                                     <AlertDialogDescription>Ta operacja jest nieodwracalna. Wszyscy pracownicy ze statusem &quot;zwolniony&quot; zostaną trwale usunięci.</AlertDialogDescription>
@@ -691,11 +691,11 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
                             </AlertDialogContent>
                         </AlertDialog>
                     </div>
-                 </div>
+                </div>
 
-                 {currentUser.isAdmin && rawSettings?.coordinators && (
-                     <div className="rounded-lg border p-4 space-y-4">
-                         <div className="flex-1">
+                {currentUser.isAdmin && rawSettings?.coordinators && (
+                    <div className="rounded-lg border p-4 space-y-4">
+                        <div className="flex-1">
                             <h3 className="font-medium">Przenoszenie pracowników</h3>
                             <p className="text-sm text-muted-foreground">Przenieś wszystkich pracowników od jednego koordynatora do drugiego.</p>
                         </div>
@@ -709,7 +709,7 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
                                     </SelectContent>
                                 </Select>
                             </div>
-                             <div className="space-y-2">
+                            <div className="space-y-2">
                                 <Label>Do koordynatora</Label>
                                 <Select value={transferTo} onValueChange={setTransferTo}>
                                     <SelectTrigger><SelectValue placeholder="Wybierz koordynatora" /></SelectTrigger>
@@ -719,15 +719,15 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
                                 </Select>
                             </div>
                             <Button onClick={handleTransfer} disabled={isTransferring}>
-                                {isTransferring ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                                {isTransferring ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                                 Przenieś
                             </Button>
                         </div>
-                     </div>
-                 )}
-                 {currentUser.isAdmin && rawSettings?.coordinators && (
-                     <div className="rounded-lg border p-4 space-y-4 border-destructive/50 bg-destructive/10">
-                         <div className="flex-1">
+                    </div>
+                )}
+                {currentUser.isAdmin && rawSettings?.coordinators && (
+                    <div className="rounded-lg border p-4 space-y-4 border-destructive/50 bg-destructive/10">
+                        <div className="flex-1">
                             <h3 className="font-medium text-destructive">Usuwanie pracowników koordynatora</h3>
                             <p className="text-sm text-destructive/80">Trwale usuwa wszystkich pracowników (aktywnych i zwolnionych) przypisanych do wybranego koordynatora. Ta akcja jest nieodwracalna.</p>
                         </div>
@@ -744,7 +744,7 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                     <Button variant="destructive" disabled={isDeletingByCoord || !deleteCoordinatorId}>
-                                        {isDeletingByCoord ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Trash2 className="mr-2 h-4 w-4" />}
+                                        {isDeletingByCoord ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
                                         Usuń pracowników
                                     </Button>
                                 </AlertDialogTrigger>
@@ -752,7 +752,7 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
                                     <AlertDialogHeader>
                                         <AlertDialogTitle>Czy na pewno chcesz usunąć WSZYSTKICH pracowników tego koordynatora?</AlertDialogTitle>
                                         <AlertDialogDescription>
-                                            Ta operacja jest nieodwracalna. Wszyscy pracownicy przypisani do <span className="font-bold">{sortedCoordinators.find(c=>c.uid === deleteCoordinatorId)?.name}</span> zostaną trwale usunięci.
+                                            Ta operacja jest nieodwracalna. Wszyscy pracownicy przypisani do <span className="font-bold">{sortedCoordinators.find(c => c.uid === deleteCoordinatorId)?.name}</span> zostaną trwale usunięci.
                                         </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
@@ -768,11 +768,11 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
                                 </AlertDialogContent>
                             </AlertDialog>
                         </div>
-                     </div>
-                 )}
+                    </div>
+                )}
                 {currentUser.isAdmin && rawSettings?.departments && (
-                     <div className="rounded-lg border p-4 space-y-4 border-destructive/50 bg-destructive/10">
-                         <div className="flex-1">
+                    <div className="rounded-lg border p-4 space-y-4 border-destructive/50 bg-destructive/10">
+                        <div className="flex-1">
                             <h3 className="font-medium text-destructive">Usuwanie pracowników wg zakładu</h3>
                             <p className="text-sm text-destructive/80">Trwale usuwa wszystkich pracowników (aktywnych i zwolnionych) przypisanych do wybranego zakładu. Ta akcja jest nieodwracalna.</p>
                         </div>
@@ -789,7 +789,7 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                     <Button variant="destructive" disabled={isDeletingByDept || !deleteDepartment}>
-                                        {isDeletingByDept ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Trash2 className="mr-2 h-4 w-4" />}
+                                        {isDeletingByDept ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
                                         Usuń pracowników
                                     </Button>
                                 </AlertDialogTrigger>
@@ -813,8 +813,8 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
                                 </AlertDialogContent>
                             </AlertDialog>
                         </div>
-                     </div>
-                 )}
+                    </div>
+                )}
             </CardContent>
         </Card>
     );
@@ -827,17 +827,17 @@ const AccommodationReportGenerator = ({ rawSettings, currentUser }: { rawSetting
     const [coordinatorId, setCoordinatorId] = useState<string>(currentUser.isAdmin ? 'all' : currentUser.uid);
     const [includeAddressHistory, setIncludeAddressHistory] = useState(false);
     const { toast } = useToast();
-    
+
     const sortedCoordinators = useMemo(() => {
-      if (!rawSettings?.coordinators) return [];
-      return [...rawSettings.coordinators].sort((a,b) => a.name.localeCompare(b.name));
+        if (!rawSettings?.coordinators) return [];
+        return [...rawSettings.coordinators].sort((a, b) => a.name.localeCompare(b.name));
     }, [rawSettings?.coordinators]);
 
     const handleGenerate = async () => {
         setIsLoading(true);
         try {
             const result = await generateAccommodationReport(year, month, coordinatorId, includeAddressHistory);
-            
+
             if (result.success && result.fileContent) {
                 const link = document.createElement("a");
                 link.href = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + result.fileContent;
@@ -855,7 +855,7 @@ const AccommodationReportGenerator = ({ rawSettings, currentUser }: { rawSetting
             setIsLoading(false);
         }
     };
-    
+
     const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
     const months = Array.from({ length: 12 }, (value, i) => i + 1);
 
@@ -866,7 +866,7 @@ const AccommodationReportGenerator = ({ rawSettings, currentUser }: { rawSetting
                 <CardDescription>Generuje raport XLSX pokazujący stan zakwaterowania w wybranym okresie.</CardDescription>
             </CardHeader>
             <CardContent>
-                 <div className="space-y-4">
+                <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4 items-end">
                         <div className="space-y-2">
                             <Label>Rok</Label>
@@ -903,7 +903,7 @@ const AccommodationReportGenerator = ({ rawSettings, currentUser }: { rawSetting
                             <span className="ml-2">Generuj raport</span>
                         </Button>
                     </div>
-                     <div className="flex items-center space-x-2 pt-4">
+                    <div className="flex items-center space-x-2 pt-4">
                         <Switch id="include-history" checked={includeAddressHistory} onCheckedChange={setIncludeAddressHistory} />
                         <Label htmlFor="include-history">Uwzględnij historię zmian adresów w raporcie</Label>
                     </div>
@@ -919,17 +919,17 @@ const NzReportsGenerator = ({ rawSettings, currentUser }: { rawSettings: Setting
     const [month, setMonth] = useState(new Date().getMonth() + 1);
     const [coordinatorId, setCoordinatorId] = useState<string>(currentUser.isAdmin ? 'all' : currentUser.uid);
     const { toast } = useToast();
-    
+
     const sortedCoordinators = useMemo(() => {
-      if (!rawSettings?.coordinators) return [];
-      return [...rawSettings.coordinators].sort((a,b) => a.name.localeCompare(b.name));
+        if (!rawSettings?.coordinators) return [];
+        return [...rawSettings.coordinators].sort((a, b) => a.name.localeCompare(b.name));
     }, [rawSettings?.coordinators]);
 
     const handleGenerate = async () => {
         setIsLoading(true);
         try {
             const result = await generateNzCostsReport(year, month, coordinatorId);
-            
+
             if (result.success && result.fileContent) {
                 const link = document.createElement("a");
                 link.href = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + result.fileContent;
@@ -947,7 +947,7 @@ const NzReportsGenerator = ({ rawSettings, currentUser }: { rawSettings: Setting
             setIsLoading(false);
         }
     };
-    
+
     const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
     const months = Array.from({ length: 12 }, (value, i) => i + 1);
 
@@ -959,24 +959,24 @@ const NzReportsGenerator = ({ rawSettings, currentUser }: { rawSettings: Setting
             </CardHeader>
             <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4 items-end">
-                     <div className="space-y-2">
-                         <Label>Rok</Label>
+                    <div className="space-y-2">
+                        <Label>Rok</Label>
                         <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 {years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
                             </SelectContent>
                         </Select>
-                     </div>
-                     <div className="space-y-2">
-                         <Label>Miesiąc</Label>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Miesiąc</Label>
                         <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 {months.map(m => <SelectItem key={m} value={String(m)}>{m}</SelectItem>)}
                             </SelectContent>
                         </Select>
-                     </div>
+                    </div>
                     {currentUser.isAdmin && (
                         <div className="space-y-2">
                             <Label>Koordynator</Label>
@@ -1084,7 +1084,7 @@ const ExcelImport = ({ onImport, title, description, requiredFields, optionalFie
             fileInputRef.current.value = '';
         }
     };
-    
+
     const handleContinueImport = () => {
         setIsGuideOpen(false);
         fileInputRef.current?.click();
@@ -1097,7 +1097,7 @@ const ExcelImport = ({ onImport, title, description, requiredFields, optionalFie
                 <CardDescription>{description}</CardDescription>
             </CardHeader>
             <CardContent>
-                 <Input
+                <Input
                     type="file"
                     ref={fileInputRef}
                     className="hidden"
@@ -1147,7 +1147,7 @@ function SettingsManager({ rawSettings, handleUpdateSettings }: { rawSettings: S
             coordinators: [...rawSettings.coordinators].sort((a, b) => (a.name || '').localeCompare(b.name || '')),
         },
     });
-    
+
     useEffect(() => {
         form.reset({
             nationalities: rawSettings.nationalities.map(n => ({ value: n })).sort((a, b) => a.value.localeCompare(b.value)),
@@ -1188,7 +1188,7 @@ function SettingsManager({ rawSettings, handleUpdateSettings }: { rawSettings: S
             statuses: otherValues.statuses.map((s) => s.value).sort((a, b) => a.localeCompare(b)),
             bokRoles: otherValues.bokRoles.map((s) => s.value).sort((a, b) => a.localeCompare(b)),
             bokReturnOptions: otherValues.bokReturnOptions.map((s) => s.value).sort((a, b) => a.localeCompare(b)),
-            coordinators: otherValues.coordinators.sort((a,b) => a.name.localeCompare(b.name)),
+            coordinators: otherValues.coordinators.sort((a, b) => a.name.localeCompare(b.name)),
         };
 
         form.reset(form.getValues()); // Reset dirty state to disable button
@@ -1197,8 +1197,8 @@ function SettingsManager({ rawSettings, handleUpdateSettings }: { rawSettings: S
         try {
             await handleUpdateSettings(newSettings);
             toast({ title: "Sukces", description: "Ustawienia list i koordynatorów zostały zaktualizowane." });
-            
-             form.reset({
+
+            form.reset({
                 ...form.getValues(),
                 nationalities: newSettings.nationalities?.map(n => ({ value: n })),
                 departments: newSettings.departments?.map(d => ({ value: d })),
@@ -1230,7 +1230,7 @@ function SettingsManager({ rawSettings, handleUpdateSettings }: { rawSettings: S
         } else {
             newAddresses.push(addressData);
         }
-        
+
         const previousSettings = rawSettings;
         form.setValue('addresses', newAddresses, { shouldDirty: false });
         setIsAddressFormOpen(false);
@@ -1240,16 +1240,16 @@ function SettingsManager({ rawSettings, handleUpdateSettings }: { rawSettings: S
             await handleUpdateSettings({ addresses: newAddresses });
             toast({ title: "Sukces", description: "Adres został zapisany." });
         } catch (e) {
-             // Rollback
-             form.setValue('addresses', previousSettings.addresses, { shouldDirty: false });
-             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać adresu. Cofnięto zmiany." });
+            // Rollback
+            form.setValue('addresses', previousSettings.addresses, { shouldDirty: false });
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać adresu. Cofnięto zmiany." });
         }
     };
 
     const handleRemoveAddress = async (addressId: string) => {
         const addresses = rawSettings.addresses;
         const newAddresses = addresses.filter((a: Address) => a.id !== addressId);
-       
+
         const previousSettings = rawSettings;
         form.setValue('addresses', newAddresses, { shouldDirty: false });
         toast({ title: "Usuwanie...", description: "Adres jest usuwany w tle." });
@@ -1311,14 +1311,14 @@ function SettingsManager({ rawSettings, handleUpdateSettings }: { rawSettings: S
                                         fields={coordFields}
                                         append={appendCoord}
                                         remove={removeCoord}
-                                        departments={(watchedDepartments || []).map((d: { value: string}) => d.value)}
+                                        departments={(watchedDepartments || []).map((d: { value: string }) => d.value)}
                                     />
                                 </AccordionContent>
                             </AccordionItem>
                             <AccordionItem value="addresses">
                                 <AccordionTrigger>Zarządzanie adresami</AccordionTrigger>
                                 <AccordionContent className="p-2">
-                                    <AddressManager 
+                                    <AddressManager
                                         addresses={watchedAddresses || []}
                                         coordinators={watchedCoordinators || []}
                                         localities={(watchedLocalities || []).map((l: { value: string; }) => l.value)}
@@ -1331,17 +1331,17 @@ function SettingsManager({ rawSettings, handleUpdateSettings }: { rawSettings: S
                                 </AccordionContent>
                             </AccordionItem>
                         </Accordion>
-                        
+
                         <div className="flex justify-end">
                             <Button type="submit" disabled={!form.formState.isDirty || form.formState.isSubmitting}>
-                                {form.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                                {form.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                                 Zapisz zmiany
                             </Button>
                         </div>
                     </form>
                 </Form>
-                 {rawSettings && (
-                     <AddressForm
+                {rawSettings && (
+                    <AddressForm
                         key={editingAddress ? editingAddress.id : 'new-address'}
                         isOpen={isAddressFormOpen}
                         onOpenChange={setIsAddressFormOpen}
@@ -1349,7 +1349,7 @@ function SettingsManager({ rawSettings, handleUpdateSettings }: { rawSettings: S
                         settings={rawSettings}
                         address={editingAddress}
                     />
-                 )}
+                )}
             </CardContent>
         </Card>
     )
@@ -1357,23 +1357,24 @@ function SettingsManager({ rawSettings, handleUpdateSettings }: { rawSettings: S
 
 export default function SettingsView({ currentUser }: { currentUser: SessionData }) {
     const { toast } = useToast();
-    const { handleImportEmployees, handleImportNonEmployees, handleUpdateSettings, rawSettings } = useMainLayout();
+    const { handleImportEmployees, handleImportNonEmployees, handleImportBokResidents, handleUpdateSettings, rawSettings } = useMainLayout();
     const [isEmployeeImportLoading, setIsEmployeeImportLoading] = useState(false);
     const [isNonEmployeeImportLoading, setIsNonEmployeeImportLoading] = useState(false);
-  
+    const [isBokImportLoading, setIsBokImportLoading] = useState(false);
+
     const runEmployeeImport = async (fileContent: string) => {
         if (!rawSettings) {
-            toast({ variant: 'destructive', title: 'Błąd', description: 'Ustawienia nie są załadowane. Spróbuj ponownie za chwilę.'});
+            toast({ variant: 'destructive', title: 'Błąd', description: 'Ustawienia nie są załadowane. Spróbuj ponownie za chwilę.' });
             return;
         }
         setIsEmployeeImportLoading(true);
         await handleImportEmployees(fileContent, rawSettings);
         setIsEmployeeImportLoading(false);
     }
-    
+
     const runNonEmployeeImport = async (fileContent: string) => {
         if (!rawSettings) {
-            toast({ variant: 'destructive', title: 'Błąd', description: 'Ustawienia nie są załadowane. Spróbuj ponownie za chwilę.'});
+            toast({ variant: 'destructive', title: 'Błąd', description: 'Ustawienia nie są załadowane. Spróbuj ponownie za chwilę.' });
             return;
         }
         setIsNonEmployeeImportLoading(true);
@@ -1381,26 +1382,39 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
         setIsNonEmployeeImportLoading(false);
     }
 
+    const runBokResidentImport = async (fileContent: string) => {
+        if (!rawSettings) {
+            toast({ variant: 'destructive', title: 'Błąd', description: 'Ustawienia nie są załadowane. Spróbuj ponownie za chwilę.' });
+            return;
+        }
+        setIsBokImportLoading(true);
+        await handleImportBokResidents(fileContent, rawSettings);
+        setIsBokImportLoading(false);
+    }
+
     const employeeRequiredFields = ["Imię", "Nazwisko", "Koordynator", "Data zameldowania", "Zakład", "Miejscowość", "Adres", "Pokój", "Narodowość"];
     const employeeOptionalFields = ["Płeć", "Umowa od", "Umowa do", "Data wymeldowania", "Data zgloszenia wyjazdu", "Komentarze"];
-    
+
     const nonEmployeeRequiredFields = ["Imię", "Nazwisko", "Koordynator", "Data zameldowania", "Miejscowość", "Adres", "Pokój", "Narodowość"];
     const nonEmployeeOptionalFields = ["Płeć", "Data wymeldowania", "Data zgloszenia wyjazdu", "Komentarze", "Rodzaj płatności NZ", "Kwota"];
-  
-  if (!currentUser.isAdmin) {
-      return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center text-destructive"><FileWarning className="mr-2"/>Brak uprawnień</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <p>Nie masz uprawnień do przeglądania tej strony.</p>
-            </CardContent>
-        </Card>
-      )
-  }
 
-  if (!rawSettings) {
+    const bokResidentRequiredFields = ["Imię", "Nazwisko", "Koordynator", "Data zameldowania", "Miejscowość", "Adres", "Pokój", "Narodowość", "Rola", "Zakład"];
+    const bokResidentOptionalFields = ["Płeć", "Opcja powrotu", "Data wymeldowania", "Status", "Komentarze"];
+
+    if (!currentUser.isAdmin) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center text-destructive"><FileWarning className="mr-2" />Brak uprawnień</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p>Nie masz uprawnień do przeglądania tej strony.</p>
+                </CardContent>
+            </Card>
+        )
+    }
+
+    if (!rawSettings) {
         return (
             <div className="space-y-6">
                 <Card>
@@ -1413,35 +1427,43 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
                 </Card>
             </div>
         );
-  }
+    }
 
-  return (
-    <div className="space-y-6">
-        <SettingsManager rawSettings={rawSettings} handleUpdateSettings={handleUpdateSettings}/>
-        <DataMigration />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ExcelImport 
-                onImport={runEmployeeImport}
-                title="Import Pracowników z Excel"
-                description="Zaimportuj nowych pracowników z pliku XLSX."
-                requiredFields={employeeRequiredFields}
-                optionalFields={employeeOptionalFields}
-                isLoading={isEmployeeImportLoading}
-            />
-            <ExcelImport 
-                onImport={runNonEmployeeImport}
-                title="Import Mieszkańców (NZ) z Excel"
-                description="Zaimportuj nowych mieszkańców (NZ) z pliku XLSX."
-                requiredFields={nonEmployeeRequiredFields}
-                optionalFields={nonEmployeeOptionalFields}
-                isLoading={isNonEmployeeImportLoading}
-            />
-        </div>
+    return (
         <div className="space-y-6">
-            <AccommodationReportGenerator rawSettings={rawSettings} currentUser={currentUser} />
-            <NzReportsGenerator rawSettings={rawSettings} currentUser={currentUser} />
+            <SettingsManager rawSettings={rawSettings} handleUpdateSettings={handleUpdateSettings} />
+            <DataMigration />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <ExcelImport
+                    onImport={runEmployeeImport}
+                    title="Import Pracowników"
+                    description="Zaimportuj nowych pracowników z pliku XLSX."
+                    requiredFields={employeeRequiredFields}
+                    optionalFields={employeeOptionalFields}
+                    isLoading={isEmployeeImportLoading}
+                />
+                <ExcelImport
+                    onImport={runNonEmployeeImport}
+                    title="Import Mieszkańców (NZ)"
+                    description="Zaimportuj nowych mieszkańców (NZ) z pliku XLSX."
+                    requiredFields={nonEmployeeRequiredFields}
+                    optionalFields={nonEmployeeOptionalFields}
+                    isLoading={isNonEmployeeImportLoading}
+                />
+                <ExcelImport
+                    onImport={runBokResidentImport}
+                    title="Import Pracowników BOK"
+                    description="Zaimportuj nowych pracowników BOK z pliku XLSX."
+                    requiredFields={bokResidentRequiredFields}
+                    optionalFields={bokResidentOptionalFields}
+                    isLoading={isBokImportLoading}
+                />
+            </div>
+            <div className="space-y-6">
+                <AccommodationReportGenerator rawSettings={rawSettings} currentUser={currentUser} />
+                <NzReportsGenerator rawSettings={rawSettings} currentUser={currentUser} />
+            </div>
+            <BulkActions currentUser={currentUser} rawSettings={rawSettings} />
         </div>
-        <BulkActions currentUser={currentUser} rawSettings={rawSettings}/>
-    </div>
-  );
+    );
 }
