@@ -317,9 +317,31 @@ const AddressDetailView = ({
                                                 Pokój {room.name}
                                                 {room.isLocked && <Lock className="h-3 w-3 ml-1 text-yellow-600" />}
                                             </div>
-                                            <span className="text-sm">
-                                                <span>{room.occupantCount} / {room.capacity}</span>
-                                            </span>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-sm">
+                                                    <span>{room.occupantCount} / {room.capacity}</span>
+                                                </span>
+                                                {currentUser?.isAdmin && !isSingleSelectedBlocked && (
+                                                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                                        <Label htmlFor={`disable-room-${room.id}`} className="text-xs text-muted-foreground cursor-pointer font-normal">
+                                                            {room.isActive ? 'Zablokuj' : 'Odblokuj'}
+                                                        </Label>
+                                                        <Switch
+                                                            id={`disable-room-${room.id}`}
+                                                            checked={!room.isActive}
+                                                            onCheckedChange={async (checked) => {
+                                                                if (!settings || !aggregatedAddressesData || aggregatedAddressesData.isMultiple) return;
+                                                                const updatedAddresses = settings.addresses.map(a =>
+                                                                    a.id === aggregatedAddressesData.id
+                                                                        ? { ...a, rooms: a.rooms.map(r => r.id === room.id ? { ...r, isActive: !checked } : r) }
+                                                                        : a
+                                                                );
+                                                                await handleUpdateSettings({ addresses: updatedAddresses });
+                                                            }}
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="pl-4 mt-2 space-y-1">
                                             {room.occupants.map(o => {
