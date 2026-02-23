@@ -18,7 +18,7 @@ import type { Settings, Employee, NonEmployee } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { isRoomActive } from '@/lib/address-filters';
+import { isRoomActive, isOwnAddressEntry } from '@/lib/address-filters';
 
 type AddressOccupancy = {
   locality: string;
@@ -53,11 +53,6 @@ export function AddressPreviewDialog({
   const [selectedLocality, setSelectedLocality] = useState<string>('');
   const [selectedAddress, setSelectedAddress] = useState<string>('');
   const [selectedRoom, setSelectedRoom] = useState<string>('');
-
-  const isOwnAddressEntry = (addressName: string) => {
-    const words = addressName.trim().split(/\s+/);
-    return words.length >= 2 && words[0].toLowerCase() === 'własne' && words[1].toLowerCase() === 'mieszkanie';
-  };
 
   const addressOccupancy = useMemo<AddressOccupancy[]>(() => {
     if (!allEmployees || !allNonEmployees) return [];

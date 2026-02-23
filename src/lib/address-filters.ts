@@ -9,6 +9,19 @@
 import type { Address, Room } from '@/types';
 
 /**
+ * Check if an address is a personal/own apartment
+ */
+export function isOwnAddressEntry(addressName: string): boolean {
+  if (!addressName) return false;
+  const lowerName = addressName.toLowerCase().trim();
+  // Check for various spellings of "własne mieszkanie"
+  return lowerName.startsWith('własne') ||
+    lowerName.startsWith('wlasne') ||
+    lowerName.includes('wlasne mieszkanie') ||
+    lowerName.includes('własne mieszkanie');
+}
+
+/**
  * Check if an address is active (not blocked)
  */
 export function isAddressActive(address: Address): boolean {
@@ -23,7 +36,7 @@ export function isRoomActive(room: Room, parentAddress?: Address): boolean {
   const roomNotLocked = !room.isLocked;
   const roomIsActive = room.isActive;
   const addressIsActive = parentAddress ? parentAddress.isActive : true;
-  
+
   return roomNotLocked && roomIsActive && addressIsActive;
 }
 
@@ -94,13 +107,13 @@ export function countActiveAddressesInUse(
   const activeAddressNames = new Set(
     getActiveAddresses(allAddresses).map(addr => addr.name)
   );
-  
+
   const uniqueAddressesUsed = new Set(
     occupants
       .map(o => o.address)
       .filter(Boolean)
-      .filter(addr => activeAddressNames.has(addr))
+      .filter(addr => activeAddressNames.has(addr) && !isOwnAddressEntry(addr))
   );
-  
+
   return uniqueAddressesUsed.size;
 }
