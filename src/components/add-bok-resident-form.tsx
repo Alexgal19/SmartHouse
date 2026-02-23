@@ -214,10 +214,10 @@ export function AddBokResidentForm({
         })
         .catch((error) => {
           console.error('OCR Error:', error);
-          let description = 'Nie udało się odczytać danych z dokumentu.';
+          let description = 'Nie udało się odczytać danych z dokumentu. Upewnij się, że ostrość jest prawidłowa i kod na dole znajduje się w kadrze.';
 
-          if (error.message?.includes('API key') || error.message?.includes('400')) {
-            description = 'Błąd konfiguracji API. Skontaktuj się z administratorem.';
+          if (error instanceof Error && error.message) {
+            description = error.message;
           }
 
           toast({
@@ -741,7 +741,7 @@ export function AddBokResidentForm({
           <DialogHeader>
             <DialogTitle>Zrób zdjęcie paszportu</DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
-              Umieść paszport w kadrze. Dla najlepszych wyników, obróć urządzenie poziomo.
+              Umieść dolną część paszportu (kod MRZ z licznymi znakami "&lt;") w kadrze. Dla najlepszych wyników, obróć urządzenie poziomo. Skanowanie odbywa się lokalnie i może potrwać do 15 sekund.
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center space-y-4">
@@ -770,12 +770,12 @@ export function AddBokResidentForm({
                 {isScanning ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Analizowanie...
+                    Rozpoznawanie znaków...
                   </>
                 ) : (
                   <>
                     <Camera className="mr-2 h-4 w-4" />
-                    Zrób zdjęcie (AI)
+                    Zrób zdjęcie (OCR)
                   </>
                 )}
               </Button>

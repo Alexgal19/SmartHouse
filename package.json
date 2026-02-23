@@ -13,8 +13,6 @@
   },
   "dependencies": {
     "@cfworker/json-schema": "^4.1.1",
-    "@genkit-ai/google-genai": "^1.27.0",
-    "@genkit-ai/mcp": "^1.28.0",
     "@google-cloud/firestore": "^7.11.6",
     "@hookform/resolvers": "^3.9.0",
     "@radix-ui/react-accordion": "^1.2.0",
@@ -46,7 +44,6 @@
     "firebase": "^12.8.0",
     "firebase-admin": "^13.6.0",
     "framer-motion": "^12.29.0",
-    "genkit": "^1.27.0",
     "google-auth-library": "9.11.0",
     "google-spreadsheet": "^4.1.2",
     "iron-session": "^8.0.2",
@@ -61,6 +58,7 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
+    "tesseract.js": "^7.0.0",
     "winston": "^3.19.0",
     "xlsx": "^0.20.2",
     "zod": "^3.23.8"

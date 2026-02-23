@@ -2,26 +2,12 @@
 import '@testing-library/jest-dom';
 
 global.ResizeObserver = class ResizeObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
+  observe() { }
+  unobserve() { }
+  disconnect() { }
 };
 
-// Mock Genkit
-jest.mock('@genkit-ai/google-genai', () => ({
-  googleAI: () => ({ name: 'googleAI' }),
-}));
 
-jest.mock('genkit', () => ({
-  genkit: () => ({
-    generate: jest.fn(),
-    definePrompt: jest.fn(() => ({
-      generate: jest.fn(),
-    })),
-    defineFlow: jest.fn(),
-  }),
-  z: { object: () => ({}) },
-}));
 
 // Mock Firebase Admin
 jest.mock('firebase-admin', () => ({
@@ -60,13 +46,13 @@ jest.mock('@/components/main-layout', () => ({
     allNonEmployees: [],
     allBokResidents: [],
     settings: {
-        coordinators: [],
-        nationalities: [],
-        departments: [],
-        genders: [],
-        localities: [],
-        addresses: [],
-        statuses: [],
+      coordinators: [],
+      nationalities: [],
+      departments: [],
+      genders: [],
+      localities: [],
+      addresses: [],
+      statuses: [],
     },
     currentUser: { isAdmin: true, uid: 'test-user', name: 'Test' },
     handleDismissEmployee: jest.fn(),
