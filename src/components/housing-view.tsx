@@ -3,7 +3,7 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import type { Employee, NonEmployee, SessionData, Room, Settings } from "@/types";
+import type { Employee, NonEmployee, SessionData, Room, Settings, BokResident } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Bed, Building, BarChart2, Copy, Lock } from "lucide-react";
@@ -23,11 +23,12 @@ import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 import { Badge } from './ui/badge';
 import { getActiveAddressCapacity } from '@/lib/address-filters';
 
-type Occupant = Employee | NonEmployee;
+type Occupant = Employee | NonEmployee | BokResident;
 type RoomWithOccupants = Room & { occupants: Occupant[]; occupantCount: number; available: number; };
 type HousingData = ReturnType<typeof useHousingData>[0];
 
-const isEmployee = (occupant: Occupant): occupant is Employee => 'zaklad' in occupant;
+const isBokResident = (occupant: Occupant): occupant is BokResident => 'returnStatus' in occupant;
+const isEmployee = (occupant: Occupant): occupant is Employee => 'zaklad' in occupant && !isBokResident(occupant);
 
 const calculateStats = (occupants: Occupant[]) => {
     const stats = {
@@ -39,7 +40,7 @@ const calculateStats = (occupants: Occupant[]) => {
         stats.nationalities.set(occ.nationality || 'Brak', (stats.nationalities.get(occ.nationality || 'Brak') || 0) + 1);
         stats.genders.set(occ.gender || 'Brak', (stats.genders.get(occ.gender || 'Brak') || 0) + 1);
 
-        if (isEmployee(occ)) {
+        if (isEmployee(occ) || isBokResident(occ)) {
             stats.departments.set(occ.zaklad || 'Brak', (stats.departments.get(occ.zaklad || 'Brak') || 0) + 1);
         }
     });
@@ -426,10 +427,10 @@ const AddressDetailView = ({
 
 
 const useHousingData = () => {
-    const { allEmployees, allNonEmployees, settings, currentUser, selectedCoordinatorId } = useMainLayout();
+    const { allEmployees, allNonEmployees, allBokResidents, settings, currentUser, selectedCoordinatorId } = useMainLayout();
 
     return useMemo(() => {
-        if (!settings || !allEmployees || !allNonEmployees || !currentUser) return [];
+        if (!settings || !allEmployees || !allNonEmployees || !allBokResidents || !currentUser) return [];
 
         let addressesToDisplay = settings.addresses;
         if (!currentUser.isAdmin || (currentUser.isAdmin && selectedCoordinatorId !== 'all')) {
@@ -439,7 +440,8 @@ const useHousingData = () => {
 
         const allActiveOccupants: Occupant[] = [
             ...allEmployees.filter(e => e.status === 'active'),
-            ...allNonEmployees.filter(ne => ne.status === 'active')
+            ...allNonEmployees.filter(ne => ne.status === 'active'),
+            ...allBokResidents.filter(bok => bok.status === 'active')
         ];
 
         return addressesToDisplay.map(address => {
@@ -643,7 +645,7 @@ export const FilterControls = ({ filters, onFilterChange, settings, currentUser 
 
 
 export default function HousingView({ currentUser }: { currentUser: SessionData }) {
-    const { settings, handleEditEmployeeClick, handleEditNonEmployeeClick, handleUpdateSettings } = useMainLayout();
+    const { settings, handleEditEmployeeClick, handleEditNonEmployeeClick, handleEditBokResidentClick, handleUpdateSettings } = useMainLayout();
     const { isMobile } = useIsMobile();
     const [selectedAddressIds, setSelectedAddressIds] = useState<string[]>([]);
     const [selectedRoomIds, setSelectedRoomIds] = useState<string[]>([]);
@@ -657,7 +659,9 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
     const rawHousingData = useHousingData();
 
     const handleOccupantClick = (occupant: Occupant) => {
-        if (isEmployee(occupant)) {
+        if (isBokResident(occupant)) {
+            handleEditBokResidentClick(occupant);
+        } else if (isEmployee(occupant)) {
             handleEditEmployeeClick(occupant);
         } else {
             handleEditNonEmployeeClick(occupant);
