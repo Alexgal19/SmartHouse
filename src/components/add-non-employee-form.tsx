@@ -35,33 +35,13 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { NonEmployee, Settings, SessionData } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, X, Camera, Loader2, Eye } from 'lucide-react';
+import { CalendarIcon, X, Loader2, Eye } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parse, isValid, parseISO } from 'date-fns';
 import { Combobox } from './ui/combobox';
 import { useToast } from '@/hooks/use-toast';
-import { extractPassportData } from '@/ai/flows/extract-passport-data-flow';
-import dynamic from 'next/dynamic';
 import { useMainLayout } from './main-layout';
 import { AddressPreviewDialog } from '@/components/address-preview-dialog';
-import type ReactWebcam from 'react-webcam';
-import type { WebcamProps } from 'react-webcam';
-const WebcamInternal = dynamic(
-  () => import('react-webcam').then((mod) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const Cmp = mod.default as any;
-    const Wrapper = ({ forwardedRef, ...props }: WebcamProps & { forwardedRef?: React.Ref<ReactWebcam> }) => {
-      return <Cmp {...props} ref={forwardedRef} />;
-    };
-    return Wrapper;
-  }),
-  { ssr: false }
-);
-
-const Webcam = React.forwardRef<ReactWebcam, WebcamProps>((props, ref) => (
-  <WebcamInternal {...props} forwardedRef={ref} />
-));
-Webcam.displayName = 'Webcam';
 
 const formSchema = z.object({
   firstName: z.string().min(1, "Imię jest wymagane."),
@@ -189,22 +169,8 @@ export function AddNonEmployeeForm({
 }) {
   const { toast } = useToast();
   const { handleDismissNonEmployee, allEmployees, allNonEmployees } = useMainLayout();
-  const webcamRef = useRef<ReactWebcam>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const [isScanning, setIsScanning] = useState(false);
-  const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isDismissing, setIsDismissing] = useState(false);
   const [isAddressPreviewOpen, setIsAddressPreviewOpen] = useState(false);
-
-  // Cleanup webcam stream on unmount to prevent memory leaks
-  useEffect(() => {
-    return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
-      }
-    };
-  }, []);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -315,39 +281,6 @@ export function AddNonEmployeeForm({
     }
   }, [nonEmployee, isOpen, form, settings.addresses, currentUser]);
 
-  const handleOpenCamera = async () => {
-    setIsCameraOpen(true);
-  };
-
-  const handleCapture = () => {
-    const dataUri = webcamRef.current?.getScreenshot();
-    if (dataUri) {
-      setIsScanning(true);
-      extractPassportData({ photoDataUri: dataUri })
-        .then(({ firstName, lastName }) => {
-          form.setValue('firstName', firstName, { shouldValidate: true });
-          form.setValue('lastName', lastName, { shouldValidate: true });
-          toast({ title: 'Sukces', description: 'Dane z dokumentu zostały wczytane.' });
-          setIsCameraOpen(false);
-        })
-        .catch((error) => {
-          console.error('OCR Error:', error);
-          toast({
-            variant: 'destructive',
-            title: 'Błąd skanowania',
-            description: 'Nie udało się odczytać danych z dokumentu.'
-          });
-        })
-        .finally(() => {
-          setIsScanning(false);
-        });
-    }
-  };
-
-  const handleCloseCamera = () => {
-    setIsCameraOpen(false);
-  };
-
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     const formatDate = (date: Date | null | undefined): string | null => {
       if (!date) return null;
@@ -453,14 +386,6 @@ export function AddNonEmployeeForm({
                 >
                   <Eye className="mr-2 h-3 w-3" />
                   Podgląd miejsc
-                </Button>
-                <Button variant="outline" onClick={handleOpenCamera} disabled={isScanning} type="button" className="h-8 text-xs sm:text-sm px-3">
-                  {isScanning ? (
-                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                  ) : (
-                    <Camera className="mr-2 h-3 w-3" />
-                  )}
-                  Zrób zdjęcie paszportu
                 </Button>
               </div>
             </div>
@@ -717,48 +642,6 @@ export function AddNonEmployeeForm({
               </div>
             </form>
           </Form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isCameraOpen} onOpenChange={handleCloseCamera}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Zrób zdjęcie paszportu</DialogTitle>
-            <DialogDescription>
-              Umieść paszport w kadrze i zrób zdjęcie.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col items-center space-y-4">
-            <Webcam
-              ref={webcamRef}
-              audio={false}
-              screenshotFormat="image/jpeg"
-              videoConstraints={{ facingMode: 'environment' }}
-              className="w-full max-w-sm rounded-lg border"
-              onUserMediaError={(err: unknown) => console.error("Webcam error:", err)}
-              mirrored={false}
-              forceScreenshotSourceSize
-              imageSmoothing
-              disablePictureInPicture
-              onUserMedia={(stream) => {
-                streamRef.current = stream;
-              }}
-              screenshotQuality={0.92}
-            />
-            <div className="flex gap-2">
-              <Button onClick={handleCapture} disabled={isScanning}>
-                {isScanning ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Camera className="mr-2 h-4 w-4" />
-                )}
-                Zrób zdjęcie
-              </Button>
-              <Button variant="outline" onClick={handleCloseCamera}>
-                Anuluj
-              </Button>
-            </div>
-          </div>
         </DialogContent>
       </Dialog>
 

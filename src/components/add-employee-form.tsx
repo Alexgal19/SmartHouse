@@ -35,7 +35,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { Employee, Settings, SessionData } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Info, X, Camera, Loader2, Eye } from 'lucide-react';
+import { CalendarIcon, Info, X, Loader2, Eye } from 'lucide-react';
 import { AddressPreviewDialog } from '@/components/address-preview-dialog';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parse, isValid, parseISO } from 'date-fns';
@@ -47,27 +47,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Combobox } from '@/components/ui/combobox';
 import { useToast } from '@/hooks/use-toast';
 import { useMainLayout } from './main-layout';
-import { extractPassportData } from '@/ai/flows/extract-passport-data-flow';
-import dynamic from 'next/dynamic';
-import type ReactWebcam from 'react-webcam';
-import type { WebcamProps } from 'react-webcam';
-
-const WebcamInternal = dynamic(
-  () => import('react-webcam').then((mod) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const Cmp = mod.default as any;
-    const Wrapper = ({ forwardedRef, ...props }: WebcamProps & { forwardedRef?: React.Ref<ReactWebcam> }) => {
-      return <Cmp {...props} ref={forwardedRef} />;
-    };
-    return Wrapper;
-  }),
-  { ssr: false }
-);
-
-const Webcam = React.forwardRef<ReactWebcam, WebcamProps>((props, ref) => (
-  <WebcamInternal {...props} forwardedRef={ref} />
-));
-Webcam.displayName = 'Webcam';
 
 export const formSchema = z.object({
   firstName: z.string().min(1, "Imię jest wymagane."),
@@ -271,22 +250,8 @@ export function AddEmployeeForm({
 }) {
   const { toast } = useToast();
   const { handleDismissEmployee, allEmployees, allNonEmployees } = useMainLayout();
-  const webcamRef = useRef<ReactWebcam>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const [isScanning, setIsScanning] = useState(false);
-  const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isDismissing, setIsDismissing] = useState(false);
   const [isAddressPreviewOpen, setIsAddressPreviewOpen] = useState(false);
-
-  // Cleanup webcam stream on unmount to prevent memory leaks
-  useEffect(() => {
-    return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
-      }
-    };
-  }, []);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema, {
@@ -363,16 +328,6 @@ export function AddEmployeeForm({
     return coordinator ? [...coordinator.departments].sort((a, b) => a.localeCompare(b)) : [];
   }, [settings.coordinators, selectedCoordinatorId]);
 
-  // Cleanup webcam stream on unmount
-  useEffect(() => {
-    return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
-      }
-    };
-  }, []);
-
   useEffect(() => {
     if (employee) {
       const currentDeductions = employee.deductionReason || [];
@@ -447,50 +402,6 @@ export function AddEmployeeForm({
       });
     }
   }, [employee, isOpen, form, settings, currentUser, initialData]);
-
-  const handleOpenCamera = async () => {
-    setIsCameraOpen(true);
-  };
-
-  const handleCapture = () => {
-    const dataUri = webcamRef.current?.getScreenshot();
-    if (dataUri) {
-      setIsScanning(true);
-      extractPassportData({ photoDataUri: dataUri })
-        .then(({ firstName, lastName }) => {
-          form.setValue('firstName', firstName, { shouldValidate: true });
-          form.setValue('lastName', lastName, { shouldValidate: true });
-          toast({ title: 'Sukces', description: 'Dane z dokumentu zostały wczytane.' });
-          setIsCameraOpen(false);
-        })
-        .catch((error) => {
-          console.error('OCR Error:', error);
-          let description = 'Nie udało się odczytać danych z dokumentu.';
-
-          if (error.message?.includes('API key') || error.message?.includes('400')) {
-            description = 'Błąd konfiguracji API (Nieprawidłowy klucz API). Skontaktuj się z administratorem.';
-          }
-
-          toast({
-            variant: 'destructive',
-            title: 'Błąd skanowania',
-            description,
-          });
-        })
-        .finally(() => {
-          setIsScanning(false);
-        });
-    }
-  };
-
-  const handleCloseCamera = () => {
-    setIsCameraOpen(false);
-  };
-
-
-
-
-
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
 
@@ -630,21 +541,6 @@ export function AddEmployeeForm({
                 >
                   <Eye className="h-3 w-3 sm:mr-2" />
                   <span className="ml-2">Podgląd miejsc</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleOpenCamera}
-                  disabled={isScanning}
-                  type="button"
-                  className="w-full sm:w-auto h-8 text-xs sm:text-sm px-3"
-                >
-                  {isScanning ? (
-                    <Loader2 className="h-3 w-3 sm:mr-2 animate-spin" />
-                  ) : (
-                    <Camera className="h-3 w-3 sm:mr-2" />
-                  )}
-                  <span className="ml-2 hidden sm:inline">Zrób zdjęcie paszportu</span>
-                  <span className="ml-2 sm:hidden">Zdjęcie</span>
                 </Button>
               </div>
             </div>
@@ -1142,57 +1038,6 @@ export function AddEmployeeForm({
               </div>
             </form>
           </Form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isCameraOpen} onOpenChange={handleCloseCamera}>
-        <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh]">
-          <DialogHeader>
-            <DialogTitle>Zrób zdjęcie paszportu</DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm">
-              Umieść paszport w kadrze. Dla najlepszych wyników, obróć urządzenie poziomo.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col items-center space-y-4">
-            <Webcam
-              ref={webcamRef}
-              audio={false}
-              screenshotFormat="image/jpeg"
-              videoConstraints={{ facingMode: 'environment' }}
-              className="w-full max-w-full sm:max-w-sm rounded-lg border"
-              onUserMediaError={(err) => console.error("Webcam error:", err)}
-              onUserMedia={(stream) => {
-                streamRef.current = stream;
-                console.log("User media accessed");
-              }}
-              screenshotQuality={0.8}
-              mirrored={false}
-              disablePictureInPicture={true}
-              forceScreenshotSourceSize={false}
-              imageSmoothing={true}
-            />
-            <div className="flex flex-col sm:flex-row gap-2 w-full">
-              <Button
-                onClick={handleCapture}
-                disabled={isScanning}
-                className="w-full sm:w-auto min-h-[44px]"
-              >
-                {isScanning ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Camera className="mr-2 h-4 w-4" />
-                )}
-                Zrób zdjęcie
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleCloseCamera}
-                className="w-full sm:w-auto min-h-[44px]"
-              >
-                Anuluj
-              </Button>
-            </div>
-          </div>
         </DialogContent>
       </Dialog>
 

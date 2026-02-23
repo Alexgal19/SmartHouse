@@ -33,11 +33,14 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { BokResident, Settings, SessionData } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, X, Loader2, Send } from 'lucide-react';
+import { CalendarIcon, X, Loader2, Send, Camera } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parse, isValid, parseISO } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { Combobox } from '@/components/ui/combobox';
+import Webcam from 'react-webcam';
+import { extractPassportData } from '@/ai/flows/extract-passport-data-flow';
+import { useToast } from '@/hooks/use-toast';
 
 export const formSchema = z.object({
   role: z.string().min(1, "Rola (Kierowca/Recepcja) jest wymagana."),
@@ -177,7 +180,61 @@ export function AddBokResidentForm({
   currentUser: SessionData;
   onSendPush?: () => Promise<void>;
 }) {
+  const { toast } = useToast();
   const [isSendingPush, setIsSendingPush] = React.useState(false);
+  const webcamRef = React.useRef<Webcam>(null);
+  const streamRef = React.useRef<MediaStream | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+
+  // Cleanup webcam stream on unmount
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+    };
+  }, []);
+
+  const handleOpenCamera = async () => {
+    setIsCameraOpen(true);
+  };
+
+  const handleCapture = () => {
+    const dataUri = webcamRef.current?.getScreenshot();
+    if (dataUri) {
+      setIsScanning(true);
+      extractPassportData({ photoDataUri: dataUri })
+        .then(({ firstName, lastName }) => {
+          form.setValue('firstName', firstName, { shouldValidate: true });
+          form.setValue('lastName', lastName, { shouldValidate: true });
+          toast({ title: 'Sukces', description: 'Dane z dokumentu zostały wczytane.' });
+          setIsCameraOpen(false);
+        })
+        .catch((error) => {
+          console.error('OCR Error:', error);
+          let description = 'Nie udało się odczytać danych z dokumentu.';
+
+          if (error.message?.includes('API key') || error.message?.includes('400')) {
+            description = 'Błąd konfiguracji API. Skontaktuj się z administratorem.';
+          }
+
+          toast({
+            variant: 'destructive',
+            title: 'Błąd skanowania',
+            description,
+          });
+        })
+        .finally(() => {
+          setIsScanning(false);
+        });
+    }
+  };
+
+  const handleCloseCamera = () => {
+    setIsCameraOpen(false);
+  };
 
   const handleSendPush = async () => {
     if (!onSendPush) return;
@@ -312,350 +369,428 @@ export function AddBokResidentForm({
   const departmentOptions = useMemo(() => availableDepartments.map(d => ({ value: d, label: d })), [availableDepartments]);
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] sm:max-w-xl lg:max-w-2xl max-h-[90vh] overflow-hidden">
-        <DialogHeader>
-          <DialogTitle>{resident ? 'Edytuj Mieszkańca BOK' : 'Dodaj Mieszkańca BOK'}</DialogTitle>
-          <DialogDescription>
-            Wypełnij poniższe pola.
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <ScrollArea className="h-[50vh] sm:h-[60vh] lg:h-[65vh] mt-4 px-2">
-              <div className="space-y-4 p-1">
-
-                <FormField
-                  control={form.control}
-                  name="role"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Kierowca-Recepcja</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || ''}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Wybierz rolę" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                          {sortedBokRoles.filter(Boolean).map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
+    <>
+      <Dialog open={isOpen} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-[95vw] sm:max-w-xl lg:max-w-2xl max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
+              <div>
+                <DialogTitle>{resident ? 'Edytuj Mieszkańca BOK' : 'Dodaj Mieszkańca BOK'}</DialogTitle>
+                <DialogDescription className="text-xs sm:text-sm">
+                  Wypełnij poniższe pola.
+                </DialogDescription>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <Button
+                  variant="outline"
+                  onClick={handleOpenCamera}
+                  disabled={isScanning}
+                  type="button"
+                  className="w-full sm:w-auto h-8 text-xs sm:text-sm px-3"
+                >
+                  {isScanning ? (
+                    <Loader2 className="h-3 w-3 sm:mr-2 animate-spin" />
+                  ) : (
+                    <Camera className="h-3 w-3 sm:mr-2" />
                   )}
-                />
+                  <span className="ml-2 hidden sm:inline">Zrób zdjęcie paszportu</span>
+                  <span className="ml-2 sm:hidden">Zdjęcie</span>
+                </Button>
+              </div>
+            </div>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+              <ScrollArea className="h-[50vh] sm:h-[60vh] lg:h-[65vh] mt-4 px-2">
+                <div className="space-y-4 p-1">
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                   <FormField
                     control={form.control}
-                    name="lastName"
+                    name="role"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Nazwisko</FormLabel>
-                        <FormControl><Input placeholder="Kowalski" {...field} /></FormControl>
+                        <FormLabel>Kierowca-Recepcja</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || ''}>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Wybierz rolę" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {sortedBokRoles.filter(Boolean).map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                    <FormField
+                      control={form.control}
+                      name="lastName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nazwisko</FormLabel>
+                          <FormControl><Input placeholder="Kowalski" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="firstName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Imię</FormLabel>
+                          <FormControl><Input placeholder="Jan" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
                   <FormField
                     control={form.control}
-                    name="firstName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Imię</FormLabel>
-                        <FormControl><Input placeholder="Jan" {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="coordinatorId"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Koordynator</FormLabel>
-                      <FormControl>
-                        <Combobox
-                          options={coordinatorOptions}
-                          value={field.value || ''}
-                          onChange={(val) => {
-                            field.onChange(val);
-                            form.setValue('address', '');
-                            form.setValue('roomNumber', '');
-                          }}
-                          placeholder="Wybierz koordynatora"
-                          searchPlaceholder="Szukaj koordynatora..."
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                  <FormField
-                    control={form.control}
-                    name="nationality"
+                    name="coordinatorId"
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
-                        <FormLabel>Narodowość</FormLabel>
+                        <FormLabel>Koordynator</FormLabel>
                         <FormControl>
                           <Combobox
-                            options={nationalityOptions}
+                            options={coordinatorOptions}
+                            value={field.value || ''}
+                            onChange={(val) => {
+                              field.onChange(val);
+                              form.setValue('address', '');
+                              form.setValue('roomNumber', '');
+                            }}
+                            placeholder="Wybierz koordynatora"
+                            searchPlaceholder="Szukaj koordynatora..."
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                    <FormField
+                      control={form.control}
+                      name="nationality"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Narodowość</FormLabel>
+                          <FormControl>
+                            <Combobox
+                              options={nationalityOptions}
+                              value={field.value || ''}
+                              onChange={field.onChange}
+                              placeholder="Wybierz narodowość"
+                              searchPlaceholder="Szukaj narodowości..."
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="gender"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Płeć</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || ''}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz płeć" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              {sortedGenders.filter(Boolean).map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                    <FormField
+                      control={form.control}
+                      name="address"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Adres</FormLabel>
+                          <Select onValueChange={(val) => {
+                            field.onChange(val);
+                            form.setValue('roomNumber', '');
+                          }} value={field.value || ''}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz adres" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              {availableAddresses.filter(a => a.name).map(a => (
+                                <SelectItem key={a.id} value={a.name} disabled={!a.isActive}>
+                                  {a.name} {!a.isActive ? '(Niedostępny)' : ''}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="roomNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Pokój</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || ''} disabled={!selectedAddress}>
+                            <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : "Wybierz pokój"} /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              {availableRooms.filter(r => r.name).map(r => (
+                                <SelectItem key={r.id} value={r.name} disabled={!r.isActive}>
+                                  {r.name} {r.isActive ? `(Pojemność: ${r.capacity})` : '(Niedostępny)'}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="zaklad"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <div className="flex justify-between items-center">
+                          <FormLabel>Zakład</FormLabel>
+                          {field.value && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 min-h-[44px] min-w-[44px] sm:h-6 sm:w-6 sm:min-h-0 sm:min-w-0 p-0 hover:bg-muted flex items-center justify-center"
+                              onClick={() => field.onChange('')}
+                              aria-label="Wyczyść pole"
+                            >
+                              <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                              <span className="sr-only">Wyczyść</span>
+                            </Button>
+                          )}
+                        </div>
+                        <FormControl>
+                          <Combobox
+                            options={departmentOptions}
                             value={field.value || ''}
                             onChange={field.onChange}
-                            placeholder="Wybierz narodowość"
-                            searchPlaceholder="Szukaj narodowości..."
+                            placeholder="Wybierz zakład"
+                            searchPlaceholder="Szukaj zakładu..."
                           />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                    <FormField
+                      control={form.control}
+                      name="checkInDate"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Data zameldowania</FormLabel>
+                          <FormControl>
+                            <DateInput
+                              value={field.value ?? undefined}
+                              onChange={field.onChange}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="checkOutDate"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Data wyjazdu</FormLabel>
+                          <FormControl>
+                            <DateInput value={field.value ?? undefined} onChange={field.onChange} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                    <FormField
+                      control={form.control}
+                      name="returnStatus"
+                      render={({ field }) => (
+                        <FormItem>
+                          <div className="flex justify-between items-center">
+                            <FormLabel>Powrót</FormLabel>
+                            {field.value && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 min-h-[44px] min-w-[44px] sm:h-6 sm:w-6 sm:min-h-0 sm:min-w-0 p-0 hover:bg-muted flex items-center justify-center"
+                                onClick={() => field.onChange('')}
+                                aria-label="Wyczyść pole"
+                              >
+                                <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                                <span className="sr-only">Wyczyść</span>
+                              </Button>
+                            )}
+                          </div>
+                          <Select onValueChange={field.onChange} value={field.value || ''}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz opcję" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              {sortedBokReturnOptions.filter(Boolean).map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="status"
+                      render={({ field }) => (
+                        <FormItem>
+                          <div className="flex justify-between items-center">
+                            <FormLabel>Status</FormLabel>
+                            {field.value && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 min-h-[44px] min-w-[44px] sm:h-6 sm:w-6 sm:min-h-0 sm:min-w-0 p-0 hover:bg-muted flex items-center justify-center"
+                                onClick={() => field.onChange('')}
+                                aria-label="Wyczyść pole"
+                              >
+                                <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                                <span className="sr-only">Wyczyść</span>
+                              </Button>
+                            )}
+                          </div>
+                          <Select onValueChange={field.onChange} value={field.value || ''}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz status" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              {sortedBokStatuses.filter(Boolean).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
                   <FormField
                     control={form.control}
-                    name="gender"
+                    name="comments"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Płeć</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ''}>
-                          <FormControl><SelectTrigger><SelectValue placeholder="Wybierz płeć" /></SelectTrigger></FormControl>
-                          <SelectContent>
-                            {sortedGenders.filter(Boolean).map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                        <FormLabel>Komentarze</FormLabel>
+                        <FormControl><Input placeholder="Dodatkowe informacje..." {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+
                 </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                  <FormField
-                    control={form.control}
-                    name="address"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Adres</FormLabel>
-                        <Select onValueChange={(val) => {
-                          field.onChange(val);
-                          form.setValue('roomNumber', '');
-                        }} value={field.value || ''}>
-                          <FormControl><SelectTrigger><SelectValue placeholder="Wybierz adres" /></SelectTrigger></FormControl>
-                          <SelectContent>
-                            {availableAddresses.filter(a => a.name).map(a => (
-                              <SelectItem key={a.id} value={a.name} disabled={!a.isActive}>
-                                {a.name} {!a.isActive ? '(Niedostępny)' : ''}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="roomNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Pokój</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ''} disabled={!selectedAddress}>
-                          <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : "Wybierz pokój"} /></SelectTrigger></FormControl>
-                          <SelectContent>
-                            {availableRooms.filter(r => r.name).map(r => (
-                              <SelectItem key={r.id} value={r.name} disabled={!r.isActive}>
-                                {r.name} {r.isActive ? `(Pojemność: ${r.capacity})` : '(Niedostępny)'}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="zaklad"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <div className="flex justify-between items-center">
-                        <FormLabel>Zakład</FormLabel>
-                        {field.value && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 min-h-[44px] min-w-[44px] sm:h-6 sm:w-6 sm:min-h-0 sm:min-w-0 p-0 hover:bg-muted flex items-center justify-center"
-                            onClick={() => field.onChange('')}
-                            aria-label="Wyczyść pole"
-                          >
-                            <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                            <span className="sr-only">Wyczyść</span>
-                          </Button>
-                        )}
-                      </div>
-                      <FormControl>
-                        <Combobox
-                          options={departmentOptions}
-                          value={field.value || ''}
-                          onChange={field.onChange}
-                          placeholder="Wybierz zakład"
-                          searchPlaceholder="Szukaj zakładu..."
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                  <FormField
-                    control={form.control}
-                    name="checkInDate"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Data zameldowania</FormLabel>
-                        <FormControl>
-                          <DateInput
-                            value={field.value ?? undefined}
-                            onChange={field.onChange}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="checkOutDate"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Data wyjazdu</FormLabel>
-                        <FormControl>
-                          <DateInput value={field.value ?? undefined} onChange={field.onChange} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                  <FormField
-                    control={form.control}
-                    name="returnStatus"
-                    render={({ field }) => (
-                      <FormItem>
-                        <div className="flex justify-between items-center">
-                          <FormLabel>Powrót</FormLabel>
-                          {field.value && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 min-h-[44px] min-w-[44px] sm:h-6 sm:w-6 sm:min-h-0 sm:min-w-0 p-0 hover:bg-muted flex items-center justify-center"
-                              onClick={() => field.onChange('')}
-                              aria-label="Wyczyść pole"
-                            >
-                              <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                              <span className="sr-only">Wyczyść</span>
-                            </Button>
-                          )}
-                        </div>
-                        <Select onValueChange={field.onChange} value={field.value || ''}>
-                          <FormControl><SelectTrigger><SelectValue placeholder="Wybierz opcję" /></SelectTrigger></FormControl>
-                          <SelectContent>
-                            {sortedBokReturnOptions.filter(Boolean).map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <div className="flex justify-between items-center">
-                          <FormLabel>Status</FormLabel>
-                          {field.value && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 min-h-[44px] min-w-[44px] sm:h-6 sm:w-6 sm:min-h-0 sm:min-w-0 p-0 hover:bg-muted flex items-center justify-center"
-                              onClick={() => field.onChange('')}
-                              aria-label="Wyczyść pole"
-                            >
-                              <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                              <span className="sr-only">Wyczyść</span>
-                            </Button>
-                          )}
-                        </div>
-                        <Select onValueChange={field.onChange} value={field.value || ''}>
-                          <FormControl><SelectTrigger><SelectValue placeholder="Wybierz status" /></SelectTrigger></FormControl>
-                          <SelectContent>
-                            {sortedBokStatuses.filter(Boolean).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="comments"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Komentarze</FormLabel>
-                      <FormControl><Input placeholder="Dodatkowe informacje..." {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-              </div>
-            </ScrollArea>
-            <DialogFooter className="mt-4 gap-2">
+              </ScrollArea>
+              <DialogFooter className="mt-4 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  className="w-full sm:w-auto min-h-[44px]"
+                >
+                  Anuluj
+                </Button>
+                {resident && onSendPush && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleSendPush}
+                    disabled={isSendingPush || form.formState.isSubmitting}
+                    className="w-full sm:w-auto min-h-[44px]"
+                  >
+                    {isSendingPush
+                      ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      : <Send className="mr-2 h-4 w-4" />}
+                    Wyślij
+                  </Button>
+                )}
+                <Button
+                  type="submit"
+                  disabled={form.formState.isSubmitting}
+                  className="w-full sm:w-auto min-h-[44px]"
+                >
+                  {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Zapisz
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isCameraOpen} onOpenChange={handleCloseCamera}>
+        <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>Zrób zdjęcie paszportu</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
+              Umieść paszport w kadrze. Dla najlepszych wyników, obróć urządzenie poziomo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center space-y-4">
+            <Webcam
+              ref={webcamRef}
+              audio={false}
+              screenshotFormat="image/jpeg"
+              videoConstraints={{ facingMode: 'environment' }}
+              className="w-full max-w-full sm:max-w-sm rounded-lg border"
+              onUserMediaError={(err) => console.error("Webcam error:", err)}
+              onUserMedia={(stream) => {
+                streamRef.current = stream;
+              }}
+              screenshotQuality={0.8}
+              mirrored={false}
+              disablePictureInPicture={true}
+              forceScreenshotSourceSize={false}
+              imageSmoothing={true}
+            />
+            <div className="flex flex-col sm:flex-row gap-2 w-full">
               <Button
-                type="button"
+                onClick={handleCapture}
+                disabled={isScanning}
+                className="w-full sm:w-auto min-h-[44px]"
+              >
+                {isScanning ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Analizowanie...
+                  </>
+                ) : (
+                  <>
+                    <Camera className="mr-2 h-4 w-4" />
+                    Zrób zdjęcie (AI)
+                  </>
+                )}
+              </Button>
+              <Button
                 variant="outline"
-                onClick={() => onOpenChange(false)}
+                onClick={handleCloseCamera}
+                disabled={isScanning}
                 className="w-full sm:w-auto min-h-[44px]"
               >
                 Anuluj
               </Button>
-              {resident && onSendPush && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={handleSendPush}
-                  disabled={isSendingPush || form.formState.isSubmitting}
-                  className="w-full sm:w-auto min-h-[44px]"
-                >
-                  {isSendingPush
-                    ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    : <Send className="mr-2 h-4 w-4" />}
-                  Wyślij
-                </Button>
-              )}
-              <Button
-                type="submit"
-                disabled={form.formState.isSubmitting}
-                className="w-full sm:w-auto min-h-[44px]"
-              >
-                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Zapisz
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
