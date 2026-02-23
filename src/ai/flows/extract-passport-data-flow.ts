@@ -1,4 +1,6 @@
-import { parseMrz } from '@/lib/mrz/parsers';
+'use server';
+
+import vision from '@google-cloud/vision';
 
 export type ExtractPassportDataInput = {
   photoDataUri: string;
@@ -9,54 +11,83 @@ export type ExtractPassportDataOutput = {
   lastName: string;
 };
 
+// Remove the data URL prefix to get raw base64
+function extractBase64(dataUrl: string) {
+  const parts = dataUrl.split(',');
+  if (parts.length > 1) {
+    return parts[1];
+  }
+  return dataUrl;
+}
+
 export async function extractPassportData(input: ExtractPassportDataInput): Promise<ExtractPassportDataOutput> {
   try {
-    const Tesseract = (await import('tesseract.js')).default;
+    const client = new vision.ImageAnnotatorClient();
 
-    // We serve the Tesseract worker, WASM, and traineddata directly from Next.js /public directory
-    const worker = await Tesseract.createWorker('mrz', 1, {
-      logger: (m) => console.log('Tesseract:', m),
-      workerPath: '/tesseract/worker.min.js',
-      corePath: '/tesseract/',
-      langPath: '/model/', // path to mrz.traineddata.gz
-    });
+    const request = {
+      image: {
+        content: extractBase64(input.photoDataUri),
+      },
+      features: [{ type: 'DOCUMENT_TEXT_DETECTION' }],
+    };
 
-    // Run MRZ recognition
-    const { data: { text } } = await worker.recognize(input.photoDataUri);
-    await worker.terminate();
+    const [result] = await client.annotateImage(request);
+    const fullTextAnnotation = result.fullTextAnnotation;
 
-    // Use the optimized MRZ regex matching from web-mrz-reader
-    const cleanText = text.replace(/(\r\n|\n|\r| )/gm, "");
-    const regex = /[PIAC][A-Z<][A-Z]{3}[A-Z0-9<]+/;
-    const mrzMatch = cleanText.match(regex);
-
-    if (!mrzMatch || !mrzMatch[0]) {
-      throw new Error("Nie odnaleziono poprawnej strefy MRZ na zdjęciu. Upewnij się, że dolny pasek paszportu jest dobrze widoczny i ostry.");
+    if (!fullTextAnnotation || !fullTextAnnotation.text) {
+      throw new Error("Nie wykryto żadnego tekstu na zdjęciu. Upewnij się, że zdjęcie jest ostre i dobrze oświetlone.");
     }
 
-    let mrzString = mrzMatch[0];
-    let expectedLength: number;
-    if (mrzString.length >= 90) expectedLength = 90;
-    else if (mrzString.length >= 88) expectedLength = 88;
-    else if (mrzString.length >= 72) expectedLength = 72;
-    else {
-      throw new Error("Odczytany kod MRZ ma nieprawidłową długość. Spróbuj poprawić ostrość zdjęcia.");
+    const lines = fullTextAnnotation.text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+
+    let lastName = '';
+    let firstName = '';
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].toLowerCase();
+
+      if (line.includes('surname') || line.includes('nazwisko') || line.includes('nom')) {
+        for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
+          const candidate = lines[j];
+          if (candidate && !candidate.toLowerCase().includes('given') && !candidate.toLowerCase().includes('imiona') && candidate.length > 1) {
+            lastName = candidate.replace(/[^a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ -]/g, '');
+            break;
+          }
+        }
+      }
+
+      if (line.includes('given names') || line.includes('imiona') || line.includes('prénoms')) {
+        for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
+          const candidate = lines[j];
+          if (candidate && !['m', 'f', 'm/m', 'f/k'].includes(candidate.toLowerCase()) && !candidate.toLowerCase().includes('nationality') && candidate.length > 1) {
+            firstName = candidate.replace(/[^a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ -]/g, '');
+            break;
+          }
+        }
+      }
     }
 
-    mrzString = mrzString.substring(0, expectedLength);
-    const parsedData = parseMrz(mrzString);
+    if (!lastName || !firstName) {
+      console.warn("Could not find structured label fields, attempting fallback MRZ search within vision text...");
+      const mrzText = lines.join('').replace(/\s/g, '');
+      const regex = /[PIAC][A-Z<][A-Z]{3}[A-Z0-9<]+/;
+      const mrzMatch = mrzText.match(regex);
 
-    if (typeof parsedData === 'string') {
-      throw new Error("Błąd zdekodowania danych MRZ: " + parsedData);
+      if (mrzMatch && mrzMatch[0]) {
+        const mrzStr = mrzMatch[0];
+        const nameMatch = mrzStr.match(/([A-Z]+(?:<[A-Z]+)*)<<([A-Z]+(?:<[A-Z]+)*)/);
+        if (nameMatch) {
+          lastName = nameMatch[1].replace(/</g, ' ').trim();
+          firstName = nameMatch[2].replace(/</g, ' ').trim();
+        }
+      }
     }
-
-    const { "Surname": lastName, "Given Names": firstName } = parsedData as any;
 
     if (!lastName && !firstName) {
-      throw new Error("Nie udało się odczytać Imienia i Nazwiska. Upewnij się, że oświetlenie jest odpowiednie.");
+      throw new Error("Skrypt nie mógł zlokalizować rubryki 'Nazwisko' i 'Imiona'. Upewnij się, że główna strona z danymi jest wyraźna.");
     }
 
-    const titleCase = (str: string) => str ? str.split(/[\s-]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ') : "-";
+    const titleCase = (str: string) => str ? str.split(/[\s-]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ') : "";
 
     return {
       firstName: titleCase(firstName),
@@ -67,4 +98,5 @@ export async function extractPassportData(input: ExtractPassportDataInput): Prom
     console.error("OCR Error:", err);
     throw err;
   }
+
 }

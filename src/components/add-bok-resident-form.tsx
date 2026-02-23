@@ -741,7 +741,7 @@ export function AddBokResidentForm({
           <DialogHeader>
             <DialogTitle>Zrób zdjęcie paszportu</DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
-              Umieść dolną część paszportu (kod MRZ z licznymi znakami "&lt;") w kadrze. Dla najlepszych wyników, obróć urządzenie poziomo. Skanowanie odbywa się lokalnie i może potrwać do 15 sekund.
+              Umieść stronę paszportu z danymi w kadrze, tak aby pola "Surname" (Nazwisko) i "Given Names" (Imiona) były dobrze widoczne z bliska. Skanowanie wymaga połączenia z Internetem (Google Cloud).
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center space-y-4">
@@ -770,7 +770,7 @@ export function AddBokResidentForm({
                 {isScanning ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Rozpoznawanie znaków...
+                    Analizowanie AI (Google Cloud)...
                   </>
                 ) : (
                   <>
