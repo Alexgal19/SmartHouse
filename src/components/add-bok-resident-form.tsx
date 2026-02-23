@@ -749,7 +749,7 @@ export function AddBokResidentForm({
               ref={webcamRef}
               audio={false}
               screenshotFormat="image/jpeg"
-              videoConstraints={{ facingMode: 'environment' }}
+              videoConstraints={{ facingMode: 'environment', advanced: [{ focusMode: "continuous" }] as any }}
               className="w-full max-w-full sm:max-w-sm rounded-lg border"
               onUserMediaError={(err) => console.error("Webcam error:", err)}
               onUserMedia={(stream) => {
