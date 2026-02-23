@@ -176,7 +176,7 @@ const serializeNotification = (notification: Notification): Record<string, strin
     };
 };
 
-const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'departments', 'password', 'visibilityMode', 'pushSubscription'];
+const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'isDriver', 'departments', 'password', 'visibilityMode', 'pushSubscription'];
 const ADDRESS_HEADERS = ['id', 'locality', 'name', 'coordinatorIds', 'isActive'];
 const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targetType', 'targetId', 'details'];
 
@@ -1318,12 +1318,14 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                     const row = currentRows.find(r => r.get('uid') === coord.uid);
                     if (row) {
                         const newIsAdmin = String(coord.isAdmin).toUpperCase();
+                        const newIsDriver = String(coord.isDriver || false).toUpperCase();
                         const newDepartments = coord.departments.join(',');
                         const newVisibilityMode = coord.visibilityMode || 'department';
 
                         let hasChanges = false;
                         if (row.get('name') !== coord.name) hasChanges = true;
                         if (String(row.get('isAdmin')).toUpperCase() !== newIsAdmin) hasChanges = true;
+                        if (String(row.get('isDriver') || 'FALSE').toUpperCase() !== newIsDriver) hasChanges = true;
                         if (row.get('departments') !== newDepartments) hasChanges = true;
                         if (row.get('visibilityMode') !== newVisibilityMode) hasChanges = true;
                         if (coord.password && row.get('password') !== coord.password) hasChanges = true;
@@ -1331,6 +1333,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                         if (hasChanges) {
                             row.set('name', coord.name);
                             row.set('isAdmin', newIsAdmin);
+                            row.set('isDriver', newIsDriver);
                             row.set('departments', newDepartments);
                             row.set('visibilityMode', newVisibilityMode);
                             if (coord.password) {
@@ -1346,6 +1349,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                         ...c,
                         departments: c.departments.join(','),
                         isAdmin: String(c.isAdmin).toUpperCase(),
+                        isDriver: String(c.isDriver || false).toUpperCase(),
                         visibilityMode: c.visibilityMode || 'department',
                         pushSubscription: c.pushSubscription || '',
                     })), { raw: false, insert: true }), TIMEOUT_MS, 'sheet.addRows(Coordinators)');

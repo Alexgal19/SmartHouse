@@ -3,64 +3,65 @@
 export type View = 'dashboard' | 'employees' | 'settings' | 'housing';
 
 export type Address = {
-    id: string;
-    locality: string;
-    name: string;
-    coordinatorIds: string[];
-    rooms: Room[];
-    isActive: boolean;
+  id: string;
+  locality: string;
+  name: string;
+  coordinatorIds: string[];
+  rooms: Room[];
+  isActive: boolean;
 }
 
 export type Room = {
-    id: string;
-    name: string;
-    capacity: number;
-    isActive: boolean;
-    isLocked?: boolean;
+  id: string;
+  name: string;
+  capacity: number;
+  isActive: boolean;
+  isLocked?: boolean;
 }
 
 export type Coordinator = {
-    uid: string;
-    name: string;
-    isAdmin: boolean;
-    departments: string[];
-    password?: string;
-    visibilityMode?: 'department' | 'strict';
-    pushSubscription?: string | null;
+  uid: string;
+  name: string;
+  isAdmin: boolean;
+  isDriver?: boolean;
+  departments: string[];
+  password?: string;
+  visibilityMode?: 'department' | 'strict';
+  pushSubscription?: string | null;
 }
 
 export type Settings = {
-    id: 'global-settings';
-    addresses: Address[];
-    nationalities: string[];
-    departments: string[];
-    coordinators: Coordinator[];
-    genders: string[];
-    localities: string[];
-    paymentTypesNZ: string[];
-    statuses: string[];
-    bokRoles: string[];
-    bokReturnOptions: string[];
-    bokStatuses: string[];
+  id: 'global-settings';
+  addresses: Address[];
+  nationalities: string[];
+  departments: string[];
+  coordinators: Coordinator[];
+  genders: string[];
+  localities: string[];
+  paymentTypesNZ: string[];
+  statuses: string[];
+  bokRoles: string[];
+  bokReturnOptions: string[];
+  bokStatuses: string[];
 }
 
 export type BokResident = {
-    id: string;
-    role: string;
-    firstName: string;
-    lastName: string;
-    fullName: string;
-    coordinatorId: string;
-    nationality: string;
-    address: string;
-    roomNumber: string;
-    zaklad: string;
-    gender: string;
-    checkInDate: string | null;
-    checkOutDate: string | null;
-    returnStatus: string;
-    status: string;
-    comments?: string | null;
+  id: string;
+  role: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  coordinatorId: string;
+  nationality: string;
+  address: string;
+  roomNumber: string;
+  zaklad: string;
+  gender: string;
+  checkInDate: string | null;
+  checkOutDate: string | null;
+  returnStatus: string;
+  status: string;
+  comments?: string | null;
 };
 
 export type ChartConfig = {
@@ -80,102 +81,102 @@ export type ChartConfig = {
 }
 
 export type DeductionReason = {
-    id: string;
-    label: string;
-    amount: number | null;
-    checked: boolean;
+  id: string;
+  label: string;
+  amount: number | null;
+  checked: boolean;
 }
 
 export type Employee = {
-    id: string;
-    firstName: string;
-    lastName: string;
-    fullName: string;
-    coordinatorId: string;
-    nationality: string;
-    gender: string;
-    address: string;
-    ownAddress?: string | null;
-    roomNumber: string;
-    zaklad: string | null; // department
-    checkInDate: string | null; // YYYY-MM-DD
-    checkOutDate?: string | null; // YYYY-MM-DD
-    contractStartDate: string | null;
-    contractEndDate: string | null;
-    departureReportDate?: string | null; // YYYY-MM-DD
-    comments?: string | null;
-    status: 'active' | 'dismissed';
-    depositReturned: 'Tak' | 'Nie' | 'Nie dotyczy' | null;
-    depositReturnAmount: number | null;
-    deductionRegulation: number | null; // potracenie_regulamin
-    deductionNo4Months: number | null; // potracenie_4_msc
-    deductionNo30Days: number | null; // potracenie_30_dni
-    deductionReason: DeductionReason[] | undefined;
-    deductionEntryDate?: string | null;
+  id: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  coordinatorId: string;
+  nationality: string;
+  gender: string;
+  address: string;
+  ownAddress?: string | null;
+  roomNumber: string;
+  zaklad: string | null; // department
+  checkInDate: string | null; // YYYY-MM-DD
+  checkOutDate?: string | null; // YYYY-MM-DD
+  contractStartDate: string | null;
+  contractEndDate: string | null;
+  departureReportDate?: string | null; // YYYY-MM-DD
+  comments?: string | null;
+  status: 'active' | 'dismissed';
+  depositReturned: 'Tak' | 'Nie' | 'Nie dotyczy' | null;
+  depositReturnAmount: number | null;
+  deductionRegulation: number | null; // potracenie_regulamin
+  deductionNo4Months: number | null; // potracenie_4_msc
+  deductionNo30Days: number | null; // potracenie_30_dni
+  deductionReason: DeductionReason[] | undefined;
+  deductionEntryDate?: string | null;
 };
 
 export type NonEmployee = {
-    id: string;
-    firstName: string;
-    lastName: string;
-    fullName: string;
-    coordinatorId: string;
-    nationality: string;
-    gender: string;
-    address: string;
-    roomNumber: string;
-    checkInDate: string | null;
-    checkOutDate?: string | null;
-    departureReportDate?: string | null; // YYYY-MM-DD
-    comments?: string | null;
-    status: 'active' | 'dismissed';
-    paymentType: string | null;
-    paymentAmount: number | null;
+  id: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  coordinatorId: string;
+  nationality: string;
+  gender: string;
+  address: string;
+  roomNumber: string;
+  checkInDate: string | null;
+  checkOutDate?: string | null;
+  departureReportDate?: string | null; // YYYY-MM-DD
+  comments?: string | null;
+  status: 'active' | 'dismissed';
+  paymentType: string | null;
+  paymentAmount: number | null;
 };
 
 export type AddressHistory = {
-    id: string;
-    employeeId: string;
-    employeeFirstName: string;
-    employeeLastName: string;
-    coordinatorName: string;
-    department: string;
-    address: string;
-    checkInDate: string | null;
-    checkOutDate: string | null;
+  id: string;
+  employeeId: string;
+  employeeFirstName: string;
+  employeeLastName: string;
+  coordinatorName: string;
+  department: string;
+  address: string;
+  checkInDate: string | null;
+  checkOutDate: string | null;
 };
 
 export type AssignmentHistory = {
-    id: string;
-    employeeId: string;
-    employeeFirstName: string;
-    employeeLastName: string;
-    fromCoordinatorId: string;
-    toCoordinatorId: string;
-    assignedBy: string; // UID of the user who made the assignment
-    assignmentDate: string; // ISO date string
+  id: string;
+  employeeId: string;
+  employeeFirstName: string;
+  employeeLastName: string;
+  fromCoordinatorId: string;
+  toCoordinatorId: string;
+  assignedBy: string; // UID of the user who made the assignment
+  assignmentDate: string; // ISO date string
 }
 
 export type NotificationType = 'success' | 'destructive' | 'warning' | 'info';
 
 export type Notification = {
-    id: string;
-    message: string;
-    entityId: string;
-    entityFirstName: string;
-    entityLastName: string;
-    actorName: string; // Who made the change
-    recipientId: string; // Who this notification is for
-    createdAt: string; // ISO date string
-    isRead: boolean;
-    type: NotificationType;
-    changes: NotificationChange[];
+  id: string;
+  message: string;
+  entityId: string;
+  entityFirstName: string;
+  entityLastName: string;
+  actorName: string; // Who made the change
+  recipientId: string; // Who this notification is for
+  createdAt: string; // ISO date string
+  isRead: boolean;
+  type: NotificationType;
+  changes: NotificationChange[];
 }
 
 export type NotificationChange = {
-    field: string;
-    oldValue: string | null;
-    newValue: string | null;
+  field: string;
+  oldValue: string | null;
+  newValue: string | null;
 };
 
 export type SessionData = {
@@ -183,4 +184,5 @@ export type SessionData = {
   uid: string;
   name: string;
   isAdmin: boolean;
+  isDriver: boolean;
 }

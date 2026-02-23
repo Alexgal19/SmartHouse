@@ -569,10 +569,12 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     const [isPending, startTransition] = useTransition();
     const { isMobile, isMounted } = useIsMobile();
 
-    const tab = (searchParams.get('tab') as 'active' | 'dismissed' | 'non-employees' | 'bok-residents' | 'history') || 'active';
+    const tab = (searchParams.get('tab') as 'active' | 'dismissed' | 'non-employees' | 'bok-residents' | 'history') || (currentUser.isDriver ? 'bok-residents' : 'active');
     const page = Number(searchParams.get('page') || '1');
     const search = searchParams.get('search') || '';
     const viewMode = (searchParams.get('viewMode') as 'list' | 'grid') || (isMobile ? 'grid' : 'list');
+
+    const isDriver = currentUser.isDriver;
 
     const defaultSortField = useMemo(() => {
         switch (tab) {
@@ -843,7 +845,8 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         </>
     );
 
-    const tabsGridClass = cn("grid w-full", currentUser.isAdmin ? "grid-cols-5" : "grid-cols-3");
+    const numCols = isDriver ? 1 : (currentUser.isAdmin ? 5 : 3);
+    const tabsGridClass = cn("grid w-full", `grid-cols-${numCols}`);
 
     return (
         <Card>
@@ -864,31 +867,39 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
             <CardContent>
                 <Tabs value={tab} onValueChange={(v) => updateSearchParams({ tab: v, page: 1, sortBy: '', sortOrder: '' })}>
                     <TabsList className={tabsGridClass}>
-                        <TabsTrigger value="active" disabled={isPending}>
-                            <Users className="mr-2 h-4 w-4" />Aktywni ({dataMap.active.length})
-                        </TabsTrigger>
-                        <TabsTrigger value="dismissed" disabled={isPending}>
-                            <UserX className="mr-2 h-4 w-4" />Zwolnieni ({dataMap.dismissed.length})
-                        </TabsTrigger>
-                        <TabsTrigger value="non-employees" disabled={isPending}>
-                            <UserX className="mr-2 h-4 w-4" />NZ ({dataMap['non-employees'].length})
-                        </TabsTrigger>
-                        {currentUser.isAdmin && (
+                        {!isDriver && (
+                            <>
+                                <TabsTrigger value="active" disabled={isPending}>
+                                    <Users className="mr-2 h-4 w-4" />Aktywni ({dataMap.active.length})
+                                </TabsTrigger>
+                                <TabsTrigger value="dismissed" disabled={isPending}>
+                                    <UserX className="mr-2 h-4 w-4" />Zwolnieni ({dataMap.dismissed.length})
+                                </TabsTrigger>
+                                <TabsTrigger value="non-employees" disabled={isPending}>
+                                    <UserX className="mr-2 h-4 w-4" />NZ ({dataMap['non-employees'].length})
+                                </TabsTrigger>
+                            </>
+                        )}
+                        {(currentUser.isAdmin || isDriver) && (
                             <TabsTrigger value="bok-residents" disabled={isPending}>
                                 <Briefcase className="mr-2 h-4 w-4" />BOK ({dataMap['bok-residents'].length})
                             </TabsTrigger>
                         )}
-                        {currentUser.isAdmin && (
+                        {currentUser.isAdmin && !isDriver && (
                             <TabsTrigger value="history" disabled={isPending}>
                                 <History className="mr-2 h-4 w-4" />Historia Adresów ({dataMap.history.length})
                             </TabsTrigger>
                         )}
                     </TabsList>
-                    <TabsContent value="active" className="mt-4">{renderContent(paginatedData as Entity[])}</TabsContent>
-                    <TabsContent value="dismissed" className="mt-4">{renderContent(paginatedData as Entity[])}</TabsContent>
-                    <TabsContent value="non-employees" className="mt-4">{renderContent(paginatedData as Entity[])}</TabsContent>
-                    {currentUser.isAdmin && <TabsContent value="bok-residents" className="mt-4">{renderContent(paginatedData as Entity[])}</TabsContent>}
-                    {currentUser.isAdmin && <TabsContent value="history" className="mt-4">{renderHistoryContent()}</TabsContent>}
+                    {!isDriver && (
+                        <>
+                            <TabsContent value="active" className="mt-4">{renderContent(paginatedData as Entity[])}</TabsContent>
+                            <TabsContent value="dismissed" className="mt-4">{renderContent(paginatedData as Entity[])}</TabsContent>
+                            <TabsContent value="non-employees" className="mt-4">{renderContent(paginatedData as Entity[])}</TabsContent>
+                        </>
+                    )}
+                    {(currentUser.isAdmin || isDriver) && <TabsContent value="bok-residents" className="mt-4">{renderContent(paginatedData as Entity[])}</TabsContent>}
+                    {currentUser.isAdmin && !isDriver && <TabsContent value="history" className="mt-4">{renderHistoryContent()}</TabsContent>}
                 </Tabs>
             </CardContent>
             <FilterDialog

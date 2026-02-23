@@ -32,6 +32,7 @@ const coordinatorSchema = z.object({
     name: z.string().min(1, 'Imię jest wymagane.'),
     password: z.string().optional(),
     isAdmin: z.boolean(),
+    isDriver: z.boolean().optional(),
     departments: z.array(z.string()),
     visibilityMode: z.enum(['department', 'strict']).default('department'),
 });
@@ -187,7 +188,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full sm:w-64 h-9"
                     />
-                    <Button type="button" variant="outline" size="sm" onClick={() => append({ uid: `coord-${Date.now()}`, name: '', password: '', isAdmin: false, departments: [], visibilityMode: 'department' })}>
+                    <Button type="button" variant="outline" size="sm" onClick={() => append({ uid: `coord-${Date.now()}`, name: '', password: '', isAdmin: false, isDriver: false, departments: [], visibilityMode: 'department' })}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Dodaj koordynatora
                     </Button>
                 </div>
@@ -346,6 +347,22 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                         <Trash2 className="h-4 w-4 text-destructive" />
                                     </Button>
                                 </div>
+
+                                <FormField
+                                    control={form.control}
+                                    name={`coordinators.${field.originalIndex}.isDriver`}
+                                    render={({ field: driverField }) => (
+                                        <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                                            <FormControl>
+                                                <Switch checked={driverField.value || false} onCheckedChange={driverField.onChange} />
+                                            </FormControl>
+                                            <FormLabel className="font-normal">
+                                                Uprawnienia kierowcy (Tylko dostęp do BOK)
+                                            </FormLabel>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
                             </div>
                         </AccordionContent>
                     </AccordionItem>

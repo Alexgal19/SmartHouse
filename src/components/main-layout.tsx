@@ -265,6 +265,10 @@ export default function MainLayout({
     }, []);
 
     const visibleNavItems = useMemo(() => {
+        if (currentUser?.isDriver) {
+            return navItems.filter(item => item.view === 'employees');
+            // Note: In entity-view we'll further restrict the 'employees' view to only show 'Osoby z BOK' for drivers.
+        }
         if (currentUser?.isAdmin) {
             return navItems;
         }

@@ -7,8 +7,12 @@ export default async function Home() {
   const session = await getSession();
 
   if (session.isLoggedIn) {
-    redirect('/dashboard?view=dashboard');
-  } 
-  
+    if (session.isDriver) {
+      redirect('/dashboard?view=employees&tab=bok-residents');
+    } else {
+      redirect('/dashboard?view=dashboard');
+    }
+  }
+
   return <LoginPage />;
 }

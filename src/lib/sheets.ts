@@ -537,6 +537,7 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet, bypassCache = false)
                 uid: rowObj.uid as string,
                 name: rowObj.name as string,
                 isAdmin: rowObj.isAdmin === 'TRUE',
+                isDriver: rowObj.isDriver === 'TRUE',
                 departments: (rowObj?.departments as string || '').split(',').filter(Boolean),
                 password: rowObj.password as string,
                 visibilityMode: (rowObj.visibilityMode as 'department' | 'strict') || 'department',

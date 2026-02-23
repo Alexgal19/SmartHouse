@@ -24,7 +24,7 @@ describe('Authentication', () => {
         jest.clearAllMocks();
         // Mock getIronSession to return our mock session
         (getIronSession as jest.Mock).mockResolvedValue(mockSession);
-        
+
         mockedGetSettings.mockResolvedValue({ coordinators: [] });
     });
 
@@ -61,6 +61,7 @@ describe('Authentication', () => {
                 uid: 'admin-hardcoded',
                 name: 'Admin',
                 isAdmin: true,
+                isDriver: false,
             });
             expect(mockSession.save).toHaveBeenCalled();
             expect(mockSession.isLoggedIn).toBe(true);
@@ -89,6 +90,7 @@ describe('Authentication', () => {
                 uid: 'coord-1',
                 name: 'Jan Kowalski',
                 isAdmin: false,
+                isDriver: false,
             });
             expect(mockSession.save).toHaveBeenCalled();
             expect(mockSession.isLoggedIn).toBe(true);

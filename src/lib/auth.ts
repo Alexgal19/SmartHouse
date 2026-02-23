@@ -16,6 +16,7 @@ export async function getSession(): Promise<IronSession<SessionData>> {
     session.uid = '';
     session.name = '';
     session.isAdmin = false;
+    session.isDriver = false;
   }
 
   return session;
@@ -30,8 +31,9 @@ export async function login(name: string, password_input: string) {
     session.uid = 'admin-hardcoded';
     session.name = 'Admin';
     session.isAdmin = true;
+    session.isDriver = false;
     await session.save();
-    return { success: true, user: { uid: 'admin-hardcoded', name: 'Admin', isAdmin: true } };
+    return { success: true, user: { uid: 'admin-hardcoded', name: 'Admin', isAdmin: true, isDriver: false } };
   }
 
   const settings = await getSettings();
@@ -43,8 +45,9 @@ export async function login(name: string, password_input: string) {
     session.uid = user.uid;
     session.name = user.name;
     session.isAdmin = user.isAdmin;
+    session.isDriver = user.isDriver || false;
     await session.save();
-    return { success: true, user: { uid: user.uid, name: user.name, isAdmin: user.isAdmin } };
+    return { success: true, user: { uid: user.uid, name: user.name, isAdmin: user.isAdmin, isDriver: user.isDriver || false } };
   }
 
   throw new Error("Nieprawidłowa nazwa użytkownika lub hasło.");
