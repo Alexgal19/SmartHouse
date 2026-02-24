@@ -724,7 +724,7 @@ export function AddBokResidentForm({
               </ScrollArea>
               <DialogFooter className="mt-4 flex flex-col sm:flex-row justify-between w-full sm:items-center gap-4">
                 <div className="flex justify-start">
-                  {resident && resident.status === 'Zameldowany' && (
+                  {resident && resident.status !== 'Wymeldowany' && (
                     <Button
                       type="button"
                       variant="destructive"
