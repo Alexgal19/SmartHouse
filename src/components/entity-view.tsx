@@ -845,8 +845,8 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         </>
     );
 
-    const numCols = isDriver ? 1 : (currentUser.isAdmin ? 5 : 3);
-    const tabsGridClass = cn("grid w-full", `grid-cols-${numCols}`);
+    const gridColsClass = isDriver ? "grid-cols-1" : (currentUser.isAdmin ? "grid-cols-5" : "grid-cols-3");
+    const tabsGridClass = cn("grid w-full", gridColsClass);
 
     return (
         <Card>
