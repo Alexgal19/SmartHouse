@@ -23,6 +23,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { useMainLayout } from '@/components/main-layout';
 import {
   Select,
   SelectContent,
@@ -186,6 +187,8 @@ export function AddBokResidentForm({
   const streamRef = React.useRef<MediaStream | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isDismissing, setIsDismissing] = useState(false);
+  const { handleDismissBokResident } = useMainLayout();
 
   // Cleanup webcam stream on unmount
   useEffect(() => {
@@ -243,6 +246,25 @@ export function AddBokResidentForm({
       await onSendPush();
     } finally {
       setIsSendingPush(false);
+    }
+  };
+
+  const handleDismissClick = async () => {
+    const checkOutDate = form.getValues('checkOutDate');
+    if (!resident || !checkOutDate) {
+      toast({ variant: "destructive", title: "Błąd", description: "Oznacz datę wyjazdu, zanim zwolnisz mieszkańca BOK!" });
+      return;
+    }
+
+    setIsDismissing(true);
+    try {
+      await onSave(form.getValues() as any); // trigger save first just in case
+      await handleDismissBokResident(resident.id, checkOutDate);
+      onOpenChange(false);
+    } catch (e) {
+      console.error('Dismiss failed:', e);
+    } finally {
+      setIsDismissing(false);
     }
   };
 
@@ -700,37 +722,53 @@ export function AddBokResidentForm({
 
                 </div>
               </ScrollArea>
-              <DialogFooter className="mt-4 gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
-                  className="w-full sm:w-auto min-h-[44px]"
-                >
-                  Anuluj
-                </Button>
-                {resident && onSendPush && (
+              <DialogFooter className="mt-4 flex flex-col sm:flex-row justify-between w-full sm:items-center gap-4">
+                <div className="flex justify-start">
+                  {resident && resident.status === 'Zameldowany' && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={handleDismissClick}
+                      disabled={isDismissing}
+                      className="w-full sm:w-auto min-h-[44px]"
+                    >
+                      {isDismissing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Zwolnij
+                    </Button>
+                  )}
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                   <Button
                     type="button"
-                    variant="secondary"
-                    onClick={handleSendPush}
-                    disabled={isSendingPush || form.formState.isSubmitting}
+                    variant="outline"
+                    onClick={() => onOpenChange(false)}
                     className="w-full sm:w-auto min-h-[44px]"
                   >
-                    {isSendingPush
-                      ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      : <Send className="mr-2 h-4 w-4" />}
-                    Wyślij
+                    Anuluj
                   </Button>
-                )}
-                <Button
-                  type="submit"
-                  disabled={form.formState.isSubmitting}
-                  className="w-full sm:w-auto min-h-[44px]"
-                >
-                  {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Zapisz
-                </Button>
+                  {resident && onSendPush && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={handleSendPush}
+                      disabled={isSendingPush || form.formState.isSubmitting}
+                      className="w-full sm:w-auto min-h-[44px]"
+                    >
+                      {isSendingPush
+                        ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        : <Send className="mr-2 h-4 w-4" />}
+                      Wyślij
+                    </Button>
+                  )}
+                  <Button
+                    type="submit"
+                    disabled={form.formState.isSubmitting}
+                    className="w-full sm:w-auto min-h-[44px]"
+                  >
+                    {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Zapisz
+                  </Button>
+                </div>
               </DialogFooter>
             </form>
           </Form>

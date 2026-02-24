@@ -114,6 +114,7 @@ type MainLayoutContextType = {
     handleAddBokResidentClick: () => void;
     handleEditBokResidentClick: (resident: BokResident) => void;
     handleDeleteBokResident: (id: string, actorUid: string) => Promise<void>;
+    handleDismissBokResident: (id: string, checkOutDate: Date) => Promise<void>;
     handleRefreshStatuses: (showNoChangesToast?: boolean) => Promise<void>;
     handleAddressFormOpen: (address: Address | null) => void;
     handleDismissEmployee: (employeeId: string, checkOutDate: Date) => Promise<void>;
@@ -647,6 +648,17 @@ export default function MainLayout({
         }
     }, [currentUser, rawBokResidents, toast]);
 
+    const handleDismissBokResident = useCallback(async (id: string, checkOutDate: Date) => {
+        if (!currentUser) return;
+        try {
+            await updateBokResident(id, { status: 'Wymeldowany', checkOutDate: format(checkOutDate, 'yyyy-MM-dd') }, currentUser.uid);
+            toast({ title: "Sukces", description: "Mieszkaniec BOK został pomyślnie wymeldowany." });
+            await refreshData(false);
+        } catch (e: unknown) {
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się wymeldować mieszkańca BOK." });
+        }
+    }, [currentUser, refreshData, toast]);
+
     const handleUpdateSettings = useCallback(async (newSettings: Partial<Settings>) => {
         if (!rawSettings || !currentUser?.isAdmin) {
             toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administrator może zmieniać ustawienia." });
@@ -974,6 +986,7 @@ export default function MainLayout({
         handleAddBokResidentClick,
         handleEditBokResidentClick,
         handleDeleteBokResident,
+        handleDismissBokResident,
         handleRefreshStatuses,
         handleAddressFormOpen,
         handleDismissEmployee,
@@ -1017,6 +1030,7 @@ export default function MainLayout({
         handleAddBokResidentClick,
         handleEditBokResidentClick,
         handleDeleteBokResident,
+        handleDismissBokResident,
         handleRefreshStatuses,
         handleAddressFormOpen,
         handleDismissEmployee,
