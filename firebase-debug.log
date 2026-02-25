@@ -1,0 +1,190 @@
+[debug] [2026-02-25T16:38:16.205Z] ----------------------------------------------------------------------
+[debug] [2026-02-25T16:38:16.206Z] Command:       /Users/oleksandr/.nvm/versions/node/v22.21.0/bin/node /Users/oleksandr/.nvm/versions/node/v22.21.0/bin/firebase deploy --only hosting
+[debug] [2026-02-25T16:38:16.206Z] CLI Version:   15.5.1
+[debug] [2026-02-25T16:38:16.207Z] Platform:      darwin
+[debug] [2026-02-25T16:38:16.207Z] Node Version:  v22.21.0
+[debug] [2026-02-25T16:38:16.207Z] Time:          Wed Feb 25 2026 17:38:16 GMT+0100 (Central European Standard Time)
+[debug] [2026-02-25T16:38:16.207Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-02-25T16:38:16.846Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-02-25T16:38:16.846Z] > authorizing via signed-in user (sanyagal191919@gmail.com)
+[debug] [2026-02-25T16:38:16.846Z] [iam] checking project studio-6821761262-fdf39 for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-02-25T16:38:16.846Z] Checked if tokens are valid: true, expires at: 1772039728213
+[debug] [2026-02-25T16:38:16.846Z] Checked if tokens are valid: true, expires at: 1772039728213
+[debug] [2026-02-25T16:38:16.847Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-6821761262-fdf39:testIamPermissions [none]
+[debug] [2026-02-25T16:38:16.847Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-6821761262-fdf39:testIamPermissions  x-goog-user-project=studio-6821761262-fdf39
+[debug] [2026-02-25T16:38:16.847Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-6821761262-fdf39:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-02-25T16:38:17.806Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-6821761262-fdf39:testIamPermissions 200
+[debug] [2026-02-25T16:38:17.806Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-6821761262-fdf39:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-02-25T16:38:17.807Z] Checked if tokens are valid: true, expires at: 1772039728213
+[debug] [2026-02-25T16:38:17.807Z] Checked if tokens are valid: true, expires at: 1772039728213
+[debug] [2026-02-25T16:38:17.807Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/studio-6821761262-fdf39 [none]
+[debug] [2026-02-25T16:38:18.285Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/studio-6821761262-fdf39 200
+[debug] [2026-02-25T16:38:18.285Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/studio-6821761262-fdf39 {"projectId":"studio-6821761262-fdf39","projectNumber":"294831457703","displayName":"SmartHouse2","name":"projects/studio-6821761262-fdf39","resources":{"hostingSite":"studio-6821761262-fdf39","realtimeDatabaseInstance":"studio-6821761262-fdf39-default-rtdb"},"state":"ACTIVE","etag":"1_1e28e231-4662-45f1-9046-b71aa3bd31e4"}
+[debug] [2026-02-25T16:38:19.047Z] defaultcredentials: writing to file /Users/oleksandr/.config/firebase/sanyagal191919_gmail_com_application_default_credentials.json
+[debug] [2026-02-25T16:38:19.048Z] Checked if tokens are valid: true, expires at: 1772039728213
+[debug] [2026-02-25T16:38:19.048Z] Checked if tokens are valid: true, expires at: 1772039728213
+[debug] [2026-02-25T16:38:19.048Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/studio-6821761262-fdf39/sites pageToken=&pageSize=10
+[debug] [2026-02-25T16:38:20.143Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/studio-6821761262-fdf39/sites 200
+[debug] [2026-02-25T16:38:20.143Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/studio-6821761262-fdf39/sites {"sites":[{"name":"projects/studio-6821761262-fdf39/sites/studio-6821761262-fdf39","defaultUrl":"https://studio-6821761262-fdf39.web.app","appId":"1:294831457703:web:e1e149f283e4eb2418e282","type":"DEFAULT_SITE"}]}
+[debug] [2026-02-25T16:38:20.144Z] Checked if tokens are valid: true, expires at: 1772039728213
+[debug] [2026-02-25T16:38:20.144Z] Checked if tokens are valid: true, expires at: 1772039728213
+[debug] [2026-02-25T16:38:20.145Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/-/webApps/1:294831457703:web:e1e149f283e4eb2418e282/config [none]
+[debug] [2026-02-25T16:38:20.715Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/-/webApps/1:294831457703:web:e1e149f283e4eb2418e282/config 200
+[debug] [2026-02-25T16:38:20.715Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/-/webApps/1:294831457703:web:e1e149f283e4eb2418e282/config {"projectId":"studio-6821761262-fdf39","appId":"1:294831457703:web:e1e149f283e4eb2418e282","databaseURL":"https://studio-6821761262-fdf39-default-rtdb.europe-west1.firebasedatabase.app","storageBucket":"studio-6821761262-fdf39.firebasestorage.app","apiKey":"AIzaSyDQzoMbd1jAjEqmEzkk0uSrNbJ793yXljk","authDomain":"studio-6821761262-fdf39.firebaseapp.com","messagingSenderId":"294831457703","projectNumber":"294831457703","version":"2"}
+[info] 
+   Thank you for trying our early preview of Next.js support on Firebase Hosting.
+   During the preview, support is best-effort and breaking changes can be expected. Proceed with caution.
+
+   Documentation: https://firebase.google.com/docs/hosting/frameworks/nextjs
+   File a bug: https://github.com/firebase/firebase-tools/issues/new?template=bug_report.md
+   Submit a feature request: https://github.com/firebase/firebase-tools/issues/new?template=feature_request.md
+
+   We'd love to learn from you. Express your interest in helping us shape the future of Firebase Hosting: https://goo.gle/41enW5X
+
+[debug] [2026-02-25T16:38:22.302Z] Checked if tokens are valid: true, expires at: 1772039728213
+[debug] [2026-02-25T16:38:22.302Z] Checked if tokens are valid: true, expires at: 1772039728213
+[debug] [2026-02-25T16:38:22.302Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/studio-6821761262-fdf39/sites/studio-6821761262-fdf39 [none]
+[debug] [2026-02-25T16:38:23.043Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/studio-6821761262-fdf39/sites/studio-6821761262-fdf39 200
+[debug] [2026-02-25T16:38:23.044Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/studio-6821761262-fdf39/sites/studio-6821761262-fdf39 {"name":"projects/studio-6821761262-fdf39/sites/studio-6821761262-fdf39","defaultUrl":"https://studio-6821761262-fdf39.web.app","appId":"1:294831457703:web:e1e149f283e4eb2418e282","type":"DEFAULT_SITE"}
+[info]   ▲ Next.js 14.2.35
+
+[info]   - Environments: .env.local, .env
+
+
+[info]    Creating an optimized production build ...
+
+[info]  ✓ Compiled successfully
+
+[info]    Skipping validation of types
+
+[info]    Skipping linting
+
+[info]    Collecting page data ...
+
+[info]    Generating static pages (0/6) ...
+
+[info]    Generating static pages (1/6) 
+
+[info]    Generating static pages (2/6) 
+   Generating static pages (4/6) 
+
+[info]  ✓ Generating static pages (6/6)
+
+[info]    Finalizing page optimization ...
+
+[info]    Collecting build traces ...
+
+[info] 
+
+[info] Route (app)                              Size     First Load JS
+┌ ƒ /                                    177 B           101 kB
+├ ○ /_not-found                          876 B          88.5 kB
+├ ƒ /dashboard                           150 kB          388 kB
+└ ○ /login                               178 B           101 kB
++ First Load JS shared by all            87.6 kB
+  ├ chunks/117-dfd4445746a50745.js       31.9 kB
+  ├ chunks/fd9d1056-7dda8a9e70097ba4.js  53.6 kB
+  └ other shared chunks (total)          2.09 kB
+
+
+ƒ Middleware                             25.7 kB
+
+[info] 
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+
+[info] Building a Cloud Function to run this application. This is needed due to:
+[info]  • middleware
+[info]  • non-static component /page
+[info]  • non-static component /dashboard/page
+[info]  • route with server action /login
+[info]  • route with server action /dashboard
+[info] 
+[debug] [2026-02-25T16:38:33.147Z] skipping /login due to server action
+[debug] [2026-02-25T16:38:34.058Z] Checked if tokens are valid: true, expires at: 1772039728213
+[debug] [2026-02-25T16:38:34.058Z] Checked if tokens are valid: true, expires at: 1772039728213
+[debug] [2026-02-25T16:38:34.058Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/studio-6821761262-fdf39/sites/studio-6821761262-fdf39 [none]
+[debug] [2026-02-25T16:38:34.855Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/studio-6821761262-fdf39/sites/studio-6821761262-fdf39 200
+[debug] [2026-02-25T16:38:34.856Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/studio-6821761262-fdf39/sites/studio-6821761262-fdf39 {"name":"projects/studio-6821761262-fdf39/sites/studio-6821761262-fdf39","defaultUrl":"https://studio-6821761262-fdf39.web.app","appId":"1:294831457703:web:e1e149f283e4eb2418e282","type":"DEFAULT_SITE"}
+[debug] [2026-02-25T16:38:38.354Z] [web frameworks] effective firebase.json:  {
+  "hosting": [
+    {
+      "source": ".",
+      "headers": [
+        {
+          "source": "*",
+          "headers": [
+            {
+              "key": "Access-Control-Allow-Origin",
+              "value": "*"
+            }
+          ]
+        },
+        {
+          "source": "/_not-found",
+          "headers": [
+            {
+              "key": "x-next-cache-tags",
+              "value": "_N_T_/layout,_N_T_/_not-found/layout,_N_T_/_not-found/page,_N_T_/_not-found"
+            }
+          ]
+        },
+        {
+          "source": "/login",
+          "headers": [
+            {
+              "key": "x-next-cache-tags",
+              "value": "_N_T_/layout,_N_T_/login/layout,_N_T_/login/page,_N_T_/login"
+            }
+          ]
+        },
+        {
+          "source": "**/*.[jt]s",
+          "headers": [
+            {
+              "key": "Set-Cookie",
+              "value": "__FIREBASE_DEFAULTS__=eyJjb25maWciOnsicHJvamVjdElkIjoic3R1ZGlvLTY4MjE3NjEyNjItZmRmMzkiLCJhcHBJZCI6IjE6Mjk0ODMxNDU3NzAzOndlYjplMWUxNDlmMjgzZTRlYjI0MThlMjgyIiwiZGF0YWJhc2VVUkwiOiJodHRwczovL3N0dWRpby02ODIxNzYxMjYyLWZkZjM5LWRlZmF1bHQtcnRkYi5ldXJvcGUtd2VzdDEuZmlyZWJhc2VkYXRhYmFzZS5hcHAiLCJzdG9yYWdlQnVja2V0Ijoic3R1ZGlvLTY4MjE3NjEyNjItZmRmMzkuZmlyZWJhc2VzdG9yYWdlLmFwcCIsImFwaUtleSI6IkFJemFTeURRem9NYmQxakFqRXFtRXprazB1U3JOYko3OTN5WGxqayIsImF1dGhEb21haW4iOiJzdHVkaW8tNjgyMTc2MTI2Mi1mZGYzOS5maXJlYmFzZWFwcC5jb20iLCJtZXNzYWdpbmdTZW5kZXJJZCI6IjI5NDgzMTQ1NzcwMyIsInByb2plY3ROdW1iZXIiOiIyOTQ4MzE0NTc3MDMiLCJ2ZXJzaW9uIjoiMiJ9LCJfYXV0aFRva2VuU3luY1VSTCI6Ii9fX3Nlc3Npb24ifQ; SameSite=Strict; Expires=2028-01-21T03:18:38.354Z; Path=/;"
+            }
+          ]
+        }
+      ],
+      "site": "studio-6821761262-fdf39",
+      "rewrites": [
+        {
+          "source": "**",
+          "function": {
+            "functionId": "ssrstudio6821761262fdf3",
+            "region": "us-central1",
+            "pinTag": true
+          }
+        }
+      ],
+      "redirects": [],
+      "cleanUrls": true,
+      "trailingSlash": false,
+      "public": ".firebase/studio-6821761262-fdf39/hosting",
+      "webFramework": "next_ssr"
+    }
+  ],
+  "functions": [
+    {
+      "source": ".firebase/studio-6821761262-fdf39/functions",
+      "codebase": "firebase-frameworks-studio-6821761262-fdf39"
+    }
+  ]
+}
+[debug] [2026-02-25T16:38:38.354Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-02-25T16:38:38.354Z] > authorizing via signed-in user (sanyagal191919@gmail.com)
+[debug] [2026-02-25T16:38:38.354Z] [iam] checking project studio-6821761262-fdf39 for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
+[debug] [2026-02-25T16:38:38.354Z] Checked if tokens are valid: true, expires at: 1772039728213
+[debug] [2026-02-25T16:38:38.354Z] Checked if tokens are valid: true, expires at: 1772039728213
+[debug] [2026-02-25T16:38:38.354Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-6821761262-fdf39:testIamPermissions [none]
+[debug] [2026-02-25T16:38:38.354Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-6821761262-fdf39:testIamPermissions  x-goog-user-project=studio-6821761262-fdf39
+[debug] [2026-02-25T16:38:38.354Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-6821761262-fdf39:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-02-25T16:38:39.243Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-6821761262-fdf39:testIamPermissions 200
+[debug] [2026-02-25T16:38:39.243Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/studio-6821761262-fdf39:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-02-25T16:38:39.244Z] Checked if tokens are valid: true, expires at: 1772039728213
+[debug] [2026-02-25T16:38:39.244Z] Checked if tokens are valid: true, expires at: 1772039728213
+[debug] [2026-02-25T16:38:39.244Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/studio-6821761262-fdf39/locations/-/functions [none]

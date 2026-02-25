@@ -229,7 +229,8 @@ export default function MainLayout({
         if (isStrict) {
             employees = rawEmployees.filter(e => e.coordinatorId === selectedCoordinatorId);
             nonEmployees = rawNonEmployees.filter(ne => ne.coordinatorId === selectedCoordinatorId);
-            bokResidents = rawBokResidents.filter(b => b.coordinatorId === selectedCoordinatorId);
+            // Kierowca widzi cały BOK, pozostali - tylko swój
+            bokResidents = currentUser.isDriver ? rawBokResidents : rawBokResidents.filter(b => b.coordinatorId === selectedCoordinatorId);
             filteredAddresses = rawSettings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
         } else { // department mode
             const coordinatorAddresses = new Set(rawSettings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId)).map(a => a.name));
@@ -242,7 +243,8 @@ export default function MainLayout({
             });
 
             nonEmployees = rawNonEmployees.filter(ne => ne.address && coordinatorAddresses.has(ne.address));
-            bokResidents = rawBokResidents.filter(b => b.coordinatorId === selectedCoordinatorId); // BOK residents filter logic (assuming similar to others, mainly by coordinator)
+            // Kierowca widzi cały BOK, pozostali - w zależności od konfiguracji "department mode"
+            bokResidents = currentUser.isDriver ? rawBokResidents : rawBokResidents.filter(b => b.coordinatorId === selectedCoordinatorId);
             filteredAddresses = rawSettings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
         }
 
@@ -267,8 +269,7 @@ export default function MainLayout({
 
     const visibleNavItems = useMemo(() => {
         if (currentUser?.isDriver) {
-            return navItems.filter(item => item.view === 'employees');
-            // Note: In entity-view we'll further restrict the 'employees' view to only show 'Osoby z BOK' for drivers.
+            return navItems.filter(item => item.view === 'employees' || item.view === 'housing');
         }
         if (currentUser?.isAdmin) {
             return navItems;
@@ -589,6 +590,8 @@ export default function MainLayout({
             try {
                 const newResidentData = {
                     ...data,
+                    address: data.address ?? '',
+                    roomNumber: data.roomNumber ?? '',
                     checkOutDate: data.checkOutDate ?? null,
                     returnStatus: data.returnStatus ?? '',
                     zaklad: data.zaklad ?? '',
