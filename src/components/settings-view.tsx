@@ -252,11 +252,11 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                 <FormField
                                     control={form.control}
                                     name={`coordinators.${field.originalIndex}.departments`}
-                                    render={() => (
+                                    render={({ field: parentField }) => (
                                         <FormItem>
                                             <FormLabel>Zakłady</FormLabel>
                                             <div className="space-y-2">
-                                                {(form.getValues(`coordinators.${field.originalIndex}.departments`) || []).map((_dept, deptIndex) => (
+                                                {(parentField.value || []).map((_dept, deptIndex) => (
                                                     <div key={deptIndex} className="flex items-center gap-2">
                                                         <FormField
                                                             control={form.control}
@@ -281,8 +281,8 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                                             variant="ghost"
                                                             size="icon"
                                                             onClick={() => {
-                                                                const currentDepts = form.getValues(`coordinators.${field.originalIndex}.departments`) || [];
-                                                                form.setValue(`coordinators.${field.originalIndex}.departments`, currentDepts.filter((_, i) => i !== deptIndex));
+                                                                const currentDepts = parentField.value || [];
+                                                                parentField.onChange(currentDepts.filter((_: any, i: number) => i !== deptIndex));
                                                             }}
                                                         >
                                                             <Trash2 className="h-4 w-4 text-destructive" />
@@ -295,8 +295,8 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                                     size="sm"
                                                     className="w-full"
                                                     onClick={() => {
-                                                        const currentDepts = form.getValues(`coordinators.${field.originalIndex}.departments`) || [];
-                                                        form.setValue(`coordinators.${field.originalIndex}.departments`, [...currentDepts, '']);
+                                                        const currentDepts = parentField.value || [];
+                                                        parentField.onChange([...currentDepts, '']);
                                                     }}
                                                 >
                                                     <PlusCircle className="h-4 w-4 mr-2" />
@@ -363,6 +363,12 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                         </FormItem>
                                     )}
                                 />
+                                <div className="flex justify-end pt-4 mt-4 border-t">
+                                    <Button type="submit" disabled={!form.formState.isDirty || form.formState.isSubmitting}>
+                                        {form.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                        Zapisz zmiany
+                                    </Button>
+                                </div>
                             </div>
                         </AccordionContent>
                     </AccordionItem>
