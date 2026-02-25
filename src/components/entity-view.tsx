@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { MoreHorizontal, PlusCircle, SlidersHorizontal, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, X, Users, UserX, LayoutGrid, List, Trash2, ArrowUp, ArrowDown, History, Briefcase } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, parse, isValid } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -30,6 +30,17 @@ const formatDate = (dateString?: string | null) => {
         if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
             return format(new Date(dateString + 'T00:00:00'), 'dd-MM-yyyy');
         }
+        let d = new Date(dateString.replace(' ', 'T'));
+        if (isValid(d)) return format(d, 'dd-MM-yyyy');
+        d = parse(dateString, 'dd-MM-yyyy HH:mm', new Date());
+        if (isValid(d)) return format(d, 'dd-MM-yyyy');
+        d = parse(dateString, 'dd-MM-yyyy', new Date());
+        if (isValid(d)) return format(d, 'dd-MM-yyyy');
+        d = parse(dateString, 'dd.MM.yyyy HH:mm', new Date());
+        if (isValid(d)) return format(d, 'dd-MM-yyyy');
+        d = parse(dateString, 'dd.MM.yyyy', new Date());
+        if (isValid(d)) return format(d, 'dd-MM-yyyy');
+
         return format(new Date(dateString), 'dd-MM-yyyy');
     } catch {
         return 'Invalid Date';

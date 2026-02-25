@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { format } from "date-fns";
+import { format, parse, isValid } from "date-fns";
 import { pl } from "date-fns/locale";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -28,6 +28,21 @@ type ReportEntry = {
     sendDateParsed: Date;
 };
 
+const parseSendDate = (dateStr: string | null): Date => {
+    if (!dateStr) return new Date(0);
+    let d = new Date(dateStr.replace(' ', 'T'));
+    if (isValid(d)) return d;
+    d = parse(dateStr, 'dd-MM-yyyy HH:mm', new Date());
+    if (isValid(d)) return d;
+    d = parse(dateStr, 'dd-MM-yyyy', new Date());
+    if (isValid(d)) return d;
+    d = parse(dateStr, 'dd.MM.yyyy HH:mm', new Date());
+    if (isValid(d)) return d;
+    d = parse(dateStr, 'dd.MM.yyyy', new Date());
+    if (isValid(d)) return d;
+    return new Date(0);
+}
+
 export function BokDispatchReportDialog({
     isOpen,
     onOpenChange,
@@ -38,6 +53,8 @@ export function BokDispatchReportDialog({
 }: BokDispatchReportProps) {
     const [search, setSearch] = useState("");
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+    const [dateFrom, setDateFrom] = useState("");
+    const [dateTo, setDateTo] = useState("");
 
     const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || id;
 
@@ -64,10 +81,7 @@ export function BokDispatchReportDialog({
             const match = empMatch || nonEmpMatch;
             const isAssigned = !!match;
 
-            let sendDateParsed = new Date(0);
-            if (resident.sendDate) {
-                sendDateParsed = new Date(resident.sendDate);
-            }
+            const sendDateParsed = parseSendDate(resident.sendDate);
 
             return {
                 resident,
@@ -85,6 +99,18 @@ export function BokDispatchReportDialog({
             entry.resident.firstName.toLowerCase().includes(search.toLowerCase())
         );
 
+        if (dateFrom) {
+            const from = new Date(dateFrom);
+            from.setHours(0, 0, 0, 0);
+            filtered = filtered.filter(entry => entry.sendDateParsed >= from);
+        }
+
+        if (dateTo) {
+            const to = new Date(dateTo);
+            to.setHours(23, 59, 59, 999);
+            filtered = filtered.filter(entry => entry.sendDateParsed <= to);
+        }
+
         filtered.sort((a, b) => {
             const timeA = a.sendDateParsed.getTime();
             const timeB = b.sendDateParsed.getTime();
@@ -100,15 +126,33 @@ export function BokDispatchReportDialog({
             <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0">
                 <DialogHeader className="px-6 py-4 border-b">
                     <DialogTitle className="text-xl">Raport Wysłanych Mieszkańców BOK</DialogTitle>
-                    <div className="flex items-center justify-between pt-4">
-                        <Input
-                            placeholder="Szukaj osoby..."
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            className="max-w-xs"
-                        />
-                        <div className="text-sm text-muted-foreground font-medium">
-                            Razem wysłanych: {filteredAndSortedData.length}
+                    <div className="flex items-center justify-between pt-4 gap-4 flex-wrap">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <Input
+                                placeholder="Szukaj osoby..."
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                className="w-[180px]"
+                            />
+                            <div className="flex items-center gap-2 ml-2">
+                                <span className="text-sm text-muted-foreground whitespace-nowrap">Od:</span>
+                                <Input
+                                    type="date"
+                                    value={dateFrom}
+                                    onChange={e => setDateFrom(e.target.value)}
+                                    className="w-[130px]"
+                                />
+                                <span className="text-sm text-muted-foreground whitespace-nowrap">Do:</span>
+                                <Input
+                                    type="date"
+                                    value={dateTo}
+                                    onChange={e => setDateTo(e.target.value)}
+                                    className="w-[130px]"
+                                />
+                            </div>
+                        </div>
+                        <div className="text-sm text-muted-foreground font-medium whitespace-nowrap">
+                            Razem: {filteredAndSortedData.length}
                         </div>
                     </div>
                 </DialogHeader>
@@ -129,10 +173,10 @@ export function BokDispatchReportDialog({
                                     <TableCell colSpan={5} className="text-center h-24">Brak dopasowań do wyszukiwania lub brak wysłanych pracowników.</TableCell>
                                 </TableRow>
                             ) : (
-                                filteredAndSortedData.map(({ resident, isAssigned, assignedRecordType, assignedCoordinatorName }) => (
+                                filteredAndSortedData.map(({ resident, isAssigned, assignedRecordType, assignedCoordinatorName, sendDateParsed }) => (
                                     <TableRow key={resident.id}>
-                                        <TableCell className="font-medium">
-                                            {resident.sendDate ? format(new Date(resident.sendDate), 'dd-MM-yyyy HH:mm', { locale: pl }) : 'Brak daty'}
+                                        <TableCell className="font-medium whitespace-nowrap">
+                                            {sendDateParsed.getTime() > 0 ? format(sendDateParsed, 'dd-MM-yyyy', { locale: pl }) : 'Brak daty'}
                                         </TableCell>
                                         <TableCell>{resident.lastName} {resident.firstName}</TableCell>
                                         <TableCell>{getCoordinatorName(resident.coordinatorId)}</TableCell>
