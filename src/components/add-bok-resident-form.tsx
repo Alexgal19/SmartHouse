@@ -49,6 +49,7 @@ export const formSchema = z.object({
   lastName: z.string().min(1, "Nazwisko jest wymagane."),
   coordinatorId: z.string().min(1, "Koordynator jest wymagany."),
   nationality: z.string().min(1, "Narodowość jest wymagana."),
+  locality: z.string().optional(),
   address: z.string().optional(),
   roomNumber: z.string().optional(),
   zaklad: z.string().optional(),
@@ -276,6 +277,7 @@ export function AddBokResidentForm({
       lastName: '',
       coordinatorId: '',
       nationality: '',
+      locality: '',
       address: '',
       roomNumber: '',
       zaklad: '',
@@ -289,18 +291,28 @@ export function AddBokResidentForm({
   });
 
   const selectedCoordinatorId = form.watch('coordinatorId');
+  const selectedLocality = form.watch('locality');
   const selectedAddress = form.watch('address');
 
-  const availableAddresses = useMemo(() => {
-    if (!selectedCoordinatorId) {
-      return [...settings.addresses].sort((a, b) => a.name.localeCompare(b.name));
-    }
-    // Show all addresses for the coordinator
-    const filtered = settings.addresses.filter(a =>
-      a.coordinatorIds.includes(selectedCoordinatorId)
-    );
-    return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
+  const availableLocalities = useMemo(() => {
+    const addresses = !selectedCoordinatorId
+      ? settings.addresses
+      : settings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
+    const locs = Array.from(new Set(addresses.map(a => a.locality).filter(Boolean)));
+    return locs.sort((a, b) => a.localeCompare(b));
   }, [settings.addresses, selectedCoordinatorId]);
+
+  const localityOptions = useMemo(() => availableLocalities.map(l => ({ value: l, label: l })), [availableLocalities]);
+
+  const availableAddresses = useMemo(() => {
+    let addresses = !selectedCoordinatorId
+      ? settings.addresses
+      : settings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
+    if (selectedLocality) {
+      addresses = addresses.filter(a => a.locality === selectedLocality);
+    }
+    return [...addresses].sort((a, b) => a.name.localeCompare(b.name));
+  }, [settings.addresses, selectedCoordinatorId, selectedLocality]);
 
   const availableRooms = useMemo(() => {
     const rooms = settings.addresses.find(a => a.name === selectedAddress)?.rooms || [];
@@ -318,12 +330,14 @@ export function AddBokResidentForm({
 
   useEffect(() => {
     if (resident) {
+      const residentAddress = settings.addresses.find(a => a.name === resident.address);
       form.reset({
         role: resident.role || '',
         firstName: resident.firstName || '',
         lastName: resident.lastName || '',
         coordinatorId: resident.coordinatorId || currentUser.uid,
         nationality: resident.nationality || '',
+        locality: residentAddress?.locality || '',
         address: resident.address || '',
         roomNumber: resident.roomNumber || '',
         zaklad: resident.zaklad || '',
@@ -341,6 +355,7 @@ export function AddBokResidentForm({
         lastName: '',
         coordinatorId: currentUser.uid || '',
         nationality: '',
+        locality: '',
         address: '',
         roomNumber: '',
         zaklad: '',
@@ -530,7 +545,30 @@ export function AddBokResidentForm({
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+                    <FormField
+                      control={form.control}
+                      name="locality"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Miejscowość</FormLabel>
+                          <FormControl>
+                            <Combobox
+                              options={localityOptions}
+                              value={field.value || ''}
+                              onChange={(val) => {
+                                field.onChange(val);
+                                form.setValue('address', '');
+                                form.setValue('roomNumber', '');
+                              }}
+                              placeholder={!selectedCoordinatorId ? "Wybierz koordynatora" : "Wybierz miejscowość"}
+                              searchPlaceholder="Szukaj miejscowości..."
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     <FormField
                       control={form.control}
                       name="address"
@@ -540,8 +578,8 @@ export function AddBokResidentForm({
                           <Select onValueChange={(val) => {
                             field.onChange(val);
                             form.setValue('roomNumber', '');
-                          }} value={field.value || ''}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz adres" /></SelectTrigger></FormControl>
+                          }} value={field.value || ''} disabled={!selectedLocality}>
+                            <FormControl><SelectTrigger><SelectValue placeholder={!selectedLocality ? "Wybierz miejscowość" : "Wybierz adres"} /></SelectTrigger></FormControl>
                             <SelectContent>
                               {availableAddresses.filter(a => a.name).map(a => (
                                 <SelectItem key={a.id} value={a.name} disabled={!a.isActive}>
