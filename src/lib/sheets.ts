@@ -415,6 +415,7 @@ const deserializeBokResident = (row: Record<string, unknown>): BokResident | nul
         gender: (plainObject.gender || '') as string,
         checkInDate: checkInDate,
         checkOutDate: safeFormat(plainObject.checkOutDate),
+        sendDate: safeFormat(plainObject['data wysłania']) || safeFormat(plainObject.sendDate),
         returnStatus: (plainObject.returnStatus || '') as string,
         status: (plainObject.status || '') as string,
         comments: (plainObject.comments || '') as string,

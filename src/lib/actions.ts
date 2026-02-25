@@ -39,7 +39,7 @@ const NON_EMPLOYEE_HEADERS = [
 
 const BOK_RESIDENT_HEADERS = [
     'id', 'role', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'address', 'roomNumber',
-    'zaklad', 'gender', 'checkInDate', 'checkOutDate', 'returnStatus', 'status', 'comments'
+    'zaklad', 'gender', 'checkInDate', 'checkOutDate', 'returnStatus', 'status', 'comments', 'sendDate'
 ];
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
@@ -147,7 +147,7 @@ const serializeBokResident = (resident: Partial<BokResident>): Record<string, st
             continue;
         }
 
-        if (['checkInDate', 'checkOutDate'].includes(key)) {
+        if (['checkInDate', 'checkOutDate', 'sendDate'].includes(key)) {
             serialized[key] = serializeDate(value as string);
         } else {
             serialized[key] = String(value);
@@ -1727,6 +1727,7 @@ const processImport = async (
                         role: (normalizedRow['rola'] as string)?.trim() || 'Kierowca',
                         zaklad: (normalizedRow['zakład'] as string)?.trim() || '',
                         returnStatus: (normalizedRow['opcja powrotu'] as string)?.trim() || 'Brak',
+                        sendDate: null,
                     } as BokResident;
                     // remove non-bok fields to satisfy type if needed
                     if ('departureReportDate' in newRecord) delete (newRecord as any).departureReportDate;

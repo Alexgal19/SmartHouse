@@ -49,8 +49,8 @@ export const formSchema = z.object({
   lastName: z.string().min(1, "Nazwisko jest wymagane."),
   coordinatorId: z.string().min(1, "Koordynator jest wymagany."),
   nationality: z.string().min(1, "Narodowość jest wymagana."),
-  address: z.string().min(1, "Adres jest wymagany."),
-  roomNumber: z.string().min(1, "Pokój jest wymagany."),
+  address: z.string().optional(),
+  roomNumber: z.string().optional(),
   zaklad: z.string().optional(),
   gender: z.string().min(1, "Płeć jest wymagana."),
   checkInDate: z.date({ required_error: "Data zameldowania jest wymagana." }),
@@ -393,8 +393,8 @@ export function AddBokResidentForm({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-[95vw] sm:max-w-xl lg:max-w-2xl max-h-[90vh] overflow-hidden">
-          <DialogHeader>
+        <DialogContent className="max-w-[95vw] sm:max-w-xl lg:max-w-2xl h-[90vh] max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
+          <DialogHeader className="p-4 sm:p-6 pb-2 sm:pb-4 flex-shrink-0">
             <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
               <div>
                 <DialogTitle>{resident ? 'Edytuj Mieszkańca BOK' : 'Dodaj Mieszkańca BOK'}</DialogTitle>
@@ -422,9 +422,9 @@ export function AddBokResidentForm({
             </div>
           </DialogHeader>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
-              <ScrollArea className="h-[50vh] sm:h-[60vh] lg:h-[65vh] mt-4 px-2">
-                <div className="space-y-4 p-1">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+              <ScrollArea className="flex-1 px-4 sm:px-6">
+                <div className="space-y-4 pb-4 mt-2">
 
                   <FormField
                     control={form.control}
@@ -722,27 +722,27 @@ export function AddBokResidentForm({
 
                 </div>
               </ScrollArea>
-              <DialogFooter className="mt-4 flex flex-col sm:flex-row justify-between w-full sm:items-center gap-4">
+              <div className="p-4 sm:p-6 pt-4 flex-shrink-0 flex flex-row items-center justify-between gap-3 bg-background border-t mt-auto">
                 <div className="flex justify-start">
-                  {resident && resident.status !== 'Wymeldowany' && (
+                  {resident && (
                     <Button
                       type="button"
                       variant="destructive"
                       onClick={handleDismissClick}
                       disabled={isDismissing}
-                      className="w-full sm:w-auto min-h-[44px]"
+                      className="h-8 text-xs sm:text-sm px-3 sm:px-4"
                     >
-                      {isDismissing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      {isDismissing && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
                       Zwolnij
                     </Button>
                   )}
                 </div>
-                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <div className="flex flex-row gap-2">
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => onOpenChange(false)}
-                    className="w-full sm:w-auto min-h-[44px]"
+                    className="h-8 text-xs sm:text-sm px-3 sm:px-4"
                   >
                     Anuluj
                   </Button>
@@ -752,24 +752,24 @@ export function AddBokResidentForm({
                       variant="secondary"
                       onClick={handleSendPush}
                       disabled={isSendingPush || form.formState.isSubmitting}
-                      className="w-full sm:w-auto min-h-[44px]"
+                      className="h-8 text-xs sm:text-sm px-3 sm:px-4"
                     >
                       {isSendingPush
-                        ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        : <Send className="mr-2 h-4 w-4" />}
+                        ? <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                        : <Send className="mr-2 h-3 w-3" />}
                       Wyślij
                     </Button>
                   )}
                   <Button
                     type="submit"
                     disabled={form.formState.isSubmitting}
-                    className="w-full sm:w-auto min-h-[44px]"
+                    className="h-8 text-xs sm:text-sm px-3 sm:px-4"
                   >
-                    {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {form.formState.isSubmitting && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
                     Zapisz
                   </Button>
                 </div>
-              </DialogFooter>
+              </div>
             </form>
           </Form>
         </DialogContent>

@@ -20,6 +20,7 @@ import { Label } from '@/components/ui/label';
 import { useMainLayout } from '@/components/main-layout';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
+import { BokDispatchReportDialog } from '@/components/bok-dispatch-report';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -162,7 +163,7 @@ const SortableHeader = ({
     );
 };
 
-const EntityTable = ({ entities, onEdit, onRestore, isDismissed, settings, onPermanentDelete, onSort, sortBy, sortOrder }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onRestore?: (entity: Entity) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => void; onSort: (field: SortableField) => void; sortBy: SortableField | null; sortOrder: 'asc' | 'desc'; }) => {
+const EntityTable = ({ entities, onEdit, onRestore, isDismissed, settings, onPermanentDelete, onSort, sortBy, sortOrder, isBokTab }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onRestore?: (entity: Entity) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => void; onSort: (field: SortableField) => void; sortBy: SortableField | null; sortOrder: 'asc' | 'desc'; isBokTab?: boolean; }) => {
     const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
 
     return (
@@ -177,36 +178,41 @@ const EntityTable = ({ entities, onEdit, onRestore, isDismissed, settings, onPer
                         <SortableHeader label="Adres" field="address" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
                         <SortableHeader label="Pokój" field="roomNumber" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
                         <SortableHeader label="Data zameldowania" field="checkInDate" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
+                        {isBokTab && <TableHead>Data wysłania</TableHead>}
                         <SortableHeader label="Data wymeldowania" field="checkOutDate" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
                         <TableHead><span className="sr-only">Akcje</span></TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {entities.length > 0 ? (
-                        entities.map((entity) => (
-                            <TableRow key={entity.id} onClick={() => onEdit(entity)} className="cursor-pointer">
-                                <TableCell className="font-medium">{entity.lastName}</TableCell>
-                                <TableCell className="font-medium">{entity.firstName}</TableCell>
-                                <TableCell>
-                                    {isBokResident(entity)
-                                        ? `BOK (${entity.role})`
-                                        : (isEmployee(entity) ? "Pracownik" : "Mieszkaniec (NZ)")}
-                                </TableCell>
-                                <TableCell>{getCoordinatorName(entity.coordinatorId)}</TableCell>
-                                <TableCell>
-                                    {isEmployee(entity) && entity.address?.toLowerCase().startsWith('własne mieszkanie')
-                                        ? `Własne (${entity.ownAddress || 'Brak danych'})`
-                                        : entity.address
-                                    }
-                                </TableCell>
-                                <TableCell>{isEmployee(entity) && entity.address?.toLowerCase().startsWith('własne mieszkanie') ? 'N/A' : entity.roomNumber}</TableCell>
-                                <TableCell>{formatDate(entity.checkInDate)}</TableCell>
-                                <TableCell>{formatDate(entity.checkOutDate)}</TableCell>
-                                <TableCell onClick={(e) => e.stopPropagation()}>
-                                    <EntityActions {...{ entity, onEdit, onRestore, onPermanentDelete, isDismissed }} />
-                                </TableCell>
-                            </TableRow>
-                        ))
+                        entities.map((entity) => {
+                            const isDispatched = isBokResident(entity) && entity.sendDate;
+                            return (
+                                <TableRow key={entity.id} onClick={() => onEdit(entity)} className={cn("cursor-pointer", isDispatched && "bg-green-100 hover:bg-green-200 dark:bg-green-900/40 dark:hover:bg-green-900/60")}>
+                                    <TableCell className="font-medium">{entity.lastName}</TableCell>
+                                    <TableCell className="font-medium">{entity.firstName}</TableCell>
+                                    <TableCell>
+                                        {isBokResident(entity)
+                                            ? `BOK (${entity.role})`
+                                            : (isEmployee(entity) ? "Pracownik" : "Mieszkaniec (NZ)")}
+                                    </TableCell>
+                                    <TableCell>{getCoordinatorName(entity.coordinatorId)}</TableCell>
+                                    <TableCell>
+                                        {isEmployee(entity) && entity.address?.toLowerCase().startsWith('własne mieszkanie')
+                                            ? `Własne (${entity.ownAddress || 'Brak danych'})`
+                                            : entity.address
+                                        }
+                                    </TableCell>
+                                    <TableCell>{isEmployee(entity) && entity.address?.toLowerCase().startsWith('własne mieszkanie') ? 'N/A' : entity.roomNumber}</TableCell>
+                                    <TableCell>{formatDate(entity.checkInDate)}</TableCell>
+                                    {isBokTab && <TableCell>{isBokResident(entity) ? formatDate(entity.sendDate) || '-' : '-'}</TableCell>}
+                                    <TableCell>{formatDate(entity.checkOutDate)}</TableCell>
+                                    <TableCell onClick={(e) => e.stopPropagation()}>
+                                        <EntityActions {...{ entity, onEdit, onRestore, onPermanentDelete, isDismissed }} />
+                                    </TableCell>
+                                </TableRow>
+                            )
+                        })
                     ) : (
                         <TableRow>
                             <TableCell colSpan={9} className="text-center">Brak danych do wyświetlenia.</TableCell>
@@ -479,6 +485,8 @@ const ControlPanel = ({
     onResetFilters,
     showAddButton,
     isAdmin,
+    isBokTab,
+    onOpenReport,
 }: {
     search: string;
     onSearch: (value: string) => void;
@@ -490,6 +498,8 @@ const ControlPanel = ({
     onResetFilters: () => void;
     showAddButton: boolean;
     isAdmin: boolean;
+    isBokTab?: boolean;
+    onOpenReport?: () => void;
 }) => {
     const { isMobile } = useIsMobile();
     return (
@@ -509,6 +519,11 @@ const ControlPanel = ({
                     {isFilterActive && (
                         <Button variant="ghost" size="icon" onClick={onResetFilters} className="text-muted-foreground">
                             <X className="h-4 w-4" />
+                        </Button>
+                    )}
+                    {isBokTab && onOpenReport && (
+                        <Button variant="outline" className="hidden sm:inline-flex bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/50 dark:border-green-800" onClick={onOpenReport}>
+                            Raport wysłanych
                         </Button>
                     )}
                     {showAddButton && (
@@ -567,6 +582,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const [isPending, startTransition] = useTransition();
+    const [isReportOpen, setIsReportOpen] = useState(false);
     const { isMobile, isMounted } = useIsMobile();
 
     const tab = (searchParams.get('tab') as 'active' | 'dismissed' | 'non-employees' | 'bok-residents' | 'history') || (currentUser.isDriver ? 'bok-residents' : 'active');
@@ -799,6 +815,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                             onSort={handleSort}
                             sortBy={sortBy}
                             sortOrder={sortOrder}
+                            isBokTab={tab === 'bok-residents'}
                         /> :
                         <EntityCardList
                             entities={data}
@@ -845,8 +862,38 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         </>
     );
 
-    const gridColsClass = isDriver ? "grid-cols-1" : (currentUser.isAdmin ? "grid-cols-5" : "grid-cols-3");
-    const tabsGridClass = cn("grid w-full", gridColsClass);
+    const tabsListContent = (
+        <TabsList className="flex flex-wrap h-auto w-full justify-start gap-2 bg-transparent p-0">
+            {!isDriver && (
+                <>
+                    <TabsTrigger value="active" disabled={isPending} className="flex-1 min-w-[120px] bg-muted data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-muted/80">
+                        <Users className="mr-2 h-4 w-4 shrink-0" />
+                        <span className="truncate">Aktywni ({dataMap.active.length})</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="dismissed" disabled={isPending} className="flex-1 min-w-[120px] bg-muted data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-muted/80">
+                        <UserX className="mr-2 h-4 w-4 shrink-0" />
+                        <span className="truncate">Zwolnieni ({dataMap.dismissed.length})</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="non-employees" disabled={isPending} className="flex-1 min-w-[120px] bg-muted data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-muted/80">
+                        <UserX className="mr-2 h-4 w-4 shrink-0" />
+                        <span className="truncate">NZ ({dataMap['non-employees'].length})</span>
+                    </TabsTrigger>
+                </>
+            )}
+            {(currentUser.isAdmin || isDriver) && (
+                <TabsTrigger value="bok-residents" disabled={isPending} className="flex-1 min-w-[120px] bg-muted data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-muted/80">
+                    <Briefcase className="mr-2 h-4 w-4 shrink-0" />
+                    <span className="truncate">BOK ({dataMap['bok-residents'].length})</span>
+                </TabsTrigger>
+            )}
+            {currentUser.isAdmin && !isDriver && (
+                <TabsTrigger value="history" disabled={isPending} className="flex-1 min-w-[120px] bg-muted data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-muted/80">
+                    <History className="mr-2 h-4 w-4 shrink-0" />
+                    <span className="truncate">Historia ({dataMap.history.length})</span>
+                </TabsTrigger>
+            )}
+        </TabsList>
+    );
 
     return (
         <Card>
@@ -862,35 +909,15 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                     onResetFilters={() => updateSearchParams({ search: '', page: 1, coordinator: '', address: '', department: '', nationality: '' })}
                     showAddButton={tab !== 'history'}
                     isAdmin={currentUser.isAdmin}
+                    isBokTab={tab === 'bok-residents'}
+                    onOpenReport={() => setIsReportOpen(true)}
                 />
             </CardHeader>
             <CardContent>
                 <Tabs value={tab} onValueChange={(v) => updateSearchParams({ tab: v, page: 1, sortBy: '', sortOrder: '' })}>
-                    <TabsList className={tabsGridClass}>
-                        {!isDriver && (
-                            <>
-                                <TabsTrigger value="active" disabled={isPending}>
-                                    <Users className="mr-2 h-4 w-4" />Aktywni ({dataMap.active.length})
-                                </TabsTrigger>
-                                <TabsTrigger value="dismissed" disabled={isPending}>
-                                    <UserX className="mr-2 h-4 w-4" />Zwolnieni ({dataMap.dismissed.length})
-                                </TabsTrigger>
-                                <TabsTrigger value="non-employees" disabled={isPending}>
-                                    <UserX className="mr-2 h-4 w-4" />NZ ({dataMap['non-employees'].length})
-                                </TabsTrigger>
-                            </>
-                        )}
-                        {(currentUser.isAdmin || isDriver) && (
-                            <TabsTrigger value="bok-residents" disabled={isPending}>
-                                <Briefcase className="mr-2 h-4 w-4" />BOK ({dataMap['bok-residents'].length})
-                            </TabsTrigger>
-                        )}
-                        {currentUser.isAdmin && !isDriver && (
-                            <TabsTrigger value="history" disabled={isPending}>
-                                <History className="mr-2 h-4 w-4" />Historia Adresów ({dataMap.history.length})
-                            </TabsTrigger>
-                        )}
-                    </TabsList>
+                    <div className="w-full mb-6 relative">
+                        {tabsListContent}
+                    </div>
                     {!isDriver && (
                         <>
                             <TabsContent value="active" className="mt-4">{renderContent(paginatedData as Entity[])}</TabsContent>
@@ -909,6 +936,16 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                 initialFilters={filters}
                 onApply={(f) => updateSearchParams({ ...f, page: 1 })}
             />
+            {allEmployees && allNonEmployees && allBokResidents && settings && (
+                <BokDispatchReportDialog
+                    isOpen={isReportOpen}
+                    onOpenChange={setIsReportOpen}
+                    bokResidents={allBokResidents}
+                    employees={allEmployees}
+                    nonEmployees={allNonEmployees}
+                    settings={settings}
+                />
+            )}
         </Card>
     )
 }

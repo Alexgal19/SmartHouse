@@ -593,6 +593,7 @@ export default function MainLayout({
                     returnStatus: data.returnStatus ?? '',
                     zaklad: data.zaklad ?? '',
                     status: data.status ?? '',
+                    sendDate: null,
                     fullName: `${data.lastName} ${data.firstName}`.trim(),
                 };
                 const newResident = await addBokResident(newResidentData, currentUser.uid);
@@ -614,7 +615,17 @@ export default function MainLayout({
                 `Mieszkaniec BOK: ${editingBokResident.lastName} ${editingBokResident.firstName} - kliknij, aby dodać.`,
                 link
             );
-            toast({ title: 'Sukces', description: 'Powiadomienie PUSH zostało wysłane.' });
+
+            // Mark the resident as sent by recording today's date and updating server state
+            const todayDateStr = format(new Date(), 'yyyy-MM-dd HH:mm');
+            const updatedResident = await updateBokResident(
+                editingBokResident.id,
+                { sendDate: todayDateStr },
+                currentUser.uid
+            );
+            setRawBokResidents(prev => prev ? prev.map(r => r.id === updatedResident.id ? updatedResident : r) : null);
+
+            toast({ title: 'Sukces', description: 'Powiadomienie PUSH zostało wysłane i oznaczono datę wysłania.' });
         } catch (e) {
             toast({ variant: 'destructive', title: 'Błąd', description: e instanceof Error ? e.message : 'Nie udało się wysłać powiadomienia.' });
         }
