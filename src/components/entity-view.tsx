@@ -955,6 +955,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                     employees={allEmployees}
                     nonEmployees={allNonEmployees}
                     settings={settings}
+                    onPermanentDelete={(id) => handlePermanentDelete(id, 'bok-resident')}
                 />
             )}
         </Card>

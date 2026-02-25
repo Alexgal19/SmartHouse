@@ -9,7 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Employee, NonEmployee, BokResident, Settings } from "@/types";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 
 interface BokDispatchReportProps {
     isOpen: boolean;
@@ -18,6 +20,7 @@ interface BokDispatchReportProps {
     employees: Employee[];
     nonEmployees: NonEmployee[];
     settings: Settings;
+    onPermanentDelete?: (id: string) => void;
 }
 
 type ReportEntry = {
@@ -49,7 +52,8 @@ export function BokDispatchReportDialog({
     bokResidents,
     employees,
     nonEmployees,
-    settings
+    settings,
+    onPermanentDelete
 }: BokDispatchReportProps) {
     const [search, setSearch] = useState("");
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -165,12 +169,13 @@ export function BokDispatchReportDialog({
                                 <TableHead>Wysłany do (Koordynator BOK)</TableHead>
                                 <TableHead>Status Przypisania</TableHead>
                                 <TableHead>Znaleziono w Dziale</TableHead>
+                                <TableHead className="w-[80px] text-right">Akcje</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {filteredAndSortedData.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center h-24">Brak dopasowań do wyszukiwania lub brak wysłanych pracowników.</TableCell>
+                                    <TableCell colSpan={6} className="text-center h-24">Brak dopasowań do wyszukiwania lub brak wysłanych pracowników.</TableCell>
                                 </TableRow>
                             ) : (
                                 filteredAndSortedData.map(({ resident, isAssigned, assignedRecordType, assignedCoordinatorName, sendDateParsed }) => (
@@ -195,6 +200,31 @@ export function BokDispatchReportDialog({
                                                 </div>
                                             ) : (
                                                 <span className="text-muted-foreground">-</span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            {onPermanentDelete && (
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10">
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>Czy na pewno chcesz usunąć z bazy ten wpis z BOK?</AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                                Ta operacja jest nieodwracalna. Wpis <span className="font-bold">{`${resident.firstName} ${resident.lastName}`}</span> zostanie definitywnie wykreślony z bazy raportów.
+                                                            </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                                                            <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => onPermanentDelete(resident.id)}>
+                                                                Potwierdź i usuń
+                                                            </AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
                                             )}
                                         </TableCell>
                                     </TableRow>
