@@ -498,6 +498,7 @@ const ControlPanel = ({
     isAdmin,
     isBokTab,
     onOpenReport,
+    isDriver,
 }: {
     search: string;
     onSearch: (value: string) => void;
@@ -511,6 +512,7 @@ const ControlPanel = ({
     isAdmin: boolean;
     isBokTab?: boolean;
     onOpenReport?: () => void;
+    isDriver?: boolean;
 }) => {
     const { isMobile } = useIsMobile();
     return (
@@ -546,9 +548,13 @@ const ControlPanel = ({
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
-                                <DropdownMenuItem onClick={() => onAdd('employee')}>Dodaj pracownika</DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => onAdd('non-employee')}>Dodaj mieszkańca (NZ)</DropdownMenuItem>
-                                {isAdmin && <DropdownMenuItem onClick={() => onAdd('bok-resident')}>Dodaj mieszkańca BOK</DropdownMenuItem>}
+                                {(!isDriver || isAdmin) && (
+                                    <>
+                                        <DropdownMenuItem onClick={() => onAdd('employee')}>Dodaj pracownika</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => onAdd('non-employee')}>Dodaj mieszkańca (NZ)</DropdownMenuItem>
+                                    </>
+                                )}
+                                {(isAdmin || isDriver) && <DropdownMenuItem onClick={() => onAdd('bok-resident')}>Dodaj mieszkańca BOK</DropdownMenuItem>}
                             </DropdownMenuContent>
                         </DropdownMenu>
                     )}
@@ -922,6 +928,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                     isAdmin={currentUser.isAdmin}
                     isBokTab={tab === 'bok-residents'}
                     onOpenReport={() => setIsReportOpen(true)}
+                    isDriver={isDriver}
                 />
             </CardHeader>
             <CardContent>
