@@ -285,7 +285,7 @@ export function AddBokResidentForm({
       checkInDate: new Date(),
       checkOutDate: null,
       returnStatus: '',
-      status: '',
+      status: 'active',
       comments: '',
     },
   });
@@ -363,7 +363,7 @@ export function AddBokResidentForm({
         checkInDate: new Date(),
         checkOutDate: null,
         returnStatus: '',
-        status: '',
+        status: 'active',
         comments: '',
       });
     }

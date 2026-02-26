@@ -443,7 +443,7 @@ const useHousingData = () => {
         const allActiveOccupants: Occupant[] = [
             ...allEmployees.filter(e => e.status === 'active'),
             ...allNonEmployees.filter(ne => ne.status === 'active'),
-            ...allBokResidents.filter(bok => bok.status === 'active') // BOK residents are already globally filtered by MainLayout for Drivers
+            ...allBokResidents.filter(bok => bok.status === 'active' || !bok.status || bok.status === '') // BOK occupants added before explicit statuses was enforced
         ];
 
         return addressesToDisplay.map(address => {
