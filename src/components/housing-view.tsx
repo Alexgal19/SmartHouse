@@ -238,9 +238,17 @@ const AddressDetailView = ({
                                 checked={!aggregatedAddressesData.isActive}
                                 onCheckedChange={async (checked) => {
                                     if (!settings) return;
+                                    const newIsActive = !checked;
                                     const updatedAddresses = settings.addresses.map(a =>
                                         a.id === aggregatedAddressesData.id
-                                            ? { ...a, isActive: !checked }
+                                            ? {
+                                                ...a,
+                                                isActive: newIsActive,
+                                                // When unlocking address → automatically unlock all its rooms too
+                                                rooms: newIsActive
+                                                    ? a.rooms.map(r => ({ ...r, isActive: true }))
+                                                    : a.rooms,
+                                            }
                                             : a
                                     );
                                     await handleUpdateSettings({ addresses: updatedAddresses });
@@ -647,7 +655,7 @@ export const FilterControls = ({ filters, onFilterChange, settings, currentUser 
 
 
 export default function HousingView({ currentUser }: { currentUser: SessionData }) {
-    const { settings, handleEditEmployeeClick, handleEditNonEmployeeClick, handleEditBokResidentClick, handleUpdateSettings } = useMainLayout();
+    const { settings, rawSettings, handleEditEmployeeClick, handleEditNonEmployeeClick, handleEditBokResidentClick, handleUpdateSettings } = useMainLayout();
     const { isMobile } = useIsMobile();
     const [selectedAddressIds, setSelectedAddressIds] = useState<string[]>([]);
     const [selectedRoomIds, setSelectedRoomIds] = useState<string[]>([]);
@@ -774,7 +782,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                                                 address={address}
                                                 onOccupantClick={handleOccupantClick}
                                                 currentUser={currentUser}
-                                                settings={settings}
+                                                settings={rawSettings ?? settings}
                                                 handleUpdateSettings={handleUpdateSettings}
                                                 style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}
                                             />
@@ -861,7 +869,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                 onRoomClick={handleRoomClick}
                 selectedRoomIds={selectedRoomIds}
                 currentUser={currentUser}
-                settings={settings}
+                settings={rawSettings ?? settings}
                 handleUpdateSettings={handleUpdateSettings}
             />
         </div>
