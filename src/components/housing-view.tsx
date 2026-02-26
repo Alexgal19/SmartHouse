@@ -433,15 +433,17 @@ const useHousingData = () => {
         if (!settings || !allEmployees || !allNonEmployees || !allBokResidents || !currentUser) return [];
 
         let addressesToDisplay = settings.addresses;
-        if (!currentUser.isAdmin || (currentUser.isAdmin && selectedCoordinatorId !== 'all')) {
+        if (!currentUser.isAdmin && !currentUser.isDriver || (currentUser.isAdmin && selectedCoordinatorId !== 'all')) {
             const coordId = currentUser.isAdmin ? selectedCoordinatorId : currentUser.uid;
             addressesToDisplay = settings.addresses.filter(a => a.coordinatorIds.includes(coordId));
+        } else if (currentUser.isDriver) {
+            addressesToDisplay = settings.addresses.filter(a => a.coordinatorIds.includes(currentUser.uid));
         }
 
         const allActiveOccupants: Occupant[] = [
             ...allEmployees.filter(e => e.status === 'active'),
             ...allNonEmployees.filter(ne => ne.status === 'active'),
-            ...allBokResidents.filter(bok => bok.status === 'active')
+            ...allBokResidents.filter(bok => bok.status === 'active') // BOK residents are already globally filtered by MainLayout for Drivers
         ];
 
         return addressesToDisplay.map(address => {
