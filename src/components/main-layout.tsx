@@ -171,8 +171,10 @@ export default function MainLayout({
     ], []) as { view: View; icon: React.ElementType; label: string }[];
 
     const activeView = useMemo(() => {
-        return (searchParams.get('view') as View) || 'dashboard';
-    }, [searchParams]);
+        const view = searchParams.get('view') as View;
+        if (view) return view;
+        return initialSession.isDriver ? 'employees' : 'dashboard';
+    }, [searchParams, initialSession.isDriver]);
 
     const editEntityId = searchParams.get('edit');
 
