@@ -56,14 +56,16 @@ export const formSchema = z.object({
   gender: z.string().min(1, "Płeć jest wymagana."),
   checkInDate: z.date({ required_error: "Data zameldowania jest wymagana." }),
   checkOutDate: z.date().nullable().optional(),
+  dismissDate: z.date().nullable().optional(),
   returnStatus: z.string().optional(),
   status: z.string().optional(),
   comments: z.string().optional(),
 });
 
-export type BokResidentFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate' | 'coordinatorId'> & {
+export type BokResidentFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate' | 'dismissDate' | 'coordinatorId'> & {
   checkInDate: string | null;
   checkOutDate?: string | null;
+  dismissDate?: string | null;
   coordinatorId: string;
 };
 
@@ -251,16 +253,15 @@ export function AddBokResidentForm({
   };
 
   const handleDismissClick = async () => {
-    const checkOutDate = form.getValues('checkOutDate');
-    if (!resident || !checkOutDate) {
-      toast({ variant: "destructive", title: "Błąd", description: "Oznacz datę wyjazdu, zanim zwolnisz mieszkańca BOK!" });
+    const dismissDate = form.getValues('dismissDate');
+    if (!resident || !dismissDate) {
+      toast({ variant: "destructive", title: "Błąd", description: "Wypełnij pole \"Data zwolnienia\" przed zwolnieniem mieszkańca BOK!" });
       return;
     }
 
     setIsDismissing(true);
     try {
-      await onSave(form.getValues() as any); // trigger save first just in case
-      await handleDismissBokResident(resident.id, checkOutDate);
+      await handleDismissBokResident(resident.id, dismissDate);
       onOpenChange(false);
     } catch (e) {
       console.error('Dismiss failed:', e);
@@ -284,6 +285,7 @@ export function AddBokResidentForm({
       gender: '',
       checkInDate: new Date(),
       checkOutDate: null,
+      dismissDate: null,
       returnStatus: '',
       status: 'active',
       comments: '',
@@ -344,6 +346,7 @@ export function AddBokResidentForm({
         gender: resident.gender || '',
         checkInDate: parseDate(resident.checkInDate) ?? new Date(),
         checkOutDate: parseDate(resident.checkOutDate) ?? null,
+        dismissDate: parseDate(resident.dismissDate) ?? null,
         returnStatus: resident.returnStatus || '',
         status: resident.status || '',
         comments: resident.comments || '',
@@ -362,6 +365,7 @@ export function AddBokResidentForm({
         gender: '',
         checkInDate: new Date(),
         checkOutDate: null,
+        dismissDate: null,
         returnStatus: '',
         status: 'active',
         comments: '',
@@ -381,6 +385,7 @@ export function AddBokResidentForm({
       coordinatorId: values.coordinatorId || '',
       checkInDate: formatDate(values.checkInDate),
       checkOutDate: formatDate(values.checkOutDate),
+      dismissDate: formatDate(values.dismissDate),
     };
 
     try {
@@ -671,7 +676,7 @@ export function AddBokResidentForm({
                       name="checkOutDate"
                       render={({ field }) => (
                         <FormItem className="flex flex-col">
-                          <FormLabel>Data wyjazdu</FormLabel>
+                          <FormLabel>Data wyjazdu <span className="text-xs text-muted-foreground font-normal">(informacyjnie)</span></FormLabel>
                           <FormControl>
                             <DateInput value={field.value ?? undefined} onChange={field.onChange} />
                           </FormControl>
@@ -680,6 +685,22 @@ export function AddBokResidentForm({
                       )}
                     />
                   </div>
+
+                  {resident && (
+                    <FormField
+                      control={form.control}
+                      name="dismissDate"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Data zwolnienia</FormLabel>
+                          <FormControl>
+                            <DateInput value={field.value ?? undefined} onChange={field.onChange} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                     <FormField

@@ -60,6 +60,7 @@ export type BokResident = {
   checkInDate: string | null;
   checkOutDate: string | null;
   sendDate: string | null;
+  dismissDate: string | null;
   returnStatus: string;
   status: string;
   comments?: string | null;

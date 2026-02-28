@@ -715,6 +715,8 @@ describe('Server Actions', () => {
                 gender: 'Mężczyzna',
                 checkInDate: '2024-01-01',
                 checkOutDate: null,
+                sendDate: null,
+                dismissDate: null,
                 returnStatus: '',
                 status: 'active',
                 comments: ''
@@ -804,3 +806,103 @@ describe('Server Actions', () => {
         });
     });
 });
+
+// ─────────────────────────────────────────────────────────────────────────
+// NEW — importBokResidentsFromExcel
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('importBokResidentsFromExcel (new feature tests)', () => {
+    const mockSettings2: Settings = {
+        id: 'global-settings',
+        coordinators: [
+            { uid: 'coord-1', name: 'Jan Kowalski', isAdmin: false, departments: ['IT', 'HR'], visibilityMode: 'department' },
+        ],
+        localities: ['Warszawa'],
+        departments: ['IT'],
+        nationalities: ['Polska'],
+        genders: ['Mężczyzna'],
+        addresses: [],
+        paymentTypesNZ: [],
+        statuses: [],
+        bokRoles: ['Kierowca'],
+        bokReturnOptions: [],
+        bokStatuses: [],
+    };
+
+    function createMockExcel2(data: Record<string, unknown>[]): string {
+        const XLSX = require('xlsx');
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Arkusz1');
+        const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+        return buffer.toString('base64');
+    }
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+        const mockedGetSettings2 = require('@/lib/sheets').getSettings as jest.Mock;
+        mockedGetSettings2.mockResolvedValue(mockSettings2);
+    });
+
+    it('should correctly import valid BOK residents', async () => {
+        const bokData = [{
+            'Imię': 'Jan', 'Nazwisko': 'Kierowca', 'Rola': 'Kierowca',
+            'Koordynator': 'Jan Kowalski', 'Data zameldowania': '01.01.2024',
+            'Miejscowość': 'Warszawa', 'Adres': 'Testowa 1', 'Pokój': '101',
+            'Narodowość': 'Polska', 'Zakład': 'Transport',
+        }];
+        const base64Content = createMockExcel2(bokData);
+
+        const mockAddRowsBok = jest.fn().mockResolvedValue(undefined);
+        const mockAddRowsNotification = jest.fn().mockResolvedValue(undefined);
+
+        const mockedGetSheet2 = require('@/lib/sheets').getSheet as jest.Mock;
+        mockedGetSheet2.mockImplementation((title: string) => {
+            if (title === 'BokResidents') return Promise.resolve({ addRows: mockAddRowsBok });
+            if (title === 'Powiadomienia') return Promise.resolve({ addRows: mockAddRowsNotification });
+            return Promise.resolve({ addRows: jest.fn(), getRows: jest.fn().mockResolvedValue([]) });
+        });
+
+        const { importBokResidentsFromExcel: importBok } = require('@/lib/actions');
+        const result = await importBok(base64Content, 'coord-1', mockSettings2);
+
+        expect(result.importedCount).toBe(1);
+        expect(result.errors).toHaveLength(0);
+        const addedRecords = mockAddRowsBok.mock.calls[0][0];
+        expect(addedRecords[0]).toMatchObject({ firstName: 'Jan', lastName: 'Kierowca', status: 'active' });
+    });
+
+    it('should return error when coordinator not found in BOK import', async () => {
+        const bokData = [{
+            'Imię': 'X', 'Nazwisko': 'Y', 'Rola': 'Kierowca',
+            'Koordynator': 'Brak Koordynatora', 'Data zameldowania': '01.01.2024',
+            'Miejscowość': 'Warszawa', 'Adres': 'Testowa', 'Pokój': '1',
+            'Narodowość': 'Polska', 'Zakład': 'IT',
+        }];
+        const base64Content = createMockExcel2(bokData);
+
+        const mockedGetSheet2 = require('@/lib/sheets').getSheet as jest.Mock;
+        mockedGetSheet2.mockResolvedValue({ addRows: jest.fn(), getRows: jest.fn().mockResolvedValue([]) });
+
+        const { importBokResidentsFromExcel: importBok } = require('@/lib/actions');
+        const result = await importBok(base64Content, 'coord-1', mockSettings2);
+
+        expect(result.importedCount).toBe(0);
+        expect(result.errors[0]).toContain('Nie znaleziono koordynatora');
+    });
+
+    it('should return error when required BOK fields are missing', async () => {
+        const bokData = [{ 'Imię': 'Piotr', 'Nazwisko': 'Niepełny' }];
+        const base64Content = createMockExcel2(bokData);
+
+        const mockedGetSheet2 = require('@/lib/sheets').getSheet as jest.Mock;
+        mockedGetSheet2.mockResolvedValue({ addRows: jest.fn(), getRows: jest.fn().mockResolvedValue([]) });
+
+        const { importBokResidentsFromExcel: importBok } = require('@/lib/actions');
+        const result = await importBok(base64Content, 'coord-1', mockSettings2);
+
+        expect(result.importedCount).toBe(0);
+        expect(result.errors[0]).toContain('Brak wymaganych danych');
+    });
+});
+

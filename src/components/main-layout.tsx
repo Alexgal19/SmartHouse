@@ -122,6 +122,7 @@ type MainLayoutContextType = {
     handleRestoreEmployee: (employee: Employee) => Promise<void>;
     handleDeleteEmployee: (employeeId: string, actorUid: string) => Promise<void>;
     handleRestoreNonEmployee: (nonEmployee: NonEmployee) => Promise<void>;
+    handleRestoreBokResident: (bokResident: BokResident) => Promise<void>;
     handleImportEmployees: (fileContent: string, settings: Settings) => Promise<void>;
     handleImportNonEmployees: (fileContent: string, settings: Settings) => Promise<void>;
     handleImportBokResidents: (fileContent: string, settings: Settings) => Promise<void>;
@@ -462,7 +463,10 @@ export default function MainLayout({
 
     useEffect(() => {
         if (currentUser) {
-            refreshData(false);
+            refreshData(false).then(() => {
+                // Run status check immediately after data loads, then every 5 minutes
+                handleRefreshStatuses(false);
+            });
             const intervalId = setInterval(() => {
                 handleRefreshStatuses(false);
             }, 5 * 60 * 1000); // every 5 minutes
@@ -595,6 +599,7 @@ export default function MainLayout({
                     address: data.address ?? '',
                     roomNumber: data.roomNumber ?? '',
                     checkOutDate: data.checkOutDate ?? null,
+                    dismissDate: data.dismissDate ?? null,
                     returnStatus: data.returnStatus ?? '',
                     zaklad: data.zaklad ?? '',
                     status: data.status ?? '',
@@ -664,14 +669,14 @@ export default function MainLayout({
         }
     }, [currentUser, rawBokResidents, toast]);
 
-    const handleDismissBokResident = useCallback(async (id: string, checkOutDate: Date) => {
+    const handleDismissBokResident = useCallback(async (id: string, dismissDate: Date) => {
         if (!currentUser) return;
         try {
-            await updateBokResident(id, { status: 'Wymeldowany', checkOutDate: format(checkOutDate, 'yyyy-MM-dd') }, currentUser.uid);
-            toast({ title: "Sukces", description: "Mieszkaniec BOK został pomyślnie wymeldowany." });
+            await updateBokResident(id, { status: 'dismissed', dismissDate: format(dismissDate, 'yyyy-MM-dd') }, currentUser.uid);
+            toast({ title: "Sukces", description: "Mieszkaniec BOK został pomyślnie zwolniony." });
             await refreshData(false);
         } catch (e: unknown) {
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się wymeldować mieszkańca BOK." });
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zwolnić mieszkańca BOK." });
         }
     }, [currentUser, refreshData, toast]);
 
@@ -857,6 +862,17 @@ export default function MainLayout({
         }
     }, [currentUser, refreshData, toast]);
 
+    const handleRestoreBokResident = useCallback(async (bokResident: BokResident) => {
+        if (!currentUser) return;
+        try {
+            await updateBokResident(bokResident.id, { status: 'active', dismissDate: null, checkOutDate: null }, currentUser.uid);
+            toast({ title: "Sukces", description: "Mieszkaniec BOK został przywrócony." });
+            await refreshData(false);
+        } catch (e: unknown) {
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się przywrócić mieszkańca BOK." });
+        }
+    }, [currentUser, refreshData, toast]);
+
     const handleDeleteEmployee = useCallback(async (employeeId: string, actorUid: string) => {
         if (!currentUser) return;
         const originalEmployees = rawEmployees;
@@ -1010,6 +1026,7 @@ export default function MainLayout({
         handleRestoreEmployee,
         handleDeleteEmployee,
         handleRestoreNonEmployee,
+        handleRestoreBokResident,
         handleImportEmployees,
         handleImportNonEmployees,
         handleImportBokResidents,
@@ -1054,6 +1071,7 @@ export default function MainLayout({
         handleRestoreEmployee,
         handleDeleteEmployee,
         handleRestoreNonEmployee,
+        handleRestoreBokResident,
         handleImportEmployees,
         handleImportNonEmployees,
         handleImportBokResidents,
@@ -1077,37 +1095,54 @@ export default function MainLayout({
         <SidebarProvider>
             <MainLayoutContext.Provider value={contextValue}>
                 <div className="flex h-screen w-full bg-muted/50">
-                    <Sidebar>
-                        <SidebarHeader>
-                            <div className="flex items-center gap-3">
-                                <ModernHouseIcon className="h-7 w-7 text-primary" />
-                                <span className={cn("font-semibold text-xl whitespace-nowrap transition-all duration-300", "group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0")}>SmartHouse</span>
+
+                    {/* Desktop icon-only sidebar */}
+                    <aside className="hidden sm:flex flex-col items-center w-16 h-screen bg-sidebar border-r border-sidebar-border py-4 gap-1 z-30 shrink-0">
+                        {/* Logo icon */}
+                        <div className="flex flex-col items-center justify-center mb-4 gap-0.5">
+                            <ModernHouseIcon className="h-7 w-7 text-primary" />
+                            <span className="text-[10px] font-bold tracking-widest text-primary leading-none">SW</span>
+                        </div>
+
+                        {/* Nav items */}
+                        {visibleNavItems.map(item => (
+                            <div key={item.view} className="relative group w-full flex justify-center">
+                                <Link
+                                    href={`/dashboard?view=${item.view}`}
+                                    aria-label={item.label}
+                                    className={cn(
+                                        'flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200',
+                                        'hover:bg-primary/10',
+                                        item.view === 'settings' && !currentUser?.isAdmin
+                                            ? 'opacity-40 pointer-events-none'
+                                            : '',
+                                        activeView === item.view
+                                            ? 'bg-primary text-primary-foreground shadow-md hover:bg-primary'
+                                            : 'text-muted-foreground'
+                                    )}
+                                >
+                                    <item.icon className="h-5 w-5" />
+                                </Link>
+
+                                {/* Elegant tooltip */}
+                                <div className={cn(
+                                    'pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 z-50',
+                                    'flex items-center gap-2',
+                                    'opacity-0 translate-x-[-6px] group-hover:opacity-100 group-hover:translate-x-0',
+                                    'transition-all duration-200 ease-out'
+                                )}>
+                                    {/* Arrow */}
+                                    <div className="w-2 h-2 rotate-45 bg-popover border-l border-b border-border shrink-0" />
+                                    {/* Label card */}
+                                    <div className="bg-popover border border-border rounded-lg px-3 py-1.5 shadow-xl -ml-1">
+                                        <span className="text-sm font-medium text-popover-foreground whitespace-nowrap">{item.label}</span>
+                                    </div>
+                                </div>
                             </div>
-                        </SidebarHeader>
-                        <SidebarContent>
-                            <SidebarMenu>
-                                {visibleNavItems.map(item => (
-                                    <SidebarMenuItem key={item.view}>
-                                        <Link href={`/dashboard?view=${item.view}`} legacyBehavior passHref>
-                                            <SidebarMenuButton
-                                                isActive={activeView === item.view}
-                                                tooltip={item.label}
-                                                aria-disabled={item.view === 'settings' && !currentUser?.isAdmin}
-                                                tabIndex={item.view === 'settings' && !currentUser?.isAdmin ? -1 : undefined}
-                                                className={item.view === 'settings' && !currentUser?.isAdmin ? 'opacity-50 pointer-events-none' : undefined}
-                                            >
-                                                <item.icon />
-                                                <span>{item.label}</span>
-                                            </SidebarMenuButton>
-                                        </Link>
-                                    </SidebarMenuItem>
-                                ))}
-                            </SidebarMenu>
-                        </SidebarContent>
-                        <SidebarFooter>
-                        </SidebarFooter>
-                    </Sidebar>
-                    <div className="flex flex-1 flex-col">
+                        ))}
+                    </aside>
+
+                    <div className="flex flex-1 flex-col min-w-0">
                         {currentUser && <Header
                             user={currentUser}
                             activeView={activeView}

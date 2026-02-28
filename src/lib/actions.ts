@@ -39,7 +39,7 @@ const NON_EMPLOYEE_HEADERS = [
 
 const BOK_RESIDENT_HEADERS = [
     'id', 'role', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'address', 'roomNumber',
-    'zaklad', 'gender', 'checkInDate', 'checkOutDate', 'returnStatus', 'status', 'comments', 'sendDate'
+    'zaklad', 'gender', 'checkInDate', 'checkOutDate', 'returnStatus', 'status', 'comments', 'sendDate', 'dismissDate'
 ];
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
@@ -147,7 +147,7 @@ const serializeBokResident = (resident: Partial<BokResident>): Record<string, st
             continue;
         }
 
-        if (['checkInDate', 'checkOutDate', 'sendDate'].includes(key)) {
+        if (['checkInDate', 'checkOutDate', 'sendDate', 'dismissDate'].includes(key)) {
             serialized[key] = serializeDate(value as string);
         } else {
             serialized[key] = String(value);
@@ -1118,9 +1118,45 @@ export async function checkAndUpdateStatuses(actorUid?: string): Promise<{ updat
             }
         }
 
+        // Process BOK residents
+        const bokSheet = await getSheet(SHEET_NAME_BOK_RESIDENTS, BOK_RESIDENT_HEADERS);
+        const bokRows = await bokSheet.getRows();
+        for (const row of bokRows) {
+            const status = String(row.get('status') || '');
+            const dismissDateString = String(row.get('dismissDate') || '');
+
+            if ((status === 'active' || status === '' || !status) && dismissDateString) {
+                // Support multiple date formats stored in Google Sheets
+                let dismissDate = parseISO(dismissDateString);
+                if (!isValid(dismissDate)) {
+                    dismissDate = dateFnsParse(dismissDateString, 'dd-MM-yyyy HH:mm', new Date());
+                }
+                if (!isValid(dismissDate)) {
+                    dismissDate = dateFnsParse(dismissDateString, 'dd-MM-yyyy', new Date());
+                }
+                if (!isValid(dismissDate)) {
+                    dismissDate = dateFnsParse(dismissDateString, 'dd.MM.yyyy', new Date());
+                }
+                if (!isValid(dismissDate)) {
+                    dismissDate = new Date(dismissDateString);
+                }
+
+                if (isValid(dismissDate) && dismissDate < today) {
+                    row.set('status', 'dismissed');
+                    await withTimeout(row.save(), TIMEOUT_MS, 'row.save(BokResident)');
+                    updatedCount++;
+                    const originalResident = { ...row.toObject(), ...splitFullName(row.get('fullName')) } as BokResident;
+                    await createNotification(actor, 'automatycznie zwolnił', originalResident, settings, undefined, [
+                        { field: 'status', oldValue: status || 'active', newValue: 'dismissed' }
+                    ], false);
+                }
+            }
+        }
+
         if (updatedCount > 0) {
             await invalidateEmployeesCache();
             await invalidateNonEmployeesCache();
+            await invalidateBokResidentsCache();
             revalidatePath('/dashboard');
         }
 
@@ -1728,6 +1764,7 @@ const processImport = async (
                         zaklad: (normalizedRow['zakład'] as string)?.trim() || '',
                         returnStatus: (normalizedRow['opcja powrotu'] as string)?.trim() || 'Brak',
                         sendDate: null,
+                        dismissDate: null,
                     } as BokResident;
                     // remove non-bok fields to satisfy type if needed
                     if ('departureReportDate' in newRecord) delete (newRecord as any).departureReportDate;

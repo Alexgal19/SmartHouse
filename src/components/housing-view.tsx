@@ -526,6 +526,33 @@ const MobileAddressCard = ({ address, onOccupantClick, currentUser, settings, ha
                 </AccordionTrigger>
                 <AccordionContent className="p-4 pt-0">
                     <div className="space-y-4">
+                        {currentUser.isAdmin && (
+                            <div className="flex items-center justify-between rounded-md border p-3 bg-muted/30">
+                                <Label htmlFor={`lock-address-mobile-${address.id}`} className="text-sm font-medium cursor-pointer">
+                                    {address.isActive ? 'Zablokuj adres' : 'Odblokuj adres'}
+                                </Label>
+                                <Switch
+                                    id={`lock-address-mobile-${address.id}`}
+                                    checked={!address.isActive}
+                                    onCheckedChange={async (checked) => {
+                                        const newIsActive = !checked;
+                                        const updatedAddresses = settings!.addresses.map(a =>
+                                            a.id === address.id
+                                                ? {
+                                                    ...a,
+                                                    isActive: newIsActive,
+                                                    // When unlocking address → automatically unlock all its rooms too
+                                                    rooms: newIsActive
+                                                        ? a.rooms.map(r => ({ ...r, isActive: true }))
+                                                        : a.rooms,
+                                                }
+                                                : a
+                                        );
+                                        await handleUpdateSettings({ addresses: updatedAddresses });
+                                    }}
+                                />
+                            </div>
+                        )}
                         <div>
                             <h4 className="text-sm font-semibold mb-2">Pokoje</h4>
                             <div className="space-y-2">

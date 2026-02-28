@@ -583,6 +583,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         settings,
         handleRestoreEmployee,
         handleRestoreNonEmployee,
+        handleRestoreBokResident,
         handleDeleteEmployee,
         handleEditEmployeeClick,
         handleEditNonEmployeeClick,
@@ -603,6 +604,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     const { isMobile, isMounted } = useIsMobile();
 
     const tab = (searchParams.get('tab') as 'active' | 'dismissed' | 'non-employees' | 'bok-residents' | 'history') || (currentUser.isDriver ? 'bok-residents' : 'active');
+    const [bokSubTab, setBokSubTab] = useState<'active' | 'sent' | 'dismissed'>('active');
     const page = Number(searchParams.get('page') || '1');
     const search = searchParams.get('search') || '';
     const viewMode = (searchParams.get('viewMode') as 'list' | 'grid') || (isMobile ? 'grid' : 'list');
@@ -733,7 +735,18 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
             dismissedEmployees: filteredEmployees.filter(e => e.status === 'dismissed'),
             activeNonEmployees: filteredNonEmployees.filter(ne => ne.status !== 'dismissed'),
             dismissedNonEmployees: filteredNonEmployees.filter(ne => ne.status === 'dismissed'),
-            bokResidents: filteredBokResidents, // Show all BOK residents in their tab, filtering by status inside component if needed
+            // Aktywni: no checkOutDate, no dismissDate, not dismissed
+            activeBokResidents: filteredBokResidents.filter(b =>
+                b.status !== 'dismissed' && !b.dismissDate && !b.checkOutDate
+            ),
+            // Wyslani: has checkOutDate (Data wyjazdu), not yet dismissed
+            sentBokResidents: filteredBokResidents.filter(b =>
+                b.status !== 'dismissed' && !b.dismissDate && !!b.checkOutDate
+            ),
+            // Zwolnieni: dismissed status OR has dismissDate
+            dismissedBokResidents: filteredBokResidents.filter(b =>
+                b.status === 'dismissed' || !!b.dismissDate
+            ),
             history: filteredHistory,
         }
 
@@ -744,9 +757,19 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         active: filteredAndSortedData.activeEmployees || [],
         dismissed: [...(filteredAndSortedData.dismissedEmployees || []), ...(filteredAndSortedData.dismissedNonEmployees || [])],
         'non-employees': filteredAndSortedData.activeNonEmployees || [],
-        'bok-residents': filteredAndSortedData.bokResidents || [],
+        'bok-residents': filteredAndSortedData.activeBokResidents || [],
         history: filteredAndSortedData.history || [],
     }), [filteredAndSortedData]);
+
+    const bokData = bokSubTab === 'active'
+        ? (filteredAndSortedData.activeBokResidents || [])
+        : bokSubTab === 'sent'
+            ? (filteredAndSortedData.sentBokResidents || [])
+            : (filteredAndSortedData.dismissedBokResidents || []);
+
+    const bokTotalCount = (filteredAndSortedData.activeBokResidents?.length || 0)
+        + (filteredAndSortedData.sentBokResidents?.length || 0)
+        + (filteredAndSortedData.dismissedBokResidents?.length || 0);
 
     const currentData = dataMap[tab];
     const totalPages = Math.ceil((currentData?.length || 0) / ITEMS_PER_PAGE);
@@ -778,8 +801,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
 
     const handleRestore = async (entity: Entity) => {
         if (isBokResident(entity)) {
-            // BOK residents don't have a dedicated restore flow — open edit form instead
-            handleEditBokResidentClick(entity);
+            await handleRestoreBokResident(entity);
         } else if (isEmployee(entity)) {
             await handleRestoreEmployee(entity);
         } else {
@@ -900,7 +922,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
             {(currentUser.isAdmin || isDriver) && (
                 <TabsTrigger value="bok-residents" disabled={isPending} className="flex-1 min-w-[120px] bg-muted data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-muted/80">
                     <Briefcase className="mr-2 h-4 w-4 shrink-0" />
-                    <span className="truncate">BOK ({dataMap['bok-residents'].length})</span>
+                    <span className="truncate">BOK ({bokTotalCount})</span>
                 </TabsTrigger>
             )}
             {currentUser.isAdmin && !isDriver && (
@@ -943,7 +965,62 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                             <TabsContent value="non-employees" className="mt-4">{renderContent(paginatedData as Entity[])}</TabsContent>
                         </>
                     )}
-                    {(currentUser.isAdmin || isDriver) && <TabsContent value="bok-residents" className="mt-4">{renderContent(paginatedData as Entity[])}</TabsContent>}
+                    {(currentUser.isAdmin || isDriver) && (
+                        <TabsContent value="bok-residents" className="mt-4">
+                            {/* Inner sub-tabs: Aktywni / Wyslani / Zwolnieni */}
+                            <Tabs value={bokSubTab} onValueChange={(v) => setBokSubTab(v as 'active' | 'sent' | 'dismissed')} className="mb-4">
+                                <TabsList className="h-auto bg-muted/50 p-1 rounded-md">
+                                    <TabsTrigger value="active" className="rounded px-4 py-1.5 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                                        <Users className="mr-2 h-3.5 w-3.5 shrink-0" />
+                                        Aktywni ({filteredAndSortedData.activeBokResidents?.length || 0})
+                                    </TabsTrigger>
+                                    <TabsTrigger value="sent" className="rounded px-4 py-1.5 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                                        <Briefcase className="mr-2 h-3.5 w-3.5 shrink-0" />
+                                        Wyslani ({filteredAndSortedData.sentBokResidents?.length || 0})
+                                    </TabsTrigger>
+                                    <TabsTrigger value="dismissed" className="rounded px-4 py-1.5 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                                        <UserX className="mr-2 h-3.5 w-3.5 shrink-0" />
+                                        Zwolnieni ({filteredAndSortedData.dismissedBokResidents?.length || 0})
+                                    </TabsTrigger>
+                                </TabsList>
+                            </Tabs>
+                            <ScrollArea className="h-[55vh] overflow-x-auto" style={{ opacity: isPending ? 0.6 : 1 }}>
+                                {isMounted ? (
+                                    viewMode === 'list' ? (
+                                        <EntityTable
+                                            entities={bokData.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)}
+                                            settings={settings}
+                                            onEdit={handleEdit}
+                                            onRestore={bokSubTab === 'dismissed' ? handleRestore : undefined}
+                                            onPermanentDelete={handlePermanentDelete}
+                                            isDismissed={bokSubTab === 'dismissed'}
+                                            onSort={handleSort}
+                                            sortBy={sortBy}
+                                            sortOrder={sortOrder}
+                                            isBokTab
+                                        />
+                                    ) : (
+                                        <EntityCardList
+                                            entities={bokData.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)}
+                                            settings={settings}
+                                            onEdit={handleEdit}
+                                            onRestore={bokSubTab === 'dismissed' ? handleRestore : undefined}
+                                            onPermanentDelete={handlePermanentDelete}
+                                            isDismissed={bokSubTab === 'dismissed'}
+                                        />
+                                    )
+                                ) : (
+                                    <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>
+                                )}
+                            </ScrollArea>
+                            <PaginationControls
+                                currentPage={page}
+                                totalPages={Math.ceil(bokData.length / ITEMS_PER_PAGE)}
+                                onPageChange={(p) => updateSearchParams({ page: p })}
+                                isDisabled={isPending}
+                            />
+                        </TabsContent>
+                    )}
                     {currentUser.isAdmin && !isDriver && <TabsContent value="history" className="mt-4">{renderHistoryContent()}</TabsContent>}
                 </Tabs>
             </CardContent>
