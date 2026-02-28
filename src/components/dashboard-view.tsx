@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader } from './ui/card';
 import { differenceInDays, parseISO } from 'date-fns';
 import dynamic from 'next/dynamic';
 import { QuickActions } from './dashboard/quick-actions';
+import { AddressPreviewDialog } from './address-preview-dialog';
 
 const DynamicDashboardCharts = dynamic(() => import('./dashboard/charts').then(mod => mod.DashboardCharts), {
   loading: () => (
@@ -35,9 +36,9 @@ const DynamicCoordinatorOccupancyChart = dynamic(() => import('./dashboard/coord
 });
 
 
-export default function DashboardView({ currentUser }: { currentUser: SessionData}) {
-  const { 
-    allEmployees, 
+export default function DashboardView({ currentUser }: { currentUser: SessionData }) {
+  const {
+    allEmployees,
     allNonEmployees,
     settings,
     hasNewCheckouts,
@@ -46,84 +47,95 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
   } = useMainLayout();
 
   const [isUpcomingCheckoutsModalOpen, setIsUpcomingCheckoutsModalOpen] = useState(false);
+  const [isAddressPreviewOpen, setIsAddressPreviewOpen] = useState(false);
 
   const { isMobile } = useIsMobile();
-  
+
   if (!allEmployees || !allNonEmployees || !settings) {
-      return (
-        <div className="space-y-6">
-            <Card>
-                <CardHeader>
-                    <Skeleton className="h-8 w-1/3" />
-                </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-                        <Skeleton className="h-24 w-full" />
-                        <Skeleton className="h-24 w-full" />
-                        <Skeleton className="h-24 w-full" />
-                        <Skeleton className="h-24 w-full" />
-                    </div>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader>
-                    <Skeleton className="h-8 w-1/4" />
-                </CardHeader>
-                <CardContent>
-                    <Skeleton className="h-64 w-full" />
-                </CardContent>
-            </Card>
-        </div>
-      );
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-8 w-1/3" />
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-24 w-full" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-8 w-1/4" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-64 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
-  
+
   const handleUpcomingCheckoutsClick = () => {
     setIsUpcomingCheckoutsModalOpen(true);
     setHasNewCheckouts(false);
-    
+
     if (allEmployees && allNonEmployees) {
-        const upcomingIds = [...allEmployees, ...allNonEmployees]
-            .filter(o => {
-                if (!o.checkOutDate) return false;
-                const today = new Date();
-                const date = parseISO(o.checkOutDate);
-                const diff = differenceInDays(date, today);
-                return diff >= 0 && diff <= 30;
-            })
-            .map(o => o.id);
-        localStorage.setItem('upcomingCheckouts', JSON.stringify(upcomingIds));
+      const upcomingIds = [...allEmployees, ...allNonEmployees]
+        .filter(o => {
+          if (!o.checkOutDate) return false;
+          const today = new Date();
+          const date = parseISO(o.checkOutDate);
+          const diff = differenceInDays(date, today);
+          return diff >= 0 && diff <= 30;
+        })
+        .map(o => o.id);
+      localStorage.setItem('upcomingCheckouts', JSON.stringify(upcomingIds));
     }
   };
-  
+
   return (
     <>
       <div className="space-y-6">
-          {currentUser.isAdmin && <CoordinatorFilter />}
-          
-          {currentUser.isAdmin && selectedCoordinatorId !== 'all' && (
-            <DynamicCoordinatorOccupancyChart />
-          )}
+        {currentUser.isAdmin && <CoordinatorFilter />}
 
-          <DashboardKPIs 
-              employees={allEmployees}
-              nonEmployees={allNonEmployees}
-              onUpcomingCheckoutsClick={handleUpcomingCheckoutsClick}
-              hasNewCheckouts={currentUser.isAdmin && hasNewCheckouts}
-          />
-          <QuickActions />
-          <DynamicDashboardCharts
-              employees={allEmployees}
-              nonEmployees={allNonEmployees}
-              settings={settings}
-          />
+        {currentUser.isAdmin && selectedCoordinatorId !== 'all' && (
+          <DynamicCoordinatorOccupancyChart />
+        )}
+
+        <DashboardKPIs
+          employees={allEmployees}
+          nonEmployees={allNonEmployees}
+          onUpcomingCheckoutsClick={handleUpcomingCheckoutsClick}
+          hasNewCheckouts={currentUser.isAdmin && hasNewCheckouts}
+        />
+        <QuickActions onOpenAddressPreview={() => setIsAddressPreviewOpen(true)} />
+        <DynamicDashboardCharts
+          employees={allEmployees}
+          nonEmployees={allNonEmployees}
+          settings={settings}
+        />
       </div>
 
-      <UpcomingCheckoutsDialog 
+      <UpcomingCheckoutsDialog
         isOpen={isUpcomingCheckoutsModalOpen}
         onOpenChange={setIsUpcomingCheckoutsModalOpen}
         employees={allEmployees}
         nonEmployees={allNonEmployees}
       />
+
+      {settings && (
+        <AddressPreviewDialog
+          isOpen={isAddressPreviewOpen}
+          onOpenChange={setIsAddressPreviewOpen}
+          settings={settings}
+          allEmployees={allEmployees}
+          allNonEmployees={allNonEmployees}
+        />
+      )}
     </>
   );
 }

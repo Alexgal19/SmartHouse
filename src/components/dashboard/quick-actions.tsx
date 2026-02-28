@@ -22,7 +22,7 @@ const ActionButton = ({ icon, label, onClick, disabled }: ActionButtonProps) => 
     </Button>
 );
 
-export function QuickActions() {
+export function QuickActions({ onOpenAddressPreview }: { onOpenAddressPreview?: () => void }) {
     const { handleAddEmployeeClick, handleAddNonEmployeeClick } = useMainLayout();
     const { pushSubscription, subscribe, unsubscribe, isSupported, isSubscribing, isUnsubscribing } = usePushSubscription();
     const router = useRouter();
@@ -47,6 +47,11 @@ export function QuickActions() {
             icon: <Building className="h-6 w-6 text-green-500" />,
             label: "Przeglądaj mieszkania",
             onClick: () => router.push('/dashboard?view=housing')
+        },
+        {
+            icon: <Building className="h-6 w-6 text-indigo-500" />,
+            label: "Podgląd miejsc",
+            onClick: () => onOpenAddressPreview && onOpenAddressPreview()
         },
     ];
 

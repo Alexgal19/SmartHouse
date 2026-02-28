@@ -172,10 +172,14 @@ export function AddressPreviewDialog({
       if (!item.isActive) return;
 
       const current = summary.get(item.locality) || { total: 0, occupied: 0, available: 0 };
+
+      // Calculate true available for this specific item (never negative)
+      const trueAvailable = Math.max(0, item.capacity - item.occupied);
+
       summary.set(item.locality, {
         total: current.total + item.capacity,
         occupied: current.occupied + item.occupied,
-        available: current.available + item.available,
+        available: current.available + trueAvailable,
       });
     });
 

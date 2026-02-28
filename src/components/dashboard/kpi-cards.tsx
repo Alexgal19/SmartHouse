@@ -8,7 +8,7 @@ import type { Employee, NonEmployee } from "@/types";
 import { differenceInDays, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ModernHouseIcon } from '../icons/modern-house-icon';
-import { countActiveAddressesInUse } from '@/lib/address-filters';
+import { countActiveAddressesInUse, isOwnAddressEntry } from '@/lib/address-filters';
 import { useMainLayout } from '../main-layout';
 
 const kpiIcons = {
@@ -73,10 +73,11 @@ export function DashboardKPIs({
             return diff >= 0 && diff <= 30;
         });
 
-        // Count apartments that are active (not blocked) for ALL occupants (employees + non-employees)
+        // Count all apartments that are active (not blocked) in the system
+        // excluding personal apartments ("Własne mieszkania")
         const apartmentsInUse = settings
-            ? countActiveAddressesInUse(allActiveOccupants, settings.addresses)
-            : new Set(allActiveOccupants.map(o => o.address).filter(Boolean)).size;
+            ? settings.addresses.filter(a => a.isActive && !isOwnAddressEntry(a.name)).length
+            : 0;
 
         return {
             totalEmployees: activeEmployees.length,
