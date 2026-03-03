@@ -460,6 +460,9 @@ const useHousingData = () => {
             const totalCapacity = getActiveAddressCapacity(address);
             const occupantCount = occupantsInAddress.length;
 
+            const normalizedAddressName = address.name.toLowerCase().replace(/ł/g, 'l');
+            const isOwnAddress = normalizedAddressName.includes('wlasne mieszkani');
+
             const rooms: RoomWithOccupants[] = address.rooms.map(room => {
                 const occupantsInRoom = occupantsInAddress.filter(o => o.roomNumber === room.name);
                 return {
@@ -470,7 +473,7 @@ const useHousingData = () => {
                     isLocked: room.isLocked,
                     occupants: occupantsInRoom,
                     occupantCount: occupantsInRoom.length,
-                    available: room.capacity - occupantsInRoom.length,
+                    available: isOwnAddress ? 0 : room.capacity - occupantsInRoom.length,
                 };
             });
 
@@ -482,7 +485,7 @@ const useHousingData = () => {
                 occupants: occupantsInAddress,
                 occupantCount: occupantCount,
                 capacity: totalCapacity,
-                available: totalCapacity - occupantCount,
+                available: isOwnAddress ? 0 : totalCapacity - occupantCount,
                 occupancy: totalCapacity > 0 ? (occupantCount / totalCapacity) * 100 : 0,
                 rooms: rooms
             };
@@ -740,7 +743,8 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
         // Calculate available places per locality (only from active addresses/rooms)
         for (const locality in grouped) {
             grouped[locality].availablePlaces = grouped[locality].addresses.reduce((sum, address) => {
-                if (address.name.toLowerCase().startsWith('własne mieszkanie')) {
+                const normalizedAddressName = address.name.toLowerCase().replace(/ł/g, 'l');
+                if (normalizedAddressName.includes('wlasne mieszkani')) {
                     return sum;
                 }
                 // Only count available places if address is active

@@ -1960,8 +1960,12 @@ export async function sendPushNotification(
         const settings = await getSettings();
         const coordinator = settings.coordinators.find((c: { uid: string; pushSubscription?: string | null }) => c.uid === coordinatorId);
 
-        if (!coordinator || !coordinator.pushSubscription) {
-            return;
+        if (!coordinator) {
+            throw new Error(`Nie znaleziono koordynatora o ID ${coordinatorId}.`);
+        }
+
+        if (!coordinator.pushSubscription) {
+            throw new Error(`Koordynator ${coordinator.name || coordinatorId} nie ma włączonych (lub skonfigurowanych) powiadomień PUSH na swoim urządzeniu.`);
         }
 
         const token = coordinator.pushSubscription;

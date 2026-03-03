@@ -619,12 +619,18 @@ export default function MainLayout({
         if (!editingBokResident || !currentUser) return;
         try {
             const link = `/dashboard?view=employees&action=add&firstName=${encodeURIComponent(editingBokResident.firstName)}&lastName=${encodeURIComponent(editingBokResident.lastName)}&nationality=${encodeURIComponent(editingBokResident.nationality)}&zaklad=${encodeURIComponent(editingBokResident.zaklad || '')}`;
-            await sendPushNotification(
-                editingBokResident.coordinatorId,
-                'Nowe zadanie: Dodaj pracownika',
-                `Mieszkaniec BOK: ${editingBokResident.lastName} ${editingBokResident.firstName} - kliknij, aby dodać.`,
-                link
-            );
+
+            let pushError: string | null = null;
+            try {
+                await sendPushNotification(
+                    editingBokResident.coordinatorId,
+                    'Nowe zadanie: Dodaj pracownika',
+                    `Mieszkaniec BOK: ${editingBokResident.lastName} ${editingBokResident.firstName} - kliknij, aby dodać.`,
+                    link
+                );
+            } catch (err) {
+                pushError = err instanceof Error ? err.message : 'Nie udało się wysłać powiadomienia';
+            }
 
             // Mark the resident as sent by recording today's date and updating server state
             const todayDateStr = format(new Date(), 'yyyy-MM-dd HH:mm');
@@ -635,9 +641,13 @@ export default function MainLayout({
             );
             setRawBokResidents(prev => prev ? prev.map(r => r.id === updatedResident.id ? updatedResident : r) : null);
 
-            toast({ title: 'Sukces', description: 'Powiadomienie PUSH zostało wysłane i oznaczono datę wysłania.' });
+            if (pushError) {
+                toast({ variant: 'destructive', title: 'Oznaczono, ale wystąpił problem', description: pushError });
+            } else {
+                toast({ title: 'Sukces', description: 'Powiadomienie PUSH zostało wysłane i oznaczono datę wysłania.' });
+            }
         } catch (e) {
-            toast({ variant: 'destructive', title: 'Błąd', description: e instanceof Error ? e.message : 'Nie udało się wysłać powiadomienia.' });
+            toast({ variant: 'destructive', title: 'Błąd', description: e instanceof Error ? e.message : 'Nie udało się oznaczyć mieszkańca.' });
         }
     }, [editingBokResident, currentUser, toast]);
 
