@@ -34,3 +34,8 @@ tsconfig.tsbuildinfo
 # backups
 *_backup
 .firebase
+
+# local env files
+.env
+.env*.local
+.env.*
