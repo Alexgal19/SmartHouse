@@ -9,3 +9,21 @@ build:
   command: 'npm run build'
 serve:
   command: 'npm run start'
+
+env:
+  - variable: ADMIN_PASSWORD
+    secret: ADMIN_PASSWORD
+  - variable: SECRET_COOKIE_PASSWORD
+    secret: SECRET_COOKIE_PASSWORD
+  - variable: GOOGLE_SERVICE_ACCOUNT_EMAIL
+    secret: GOOGLE_SERVICE_ACCOUNT_EMAIL
+  - variable: GOOGLE_PRIVATE_KEY
+    secret: GOOGLE_PRIVATE_KEY
+  - variable: NEXT_PUBLIC_WEBPUSH_PUBLIC_KEY
+    secret: NEXT_PUBLIC_WEBPUSH_PUBLIC_KEY
+  - variable: WEBPUSH_PRIVATE_KEY
+    secret: WEBPUSH_PRIVATE_KEY
+  - variable: WEBPUSH_SUBJECT
+    secret: WEBPUSH_SUBJECT
+  - variable: GOOGLE_GENAI_API_KEY
+    secret: GOOGLE_GENAI_API_KEY
