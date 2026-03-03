@@ -288,6 +288,7 @@ describe('AddBokResidentForm — form validation', () => {
     });
 
     it('onSave does NOT call onOpenChange when onSave throws', async () => {
+        const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
         const onSave = jest.fn().mockRejectedValue(new Error('Save failed'));
         const onOpenChange = jest.fn();
         render(<AddBokResidentForm {...baseProps} resident={existingResident} onSave={onSave} onOpenChange={onOpenChange} />);
@@ -298,6 +299,7 @@ describe('AddBokResidentForm — form validation', () => {
         await waitFor(() => expect(onSave).toHaveBeenCalled());
         // dialog should stay open
         expect(onOpenChange).not.toHaveBeenCalledWith(false);
+        consoleSpy.mockRestore();
     });
 });
 

@@ -1969,9 +1969,8 @@ export async function sendPushNotification(
         }
 
         const token = coordinator.pushSubscription;
-        if (!token || token.startsWith('{')) {
-            console.log('Invalid or legacy token, skipping FCM send.');
-            return;
+        if (token.startsWith('{')) {
+            throw new Error(`Koordynator ${coordinator.name || coordinatorId} używa starego typu powiadomień. Należy zresetować jego subskrypcję w zakładce Ustawienia.`);
         }
 
         if (adminMessaging) {
@@ -2026,6 +2025,7 @@ export async function sendPushNotification(
             }
         } else {
             console.error("Error sending push notification:", e);
+            throw e; // Zmiana z polykania na wyrzucanie
         }
     }
 }

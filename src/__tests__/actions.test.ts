@@ -794,13 +794,29 @@ describe('Server Actions', () => {
             }));
         });
 
-        it('should skip sending if token is missing', async () => {
+        it('should throw an error if token is missing', async () => {
             const mockCoordinator = { uid: 'coord-1', name: 'Coord', isAdmin: false, departments: [], pushSubscription: '' };
-            mockedGetSettings.mockResolvedValue({ coordinators: [mockCoordinator] });
+            mockedGetSettings.mockResolvedValueOnce({
+                ...mockSettings,
+                coordinators: [mockCoordinator]
+            });
 
             (adminMessaging!.send as jest.Mock).mockClear();
 
-            await sendPushNotification('coord-1', 'Test', 'Test');
+            await expect(sendPushNotification('coord-1', 'Test', 'Test')).rejects.toThrow('nie ma włączonych (lub skonfigurowanych) powiadomień PUSH na swoim urządzeniu');
+
+            expect(adminMessaging!.send).not.toHaveBeenCalled();
+        });
+
+        it('should throw an error if coordinator is not found', async () => {
+            mockedGetSettings.mockResolvedValueOnce({
+                ...mockSettings,
+                coordinators: []
+            });
+
+            (adminMessaging!.send as jest.Mock).mockClear();
+
+            await expect(sendPushNotification('coord-1', 'Test', 'Test')).rejects.toThrow('Nie znaleziono koordynatora o ID coord-1');
 
             expect(adminMessaging!.send).not.toHaveBeenCalled();
         });
