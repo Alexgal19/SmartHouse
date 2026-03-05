@@ -1650,6 +1650,129 @@ export async function generateNzCostsReport(year: number, month: number, coordin
     }
 }
 
+export async function generateDeductionsReport(year: number, month: number, coordinatorId: string): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
+    try {
+        const [employees, settings] = await Promise.all([getEmployees(), getSettings()]);
+        const coordinatorMap = new Map(settings.coordinators.map((c: { uid: string; name: string; }) => [c.uid, c.name]));
+
+        const reportStart = new Date(year, month - 1, 1);
+        const reportEnd = new Date(year, month, 0, 23, 59, 59);
+
+        let filteredEmployees = employees;
+        if (coordinatorId !== 'all') {
+            filteredEmployees = employees.filter(e => e.coordinatorId === coordinatorId);
+        }
+
+        const reportData: Record<string, string | number | null>[] = [];
+
+        filteredEmployees.forEach(e => {
+            // Check if employee has any deductions
+            const hasDeductions =
+                (e.deductionRegulation && e.deductionRegulation > 0) ||
+                (e.deductionNo4Months && e.deductionNo4Months > 0) ||
+                (e.deductionNo30Days && e.deductionNo30Days > 0) ||
+                (e.deductionReason && e.deductionReason.some(r => r.checked && r.amount && r.amount > 0));
+
+            if (!hasDeductions) {
+                return;
+            }
+
+            // Mamy datę wejścia potrącenia, użyjmy jej do filtrowania jeśli istnieje.
+            // Jeśli koordynator wybiera dany miesiąc, pokazujemy potrącenia dla tego miesiąca LUB te bez daty (jako historyczne/niesprecyzowane)
+            let includeInReport = false;
+
+            if (e.deductionEntryDate) {
+                const entryDate = parseISO(e.deductionEntryDate);
+                if (isValid(entryDate)) {
+                    // Tylko z wybranego miesiąca z dokładnością do miesiąca
+                    if (entryDate >= reportStart && entryDate <= reportEnd) {
+                        includeInReport = true;
+                    }
+                } else {
+                    includeInReport = true;
+                }
+            } else {
+                // Skoro nie ma sprecyzowanej daty to wyeksportujmy pracownika ogólnie żeby nie zgubić danych starego formatu
+                includeInReport = true;
+            }
+
+            if (!includeInReport) return;
+
+            let otherDeductionsSum = 0;
+            const otherDeductionsReasons: string[] = [];
+
+            if (e.deductionReason) {
+                e.deductionReason.forEach(reason => {
+                    if (reason.checked && reason.amount && reason.amount > 0) {
+                        otherDeductionsSum += reason.amount;
+                        otherDeductionsReasons.push(`${reason.label}: ${reason.amount} zł`);
+                    }
+                });
+            }
+
+            const totalDeduction =
+                (e.deductionRegulation || 0) +
+                (e.deductionNo4Months || 0) +
+                (e.deductionNo30Days || 0) +
+                otherDeductionsSum;
+
+            // Znalezienie Miejscowości (Locality) na podstawie nazwy adresu zapisanego u pracownika
+            let locality = 'Brak danych';
+            if (e.address) {
+                const addressObj = settings.addresses.find(a => a.name === e.address);
+                if (addressObj && addressObj.locality) {
+                    locality = addressObj.locality;
+                }
+            }
+
+            reportData.push({
+                "Imię": e.firstName,
+                "Nazwisko": e.lastName,
+                "Koordynator": coordinatorMap.get(e.coordinatorId) || 'N/A',
+                "Miejscowość": locality,
+                "Adres": e.address,
+                "Data wpisu potrącenia": e.deductionEntryDate ? safeFormat(e.deductionEntryDate) : 'Brak daty',
+                "Regulamin (zł)": e.deductionRegulation || 0,
+                "Brak 4 msc (zł)": e.deductionNo4Months || 0,
+                "Brak 30 dni (zł)": e.deductionNo30Days || 0,
+                "Inne kary (suma) (zł)": otherDeductionsSum > 0 ? otherDeductionsSum : 0,
+                "Inne kary (szczegóły)": otherDeductionsReasons.join(', '),
+                "SUMA CAŁKOWITA (zł)": totalDeduction,
+            });
+        });
+
+        const finalData = reportData.filter(row => (row["SUMA CAŁKOWITA (zł)"] as number) > 0);
+
+        const worksheet = XLSX.utils.json_to_sheet(finalData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Raport Potrąceń");
+
+        const cols = [
+            { wch: 20 }, // Imię
+            { wch: 25 }, // Nazwisko
+            { wch: 20 }, // Koordynator
+            { wch: 20 }, // Miejscowość
+            { wch: 30 }, // Adres
+            { wch: 20 }, // Data wpisu
+            { wch: 15 }, // Regulamin
+            { wch: 15 }, // Brak 4 msc
+            { wch: 15 }, // Brak 30 dni
+            { wch: 20 }, // Inne kary (suma)
+            { wch: 40 }, // Inne kary (szczegóły)
+            { wch: 25 }, // SUMA
+        ];
+        worksheet["!cols"] = cols;
+
+        const fileContent = XLSX.write(workbook, { type: 'base64', bookType: 'xlsx' });
+        const fileName = `Raport_Potracen_${year}_${String(month).padStart(2, '0')}.xlsx`;
+
+        return { success: true, fileContent, fileName };
+
+    } catch (e) {
+        console.error("Error generating deductions report:", e);
+        return { success: false, message: e instanceof Error ? e.message : "Unknown error" };
+    }
+}
 
 const processImport = async (
     fileContent: string,
