@@ -944,6 +944,35 @@ export async function deleteBokResident(id: string, _actorUid: string): Promise<
 }
 
 
+export async function bulkDeleteBokResidents(ids: string[], _actorUid: string): Promise<void> {
+    if (ids.length === 0) return;
+    try {
+        const addressHistory = await getRawAddressHistory();
+        const sheet = await getSheet(SHEET_NAME_BOK_RESIDENTS, BOK_RESIDENT_HEADERS);
+        const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(BokResident)');
+        const rowsToDelete = rows.filter(r => ids.includes(r.get('id') as string));
+
+        if (rowsToDelete.length === 0) return;
+
+        // Delete in reverse order to avoid index shifting
+        for (let i = rowsToDelete.length - 1; i >= 0; i--) {
+            const row = rowsToDelete[i];
+            const rowId = row.get('id') as string;
+            await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(BokResident)');
+            const historyToDelete = (addressHistory || []).filter(h => h.employeeId === rowId);
+            for (const historyEntry of historyToDelete) {
+                await deleteHistoryFromSheet(historyEntry.id);
+            }
+        }
+
+        await invalidateBokResidentsCache();
+    } catch (e: unknown) {
+        console.error("Error bulk deleting BOK residents:", e);
+        throw new Error(e instanceof Error ? e.message : "Failed to bulk delete BOK residents.");
+    }
+}
+
+
 export async function bulkDeleteEmployees(status: 'active' | 'dismissed', _actorUid: string): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);

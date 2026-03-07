@@ -1,6 +1,6 @@
 
 "use client"
-import React, { useState, useMemo, useTransition } from 'react';
+import React, { useState, useMemo, useTransition, useEffect } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import type { Employee, Settings, NonEmployee, SessionData, AddressHistory, BokResident } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +20,7 @@ import { Label } from '@/components/ui/label';
 import { useMainLayout } from '@/components/main-layout';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
 import { BokDispatchReportDialog } from '@/components/bok-dispatch-report';
 
 const ITEMS_PER_PAGE = 20;
@@ -174,14 +175,31 @@ const SortableHeader = ({
     );
 };
 
-const EntityTable = ({ entities, onEdit, onRestore, isDismissed, settings, onPermanentDelete, onSort, sortBy, sortOrder, isBokTab }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onRestore?: (entity: Entity) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => void; onSort: (field: SortableField) => void; sortBy: SortableField | null; sortOrder: 'asc' | 'desc'; isBokTab?: boolean; }) => {
+const EntityTable = ({ entities, onEdit, onRestore, isDismissed, settings, onPermanentDelete, onSort, sortBy, sortOrder, isBokTab, selectedIds, onSelect, onSelectAll }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onRestore?: (entity: Entity) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => void; onSort: (field: SortableField) => void; sortBy: SortableField | null; sortOrder: 'asc' | 'desc'; isBokTab?: boolean; selectedIds?: Set<string>; onSelect?: (id: string, checked: boolean) => void; onSelectAll?: (checked: boolean) => void; }) => {
     const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
+
+    const renderCheckboxHeader = () => {
+        if (!isBokTab || !onSelectAll || !selectedIds) return null;
+        const allChecked = entities.length > 0 && selectedIds.size === entities.length;
+        const someChecked = selectedIds.size > 0 && selectedIds.size < entities.length;
+
+        return (
+            <TableHead className="w-12">
+                <Checkbox
+                    checked={allChecked ? true : someChecked ? "indeterminate" : false}
+                    onCheckedChange={(checked) => onSelectAll(checked as boolean)}
+                    aria-label="Zaznacz wszystkie"
+                />
+            </TableHead>
+        );
+    };
 
     return (
         <div className="overflow-x-auto">
             <Table>
                 <TableHeader>
                     <TableRow>
+                        {renderCheckboxHeader()}
                         <SortableHeader label="Nazwisko" field="lastName" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
                         <SortableHeader label="Imię" field="firstName" currentSortBy={sortBy} currentSortOrder={sortOrder} onSort={onSort} />
                         <TableHead>Typ</TableHead>
@@ -198,8 +216,24 @@ const EntityTable = ({ entities, onEdit, onRestore, isDismissed, settings, onPer
                     {entities.length > 0 ? (
                         entities.map((entity) => {
                             const isDispatched = isBokResident(entity) && entity.sendDate;
+                            const isSelected = selectedIds?.has(entity.id);
+
                             return (
-                                <TableRow key={entity.id} onClick={() => onEdit(entity)} className={cn("cursor-pointer", isDispatched && "bg-green-100 hover:bg-green-200 dark:bg-green-900/40 dark:hover:bg-green-900/60")}>
+                                <TableRow key={entity.id} onClick={(e) => {
+                                    // Default row click shouldn't trigger if clicking checkbox
+                                    const target = e.target as HTMLElement;
+                                    if (target.closest('button[role="checkbox"]')) return;
+                                    onEdit(entity);
+                                }} className={cn("cursor-pointer", isDispatched && "bg-green-100 hover:bg-green-200 dark:bg-green-900/40 dark:hover:bg-green-900/60", isSelected && "bg-muted/50")}>
+                                    {isBokTab && onSelect && selectedIds && (
+                                        <TableCell onClick={(e) => e.stopPropagation()}>
+                                            <Checkbox
+                                                checked={isSelected}
+                                                onCheckedChange={(checked) => onSelect(entity.id, checked as boolean)}
+                                                aria-label={`Zaznacz ${entity.firstName} ${entity.lastName}`}
+                                            />
+                                        </TableCell>
+                                    )}
                                     <TableCell className="font-medium">{entity.lastName}</TableCell>
                                     <TableCell className="font-medium">{entity.firstName}</TableCell>
                                     <TableCell>
@@ -499,6 +533,8 @@ const ControlPanel = ({
     isBokTab,
     onOpenReport,
     isDriver,
+    selectedIdsSize,
+    onBulkDelete,
 }: {
     search: string;
     onSearch: (value: string) => void;
@@ -513,6 +549,8 @@ const ControlPanel = ({
     isBokTab?: boolean;
     onOpenReport?: () => void;
     isDriver?: boolean;
+    selectedIdsSize?: number;
+    onBulkDelete?: () => void;
 }) => {
     const { isMobile } = useIsMobile();
     return (
@@ -532,6 +570,17 @@ const ControlPanel = ({
                     {isFilterActive && (
                         <Button variant="ghost" size="icon" onClick={onResetFilters} className="text-muted-foreground">
                             <X className="h-4 w-4" />
+                        </Button>
+                    )}
+                    {isBokTab && selectedIdsSize !== undefined && selectedIdsSize > 0 && onBulkDelete && (
+                        <Button variant="destructive" onClick={onBulkDelete} className="hidden sm:inline-flex">
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Usuń zaznaczone ({selectedIdsSize})
+                        </Button>
+                    )}
+                    {isBokTab && selectedIdsSize !== undefined && selectedIdsSize > 0 && onBulkDelete && isMobile && (
+                        <Button variant="destructive" size="icon" onClick={onBulkDelete}>
+                            <Trash2 className="h-5 w-5" />
                         </Button>
                     )}
                     {isBokTab && onOpenReport && (
@@ -575,6 +624,7 @@ const ControlPanel = ({
 }
 
 export default function EntityView({ currentUser }: { currentUser: SessionData }) {
+    const { handleBulkDeleteBokResidents } = useMainLayout();
     const {
         allEmployees,
         allNonEmployees,
@@ -602,9 +652,16 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     const [isPending, startTransition] = useTransition();
     const [isReportOpen, setIsReportOpen] = useState(false);
     const { isMobile, isMounted } = useIsMobile();
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
     const tab = (searchParams.get('tab') as 'active' | 'dismissed' | 'non-employees' | 'bok-residents' | 'history') || (currentUser.isDriver ? 'bok-residents' : 'active');
     const [bokSubTab, setBokSubTab] = useState<'active' | 'sent' | 'dismissed'>('active');
+
+    // Clear selections when tab or subtab changes
+    useEffect(() => {
+        setSelectedIds(new Set());
+    }, [tab, bokSubTab]);
+
     const page = Number(searchParams.get('page') || '1');
     const search = searchParams.get('search') || '';
     const viewMode = (searchParams.get('viewMode') as 'list' | 'grid') || (isMobile ? 'grid' : 'list');
@@ -951,6 +1008,14 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                     isBokTab={tab === 'bok-residents'}
                     onOpenReport={() => setIsReportOpen(true)}
                     isDriver={isDriver}
+                    selectedIdsSize={selectedIds.size}
+                    onBulkDelete={() => {
+                        if (selectedIds.size > 0 && confirm(`Czy na pewno chcesz usunąć ${selectedIds.size} zaznaczonych mieszkańców BOK? Ta akcja jest nieodwracalna.`)) {
+                            handleBulkDeleteBokResidents(Array.from(selectedIds)).then(() => {
+                                setSelectedIds(new Set());
+                            });
+                        }
+                    }}
                 />
             </CardHeader>
             <CardContent>
@@ -998,6 +1063,21 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                                             sortBy={sortBy}
                                             sortOrder={sortOrder}
                                             isBokTab
+                                            selectedIds={selectedIds}
+                                            onSelect={(id, checked) => {
+                                                const newSet = new Set(selectedIds);
+                                                if (checked) newSet.add(id);
+                                                else newSet.delete(id);
+                                                setSelectedIds(newSet);
+                                            }}
+                                            onSelectAll={(checked) => {
+                                                if (checked) {
+                                                    const pageData = bokData.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+                                                    setSelectedIds(new Set(pageData.map(e => e.id)));
+                                                } else {
+                                                    setSelectedIds(new Set());
+                                                }
+                                            }}
                                         />
                                     ) : (
                                         <EntityCardList

@@ -23,6 +23,7 @@ import {
     addEmployee,
     addNonEmployee,
     addBokResident,
+    bulkDeleteBokResidents,
     bulkDeleteEmployees,
     bulkDeleteEmployeesByCoordinator,
     checkAndUpdateStatuses,
@@ -114,6 +115,7 @@ type MainLayoutContextType = {
     handleAddBokResidentClick: () => void;
     handleEditBokResidentClick: (resident: BokResident) => void;
     handleDeleteBokResident: (id: string, actorUid: string) => Promise<void>;
+    handleBulkDeleteBokResidents: (ids: string[]) => Promise<void>;
     handleDismissBokResident: (id: string, checkOutDate: Date) => Promise<void>;
     handleRefreshStatuses: (showNoChangesToast?: boolean) => Promise<void>;
     handleAddressFormOpen: (address: Address | null) => void;
@@ -679,6 +681,19 @@ export default function MainLayout({
         }
     }, [currentUser, rawBokResidents, toast]);
 
+    const handleBulkDeleteBokResidents = useCallback(async (ids: string[]) => {
+        if (!currentUser) return;
+        const originalBokResidents = rawBokResidents;
+        setRawBokResidents(prev => prev ? prev.filter(r => !ids.includes(r.id)) : null);
+        try {
+            await bulkDeleteBokResidents(ids, currentUser.uid);
+            toast({ title: "Sukces", description: `Usunięto ${ids.length} mieszkańców BOK.` });
+        } catch (e) {
+            setRawBokResidents(originalBokResidents);
+            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć mieszkańców BOK." });
+        }
+    }, [currentUser, rawBokResidents, toast]);
+
     const handleDismissBokResident = useCallback(async (id: string, dismissDate: Date) => {
         if (!currentUser) return;
         try {
@@ -1028,6 +1043,7 @@ export default function MainLayout({
         handleAddBokResidentClick,
         handleEditBokResidentClick,
         handleDeleteBokResident,
+        handleBulkDeleteBokResidents,
         handleDismissBokResident,
         handleRefreshStatuses,
         handleAddressFormOpen,
@@ -1073,6 +1089,7 @@ export default function MainLayout({
         handleAddBokResidentClick,
         handleEditBokResidentClick,
         handleDeleteBokResident,
+        handleBulkDeleteBokResidents,
         handleDismissBokResident,
         handleRefreshStatuses,
         handleAddressFormOpen,
