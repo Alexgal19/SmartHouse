@@ -573,13 +573,13 @@ const ControlPanel = ({
                         </Button>
                     )}
                     {isBokTab && selectedIdsSize !== undefined && selectedIdsSize > 0 && onBulkDelete && (
-                        <Button variant="destructive" onClick={onBulkDelete} className="hidden sm:inline-flex">
+                        <Button type="button" variant="destructive" onClick={onBulkDelete} className="hidden sm:inline-flex">
                             <Trash2 className="mr-2 h-4 w-4" />
                             Usuń zaznaczone ({selectedIdsSize})
                         </Button>
                     )}
                     {isBokTab && selectedIdsSize !== undefined && selectedIdsSize > 0 && onBulkDelete && isMobile && (
-                        <Button variant="destructive" size="icon" onClick={onBulkDelete}>
+                        <Button type="button" variant="destructive" size="icon" onClick={onBulkDelete}>
                             <Trash2 className="h-5 w-5" />
                         </Button>
                     )}
