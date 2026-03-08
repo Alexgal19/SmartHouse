@@ -617,17 +617,17 @@ export default function MainLayout({
         }
     }, [editingBokResident, currentUser, rawBokResidents, toast]);
 
-    const handleSendBokResidentPush = useCallback(async () => {
+    const handleSendBokResidentPush = useCallback(async (data: BokResidentFormData) => {
         if (!editingBokResident || !currentUser) return;
         try {
-            const link = `/dashboard?view=employees&action=add&firstName=${encodeURIComponent(editingBokResident.firstName)}&lastName=${encodeURIComponent(editingBokResident.lastName)}&nationality=${encodeURIComponent(editingBokResident.nationality)}&zaklad=${encodeURIComponent(editingBokResident.zaklad || '')}`;
+            const link = `/dashboard?view=employees&action=add&firstName=${encodeURIComponent(data.firstName)}&lastName=${encodeURIComponent(data.lastName)}&nationality=${encodeURIComponent(data.nationality)}&zaklad=${encodeURIComponent(data.zaklad || '')}`;
 
             let pushError: string | null = null;
             try {
                 const pushResult = await sendPushNotification(
-                    editingBokResident.coordinatorId,
+                    data.coordinatorId,
                     'Nowe zadanie: Dodaj pracownika',
-                    `Mieszkaniec BOK: ${editingBokResident.lastName} ${editingBokResident.firstName} - kliknij, aby dodać.`,
+                    `Mieszkaniec BOK: ${data.lastName} ${data.firstName} - kliknij, aby dodać.`,
                     link
                 );
                 if (!pushResult.success) {
@@ -644,14 +644,27 @@ export default function MainLayout({
 
             // Mark the resident as sent by recording today's date and updating server state
             const todayDateStr = format(new Date(), 'yyyy-MM-dd HH:mm');
+            const dataToUpdate = {
+                ...data,
+                address: data.address ?? '',
+                roomNumber: data.roomNumber ?? '',
+                checkOutDate: data.checkOutDate ?? null,
+                dismissDate: data.dismissDate ?? null,
+                returnStatus: data.returnStatus ?? '',
+                zaklad: data.zaklad ?? '',
+                status: data.status ?? '',
+                sendDate: todayDateStr,
+                fullName: `${data.lastName} ${data.firstName}`.trim(),
+            };
+
             const updatedResident = await updateBokResident(
                 editingBokResident.id,
-                { sendDate: todayDateStr },
+                dataToUpdate,
                 currentUser.uid
             );
 
             setRawBokResidents(prev => prev ? prev.map(r => r.id === updatedResident.id ? updatedResident : r) : null);
-            toast({ title: 'Sukces', description: 'Powiadomienie PUSH zostało wysłane i oznaczono datę wysłania.' });
+            toast({ title: 'Sukces', description: 'Powiadomienie PUSH zostało wysłane i zmiany zapisane.' });
 
         } catch (e) {
             toast({ variant: 'destructive', title: 'Błąd', description: e instanceof Error ? e.message : 'Nie udało się oznaczyć mieszkańca.' });

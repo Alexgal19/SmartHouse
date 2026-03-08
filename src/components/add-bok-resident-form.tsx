@@ -182,7 +182,7 @@ export function AddBokResidentForm({
   settings: Settings;
   resident: BokResident | null;
   currentUser: SessionData;
-  onSendPush?: () => Promise<void>;
+  onSendPush?: (data: BokResidentFormData) => Promise<void>;
 }) {
   const { toast } = useToast();
   const [isSendingPush, setIsSendingPush] = React.useState(false);
@@ -244,9 +244,23 @@ export function AddBokResidentForm({
 
   const handleSendPush = async () => {
     if (!onSendPush) return;
+
+    // Validate form before sending
+    const isValid = await form.trigger();
+    if (!isValid) return;
+
     setIsSendingPush(true);
     try {
-      await onSendPush();
+      const values = form.getValues();
+      const dataToPass = {
+        ...values,
+        checkInDate: values.checkInDate ? format(values.checkInDate, 'yyyy-MM-dd') : null,
+        checkOutDate: values.checkOutDate ? format(values.checkOutDate, 'yyyy-MM-dd') : null,
+        dismissDate: values.dismissDate ? format(values.dismissDate, 'yyyy-MM-dd') : null,
+      } as unknown as BokResidentFormData;
+
+      await onSendPush(dataToPass);
+      onOpenChange(false);
     } catch (error) {
       console.error("Error in onSendPush:", error);
       toast({ variant: 'destructive', title: 'Błąd funkcji', description: 'Napotkano problem podczas wysyłania powiadomienia.' });
