@@ -247,6 +247,9 @@ export function AddBokResidentForm({
     setIsSendingPush(true);
     try {
       await onSendPush();
+    } catch (error) {
+      console.error("Error in onSendPush:", error);
+      toast({ variant: 'destructive', title: 'Błąd funkcji', description: 'Napotkano problem podczas wysyłania powiadomienia.' });
     } finally {
       setIsSendingPush(false);
     }
