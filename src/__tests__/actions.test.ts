@@ -803,7 +803,9 @@ describe('Server Actions', () => {
 
             (adminMessaging!.send as jest.Mock).mockClear();
 
-            await expect(sendPushNotification('coord-1', 'Test', 'Test')).rejects.toThrow('nie ma włączonych (lub skonfigurowanych) powiadomień PUSH na swoim urządzeniu');
+            const result = await sendPushNotification('coord-1', 'Test', 'Test');
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('nie ma włączonych (lub skonfigurowanych) powiadomień PUSH na swoim urządzeniu');
 
             expect(adminMessaging!.send).not.toHaveBeenCalled();
         });
@@ -816,7 +818,9 @@ describe('Server Actions', () => {
 
             (adminMessaging!.send as jest.Mock).mockClear();
 
-            await expect(sendPushNotification('coord-1', 'Test', 'Test')).rejects.toThrow('Nie znaleziono koordynatora o ID coord-1');
+            const result = await sendPushNotification('coord-1', 'Test', 'Test');
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Nie znaleziono koordynatora o ID coord-1');
 
             expect(adminMessaging!.send).not.toHaveBeenCalled();
         });

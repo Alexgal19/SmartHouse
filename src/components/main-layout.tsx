@@ -624,14 +624,17 @@ export default function MainLayout({
 
             let pushError: string | null = null;
             try {
-                await sendPushNotification(
+                const pushResult = await sendPushNotification(
                     editingBokResident.coordinatorId,
                     'Nowe zadanie: Dodaj pracownika',
                     `Mieszkaniec BOK: ${editingBokResident.lastName} ${editingBokResident.firstName} - kliknij, aby dodać.`,
                     link
                 );
+                if (!pushResult.success) {
+                    pushError = pushResult.error || 'Nie udało się wysłać powiadomienia';
+                }
             } catch (err) {
-                pushError = err instanceof Error ? err.message : 'Nie udało się wysłać powiadomienia';
+                pushError = err instanceof Error ? err.message : 'Nie udało się wysłać powiadomienia (RPC błąd)';
             }
 
             // Mark the resident as sent by recording today's date and updating server state

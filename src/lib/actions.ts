@@ -453,7 +453,10 @@ const createNotification = async (
         if (sendPush) {
             const pushTitle = 'Powiadomienie SmartHouse';
             const pushLink = `/dashboard?view=employees&edit=${entity.id}`;
-            await sendPushNotification(recipientId, pushTitle, message, pushLink);
+            const pushResult = await sendPushNotification(recipientId, pushTitle, message, pushLink);
+            if (!pushResult.success) {
+                console.error("Failed to send push notification:", pushResult.error);
+            }
         }
 
     } catch (e: unknown) {
@@ -2107,22 +2110,22 @@ export async function sendPushNotification(
     title: string,
     body: string,
     link?: string
-): Promise<void> {
+): Promise<{ success: boolean; error?: string }> {
     try {
         const settings = await getSettings();
         const coordinator = settings.coordinators.find((c: { uid: string; pushSubscription?: string | null }) => c.uid === coordinatorId);
 
         if (!coordinator) {
-            throw new Error(`Nie znaleziono koordynatora o ID ${coordinatorId}.`);
+            return { success: false, error: `Nie znaleziono koordynatora o ID ${coordinatorId}.` };
         }
 
         if (!coordinator.pushSubscription) {
-            throw new Error(`Koordynator ${coordinator.name || coordinatorId} nie ma włączonych (lub skonfigurowanych) powiadomień PUSH na swoim urządzeniu.`);
+            return { success: false, error: `Koordynator ${coordinator.name || coordinatorId} nie ma włączonych (lub skonfigurowanych) powiadomień PUSH na swoim urządzeniu.` };
         }
 
         const token = coordinator.pushSubscription;
         if (token.startsWith('{')) {
-            throw new Error(`Koordynator ${coordinator.name || coordinatorId} używa starego typu powiadomień. Należy zresetować jego subskrypcję w zakładce Ustawienia.`);
+            return { success: false, error: `Koordynator ${coordinator.name || coordinatorId} używa starego typu powiadomień. Należy zresetować jego subskrypcję w zakładce Ustawienia.` };
         }
 
         if (adminMessaging) {
@@ -2153,8 +2156,10 @@ export async function sendPushNotification(
             await adminMessaging.send(message);
         } else {
             console.warn(`[FCM] adminMessaging is null — push notification NOT sent to coordinator ${coordinatorId}. Check Firebase Admin initialization.`);
+            return { success: false, error: "Błąd konfiguracji Firebase na serwerze." };
         }
 
+        return { success: true };
     } catch (e: unknown) {
         // Auto-cleanup expired/invalid FCM tokens (410 Gone, token-not-registered)
         const errorCode = (e as { code?: string })?.code;
@@ -2175,9 +2180,10 @@ export async function sendPushNotification(
             } catch (cleanupErr) {
                 console.error("Error cleaning up expired FCM token:", cleanupErr);
             }
+            return { success: false, error: "Odświeżono starą subskrypcję PUSH. Koordynator musi zezwolić na powiadomienia ponownie." };
         } else {
             console.error("Error sending push notification:", e);
-            throw e; // Zmiana z polykania na wyrzucanie
+            return { success: false, error: e instanceof Error ? e.message : "Wystąpił nieznany błąd podczas wysyłania powiadomienia PUSH." };
         }
     }
 }
