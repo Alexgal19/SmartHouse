@@ -637,6 +637,11 @@ export default function MainLayout({
                 pushError = err instanceof Error ? err.message : 'Nie udało się wysłać powiadomienia (RPC błąd)';
             }
 
+            if (pushError) {
+                toast({ variant: 'destructive', title: 'Błąd', description: pushError });
+                return; // Do not update sendDate, leave resident in "Aktywni"
+            }
+
             // Mark the resident as sent by recording today's date and updating server state
             const todayDateStr = format(new Date(), 'yyyy-MM-dd HH:mm');
             const updatedResident = await updateBokResident(
@@ -644,13 +649,10 @@ export default function MainLayout({
                 { sendDate: todayDateStr },
                 currentUser.uid
             );
-            setRawBokResidents(prev => prev ? prev.map(r => r.id === updatedResident.id ? updatedResident : r) : null);
 
-            if (pushError) {
-                toast({ variant: 'destructive', title: 'Oznaczono, ale wystąpił problem', description: pushError });
-            } else {
-                toast({ title: 'Sukces', description: 'Powiadomienie PUSH zostało wysłane i oznaczono datę wysłania.' });
-            }
+            setRawBokResidents(prev => prev ? prev.map(r => r.id === updatedResident.id ? updatedResident : r) : null);
+            toast({ title: 'Sukces', description: 'Powiadomienie PUSH zostało wysłane i oznaczono datę wysłania.' });
+
         } catch (e) {
             toast({ variant: 'destructive', title: 'Błąd', description: e instanceof Error ? e.message : 'Nie udało się oznaczyć mieszkańca.' });
         }
