@@ -51,6 +51,7 @@ const mockSession: SessionData = {
   uid: 'user-1',
   name: 'Test User',
   isAdmin: false,
+  isDriver: false,
 };
 
 describe('DashboardView', () => {
@@ -98,12 +99,12 @@ describe('DashboardView', () => {
   it('renders admin components for admin user', () => {
     const adminSession = { ...mockSession, isAdmin: true };
     mockUseMainLayout.mockReturnValue({
-        allEmployees: [],
-        allNonEmployees: [],
-        settings: mockSettings,
-        hasNewCheckouts: false,
-        setHasNewCheckouts: jest.fn(),
-        selectedCoordinatorId: 'coord-1', // Not 'all' to show chart
+      allEmployees: [],
+      allNonEmployees: [],
+      settings: mockSettings,
+      hasNewCheckouts: false,
+      setHasNewCheckouts: jest.fn(),
+      selectedCoordinatorId: 'coord-1', // Not 'all' to show chart
     });
 
     render(<DashboardView currentUser={adminSession} />);

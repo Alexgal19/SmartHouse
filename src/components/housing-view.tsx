@@ -354,7 +354,7 @@ const AddressDetailView = ({
                                         </div>
                                         <div className="pl-4 mt-2 space-y-1">
                                             {room.occupants.map(o => {
-                                                const fullName = `${o.firstName} ${o.lastName}`.trim();
+                                                const fullName = `${o.lastName} ${o.firstName}`.trim();
                                                 const isBlocked = isSingleSelectedBlocked || room.isLocked || !room.isActive;
                                                 return (
                                                     <div key={o.id} className="flex items-center justify-between text-xs text-muted-foreground group">
@@ -594,7 +594,7 @@ const MobileAddressCard = ({ address, onOccupantClick, currentUser, settings, ha
                                         </div>
                                         <div className="pl-4 mt-2 space-y-1">
                                             {room.occupants.map(o => {
-                                                const fullName = `${o.firstName} ${o.lastName}`.trim();
+                                                const fullName = `${o.lastName} ${o.firstName}`.trim();
                                                 const isBlocked = !address.isActive || room.isLocked || !room.isActive;
                                                 return (
                                                     <div key={o.id} className="flex items-center justify-between text-xs text-muted-foreground group">

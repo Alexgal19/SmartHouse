@@ -191,7 +191,7 @@ export function AddBokResidentForm({
   const [isScanning, setIsScanning] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isDismissing, setIsDismissing] = useState(false);
-  const { handleDismissBokResident } = useMainLayout();
+  const { handleDismissBokResident, allEmployees, allNonEmployees, allBokResidents } = useMainLayout();
 
   // Cleanup webcam stream on unmount
   useEffect(() => {
@@ -333,10 +333,28 @@ export function AddBokResidentForm({
     return [...addresses].sort((a, b) => a.name.localeCompare(b.name));
   }, [settings.addresses, selectedCoordinatorId, selectedLocality]);
 
-  const availableRooms = useMemo(() => {
+  const availableRoomsWithCapacity = useMemo(() => {
     const rooms = settings.addresses.find(a => a.name === selectedAddress)?.rooms || [];
-    return [...rooms].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-  }, [settings.addresses, selectedAddress]);
+    return [...rooms].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(room => {
+      let occupied = 0;
+      
+      if (allEmployees) {
+        occupied += allEmployees.filter(e => e.status === 'active' && e.address === selectedAddress && String(e.roomNumber) === room.name).length;
+      }
+      if (allNonEmployees) {
+        occupied += allNonEmployees.filter(e => e.status === 'active' && e.address === selectedAddress && String(e.roomNumber) === room.name).length;
+      }
+      if (allBokResidents) {
+        occupied += allBokResidents.filter(e => (e.status === 'active' || !e.status || e.status === '') && e.address === selectedAddress && String(e.roomNumber) === room.name).length;
+      }
+
+      return {
+        ...room,
+        occupied,
+        available: Math.max(0, room.capacity - occupied)
+      };
+    });
+  }, [settings.addresses, selectedAddress, allEmployees, allNonEmployees, allBokResidents]);
 
   const availableDepartments = useMemo(() => {
     // Departments are global usually, but if we want to filter by coordinator's departments:
@@ -623,9 +641,9 @@ export function AddBokResidentForm({
                           <Select onValueChange={field.onChange} value={field.value || ''} disabled={!selectedAddress}>
                             <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : "Wybierz pokój"} /></SelectTrigger></FormControl>
                             <SelectContent>
-                              {availableRooms.filter(r => r.name).map(r => (
-                                <SelectItem key={r.id} value={r.name} disabled={!r.isActive}>
-                                  {r.name} {r.isActive ? `(Pojemność: ${r.capacity})` : '(Niedostępny)'}
+                              {availableRoomsWithCapacity.filter(r => r.name).map(r => (
+                                <SelectItem key={r.id} value={r.name} disabled={!r.isActive || r.isLocked}>
+                                  {r.name} {r.isActive ? (r.isLocked ? '(Zablokowany)' : `(${r.available} wolnych z ${r.capacity})`) : '(Niedostępny)'}
                                 </SelectItem>
                               ))}
                             </SelectContent>

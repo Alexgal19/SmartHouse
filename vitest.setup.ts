@@ -1,6 +1,6 @@
 import { expect, afterEach, vi } from 'vitest';
 // Shim jest to vi
-globalThis.jest = vi;
+globalThis.jest = vi as any;
 
 import { cleanup } from '@testing-library/react';
 import * as matchers from '@testing-library/jest-dom/matchers';

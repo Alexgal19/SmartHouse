@@ -249,7 +249,7 @@ export function AddEmployeeForm({
   currentUser: SessionData;
 }) {
   const { toast } = useToast();
-  const { handleDismissEmployee, allEmployees, allNonEmployees } = useMainLayout();
+  const { handleDismissEmployee, allEmployees, allNonEmployees, allBokResidents } = useMainLayout();
   const [isDismissing, setIsDismissing] = useState(false);
   const [isAddressPreviewOpen, setIsAddressPreviewOpen] = useState(false);
 
@@ -317,10 +317,28 @@ export function AddEmployeeForm({
     return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
   }, [settings.addresses, selectedLocality, selectedCoordinatorId]);
 
-  const availableRooms = useMemo(() => {
+  const availableRoomsWithCapacity = useMemo(() => {
     const rooms = settings.addresses.find(a => a.name === selectedAddress)?.rooms || [];
-    return [...rooms].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-  }, [settings.addresses, selectedAddress]);
+    return [...rooms].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(room => {
+      let occupied = 0;
+      
+      if (allEmployees) {
+        occupied += allEmployees.filter(e => e.status === 'active' && e.address === selectedAddress && e.roomNumber === room.name).length;
+      }
+      if (allNonEmployees) {
+        occupied += allNonEmployees.filter(e => e.status === 'active' && e.address === selectedAddress && e.roomNumber === room.name).length;
+      }
+      if (allBokResidents) {
+        occupied += allBokResidents.filter(e => (e.status === 'active' || !e.status || e.status === '') && e.address === selectedAddress && e.roomNumber === room.name).length;
+      }
+
+      return {
+        ...room,
+        occupied,
+        available: Math.max(0, room.capacity - occupied)
+      };
+    });
+  }, [settings.addresses, selectedAddress, allEmployees, allNonEmployees, allBokResidents]);
 
   const availableDepartments = useMemo(() => {
     if (!selectedCoordinatorId) return [];
@@ -701,9 +719,9 @@ export function AddEmployeeForm({
                               <Select onValueChange={field.onChange} value={field.value || ''} disabled={!selectedAddress || isOwnAddressSelected}>
                                 <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : (isOwnAddressSelected ? "1" : "Wybierz pokój")} /></SelectTrigger></FormControl>
                                 <SelectContent>
-                                  {availableRooms.filter(r => r.name).map(r => (
+                                  {availableRoomsWithCapacity.filter(r => r.name).map(r => (
                                     <SelectItem key={r.id} value={r.name} disabled={!r.isActive || r.isLocked}>
-                                      {r.name} {r.isActive ? (r.isLocked ? '(Zablokowany)' : `(Pojemność: ${r.capacity})`) : '(Niedostępny)'}
+                                      {r.name} {r.isActive ? (r.isLocked ? '(Zablokowany)' : `(${r.available} wolnych z ${r.capacity})`) : '(Niedostępny)'}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>

@@ -46,6 +46,7 @@ const mockCurrentUser: SessionData = {
   uid: 'coord-1',
   name: 'Jan Kowalski',
   isAdmin: true,
+  isDriver: false,
 };
 
 const defaultProps = {
@@ -91,7 +92,7 @@ describe('AddNonEmployeeForm', () => {
     // Fill some fields but leave room empty
     fireEvent.change(screen.getByLabelText('Nazwisko'), { target: { value: 'Kowalski' } });
     fireEvent.change(screen.getByLabelText('Imię'), { target: { value: 'Jan' } });
-    
+
     fireEvent.click(screen.getByText('Wybierz koordynatora'));
     fireEvent.click(screen.getByText('Jan Kowalski'));
 

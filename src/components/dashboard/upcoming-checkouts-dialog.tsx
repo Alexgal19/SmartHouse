@@ -11,7 +11,7 @@ import { differenceInDays, parseISO } from 'date-fns';
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 import { Button } from '../ui/button';
 import { Copy } from 'lucide-react';
-import {format} from 'date-fns'
+import { format } from 'date-fns'
 import { Combobox } from '../ui/combobox';
 import { Label } from '../ui/label';
 
@@ -51,7 +51,7 @@ export function UpcomingCheckoutsDialog({
     // Step 1: Create a raw, unfiltered list of upcoming checkouts
     const upcomingCheckoutsUnfiltered = useMemo(() => {
         const allOccupants: Occupant[] = [
-            ...employees.filter(e => e.status === 'active'), 
+            ...employees.filter(e => e.status === 'active'),
             ...nonEmployees.filter(ne => ne.status === 'active')
         ];
 
@@ -71,8 +71,7 @@ export function UpcomingCheckoutsDialog({
     const departmentOptions = useMemo(() => {
         const departments = new Set(
             upcomingCheckoutsUnfiltered
-                .filter(isEmployee)
-                .map(e => e.zaklad)
+                .map(e => 'zaklad' in e ? e.zaklad : undefined)
                 .filter(Boolean) as string[]
         );
         const options = Array.from(departments).map(d => ({ value: d, label: d }));
@@ -86,7 +85,7 @@ export function UpcomingCheckoutsDialog({
                 .map(o => o.address)
                 .filter(Boolean) as string[]
         );
-        const options = Array.from(addresses).map(a => ({ value: a, label: a })).sort((a,b) => a.label.localeCompare(b.label));
+        const options = Array.from(addresses).map(a => ({ value: a, label: a })).sort((a, b) => a.label.localeCompare(b.label));
         options.unshift({ value: 'all', label: 'Wszystkie adresy' });
         return options;
     }, [upcomingCheckoutsUnfiltered]);
@@ -109,7 +108,7 @@ export function UpcomingCheckoutsDialog({
 
         return filteredByAddress.sort((a, b) => a.checkOutDateObj.getTime() - b.checkOutDateObj.getTime());
     }, [upcomingCheckoutsUnfiltered, selectedZaklad, selectedAddress]);
-    
+
     const handleCopy = (occupant: Occupant) => {
         const fullName = `${occupant.firstName} ${occupant.lastName}`.trim();
         const textToCopy = `${fullName}, wykwaterowanie: ${formatDate(occupant.checkOutDate)}`;
@@ -117,7 +116,7 @@ export function UpcomingCheckoutsDialog({
     }
 
     const handleOccupantClick = (occupant: Occupant) => {
-        if(isEmployee(occupant)) {
+        if (isEmployee(occupant)) {
             handleEditEmployeeClick(occupant);
         } else {
             handleEditNonEmployeeClick(occupant);
@@ -145,7 +144,7 @@ export function UpcomingCheckoutsDialog({
                             className="w-full"
                         />
                     </div>
-                     <div className="grid gap-2">
+                    <div className="grid gap-2">
                         <Label htmlFor="address-filter">Filtruj po adresie</Label>
                         <Combobox
                             options={addressOptions}
@@ -162,34 +161,34 @@ export function UpcomingCheckoutsDialog({
                     <div className="space-y-2 p-1">
                         {upcomingCheckouts.length > 0 ? (
                             upcomingCheckouts.map(occupant => (
-                            <Card 
-                                key={occupant.id} 
-                                className="p-4 group shadow-sm"
-                            >
-                                <div className="flex justify-between items-start">
-                                    <div 
-                                        className="flex-1 cursor-pointer"
-                                        onClick={() => handleOccupantClick(occupant)}
-                                    >
-                                        <span className="font-semibold group-hover:text-primary">{`${occupant.firstName} ${occupant.lastName}`.trim()}</span>
-                                        <div className="text-sm text-muted-foreground mt-1">
-                                            {isEmployee(occupant) ? <p>{occupant.zaklad}</p> : <p>Mieszkaniec (NZ)</p>}
-                                            <p>{occupant.address || ''} {occupant.roomNumber ? `, pokój ${occupant.roomNumber}` : ''}</p>
+                                <Card
+                                    key={occupant.id}
+                                    className="p-4 group shadow-sm"
+                                >
+                                    <div className="flex justify-between items-start">
+                                        <div
+                                            className="flex-1 cursor-pointer"
+                                            onClick={() => handleOccupantClick(occupant)}
+                                        >
+                                            <span className="font-semibold group-hover:text-primary">{`${occupant.firstName} ${occupant.lastName}`.trim()}</span>
+                                            <div className="text-sm text-muted-foreground mt-1">
+                                                {isEmployee(occupant) ? <p>{occupant.zaklad}</p> : <p>Mieszkaniec (NZ)</p>}
+                                                <p>{occupant.address || ''} {occupant.roomNumber ? `, pokój ${occupant.roomNumber}` : ''}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm text-primary font-bold whitespace-nowrap">{formatDate(occupant.checkOutDate)}</span>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8"
+                                                onClick={() => handleCopy(occupant)}
+                                            >
+                                                <Copy className="h-4 w-4" />
+                                            </Button>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm text-primary font-bold whitespace-nowrap">{formatDate(occupant.checkOutDate)}</span>
-                                        <Button 
-                                            variant="ghost" 
-                                            size="icon" 
-                                            className="h-8 w-8"
-                                            onClick={() => handleCopy(occupant)}
-                                        >
-                                            <Copy className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </div>
-                            </Card>
+                                </Card>
                             ))
                         ) : (
                             <p className="text-center text-sm text-muted-foreground py-4">Brak nadchodzących wykwaterowań pasujących do filtra.</p>

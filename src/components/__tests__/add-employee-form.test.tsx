@@ -61,6 +61,7 @@ const mockCurrentUser: SessionData = {
   uid: 'coord-1',
   name: 'Jan Kowalski',
   isAdmin: true,
+  isDriver: false,
 };
 
 const defaultProps = {
@@ -101,7 +102,7 @@ describe('AddEmployeeForm', () => {
     // Fill required fields
     fireEvent.change(screen.getByLabelText('Nazwisko'), { target: { value: 'Kowalski' } });
     fireEvent.change(screen.getByLabelText('Imię'), { target: { value: 'Jan' } });
-    
+
     // Select Coordinator
     fireEvent.click(screen.getByText('Wybierz koordynatora'));
     fireEvent.click(screen.getByText('Jan Kowalski'));
@@ -129,7 +130,7 @@ describe('AddEmployeeForm', () => {
     // Fill required fields
     fireEvent.change(screen.getByLabelText('Nazwisko'), { target: { value: 'Kowalski' } });
     fireEvent.change(screen.getByLabelText('Imię'), { target: { value: 'Jan' } });
-    
+
     // Select Coordinator
     fireEvent.click(screen.getByText('Wybierz koordynatora'));
     fireEvent.click(screen.getByText('Jan Kowalski'));
@@ -147,48 +148,48 @@ describe('AddEmployeeForm', () => {
 });
 
 describe('AddEmployeeForm with Own Address', () => {
-    const ownAddressSettings = {
-        ...mockSettings,
-        addresses: [
-            ...mockSettings.addresses,
-            {
-                id: 'addr-own',
-                locality: 'Warszawa',
-                name: 'Własne mieszkanie',
-                coordinatorIds: ['coord-1'],
-                rooms: [{ id: 'room-own', name: '1', capacity: 1, isActive: true }],
-                isActive: true,
-            }
-        ]
-    };
+  const ownAddressSettings = {
+    ...mockSettings,
+    addresses: [
+      ...mockSettings.addresses,
+      {
+        id: 'addr-own',
+        locality: 'Warszawa',
+        name: 'Własne mieszkanie',
+        coordinatorIds: ['coord-1'],
+        rooms: [{ id: 'room-own', name: '1', capacity: 1, isActive: true }],
+        isActive: true,
+      }
+    ]
+  };
 
-    it('validates own address when selected', async () => {
-        render(<AddEmployeeForm {...defaultProps} settings={ownAddressSettings} />);
-    
-        // Fill required fields
-        fireEvent.change(screen.getByLabelText('Nazwisko'), { target: { value: 'Kowalski' } });
-        fireEvent.change(screen.getByLabelText('Imię'), { target: { value: 'Jan' } });
-        
-        // Select Coordinator
-        fireEvent.click(screen.getByText('Wybierz koordynatora'));
-        fireEvent.click(screen.getByText('Jan Kowalski'));
+  it('validates own address when selected', async () => {
+    render(<AddEmployeeForm {...defaultProps} settings={ownAddressSettings} />);
 
-        // Select Locality
-        fireEvent.click(screen.getByText('Wybierz miejscowość'));
-        fireEvent.click(screen.getByText('Warszawa'));
+    // Fill required fields
+    fireEvent.change(screen.getByLabelText('Nazwisko'), { target: { value: 'Kowalski' } });
+    fireEvent.change(screen.getByLabelText('Imię'), { target: { value: 'Jan' } });
 
-        // Select Own Address
-            fireEvent.click(screen.getByText('Wybierz adres'));
-            fireEvent.click(await screen.findByRole('option', { name: 'Własne mieszkanie' }));
-        
-            // Leave own address empty
-        const submitButton = screen.getByRole('button', { name: 'Zapisz' });
-        fireEvent.click(submitButton);
-    
-        await waitFor(() => {
-          expect(screen.getByText('Adres własny jest wymagany, jeśli wybrano tę opcję.')).toBeInTheDocument();
-        });
-      });
+    // Select Coordinator
+    fireEvent.click(screen.getByText('Wybierz koordynatora'));
+    fireEvent.click(screen.getByText('Jan Kowalski'));
+
+    // Select Locality
+    fireEvent.click(screen.getByText('Wybierz miejscowość'));
+    fireEvent.click(screen.getByText('Warszawa'));
+
+    // Select Own Address
+    fireEvent.click(screen.getByText('Wybierz adres'));
+    fireEvent.click(await screen.findByRole('option', { name: 'Własne mieszkanie' }));
+
+    // Leave own address empty
+    const submitButton = screen.getByRole('button', { name: 'Zapisz' });
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Adres własny jest wymagany, jeśli wybrano tę opcję.')).toBeInTheDocument();
+    });
+  });
 });
 
 describe('AddEmployeeForm Deductions', () => {
@@ -198,7 +199,7 @@ describe('AddEmployeeForm Deductions', () => {
     // Fill required fields
     fireEvent.change(screen.getByLabelText('Nazwisko'), { target: { value: 'Kowalski' } });
     fireEvent.change(screen.getByLabelText('Imię'), { target: { value: 'Jan' } });
-    
+
     // Select Coordinator
     fireEvent.click(screen.getByText('Wybierz koordynatora'));
     fireEvent.click(screen.getByText('Jan Kowalski'));
@@ -206,15 +207,15 @@ describe('AddEmployeeForm Deductions', () => {
     // Go to Finance tab (content is always visible with mock, but we click for realism in flow if it mattered)
     // const financeTab = screen.getByRole('button', { name: 'Finanse i potrącenia' });
     // fireEvent.click(financeTab);
-    
+
     // Wait for tab content to appear - wait for the label "Zwrot kaucji"
     await screen.findByText('Zwrot kaucji');
-    
+
     const comboboxes = screen.getAllByRole('combobox');
     const depositReturnSelect = comboboxes.find(el => el.textContent?.includes('Status zwrotu kaucji'));
-    
+
     if (!depositReturnSelect) {
-        throw new Error('Deposit return select not found');
+      throw new Error('Deposit return select not found');
     }
 
     fireEvent.click(depositReturnSelect);

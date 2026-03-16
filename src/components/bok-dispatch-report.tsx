@@ -12,6 +12,7 @@ import { Employee, NonEmployee, BokResident, Settings } from "@/types";
 import { ArrowDown, ArrowUp, Trash2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { FilterableHeader } from "@/components/ui/filterable-header";
 
 interface BokDispatchReportProps {
     isOpen: boolean;
@@ -59,6 +60,14 @@ export function BokDispatchReportDialog({
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
     const [dateFrom, setDateFrom] = useState("");
     const [dateTo, setDateTo] = useState("");
+    const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
+
+    const handleColumnFilterChange = (field: string, values: string[]) => {
+        setColumnFilters(prev => ({
+            ...prev,
+            [field]: values
+        }));
+    };
 
     const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || id;
 
@@ -97,6 +106,22 @@ export function BokDispatchReportDialog({
         });
     }, [bokResidents, employees, nonEmployees, settings]);
 
+    const coordinatorOptions = useMemo(() => {
+        const coords = new Set(reportData.map(r => r.resident.coordinatorId));
+        return Array.from(coords).map(id => ({ value: id, label: getCoordinatorName(id) }));
+    }, [reportData]);
+
+    const isAssignedOptions = [
+        { value: 'true', label: 'Przypisany' },
+        { value: 'false', label: 'Nie przypisany' }
+    ];
+
+    const assignedRecordTypeOptions = [
+        { value: 'Pracownik', label: 'Pracownik' },
+        { value: 'NZ', label: 'NZ' },
+        { value: 'null', label: 'Brak' },
+    ];
+
     const filteredAndSortedData = useMemo(() => {
         let filtered = reportData.filter(entry =>
             entry.resident.lastName.toLowerCase().includes(search.toLowerCase()) ||
@@ -113,6 +138,16 @@ export function BokDispatchReportDialog({
             const to = new Date(dateTo);
             to.setHours(23, 59, 59, 999);
             filtered = filtered.filter(entry => entry.sendDateParsed <= to);
+        }
+
+        if (columnFilters.coordinatorId?.length > 0) {
+            filtered = filtered.filter(entry => columnFilters.coordinatorId.includes(entry.resident.coordinatorId));
+        }
+        if (columnFilters.isAssigned?.length > 0) {
+            filtered = filtered.filter(entry => columnFilters.isAssigned.includes(String(entry.isAssigned)));
+        }
+        if (columnFilters.assignedRecordType?.length > 0) {
+            filtered = filtered.filter(entry => columnFilters.assignedRecordType.includes(String(entry.assignedRecordType)));
         }
 
         filtered.sort((a, b) => {
@@ -164,11 +199,11 @@ export function BokDispatchReportDialog({
                     <Table>
                         <TableHeader className="sticky top-0 bg-background z-10">
                             <TableRow>
-                                <TableHead>Data wysłania</TableHead>
-                                <TableHead>Nazwisko i Imię</TableHead>
-                                <TableHead>Wysłany do (Koordynator BOK)</TableHead>
-                                <TableHead>Status Przypisania</TableHead>
-                                <TableHead>Znaleziono w Dziale</TableHead>
+                                <FilterableHeader field="sendDateParsed" label="Data wysłania" />
+                                <FilterableHeader field="name" label="Nazwisko i Imię" />
+                                <FilterableHeader field="coordinatorId" label="Wysłany do (Koordynator BOK)" options={coordinatorOptions} currentFilterValues={columnFilters.coordinatorId} onFilterChange={handleColumnFilterChange} />
+                                <FilterableHeader field="isAssigned" label="Status Przypisania" options={isAssignedOptions} currentFilterValues={columnFilters.isAssigned} onFilterChange={handleColumnFilterChange} />
+                                <FilterableHeader field="assignedRecordType" label="Znaleziono w Dziale" options={assignedRecordTypeOptions} currentFilterValues={columnFilters.assignedRecordType} onFilterChange={handleColumnFilterChange} />
                                 <TableHead className="w-[80px] text-right">Akcje</TableHead>
                             </TableRow>
                         </TableHeader>
