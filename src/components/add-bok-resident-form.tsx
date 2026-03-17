@@ -439,7 +439,7 @@ export function AddBokResidentForm({
   const sortedGenders = useMemo(() => [...settings.genders].sort((a, b) => a.localeCompare(b)), [settings.genders]);
   const sortedBokRoles = useMemo(() => [...(settings.bokRoles || [])].sort((a, b) => a.localeCompare(b)), [settings.bokRoles]);
   const sortedBokReturnOptions = useMemo(() => [...(settings.bokReturnOptions || [])].sort((a, b) => a.localeCompare(b)), [settings.bokReturnOptions]);
-  const sortedBokStatuses = useMemo(() => [...(settings.bokStatuses || [])].sort((a, b) => a.localeCompare(b)), [settings.bokStatuses]);
+  const sortedStatuses = useMemo(() => [...(settings.statuses || [])].sort((a, b) => a.localeCompare(b)), [settings.statuses]);
 
   const coordinatorOptions = useMemo(() => sortedCoordinators.map(c => ({ value: c.uid, label: c.name })), [sortedCoordinators]);
   const nationalityOptions = useMemo(() => sortedNationalities.map(n => ({ value: n, label: n })), [sortedNationalities]);
@@ -793,7 +793,7 @@ export function AddBokResidentForm({
                           <Select onValueChange={field.onChange} value={field.value || ''}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Wybierz status" /></SelectTrigger></FormControl>
                             <SelectContent>
-                              {sortedBokStatuses.filter(Boolean).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                              {sortedStatuses.filter(Boolean).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                             </SelectContent>
                           </Select>
                           <FormMessage />

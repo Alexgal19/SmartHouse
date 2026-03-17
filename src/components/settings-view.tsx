@@ -1407,9 +1407,9 @@ function SettingsManager({ rawSettings, handleUpdateSettings }: { rawSettings: S
                                         <ListManager name="genders" title="Płcie" fields={genFields} append={appendGen} remove={removeGen} control={form.control} />
                                         <ListManager name="localities" title="Miejscowości" fields={locFields} append={appendLoc} remove={removeLoc} control={form.control} />
                                         <ListManager name="paymentTypesNZ" title="Rodzaje płatności NZ" fields={paymentNzFields} append={appendPaymentNz} remove={removePaymentNz} control={form.control} />
-                                        <ListManager name="statuses" title="Statusy" fields={statusFields} append={appendStatus} remove={removeStatus} control={form.control} />
                                         <div className="py-2"><div className="border-t"></div></div>
                                         <p className="text-sm font-semibold text-muted-foreground mb-2">Ustawienia BOK</p>
+                                        <ListManager name="statuses" title="Status" fields={statusFields} append={appendStatus} remove={removeStatus} control={form.control} />
                                         <ListManager name="bokRoles" title="Kierowcy BOK" fields={bokRoleFields} append={appendBokRole} remove={removeBokRole} control={form.control} />
                                         <ListManager name="bokReturnOptions" title="Opcje Powrotu BOK" fields={bokReturnOptionFields} append={appendBokReturnOption} remove={removeBokReturnOption} control={form.control} />
                                     </Accordion>
