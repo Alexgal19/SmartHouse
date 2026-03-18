@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -185,9 +185,13 @@ const EntityTable = ({ entities, onEdit, onRestore, isDismissed, settings, onPer
                         <FilterableHeader label="Koordynator" field="coordinatorId" currentFilterValues={columnFilters?.coordinatorId} onFilterChange={onColumnFilterChange} options={columnOptions?.coordinatorId} />
                         <FilterableHeader label="Adres" field="address" currentFilterValues={columnFilters?.address} onFilterChange={onColumnFilterChange} options={columnOptions?.address} />
                         <FilterableHeader label="Pokój" field="roomNumber" currentFilterValues={columnFilters?.roomNumber} onFilterChange={onColumnFilterChange} options={columnOptions?.roomNumber} />
+                        {isBokTab && <FilterableHeader label="Powrót" field="returnStatus" currentFilterValues={columnFilters?.returnStatus} onFilterChange={onColumnFilterChange} options={columnOptions?.returnStatus} />}
                         <FilterableHeader label="Data zameldowania" field="checkInDate" currentFilterValues={columnFilters?.checkInDate} onFilterChange={onColumnFilterChange} options={columnOptions?.checkInDate} isDateFilter />
+                        {isBokTab && <FilterableHeader label="Status" field="status" currentFilterValues={columnFilters?.status} onFilterChange={onColumnFilterChange} options={columnOptions?.status} />}
                         {isBokTab && <FilterableHeader label="Data wysłania" field="sendDate" currentFilterValues={columnFilters?.sendDate} onFilterChange={onColumnFilterChange} options={columnOptions?.sendDate} isDateFilter />}
+                        {isBokTab && <FilterableHeader label="Zakład" field="zaklad" currentFilterValues={columnFilters?.zaklad} onFilterChange={onColumnFilterChange} options={columnOptions?.zaklad} />}
                         <FilterableHeader label="Data wymeldowania" field="checkOutDate" currentFilterValues={columnFilters?.checkOutDate} onFilterChange={onColumnFilterChange} options={columnOptions?.checkOutDate} isDateFilter />
+                        {isBokTab && <FilterableHeader label="Komentarze" field="comments" currentFilterValues={columnFilters?.comments} onFilterChange={onColumnFilterChange} options={columnOptions?.comments} />}
                         <TableHead><span className="sr-only">Akcje</span></TableHead>
                     </TableRow>
                 </TableHeader>
@@ -223,9 +227,13 @@ const EntityTable = ({ entities, onEdit, onRestore, isDismissed, settings, onPer
                                         }
                                     </TableCell>
                                     <TableCell>{isEmployee(entity) && entity.address?.toLowerCase().startsWith('własne mieszkanie') ? 'N/A' : entity.roomNumber}</TableCell>
+                                    {isBokTab && <TableCell>{isBokResident(entity) ? entity.returnStatus || '-' : '-'}</TableCell>}
                                     <TableCell>{formatDate(entity.checkInDate)}</TableCell>
+                                    {isBokTab && <TableCell>{isBokResident(entity) ? entity.status || '-' : '-'}</TableCell>}
                                     {isBokTab && <TableCell>{isBokResident(entity) ? formatDate(entity.sendDate) || '-' : '-'}</TableCell>}
+                                    {isBokTab && <TableCell>{isBokResident(entity) ? entity.zaklad || '-' : '-'}</TableCell>}
                                     <TableCell>{formatDate(entity.checkOutDate)}</TableCell>
+                                    {isBokTab && <TableCell className="max-w-[150px] truncate" title={isBokResident(entity) ? entity.comments || '' : undefined}>{isBokResident(entity) ? entity.comments || '-' : '-'}</TableCell>}
                                     <TableCell onClick={(e) => e.stopPropagation()}>
                                         <EntityActions {...{ entity, onEdit, onRestore, onPermanentDelete, isDismissed }} />
                                     </TableCell>
@@ -832,7 +840,11 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
             addOptions('checkInDate', item => formatDate((item as any).checkInDate));
             addOptions('checkOutDate', item => formatDate((item as any).checkOutDate));
             if (tab === 'bok-residents') {
-                 addOptions('sendDate', item => isBokResident(item as any) ? (formatDate((item as any).sendDate) || '-') : '-');
+                 addOptions('sendDate', item => isBokResident(item as any) && (item as any).sendDate ? formatDate((item as any).sendDate) : undefined);
+                 addOptions('returnStatus', item => isBokResident(item as any) ? (item as any).returnStatus : undefined);
+                 addOptions('status', item => isBokResident(item as any) ? (item as any).status : undefined);
+                 addOptions('zaklad', item => isBokResident(item as any) ? (item as any).zaklad : undefined);
+                 addOptions('comments', item => isBokResident(item as any) ? (item as any).comments : undefined);
             }
         }
 
@@ -876,6 +888,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                         />
                     )
                     : <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
+                <ScrollBar orientation="horizontal" />
             </ScrollArea>
             <PaginationControls currentPage={page} totalPages={totalPages} onPageChange={(p) => updateSearchParams({ page: p })} isDisabled={isPending} />
         </>
@@ -909,6 +922,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                         <Skeleton className="h-24 w-full" />
                     </div>
                 )}
+                <ScrollBar orientation="horizontal" />
             </ScrollArea>
             <PaginationControls currentPage={page} totalPages={totalPages} onPageChange={(p) => updateSearchParams({ page: p })} isDisabled={isPending} />
         </>
@@ -1048,6 +1062,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                                 ) : (
                                     <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>
                                 )}
+                                <ScrollBar orientation="horizontal" />
                             </ScrollArea>
                             <PaginationControls
                                 currentPage={page}
