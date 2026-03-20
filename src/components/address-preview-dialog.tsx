@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { isRoomActive, isOwnAddressEntry } from '@/lib/address-filters';
+import { FilterableHeader } from '@/components/ui/filterable-header';
 
 type AddressOccupancy = {
   locality: string;
@@ -53,6 +54,14 @@ export function AddressPreviewDialog({
   const [selectedLocality, setSelectedLocality] = useState<string>('');
   const [selectedAddress, setSelectedAddress] = useState<string>('');
   const [selectedRoom, setSelectedRoom] = useState<string>('');
+  const [sortConfig, setSortConfig] = useState<{key: keyof AddressOccupancy | null, direction: 'asc' | 'desc'}>({ key: null, direction: 'asc' });
+
+  const handleSort = (key: string) => {
+    setSortConfig(prev => ({
+      key: key as keyof AddressOccupancy,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
 
   const addressOccupancy = useMemo<AddressOccupancy[]>(() => {
     if (!allEmployees || !allNonEmployees) return [];
@@ -161,8 +170,30 @@ export function AddressPreviewDialog({
       items.push(item);
       groups.set(item.locality, items);
     });
-    return Array.from(groups.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [addressOccupancy]);
+    
+    // Sort items within each locality
+    const entries = Array.from(groups.entries()).map(([loc, items]) => {
+       let sortedItems = [...items];
+       if (sortConfig.key) {
+         sortedItems.sort((a, b) => {
+           let valA = a[sortConfig.key as keyof AddressOccupancy];
+           let valB = b[sortConfig.key as keyof AddressOccupancy];
+           
+           if (sortConfig.key === 'isActive') {
+              valA = a.isActive ? 1 : 0;
+              valB = b.isActive ? 1 : 0;
+           }
+           
+           if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+           if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+           return 0;
+         });
+       }
+       return [loc, sortedItems] as [string, AddressOccupancy[]];
+    });
+
+    return entries.sort((a, b) => a[0].localeCompare(b[0]));
+  }, [addressOccupancy, sortConfig]);
 
   const localitySummary = useMemo(() => {
     const summary = new Map<string, { total: number; occupied: number; available: number }>();
@@ -406,12 +437,12 @@ export function AddressPreviewDialog({
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="text-xs sm:text-sm whitespace-nowrap">Adres</TableHead>
-                          <TableHead className="text-xs sm:text-sm whitespace-nowrap">Pokój</TableHead>
-                          <TableHead className="text-center text-xs sm:text-sm whitespace-nowrap">Pojemność</TableHead>
-                          <TableHead className="text-center text-xs sm:text-sm whitespace-nowrap">Zajęte</TableHead>
-                          <TableHead className="text-center text-xs sm:text-sm whitespace-nowrap">Wolne</TableHead>
-                          <TableHead className="text-center text-xs sm:text-sm whitespace-nowrap">Status</TableHead>
+                          <FilterableHeader field="address" label="Adres" onSort={handleSort} sortBy={sortConfig.key} sortOrder={sortConfig.direction} className="text-xs sm:text-sm whitespace-nowrap" />
+                          <FilterableHeader field="roomName" label="Pokój" onSort={handleSort} sortBy={sortConfig.key} sortOrder={sortConfig.direction} className="text-xs sm:text-sm whitespace-nowrap" />
+                          <FilterableHeader field="capacity" label="Pojemność" onSort={handleSort} sortBy={sortConfig.key} sortOrder={sortConfig.direction} className="text-center text-xs sm:text-sm whitespace-nowrap" />
+                          <FilterableHeader field="occupied" label="Zajęte" onSort={handleSort} sortBy={sortConfig.key} sortOrder={sortConfig.direction} className="text-center text-xs sm:text-sm whitespace-nowrap" />
+                          <FilterableHeader field="available" label="Wolne" onSort={handleSort} sortBy={sortConfig.key} sortOrder={sortConfig.direction} className="text-center text-xs sm:text-sm whitespace-nowrap" />
+                          <FilterableHeader field="isActive" label="Status" onSort={handleSort} sortBy={sortConfig.key} sortOrder={sortConfig.direction} className="text-center text-xs sm:text-sm whitespace-nowrap" />
                         </TableRow>
                       </TableHeader>
                       <TableBody>

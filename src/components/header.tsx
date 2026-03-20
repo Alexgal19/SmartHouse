@@ -153,6 +153,7 @@ export default function Header({
     const [selectedCoordinatorId, setSelectedCoordinatorId] = useState('all');
     const [employeeNameFilter, setEmployeeNameFilter] = useState('');
     const [selectedDate, setSelectedDate] = useState<Date | undefined>();
+    const [readStatusFilter, setReadStatusFilter] = useState<'all' | 'read' | 'unread'>('all');
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
     const sortedCoordinators = useMemo(() => {
@@ -165,8 +166,9 @@ export default function Header({
             selectedCoordinatorId,
             employeeNameFilter,
             selectedDate,
+            readStatusFilter,
         });
-    }, [notifications, selectedCoordinatorId, employeeNameFilter, selectedDate]);
+    }, [notifications, selectedCoordinatorId, employeeNameFilter, selectedDate, readStatusFilter]);
 
 
   return (
@@ -222,8 +224,21 @@ export default function Header({
                             onChange={(e) => setEmployeeNameFilter(e.target.value)}
                         />
                     </div>
-                </div>
-                 <div className="py-4 border-t border-border">
+                    <div className="space-y-2">
+                        <Label>Filtruj wg statusu</Label>
+                        <Select value={readStatusFilter} onValueChange={(val: any) => setReadStatusFilter(val)}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Wybierz status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Wszystkie</SelectItem>
+                                <SelectItem value="unread">Nieprzeczytane</SelectItem>
+                                <SelectItem value="read">Przeczytane</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                 </div>
+                 <div className="py-2 mb-2 border-t border-border">
                     <div className="space-y-2">
                         <Label>Filtruj wg daty</Label>
                         <DatePicker
@@ -232,11 +247,16 @@ export default function Header({
                             placeholder="Wybierz datę"
                         />
                     </div>
-                     {selectedDate && (
-                        <div className="col-span-2 pt-2">
-                            <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={() => setSelectedDate(undefined)}>
+                     {(selectedDate || selectedCoordinatorId !== 'all' || employeeNameFilter !== '' || readStatusFilter !== 'all') && (
+                        <div className="col-span-2 pt-4">
+                            <Button variant="outline" size="sm" className="w-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={() => {
+                                setSelectedCoordinatorId('all');
+                                setEmployeeNameFilter('');
+                                setSelectedDate(undefined);
+                                setReadStatusFilter('all');
+                            }}>
                                 <XCircle className="mr-2 h-4 w-4" />
-                                Wyczyść filtr daty
+                                Wyczyść filtry
                             </Button>
                         </div>
                     )}

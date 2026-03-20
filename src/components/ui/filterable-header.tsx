@@ -17,6 +17,9 @@ export interface FilterableHeaderProps<T extends string> {
     onFilterChange?: (field: T, values: string[]) => void
     className?: string
     isDateFilter?: boolean
+    onSort?: (field: T) => void
+    sortBy?: string | null
+    sortOrder?: 'asc' | 'desc' | null
 }
 
 const monthNames: Record<string, string> = {
@@ -33,6 +36,9 @@ export function FilterableHeader<T extends string>({
     onFilterChange,
     className,
     isDateFilter,
+    onSort,
+    sortBy,
+    sortOrder
 }: FilterableHeaderProps<T>) {
 
     const dateGroups = React.useMemo(() => {
@@ -108,9 +114,22 @@ export function FilterableHeader<T extends string>({
     return (
         <TableHead className={className}>
             <div className="flex items-center justify-center space-x-1">
-                <div className="px-2 py-1 shrink-0 truncate font-medium text-foreground">
-                    {label}
-                </div>
+                {onSort ? (
+                    <Button 
+                        variant="ghost" 
+                        onClick={() => onSort(field)} 
+                        className="px-2 py-1 h-8 shrink-0 flex items-center gap-1 font-medium text-foreground hover:bg-accent/50"
+                    >
+                        <span className="truncate">{label}</span>
+                        {sortBy === field && (
+                            sortOrder === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                        )}
+                    </Button>
+                ) : (
+                    <div className="px-2 py-1 shrink-0 truncate font-medium text-foreground">
+                        {label}
+                    </div>
+                )}
                 {options && onFilterChange && (
                     <Popover>
                         <PopoverTrigger asChild>

@@ -29,6 +29,7 @@ type NotificationFilters = {
     selectedCoordinatorId?: string;
     employeeNameFilter?: string;
     selectedDate?: Date;
+    readStatusFilter?: 'all' | 'read' | 'unread';
 }
 
 export function filterNotifications(notifications: Notification[], filters: NotificationFilters): Notification[] {
@@ -38,6 +39,12 @@ export function filterNotifications(notifications: Notification[], filters: Noti
 
     if (selectedCoordinatorId && selectedCoordinatorId !== 'all') {
         tempNotifications = tempNotifications.filter(n => n.recipientId === selectedCoordinatorId);
+    }
+    
+    if (filters.readStatusFilter === 'read') {
+        tempNotifications = tempNotifications.filter(n => n.isRead);
+    } else if (filters.readStatusFilter === 'unread') {
+        tempNotifications = tempNotifications.filter(n => !n.isRead);
     }
     
     if (employeeNameFilter) {

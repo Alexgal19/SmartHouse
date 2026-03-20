@@ -52,7 +52,7 @@ const formatDate = (dateString?: string | null) => {
 }
 
 type Entity = Employee | NonEmployee | BokResident;
-type SortableField = 'lastName' | 'firstName' | 'coordinatorId' | 'address' | 'roomNumber' | 'checkInDate' | 'checkOutDate' | 'coordinatorName' | 'department' | 'sendDate';
+type SortableField = 'lastName' | 'firstName' | 'coordinatorId' | 'address' | 'roomNumber' | 'checkInDate' | 'checkOutDate' | 'coordinatorName' | 'department' | 'sendDate' | 'zaklad' | 'returnStatus' | 'status' | 'comments';
 
 
 const isBokResident = (entity: Entity): entity is BokResident => 'role' in entity;
@@ -79,7 +79,7 @@ const EntityActions = ({
                     <MoreHorizontal className="h-4 w-4" />
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()}>
                 <DropdownMenuItem onClick={() => onEdit(entity)}>Edytuj</DropdownMenuItem>
                 {isDismissed
                     ? <DropdownMenuItem onClick={() => onRestore?.(entity)}>Przywróć</DropdownMenuItem>
@@ -180,18 +180,19 @@ const EntityTable = ({ entities, onEdit, onRestore, isDismissed, settings, onPer
                 <TableHeader>
                     <TableRow>
                         {renderCheckboxHeader()}
-                        <FilterableHeader label="Nazwisko" field="lastName" currentFilterValues={columnFilters?.lastName} onFilterChange={onColumnFilterChange} options={columnOptions?.lastName} />
-                        <FilterableHeader label="Imię" field="firstName" currentFilterValues={columnFilters?.firstName} onFilterChange={onColumnFilterChange} options={columnOptions?.firstName} />
-                        <FilterableHeader label="Koordynator" field="coordinatorId" currentFilterValues={columnFilters?.coordinatorId} onFilterChange={onColumnFilterChange} options={columnOptions?.coordinatorId} />
-                        <FilterableHeader label="Adres" field="address" currentFilterValues={columnFilters?.address} onFilterChange={onColumnFilterChange} options={columnOptions?.address} />
-                        <FilterableHeader label="Pokój" field="roomNumber" currentFilterValues={columnFilters?.roomNumber} onFilterChange={onColumnFilterChange} options={columnOptions?.roomNumber} />
-                        {isBokTab && <FilterableHeader label="Powrót" field="returnStatus" currentFilterValues={columnFilters?.returnStatus} onFilterChange={onColumnFilterChange} options={columnOptions?.returnStatus} />}
-                        <FilterableHeader label="Data zameldowania" field="checkInDate" currentFilterValues={columnFilters?.checkInDate} onFilterChange={onColumnFilterChange} options={columnOptions?.checkInDate} isDateFilter />
-                        {isBokTab && <FilterableHeader label="Status" field="status" currentFilterValues={columnFilters?.status} onFilterChange={onColumnFilterChange} options={columnOptions?.status} />}
-                        {isBokTab && <FilterableHeader label="Data wysłania" field="sendDate" currentFilterValues={columnFilters?.sendDate} onFilterChange={onColumnFilterChange} options={columnOptions?.sendDate} isDateFilter />}
-                        {isBokTab && <FilterableHeader label="Zakład" field="zaklad" currentFilterValues={columnFilters?.zaklad} onFilterChange={onColumnFilterChange} options={columnOptions?.zaklad} />}
-                        <FilterableHeader label="Data wymeldowania" field="checkOutDate" currentFilterValues={columnFilters?.checkOutDate} onFilterChange={onColumnFilterChange} options={columnOptions?.checkOutDate} isDateFilter />
-                        {isBokTab && <FilterableHeader label="Komentarze" field="comments" currentFilterValues={columnFilters?.comments} onFilterChange={onColumnFilterChange} options={columnOptions?.comments} />}
+                        <FilterableHeader label="Nazwisko" field="lastName" currentFilterValues={columnFilters?.lastName} onFilterChange={onColumnFilterChange} options={columnOptions?.lastName} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        <FilterableHeader label="Imię" field="firstName" currentFilterValues={columnFilters?.firstName} onFilterChange={onColumnFilterChange} options={columnOptions?.firstName} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        <FilterableHeader label="Koordynator" field="coordinatorId" currentFilterValues={columnFilters?.coordinatorId} onFilterChange={onColumnFilterChange} options={columnOptions?.coordinatorId} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        {!isBokTab && <FilterableHeader label="Zakład" field="zaklad" currentFilterValues={columnFilters?.zaklad} onFilterChange={onColumnFilterChange} options={columnOptions?.zaklad} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
+                        <FilterableHeader label="Adres" field="address" currentFilterValues={columnFilters?.address} onFilterChange={onColumnFilterChange} options={columnOptions?.address} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        <FilterableHeader label="Pokój" field="roomNumber" currentFilterValues={columnFilters?.roomNumber} onFilterChange={onColumnFilterChange} options={columnOptions?.roomNumber} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        {isBokTab && <FilterableHeader label="Powrót" field="returnStatus" currentFilterValues={columnFilters?.returnStatus} onFilterChange={onColumnFilterChange} options={columnOptions?.returnStatus} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
+                        <FilterableHeader label="Data zameldowania" field="checkInDate" currentFilterValues={columnFilters?.checkInDate} onFilterChange={onColumnFilterChange} options={columnOptions?.checkInDate} isDateFilter onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        {isBokTab && <FilterableHeader label="Status" field="status" currentFilterValues={columnFilters?.status} onFilterChange={onColumnFilterChange} options={columnOptions?.status} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
+                        {isBokTab && <FilterableHeader label="Data wysłania" field="sendDate" currentFilterValues={columnFilters?.sendDate} onFilterChange={onColumnFilterChange} options={columnOptions?.sendDate} isDateFilter onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
+                        {isBokTab && <FilterableHeader label="Zakład" field="zaklad" currentFilterValues={columnFilters?.zaklad} onFilterChange={onColumnFilterChange} options={columnOptions?.zaklad} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
+                        <FilterableHeader label="Data wymeldowania" field="checkOutDate" currentFilterValues={columnFilters?.checkOutDate} onFilterChange={onColumnFilterChange} options={columnOptions?.checkOutDate} isDateFilter onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        {isBokTab && <FilterableHeader label="Komentarze" field="comments" currentFilterValues={columnFilters?.comments} onFilterChange={onColumnFilterChange} options={columnOptions?.comments} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
                         <TableHead><span className="sr-only">Akcje</span></TableHead>
                     </TableRow>
                 </TableHeader>
@@ -220,6 +221,7 @@ const EntityTable = ({ entities, onEdit, onRestore, isDismissed, settings, onPer
                                     <TableCell className="font-medium">{entity.lastName}</TableCell>
                                     <TableCell className="font-medium">{entity.firstName}</TableCell>
                                     <TableCell>{getCoordinatorName(entity.coordinatorId)}</TableCell>
+                                    {!isBokTab && <TableCell>{isEmployee(entity) ? entity.zaklad || '-' : '-'}</TableCell>}
                                     <TableCell>
                                         {isEmployee(entity) && entity.address?.toLowerCase().startsWith('własne mieszkanie')
                                             ? `Własne (${entity.ownAddress || 'Brak danych'})`
@@ -257,13 +259,13 @@ const HistoryTable = ({ history, onSort, sortBy, sortOrder, onDelete, columnFilt
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <FilterableHeader label="Nazwisko" field="lastName" currentFilterValues={columnFilters?.lastName} onFilterChange={onColumnFilterChange} options={columnOptions?.lastName} />
-                        <FilterableHeader label="Imię" field="firstName" currentFilterValues={columnFilters?.firstName} onFilterChange={onColumnFilterChange} options={columnOptions?.firstName} />
-                        <FilterableHeader label="Koordynator" field="coordinatorName" currentFilterValues={columnFilters?.coordinatorName} onFilterChange={onColumnFilterChange} options={columnOptions?.coordinatorName} />
-                        <FilterableHeader label="Zakład" field="department" currentFilterValues={columnFilters?.department} onFilterChange={onColumnFilterChange} options={columnOptions?.department} />
-                        <FilterableHeader label="Adres" field="address" currentFilterValues={columnFilters?.address} onFilterChange={onColumnFilterChange} options={columnOptions?.address} />
-                        <FilterableHeader label="Data zameldowania" field="checkInDate" currentFilterValues={columnFilters?.checkInDate} onFilterChange={onColumnFilterChange} options={columnOptions?.checkInDate} isDateFilter />
-                        <FilterableHeader label="Data wymeldowania" field="checkOutDate" currentFilterValues={columnFilters?.checkOutDate} onFilterChange={onColumnFilterChange} options={columnOptions?.checkOutDate} isDateFilter />
+                        <FilterableHeader label="Nazwisko" field="lastName" currentFilterValues={columnFilters?.lastName} onFilterChange={onColumnFilterChange} options={columnOptions?.lastName} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        <FilterableHeader label="Imię" field="firstName" currentFilterValues={columnFilters?.firstName} onFilterChange={onColumnFilterChange} options={columnOptions?.firstName} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        <FilterableHeader label="Koordynator" field="coordinatorName" currentFilterValues={columnFilters?.coordinatorName} onFilterChange={onColumnFilterChange} options={columnOptions?.coordinatorName} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        <FilterableHeader label="Zakład" field="department" currentFilterValues={columnFilters?.department} onFilterChange={onColumnFilterChange} options={columnOptions?.department} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        <FilterableHeader label="Adres" field="address" currentFilterValues={columnFilters?.address} onFilterChange={onColumnFilterChange} options={columnOptions?.address} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        <FilterableHeader label="Data zameldowania" field="checkInDate" currentFilterValues={columnFilters?.checkInDate} onFilterChange={onColumnFilterChange} options={columnOptions?.checkInDate} isDateFilter onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        <FilterableHeader label="Data wymeldowania" field="checkOutDate" currentFilterValues={columnFilters?.checkOutDate} onFilterChange={onColumnFilterChange} options={columnOptions?.checkOutDate} isDateFilter onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
                         {onDelete && <TableHead><span className="sr-only">Akcje</span></TableHead>}
                     </TableRow>
                 </TableHeader>
@@ -485,7 +487,7 @@ const ControlPanel = ({
                                     <span className="hidden sm:inline">Dodaj</span>
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent>
+                            <DropdownMenuContent onCloseAutoFocus={(e) => e.preventDefault()}>
                                 {(!isDriver || isAdmin) && (
                                     <>
                                         <DropdownMenuItem onClick={() => onAdd('employee')}>Dodaj pracownika</DropdownMenuItem>
@@ -623,7 +625,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
 
                     let entityVal = '';
                     if (colField === 'coordinatorId' && 'coordinatorId' in entity && entity.coordinatorId) {
-                        entityVal = entity.coordinatorId;
+                        entityVal = getCoordinatorName(entity.coordinatorId);
                     } else if (colField === 'coordinatorName' && 'coordinatorName' in entity) {
                         entityVal = (entity as any).coordinatorName || '';
                     } else if (colField in entity) {
@@ -839,11 +841,11 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
             });
             addOptions('checkInDate', item => formatDate((item as any).checkInDate));
             addOptions('checkOutDate', item => formatDate((item as any).checkOutDate));
+            addOptions('zaklad', item => (isBokResident(item as any) || isEmployee(item as any)) ? (item as any).zaklad : undefined);
             if (tab === 'bok-residents') {
                  addOptions('sendDate', item => isBokResident(item as any) && (item as any).sendDate ? formatDate((item as any).sendDate) : undefined);
                  addOptions('returnStatus', item => isBokResident(item as any) ? (item as any).returnStatus : undefined);
                  addOptions('status', item => isBokResident(item as any) ? (item as any).status : undefined);
-                 addOptions('zaklad', item => isBokResident(item as any) ? (item as any).zaklad : undefined);
                  addOptions('comments', item => isBokResident(item as any) ? (item as any).comments : undefined);
             }
         }

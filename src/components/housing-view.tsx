@@ -123,7 +123,7 @@ const AddressDetailView = ({
     addresses: HousingData[];
     onOccupantClick: (occupant: Occupant) => void;
     selectedAddressIds: string[];
-    onRoomClick: (roomId: string) => void;
+    onRoomClick: (e: React.MouseEvent, roomId: string) => void;
     selectedRoomIds: string[];
     currentUser: SessionData | null;
     settings: Settings | null;
@@ -318,7 +318,7 @@ const AddressDetailView = ({
                                             room.isLocked && "bg-yellow-500/10 border-yellow-500/30",
                                             room.isActive && !room.isLocked && room.available > 0 && !selectedRoomIds.includes(room.id) && "bg-green-500/10 border-green-500/20"
                                         )}
-                                        onClick={() => onRoomClick(room.id)}
+                                        onClick={(e) => onRoomClick(e, room.id)}
                                     >
                                         <div className="flex justify-between items-center font-medium">
                                             <div className="flex items-center gap-2">
@@ -758,25 +758,39 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
         return Object.entries(grouped).sort((a, b) => a[0].localeCompare(b[0]));
     }, [filteredData]);
 
-    const handleAddressClick = (addressId: string) => {
+    const handleAddressClick = (e: React.MouseEvent, addressId: string) => {
         setSelectedRoomIds([]);
         setSelectedAddressIds(prev => {
-            const isSelected = prev.includes(addressId);
-            if (isSelected) {
-                return prev.filter(id => id !== addressId);
+            if (e.ctrlKey || e.metaKey) {
+                const isSelected = prev.includes(addressId);
+                if (isSelected) {
+                    return prev.filter(id => id !== addressId);
+                } else {
+                    return [...prev, addressId];
+                }
             } else {
-                return [...prev, addressId];
+                if (prev.length === 1 && prev[0] === addressId) {
+                    return [];
+                }
+                return [addressId];
             }
         });
     };
 
-    const handleRoomClick = (roomId: string) => {
+    const handleRoomClick = (e: React.MouseEvent, roomId: string) => {
         setSelectedRoomIds(prev => {
-            const isSelected = prev.includes(roomId);
-            if (isSelected) {
-                return prev.filter(id => id !== roomId);
+            if (e.ctrlKey || e.metaKey) {
+                const isSelected = prev.includes(roomId);
+                if (isSelected) {
+                    return prev.filter(id => id !== roomId);
+                } else {
+                    return [...prev, roomId];
+                }
             } else {
-                return [...prev, roomId];
+                if (prev.length === 1 && prev[0] === roomId) {
+                    return [];
+                }
+                return [roomId];
             }
         });
     };
@@ -861,7 +875,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                                                     address.isActive && selectedAddressIds.includes(address.id) ? "bg-primary/10 border-primary" : address.isActive && "hover:bg-muted/50",
                                                     address.isActive && address.available > 0 && !selectedAddressIds.includes(address.id) && "bg-green-500/10 border-green-500/20"
                                                 )}
-                                                onClick={() => handleAddressClick(address.id)}
+                                                onClick={(e) => handleAddressClick(e, address.id)}
                                                 style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}
                                             >
                                                 <CardHeader className="p-2">

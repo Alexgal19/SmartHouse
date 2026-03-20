@@ -57,6 +57,7 @@ export function BokDispatchReportDialog({
     onPermanentDelete
 }: BokDispatchReportProps) {
     const [search, setSearch] = useState("");
+    const [sortBy, setSortBy] = useState<string>("sendDateParsed");
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
     const [dateFrom, setDateFrom] = useState("");
     const [dateTo, setDateTo] = useState("");
@@ -151,14 +152,48 @@ export function BokDispatchReportDialog({
         }
 
         filtered.sort((a, b) => {
-            const timeA = a.sendDateParsed.getTime();
-            const timeB = b.sendDateParsed.getTime();
-            if (sortOrder === 'desc') return timeB - timeA;
-            return timeA - timeB;
+            let valA: any;
+            let valB: any;
+
+            if (sortBy === 'sendDateParsed') {
+                valA = a.sendDateParsed.getTime();
+                valB = b.sendDateParsed.getTime();
+            } else if (sortBy === 'name') {
+                valA = `${a.resident.lastName} ${a.resident.firstName}`;
+                valB = `${b.resident.lastName} ${b.resident.firstName}`;
+            } else if (sortBy === 'coordinatorId') {
+                valA = getCoordinatorName(a.resident.coordinatorId);
+                valB = getCoordinatorName(b.resident.coordinatorId);
+            } else if (sortBy === 'isAssigned') {
+                valA = a.isAssigned ? 1 : 0;
+                valB = b.isAssigned ? 1 : 0;
+            } else if (sortBy === 'assignedRecordType') {
+                valA = a.assignedRecordType || '';
+                valB = b.assignedRecordType || '';
+            }
+
+            if (valA === valB) return 0;
+            if (valA === null || valA === undefined) return 1;
+            if (valB === null || valB === undefined) return -1;
+            
+            if (typeof valA === 'string' && typeof valB === 'string') {
+                return valA.localeCompare(valB, 'pl', { numeric: true }) * (sortOrder === 'asc' ? 1 : -1);
+            }
+
+            return (valA > valB ? 1 : -1) * (sortOrder === 'asc' ? 1 : -1);
         });
 
         return filtered;
     }, [reportData, search, sortOrder]);
+
+    const handleSort = (field: string) => {
+        if (sortBy === field) {
+            setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortBy(field);
+            setSortOrder('asc');
+        }
+    };
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -199,11 +234,11 @@ export function BokDispatchReportDialog({
                     <Table>
                         <TableHeader className="sticky top-0 bg-background z-10">
                             <TableRow>
-                                <FilterableHeader field="sendDateParsed" label="Data wysłania" />
-                                <FilterableHeader field="name" label="Nazwisko i Imię" />
-                                <FilterableHeader field="coordinatorId" label="Wysłany do (Koordynator BOK)" options={coordinatorOptions} currentFilterValues={columnFilters.coordinatorId} onFilterChange={handleColumnFilterChange} />
-                                <FilterableHeader field="isAssigned" label="Status Przypisania" options={isAssignedOptions} currentFilterValues={columnFilters.isAssigned} onFilterChange={handleColumnFilterChange} />
-                                <FilterableHeader field="assignedRecordType" label="Znaleziono w Dziale" options={assignedRecordTypeOptions} currentFilterValues={columnFilters.assignedRecordType} onFilterChange={handleColumnFilterChange} />
+                                <FilterableHeader field="sendDateParsed" label="Data wysłania" onSort={handleSort} sortBy={sortBy} sortOrder={sortOrder} />
+                                <FilterableHeader field="name" label="Nazwisko i Imię" onSort={handleSort} sortBy={sortBy} sortOrder={sortOrder} />
+                                <FilterableHeader field="coordinatorId" label="Wysłany do (Koordynator BOK)" options={coordinatorOptions} currentFilterValues={columnFilters.coordinatorId} onFilterChange={handleColumnFilterChange} onSort={handleSort} sortBy={sortBy} sortOrder={sortOrder} />
+                                <FilterableHeader field="isAssigned" label="Status Przypisania" options={isAssignedOptions} currentFilterValues={columnFilters.isAssigned} onFilterChange={handleColumnFilterChange} onSort={handleSort} sortBy={sortBy} sortOrder={sortOrder} />
+                                <FilterableHeader field="assignedRecordType" label="Znaleziono w Dziale" options={assignedRecordTypeOptions} currentFilterValues={columnFilters.assignedRecordType} onFilterChange={handleColumnFilterChange} onSort={handleSort} sortBy={sortBy} sortOrder={sortOrder} />
                                 <TableHead className="w-[80px] text-right">Akcje</TableHead>
                             </TableRow>
                         </TableHeader>
