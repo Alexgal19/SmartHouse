@@ -445,7 +445,7 @@ export default function MainLayout({
             const { updated } = await checkAndUpdateStatuses(currentUser?.uid);
             if (updated > 0) {
                 toast({ title: "Sukces", description: `Zaktualizowano statusy dla ${updated} osób.` });
-                await refreshData(false);
+                refreshData(false); // fire-and-forget — sync z serwerem w tle
             } else if (showNoChangesToast) {
                 toast({ title: "Brak zmian", description: "Wszyscy mają aktualne statusy." });
             }
@@ -718,7 +718,7 @@ export default function MainLayout({
         try {
             await updateBokResident(id, { status: 'dismissed', dismissDate: format(dismissDate, 'yyyy-MM-dd') }, currentUser.uid);
             toast({ title: "Sukces", description: "Mieszkaniec BOK został pomyślnie zwolniony." });
-            await refreshData(false);
+            refreshData(false); // fire-and-forget — sync z serwerem w tle
         } catch (e: unknown) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zwolnić mieszkańca BOK." });
         }
@@ -864,54 +864,72 @@ export default function MainLayout({
 
     const handleDismissEmployee = useCallback(async (employeeId: string, checkOutDate: Date) => {
         if (!currentUser) return;
+      // Optimistic update — natychmiastowe przejście pracownika do zwolnionych
+      const originalEmployees = rawEmployees;
+      const formattedDate = format(checkOutDate, 'yyyy-MM-dd');
+      setRawEmployees(prev => prev.map(e => e.id === employeeId ? { ...e, status: 'dismissed' as const, checkOutDate: formattedDate } : e));
         try {
-            await updateEmployee(employeeId, { status: 'dismissed', checkOutDate: format(checkOutDate, 'yyyy-MM-dd') }, currentUser.uid);
+            await updateEmployee(employeeId, { status: 'dismissed', checkOutDate: formattedDate }, currentUser.uid);
             toast({ title: "Sukces", description: "Pracownik został zwolniony." });
-            await refreshData(false);
+            refreshData(false); // fire-and-forget — sync z serwerem w tle
         } catch (e: unknown) {
+        setRawEmployees(originalEmployees); // rollback przy błędzie
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zwolnić pracownika." });
         }
-    }, [currentUser, refreshData, toast]);
+    }, [currentUser, rawEmployees, setRawEmployees, refreshData, toast]);
 
     const handleDismissNonEmployee = useCallback(async (nonEmployeeId: string, checkOutDate: Date) => {
         if (!currentUser) return;
+      // Optimistic update
+      const originalNonEmployees = rawNonEmployees;
+      const formattedDate = format(checkOutDate, 'yyyy-MM-dd');
+      setRawNonEmployees(prev => prev.map(n => n.id === nonEmployeeId ? { ...n, status: 'dismissed' as const, checkOutDate: formattedDate } : n));
         try {
-            await updateNonEmployee(nonEmployeeId, { status: 'dismissed', checkOutDate: format(checkOutDate, 'yyyy-MM-dd') }, currentUser.uid);
+            await updateNonEmployee(nonEmployeeId, { status: 'dismissed', checkOutDate: formattedDate }, currentUser.uid);
             toast({ title: "Sukces", description: "Mieszkaniec został zwolniony." });
-            await refreshData(false);
+            refreshData(false); // fire-and-forget — sync z serwerem w tle
         } catch (e: unknown) {
+        setRawNonEmployees(originalNonEmployees);
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zwolnić mieszkańca." });
         }
-    }, [currentUser, refreshData, toast]);
+    }, [currentUser, rawNonEmployees, setRawNonEmployees, refreshData, toast]);
 
     const handleRestoreEmployee = useCallback(async (employee: Employee) => {
         if (!currentUser) return;
+      // Optimistic update
+      const originalEmployees = rawEmployees;
+      setRawEmployees(prev => prev.map(e => e.id === employee.id ? { ...e, status: 'active' as const, checkOutDate: null } : e));
         try {
             await updateEmployee(employee.id, { status: 'active', checkOutDate: null }, currentUser.uid);
             toast({ title: "Sukces", description: "Pracownik został przywrócony." });
-            await refreshData(false);
+            refreshData(false); // fire-and-forget — sync z serwerem w tle
         } catch (e: unknown) {
+        setRawEmployees(originalEmployees);
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się przywrócić pracownika." });
         }
-    }, [currentUser, refreshData, toast]);
+    }, [currentUser, rawEmployees, setRawEmployees, refreshData, toast]);
 
     const handleRestoreNonEmployee = useCallback(async (nonEmployee: NonEmployee) => {
         if (!currentUser) return;
+      // Optimistic update
+      const originalNonEmployees = rawNonEmployees;
+      setRawNonEmployees(prev => prev.map(n => n.id === nonEmployee.id ? { ...n, status: 'active' as const, checkOutDate: null } : n));
         try {
             await updateNonEmployee(nonEmployee.id, { status: 'active', checkOutDate: null }, currentUser.uid);
             toast({ title: "Sukces", description: "Mieszkaniec został przywrócony." });
-            await refreshData(false);
+            refreshData(false); // fire-and-forget — sync z serwerem w tle
         } catch (e: unknown) {
+        setRawNonEmployees(originalNonEmployees);
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się przywrócić mieszkańca." });
         }
-    }, [currentUser, refreshData, toast]);
+    }, [currentUser, rawNonEmployees, setRawNonEmployees, refreshData, toast]);
 
     const handleRestoreBokResident = useCallback(async (bokResident: BokResident) => {
         if (!currentUser) return;
         try {
             await updateBokResident(bokResident.id, { status: 'active', dismissDate: null, checkOutDate: null }, currentUser.uid);
             toast({ title: "Sukces", description: "Mieszkaniec BOK został przywrócony." });
-            await refreshData(false);
+            refreshData(false); // fire-and-forget — sync z serwerem w tle
         } catch (e: unknown) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się przywrócić mieszkańca BOK." });
         }
@@ -936,7 +954,7 @@ export default function MainLayout({
         try {
             await deleteAddressHistoryEntry(historyId, actorUid);
             toast({ title: "Sukces", description: "Wpis z historii został usunięty." });
-            await refreshData(false);
+            refreshData(false); // fire-and-forget — sync z serwerem w tle
         } catch (e: unknown) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć wpisu z historii." });
         }
@@ -957,7 +975,7 @@ export default function MainLayout({
                 description: description,
                 duration: result.errors.length > 0 ? 10000 : 5000,
             });
-            await refreshData(false);
+            refreshData(false); // fire-and-forget — sync z serwerem w tle
         } catch (e) {
             toast({
                 variant: "destructive",
@@ -983,7 +1001,7 @@ export default function MainLayout({
                 description: description,
                 duration: result.errors.length > 0 ? 10000 : 5000,
             });
-            await refreshData(false);
+            refreshData(false); // fire-and-forget — sync z serwerem w tle
         } catch (e) {
             toast({
                 variant: "destructive",
@@ -1009,7 +1027,7 @@ export default function MainLayout({
                 description: description,
                 duration: result.errors.length > 0 ? 10000 : 5000,
             });
-            await refreshData(false);
+            refreshData(false); // fire-and-forget — sync z serwerem w tle
         } catch (e) {
             toast({
                 variant: "destructive",
@@ -1024,7 +1042,7 @@ export default function MainLayout({
         try {
             const result = await migrateFullNames(currentUser.uid);
             toast({ title: "Sukces", description: `Zmigrowano ${result.migratedEmployees} pracowników i ${result.migratedNonEmployees} mieszkańców.` });
-            await refreshData(false);
+            refreshData(false); // fire-and-forget — sync z serwerem w tle
         } catch (e) {
             toast({
                 variant: "destructive",
