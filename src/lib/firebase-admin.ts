@@ -13,7 +13,8 @@ if (!admin.apps.length) {
   } else {
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
-      databaseURL: "https://studio-6821761262-fdf39-default-rtdb.europe-west1.firebasedatabase.app"
+      databaseURL: "https://studio-6821761262-fdf39-default-rtdb.europe-west1.firebasedatabase.app",
+      storageBucket: "studio-6821761262-fdf39.appspot.com"
     });
   }
 }

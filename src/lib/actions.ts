@@ -25,7 +25,7 @@ const TIMEOUT_MS = 45000;
 import * as XLSX from 'xlsx';
 import { adminMessaging } from './firebase-admin';
 import { batchPromises } from './utils';
-import { uploadFileToDrive } from './drive';
+import admin from 'firebase-admin';
 
 const EMPLOYEE_HEADERS = [
     'id', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'ownAddress', 'roomNumber',
@@ -2234,18 +2234,26 @@ export async function uploadControlCardPhotoAction(base64Image: string, fileName
         }
 
         // Generate a safe unique filename
-        const safeFileName = `${Date.now()}_${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        const safeFileName = `control-cards/${Date.now()}_${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
 
-        const result = await uploadFileToDrive(safeFileName, mimeType, buffer);
+        const bucket = admin.storage().bucket();
+        const file = bucket.file(safeFileName);
+
+        await file.save(buffer, {
+            metadata: {
+                contentType: mimeType,
+            },
+        });
+
+        // Make the file accessible via signed URL for a long time
+        const [publicUrl] = await file.getSignedUrl({
+            action: 'read',
+            expires: '01-01-2099',
+        });
         
-        if (result.error || !result.url) {
-            console.error('Błąd podczas ładowania pliku na serwer (G-Drive):', result.error);
-            return { url: '', error: result.error || 'Nieznany błąd podczas zapisywania zdjęcia' };
-        }
-        
-        return { url: result.url };
+        return { url: publicUrl };
     } catch (error: any) {
-        console.error('Error during image upload:', error);
+        console.error('Error during image upload to Firebase Storage:', error);
         return { url: '', error: error.message || 'Błąd serwera przy próbie odebrania zdjęcia' };
     }
 }
