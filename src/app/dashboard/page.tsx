@@ -10,6 +10,7 @@ import type { SessionData, View } from '@/types';
 import { useSearchParams } from 'next/navigation';
 import EntityView from '@/components/entity-view';
 import HousingView from '@/components/housing-view';
+import ControlCardsView from '@/components/control-cards-view';
 import dynamic from 'next/dynamic';
 
 
@@ -38,6 +39,8 @@ function CurrentView({ activeView, currentUser }: { activeView: View; currentUse
             return <EntityView currentUser={currentUser} />;
         case 'housing':
             return <HousingView currentUser={currentUser} />;
+        case 'control-cards':
+            return <ControlCardsView currentUser={currentUser} />;
         case 'settings':
             return <DynamicSettingsView currentUser={currentUser} />;
         default:

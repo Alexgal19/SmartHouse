@@ -17,7 +17,7 @@ import {
 import Header from './header';
 import { MobileNav } from './mobile-nav';
 import type { View, Notification, Employee, Settings, Address, SessionData, NonEmployee, AddressHistory, BokResident } from '@/types';
-import { Home, Settings as SettingsIcon, Users, Building } from 'lucide-react';
+import { Home, Settings as SettingsIcon, Users, Building, ClipboardCheck } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     addEmployee,
@@ -170,6 +170,7 @@ export default function MainLayout({
         { view: 'dashboard', icon: Home, label: 'Pulpit' },
         { view: 'employees', icon: Users, label: 'Mieszkańcy' },
         { view: 'housing', icon: Building, label: 'Zakwaterowanie' },
+        { view: 'control-cards', icon: ClipboardCheck, label: 'Karty mieszkań' },
         { view: 'settings', icon: SettingsIcon, label: 'Ustawienia' },
     ], []) as { view: View; icon: React.ElementType; label: string }[];
 

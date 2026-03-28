@@ -1,6 +1,6 @@
 // This file contains all the TypeScript type definitions for the application's data structures.
 
-export type View = 'dashboard' | 'employees' | 'settings' | 'housing';
+export type View = 'dashboard' | 'employees' | 'settings' | 'housing' | 'control-cards';
 
 export type Address = {
   id: string;
@@ -187,4 +187,31 @@ export type SessionData = {
   name: string;
   isAdmin: boolean;
   isDriver: boolean;
+}
+
+export type CleanlinessRating = number; // 1-10 scale
+
+export type RoomRating = {
+  roomId: string;
+  roomName: string;
+  rating: CleanlinessRating;
+  comment?: string;
+  photoUrls?: string[];
+}
+
+export type ControlCard = {
+  id: string;
+  addressId: string;
+  addressName: string;
+  coordinatorId: string;
+  coordinatorName: string;
+  controlMonth: string; // format: YYYY-MM
+  fillDate: string;     // ISO date: YYYY-MM-DD
+  roomRatings: RoomRating[]; // per-room ratings stored as JSON in sheet
+  cleanKitchen: CleanlinessRating;
+  cleanBathroom: CleanlinessRating;
+  kitchenPhotoUrls?: string[];
+  bathroomPhotoUrls?: string[];
+  appliancesWorking: boolean;
+  comments: string;
 }

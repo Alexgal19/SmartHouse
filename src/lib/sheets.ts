@@ -2,7 +2,7 @@
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, Address, Coordinator, NotificationType, AddressHistory, BokResident } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, Address, Coordinator, NotificationType, AddressHistory, BokResident, ControlCard, CleanlinessRating } from '../types';
 import { format, isValid, parse, parseISO } from 'date-fns';
 import * as XLSX from 'xlsx';
 
@@ -24,6 +24,7 @@ const SHEET_NAME_BOK_RESIDENTS = 'BokResidents';
 const SHEET_NAME_BOK_ROLES = 'BokRoles';
 const SHEET_NAME_BOK_RETURN_OPTIONS = 'BokReturnOptions';
 const SHEET_NAME_BOK_STATUSES = 'BokStatuses';
+const SHEET_NAME_CONTROL_CARDS = 'ControlCards';
 
 const TIMEOUT_MS = 15000; // 15 seconds
 
@@ -60,11 +61,14 @@ let bokResidentsCache: { data: BokResident[], timestamp: number } | null = null;
 let addressHistoryCache: { data: AddressHistory[], timestamp: number } | null = null;
 const DATA_CACHE_TTL = 60 * 1000; // 1 minute
 
+let controlCardsCache: { data: ControlCard[], timestamp: number } | null = null;
+
 export async function invalidateEmployeesCache() { employeesCache = null; }
 export async function invalidateNonEmployeesCache() { nonEmployeesCache = null; }
 export async function invalidateBokResidentsCache() { bokResidentsCache = null; }
 export async function invalidateAddressHistoryCache() { addressHistoryCache = null; }
 export async function invalidateSettingsCache() { settingsCache = null; }
+export async function invalidateControlCardsCache() { controlCardsCache = null; }
 
 function getAuth(): JWT {
     const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
@@ -734,4 +738,119 @@ export async function deleteAddressHistoryEntry(historyId: string) {
     } else {
         throw new Error('Address history entry not found');
     }
+}
+
+const CONTROL_CARD_HEADERS = [
+    'id', 'addressId', 'addressName', 'coordinatorId', 'coordinatorName',
+    'controlMonth', 'fillDate', 'roomRatings', 'cleanKitchen', 'cleanBathroom',
+    'kitchenPhotoUrls', 'bathroomPhotoUrls', 'appliancesWorking', 'comments'
+];
+
+const deserializeControlCard = (row: Record<string, unknown>): ControlCard | null => {
+    if (!row.id || !row.addressId || !row.controlMonth) return null;
+
+    const parseRating = (val: unknown): number => {
+        if (typeof val === 'number') return val;
+        if (typeof val === 'string') {
+            const n = parseInt(val, 10);
+            if (!isNaN(n)) return n;
+            // Handle legacy categorical ratings
+            if (val === 'Dobra') return 10;
+            if (val === 'Przeciętna') return 5;
+            if (val === 'Zła') return 1;
+        }
+        return 10; // default to 10
+    };
+
+    let roomRatings: import('../types').RoomRating[] = [];
+    if (row.roomRatings && typeof row.roomRatings === 'string') {
+        try {
+            const parsed = JSON.parse(row.roomRatings);
+            if (Array.isArray(parsed)) {
+                roomRatings = parsed.map((rr: any) => ({
+                    ...rr,
+                    rating: parseRating(rr.rating)
+                }));
+            }
+        } catch {
+            // ignore parse errors
+        }
+    }
+
+    const parseJsonArray = (val: unknown): string[] => {
+        if (!val || typeof val !== 'string') return [];
+        try { const p = JSON.parse(val); return Array.isArray(p) ? p : []; } catch { return []; }
+    };
+
+    return {
+        id: row.id as string,
+        addressId: row.addressId as string,
+        addressName: (row.addressName as string) || '',
+        coordinatorId: (row.coordinatorId as string) || '',
+        coordinatorName: (row.coordinatorName as string) || '',
+        controlMonth: row.controlMonth as string,
+        fillDate: (row.fillDate as string) || '',
+        roomRatings,
+        cleanKitchen: parseRating(row.cleanKitchen),
+        cleanBathroom: parseRating(row.cleanBathroom),
+        kitchenPhotoUrls: parseJsonArray(row.kitchenPhotoUrls),
+        bathroomPhotoUrls: parseJsonArray(row.bathroomPhotoUrls),
+        appliancesWorking: row.appliancesWorking === 'TRUE' || row.appliancesWorking === true,
+        comments: (row.comments as string) || '',
+    };
+};
+
+export async function getControlCards(): Promise<ControlCard[]> {
+    if (controlCardsCache && (Date.now() - controlCardsCache.timestamp < DATA_CACHE_TTL)) {
+        return controlCardsCache.data;
+    }
+    const doc = await getDoc();
+    const rows = await getSheetData(doc, SHEET_NAME_CONTROL_CARDS);
+    const data = rows.map(row => deserializeControlCard(row)).filter((c): c is ControlCard => c !== null);
+    controlCardsCache = { data, timestamp: Date.now() };
+    return data;
+}
+
+export async function addControlCard(card: Omit<ControlCard, 'id'>): Promise<string> {
+    const sheet = await getSheet(SHEET_NAME_CONTROL_CARDS, CONTROL_CARD_HEADERS);
+    const id = `cc-${Date.now()}`;
+    await withTimeout(sheet.addRow({
+        id,
+        addressId: card.addressId,
+        addressName: card.addressName,
+        coordinatorId: card.coordinatorId,
+        coordinatorName: card.coordinatorName,
+        controlMonth: card.controlMonth,
+        fillDate: card.fillDate,
+        roomRatings: JSON.stringify(card.roomRatings),
+        cleanKitchen: card.cleanKitchen,
+        cleanBathroom: card.cleanBathroom,
+        kitchenPhotoUrls: JSON.stringify(card.kitchenPhotoUrls || []),
+        bathroomPhotoUrls: JSON.stringify(card.bathroomPhotoUrls || []),
+        appliancesWorking: card.appliancesWorking ? 'TRUE' : 'FALSE',
+        comments: card.comments,
+    }), TIMEOUT_MS, 'sheet.addRow(ControlCards)');
+    controlCardsCache = null;
+    return id;
+}
+
+export async function updateControlCard(cardId: string, updates: Partial<Omit<ControlCard, 'id'>>): Promise<void> {
+    const sheet = await getSheet(SHEET_NAME_CONTROL_CARDS, CONTROL_CARD_HEADERS);
+    const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(ControlCards)');
+    const row = rows.find(r => r.get('id') === cardId);
+    if (!row) throw new Error('Control card not found');
+    const keys = Object.keys(updates) as Array<keyof typeof updates>;
+    for (const key of keys) {
+        const value = updates[key];
+        if (value === undefined) continue;
+        if (key === 'appliancesWorking') {
+            row.set(key, (value as boolean) ? 'TRUE' : 'FALSE');
+        } else if (key === 'roomRatings' || key === 'kitchenPhotoUrls' || key === 'bathroomPhotoUrls') {
+            row.set(key, JSON.stringify(value));
+        } else {
+            row.set(key, value as string);
+        }
+    }
+    await withTimeout(row.save(), TIMEOUT_MS, 'row.save(ControlCards)');
+    controlCardsCache = null;
 }

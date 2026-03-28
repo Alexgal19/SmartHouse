@@ -1,6 +1,6 @@
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, NonEmployee, DeductionReason, NotificationType, Coordinator, BokResident } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, NonEmployee, DeductionReason, NotificationType, Coordinator, BokResident, ControlCard } from '../types';
 import { revalidatePath } from 'next/cache';
 import {
     getSheet,
@@ -15,7 +15,9 @@ import {
     invalidateNonEmployeesCache,
     invalidateBokResidentsCache,
     invalidateSettingsCache,
-    withTimeout
+    withTimeout,
+    addControlCard as addControlCardToSheet,
+    updateControlCard as updateControlCardInSheet,
 } from './sheets';
 import { format, isValid, getDaysInMonth, parseISO, differenceInDays, max, min, parse as dateFnsParse, lastDayOfMonth } from 'date-fns';
 
@@ -23,6 +25,7 @@ const TIMEOUT_MS = 45000;
 import * as XLSX from 'xlsx';
 import { adminMessaging } from './firebase-admin';
 import { batchPromises } from './utils';
+import { uploadFileToDrive } from './drive';
 
 const EMPLOYEE_HEADERS = [
     'id', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'ownAddress', 'roomNumber',
@@ -2185,5 +2188,64 @@ export async function sendPushNotification(
             console.error("Error sending push notification:", e);
             return { success: false, error: e instanceof Error ? e.message : "Wystąpił nieznany błąd podczas wysyłania powiadomienia PUSH." };
         }
+    }
+}
+
+export async function saveControlCardAction(
+    cardData: Omit<ControlCard, 'id'>
+): Promise<{ success: boolean; id?: string; error?: string }> {
+    try {
+        const id = await addControlCardToSheet(cardData);
+        revalidatePath('/dashboard');
+        return { success: true, id };
+    } catch (error) {
+        console.error('Error saving control card:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+export async function editControlCardAction(
+    cardId: string,
+    updates: Partial<Omit<ControlCard, 'id' | 'addressId' | 'coordinatorId' | 'controlMonth'>>
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        await updateControlCardInSheet(cardId, { ...updates, fillDate: new Date().toISOString().slice(0, 10) });
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error editing control card:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+// --- Image processing ---
+export async function uploadControlCardPhotoAction(base64Image: string, fileName: string, mimeType: string): Promise<{ url: string; error?: string }> {
+    try {
+        if (!base64Image || !base64Image.includes('base64,')) {
+            return { url: '', error: 'Nieprawidłowy format zdjęcia' };
+        }
+
+        const base64Data = base64Image.split('base64,')[1];
+        const buffer = Buffer.from(base64Data, 'base64');
+        
+        // Safety size check: 5MB maximum allowed after client-side compression
+        if (buffer.length > 5 * 1024 * 1024) {
+            return { url: '', error: 'Zdjęcie jest za duże (maksymalnie 5MB)' };
+        }
+
+        // Generate a safe unique filename
+        const safeFileName = `${Date.now()}_${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+
+        const result = await uploadFileToDrive(safeFileName, mimeType, buffer);
+        
+        if (result.error || !result.url) {
+            console.error('Błąd podczas ładowania pliku na serwer (G-Drive):', result.error);
+            return { url: '', error: result.error || 'Nieznany błąd podczas zapisywania zdjęcia' };
+        }
+        
+        return { url: result.url };
+    } catch (error: any) {
+        console.error('Error during image upload:', error);
+        return { url: '', error: error.message || 'Błąd serwera przy próbie odebrania zdjęcia' };
     }
 }
