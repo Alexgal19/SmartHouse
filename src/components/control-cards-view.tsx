@@ -13,7 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
@@ -440,6 +440,9 @@ function ControlCardDialog({
                         <ClipboardCheck className="w-4 h-4 text-primary shrink-0" />
                         Karta kontroli: {address.name}
                     </DialogTitle>
+                    <DialogDescription className="sr-only">
+                        Szczegóły widoku karty kontroli czystości mieszkania.
+                    </DialogDescription>
                     <p className="text-xs text-muted-foreground">
                         Miesiąc: <span className="font-medium text-foreground">{selectedMonth}</span>
                         {' · '}{address.locality}
@@ -629,10 +632,32 @@ function ControlCardDialog({
                             className="max-w-full max-h-[85vh] object-contain rounded-md" 
                         />
                         <div className="absolute top-2 right-2 flex gap-2">
-                            <Button size="icon" variant="secondary" className="rounded-full shadow-lg opacity-80 hover:opacity-100 h-8 w-8" asChild>
-                                <a href={lightboxImage} target="_blank" rel="noopener noreferrer" download>
-                                    <Download className="w-4 h-4" />
-                                </a>
+                            <Button 
+                                size="icon" 
+                                variant="secondary" 
+                                className="rounded-full shadow-lg opacity-80 hover:opacity-100 h-8 w-8" 
+                                onClick={async (e) => {
+                                    e.stopPropagation();
+                                    try {
+                                        toast({ title: 'Pobieranie...', description: 'Trwa pobieranie zdjęcia.' });
+                                        const response = await fetch(lightboxImage);
+                                        const blob = await response.blob();
+                                        const url = window.URL.createObjectURL(blob);
+                                        const a = document.createElement('a');
+                                        a.style.display = 'none';
+                                        a.href = url;
+                                        a.download = `Photo_${Date.now()}.jpg`;
+                                        document.body.appendChild(a);
+                                        a.click();
+                                        window.URL.revokeObjectURL(url);
+                                        document.body.removeChild(a);
+                                    } catch (err) {
+                                        // Fallback do nowej karty jeśli fetch() nie powiedzie się przez CORS
+                                        window.open(lightboxImage, '_blank');
+                                    }
+                                }}
+                            >
+                                <Download className="w-4 h-4" />
                             </Button>
                             <Button size="icon" variant="destructive" className="rounded-full shadow-lg opacity-80 hover:opacity-100 h-8 w-8" onClick={() => setLightboxImage(null)}>
                                 <X className="w-4 h-4" />
