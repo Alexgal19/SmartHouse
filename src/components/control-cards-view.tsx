@@ -121,6 +121,52 @@ function PhotoUploadWidget({
     );
 }
 
+// ─── Lightbox Component ─────────────────────────────────────────────────────
+
+function Lightbox({ image, onClose }: { image: string | null; onClose: () => void }) {
+    if (!image) return null;
+
+    return (
+        <Dialog open={!!image} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="max-w-[95vw] max-h-[95vh] w-auto h-auto p-0 bg-transparent border-none shadow-none ring-0 focus:ring-0">
+                <DialogHeader className="sr-only">
+                    <DialogTitle>Podgląd zdjęcia</DialogTitle>
+                    <DialogDescription>Powiększony widok wybranego zdjęcia.</DialogDescription>
+                </DialogHeader>
+                <div className="relative flex flex-col items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
+                    <motion.img
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        src={image}
+                        alt="Podgląd"
+                        className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl overflow-hidden cursor-default pointer-events-auto"
+                    />
+                    <div className="absolute top-6 right-6 flex gap-3 pointer-events-auto">
+                        <Button 
+                            size="icon" 
+                            variant="secondary" 
+                            className="rounded-full shadow-xl h-10 w-10 bg-white/90 hover:bg-white text-black" 
+                            asChild
+                        >
+                            <a href={image} target="_blank" rel="noopener noreferrer">
+                                <Download className="w-5 h-5" />
+                            </a>
+                        </Button>
+                        <Button 
+                            size="icon" 
+                            variant="destructive" 
+                            className="rounded-full shadow-xl h-10 w-10" 
+                            onClick={onClose}
+                        >
+                            <X className="w-5 h-5" />
+                        </Button>
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 const isPrivateAddress = (name: string): boolean => {
@@ -618,54 +664,11 @@ function ControlCardDialog({
                     )}
                 </DialogFooter>
             </DialogContent>
-            {lightboxImage && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm pointer-events-auto"
-                     onClick={() => setLightboxImage(null)}
-                >
-                    <div 
-                        className="relative max-w-[95vw] max-h-[95vh] w-auto h-auto rounded-lg shadow-2xl flex flex-col items-center"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <img 
-                            src={lightboxImage} 
-                            alt="Podgląd" 
-                            className="max-w-full max-h-[85vh] object-contain rounded-md" 
-                        />
-                        <div className="absolute top-2 right-2 flex gap-2">
-                            <Button 
-                                size="icon" 
-                                variant="secondary" 
-                                className="rounded-full shadow-lg opacity-80 hover:opacity-100 h-8 w-8" 
-                                onClick={async (e) => {
-                                    e.stopPropagation();
-                                    try {
-                                        toast({ title: 'Pobieranie...', description: 'Trwa pobieranie zdjęcia.' });
-                                        const response = await fetch(lightboxImage);
-                                        const blob = await response.blob();
-                                        const url = window.URL.createObjectURL(blob);
-                                        const a = document.createElement('a');
-                                        a.style.display = 'none';
-                                        a.href = url;
-                                        a.download = `Photo_${Date.now()}.jpg`;
-                                        document.body.appendChild(a);
-                                        a.click();
-                                        window.URL.revokeObjectURL(url);
-                                        document.body.removeChild(a);
-                                    } catch (err) {
-                                        // Fallback do nowej karty jeśli fetch() nie powiedzie się przez CORS
-                                        window.open(lightboxImage, '_blank');
-                                    }
-                                }}
-                            >
-                                <Download className="w-4 h-4" />
-                            </Button>
-                            <Button size="icon" variant="destructive" className="rounded-full shadow-lg opacity-80 hover:opacity-100 h-8 w-8" onClick={() => setLightboxImage(null)}>
-                                <X className="w-4 h-4" />
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            )}
+
+            <Lightbox 
+                image={lightboxImage} 
+                onClose={() => setLightboxImage(null)} 
+            />
         </Dialog>
     );
 }
