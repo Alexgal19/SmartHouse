@@ -619,18 +619,22 @@ function ControlCardDialog({
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm pointer-events-auto"
                      onClick={() => setLightboxImage(null)}
                 >
-                    <div className="relative max-w-[95vw] max-h-[95vh] w-auto h-auto rounded-lg shadow-2xl flex flex-col items-center">
+                    <div 
+                        className="relative max-w-[95vw] max-h-[95vh] w-auto h-auto rounded-lg shadow-2xl flex flex-col items-center"
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         <img 
                             src={lightboxImage} 
                             alt="Podgląd" 
                             className="max-w-full max-h-[85vh] object-contain rounded-md" 
-                            onClick={(e) => e.stopPropagation()}
                         />
                         <div className="absolute top-2 right-2 flex gap-2">
-                            <Button size="icon" variant="secondary" className="rounded-full shadow-lg opacity-80 hover:opacity-100 h-8 w-8" onClick={(e) => { e.stopPropagation(); window.open(lightboxImage, '_blank'); }}>
-                                <Download className="w-4 h-4" />
+                            <Button size="icon" variant="secondary" className="rounded-full shadow-lg opacity-80 hover:opacity-100 h-8 w-8" asChild>
+                                <a href={lightboxImage} target="_blank" rel="noopener noreferrer" download>
+                                    <Download className="w-4 h-4" />
+                                </a>
                             </Button>
-                            <Button size="icon" variant="destructive" className="rounded-full shadow-lg opacity-80 hover:opacity-100 h-8 w-8" onClick={(e) => { e.stopPropagation(); setLightboxImage(null); }}>
+                            <Button size="icon" variant="destructive" className="rounded-full shadow-lg opacity-80 hover:opacity-100 h-8 w-8" onClick={() => setLightboxImage(null)}>
                                 <X className="w-4 h-4" />
                             </Button>
                         </div>
