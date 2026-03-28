@@ -746,35 +746,36 @@ const CONTROL_CARD_HEADERS = [
     'kitchenPhotoUrls', 'bathroomPhotoUrls', 'appliancesWorking', 'comments'
 ];
 
-const deserializeControlCard = (row: Record<string, unknown>): ControlCard | null => {
-    if (!row.id || !row.addressId || !row.controlMonth) return null;
+const deserializeControlCard = (row: any): ControlCard | null => {
+    const id = row.get('id');
+    const addressId = row.get('addressId');
+    const controlMonth = row.get('controlMonth');
+    if (!id || !addressId || !controlMonth) return null;
 
     const parseRating = (val: unknown): number => {
         if (typeof val === 'number') return val;
         if (typeof val === 'string') {
             const n = parseInt(val, 10);
             if (!isNaN(n)) return n;
-            // Handle legacy categorical ratings
             if (val === 'Dobra') return 10;
             if (val === 'Przeciętna') return 5;
             if (val === 'Zła') return 1;
         }
-        return 10; // default to 10
+        return 10;
     };
 
     let roomRatings: import('../types').RoomRating[] = [];
-    if (row.roomRatings && typeof row.roomRatings === 'string') {
+    const rawRoomRatings = row.get('roomRatings');
+    if (rawRoomRatings && typeof rawRoomRatings === 'string') {
         try {
-            const parsed = JSON.parse(row.roomRatings);
+            const parsed = JSON.parse(rawRoomRatings);
             if (Array.isArray(parsed)) {
                 roomRatings = parsed.map((rr: any) => ({
                     ...rr,
                     rating: parseRating(rr.rating)
                 }));
             }
-        } catch {
-            // ignore parse errors
-        }
+        } catch { }
     }
 
     const parseJsonArray = (val: unknown): string[] => {
@@ -783,20 +784,20 @@ const deserializeControlCard = (row: Record<string, unknown>): ControlCard | nul
     };
 
     return {
-        id: row.id as string,
-        addressId: row.addressId as string,
-        addressName: (row.addressName as string) || '',
-        coordinatorId: (row.coordinatorId as string) || '',
-        coordinatorName: (row.coordinatorName as string) || '',
-        controlMonth: row.controlMonth as string,
-        fillDate: (row.fillDate as string) || '',
+        id: id as string,
+        addressId: addressId as string,
+        addressName: (row.get('addressName') as string) || '',
+        coordinatorId: (row.get('coordinatorId') as string) || '',
+        coordinatorName: (row.get('coordinatorName') as string) || '',
+        controlMonth: controlMonth as string,
+        fillDate: (row.get('fillDate') as string) || '',
         roomRatings,
-        cleanKitchen: parseRating(row.cleanKitchen),
-        cleanBathroom: parseRating(row.cleanBathroom),
-        kitchenPhotoUrls: parseJsonArray(row.kitchenPhotoUrls),
-        bathroomPhotoUrls: parseJsonArray(row.bathroomPhotoUrls),
-        appliancesWorking: row.appliancesWorking === 'TRUE' || row.appliancesWorking === true,
-        comments: (row.comments as string) || '',
+        cleanKitchen: parseRating(row.get('cleanKitchen')),
+        cleanBathroom: parseRating(row.get('cleanBathroom')),
+        kitchenPhotoUrls: parseJsonArray(row.get('kitchenPhotoUrls')),
+        bathroomPhotoUrls: parseJsonArray(row.get('bathroomPhotoUrls')),
+        appliancesWorking: row.get('appliancesWorking') === 'TRUE' || row.get('appliancesWorking') === true,
+        comments: (row.get('comments') as string) || '',
     };
 };
 
@@ -805,7 +806,9 @@ export async function getControlCards(): Promise<ControlCard[]> {
         return controlCardsCache.data;
     }
     const doc = await getDoc();
-    const rows = await getSheetData(doc, SHEET_NAME_CONTROL_CARDS);
+    const sheet = doc.sheetsByTitle[SHEET_NAME_CONTROL_CARDS];
+    if (!sheet) return [];
+    const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(ControlCards)');
     const data = rows.map(row => deserializeControlCard(row)).filter((c): c is ControlCard => c !== null);
     controlCardsCache = { data, timestamp: Date.now() };
     return data;
