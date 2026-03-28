@@ -7,7 +7,8 @@ import {
     ClipboardCheck, Search, CheckCircle2,
     AlertCircle, Clock, ChevronRight, Building2,
     ShieldCheck, Wrench, ChevronDown, Bed,
-    Camera, ImageIcon, X, Download, Loader2
+    Camera, ImageIcon, X, Download, Loader2,
+    Lock, KeyRound
 } from 'lucide-react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,57 @@ import type { SessionData, Address, ControlCard, CleanlinessRating, RoomRating }
 import { useMainLayout } from '@/components/main-layout';
 import { saveControlCardAction, editControlCardAction, uploadControlCardPhotoAction } from '@/lib/actions';
 import { format } from 'date-fns';
+
+// ─── PIN Lock Component ──────────────────────────────────────────────────
+
+function PINLock({ onUnlock }: { onUnlock: () => void }) {
+    const [pin, setPin] = useState('');
+    const [error, setError] = useState(false);
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (pin === '2991') {
+            onUnlock();
+        } else {
+            setError(true);
+            setPin('');
+            setTimeout(() => setError(false), 2000);
+        }
+    };
+
+    return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 text-center animate-in fade-in zoom-in duration-300">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-6">
+                <Lock className="w-8 h-8 text-primary" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">Moduł Zablokowany</h2>
+            <p className="text-muted-foreground mb-8 max-w-sm">
+                Ta sekcja jest tymczasowo zablokowana. Wprowadź kod dostępu, aby kontynuować.
+            </p>
+            <form onSubmit={handleSubmit} className="w-full max-w-[280px] space-y-4">
+                <div className="relative">
+                    <KeyRound className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        type="password"
+                        placeholder="Wprowadź kod PIN"
+                        className={`pl-9 text-center tracking-[0.5em] font-mono text-lg ${error ? 'border-destructive ring-destructive shadow-[0_0_10px_rgba(239,68,68,0.2)]' : ''}`}
+                        value={pin}
+                        onChange={(e) => setPin(e.target.value)}
+                        autoFocus
+                    />
+                </div>
+                <Button type="submit" className="w-full shadow-lg shadow-primary/20">
+                    Odblokuj Dostęp
+                </Button>
+                {error && (
+                    <p className="text-xs text-red-500 font-medium animate-in slide-in-from-top-1">
+                        Nieprawidłowy kod PIN. Spróbuj ponownie.
+                    </p>
+                )}
+            </form>
+        </div>
+    );
+}
 
 // ─── Photo Upload Widget (reusable) ──────────────────────────────────────────
 
@@ -794,8 +846,10 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
     const [isLoadingCards, setIsLoadingCards] = useState(true);
     const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
     const [openLocality, setOpenLocality] = useState<string | null>(null);
+    const [isUnlocked, setIsUnlocked] = useState(currentUser.isAdmin);
 
     React.useEffect(() => {
+        if (!isUnlocked) return;
         setIsLoadingCards(true);
         fetch('/api/control-cards')
             .then(res => res.json())
@@ -870,6 +924,10 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
     const toggleLocality = (loc: string) => {
         setOpenLocality(prev => prev === loc ? null : loc);
     };
+
+    if (!isUnlocked) {
+        return <PINLock onUnlock={() => setIsUnlocked(true)} />;
+    }
 
     if (!settings) {
         return <div className="space-y-3">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-xl" />)}</div>;
