@@ -616,7 +616,7 @@ function ControlCardDialog({
                 </DialogFooter>
             </DialogContent>
             {lightboxImage && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm pointer-events-auto"
                      onClick={() => setLightboxImage(null)}
                 >
                     <div className="relative max-w-[95vw] max-h-[95vh] w-auto h-auto rounded-lg shadow-2xl flex flex-col items-center">
@@ -630,7 +630,7 @@ function ControlCardDialog({
                             <Button size="icon" variant="secondary" className="rounded-full shadow-lg opacity-80 hover:opacity-100 h-8 w-8" onClick={(e) => { e.stopPropagation(); window.open(lightboxImage, '_blank'); }}>
                                 <Download className="w-4 h-4" />
                             </Button>
-                            <Button size="icon" variant="destructive" className="rounded-full shadow-lg opacity-80 hover:opacity-100 h-8 w-8" onClick={() => setLightboxImage(null)}>
+                            <Button size="icon" variant="destructive" className="rounded-full shadow-lg opacity-80 hover:opacity-100 h-8 w-8" onClick={(e) => { e.stopPropagation(); setLightboxImage(null); }}>
                                 <X className="w-4 h-4" />
                             </Button>
                         </div>
