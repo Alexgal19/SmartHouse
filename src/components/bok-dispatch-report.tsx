@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { format, parse, isValid } from "date-fns";
 import { pl } from "date-fns/locale";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Employee, NonEmployee, BokResident, Settings } from "@/types";
-import { ArrowDown, ArrowUp, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { FilterableHeader } from "@/components/ui/filterable-header";
@@ -70,7 +70,7 @@ export function BokDispatchReportDialog({
         }));
     };
 
-    const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || id;
+    const getCoordinatorName = useCallback((id: string) => settings.coordinators.find(c => c.uid === id)?.name || id, [settings.coordinators]);
 
     const reportData = useMemo(() => {
         // 1. Filtruj tylko wysłanych
@@ -105,12 +105,12 @@ export function BokDispatchReportDialog({
                 sendDateParsed
             } as ReportEntry;
         });
-    }, [bokResidents, employees, nonEmployees, settings]);
+    }, [bokResidents, employees, nonEmployees, getCoordinatorName]);
 
     const coordinatorOptions = useMemo(() => {
         const coords = new Set(reportData.map(r => r.resident.coordinatorId));
         return Array.from(coords).map(id => ({ value: id, label: getCoordinatorName(id) }));
-    }, [reportData]);
+    }, [reportData, getCoordinatorName]);
 
     const isAssignedOptions = [
         { value: 'true', label: 'Przypisany' },
@@ -152,8 +152,8 @@ export function BokDispatchReportDialog({
         }
 
         filtered.sort((a, b) => {
-            let valA: any;
-            let valB: any;
+            let valA: string | number | undefined;
+            let valB: string | number | undefined;
 
             if (sortBy === 'sendDateParsed') {
                 valA = a.sendDateParsed.getTime();
@@ -184,7 +184,7 @@ export function BokDispatchReportDialog({
         });
 
         return filtered;
-    }, [reportData, search, sortOrder]);
+    }, [reportData, search, sortOrder, sortBy, columnFilters, getCoordinatorName, dateFrom, dateTo]);
 
     const handleSort = (field: string) => {
         if (sortBy === field) {

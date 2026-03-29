@@ -743,7 +743,7 @@ export async function deleteAddressHistoryEntry(historyId: string) {
 const CONTROL_CARD_HEADERS = [
     'id', 'addressId', 'addressName', 'coordinatorId', 'coordinatorName',
     'controlMonth', 'fillDate', 'roomRatings', 'cleanKitchen', 'cleanBathroom',
-    'kitchenPhotoUrls', 'bathroomPhotoUrls', 'appliancesWorking', 'comments'
+    'kitchenPhotoUrls', 'bathroomPhotoUrls', 'meterPhotoUrls', 'appliancesWorking', 'comments'
 ];
 
 const deserializeControlCard = (row: any): ControlCard | null => {
@@ -796,6 +796,7 @@ const deserializeControlCard = (row: any): ControlCard | null => {
         cleanBathroom: parseRating(row.get('cleanBathroom')),
         kitchenPhotoUrls: parseJsonArray(row.get('kitchenPhotoUrls')),
         bathroomPhotoUrls: parseJsonArray(row.get('bathroomPhotoUrls')),
+        meterPhotoUrls: parseJsonArray(row.get('meterPhotoUrls')),
         appliancesWorking: row.get('appliancesWorking') === 'TRUE' || row.get('appliancesWorking') === true,
         comments: (row.get('comments') as string) || '',
     };
@@ -830,6 +831,7 @@ export async function addControlCard(card: Omit<ControlCard, 'id'>): Promise<str
         cleanBathroom: card.cleanBathroom,
         kitchenPhotoUrls: JSON.stringify(card.kitchenPhotoUrls || []),
         bathroomPhotoUrls: JSON.stringify(card.bathroomPhotoUrls || []),
+        meterPhotoUrls: JSON.stringify(card.meterPhotoUrls || []),
         appliancesWorking: card.appliancesWorking ? 'TRUE' : 'FALSE',
         comments: card.comments,
     }), TIMEOUT_MS, 'sheet.addRow(ControlCards)');
@@ -848,7 +850,7 @@ export async function updateControlCard(cardId: string, updates: Partial<Omit<Co
         if (value === undefined) continue;
         if (key === 'appliancesWorking') {
             row.set(key, (value as boolean) ? 'TRUE' : 'FALSE');
-        } else if (key === 'roomRatings' || key === 'kitchenPhotoUrls' || key === 'bathroomPhotoUrls') {
+        } else if (key === 'roomRatings' || key === 'kitchenPhotoUrls' || key === 'bathroomPhotoUrls' || key === 'meterPhotoUrls') {
             row.set(key, JSON.stringify(value));
         } else {
             row.set(key, value as string);

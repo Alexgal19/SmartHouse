@@ -10,7 +10,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -173,7 +173,7 @@ export function AddressPreviewDialog({
     
     // Sort items within each locality
     const entries = Array.from(groups.entries()).map(([loc, items]) => {
-       let sortedItems = [...items];
+       const sortedItems = [...items];
        if (sortConfig.key) {
          sortedItems.sort((a, b) => {
            let valA = a[sortConfig.key as keyof AddressOccupancy];

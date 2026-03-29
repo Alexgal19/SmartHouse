@@ -300,6 +300,7 @@ type FormState = {
     cleanBathroom: CleanlinessRating;
     kitchenPhotoUrls: string[];
     bathroomPhotoUrls: string[];
+    meterPhotoUrls: string[];
     appliancesWorking: boolean;
     comments: string;
 };
@@ -310,6 +311,7 @@ const buildDefaultForm = (address: Address): FormState => ({
     cleanBathroom: 10,
     kitchenPhotoUrls: [],
     bathroomPhotoUrls: [],
+    meterPhotoUrls: [],
     appliancesWorking: true,
     comments: '',
 });
@@ -331,8 +333,9 @@ const buildFormFromCard = (card: ControlCard, address: Address): FormState => {
         roomRatings,
         cleanKitchen: card.cleanKitchen,
         cleanBathroom: card.cleanBathroom,
-        kitchenPhotoUrls: (card as any).kitchenPhotoUrls || [],
-        bathroomPhotoUrls: (card as any).bathroomPhotoUrls || [],
+        kitchenPhotoUrls: card.kitchenPhotoUrls || [],
+        bathroomPhotoUrls: card.bathroomPhotoUrls || [],
+        meterPhotoUrls: card.meterPhotoUrls || [],
         appliancesWorking: card.appliancesWorking,
         comments: card.comments,
     };
@@ -463,19 +466,29 @@ function ControlCardDialog({
 
     const [isUploadingKitchen, setIsUploadingKitchen] = useState(false);
     const [isUploadingBathroom, setIsUploadingBathroom] = useState(false);
+    const [isUploadingMeter, setIsUploadingMeter] = useState(false);
 
     const handleAddCommonPhotos = async (
-        section: 'kitchen' | 'bathroom',
+        section: 'kitchen' | 'bathroom' | 'meter',
         e: React.ChangeEvent<HTMLInputElement>
     ) => {
         if (!e.target.files?.length) return;
-        const setState = section === 'kitchen' ? setIsUploadingKitchen : setIsUploadingBathroom;
+        const setState = section === 'kitchen' 
+            ? setIsUploadingKitchen 
+            : section === 'bathroom' 
+                ? setIsUploadingBathroom 
+                : setIsUploadingMeter;
         setState(true);
         try {
             const newPhotos = await uploadPhotos(e.target.files, section);
             if (newPhotos.length > 0) {
-                const field = section === 'kitchen' ? 'kitchenPhotoUrls' : 'bathroomPhotoUrls';
-                setForm(prev => ({ ...prev, [field]: [...(prev[field] || []), ...newPhotos] }));
+                const fieldMapping: Record<string, keyof FormState> = {
+                    kitchen: 'kitchenPhotoUrls',
+                    bathroom: 'bathroomPhotoUrls',
+                    meter: 'meterPhotoUrls'
+                };
+                const field = fieldMapping[section];
+                setForm(prev => ({ ...prev, [field]: [...((prev[field] as string[]) || []), ...newPhotos] }));
                 toast({ title: 'Zdjęcia dodane ✅', description: `Wgrano ${newPhotos.length} zdjęć.` });
             }
         } catch (err: any) {
@@ -486,9 +499,14 @@ function ControlCardDialog({
         }
     };
 
-    const handleRemoveCommonPhoto = (section: 'kitchen' | 'bathroom', idx: number) => {
-        const field = section === 'kitchen' ? 'kitchenPhotoUrls' : 'bathroomPhotoUrls';
-        setForm(prev => ({ ...prev, [field]: (prev[field] || []).filter((_, i) => i !== idx) }));
+    const handleRemoveCommonPhoto = (section: 'kitchen' | 'bathroom' | 'meter', idx: number) => {
+        const fieldMapping: Record<string, keyof FormState> = {
+            kitchen: 'kitchenPhotoUrls',
+            bathroom: 'bathroomPhotoUrls',
+            meter: 'meterPhotoUrls'
+        };
+        const field = fieldMapping[section];
+        setForm(prev => ({ ...prev, [field]: ((prev[field] as string[]) || []).filter((_, i) => i !== idx) }));
     };
 
     const [openRoomId, setOpenRoomId] = useState<string | null>(null);
@@ -564,19 +582,30 @@ function ControlCardDialog({
                             </div>
                             <div className="space-y-2 pl-1">
                                 {form.roomRatings.map(rr => (
-                                    <div key={rr.roomId} className="rounded-lg border bg-muted/20 overflow-hidden">
+                                    <div 
+                                        key={rr.roomId} 
+                                        className={`rounded-lg border overflow-hidden transition-all duration-300 ${
+                                            rr.photoUrls && rr.photoUrls.length > 0 
+                                                ? 'border-green-500/60 bg-green-500/5 shadow-[0_0_10px_rgba(34,197,94,0.15)]' 
+                                                : 'border-red-500/60 bg-red-500/5 shadow-[0_0_10px_rgba(239,68,68,0.15)]'
+                                        }`}
+                                    >
                                         <button
                                             type="button"
                                             onClick={() => toggleRoom(rr.roomId)}
-                                            className="w-full flex items-center justify-between p-3 text-left hover:bg-muted/30 transition-colors"
+                                            className="w-full flex items-center justify-between p-3 text-left hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                                         >
                                             <div className="flex items-center gap-2">
-                                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+                                                <p className={`text-xs font-bold uppercase tracking-wide ${
+                                                    rr.photoUrls && rr.photoUrls.length > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                                                }`}>
                                                     Pokój {rr.roomName}
                                                 </p>
                                                 {ratingBadge(rr.rating)}
                                             </div>
-                                            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${openRoomId === rr.roomId ? 'rotate-180' : ''}`} />
+                                            <ChevronDown className={`w-4 h-4 transition-transform ${openRoomId === rr.roomId ? 'rotate-180' : ''} ${
+                                                rr.photoUrls && rr.photoUrls.length > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                                            }`} />
                                         </button>
                                         <AnimatePresence initial={false}>
                                             {openRoomId === rr.roomId && (
@@ -675,6 +704,26 @@ function ControlCardDialog({
                                     canEdit={canEdit}
                                     onAddPhotos={(e) => handleAddCommonPhotos('bathroom', e)}
                                     onRemove={(idx) => handleRemoveCommonPhoto('bathroom', idx)}
+                                    onLightbox={setLightboxImage}
+                                />
+                            </div>
+                        </div>
+                    </section>
+                    
+                    {/* ── Liczniki ── */}
+                    <section>
+                        <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                            <span className="text-base">⚡</span> Liczniki
+                        </h3>
+                        <div className="pl-1">
+                            <div className="p-3 rounded-lg border bg-muted/20 space-y-3">
+                                <PhotoUploadWidget
+                                    label="Zdjęcia liczników (prąd, woda, itp.)"
+                                    photoUrls={form.meterPhotoUrls || []}
+                                    isUploading={isUploadingMeter}
+                                    canEdit={canEdit}
+                                    onAddPhotos={(e) => handleAddCommonPhotos('meter', e)}
+                                    onRemove={(idx) => handleRemoveCommonPhoto('meter', idx)}
                                     onLightbox={setLightboxImage}
                                 />
                             </div>

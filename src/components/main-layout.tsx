@@ -4,16 +4,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback, createContext, useContext, useRef } from 'react';
 import Link from 'next/link';
-import {
-    Sidebar,
-    SidebarContent,
-    SidebarFooter,
-    SidebarHeader,
-    SidebarMenu,
-    SidebarMenuButton,
-    SidebarMenuItem,
-    SidebarProvider
-} from './ui/sidebar';
+import { SidebarProvider } from './ui/sidebar';
 import Header from './header';
 import { MobileNav } from './mobile-nav';
 import type { View, Notification, Employee, Settings, Address, SessionData, NonEmployee, AddressHistory, BokResident } from '@/types';
@@ -32,7 +23,6 @@ import {
     deleteNonEmployee,
     deleteBokResident,
     importEmployeesFromExcel,
-    importNonEmployeesFromExcel,
     updateNotificationReadStatus,
     updateEmployee,
     updateNonEmployee,
@@ -537,14 +527,16 @@ export default function MainLayout({
         if (editingEmployee) {
             const originalEmployees = rawEmployees;
             setRawEmployees(prev => prev ? prev.map(e => e.id === editingEmployee.id ? { ...e, ...data, fullName: `${data.lastName} ${data.firstName}`.trim() } : e) : null);
-            try {
-                const updatedEmployee = await updateEmployee(editingEmployee.id, { ...data }, currentUser.uid);
-                setRawEmployees(prev => prev ? prev.map(e => e.id === updatedEmployee.id ? updatedEmployee : e) : null);
-                toast({ title: "Sukces", description: "Dane pracownika zostały zaktualizowane." });
-            } catch (e: unknown) {
-                setRawEmployees(originalEmployees);
-                toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zaktualizować pracownika." });
-            }
+            // fire-and-forget — dialog zamknie się natychmiast po optimistic update
+            updateEmployee(editingEmployee.id, { ...data }, currentUser.uid)
+                .then(updatedEmployee => {
+                    setRawEmployees(prev => prev ? prev.map(e => e.id === updatedEmployee.id ? updatedEmployee : e) : null);
+                    toast({ title: "Sukces", description: "Dane pracownika zostały zaktualizowane." });
+                })
+                .catch((e: unknown) => {
+                    setRawEmployees(originalEmployees);
+                    toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zaktualizować pracownika." });
+                });
         } else {
             try {
                 const newEmployee = await addEmployee(data, currentUser.uid);
@@ -562,14 +554,16 @@ export default function MainLayout({
         if (editingNonEmployee) {
             const originalNonEmployees = rawNonEmployees;
             setRawNonEmployees(prev => prev ? prev.map(e => e.id === editingNonEmployee.id ? { ...e, ...data, fullName: `${data.lastName} ${data.firstName}`.trim() } : e) : null);
-            try {
-                const updatedNonEmployee = await updateNonEmployee(editingNonEmployee.id, data, currentUser.uid);
-                setRawNonEmployees(prev => prev ? prev.map(e => e.id === updatedNonEmployee.id ? updatedNonEmployee : e) : null);
-                toast({ title: "Sukces", description: "Dane mieszkańca zostały zaktualizowane." });
-            } catch (e) {
-                setRawNonEmployees(originalNonEmployees);
-                toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zaktualizować mieszkańca." });
-            }
+            // fire-and-forget — dialog zamknie się natychmiast po optimistic update
+            updateNonEmployee(editingNonEmployee.id, data, currentUser.uid)
+                .then(updatedNonEmployee => {
+                    setRawNonEmployees(prev => prev ? prev.map(e => e.id === updatedNonEmployee.id ? updatedNonEmployee : e) : null);
+                    toast({ title: "Sukces", description: "Dane mieszkańca zostały zaktualizowane." });
+                })
+                .catch((e: unknown) => {
+                    setRawNonEmployees(originalNonEmployees);
+                    toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zaktualizować mieszkańca." });
+                });
         } else {
             try {
                 const newNonEmployee = await addNonEmployee(data, currentUser.uid);
@@ -587,14 +581,16 @@ export default function MainLayout({
         if (editingBokResident) {
             const originalBokResidents = rawBokResidents;
             setRawBokResidents(prev => prev ? prev.map(r => r.id === editingBokResident.id ? { ...r, ...data, fullName: `${data.lastName} ${data.firstName}`.trim() } : r) : null);
-            try {
-                const updatedResident = await updateBokResident(editingBokResident.id, data, currentUser.uid);
-                setRawBokResidents(prev => prev ? prev.map(r => r.id === updatedResident.id ? updatedResident : r) : null);
-                toast({ title: "Sukces", description: "Dane mieszkańca BOK zostały zaktualizowane." });
-            } catch (e) {
-                setRawBokResidents(originalBokResidents);
-                toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zaktualizować mieszkańca BOK." });
-            }
+            // fire-and-forget — dialog zamknie się natychmiast po optimistic update
+            updateBokResident(editingBokResident.id, data, currentUser.uid)
+                .then(updatedResident => {
+                    setRawBokResidents(prev => prev ? prev.map(r => r.id === updatedResident.id ? updatedResident : r) : null);
+                    toast({ title: "Sukces", description: "Dane mieszkańca BOK zostały zaktualizowane." });
+                })
+                .catch((e: unknown) => {
+                    setRawBokResidents(originalBokResidents);
+                    toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zaktualizować mieszkańca BOK." });
+                });
         } else {
             try {
                 const newResidentData = {
@@ -867,7 +863,7 @@ export default function MainLayout({
       // Optimistic update — natychmiastowe przejście pracownika do zwolnionych
       const originalEmployees = rawEmployees;
       const formattedDate = format(checkOutDate, 'yyyy-MM-dd');
-      setRawEmployees(prev => prev.map(e => e.id === employeeId ? { ...e, status: 'dismissed' as const, checkOutDate: formattedDate } : e));
+      setRawEmployees(prev => prev ? prev.map(e => e.id === employeeId ? { ...e, status: 'dismissed' as const, checkOutDate: formattedDate } : e) : null);
         try {
             await updateEmployee(employeeId, { status: 'dismissed', checkOutDate: formattedDate }, currentUser.uid);
             toast({ title: "Sukces", description: "Pracownik został zwolniony." });
@@ -883,7 +879,7 @@ export default function MainLayout({
       // Optimistic update
       const originalNonEmployees = rawNonEmployees;
       const formattedDate = format(checkOutDate, 'yyyy-MM-dd');
-      setRawNonEmployees(prev => prev.map(n => n.id === nonEmployeeId ? { ...n, status: 'dismissed' as const, checkOutDate: formattedDate } : n));
+      setRawNonEmployees(prev => prev ? prev.map(n => n.id === nonEmployeeId ? { ...n, status: 'dismissed' as const, checkOutDate: formattedDate } : n) : null);
         try {
             await updateNonEmployee(nonEmployeeId, { status: 'dismissed', checkOutDate: formattedDate }, currentUser.uid);
             toast({ title: "Sukces", description: "Mieszkaniec został zwolniony." });
@@ -898,7 +894,7 @@ export default function MainLayout({
         if (!currentUser) return;
       // Optimistic update
       const originalEmployees = rawEmployees;
-      setRawEmployees(prev => prev.map(e => e.id === employee.id ? { ...e, status: 'active' as const, checkOutDate: null } : e));
+      setRawEmployees(prev => prev ? prev.map(e => e.id === employee.id ? { ...e, status: 'active' as const, checkOutDate: null } : e) : null);
         try {
             await updateEmployee(employee.id, { status: 'active', checkOutDate: null }, currentUser.uid);
             toast({ title: "Sukces", description: "Pracownik został przywrócony." });
@@ -913,7 +909,7 @@ export default function MainLayout({
         if (!currentUser) return;
       // Optimistic update
       const originalNonEmployees = rawNonEmployees;
-      setRawNonEmployees(prev => prev.map(n => n.id === nonEmployee.id ? { ...n, status: 'active' as const, checkOutDate: null } : n));
+      setRawNonEmployees(prev => prev ? prev.map(n => n.id === nonEmployee.id ? { ...n, status: 'active' as const, checkOutDate: null } : n) : null);
         try {
             await updateNonEmployee(nonEmployee.id, { status: 'active', checkOutDate: null }, currentUser.uid);
             toast({ title: "Sukces", description: "Mieszkaniec został przywrócony." });

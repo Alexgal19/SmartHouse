@@ -212,6 +212,7 @@ export type ControlCard = {
   cleanBathroom: CleanlinessRating;
   kitchenPhotoUrls?: string[];
   bathroomPhotoUrls?: string[];
+  meterPhotoUrls?: string[];
   appliancesWorking: boolean;
   comments: string;
 }

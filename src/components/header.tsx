@@ -226,7 +226,7 @@ export default function Header({
                     </div>
                     <div className="space-y-2">
                         <Label>Filtruj wg statusu</Label>
-                        <Select value={readStatusFilter} onValueChange={(val: any) => setReadStatusFilter(val)}>
+                        <Select value={readStatusFilter} onValueChange={(val: 'all' | 'read' | 'unread') => setReadStatusFilter(val)}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Wybierz status" />
                             </SelectTrigger>

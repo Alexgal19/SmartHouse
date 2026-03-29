@@ -1,5 +1,4 @@
-import { addControlCard, updateControlCard, getControlCards } from '@/lib/sheets';
-import { saveControlCardAction } from '@/lib/actions';
+import { addControlCard, updateControlCard } from '@/lib/sheets';
 import { ControlCard } from '@/types';
 
 // Mock environment variables
@@ -38,11 +37,9 @@ const mockSheet = {
 
 jest.mock('google-spreadsheet', () => {
     class GoogleSpreadsheet {
-        constructor() {
-            (this as any).loadInfo = jest.fn().mockResolvedValue(undefined);
-            (this as any).sheetsByTitle = { 'ControlCards': mockSheet };
-            (this as any).addSheet = jest.fn().mockResolvedValue(mockSheet);
-        }
+        loadInfo = jest.fn().mockResolvedValue(undefined);
+        sheetsByTitle = { 'ControlCards': mockSheet };
+        addSheet = jest.fn().mockResolvedValue(mockSheet);
     }
     return { GoogleSpreadsheet };
 });
@@ -61,7 +58,7 @@ describe('Control Cards Backend Logic', () => {
   });
 
   test('should add a control card with correctly serialized JSON fields', async () => {
-    (mockSheet.addRow as any).mockResolvedValue({ save: jest.fn() });
+    (mockSheet.addRow as jest.Mock).mockResolvedValue({ save: jest.fn() });
     
     await addControlCard(mockControlCard);
     
@@ -84,7 +81,7 @@ describe('Control Cards Backend Logic', () => {
         set: jest.fn(),
         save: jest.fn().mockResolvedValue(undefined)
     };
-    (mockSheet.getRows as any).mockResolvedValue([mockRowInstance]);
+    (mockSheet.getRows as jest.Mock).mockResolvedValue([mockRowInstance]);
 
     await updateControlCard('card-1', { cleanKitchen: 10 });
     
