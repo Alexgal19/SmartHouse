@@ -7,18 +7,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, PlusCircle, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, X, Users, UserX, LayoutGrid, List, Trash2, ArrowUp, ArrowDown, History, Briefcase, Filter, Check } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, Users, UserX, LayoutGrid, List, Trash2, History, Briefcase } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format, parseISO, parse, isValid } from 'date-fns';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
 import { useMainLayout } from '@/components/main-layout';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
@@ -452,14 +447,29 @@ const ControlPanel = ({
     onBulkDelete?: () => void;
 }) => {
     const { isMobile } = useIsMobile();
+    const [localSearch, setLocalSearch] = useState(search);
+
+    useEffect(() => {
+        setLocalSearch(search);
+    }, [search]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (localSearch !== search) {
+                onSearch(localSearch);
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [localSearch, search, onSearch]);
+
     return (
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <CardTitle>Zarządzanie mieszkańcami</CardTitle>
             <div className="flex w-full sm:w-auto items-center gap-2 flex-wrap">
                 <Input
                     placeholder="Szukaj po nazwisku..."
-                    value={search}
-                    onChange={(e) => onSearch(e.target.value)}
+                    value={localSearch}
+                    onChange={(e) => setLocalSearch(e.target.value)}
                     className="w-full sm:w-auto flex-1"
                 />
                 <div className="flex gap-2">
@@ -627,11 +637,11 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                     if (colField === 'coordinatorId' && 'coordinatorId' in entity && entity.coordinatorId) {
                         entityVal = getCoordinatorName(entity.coordinatorId);
                     } else if (colField === 'coordinatorName' && 'coordinatorName' in entity) {
-                        entityVal = (entity as any).coordinatorName || '';
+                        entityVal = (entity as Record<string, unknown>).coordinatorName as string || '';
                     } else if (colField in entity) {
-                        const rawVal = (entity as any)[colField];
+                        const rawVal = (entity as Record<string, unknown>)[colField];
                         if (colField.includes('Date') && rawVal) {
-                            entityVal = formatDate(rawVal);
+                            entityVal = formatDate(rawVal as string);
                         } else {
                             entityVal = String(rawVal || '');
                         }
@@ -722,11 +732,13 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         history: filteredAndSortedData.history || [],
     }), [filteredAndSortedData]);
 
-    const bokData = bokSubTab === 'active'
-        ? (filteredAndSortedData.activeBokResidents || [])
-        : bokSubTab === 'sent'
-            ? (filteredAndSortedData.sentBokResidents || [])
-            : (filteredAndSortedData.dismissedBokResidents || []);
+    const bokData = useMemo(() => {
+        return bokSubTab === 'active'
+            ? (filteredAndSortedData.activeBokResidents || [])
+            : bokSubTab === 'sent'
+                ? (filteredAndSortedData.sentBokResidents || [])
+                : (filteredAndSortedData.dismissedBokResidents || []);
+    }, [bokSubTab, filteredAndSortedData]);
 
     const bokTotalCount = (filteredAndSortedData.activeBokResidents?.length || 0)
         + (filteredAndSortedData.sentBokResidents?.length || 0)
@@ -741,6 +753,62 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         return currentData?.slice(start, end) || [];
     }, [currentData, page]);
 
+
+    const columnOptions = useMemo(() => {
+        const options: Record<string, { label: string, value: string }[]> = {};
+        const dataToAnalyze = tab === 'bok-residents' ? bokData : tab === 'history' ? dataMap.history : currentData;
+
+        if (!dataToAnalyze || dataToAnalyze.length === 0) return options;
+
+        const addOptions = (field: string, extractValue: (item: Entity | AddressHistory) => string | undefined) => {
+            const values = new Set<string>();
+            dataToAnalyze.forEach(item => {
+                const val = extractValue(item);
+                if (val !== undefined && val !== null && val !== '') {
+                    values.add(val);
+                }
+            });
+            options[field] = Array.from(values).sort((a, b) => a.localeCompare(b, 'pl', { numeric: true })).map(v => ({ label: v, value: v }));
+        };
+
+        if (tab === 'history') {
+            addOptions('coordinatorName', item => (item as AddressHistory).coordinatorName);
+            addOptions('department', item => (item as AddressHistory).department);
+            addOptions('address', item => (item as AddressHistory).address);
+            addOptions('checkInDate', item => formatDate((item as AddressHistory).checkInDate));
+            addOptions('checkOutDate', item => formatDate((item as AddressHistory).checkOutDate));
+        } else {
+            addOptions('coordinatorId', item => {
+                if ('coordinatorId' in item) {
+                    return settings?.coordinators.find(c => c.uid === item.coordinatorId)?.name || 'N/A';
+                }
+                return undefined;
+            });
+            addOptions('address', item => {
+                const rec = item as Record<string, unknown>;
+                if (isEmployee(item as Entity) && (rec.address as string | undefined)?.toLowerCase().startsWith('własne mieszkanie')) {
+                     return `Własne (${(rec.ownAddress as string) || 'Brak danych'})`;
+                }
+                return rec.address as string;
+            });
+            addOptions('roomNumber', item => {
+                 const rec = item as Record<string, unknown>;
+                 if (isEmployee(item as Entity) && (rec.address as string | undefined)?.toLowerCase().startsWith('własne mieszkanie')) return 'N/A';
+                 return rec.roomNumber as string;
+            });
+            addOptions('checkInDate', item => formatDate((item as Record<string, unknown>).checkInDate as string));
+            addOptions('checkOutDate', item => formatDate((item as Record<string, unknown>).checkOutDate as string));
+            addOptions('zaklad', item => ('zaklad' in item) ? (item as Record<string, unknown>).zaklad as string : undefined);
+            if (tab === 'bok-residents') {
+                 addOptions('sendDate', item => ('sendDate' in item && (item as Record<string, unknown>).sendDate) ? formatDate((item as Record<string, unknown>).sendDate as string) : undefined);
+                 addOptions('returnStatus', item => ('returnStatus' in item) ? (item as Record<string, unknown>).returnStatus as string : undefined);
+                 addOptions('status', item => ('status' in item) ? (item as Record<string, unknown>).status as string : undefined);
+                 addOptions('comments', item => ('comments' in item) ? (item as Record<string, unknown>).comments as string : undefined);
+            }
+        }
+
+        return options;
+    }, [tab, bokData, dataMap.history, currentData, settings]);
 
     if (!settings || !allEmployees || !allNonEmployees || !allBokResidents || !addressHistory) {
         return (
@@ -799,59 +867,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         }
     }
 
-    const columnOptions = useMemo(() => {
-        const options: Record<string, { label: string, value: string }[]> = {};
-        const dataToAnalyze = tab === 'bok-residents' ? bokData : tab === 'history' ? dataMap.history : currentData;
 
-        if (!dataToAnalyze || dataToAnalyze.length === 0) return options;
-
-        const addOptions = (field: string, extractValue: (item: any) => string | undefined) => {
-            const values = new Set<string>();
-            dataToAnalyze.forEach(item => {
-                const val = extractValue(item);
-                if (val !== undefined && val !== null && val !== '') {
-                    values.add(val);
-                }
-            });
-            options[field] = Array.from(values).sort((a, b) => a.localeCompare(b, 'pl', { numeric: true })).map(v => ({ label: v, value: v }));
-        };
-
-        if (tab === 'history') {
-            addOptions('coordinatorName', item => item.coordinatorName);
-            addOptions('department', item => item.department);
-            addOptions('address', item => item.address);
-            addOptions('checkInDate', item => formatDate(item.checkInDate));
-            addOptions('checkOutDate', item => formatDate(item.checkOutDate));
-        } else {
-            addOptions('coordinatorId', item => {
-                if ('coordinatorId' in item) {
-                    return settings?.coordinators.find(c => c.uid === item.coordinatorId)?.name || 'N/A';
-                }
-                return undefined;
-            });
-            addOptions('address', item => {
-                if (isEmployee(item) && item.address?.toLowerCase().startsWith('własne mieszkanie')) {
-                     return `Własne (${item.ownAddress || 'Brak danych'})`;
-                }
-                return (item as any).address;
-            });
-            addOptions('roomNumber', item => {
-                 if (isEmployee(item) && item.address?.toLowerCase().startsWith('własne mieszkanie')) return 'N/A';
-                 return (item as any).roomNumber;
-            });
-            addOptions('checkInDate', item => formatDate((item as any).checkInDate));
-            addOptions('checkOutDate', item => formatDate((item as any).checkOutDate));
-            addOptions('zaklad', item => (isBokResident(item as any) || isEmployee(item as any)) ? (item as any).zaklad : undefined);
-            if (tab === 'bok-residents') {
-                 addOptions('sendDate', item => isBokResident(item as any) && (item as any).sendDate ? formatDate((item as any).sendDate) : undefined);
-                 addOptions('returnStatus', item => isBokResident(item as any) ? (item as any).returnStatus : undefined);
-                 addOptions('status', item => isBokResident(item as any) ? (item as any).status : undefined);
-                 addOptions('comments', item => isBokResident(item as any) ? (item as any).comments : undefined);
-            }
-        }
-
-        return options;
-    }, [tab, bokData, dataMap.history, currentData, settings]);
 
     const renderContent = (data: Entity[]) => (
         <>
