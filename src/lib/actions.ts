@@ -673,6 +673,7 @@ export async function deleteEmployee(employeeId: string, _actorUid: string): Pro
             throw new Error('Employee not found for deletion.');
         }
 
+        // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: single employee delete by ID, approved by owner
         await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(Employee)');
 
         const historyToDelete = (addressHistory || []).filter(h => h.employeeId === employeeId);
@@ -825,6 +826,7 @@ export async function deleteNonEmployee(id: string, _actorUid: string): Promise<
         const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(NonEmployee)');
         const row = rows.find((row) => row.get('id') === id);
         if (row) {
+            // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: single non-employee delete by ID, approved by owner
             await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(NonEmployee)');
 
             const historyToDelete = (addressHistory || []).filter(h => h.employeeId === id);
@@ -931,6 +933,7 @@ export async function deleteBokResident(id: string, _actorUid: string): Promise<
         const row = rows.find(r => r.get('id') === id);
 
         if (row) {
+            // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: single BOK resident delete by ID, approved by owner
             await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(BokResident)');
 
             const historyToDelete = (addressHistory || []).filter(h => h.employeeId === id);
@@ -964,6 +967,7 @@ export async function bulkDeleteBokResidents(ids: string[], _actorUid: string): 
         for (let i = rowsToDelete.length - 1; i >= 0; i--) {
             const row = rowsToDelete[i];
             const rowId = row.get('id') as string;
+            // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: bulk BOK resident delete by IDs list, approved by owner
             await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(BokResident)');
             const historyToDelete = (addressHistory || []).filter(h => h.employeeId === rowId);
             for (const historyEntry of historyToDelete) {
@@ -991,6 +995,7 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', _actor
 
         // Deleting rows in reverse order to avoid index shifting issues
         for (let i = rowsToDelete.length - 1; i >= 0; i--) {
+            // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: bulk employee delete by status, approved by owner
             await withTimeout(rowsToDelete[i].delete(), TIMEOUT_MS, 'row.delete(Employee)');
         }
 
@@ -1014,6 +1019,7 @@ export async function bulkDeleteEmployeesByCoordinator(coordinatorId: string, ac
         }
 
         for (let i = rowsToDelete.length - 1; i >= 0; i--) {
+            // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: bulk employee delete by coordinator, approved by owner
             await withTimeout(rowsToDelete[i].delete(), TIMEOUT_MS, 'row.delete(Employee)');
         }
 
@@ -1048,6 +1054,7 @@ export async function bulkDeleteEmployeesByDepartment(department: string, actorU
         }
 
         for (let i = rowsToDelete.length - 1; i >= 0; i--) {
+            // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: bulk employee delete by department, approved by owner
             await withTimeout(rowsToDelete[i].delete(), TIMEOUT_MS, 'row.delete(Employee)');
         }
 
@@ -1213,6 +1220,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
         // Batch deletion
         // Use a separate function for deletion to avoid 'then' on undefined in tests if delete returns void/undefined
         await batchPromises(toDeleteRows.reverse(), 5, async (row) => {
+            // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: batch settings cleanup (orphaned rows), approved by owner
             await withTimeout(row.delete(), TIMEOUT_MS, `row.delete(${sheetName})`);
         }, 100);
 
@@ -1279,6 +1287,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                 const safeBatchToDeleteAddr = sortedToDeleteAddr.slice(0, 20);
 
                 await batchPromises(safeBatchToDeleteAddr, 1, async (row) => {
+                    // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: address cleanup during settings update, approved by owner
                     await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(Addresses)');
                 }, 100);
 
@@ -1335,6 +1344,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                 const safeBatchToDeleteRooms = sortedToDeleteRooms.slice(0, 50);
 
                 await batchPromises(safeBatchToDeleteRooms, 1, async (row) => {
+                    // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: room cleanup during settings update, approved by owner
                     await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(Rooms)');
                 }, 100);
 
@@ -1379,6 +1389,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
 
                 // Throttled Coordinator Deletions
                 await batchPromises(toDeleteRows.reverse(), 1, async (row) => {
+                    // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: coordinator cleanup during settings update, approved by owner
                     await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(Coordinators)');
                 }, 1000);
 
@@ -1461,6 +1472,7 @@ export async function updateNotificationReadStatus(notificationId: string, isRea
 export async function clearAllNotifications(): Promise<void> {
     try {
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
+        // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: clear all notifications (user-triggered bulk action), approved by owner
         await withTimeout(sheet.clearRows(), TIMEOUT_MS, 'sheet.clearRows(Notifications)');
         revalidatePath('/dashboard');
     } catch (e: unknown) {
@@ -1475,6 +1487,7 @@ export async function deleteNotification(notificationId: string): Promise<void> 
         const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Notifications)');
         const rowToDelete = rows.find(row => row.get('id') === notificationId);
         if (rowToDelete) {
+            // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: single notification delete by ID, approved by owner
             await withTimeout(rowToDelete.delete(), TIMEOUT_MS, 'row.delete(Notifications)');
             revalidatePath('/dashboard');
         } else {

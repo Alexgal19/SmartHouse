@@ -1,6 +1,7 @@
 
 {
   "root": true,
+  "ignorePatterns": ["lib/actions.ts", "src/lib/actions.ts.bak", "src/components/main-layout.tsx.bak", "src/components/main-layout.tsx.backup"],
   "parser": "@typescript-eslint/parser",
   "plugins": ["@typescript-eslint"],
   "extends": [
@@ -10,6 +11,21 @@
   ],
   "rules": {
     "no-unused-vars": "off",
-    "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }]
+    "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "CallExpression[callee.property.name='clearRows']",
+        "message": "FORBIDDEN: clearRows() wipes an entire sheet permanently. Use SafeSheetOperation from lib/safe-sheets.ts instead. Never delete sheet data without explicit owner approval."
+      },
+      {
+        "selector": "CallExpression[callee.property.name='deleteRows']",
+        "message": "FORBIDDEN: deleteRows() permanently removes data from Google Sheets. Use SafeSheetOperation from lib/safe-sheets.ts instead. Never delete sheet data without explicit owner approval."
+      },
+      {
+        "selector": "CallExpression[callee.property.name='delete'][arguments.length=0]",
+        "message": "FORBIDDEN: row.delete() permanently removes a row from Google Sheets. To add delete functionality, get explicit owner approval and add an eslint-disable comment with justification above the line."
+      }
+    ]
   }
 }
