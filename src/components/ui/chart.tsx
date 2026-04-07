@@ -59,20 +59,16 @@ const ChartContainer = React.forwardRef<
 >(({ id, className, children, config, ...props }, ref) => {
   const chartConfig = React.useMemo(
     () =>
-      Object.entries(config).reduce(
-        (prev, [key, value]) => {
-          const newConfig = {
-            ...prev,
-            [key]: {
-              ...value,
-              color: value.theme
-                ? `hsl(var(--chart-${key}))`
-                : value.color,
-            },
-          }
-
-          return newConfig
-        },
+      Object.entries(config).reduce<ChartConfig>(
+        (prev, [key, value]) => ({
+          ...prev,
+          [key]: {
+            ...value,
+            color: value.theme
+              ? `hsl(var(--chart-${key}))`
+              : value.color,
+          },
+        } as ChartConfig),
         {} as ChartConfig
       ),
     [config]
@@ -151,7 +147,7 @@ const ChartLegend = Recharts.Legend
 const ChartLegendContent = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> &
-    Pick<TooltipProps<any, any>, "payload"> & {
+    Pick<TooltipProps, "payload"> & {
       hideIcon?: boolean
       getLabel?: (value: string) => React.ReactNode
     }
@@ -168,8 +164,8 @@ const ChartLegendContent = React.forwardRef<
       className={cn("flex items-center justify-center gap-4", className)}
       {...props}
     >
-      {payload.map((item: { value: any }) => {
-        const key = `${item.value}`
+      {payload.map((item) => {
+        const key = String(item.value ?? '')
         const entry = config[key]
         const color = entry?.color
 
@@ -413,4 +409,3 @@ export const Radar = Recharts.Radar;
 export const RadialBar = Recharts.RadialBar;
 export { Tooltip as RechartsTooltip } from "recharts";
 
-export type { ChartConfig }

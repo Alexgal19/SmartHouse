@@ -68,6 +68,15 @@ declare module 'recharts' {
     active?: boolean;
   }
 
+  interface TooltipPayloadItem {
+    name?: string | number;
+    value?: unknown;
+    dataKey?: string | number;
+    color?: string;
+    fill?: string;
+    payload?: Record<string, unknown>;
+  }
+
   interface TooltipProps {
     content?: ContentType;
     separator?: string;
@@ -77,7 +86,7 @@ declare module 'recharts' {
     viewBox?: { x?: number; y?: number; width?: number; height?: number };
     active?: boolean;
     coordinate?: { x: number; y: number };
-    payload?: unknown[];
+    payload?: TooltipPayloadItem[];
     label?: string | number;
   }
 

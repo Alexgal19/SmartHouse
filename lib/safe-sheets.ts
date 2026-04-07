@@ -74,7 +74,7 @@ export class SafeSheetOperation {
  */
 export async function getSafeSheet(title: string, requiredHeaders: string[] = []): Promise<SafeSheetOperation> {
   // Dynamic import to avoid circular dependency
-  const { getSheet } = await import('./sheets');
+  const { getSheet } = await import('../src/lib/sheets');
   const sheet = await getSheet(title, requiredHeaders);
   return new SafeSheetOperation(sheet);
 }

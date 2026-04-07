@@ -1,6 +1,6 @@
 
 "use client"
-import React, { useState, useMemo, useTransition, useEffect } from 'react';
+import React, { useState, useMemo, useTransition, useEffect, useRef } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import type { Employee, Settings, NonEmployee, SessionData, AddressHistory, BokResident } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -448,14 +448,23 @@ const ControlPanel = ({
 }) => {
     const { isMobile } = useIsMobile();
     const [localSearch, setLocalSearch] = useState(search);
+    // Track the last value we committed to the URL ourselves,
+    // so we can distinguish our own URL updates from external ones.
+    const committedRef = useRef(search);
 
     useEffect(() => {
-        setLocalSearch(search);
+        // Only sync URL → input when the change came from outside
+        // (e.g. clearing filters), not from our own debounce write.
+        if (search !== committedRef.current) {
+            setLocalSearch(search);
+            committedRef.current = search;
+        }
     }, [search]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
             if (localSearch !== search) {
+                committedRef.current = localSearch;
                 onSearch(localSearch);
             }
         }, 300);
@@ -786,9 +795,6 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
             });
             addOptions('address', item => {
                 const rec = item as Record<string, unknown>;
-                if (isEmployee(item as Entity) && (rec.address as string | undefined)?.toLowerCase().startsWith('własne mieszkanie')) {
-                     return `Własne (${(rec.ownAddress as string) || 'Brak danych'})`;
-                }
                 return rec.address as string;
             });
             addOptions('roomNumber', item => {

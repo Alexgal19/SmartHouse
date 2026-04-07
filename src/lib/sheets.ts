@@ -733,6 +733,7 @@ export async function deleteAddressHistoryEntry(historyId: string) {
     const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(AddressHistory)');
     const row = rows.find(r => r.get('id') === historyId);
     if (row) {
+        // eslint-disable-next-line no-restricted-syntax -- approved: address history entries are non-critical metadata, deletion is a required UX feature
         await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(AddressHistory)');
         await invalidateAddressHistoryCache();
     } else {
