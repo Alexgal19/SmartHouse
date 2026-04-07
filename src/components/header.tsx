@@ -37,7 +37,8 @@ const NotificationItem = ({ n, onClick, onDelete, onToggleReadStatus, style }: {
 }) => {
     
     const itemClasses = cn(
-        "p-3 rounded-lg -mx-2 flex items-start gap-3 transition-colors group border-l-4 animate-fade-in-up",
+        "p-3 rounded-lg -mx-2 flex items-start gap-3 transition-colors group border-l-4",
+        style && 'animate-fade-in-up',
         n.isRead ? 'opacity-70 border-transparent hover:bg-muted/50' : 'font-semibold',
         n.type === 'success' && 'bg-green-500/10 border-green-500',
         n.type === 'destructive' && 'bg-red-500/10 border-red-500',
@@ -130,6 +131,9 @@ const DatePicker = ({ date, setDate, placeholder }: { date?: Date, setDate: (dat
     )
 }
 
+const NOTIFICATIONS_PAGE_SIZE = 30;
+const MAX_ANIMATED_ITEMS = 8;
+
 export default function Header({
   user,
   onLogout,
@@ -154,6 +158,8 @@ export default function Header({
     const [employeeNameFilter, setEmployeeNameFilter] = useState('');
     const [selectedDate, setSelectedDate] = useState<Date | undefined>();
     const [readStatusFilter, setReadStatusFilter] = useState<'all' | 'read' | 'unread'>('all');
+    const [visibleCount, setVisibleCount] = useState(NOTIFICATIONS_PAGE_SIZE);
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
     const sortedCoordinators = useMemo(() => {
@@ -170,6 +176,19 @@ export default function Header({
         });
     }, [notifications, selectedCoordinatorId, employeeNameFilter, selectedDate, readStatusFilter]);
 
+    const visibleNotifications = useMemo(() => {
+        return filteredNotifications.slice(0, visibleCount);
+    }, [filteredNotifications, visibleCount]);
+
+    const hasMore = filteredNotifications.length > visibleCount;
+
+    const handleSheetOpenChange = (open: boolean) => {
+        setIsSheetOpen(open);
+        if (open) {
+            setVisibleCount(NOTIFICATIONS_PAGE_SIZE);
+        }
+    };
+
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/95 px-4 backdrop-blur-sm sm:px-6">
@@ -180,7 +199,7 @@ export default function Header({
       </div>
       <div className="ml-auto flex items-center gap-2">
         
-        <Sheet>
+        <Sheet open={isSheetOpen} onOpenChange={handleSheetOpenChange}>
             <SheetTrigger asChild>
                  <Button variant="ghost" size="icon" className="relative text-foreground hover:bg-accent hover:text-accent-foreground">
                     <Bell className="h-5 w-5" />
@@ -263,8 +282,32 @@ export default function Header({
                 </div>
                 <ScrollArea className="h-[calc(100vh-22rem)] pr-6">
                     <div className="space-y-4 py-4">
-                    {filteredNotifications.length > 0 ? (
-                        filteredNotifications.map((n, index) => <NotificationItem key={n.id} n={n} onClick={onNotificationClick} onDelete={onDeleteNotification} onToggleReadStatus={onToggleNotificationReadStatus} style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }} />)
+                    {visibleNotifications.length > 0 ? (
+                        <>
+                            {visibleNotifications.map((n, index) => (
+                                <NotificationItem
+                                    key={n.id}
+                                    n={n}
+                                    onClick={onNotificationClick}
+                                    onDelete={onDeleteNotification}
+                                    onToggleReadStatus={onToggleNotificationReadStatus}
+                                    style={index < MAX_ANIMATED_ITEMS ? {
+                                        animationDelay: `${index * 30}ms`,
+                                        animationFillMode: 'backwards'
+                                    } : undefined}
+                                />
+                            ))}
+                            {hasMore && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full"
+                                    onClick={() => setVisibleCount(prev => prev + NOTIFICATIONS_PAGE_SIZE)}
+                                >
+                                    Załaduj więcej ({filteredNotifications.length - visibleCount} pozostało)
+                                </Button>
+                            )}
+                        </>
                     ) : (
                         <div className="text-center text-muted-foreground py-12">Brak powiadomień pasujących do filtrów.</div>
                     )}

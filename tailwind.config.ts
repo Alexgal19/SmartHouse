@@ -167,7 +167,7 @@ export default {
         'accordion-up': 'accordion-up 0.2s ease-out',
         'fade-in': 'fade-in 0.3s ease-in-out',
         'fade-out': 'fade-out 0.2s ease-out',
-        'fade-in-up': 'fade-in-up 0.5s ease-out',
+        'fade-in-up': 'fade-in-up 0.25s ease-out',
         'scale-in': 'scale-in 0.3s ease-out',
         'pulse-text': 'pulse-text 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'pulse-green': 'pulse-green 2s infinite',
