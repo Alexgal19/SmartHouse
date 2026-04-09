@@ -1013,19 +1013,19 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                 />
             </CardHeader>
             <CardContent>
-                <Tabs value={tab} onValueChange={(v) => updateSearchParams({ tab: v, page: 1, sortBy: '', sortOrder: '' })}>
+                <Tabs value={tab} onValueChange={(v) => updateSearchParams({ tab: v, page: 1 })}>
                     <div className="w-full mb-6 relative">
                         {tabsListContent}
                     </div>
                     {!isDriver && (
                         <>
-                            <TabsContent value="active" className="mt-4">{renderContent(paginatedData as Entity[])}</TabsContent>
-                            <TabsContent value="dismissed" className="mt-4">{renderContent(paginatedData as Entity[])}</TabsContent>
-                            <TabsContent value="non-employees" className="mt-4">{renderContent(paginatedData as Entity[])}</TabsContent>
+                            <TabsContent forceMount value="active" className="mt-4 data-[state=inactive]:hidden">{renderContent(paginatedData as Entity[])}</TabsContent>
+                            <TabsContent forceMount value="dismissed" className="mt-4 data-[state=inactive]:hidden">{renderContent(paginatedData as Entity[])}</TabsContent>
+                            <TabsContent forceMount value="non-employees" className="mt-4 data-[state=inactive]:hidden">{renderContent(paginatedData as Entity[])}</TabsContent>
                         </>
                     )}
                     {(currentUser.isAdmin || isDriver) && (
-                        <TabsContent value="bok-residents" className="mt-4">
+                        <TabsContent forceMount value="bok-residents" className="mt-4 data-[state=inactive]:hidden">
                             {/* Inner sub-tabs: Aktywni / Wyslani / Zwolnieni */}
                             <Tabs value={bokSubTab} onValueChange={(v) => setBokSubTab(v as 'active' | 'sent' | 'dismissed')} className="mb-4">
                                 <TabsList className="h-auto bg-muted/50 p-1 rounded-md">
@@ -1099,7 +1099,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                             />
                         </TabsContent>
                     )}
-                    {!isDriver && <TabsContent value="history" className="mt-4">{renderHistoryContent()}</TabsContent>}
+                    {!isDriver && <TabsContent forceMount value="history" className="mt-4 data-[state=inactive]:hidden">{renderHistoryContent()}</TabsContent>}
                 </Tabs>
             </CardContent>
 
