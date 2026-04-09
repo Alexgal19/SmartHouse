@@ -516,17 +516,24 @@ function ControlCardDialog({
     };
 
     const handleSave = () => {
-        startTransition(async () => {
-            if (existingCard) {
-                const result = await editControlCardAction(existingCard.id, form);
+        if (existingCard) {
+            // Optimistic update — zamknij dialog i zaktualizuj listę natychmiast
+            const optimisticCard = { ...existingCard, ...form, fillDate: new Date().toISOString().slice(0, 10) };
+            onSaved(optimisticCard);
+            onClose();
+            editControlCardAction(existingCard.id, form).then(result => {
                 if (result.success) {
                     toast({ title: 'Zaktualizowano ✅', description: `Karta dla "${address.name}" zapisana.` });
-                    onSaved({ ...existingCard, ...form, fillDate: new Date().toISOString().slice(0, 10) });
-                    onClose();
                 } else {
+                    onSaved(existingCard); // revert
                     toast({ title: 'Błąd', description: result.error, variant: 'destructive' });
                 }
-            } else {
+            }).catch(() => {
+                onSaved(existingCard); // revert
+                toast({ title: 'Błąd zapisu', description: 'Nie udało się zapisać karty kontroli.', variant: 'destructive' });
+            });
+        } else {
+            startTransition(async () => {
                 const cardData: Omit<ControlCard, 'id'> = {
                     addressId: address.id,
                     addressName: address.name,
@@ -544,8 +551,8 @@ function ControlCardDialog({
                 } else {
                     toast({ title: 'Błąd zapisu', description: result.error, variant: 'destructive' });
                 }
-            }
-        });
+            });
+        }
     };
 
     return (

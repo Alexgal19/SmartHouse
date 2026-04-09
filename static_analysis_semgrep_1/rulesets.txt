@@ -1,0 +1,12 @@
+p/security-audit
+p/secrets
+p/owasp-top-ten
+p/gitleaks
+p/typescript
+p/javascript
+p/react
+p/nextjs
+p/nodejs
+p/github-actions
+https://github.com/trailofbits/semgrep-rules
+https://github.com/apiiro/malicious-code-ruleset

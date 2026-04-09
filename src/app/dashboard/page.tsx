@@ -32,22 +32,25 @@ const DynamicSettingsView = dynamic(() => import('@/components/settings-view'), 
 
 
 function CurrentView({ activeView, currentUser }: { activeView: View; currentUser: SessionData }) {
-    switch (activeView) {
-        case 'dashboard':
-            return <DashboardView currentUser={currentUser} />;
-        case 'employees':
-            return <EntityView currentUser={currentUser} />;
-        case 'housing':
-            return <HousingView currentUser={currentUser} />;
-        case 'control-cards':
-            return <ControlCardsView currentUser={currentUser} />;
-        case 'settings':
-            return <DynamicSettingsView currentUser={currentUser} />;
-        default:
-            return (
+    return (
+        <>
+            <div className={activeView !== 'dashboard' ? 'hidden' : ''}>
                 <DashboardView currentUser={currentUser} />
-            )
-    }
+            </div>
+            <div className={activeView !== 'employees' ? 'hidden' : ''}>
+                <EntityView currentUser={currentUser} />
+            </div>
+            <div className={activeView !== 'housing' ? 'hidden' : ''}>
+                <HousingView currentUser={currentUser} />
+            </div>
+            <div className={activeView !== 'control-cards' ? 'hidden' : ''}>
+                <ControlCardsView currentUser={currentUser} />
+            </div>
+            <div className={activeView !== 'settings' ? 'hidden' : ''}>
+                <DynamicSettingsView currentUser={currentUser} />
+            </div>
+        </>
+    );
 }
 
 export default function DashboardPage() {

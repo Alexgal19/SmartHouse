@@ -49,7 +49,11 @@ function LoginForm() {
         setIsLoading(true);
 
         // Check for callbackUrl to redirect back to the original page (e.g. from push notification)
-        const callbackUrl = searchParams.get('callbackUrl') || '/dashboard?view=dashboard';
+        // Only allow relative paths to prevent open redirect attacks
+        const rawCallbackUrl = searchParams.get('callbackUrl') || '';
+        const callbackUrl = rawCallbackUrl.startsWith('/') && !rawCallbackUrl.startsWith('//')
+            ? rawCallbackUrl
+            : '/dashboard?view=dashboard';
 
         try {
             const { success, user } = await login(name, password);

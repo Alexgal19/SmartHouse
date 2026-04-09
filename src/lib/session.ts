@@ -9,6 +9,8 @@ export const sessionOptions: SessionOptions = {
   cookieName: 'smarthouse-session',
   cookieOptions: {
     secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    httpOnly: true,
   },
 };
 

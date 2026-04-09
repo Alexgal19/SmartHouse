@@ -339,23 +339,10 @@ export default function MainLayout({
             // 2. Fetch other data SEQUENTIALLY/BATCHED to reduce burst on Google Sheets API (429 errors)
             // Fetch largest datasets first individually
 
-            const employeesResult = await getEmployees().catch(e => {
-                console.error("Failed to fetch employees:", e);
-                return [] as Employee[];
-            });
-
-            // Short delay to let the API breathe
-            await new Promise(resolve => setTimeout(resolve, 300));
-
-            const nonEmployeesResult = await getNonEmployees().catch(e => {
-                console.error("Failed to fetch non-employees:", e);
-                return [] as NonEmployee[];
-            });
-
-            await new Promise(resolve => setTimeout(resolve, 300));
-
-            // Fetch remaining smaller datasets in parallel
-            const [bokResidentsResult, notificationsResult, addressHistoryResult] = await Promise.all([
+            // Fetch all datasets in parallel — no artificial delays needed
+            const [employeesResult, nonEmployeesResult, bokResidentsResult, notificationsResult, addressHistoryResult] = await Promise.all([
+                getEmployees().catch(e => { console.error("Failed to fetch employees:", e); return [] as Employee[]; }),
+                getNonEmployees().catch(e => { console.error("Failed to fetch non-employees:", e); return [] as NonEmployee[]; }),
                 getBokResidents().catch(e => { console.error("Failed to fetch BOK:", e); return [] as BokResident[]; }),
                 getNotifications(currentUser.uid, currentUser.isAdmin).catch(e => { console.error("Failed to fetch notifications:", e); return [] as Notification[]; }),
                 getRawAddressHistory().catch(e => { console.error("Failed to fetch history:", e); return [] as AddressHistory[]; })
@@ -711,14 +698,17 @@ export default function MainLayout({
 
     const handleDismissBokResident = useCallback(async (id: string, dismissDate: Date) => {
         if (!currentUser) return;
+        const originalBokResidents = rawBokResidents;
+        const formattedDate = format(dismissDate, 'yyyy-MM-dd');
+        setRawBokResidents(prev => prev ? prev.map(r => r.id === id ? { ...r, status: 'dismissed' as const, dismissDate: formattedDate } : r) : null);
         try {
-            await updateBokResident(id, { status: 'dismissed', dismissDate: format(dismissDate, 'yyyy-MM-dd') }, currentUser.uid);
+            await updateBokResident(id, { status: 'dismissed', dismissDate: formattedDate }, currentUser.uid);
             toast({ title: "Sukces", description: "Mieszkaniec BOK został pomyślnie zwolniony." });
-            refreshData(false); // fire-and-forget — sync z serwerem w tle
         } catch (e: unknown) {
+            setRawBokResidents(originalBokResidents);
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zwolnić mieszkańca BOK." });
         }
-    }, [currentUser, refreshData, toast]);
+    }, [currentUser, rawBokResidents, toast]);
 
     const handleUpdateSettings = useCallback(async (newSettings: Partial<Settings>) => {
         if (!rawSettings || !currentUser?.isAdmin) {
@@ -860,76 +850,70 @@ export default function MainLayout({
 
     const handleDismissEmployee = useCallback(async (employeeId: string, checkOutDate: Date) => {
         if (!currentUser) return;
-      // Optimistic update — natychmiastowe przejście pracownika do zwolnionych
-      const originalEmployees = rawEmployees;
-      const formattedDate = format(checkOutDate, 'yyyy-MM-dd');
-      setRawEmployees(prev => prev ? prev.map(e => e.id === employeeId ? { ...e, status: 'dismissed' as const, checkOutDate: formattedDate } : e) : null);
+        const originalEmployees = rawEmployees;
+        const formattedDate = format(checkOutDate, 'yyyy-MM-dd');
+        setRawEmployees(prev => prev ? prev.map(e => e.id === employeeId ? { ...e, status: 'dismissed' as const, checkOutDate: formattedDate } : e) : null);
         try {
             await updateEmployee(employeeId, { status: 'dismissed', checkOutDate: formattedDate }, currentUser.uid);
             toast({ title: "Sukces", description: "Pracownik został zwolniony." });
-            refreshData(false); // fire-and-forget — sync z serwerem w tle
         } catch (e: unknown) {
-        setRawEmployees(originalEmployees); // rollback przy błędzie
+            setRawEmployees(originalEmployees);
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zwolnić pracownika." });
         }
-    }, [currentUser, rawEmployees, setRawEmployees, refreshData, toast]);
+    }, [currentUser, rawEmployees, toast]);
 
     const handleDismissNonEmployee = useCallback(async (nonEmployeeId: string, checkOutDate: Date) => {
         if (!currentUser) return;
-      // Optimistic update
-      const originalNonEmployees = rawNonEmployees;
-      const formattedDate = format(checkOutDate, 'yyyy-MM-dd');
-      setRawNonEmployees(prev => prev ? prev.map(n => n.id === nonEmployeeId ? { ...n, status: 'dismissed' as const, checkOutDate: formattedDate } : n) : null);
+        const originalNonEmployees = rawNonEmployees;
+        const formattedDate = format(checkOutDate, 'yyyy-MM-dd');
+        setRawNonEmployees(prev => prev ? prev.map(n => n.id === nonEmployeeId ? { ...n, status: 'dismissed' as const, checkOutDate: formattedDate } : n) : null);
         try {
             await updateNonEmployee(nonEmployeeId, { status: 'dismissed', checkOutDate: formattedDate }, currentUser.uid);
             toast({ title: "Sukces", description: "Mieszkaniec został zwolniony." });
-            refreshData(false); // fire-and-forget — sync z serwerem w tle
         } catch (e: unknown) {
-        setRawNonEmployees(originalNonEmployees);
+            setRawNonEmployees(originalNonEmployees);
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zwolnić mieszkańca." });
         }
-    }, [currentUser, rawNonEmployees, setRawNonEmployees, refreshData, toast]);
+    }, [currentUser, rawNonEmployees, toast]);
 
     const handleRestoreEmployee = useCallback(async (employee: Employee) => {
         if (!currentUser) return;
-      // Optimistic update
-      const originalEmployees = rawEmployees;
-      setRawEmployees(prev => prev ? prev.map(e => e.id === employee.id ? { ...e, status: 'active' as const, checkOutDate: null } : e) : null);
+        const originalEmployees = rawEmployees;
+        setRawEmployees(prev => prev ? prev.map(e => e.id === employee.id ? { ...e, status: 'active' as const, checkOutDate: null } : e) : null);
         try {
             await updateEmployee(employee.id, { status: 'active', checkOutDate: null }, currentUser.uid);
             toast({ title: "Sukces", description: "Pracownik został przywrócony." });
-            refreshData(false); // fire-and-forget — sync z serwerem w tle
         } catch (e: unknown) {
-        setRawEmployees(originalEmployees);
+            setRawEmployees(originalEmployees);
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się przywrócić pracownika." });
         }
-    }, [currentUser, rawEmployees, setRawEmployees, refreshData, toast]);
+    }, [currentUser, rawEmployees, toast]);
 
     const handleRestoreNonEmployee = useCallback(async (nonEmployee: NonEmployee) => {
         if (!currentUser) return;
-      // Optimistic update
-      const originalNonEmployees = rawNonEmployees;
-      setRawNonEmployees(prev => prev ? prev.map(n => n.id === nonEmployee.id ? { ...n, status: 'active' as const, checkOutDate: null } : n) : null);
+        const originalNonEmployees = rawNonEmployees;
+        setRawNonEmployees(prev => prev ? prev.map(n => n.id === nonEmployee.id ? { ...n, status: 'active' as const, checkOutDate: null } : n) : null);
         try {
             await updateNonEmployee(nonEmployee.id, { status: 'active', checkOutDate: null }, currentUser.uid);
             toast({ title: "Sukces", description: "Mieszkaniec został przywrócony." });
-            refreshData(false); // fire-and-forget — sync z serwerem w tle
         } catch (e: unknown) {
-        setRawNonEmployees(originalNonEmployees);
+            setRawNonEmployees(originalNonEmployees);
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się przywrócić mieszkańca." });
         }
-    }, [currentUser, rawNonEmployees, setRawNonEmployees, refreshData, toast]);
+    }, [currentUser, rawNonEmployees, toast]);
 
     const handleRestoreBokResident = useCallback(async (bokResident: BokResident) => {
         if (!currentUser) return;
+        const originalBokResidents = rawBokResidents;
+        setRawBokResidents(prev => prev ? prev.map(r => r.id === bokResident.id ? { ...r, status: 'active' as const, dismissDate: null, checkOutDate: null } : r) : null);
         try {
             await updateBokResident(bokResident.id, { status: 'active', dismissDate: null, checkOutDate: null }, currentUser.uid);
             toast({ title: "Sukces", description: "Mieszkaniec BOK został przywrócony." });
-            refreshData(false); // fire-and-forget — sync z serwerem w tle
         } catch (e: unknown) {
+            setRawBokResidents(originalBokResidents);
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się przywrócić mieszkańca BOK." });
         }
-    }, [currentUser, refreshData, toast]);
+    }, [currentUser, rawBokResidents, toast]);
 
     const handleDeleteEmployee = useCallback(async (employeeId: string, actorUid: string) => {
         if (!currentUser) return;

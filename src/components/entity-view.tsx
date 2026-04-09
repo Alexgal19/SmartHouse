@@ -53,7 +53,7 @@ type SortableField = 'lastName' | 'firstName' | 'coordinatorId' | 'address' | 'r
 const isBokResident = (entity: Entity): entity is BokResident => 'role' in entity;
 const isEmployee = (entity: Entity): entity is Employee => 'zaklad' in entity && !('role' in entity);
 
-const EntityActions = ({
+const EntityActions = React.memo(({
     entity,
     onEdit,
     onRestore,
@@ -112,10 +112,11 @@ const EntityActions = ({
             </DropdownMenuContent>
         </DropdownMenu>
     );
-};
+});
+EntityActions.displayName = 'EntityActions';
 
 
-const PaginationControls = ({
+const PaginationControls = React.memo(({
     currentPage,
     totalPages,
     onPageChange,
@@ -147,10 +148,11 @@ const PaginationControls = ({
             </Button>
         </div>
     );
-};
+});
+PaginationControls.displayName = 'PaginationControls';
 
 
-const EntityTable = ({ entities, onEdit, onRestore, isDismissed, settings, onPermanentDelete, onSort, sortBy, sortOrder, isBokTab, selectedIds, onSelect, onSelectAll, columnFilters, onColumnFilterChange, columnOptions }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onRestore?: (entity: Entity) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => void; onSort: (field: SortableField) => void; sortBy: SortableField | null; sortOrder: 'asc' | 'desc'; isBokTab?: boolean; selectedIds?: Set<string>; onSelect?: (id: string, checked: boolean) => void; onSelectAll?: (checked: boolean) => void; columnFilters?: Record<string, string[]>; onColumnFilterChange?: (field: string, values: string[]) => void; columnOptions?: Record<string, { label: string, value: string }[]>; }) => {
+const EntityTable = React.memo(({ entities, onEdit, onRestore, isDismissed, settings, onPermanentDelete, onSort, sortBy, sortOrder, isBokTab, selectedIds, onSelect, onSelectAll, columnFilters, onColumnFilterChange, columnOptions }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onRestore?: (entity: Entity) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => void; onSort: (field: SortableField) => void; sortBy: SortableField | null; sortOrder: 'asc' | 'desc'; isBokTab?: boolean; selectedIds?: Set<string>; onSelect?: (id: string, checked: boolean) => void; onSelectAll?: (checked: boolean) => void; columnFilters?: Record<string, string[]>; onColumnFilterChange?: (field: string, values: string[]) => void; columnOptions?: Record<string, { label: string, value: string }[]>; }) => {
     const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
 
     const renderCheckboxHeader = () => {
@@ -246,7 +248,8 @@ const EntityTable = ({ entities, onEdit, onRestore, isDismissed, settings, onPer
             </Table>
         </div>
     );
-};
+});
+EntityTable.displayName = 'EntityTable';
 
 const HistoryTable = ({ history, onSort, sortBy, sortOrder, onDelete, columnFilters, onColumnFilterChange, columnOptions }: { history: AddressHistory[]; onSort: (field: SortableField) => void; sortBy: SortableField | null; sortOrder: 'asc' | 'desc'; onDelete?: (id: string) => void; columnFilters?: Record<string, string[]>; onColumnFilterChange?: (field: string, values: string[]) => void; columnOptions?: Record<string, { label: string, value: string }[]>; }) => {
     return (

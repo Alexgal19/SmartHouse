@@ -2,11 +2,17 @@ import { login, logout, getSession } from '@/lib/auth';
 import * as sheets from '@/lib/sheets';
 import { redirect } from 'next/navigation';
 import { getIronSession } from 'iron-session';
+import { headers } from 'next/headers';
 
 jest.mock('iron-session');
-jest.mock('next/headers');
+jest.mock('next/headers', () => ({
+    cookies: jest.fn(),
+    headers: jest.fn(),
+}));
 jest.mock('@/lib/sheets');
 jest.mock('@/lib/session');
+
+const mockedHeaders = headers as jest.Mock;
 
 const mockedGetSettings = sheets.getSettings as jest.Mock;
 
@@ -26,6 +32,9 @@ describe('Authentication', () => {
         (getIronSession as jest.Mock).mockResolvedValue(mockSession);
 
         mockedGetSettings.mockResolvedValue({ coordinators: [] });
+
+        // Mock headers() to return a Headers-like object with no x-forwarded-for
+        mockedHeaders.mockResolvedValue({ get: () => null });
     });
 
     describe('getSession', () => {
