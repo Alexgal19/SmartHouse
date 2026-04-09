@@ -567,7 +567,12 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     const { isMobile, isMounted } = useIsMobile();
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-    const tab = (searchParams.get('tab') as 'active' | 'dismissed' | 'non-employees' | 'bok-residents' | 'history') || (currentUser.isDriver ? 'bok-residents' : 'active');
+    const defaultTab = currentUser.isDriver ? 'bok-residents' : 'active';
+    const tabFromUrl = searchParams.get('tab') as 'active' | 'dismissed' | 'non-employees' | 'bok-residents' | 'history' | null;
+    const lastTabRef = useRef<'active' | 'dismissed' | 'non-employees' | 'bok-residents' | 'history'>(tabFromUrl || defaultTab);
+    if (tabFromUrl) lastTabRef.current = tabFromUrl;
+    const tab = tabFromUrl || lastTabRef.current;
+
     const [bokSubTab, setBokSubTab] = useState<'active' | 'sent' | 'dismissed'>('active');
 
     // Clear selections when tab or subtab changes
