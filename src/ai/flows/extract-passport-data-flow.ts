@@ -75,7 +75,7 @@ export async function extractPassportData(input: ExtractPassportDataInput): Prom
 
       if (mrzMatch && mrzMatch[0]) {
         const mrzStr = mrzMatch[0];
-        const nameMatch = mrzStr.match(/([A-Z]+(?:<[A-Z]+)*)<<([A-Z]+(?:<[A-Z]+)*)/);
+        const nameMatch = mrzStr.match(/([A-Z]{1,50}(?:<[A-Z]{1,50}){0,10})<<([A-Z]{1,50}(?:<[A-Z]{1,50}){0,10})/);
         if (nameMatch) {
           lastName = nameMatch[1].replace(/</g, ' ').trim();
           firstName = nameMatch[2].replace(/</g, ' ').trim();

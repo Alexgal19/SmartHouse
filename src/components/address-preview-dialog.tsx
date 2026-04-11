@@ -54,7 +54,10 @@ export function AddressPreviewDialog({
   const [selectedLocality, setSelectedLocality] = useState<string>('');
   const [selectedAddress, setSelectedAddress] = useState<string>('');
   const [selectedRoom, setSelectedRoom] = useState<string>('');
+  const [expandedAddress, setExpandedAddress] = useState<string | null>(null);
   const [sortConfig, setSortConfig] = useState<{key: keyof AddressOccupancy | null, direction: 'asc' | 'desc'}>({ key: null, direction: 'asc' });
+
+  const ALL_LOCALITIES = '__all__';
 
   const handleSort = (key: string) => {
     setSortConfig(prev => ({
@@ -131,18 +134,37 @@ export function AddressPreviewDialog({
 
   // Get addresses for selected locality
   const availableAddresses = useMemo(() => {
-    if (!selectedLocality) return [];
+    if (!selectedLocality || selectedLocality === ALL_LOCALITIES) return [];
     const addressSet = new Set(
       addressOccupancy
         .filter(item => item.locality === selectedLocality && item.isActive)
         .map(item => item.address)
     );
     return Array.from(addressSet).sort();
-  }, [addressOccupancy, selectedLocality]);
+  }, [addressOccupancy, selectedLocality, ALL_LOCALITIES]);
+
+  // Address-level summary for selected locality (to show address blocks)
+  const selectedLocalityAddresses = useMemo(() => {
+    if (!selectedLocality || selectedLocality === ALL_LOCALITIES) return [];
+    const addressMap = new Map<string, { total: number; occupied: number; available: number }>();
+    addressOccupancy
+      .filter(item => item.locality === selectedLocality && item.isActive)
+      .forEach(item => {
+        const current = addressMap.get(item.address) || { total: 0, occupied: 0, available: 0 };
+        addressMap.set(item.address, {
+          total: current.total + item.capacity,
+          occupied: current.occupied + item.occupied,
+          available: current.available + Math.max(0, item.capacity - item.occupied),
+        });
+      });
+    return Array.from(addressMap.entries())
+      .map(([address, data]) => ({ address, ...data }))
+      .sort((a, b) => a.address.localeCompare(b.address));
+  }, [addressOccupancy, selectedLocality, ALL_LOCALITIES]);
 
   // Get rooms for selected address
   const availableRooms = useMemo(() => {
-    if (!selectedAddress) return [];
+    if (!selectedAddress || selectedLocality === ALL_LOCALITIES) return [];
     return addressOccupancy
       .filter(item =>
         item.locality === selectedLocality &&
@@ -150,7 +172,7 @@ export function AddressPreviewDialog({
         item.isActive
       )
       .sort((a, b) => a.roomName.localeCompare(b.roomName));
-  }, [addressOccupancy, selectedLocality, selectedAddress]);
+  }, [addressOccupancy, selectedLocality, selectedAddress, ALL_LOCALITIES]);
 
   // Get occupancy info for selected items
   const selectedRoomInfo = useMemo(() => {
@@ -220,22 +242,15 @@ export function AddressPreviewDialog({
     })).sort((a, b) => a.locality.localeCompare(b.locality));
   }, [addressOccupancy]);
 
-  const getAvailabilityBadge = (available: number, capacity: number) => {
-    const percentage = capacity > 0 ? (available / capacity) * 100 : 0;
-
-    if (percentage === 0) {
+  const getAvailabilityBadge = (available: number, _capacity: number) => {
+    if (available === 0) {
       return <Badge variant="destructive">Pełny</Badge>;
-    } else if (percentage <= 25) {
-      return <Badge variant="destructive">Mało miejsc</Badge>;
-    } else if (percentage <= 50) {
-      return <Badge className="bg-orange-500 hover:bg-orange-600">Średnio</Badge>;
-    } else {
-      return <Badge className="bg-green-500 hover:bg-green-600">Dostępne</Badge>;
     }
+    return <Badge className="bg-green-500 hover:bg-green-600">Wolne</Badge>;
   };
 
   const handleApply = () => {
-    if (selectedLocality && selectedAddress && selectedRoom && onApplySelection) {
+    if (selectedLocality && selectedLocality !== ALL_LOCALITIES && selectedAddress && selectedRoom && onApplySelection) {
       onApplySelection(selectedLocality, selectedAddress, selectedRoom);
       onOpenChange(false);
       // Reset selections
@@ -259,7 +274,7 @@ export function AddressPreviewDialog({
         <DialogHeader>
           <DialogTitle className="text-base sm:text-lg">Podgląd i wybór dostępności miejsc</DialogTitle>
           <DialogDescription className="text-xs sm:text-sm">
-            Wybierz miejscowość, adres i pokój, aby zastosować w formularzu
+            Wybierz miejscowość, aby zobaczyć dostępność adresów
           </DialogDescription>
         </DialogHeader>
 
@@ -268,100 +283,31 @@ export function AddressPreviewDialog({
             {/* Interactive Selection Section */}
             <div className="p-3 sm:p-4 border rounded-lg bg-muted/50">
               <h3 className="text-sm font-semibold mb-3 sm:mb-4">Wybierz zakwaterowanie</h3>
-              <div className="flex flex-col gap-3 sm:grid sm:grid-cols-3 sm:gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="locality-select">Miejscowość</Label>
-                  <Select value={selectedLocality} onValueChange={(value) => {
-                    setSelectedLocality(value);
-                    setSelectedAddress('');
-                    setSelectedRoom('');
-                  }}>
-                    <SelectTrigger id="locality-select">
-                      <SelectValue placeholder="Wybierz miejscowość" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {localities.map(locality => (
-                        <SelectItem key={locality} value={locality}>
-                          {locality}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="address-select">Adres</Label>
-                  <Select
-                    value={selectedAddress}
-                    onValueChange={(value) => {
-                      setSelectedAddress(value);
-                      setSelectedRoom('');
-                    }}
-                    disabled={!selectedLocality}
-                  >
-                    <SelectTrigger id="address-select">
-                      <SelectValue placeholder={!selectedLocality ? "Najpierw wybierz miejscowość" : "Wybierz adres"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableAddresses.map(address => (
-                        <SelectItem key={address} value={address}>
-                          {address}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="room-select">Pokój</Label>
-                  <Select
-                    value={selectedRoom}
-                    onValueChange={setSelectedRoom}
-                    disabled={!selectedAddress}
-                  >
-                    <SelectTrigger id="room-select">
-                      <SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : "Wybierz pokój"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableRooms.map(room => (
-                        <SelectItem
-                          key={room.roomName}
-                          value={room.roomName}
-                          disabled={room.available === 0 || !room.isActive}
-                        >
-                          {room.roomName} - {room.isActive ? `Dostępne: ${room.available}/${room.capacity}` : '(Zablokowany)'}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-2 max-w-xs">
+                <Label htmlFor="locality-select">Miejscowość</Label>
+                <Select value={selectedLocality} onValueChange={(value) => {
+                  setSelectedLocality(value);
+                  setSelectedAddress('');
+                  setSelectedRoom('');
+                  setExpandedAddress(null);
+                }}>
+                  <SelectTrigger id="locality-select">
+                    <SelectValue placeholder="Wybierz miejscowość" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_LOCALITIES}>Wszystkie miejscowości</SelectItem>
+                    {localities.map(locality => (
+                      <SelectItem key={locality} value={locality}>
+                        {locality}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-
-              {selectedRoomInfo && (
-                <div className="mt-3 sm:mt-4 p-3 border rounded-lg bg-background">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 text-xs sm:text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Pojemność:</span>
-                      <span className="ml-2 font-medium">{selectedRoomInfo.capacity}</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Zajęte:</span>
-                      <span className="ml-2 font-medium text-orange-600">{selectedRoomInfo.occupied}</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Dostępne:</span>
-                      <span className="ml-2 font-medium text-green-600">{selectedRoomInfo.available}</span>
-                    </div>
-                    <div className="flex items-center">
-                      {getAvailabilityBadge(selectedRoomInfo.available, selectedRoomInfo.capacity)}
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
-            {/* Summary Cards */}
-            {localitySummary.length > 0 && (
+            {/* Summary Cards — gdy wybrane "Wszystkie" lub nic */}
+            {(!selectedLocality || selectedLocality === ALL_LOCALITIES) && localitySummary.length > 0 && (
               <div>
                 <h3 className="text-sm font-semibold mb-3">Podsumowanie według miejscowości</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
@@ -392,86 +338,89 @@ export function AddressPreviewDialog({
               </div>
             )}
 
-            {/* Detailed Table by Locality */}
-            {groupedByLocality.map(([locality, items]) => (
-              <div key={locality}>
-                <h3 className="text-sm font-semibold mb-2 sticky top-0 bg-background py-2 z-10">
-                  {locality}
+            {/* Address blocks — gdy wybrana konkretna miejscowość */}
+            {selectedLocalityAddresses.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold mb-3">
+                  Adresy w miejscowości: <span className="text-primary">{selectedLocality}</span>
                 </h3>
-                {/* Mobile: Card layout */}
-                <div className="sm:hidden space-y-2">
-                  {items.map((item, idx) => (
-                    <div key={idx} className={cn("border rounded-lg p-3", !item.isActive && 'opacity-50 bg-muted')}>
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="font-medium text-sm">
-                          {item.address}
-                          {!item.isActive && <span className="ml-2 text-xs text-muted-foreground">(Niedostępny)</span>}
-                        </div>
-                        <div className="text-sm font-medium">Pokój {item.roomName}</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+                  {selectedLocalityAddresses.map((addr) => {
+                    const isExpanded = expandedAddress === addr.address;
+                    return (
+                      <Card
+                        key={addr.address}
+                        className={cn('cursor-pointer transition-all hover:shadow-md', addr.available === 0 && 'opacity-60', isExpanded && 'ring-2 ring-primary')}
+                        onClick={() => setExpandedAddress(isExpanded ? null : addr.address)}
+                      >
+                        <CardHeader className="p-3 pb-2">
+                          <CardTitle className="text-xs font-medium leading-tight">{addr.address}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-3 pt-0">
+                          <div className="space-y-1 text-xs">
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Całkowita pojemność:</span>
+                              <span className="font-medium">{addr.total}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Zajęte:</span>
+                              <span className="font-medium text-orange-600">{addr.occupied}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Dostępne:</span>
+                              <span className="font-medium text-green-600">{addr.available}</span>
+                            </div>
+                          </div>
+                          <div className="mt-2">
+                            {getAvailabilityBadge(addr.available, addr.total)}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+
+                {/* Panel pokojów — pełna szerokość pod kartami */}
+                {expandedAddress && (() => {
+                  const rooms = addressOccupancy
+                    .filter(item => item.locality === selectedLocality && item.address === expandedAddress && item.isActive)
+                    .sort((a, b) => b.available - a.available || a.roomName.localeCompare(b.roomName));
+                  return (
+                    <div className="mt-3 border rounded-lg overflow-hidden">
+                      <div className="bg-muted/50 px-4 py-2 text-sm font-semibold">
+                        Pokoje — {expandedAddress}
                       </div>
-                      <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div>
-                          <div className="text-muted-foreground">Pojemność</div>
-                          <div className="font-medium">{item.capacity}</div>
-                        </div>
-                        <div>
-                          <div className="text-muted-foreground">Zajęte</div>
-                          <div className="font-medium text-orange-600">{item.occupied}</div>
-                        </div>
-                        <div>
-                          <div className="text-muted-foreground">Wolne</div>
-                          <div className="font-medium text-green-600">{item.available}</div>
-                        </div>
-                      </div>
-                      {item.isActive && (
-                        <div className="mt-2">
-                          {getAvailabilityBadge(item.available, item.capacity)}
-                        </div>
-                      )}
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="bg-muted/30 border-b">
+                            <th className="text-left px-4 py-2 font-medium text-muted-foreground">Pokój</th>
+                            <th className="text-center px-4 py-2 font-medium text-muted-foreground">Pojemność</th>
+                            <th className="text-center px-4 py-2 font-medium text-orange-600">Zajęte</th>
+                            <th className="text-center px-4 py-2 font-medium text-green-600">Wolne</th>
+                            <th className="text-center px-4 py-2 font-medium text-muted-foreground">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {rooms.map((room) => (
+                            <tr key={room.roomName}>
+                              <td className="px-4 py-2 font-medium">Pokój {room.roomName}</td>
+                              <td className="px-4 py-2 text-center">{room.capacity}</td>
+                              <td className="px-4 py-2 text-center font-medium text-orange-600">{room.occupied}</td>
+                              <td className="px-4 py-2 text-center font-medium text-green-600">{room.available}</td>
+                              <td className="px-4 py-2 text-center">
+                                <div className="flex justify-center">
+                                  {getAvailabilityBadge(room.available, room.capacity)}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                  ))}
-                </div>
-                {/* Desktop: Table layout */}
-                <div className="hidden sm:block border rounded-lg overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <FilterableHeader field="address" label="Adres" onSort={handleSort} sortBy={sortConfig.key} sortOrder={sortConfig.direction} className="text-xs sm:text-sm whitespace-nowrap" />
-                          <FilterableHeader field="roomName" label="Pokój" onSort={handleSort} sortBy={sortConfig.key} sortOrder={sortConfig.direction} className="text-xs sm:text-sm whitespace-nowrap" />
-                          <FilterableHeader field="capacity" label="Pojemność" onSort={handleSort} sortBy={sortConfig.key} sortOrder={sortConfig.direction} className="text-center text-xs sm:text-sm whitespace-nowrap" />
-                          <FilterableHeader field="occupied" label="Zajęte" onSort={handleSort} sortBy={sortConfig.key} sortOrder={sortConfig.direction} className="text-center text-xs sm:text-sm whitespace-nowrap" />
-                          <FilterableHeader field="available" label="Wolne" onSort={handleSort} sortBy={sortConfig.key} sortOrder={sortConfig.direction} className="text-center text-xs sm:text-sm whitespace-nowrap" />
-                          <FilterableHeader field="isActive" label="Status" onSort={handleSort} sortBy={sortConfig.key} sortOrder={sortConfig.direction} className="text-center text-xs sm:text-sm whitespace-nowrap" />
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {items.map((item, idx) => (
-                          <TableRow key={idx} className={!item.isActive ? 'opacity-50' : ''}>
-                            <TableCell className="font-medium text-xs sm:text-sm whitespace-nowrap">
-                              {item.address}
-                              {!item.isActive && <span className="ml-2 text-xs text-muted-foreground">(Niedostępny)</span>}
-                            </TableCell>
-                            <TableCell className="text-xs sm:text-sm">{item.roomName}</TableCell>
-                            <TableCell className="text-center text-xs sm:text-sm">{item.capacity}</TableCell>
-                            <TableCell className="text-center text-orange-600 font-medium text-xs sm:text-sm">
-                              {item.occupied}
-                            </TableCell>
-                            <TableCell className="text-center text-green-600 font-medium text-xs sm:text-sm">
-                              {item.available}
-                            </TableCell>
-                            <TableCell className="text-center whitespace-nowrap">
-                              {item.isActive && getAvailabilityBadge(item.available, item.capacity)}
-                              {!item.isActive && <Badge variant="secondary" className="text-xs">Nieaktywny</Badge>}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
+                  );
+                })()}
               </div>
-            ))}
+            )}
 
             {addressOccupancy.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
@@ -492,7 +441,7 @@ export function AddressPreviewDialog({
           {onApplySelection && (
             <Button
               onClick={handleApply}
-              disabled={!selectedLocality || !selectedAddress || !selectedRoom}
+              disabled={!selectedLocality || selectedLocality === ALL_LOCALITIES || !selectedAddress || !selectedRoom}
               className="w-full sm:w-auto min-h-[44px] order-1 sm:order-2"
             >
               Zastosuj wybór
