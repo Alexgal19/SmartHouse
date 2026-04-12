@@ -31,6 +31,7 @@ interface Alert {
   coordinatorIds: string[]; // kto dostaje alert (koordynator + admini)
   title: string;
   body: string;
+  link: string; // deep link do konkretnego formularza
 }
 
 async function sendAlerts(alerts: Alert[], admins: Coordinator[]): Promise<void> {
@@ -40,7 +41,7 @@ async function sendAlerts(alerts: Alert[], admins: Coordinator[]): Promise<void>
     // zbierz unikalne UIDs: koordynatorzy + wszyscy admini
     const recipients = [...new Set([...alert.coordinatorIds, ...adminUids])];
     await Promise.allSettled(
-      recipients.map((uid) => sendPushNotification(uid, alert.title, alert.body, '/dashboard'))
+      recipients.map((uid) => sendPushNotification(uid, alert.title, alert.body, alert.link))
     );
   }
 }
@@ -67,6 +68,7 @@ function checkContractExpiry(employees: Employee[]): Alert[] {
       coordinatorIds: emp.coordinatorId ? [emp.coordinatorId] : [],
       title: `${urgency}: Wygasająca umowa`,
       body: `${emp.fullName} — umowa kończy się za ${daysLeft} dni (${emp.contractEndDate}). Proszę o przedłużenie.`,
+      link: `/dashboard?view=employees&edit=${emp.id}`,
     });
   }
 
@@ -88,6 +90,7 @@ function checkBokStatusInconsistency(bokResidents: BokResident[]): Alert[] {
       coordinatorIds: res.coordinatorId ? [res.coordinatorId] : [],
       title: `⚠️ Niespójny status BOK`,
       body: `${res.fullName} — data zwolnienia minęła (${res.dismissDate}), ale status to "${res.status}". Proszę zaktualizować.`,
+      link: `/dashboard?view=employees&tab=bok-residents&edit=${res.id}`,
     });
   }
 
@@ -130,6 +133,7 @@ function checkCapacity(
         coordinatorIds: addr.coordinatorIds ?? [],
         title: `🏠 Przekroczona pojemność pokoju`,
         body: `${addr.name} / ${room.name}: ${current} osób przy pojemności ${room.capacity}. Proszę sprawdzić przydzielenia.`,
+        link: `/dashboard?view=housing`,
       });
     }
   }
@@ -153,6 +157,7 @@ function checkMissingPaymentData(nonEmployees: NonEmployee[]): Alert[] {
       coordinatorIds: nz.coordinatorId ? [nz.coordinatorId] : [],
       title: `💳 Brakujące dane płatności NZ`,
       body: `${nz.fullName} — brak: ${missing.join(', ')}. Proszę uzupełnić dane płatności.`,
+      link: `/dashboard?view=employees&tab=non-employees&edit=${nz.id}`,
     });
   }
 
@@ -167,23 +172,35 @@ function checkMissingCheckInDate(
 ): Alert[] {
   const alerts: Alert[] = [];
 
-  const check = (
-    person: { fullName: string; coordinatorId: string; status: string; checkInDate: string | null },
-    type: string
-  ) => {
-    if (person.status !== 'active') return;
-    if (person.checkInDate) return;
-
+  employees.forEach((e) => {
+    if (e.status !== 'active' || e.checkInDate) return;
     alerts.push({
-      coordinatorIds: person.coordinatorId ? [person.coordinatorId] : [],
+      coordinatorIds: e.coordinatorId ? [e.coordinatorId] : [],
       title: `📅 Brak daty zameldowania`,
-      body: `${person.fullName} (${type}) — status aktywny, ale brak daty zameldowania. Proszę uzupełnić.`,
+      body: `${e.fullName} (Pracownik) — status aktywny, ale brak daty zameldowania. Proszę uzupełnić.`,
+      link: `/dashboard?view=employees&edit=${e.id}`,
     });
-  };
+  });
 
-  employees.forEach((e) => check(e, 'Pracownik'));
-  nonEmployees.forEach((e) => check(e, 'NZ'));
-  bokResidents.forEach((e) => check(e, 'BOK'));
+  nonEmployees.forEach((nz) => {
+    if (nz.status !== 'active' || nz.checkInDate) return;
+    alerts.push({
+      coordinatorIds: nz.coordinatorId ? [nz.coordinatorId] : [],
+      title: `📅 Brak daty zameldowania`,
+      body: `${nz.fullName} (NZ) — status aktywny, ale brak daty zameldowania. Proszę uzupełnić.`,
+      link: `/dashboard?view=employees&tab=non-employees&edit=${nz.id}`,
+    });
+  });
+
+  bokResidents.forEach((bok) => {
+    if (bok.status === 'dismissed' || bok.checkInDate) return;
+    alerts.push({
+      coordinatorIds: bok.coordinatorId ? [bok.coordinatorId] : [],
+      title: `📅 Brak daty zameldowania`,
+      body: `${bok.fullName} (BOK) — status aktywny, ale brak daty zameldowania. Proszę uzupełnić.`,
+      link: `/dashboard?view=employees&tab=bok-residents&edit=${bok.id}`,
+    });
+  });
 
   return alerts;
 }
