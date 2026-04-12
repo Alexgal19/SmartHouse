@@ -47,6 +47,14 @@ async function sendAlerts(alerts: Alert[], admins: Coordinator[]): Promise<void>
 }
 
 // ─── Alert 1: Wygasające umowy (Employees) ────────────────────────────────
+const CONTRACT_EXPIRY_THRESHOLDS: Record<number, { urgency: string; label: string }> = {
+  30: { urgency: '🟡 Informacja', label: '1 miesiąc' },
+  21: { urgency: '🟡 Informacja', label: '3 tygodnie' },
+  14: { urgency: '🟠 Ważne',     label: '2 tygodnie' },
+   7: { urgency: '🟠 Ważne',     label: '1 tydzień'  },
+   2: { urgency: '🔴 PILNE',     label: '2 dni'      },
+};
+
 function checkContractExpiry(employees: Employee[]): Alert[] {
   const t = today();
   const alerts: Alert[] = [];
@@ -57,17 +65,13 @@ function checkContractExpiry(employees: Employee[]): Alert[] {
     if (!end) continue;
 
     const daysLeft = daysDiff(t, end);
-    if (daysLeft < 0 || daysLeft > 30) continue;
-
-    let urgency = '';
-    if (daysLeft <= 7) urgency = '🔴 PILNE';
-    else if (daysLeft <= 14) urgency = '🟠 Ważne';
-    else urgency = '🟡 Informacja';
+    const threshold = CONTRACT_EXPIRY_THRESHOLDS[daysLeft];
+    if (!threshold) continue; // nie pasuje do żadnego progu — pomijamy
 
     alerts.push({
       coordinatorIds: emp.coordinatorId ? [emp.coordinatorId] : [],
-      title: `${urgency}: Wygasająca umowa`,
-      body: `${emp.fullName} — umowa kończy się za ${daysLeft} dni (${emp.contractEndDate}). Proszę o przedłużenie.`,
+      title: `${threshold.urgency}: Wygasająca umowa`,
+      body: `${emp.fullName} — umowa kończy się za ${threshold.label} (${emp.contractEndDate}). Proszę o przedłużenie.`,
       link: `/dashboard?view=employees&edit=${emp.id}`,
     });
   }
