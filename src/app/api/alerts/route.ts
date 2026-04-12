@@ -196,7 +196,7 @@ function checkCapacity(
         coordinatorIds: addr.coordinatorIds ?? [],
         title: `🏠 Przekroczona pojemność pokoju`,
         body: `${addr.name} / ${room.name}: ${current} osób przy pojemności ${room.capacity}. Proszę sprawdzić przydzielenia.`,
-        link: `/dashboard?view=housing`,
+        link: `/dashboard?view=housing&address=${addr.id}`,
       });
     }
   }

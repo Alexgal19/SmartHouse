@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import type { Employee, NonEmployee, SessionData, Room, Settings, BokResident } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -870,8 +871,10 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
     handleUpdateSettings,
   } = useMainLayout();
   const { isMobile } = useIsMobile();
+  const searchParams = useSearchParams();
   const [selectedAddressIds, setSelectedAddressIds] = useState<string[]>([]);
   const [selectedRoomIds, setSelectedRoomIds] = useState<string[]>([]);
+  const deepLinkApplied = useRef(false);
 
   const [filters, setFilters] = useState({
     name: '',
@@ -880,6 +883,23 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
   });
 
   const rawHousingData = useHousingData();
+
+  // Auto-select address from URL param (e.g. from push notification deep link)
+  useEffect(() => {
+    if (deepLinkApplied.current) return;
+    const addressId = searchParams.get('address');
+    if (!addressId || rawHousingData.length === 0) return;
+    const match = rawHousingData.find((a) => a.id === addressId);
+    if (!match) return;
+    deepLinkApplied.current = true;
+    setSelectedAddressIds([addressId]);
+    setSelectedRoomIds([]);
+    // Scroll the address card into view after render
+    setTimeout(() => {
+      const el = document.getElementById(`housing-address-${addressId}`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 300);
+  }, [searchParams, rawHousingData]);
 
   const handleOccupantClick = (occupant: Occupant) => {
     if (isBokResident(occupant)) {
@@ -1085,6 +1105,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                 {filteredData.map((address, index) => (
                   <Card
                     key={address.id}
+                    id={`housing-address-${address.id}`}
                     className={cn(
                       'cursor-pointer transition-colors animate-fade-in-up',
                       !address.isActive && 'border-destructive/50 bg-destructive/10',
@@ -1146,6 +1167,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                       {addresses.map((address, index) => (
                         <Card
                           key={address.id}
+                          id={`housing-address-${address.id}`}
                           className={cn(
                             'cursor-pointer transition-colors animate-fade-in-up',
                             !address.isActive && 'border-destructive/50 bg-destructive/10',
