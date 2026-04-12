@@ -1,9 +1,9 @@
-name: Data Guard — hourly Google Sheets check
+name: Data Guard — daily Google Sheets check
 
 on:
   schedule:
-    # Co godzinę o :05 (minuty przesunięte żeby nie kolidować z innymi cron-ami)
-    - cron: '5 * * * *'
+    # Raz dziennie o 07:05 UTC (09:05 czasu polskiego)
+    - cron: '5 7 * * *'
   workflow_dispatch: # możliwość ręcznego uruchomienia z GitHub UI
 
 jobs:
