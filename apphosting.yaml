@@ -29,3 +29,5 @@ env:
     secret: GOOGLE_GENAI_API_KEY
   - variable: CRON_SECRET
     secret: CRON_SECRET
+  - variable: NEXT_PUBLIC_APP_URL
+    value: https://sw-house.pl
