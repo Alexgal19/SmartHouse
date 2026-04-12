@@ -1,0 +1,52 @@
+name: Data Guard — hourly Google Sheets check
+
+on:
+  schedule:
+    # Co godzinę o :05 (minuty przesunięte żeby nie kolidować z innymi cron-ami)
+    - cron: '5 * * * *'
+  workflow_dispatch: # możliwość ręcznego uruchomienia z GitHub UI
+
+jobs:
+  check:
+    name: Check Google Sheets for data loss
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Call Data Guard endpoint
+        id: call
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST "${{ secrets.APP_URL }}/api/data-guard" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+
+          HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+          echo "HTTP status: $HTTP_CODE"
+          echo "Response: $HTTP_BODY"
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::Data Guard endpoint returned HTTP $HTTP_CODE"
+            exit 1
+          fi
+
+          # Sprawdź czy wykryto anomalie
+          ANOMALY_COUNT=$(echo "$HTTP_BODY" | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('anomalies', [])))" 2>/dev/null || echo "0")
+          echo "anomaly_count=$ANOMALY_COUNT" >> "$GITHUB_OUTPUT"
+
+          if [ "$ANOMALY_COUNT" != "0" ]; then
+            echo "::warning::$ANOMALY_COUNT anomalia(-ie) wykryta(-e) w Google Sheets!"
+          fi
+
+      - name: Summary
+        run: |
+          echo "### Data Guard ✅" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Sprawdzono: $(date -u '+%Y-%m-%d %H:%M UTC')" >> "$GITHUB_STEP_SUMMARY"
+          ANOMALIES="${{ steps.call.outputs.anomaly_count }}"
+          if [ "$ANOMALIES" = "0" ] || [ -z "$ANOMALIES" ]; then
+            echo "- Status: **OK — brak anomalii**" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- Status: **⚠️ $ANOMALIES anomalia(-ie) — powiadomienie Push wysłane do Admina**" >> "$GITHUB_STEP_SUMMARY"
+          fi
