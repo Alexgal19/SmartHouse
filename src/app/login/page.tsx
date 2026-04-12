@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { login } from '@/lib/auth';
-import { Download, Loader2 } from 'lucide-react';
+import { Download, Loader2, Eye, EyeOff } from 'lucide-react';
 import { usePWAInstaller } from '@/components/pwa-installer';
 
 const ModernHouseIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -40,6 +40,7 @@ function LoginForm() {
     const { installPrompt, handleInstallClick } = usePWAInstaller();
     const [name, setName] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
     const searchParams = useSearchParams();
@@ -98,14 +99,25 @@ function LoginForm() {
                 </div>
                 <div className="grid gap-2 text-left">
                     <Label htmlFor="password">Hasło</Label>
-                    <Input
-                        id="password"
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        disabled={isLoading}
-                    />
+                    <div className="relative">
+                        <Input
+                            id="password"
+                            type={showPassword ? "text" : "password"}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            disabled={isLoading}
+                            className="pr-10"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(v => !v)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            tabIndex={-1}
+                        >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                    </div>
                 </div>
             </CardContent>
             <CardFooter className="flex-col gap-4 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>

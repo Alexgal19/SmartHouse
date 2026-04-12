@@ -14,6 +14,7 @@ import { differenceInDays, parseISO } from 'date-fns';
 import dynamic from 'next/dynamic';
 import { QuickActions } from './dashboard/quick-actions';
 import { SystemStatusPanel } from './dashboard/system-status-panel';
+import { CoordinatorAlertsPanel } from './dashboard/coordinator-alerts-panel';
 import { AddressPreviewDialog } from './address-preview-dialog';
 
 const DynamicDashboardCharts = dynamic(() => import('./dashboard/charts').then(mod => mod.DashboardCharts), {
@@ -114,6 +115,7 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
           hasNewCheckouts={currentUser.isAdmin && hasNewCheckouts}
         />
         <QuickActions onOpenAddressPreview={() => setIsAddressPreviewOpen(true)} />
+        <CoordinatorAlertsPanel />
         {currentUser.isAdmin && <SystemStatusPanel />}
         <DynamicDashboardCharts
           employees={allEmployees}
