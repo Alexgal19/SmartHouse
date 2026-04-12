@@ -73,39 +73,6 @@ function checkContractExpiry(employees: Employee[]): Alert[] {
   return alerts;
 }
 
-// ─── Alert 3: Brakujące raporty wyjazdowe (Employees + NonEmployees) ──────
-function checkMissingDepartureReports(
-  employees: Employee[],
-  nonEmployees: NonEmployee[]
-): Alert[] {
-  const t = today();
-  const alerts: Alert[] = [];
-  const DAYS_THRESHOLD = 5;
-
-  const check = (
-    person: { fullName: string; coordinatorId: string; status: string; checkOutDate?: string | null; departureReportDate?: string | null },
-    type: string
-  ) => {
-    if (person.status !== 'dismissed') return;
-    if (person.departureReportDate) return; // już jest raport
-    const checkOut = parseDate(person.checkOutDate);
-    if (!checkOut) return;
-    const daysSinceCheckOut = daysDiff(checkOut, t);
-    if (daysSinceCheckOut < DAYS_THRESHOLD) return;
-
-    alerts.push({
-      coordinatorIds: person.coordinatorId ? [person.coordinatorId] : [],
-      title: `📋 Brakujący raport wyjazdowy`,
-      body: `${person.fullName} (${type}) — wymeldowany ${daysSinceCheckOut} dni temu, brak raportu wyjazdowego.`,
-    });
-  };
-
-  employees.forEach((e) => check(e, 'Pracownik'));
-  nonEmployees.forEach((e) => check(e, 'NZ'));
-
-  return alerts;
-}
-
 // ─── Alert 4: Niespójny status BOK ────────────────────────────────────────
 function checkBokStatusInconsistency(bokResidents: BokResident[]): Alert[] {
   const t = today();
@@ -242,7 +209,6 @@ export async function POST(req: NextRequest) {
     // Uruchom wszystkie sprawdzenia
     const allAlerts: Alert[] = [
       ...checkContractExpiry(employees),
-      ...checkMissingDepartureReports(employees, nonEmployees),
       ...checkBokStatusInconsistency(bokResidents),
       ...checkCapacity(employees, nonEmployees, bokResidents, settings.addresses),
       ...checkMissingPaymentData(nonEmployees),
@@ -258,7 +224,6 @@ export async function POST(req: NextRequest) {
     // Podsumowanie per typ
     const summary = {
       contractExpiry: checkContractExpiry(employees).length,
-      missingDepartureReports: checkMissingDepartureReports(employees, nonEmployees).length,
       bokStatusInconsistency: checkBokStatusInconsistency(bokResidents).length,
       capacityExceeded: checkCapacity(employees, nonEmployees, bokResidents, settings.addresses).length,
       missingPaymentData: checkMissingPaymentData(nonEmployees).length,
