@@ -24,6 +24,12 @@ jest.mock('../dashboard/upcoming-checkouts-dialog', () => ({
 jest.mock('../dashboard/quick-actions', () => ({
   QuickActions: () => <div data-testid="quick-actions">Quick Actions</div>,
 }));
+jest.mock('../dashboard/coordinator-alerts-panel', () => ({
+  CoordinatorAlertsPanel: () => <div data-testid="coordinator-alerts-panel">Coordinator Alerts</div>,
+}));
+jest.mock('../dashboard/system-status-panel', () => ({
+  SystemStatusPanel: () => <div data-testid="system-status-panel">System Status</div>,
+}));
 
 // Mock dynamic imports
 jest.mock('next/dynamic', () => () => {
