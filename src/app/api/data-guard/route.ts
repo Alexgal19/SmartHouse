@@ -22,9 +22,9 @@ const CRITICAL_SHEETS = [
   'Coordinators',
 ];
 
-/** Alert gdy liczba wierszy spada o więcej niż X wierszy LUB X% */
-const MIN_DROP_ROWS = 3;
-const MIN_DROP_PERCENT = 5;
+/** Alert gdy liczba wierszy spada o więcej niż X wierszy LUB X% w ciągu godziny */
+const MIN_DROP_ROWS = 15;
+const MIN_DROP_PERCENT = 20;
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 interface SheetSnapshot {
