@@ -48,16 +48,32 @@ async function sendAlerts(alerts: Alert[], admins: Coordinator[]): Promise<void>
 
 // ─── Alert 1: Wygasające umowy (Employees) ────────────────────────────────
 const CONTRACT_EXPIRY_THRESHOLDS: Record<number, { urgency: string; label: string }> = {
-  30: { urgency: '🟡 Informacja', label: '1 miesiąc' },
-  21: { urgency: '🟡 Informacja', label: '3 tygodnie' },
-  14: { urgency: '🟠 Ważne',     label: '2 tygodnie' },
-   7: { urgency: '🟠 Ważne',     label: '1 tydzień'  },
-   2: { urgency: '🔴 PILNE',     label: '2 dni'      },
+  30: { urgency: '🟡', label: '1 miesiąc'   },
+  21: { urgency: '🟡', label: '3 tygodnie'  },
+  14: { urgency: '🟠', label: '2 tygodnie'  },
+   7: { urgency: '🟠', label: '1 tydzień'   },
+   2: { urgency: '🔴', label: '2 dni'       },
 };
 
 function checkContractExpiry(employees: Employee[]): Alert[] {
   const t = today();
   const alerts: Alert[] = [];
+
+  // Grupuj pracowników per koordynator
+  type Group = {
+    expired:  { name: string; date: string; id: string }[];
+    urgent:   { name: string; daysLeft: number; date: string; id: string }[]; // <=7 dni
+    warning:  { name: string; daysLeft: number; date: string; id: string }[]; // 8-14 dni
+    info:     { name: string; daysLeft: number; date: string; id: string }[]; // 15-30 dni
+  };
+  const byCoordinator = new Map<string, Group>();
+
+  const getGroup = (coordId: string): Group => {
+    if (!byCoordinator.has(coordId)) {
+      byCoordinator.set(coordId, { expired: [], urgent: [], warning: [], info: [] });
+    }
+    return byCoordinator.get(coordId)!;
+  };
 
   for (const emp of employees) {
     if (emp.status !== 'active') continue;
@@ -65,14 +81,57 @@ function checkContractExpiry(employees: Employee[]): Alert[] {
     if (!end) continue;
 
     const daysLeft = daysDiff(t, end);
-    const threshold = CONTRACT_EXPIRY_THRESHOLDS[daysLeft];
-    if (!threshold) continue; // nie pasuje do żadnego progu — pomijamy
+    const coordId = emp.coordinatorId ?? '__none__';
+
+    if (daysLeft < 0) {
+      // Umowa już przeterminowana — alert codziennie dopóki nie zaktualizowana
+      getGroup(coordId).expired.push({ name: emp.fullName, date: emp.contractEndDate!, id: emp.id });
+    } else {
+      const threshold = CONTRACT_EXPIRY_THRESHOLDS[daysLeft];
+      if (!threshold) continue; // nie pasuje do progu — pomijamy
+
+      const entry = { name: emp.fullName, daysLeft, date: emp.contractEndDate!, id: emp.id };
+      if (daysLeft <= 7)       getGroup(coordId).urgent.push(entry);
+      else if (daysLeft <= 14) getGroup(coordId).warning.push(entry);
+      else                     getGroup(coordId).info.push(entry);
+    }
+  }
+
+  // Zbuduj jedno zbiorcze powiadomienie per koordynator
+  for (const [coordId, group] of byCoordinator) {
+    const lines: string[] = [];
+
+    if (group.expired.length > 0) {
+      lines.push(`⛔ Przeterminowane: ${group.expired.map(e => `${e.name} (${e.date})`).join(', ')}`);
+    }
+    if (group.urgent.length > 0) {
+      lines.push(`🔴 ${group.urgent.map(e => `${e.name} — ${e.daysLeft} dni`).join(', ')}`);
+    }
+    if (group.warning.length > 0) {
+      lines.push(`🟠 ${group.warning.map(e => `${e.name} — ${e.daysLeft} dni`).join(', ')}`);
+    }
+    if (group.info.length > 0) {
+      lines.push(`🟡 ${group.info.map(e => `${e.name} — ${e.daysLeft} dni`).join(', ')}`);
+    }
+
+    if (lines.length === 0) continue;
+
+    const totalCount = group.expired.length + group.urgent.length + group.warning.length + group.info.length;
+    const hasExpired = group.expired.length > 0;
+    const hasUrgent  = group.urgent.length > 0;
+
+    // Link do pierwszej osoby z najwyższym priorytetem
+    const topPerson = group.expired[0] ?? group.urgent[0] ?? group.warning[0] ?? group.info[0];
 
     alerts.push({
-      coordinatorIds: emp.coordinatorId ? [emp.coordinatorId] : [],
-      title: `${threshold.urgency}: Wygasająca umowa`,
-      body: `${emp.fullName} — umowa kończy się za ${threshold.label} (${emp.contractEndDate}). Proszę o przedłużenie.`,
-      link: `/dashboard?view=employees&edit=${emp.id}`,
+      coordinatorIds: coordId === '__none__' ? [] : [coordId],
+      title: hasExpired
+        ? `⛔ ${group.expired.length} przeterminowana(-ych) umowa(-ów)`
+        : hasUrgent
+          ? `🔴 Wygasające umowy — ${totalCount} osób`
+          : `🟡 Wygasające umowy — ${totalCount} osób`,
+      body: lines.join('\n'),
+      link: `/dashboard?view=employees&edit=${topPerson.id}`,
     });
   }
 
