@@ -37,7 +37,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { Employee, Settings, SessionData } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Info, X, Loader2, Eye } from 'lucide-react';
+import { CalendarIcon, Info, X, Loader2, Eye, AlertTriangle } from 'lucide-react';
 import { AddressPreviewDialog } from '@/components/address-preview-dialog';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parse, isValid, parseISO } from 'date-fns';
@@ -293,6 +293,24 @@ export function AddEmployeeForm({
   const selectedCoordinatorId = form.watch('coordinatorId');
   const selectedLocality = form.watch('locality');
   const selectedAddress = form.watch('address');
+  const watchedFirstName = form.watch('firstName');
+  const watchedLastName = form.watch('lastName');
+
+  const duplicateEmployee = useMemo(() => {
+    if (employee) return null; // tryb edycji — nie sprawdzaj
+    if (!watchedFirstName?.trim() || !watchedLastName?.trim()) return null;
+    if (!allEmployees) return null;
+    const coordId = selectedCoordinatorId || (currentUser.isAdmin ? '' : currentUser.uid);
+    const first = watchedFirstName.trim().toLowerCase();
+    const last = watchedLastName.trim().toLowerCase();
+    return allEmployees.find(
+      (e) =>
+        e.status === 'active' &&
+        e.coordinatorId === coordId &&
+        e.firstName?.trim().toLowerCase() === first &&
+        e.lastName?.trim().toLowerCase() === last,
+    ) ?? null;
+  }, [employee, watchedFirstName, watchedLastName, allEmployees, selectedCoordinatorId, currentUser]);
   const isOwnAddressSelected = selectedAddress?.toLowerCase().includes('własne mieszkanie');
 
   const availableLocalities = useMemo(() => {
@@ -601,6 +619,15 @@ export function AddEmployeeForm({
                           )}
                         />
                       </div>
+
+                      {duplicateEmployee && (
+                        <div className="flex items-start gap-3 rounded-md border border-amber-500/50 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+                          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-500" />
+                          <span>
+                            Uwaga: pracownik <strong>{duplicateEmployee.firstName} {duplicateEmployee.lastName}</strong> jest już aktywny u tego koordynatora. Sprawdź listę aktywnych pracowników przed dodaniem.
+                          </span>
+                        </div>
+                      )}
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
                         <FormField

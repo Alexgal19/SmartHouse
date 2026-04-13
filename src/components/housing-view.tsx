@@ -684,6 +684,7 @@ const MobileAddressCard = ({
   settings,
   handleUpdateSettings,
   style,
+  isHighlighted,
 }: {
   address: HousingData;
   onOccupantClick: (occupant: Occupant) => void;
@@ -691,15 +692,18 @@ const MobileAddressCard = ({
   settings: Settings;
   handleUpdateSettings: (updates: Partial<Settings>) => Promise<void>;
   style?: React.CSSProperties;
+  isHighlighted?: boolean;
 }) => {
   const { copyToClipboard } = useCopyToClipboard();
 
   return (
     <Card
+      id={`housing-address-${address.id}`}
       className={cn(
         'overflow-hidden animate-fade-in-up',
         !address.isActive && 'border-destructive/50 bg-destructive/5',
         address.isActive && address.available > 0 && 'border-green-500/30',
+        isHighlighted && 'ring-2 ring-primary border-primary',
       )}
       style={style}
     >
@@ -1019,6 +1023,8 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
   const searchParams = useSearchParams();
   const [selectedAddressIds, setSelectedAddressIds] = useState<string[]>([]);
   const [selectedRoomIds, setSelectedRoomIds] = useState<string[]>([]);
+  const [mobileOpenItems, setMobileOpenItems] = useState<string[]>([]);
+  const [deepLinkedAddressId, setDeepLinkedAddressId] = useState<string | null>(null);
   const deepLinkApplied = useRef(false);
 
   const [filters, setFilters] = useState({
@@ -1039,6 +1045,9 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
     deepLinkApplied.current = true;
     setSelectedAddressIds([addressId]);
     setSelectedRoomIds([]);
+    // Mobile: open accordion and highlight the card
+    setMobileOpenItems([addressId]);
+    setDeepLinkedAddressId(addressId);
     // Scroll the address card into view after render
     setTimeout(() => {
       const el = document.getElementById(`housing-address-${addressId}`);
@@ -1178,7 +1187,12 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
           <ScrollArea className="h-[calc(100vh-22rem)] -mx-4 px-4">
             {filters.locality !== 'all' ? (
               // Show addresses directly when specific locality is selected
-              <div className="space-y-3">
+              <Accordion
+                type="multiple"
+                className="w-full space-y-3"
+                value={mobileOpenItems}
+                onValueChange={setMobileOpenItems}
+              >
                 {filteredData.map((address, index) => (
                   <MobileAddressCard
                     key={address.id}
@@ -1187,13 +1201,19 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                     currentUser={currentUser}
                     settings={rawSettings ?? settings}
                     handleUpdateSettings={handleUpdateSettings}
+                    isHighlighted={deepLinkedAddressId === address.id}
                     style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}
                   />
                 ))}
-              </div>
+              </Accordion>
             ) : (
               // Show grouped by locality when 'all' is selected
-              <Accordion type="multiple" className="w-full space-y-3">
+              <Accordion
+                type="multiple"
+                className="w-full space-y-3"
+                value={mobileOpenItems}
+                onValueChange={setMobileOpenItems}
+              >
                 {groupedByLocality.map(([locality, { addresses, availablePlaces }]) => (
                   <div key={locality}>
                     <h2 className="text-lg font-bold sticky top-0 bg-background py-3 z-10 flex items-center">
@@ -1213,6 +1233,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                           currentUser={currentUser}
                           settings={rawSettings ?? settings}
                           handleUpdateSettings={handleUpdateSettings}
+                          isHighlighted={deepLinkedAddressId === address.id}
                           style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}
                         />
                       ))}
