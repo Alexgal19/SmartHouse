@@ -188,6 +188,7 @@ const AddressDetailView = ({
         isMultiple: false,
         id: singleAddress.id,
         isActive: singleAddress.isActive,
+        isOwnAddress: singleAddress.isOwnAddress,
         name: singleAddress.name,
         occupants: singleAddress.occupants,
         unassignedOccupants: singleAddress.unassignedOccupants,
@@ -205,6 +206,7 @@ const AddressDetailView = ({
 
     return {
       isMultiple: true,
+      isOwnAddress: false,
       name: `${selectedAddressesData.length} wybrane adresy`,
       occupants: allOccupants,
       unassignedOccupants: allUnassigned,
@@ -366,143 +368,178 @@ const AddressDetailView = ({
           ) : (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
               <div className="space-y-4">
-                <h3 className="font-semibold">Pokoje</h3>
-                {aggregatedAddressesData.rooms.length > 0 ? (
-                  aggregatedAddressesData.rooms
-                    .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true }))
-                    .map((room) => (
-                      <div
-                        key={room.id}
-                        className={cn(
-                          'rounded-md border p-3 cursor-pointer transition-colors',
-                          selectedRoomIds.includes(room.id) ? 'bg-primary/10 border-primary' : 'hover:bg-muted/50',
-                          !room.isActive && 'bg-destructive/10 border-destructive/20',
-                          room.isLocked && 'bg-yellow-500/10 border-yellow-500/30',
-                          room.isActive &&
-                            !room.isLocked &&
-                            room.available > 0 &&
-                            !selectedRoomIds.includes(room.id) &&
-                            'bg-green-500/10 border-green-500/20',
-                        )}
-                        onClick={(e) => onRoomClick(e, room.id)}
-                      >
-                        <div className="flex justify-between items-center font-medium">
-                          <div className="flex items-center gap-2">
-                            <Bed className="h-4 w-4 text-muted-foreground" />
-                            Pokój {room.name}
-                            {room.isLocked && <Lock className="h-3 w-3 ml-1 text-yellow-600" />}
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-sm">
-                              <span>
-                                {room.occupantCount} / {room.capacity}
-                              </span>
-                            </span>
-                            {currentUser?.isAdmin && !isSingleSelectedBlocked && (
-                              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                                <Label
-                                  htmlFor={`disable-room-${room.id}`}
-                                  className="text-xs text-muted-foreground cursor-pointer font-normal"
-                                >
-                                  {room.isActive ? 'Zablokuj' : 'Odblokuj'}
-                                </Label>
-                                <Switch
-                                  id={`disable-room-${room.id}`}
-                                  checked={!room.isActive}
-                                  onCheckedChange={async (checked) => {
-                                    if (!settings || !aggregatedAddressesData || aggregatedAddressesData.isMultiple)
-                                      return;
-                                    const updatedAddresses = settings.addresses.map((a) =>
-                                      a.id === aggregatedAddressesData.id
-                                        ? {
-                                            ...a,
-                                            rooms: a.rooms.map((r) =>
-                                              r.id === room.id ? { ...r, isActive: !checked } : r,
-                                            ),
-                                          }
-                                        : a,
-                                    );
-                                    await handleUpdateSettings({ addresses: updatedAddresses });
-                                  }}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <div className="pl-4 mt-2 space-y-1">
-                          {room.occupants.map((o) => {
-                            const fullName = `${o.lastName} ${o.firstName}`.trim();
-                            const isBlocked = isSingleSelectedBlocked || room.isLocked || !room.isActive;
-                            return (
-                              <div
-                                key={o.id}
-                                className="flex items-center justify-between text-xs text-muted-foreground group"
+                {aggregatedAddressesData.isOwnAddress ? (
+                  <>
+                    <h3 className="font-semibold">Mieszkańcy ({aggregatedAddressesData.occupantCount})</h3>
+                    {aggregatedAddressesData.occupants.length > 0 ? (
+                      <div className="rounded-md border p-3 space-y-1">
+                        {aggregatedAddressesData.occupants.map((o) => {
+                          const fullName = `${o.lastName} ${o.firstName}`.trim();
+                          return (
+                            <div key={o.id} className="flex items-center justify-between text-xs text-muted-foreground group">
+                              <span
+                                onClick={(e) => { e.stopPropagation(); onOccupantClick(o); }}
+                                className="flex-1 cursor-pointer hover:text-primary"
                               >
+                                {fullName}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                                onClick={(e) => { e.stopPropagation(); copyToClipboard(fullName, `Skopiowano: ${fullName}`); }}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <NoDataState message="Brak mieszkańców" />
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <h3 className="font-semibold">Pokoje</h3>
+                    {aggregatedAddressesData.rooms.length > 0 ? (
+                      aggregatedAddressesData.rooms
+                        .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true }))
+                        .map((room) => (
+                          <div
+                            key={room.id}
+                            className={cn(
+                              'rounded-md border p-3 cursor-pointer transition-colors',
+                              selectedRoomIds.includes(room.id) ? 'bg-primary/10 border-primary' : 'hover:bg-muted/50',
+                              !room.isActive && 'bg-destructive/10 border-destructive/20',
+                              room.isLocked && 'bg-yellow-500/10 border-yellow-500/30',
+                              room.isActive &&
+                                !room.isLocked &&
+                                room.available > 0 &&
+                                !selectedRoomIds.includes(room.id) &&
+                                'bg-green-500/10 border-green-500/20',
+                            )}
+                            onClick={(e) => onRoomClick(e, room.id)}
+                          >
+                            <div className="flex justify-between items-center font-medium">
+                              <div className="flex items-center gap-2">
+                                <Bed className="h-4 w-4 text-muted-foreground" />
+                                Pokój {room.name}
+                                {room.isLocked && <Lock className="h-3 w-3 ml-1 text-yellow-600" />}
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-sm">
+                                  <span>
+                                    {room.occupantCount} / {room.capacity}
+                                  </span>
+                                </span>
+                                {currentUser?.isAdmin && !isSingleSelectedBlocked && (
+                                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                    <Label
+                                      htmlFor={`disable-room-${room.id}`}
+                                      className="text-xs text-muted-foreground cursor-pointer font-normal"
+                                    >
+                                      {room.isActive ? 'Zablokuj' : 'Odblokuj'}
+                                    </Label>
+                                    <Switch
+                                      id={`disable-room-${room.id}`}
+                                      checked={!room.isActive}
+                                      onCheckedChange={async (checked) => {
+                                        if (!settings || !aggregatedAddressesData || aggregatedAddressesData.isMultiple)
+                                          return;
+                                        const updatedAddresses = settings.addresses.map((a) =>
+                                          a.id === aggregatedAddressesData.id
+                                            ? {
+                                                ...a,
+                                                rooms: a.rooms.map((r) =>
+                                                  r.id === room.id ? { ...r, isActive: !checked } : r,
+                                                ),
+                                              }
+                                            : a,
+                                        );
+                                        await handleUpdateSettings({ addresses: updatedAddresses });
+                                      }}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="pl-4 mt-2 space-y-1">
+                              {room.occupants.map((o) => {
+                                const fullName = `${o.lastName} ${o.firstName}`.trim();
+                                const isBlocked = isSingleSelectedBlocked || room.isLocked || !room.isActive;
+                                return (
+                                  <div
+                                    key={o.id}
+                                    className="flex items-center justify-between text-xs text-muted-foreground group"
+                                  >
+                                    <span
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (!isBlocked) onOccupantClick(o);
+                                      }}
+                                      className={cn(
+                                        'flex-1',
+                                        isBlocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:text-primary',
+                                      )}
+                                    >
+                                      {fullName}
+                                    </span>
+                                    {!isBlocked && (
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          copyToClipboard(fullName, `Skopiowano: ${fullName}`);
+                                        }}
+                                      >
+                                        <Copy className="h-3 w-3" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))
+                    ) : (
+                      <NoDataState message="Brak pokoi dla tego adresu" />
+                    )}
+                    {aggregatedAddressesData.unassignedOccupants && aggregatedAddressesData.unassignedOccupants.length > 0 && (
+                      <div className="rounded-md border p-3 bg-muted/30">
+                        <div className="flex items-center gap-2 font-medium mb-2">
+                          <Bed className="h-4 w-4 text-muted-foreground" />
+                          <span>Bez przypisanego pokoju</span>
+                          <span className="text-sm text-muted-foreground">({aggregatedAddressesData.unassignedOccupants.length})</span>
+                        </div>
+                        <div className="pl-4 space-y-1">
+                          {aggregatedAddressesData.unassignedOccupants.map((o) => {
+                            const fullName = `${o.lastName} ${o.firstName}`.trim();
+                            return (
+                              <div key={o.id} className="flex items-center justify-between text-xs text-muted-foreground group">
                                 <span
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (!isBlocked) onOccupantClick(o);
-                                  }}
-                                  className={cn(
-                                    'flex-1',
-                                    isBlocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:text-primary',
-                                  )}
+                                  onClick={(e) => { e.stopPropagation(); onOccupantClick(o); }}
+                                  className="flex-1 cursor-pointer hover:text-primary"
                                 >
                                   {fullName}
                                 </span>
-                                {!isBlocked && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      copyToClipboard(fullName, `Skopiowano: ${fullName}`);
-                                    }}
-                                  >
-                                    <Copy className="h-3 w-3" />
-                                  </Button>
-                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                                  onClick={(e) => { e.stopPropagation(); copyToClipboard(fullName, `Skopiowano: ${fullName}`); }}
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </Button>
                               </div>
                             );
                           })}
                         </div>
                       </div>
-                    ))
-                ) : (
-                  <NoDataState message="Brak pokoi dla tego adresu" />
-                )}
-                {aggregatedAddressesData.unassignedOccupants && aggregatedAddressesData.unassignedOccupants.length > 0 && (
-                  <div className="rounded-md border p-3 bg-muted/30">
-                    <div className="flex items-center gap-2 font-medium mb-2">
-                      <Bed className="h-4 w-4 text-muted-foreground" />
-                      <span>Bez przypisanego pokoju</span>
-                      <span className="text-sm text-muted-foreground">({aggregatedAddressesData.unassignedOccupants.length})</span>
-                    </div>
-                    <div className="pl-4 space-y-1">
-                      {aggregatedAddressesData.unassignedOccupants.map((o) => {
-                        const fullName = `${o.lastName} ${o.firstName}`.trim();
-                        return (
-                          <div key={o.id} className="flex items-center justify-between text-xs text-muted-foreground group">
-                            <span
-                              onClick={(e) => { e.stopPropagation(); onOccupantClick(o); }}
-                              className="flex-1 cursor-pointer hover:text-primary"
-                            >
-                              {fullName}
-                            </span>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                              onClick={(e) => { e.stopPropagation(); copyToClipboard(fullName, `Skopiowano: ${fullName}`); }}
-                            >
-                              <Copy className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                    )}
+                  </>
                 )}
               </div>
               <div className="space-y-4">
@@ -626,6 +663,7 @@ const useHousingData = () => {
         name: address.name,
         locality: address.locality,
         isActive: address.isActive,
+        isOwnAddress,
         occupants: occupantsInAddress,
         unassignedOccupants,
         occupantCount: occupantCount,
@@ -721,131 +759,166 @@ const MobileAddressCard = ({
               </div>
             )}
             <div>
-              <h4 className="text-sm font-semibold mb-2">Pokoje</h4>
-              <div className="space-y-2">
-                {address.rooms
-                  .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true }))
-                  .map((room) => (
-                    <div
-                      key={room.id}
-                      className={cn(
-                        'rounded-md border p-3',
-                        !room.isActive && 'bg-destructive/10 border-destructive/20',
-                        room.isLocked && 'bg-yellow-500/10 border-yellow-500/30',
-                        room.isActive && !room.isLocked && room.available > 0 && 'bg-green-500/10 border-green-500/20',
-                      )}
-                    >
-                      <div className="flex justify-between items-center font-medium text-sm">
-                        <div className="flex items-center gap-2">
-                          <Bed className="h-4 w-4 text-muted-foreground" />
-                          Pokój {room.name}
-                          {room.isLocked && <Lock className="h-3 w-3 text-yellow-600" />}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm">
-                            <span>
-                              {room.occupantCount} / {room.capacity}
-                            </span>
-                          </span>
-                          {currentUser.isAdmin && (
-                            <div className="flex items-center gap-2">
-                              <Label
-                                htmlFor={`lock-${room.id}`}
-                                className="text-xs text-muted-foreground cursor-pointer"
-                              >
-                                {room.isLocked ? 'Odblokuj' : 'Zablokuj'}
-                              </Label>
-                              <Switch
-                                id={`lock-${room.id}`}
-                                checked={room.isLocked || false}
-                                onCheckedChange={async (checked) => {
-                                  const updatedAddresses = settings!.addresses.map((a) =>
-                                    a.id === address.id
-                                      ? {
-                                          ...a,
-                                          rooms: a.rooms.map((r) =>
-                                            r.id === room.id ? { ...r, isLocked: checked } : r,
-                                          ),
-                                        }
-                                      : a,
-                                  );
-                                  await handleUpdateSettings({ addresses: updatedAddresses });
-                                }}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="pl-4 mt-2 space-y-1">
-                        {room.occupants.map((o) => {
-                          const fullName = `${o.lastName} ${o.firstName}`.trim();
-                          const isBlocked = !address.isActive || room.isLocked || !room.isActive;
-                          return (
-                            <div
-                              key={o.id}
-                              className="flex items-center justify-between text-xs text-muted-foreground group"
+              {address.isOwnAddress ? (
+                <>
+                  <h4 className="text-sm font-semibold mb-2">Mieszkańcy ({address.occupantCount})</h4>
+                  {address.occupants.length > 0 ? (
+                    <div className="rounded-md border p-3 space-y-1">
+                      {address.occupants.map((o) => {
+                        const fullName = `${o.lastName} ${o.firstName}`.trim();
+                        return (
+                          <div key={o.id} className="flex items-center justify-between text-xs text-muted-foreground group">
+                            <span
+                              onClick={() => onOccupantClick(o)}
+                              className="cursor-pointer hover:text-primary"
                             >
+                              {fullName}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                              onClick={(e) => { e.stopPropagation(); copyToClipboard(fullName, `Skopiowano: ${fullName}`); }}
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Brak mieszkańców</p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <h4 className="text-sm font-semibold mb-2">Pokoje</h4>
+                  <div className="space-y-2">
+                    {address.rooms
+                      .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true }))
+                      .map((room) => (
+                        <div
+                          key={room.id}
+                          className={cn(
+                            'rounded-md border p-3',
+                            !room.isActive && 'bg-destructive/10 border-destructive/20',
+                            room.isLocked && 'bg-yellow-500/10 border-yellow-500/30',
+                            room.isActive && !room.isLocked && room.available > 0 && 'bg-green-500/10 border-green-500/20',
+                          )}
+                        >
+                          <div className="flex justify-between items-center font-medium text-sm">
+                            <div className="flex items-center gap-2">
+                              <Bed className="h-4 w-4 text-muted-foreground" />
+                              Pokój {room.name}
+                              {room.isLocked && <Lock className="h-3 w-3 text-yellow-600" />}
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm">
+                                <span>
+                                  {room.occupantCount} / {room.capacity}
+                                </span>
+                              </span>
+                              {currentUser.isAdmin && (
+                                <div className="flex items-center gap-2">
+                                  <Label
+                                    htmlFor={`lock-${room.id}`}
+                                    className="text-xs text-muted-foreground cursor-pointer"
+                                  >
+                                    {room.isLocked ? 'Odblokuj' : 'Zablokuj'}
+                                  </Label>
+                                  <Switch
+                                    id={`lock-${room.id}`}
+                                    checked={room.isLocked || false}
+                                    onCheckedChange={async (checked) => {
+                                      const updatedAddresses = settings!.addresses.map((a) =>
+                                        a.id === address.id
+                                          ? {
+                                              ...a,
+                                              rooms: a.rooms.map((r) =>
+                                                r.id === room.id ? { ...r, isLocked: checked } : r,
+                                              ),
+                                            }
+                                          : a,
+                                      );
+                                      await handleUpdateSettings({ addresses: updatedAddresses });
+                                    }}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="pl-4 mt-2 space-y-1">
+                            {room.occupants.map((o) => {
+                              const fullName = `${o.lastName} ${o.firstName}`.trim();
+                              const isBlocked = !address.isActive || room.isLocked || !room.isActive;
+                              return (
+                                <div
+                                  key={o.id}
+                                  className="flex items-center justify-between text-xs text-muted-foreground group"
+                                >
+                                  <span
+                                    onClick={() => {
+                                      if (!isBlocked) onOccupantClick(o);
+                                    }}
+                                    className={cn(
+                                      isBlocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:text-primary',
+                                    )}
+                                  >
+                                    {fullName}
+                                  </span>
+                                  {!isBlocked && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        copyToClipboard(fullName, `Skopiowano: ${fullName}`);
+                                      }}
+                                    >
+                                      <Copy className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                  {address.unassignedOccupants && address.unassignedOccupants.length > 0 && (
+                    <div className="mt-2 rounded-md border p-3 bg-muted/30">
+                      <div className="flex items-center gap-2 font-medium text-sm mb-2">
+                        <Bed className="h-4 w-4 text-muted-foreground" />
+                        <span>Bez przypisanego pokoju</span>
+                        <span className="text-xs text-muted-foreground">({address.unassignedOccupants.length})</span>
+                      </div>
+                      <div className="pl-4 space-y-1">
+                        {address.unassignedOccupants.map((o) => {
+                          const fullName = `${o.lastName} ${o.firstName}`.trim();
+                          return (
+                            <div key={o.id} className="flex items-center justify-between text-xs text-muted-foreground group">
                               <span
-                                onClick={() => {
-                                  if (!isBlocked) onOccupantClick(o);
-                                }}
-                                className={cn(
-                                  isBlocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:text-primary',
-                                )}
+                                onClick={() => onOccupantClick(o)}
+                                className="cursor-pointer hover:text-primary"
                               >
                                 {fullName}
                               </span>
-                              {!isBlocked && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    copyToClipboard(fullName, `Skopiowano: ${fullName}`);
-                                  }}
-                                >
-                                  <Copy className="h-3 w-3" />
-                                </Button>
-                              )}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                                onClick={(e) => { e.stopPropagation(); copyToClipboard(fullName, `Skopiowano: ${fullName}`); }}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
                             </div>
                           );
                         })}
                       </div>
                     </div>
-                  ))}
-              </div>
-              {address.unassignedOccupants && address.unassignedOccupants.length > 0 && (
-                <div className="rounded-md border p-3 bg-muted/30">
-                  <div className="flex items-center gap-2 font-medium text-sm mb-2">
-                    <Bed className="h-4 w-4 text-muted-foreground" />
-                    <span>Bez przypisanego pokoju</span>
-                    <span className="text-xs text-muted-foreground">({address.unassignedOccupants.length})</span>
-                  </div>
-                  <div className="pl-4 space-y-1">
-                    {address.unassignedOccupants.map((o) => {
-                      const fullName = `${o.lastName} ${o.firstName}`.trim();
-                      return (
-                        <div key={o.id} className="flex items-center justify-between text-xs text-muted-foreground group">
-                          <span
-                            onClick={() => onOccupantClick(o)}
-                            className="cursor-pointer hover:text-primary"
-                          >
-                            {fullName}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                            onClick={(e) => { e.stopPropagation(); copyToClipboard(fullName, `Skopiowano: ${fullName}`); }}
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                  )}
+                </>
               )}
             </div>
             <div>
