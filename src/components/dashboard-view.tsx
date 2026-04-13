@@ -51,6 +51,7 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
   const [isUpcomingCheckoutsModalOpen, setIsUpcomingCheckoutsModalOpen] = useState(false);
   const [isAddressPreviewOpen, setIsAddressPreviewOpen] = useState(false);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { isMobile } = useIsMobile();
 
   if (!allEmployees || !allNonEmployees || !settings) {

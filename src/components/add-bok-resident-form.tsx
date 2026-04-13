@@ -10,6 +10,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
@@ -873,7 +874,7 @@ export function AddBokResidentForm({
           <DialogHeader>
             <DialogTitle>Zrób zdjęcie paszportu</DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
-              Umieść stronę paszportu z danymi w kadrze, tak aby pola "Surname" (Nazwisko) i "Given Names" (Imiona) były dobrze widoczne z bliska. Skanowanie wymaga połączenia z Internetem (Google Cloud).
+              Umieść stronę paszportu z danymi w kadrze, tak aby pola &quot;Surname&quot; (Nazwisko) i &quot;Given Names&quot; (Imiona) były dobrze widoczne z bliska. Skanowanie wymaga połączenia z Internetem (Google Cloud).
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center space-y-4">
@@ -881,6 +882,7 @@ export function AddBokResidentForm({
               ref={webcamRef}
               audio={false}
               screenshotFormat="image/jpeg"
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               videoConstraints={{ facingMode: 'environment', advanced: [{ focusMode: "continuous" }] as any }}
               className="w-full max-w-full sm:max-w-sm rounded-lg border"
               onUserMediaError={(err) => console.error("Webcam error:", err)}

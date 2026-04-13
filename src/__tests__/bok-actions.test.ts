@@ -14,6 +14,7 @@ import {
     deleteBokResident,
 } from '@/lib/actions';
 import * as sheets from '@/lib/sheets';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import type { BokResident, Settings } from '@/types';
 

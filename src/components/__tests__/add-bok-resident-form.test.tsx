@@ -1,5 +1,7 @@
 import React from 'react';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import userEvent from '@testing-library/user-event';
 import { AddBokResidentForm } from '../add-bok-resident-form';
 import type { Settings, SessionData, BokResident } from '@/types';
@@ -306,7 +308,7 @@ describe('AddBokResidentForm — form validation', () => {
 // ─── AddBokResidentForm — formSchema validation ───────────────────────────────
 
 describe('AddBokResidentForm — formSchema unit tests', () => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
     const { formSchema } = require('../add-bok-resident-form');
 
     it('rejects empty firstName, lastName, role', () => {

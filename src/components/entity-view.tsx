@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { BokDispatchReportDialog } from '@/components/bok-dispatch-report';
 import { FilterableHeader } from '@/components/ui/filterable-header';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -1024,7 +1025,27 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                     </div>
                     {!isDriver && (
                         <>
-                            <TabsContent forceMount value="active" className="mt-4 data-[state=inactive]:hidden">{renderContent(paginatedData as Entity[])}</TabsContent>
+                            <TabsContent forceMount value="active" className="mt-4 data-[state=inactive]:hidden">
+                            {viewMode === 'grid' && columnOptions?.zaklad && columnOptions.zaklad.length > 0 && (
+                                <div className="mb-3">
+                                    <Select
+                                        value={columnFilters.zaklad?.[0] || '_all'}
+                                        onValueChange={(val) => handleColumnFilterChange('zaklad', val === '_all' ? [] : [val])}
+                                    >
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="Filtruj po zakładzie" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="_all">Wszystkie zakłady</SelectItem>
+                                            {columnOptions.zaklad.map(opt => (
+                                                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+                            {renderContent(paginatedData as Entity[])}
+                        </TabsContent>
                             <TabsContent forceMount value="dismissed" className="mt-4 data-[state=inactive]:hidden">{renderContent(paginatedData as Entity[])}</TabsContent>
                             <TabsContent forceMount value="non-employees" className="mt-4 data-[state=inactive]:hidden">{renderContent(paginatedData as Entity[])}</TabsContent>
                         </>

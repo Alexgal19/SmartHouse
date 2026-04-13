@@ -190,6 +190,7 @@ const AddressDetailView = ({
         isActive: singleAddress.isActive,
         name: singleAddress.name,
         occupants: singleAddress.occupants,
+        unassignedOccupants: singleAddress.unassignedOccupants,
         occupantCount: singleAddress.occupantCount,
         capacity: singleAddress.capacity,
         available: singleAddress.available,
@@ -200,11 +201,13 @@ const AddressDetailView = ({
     const totalOccupantCount = selectedAddressesData.reduce((sum, a) => sum + a.occupantCount, 0);
     const totalCapacity = selectedAddressesData.reduce((sum, a) => sum + a.capacity, 0);
     const allOccupants = selectedAddressesData.flatMap((a) => a.occupants);
+    const allUnassigned = selectedAddressesData.flatMap((a) => a.unassignedOccupants);
 
     return {
       isMultiple: true,
       name: `${selectedAddressesData.length} wybrane adresy`,
       occupants: allOccupants,
+      unassignedOccupants: allUnassigned,
       occupantCount: totalOccupantCount,
       capacity: totalCapacity,
       available: totalCapacity - totalOccupantCount,
@@ -469,6 +472,38 @@ const AddressDetailView = ({
                 ) : (
                   <NoDataState message="Brak pokoi dla tego adresu" />
                 )}
+                {aggregatedAddressesData.unassignedOccupants && aggregatedAddressesData.unassignedOccupants.length > 0 && (
+                  <div className="rounded-md border p-3 bg-muted/30">
+                    <div className="flex items-center gap-2 font-medium mb-2">
+                      <Bed className="h-4 w-4 text-muted-foreground" />
+                      <span>Bez przypisanego pokoju</span>
+                      <span className="text-sm text-muted-foreground">({aggregatedAddressesData.unassignedOccupants.length})</span>
+                    </div>
+                    <div className="pl-4 space-y-1">
+                      {aggregatedAddressesData.unassignedOccupants.map((o) => {
+                        const fullName = `${o.lastName} ${o.firstName}`.trim();
+                        return (
+                          <div key={o.id} className="flex items-center justify-between text-xs text-muted-foreground group">
+                            <span
+                              onClick={(e) => { e.stopPropagation(); onOccupantClick(o); }}
+                              className="flex-1 cursor-pointer hover:text-primary"
+                            >
+                              {fullName}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                              onClick={(e) => { e.stopPropagation(); copyToClipboard(fullName, `Skopiowano: ${fullName}`); }}
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="space-y-4">
                 {selectedRoomsData ? (
@@ -583,12 +618,16 @@ const useHousingData = () => {
         };
       });
 
+      const assignedOccupantIds = new Set(rooms.flatMap((r) => r.occupants.map((o) => o.id)));
+      const unassignedOccupants = occupantsInAddress.filter((o) => !assignedOccupantIds.has(o.id));
+
       return {
         id: address.id,
         name: address.name,
         locality: address.locality,
         isActive: address.isActive,
         occupants: occupantsInAddress,
+        unassignedOccupants,
         occupantCount: occupantCount,
         capacity: totalCapacity,
         available: isOwnAddress ? 0 : totalCapacity - occupantCount,
@@ -596,6 +635,7 @@ const useHousingData = () => {
         rooms: rooms,
       };
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allEmployees, allNonEmployees, settings, currentUser, selectedCoordinatorId]);
 };
 
@@ -775,6 +815,38 @@ const MobileAddressCard = ({
                     </div>
                   ))}
               </div>
+              {address.unassignedOccupants && address.unassignedOccupants.length > 0 && (
+                <div className="rounded-md border p-3 bg-muted/30">
+                  <div className="flex items-center gap-2 font-medium text-sm mb-2">
+                    <Bed className="h-4 w-4 text-muted-foreground" />
+                    <span>Bez przypisanego pokoju</span>
+                    <span className="text-xs text-muted-foreground">({address.unassignedOccupants.length})</span>
+                  </div>
+                  <div className="pl-4 space-y-1">
+                    {address.unassignedOccupants.map((o) => {
+                      const fullName = `${o.lastName} ${o.firstName}`.trim();
+                      return (
+                        <div key={o.id} className="flex items-center justify-between text-xs text-muted-foreground group">
+                          <span
+                            onClick={() => onOccupantClick(o)}
+                            className="cursor-pointer hover:text-primary"
+                          >
+                            {fullName}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                            onClick={(e) => { e.stopPropagation(); copyToClipboard(fullName, `Skopiowano: ${fullName}`); }}
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
             <div>
               <h4 className="text-sm font-semibold mb-2">Statystyki</h4>

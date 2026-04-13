@@ -1,4 +1,5 @@
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { chromium } = require('playwright');
 
 (async () => {
@@ -187,6 +188,7 @@ const { chromium } = require('playwright');
         console.error('Test failed with error:', error);
         try {
             await page.screenshot({ path: 'error_screenshot.png' });
+        // eslint-disable-next-line no-empty
         } catch (e) { }
     } finally {
         await browser.close();

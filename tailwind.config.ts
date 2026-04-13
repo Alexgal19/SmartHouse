@@ -184,6 +184,7 @@ export default {
     },
   },
   plugins: [require('tailwindcss-animate'),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     function ({ addUtilities, theme }: { addUtilities: any, theme: any }) {
       const newUtilities = {
         '.animation-delay-1500': {

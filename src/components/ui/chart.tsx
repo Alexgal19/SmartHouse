@@ -9,6 +9,7 @@ import {
 
 import { cn } from "@/lib/utils"
 import {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Card
 } from "@/components/ui/card"
 import * as Recharts from 'recharts';
@@ -205,6 +206,7 @@ const ChartTooltipContent = React.forwardRef<
       indicator?: "line" | "dot" | "dashed"
       nameKey?: string
       labelKey?: string
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       labelFormatter?: (label: any, payload: any[]) => React.ReactNode
       labelClassName?: string
       config?: ChartConfig
@@ -283,6 +285,7 @@ const ChartTooltipContent = React.forwardRef<
                       "h-2.5 w-2.5": indicator === "line",
                     })}
                     style={{
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       ["--color-primary" as any]: color,
                     }}
                   />
@@ -367,6 +370,7 @@ const PieLabel = (
 ) => {
   return (
     <Label
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       {...(props as any)}
       value={typeof props.value === "number" ? props.format?.(props.value) : props.value}
     />

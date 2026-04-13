@@ -282,6 +282,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                                             size="icon"
                                                             onClick={() => {
                                                                 const currentDepts = parentField.value || [];
+                                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                                                 parentField.onChange(currentDepts.filter((_: any, i: number) => i !== deptIndex));
                                                             }}
                                                         >

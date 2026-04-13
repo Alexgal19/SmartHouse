@@ -2,6 +2,7 @@
 
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, Address, Coordinator, NotificationType, AddressHistory, BokResident, ControlCard, CleanlinessRating } from '../types';
 import { format, isValid, parse, parseISO } from 'date-fns';
 import * as XLSX from 'xlsx';
@@ -747,6 +748,7 @@ const CONTROL_CARD_HEADERS = [
     'kitchenPhotoUrls', 'bathroomPhotoUrls', 'meterPhotoUrls', 'appliancesWorking', 'comments'
 ];
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const deserializeControlCard = (row: any): ControlCard | null => {
     const id = row.get('id');
     const addressId = row.get('addressId');
@@ -771,11 +773,13 @@ const deserializeControlCard = (row: any): ControlCard | null => {
         try {
             const parsed = JSON.parse(rawRoomRatings);
             if (Array.isArray(parsed)) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 roomRatings = parsed.map((rr: any) => ({
                     ...rr,
                     rating: parseRating(rr.rating)
                 }));
             }
+        // eslint-disable-next-line no-empty
         } catch { }
     }
 

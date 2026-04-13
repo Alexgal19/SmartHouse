@@ -850,6 +850,7 @@ describe('importBokResidentsFromExcel (new feature tests)', () => {
     };
 
     function createMockExcel2(data: Record<string, unknown>[]): string {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
         const XLSX = require('xlsx');
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
@@ -860,6 +861,7 @@ describe('importBokResidentsFromExcel (new feature tests)', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
         const mockedGetSettings2 = require('@/lib/sheets').getSettings as jest.Mock;
         mockedGetSettings2.mockResolvedValue(mockSettings2);
     });
@@ -876,6 +878,7 @@ describe('importBokResidentsFromExcel (new feature tests)', () => {
         const mockAddRowsBok = jest.fn().mockResolvedValue(undefined);
         const mockAddRowsNotification = jest.fn().mockResolvedValue(undefined);
 
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
         const mockedGetSheet2 = require('@/lib/sheets').getSheet as jest.Mock;
         mockedGetSheet2.mockImplementation((title: string) => {
             if (title === 'BokResidents') return Promise.resolve({ addRows: mockAddRowsBok });
@@ -883,6 +886,7 @@ describe('importBokResidentsFromExcel (new feature tests)', () => {
             return Promise.resolve({ addRows: jest.fn(), getRows: jest.fn().mockResolvedValue([]) });
         });
 
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
         const { importBokResidentsFromExcel: importBok } = require('@/lib/actions');
         const result = await importBok(base64Content, 'coord-1', mockSettings2);
 
@@ -901,9 +905,11 @@ describe('importBokResidentsFromExcel (new feature tests)', () => {
         }];
         const base64Content = createMockExcel2(bokData);
 
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
         const mockedGetSheet2 = require('@/lib/sheets').getSheet as jest.Mock;
         mockedGetSheet2.mockResolvedValue({ addRows: jest.fn(), getRows: jest.fn().mockResolvedValue([]) });
 
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
         const { importBokResidentsFromExcel: importBok } = require('@/lib/actions');
         const result = await importBok(base64Content, 'coord-1', mockSettings2);
 
@@ -915,9 +921,11 @@ describe('importBokResidentsFromExcel (new feature tests)', () => {
         const bokData = [{ 'Imię': 'Piotr', 'Nazwisko': 'Niepełny' }];
         const base64Content = createMockExcel2(bokData);
 
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
         const mockedGetSheet2 = require('@/lib/sheets').getSheet as jest.Mock;
         mockedGetSheet2.mockResolvedValue({ addRows: jest.fn(), getRows: jest.fn().mockResolvedValue([]) });
 
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
         const { importBokResidentsFromExcel: importBok } = require('@/lib/actions');
         const result = await importBok(base64Content, 'coord-1', mockSettings2);
 

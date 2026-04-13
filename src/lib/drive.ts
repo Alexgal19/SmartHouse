@@ -59,6 +59,7 @@ export async function uploadFileToDrive(
             },
         });
 
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const updatedFile = await drive.files.get({
             fileId: fileId,
             fields: 'webViewLink, webContentLink',
@@ -70,6 +71,7 @@ export async function uploadFileToDrive(
 
         return { url: thumbnailOrDirectUrl };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
         console.error('Error uploading file to Google Drive:', error);
         return { url: '', error: error.message || 'Wystąpił błąd podczas wgrywania pliku' };

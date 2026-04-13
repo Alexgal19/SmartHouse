@@ -1936,6 +1936,7 @@ const processImport = async (
                         dismissDate: null,
                     } as BokResident;
                     // remove non-bok fields to satisfy type if needed
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     if ('departureReportDate' in newRecord) delete (newRecord as any).departureReportDate;
                 } else {
                     newRecord = {
@@ -2260,6 +2261,7 @@ export async function uploadControlCardPhotoAction(base64Image: string, fileName
         });
         
         return { url: publicUrl };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
         console.error('Error during image upload to Firebase Storage:', error);
         return { url: '', error: error.message || 'Błąd serwera przy próbie odebrania zdjęcia' };

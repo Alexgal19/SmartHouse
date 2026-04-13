@@ -92,6 +92,7 @@ test.describe('AddressPreviewDialog — filtrowanie po miejscowości', () => {
     await page.getByRole('option', { name: 'Wszystkie miejscowości' }).click();
 
     // Each card should have capacity stats
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const cards = dialog.locator('[data-testid="locality-card"], .rounded-xl, [class*="Card"]')
       .filter({ hasText: 'Całkowita pojemność' });
 

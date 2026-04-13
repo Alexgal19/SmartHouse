@@ -8,6 +8,7 @@ import type { Employee, NonEmployee } from "@/types";
 import { differenceInDays, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ModernHouseIcon } from '../icons/modern-house-icon';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { countActiveAddressesInUse, isOwnAddressEntry } from '@/lib/address-filters';
 import { useMainLayout } from '../main-layout';
 

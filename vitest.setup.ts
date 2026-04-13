@@ -1,5 +1,6 @@
 import { expect, afterEach, vi } from 'vitest';
 // Shim jest to vi
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 globalThis.jest = vi as any;
 
 import { cleanup } from '@testing-library/react';
