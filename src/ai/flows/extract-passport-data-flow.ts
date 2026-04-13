@@ -1,6 +1,6 @@
 'use server';
 
-import vision from '@google-cloud/vision';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export type ExtractPassportDataInput = {
   photoDataUri: string;
@@ -11,92 +11,70 @@ export type ExtractPassportDataOutput = {
   lastName: string;
 };
 
-// Remove the data URL prefix to get raw base64
-function extractBase64(dataUrl: string) {
-  const parts = dataUrl.split(',');
-  if (parts.length > 1) {
-    return parts[1];
+function extractBase64AndMime(dataUrl: string): { base64: string; mimeType: string } {
+  const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+  if (match) {
+    return { mimeType: match[1], base64: match[2] };
   }
-  return dataUrl;
+  return { mimeType: 'image/jpeg', base64: dataUrl };
 }
 
 export async function extractPassportData(input: ExtractPassportDataInput): Promise<ExtractPassportDataOutput> {
-  try {
-    const client = new vision.ImageAnnotatorClient();
-
-    const request = {
-      image: {
-        content: extractBase64(input.photoDataUri),
-      },
-      features: [{ type: 'DOCUMENT_TEXT_DETECTION' }],
-    };
-
-    const [result] = await client.annotateImage(request);
-    const fullTextAnnotation = result.fullTextAnnotation;
-
-    if (!fullTextAnnotation || !fullTextAnnotation.text) {
-      throw new Error("Nie wykryto żadnego tekstu na zdjęciu. Upewnij się, że zdjęcie jest ostre i dobrze oświetlone.");
-    }
-
-    const lines = fullTextAnnotation.text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-
-    let lastName = '';
-    let firstName = '';
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].toLowerCase();
-
-      if (line.includes('surname') || line.includes('nazwisko') || line.includes('nom')) {
-        for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
-          const candidate = lines[j];
-          if (candidate && !candidate.toLowerCase().includes('given') && !candidate.toLowerCase().includes('imiona') && candidate.length > 1) {
-            lastName = candidate.replace(/[^a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ -]/g, '');
-            break;
-          }
-        }
-      }
-
-      if (line.includes('given names') || line.includes('imiona') || line.includes('prénoms')) {
-        for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
-          const candidate = lines[j];
-          if (candidate && !['m', 'f', 'm/m', 'f/k'].includes(candidate.toLowerCase()) && !candidate.toLowerCase().includes('nationality') && candidate.length > 1) {
-            firstName = candidate.replace(/[^a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ -]/g, '');
-            break;
-          }
-        }
-      }
-    }
-
-    if (!lastName || !firstName) {
-      console.warn("Could not find structured label fields, attempting fallback MRZ search within vision text...");
-      const mrzText = lines.join('').replace(/\s/g, '');
-      const regex = /[PIAC][A-Z<][A-Z]{3}[A-Z0-9<]+/;
-      const mrzMatch = mrzText.match(regex);
-
-      if (mrzMatch && mrzMatch[0]) {
-        const mrzStr = mrzMatch[0];
-        const nameMatch = mrzStr.match(/([A-Z]{1,50}(?:<[A-Z]{1,50}){0,10})<<([A-Z]{1,50}(?:<[A-Z]{1,50}){0,10})/);
-        if (nameMatch) {
-          lastName = nameMatch[1].replace(/</g, ' ').trim();
-          firstName = nameMatch[2].replace(/</g, ' ').trim();
-        }
-      }
-    }
-
-    if (!lastName && !firstName) {
-      throw new Error("Skrypt nie mógł zlokalizować rubryki 'Nazwisko' i 'Imiona'. Upewnij się, że główna strona z danymi jest wyraźna.");
-    }
-
-    const titleCase = (str: string) => str ? str.split(/[\s-]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ') : "";
-
-    return {
-      firstName: titleCase(firstName),
-      lastName: titleCase(lastName)
-    };
-
-  } catch (err) {
-    console.error("OCR Error:", err);
-    throw err;
+  const apiKey = process.env.GOOGLE_GENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error('Brak klucza GOOGLE_GENAI_API_KEY w konfiguracji.');
   }
 
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+
+  const { base64, mimeType } = extractBase64AndMime(input.photoDataUri);
+
+  const prompt = `You are a passport OCR specialist. Look at this document image carefully.
+
+Extract ONLY:
+1. The person's last name / surname (in Polish: Nazwisko)
+2. The person's first name / given name (in Polish: Imię/Imiona — use only the first given name if multiple)
+
+Rules:
+- If this is a Polish passport or ID, look for fields labeled "Nazwisko" and "Imię" or "Imiona"
+- If this is a foreign passport, look for fields labeled "Surname" and "Given names"
+- You can also read the MRZ (machine-readable zone) at the bottom — it contains the name in uppercase with < separators
+- Return ONLY valid name characters — letters, spaces, hyphens
+- Capitalize properly (first letter uppercase, rest lowercase)
+- If you cannot read the name clearly, return empty strings
+
+Respond with ONLY valid JSON, no markdown, no explanation:
+{"firstName": "...", "lastName": "..."}`;
+
+  const result = await model.generateContent([
+    { text: prompt },
+    {
+      inlineData: {
+        mimeType: mimeType as 'image/jpeg' | 'image/png' | 'image/webp',
+        data: base64,
+      },
+    },
+  ]);
+
+  const text = result.response.text().trim();
+
+  // Strip markdown code blocks if present
+  const clean = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+  let parsed: { firstName?: string; lastName?: string };
+  try {
+    parsed = JSON.parse(clean);
+  } catch {
+    throw new Error('Nie udało się odczytać danych z dokumentu. Upewnij się, że zdjęcie jest wyraźne i dobrze oświetlone.');
+  }
+
+  const firstName = (parsed.firstName || '').trim();
+  const lastName = (parsed.lastName || '').trim();
+
+  if (!firstName && !lastName) {
+    throw new Error('Nie udało się rozpoznać imienia i nazwiska. Upewnij się, że zdjęcie jest ostre i strona z danymi jest widoczna.');
+  }
+
+  return { firstName, lastName };
 }
