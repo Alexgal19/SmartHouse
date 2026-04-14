@@ -228,27 +228,26 @@ export function SystemStatusPanel() {
               {error && <p className="text-xs text-destructive">{error}</p>}
               {loading && <p className="text-xs text-muted-foreground">Ładowanie...</p>}
               {snapshot ? (
-                <div className="grid grid-cols-2 gap-1">
-                  {Object.entries(snapshot).map(([sheet, data]) => {
+                <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+                  {Object.entries(snapshot).flatMap(([sheet, data]) => {
                     if (sheet === 'Employees' && employeeStats) {
-                      return (
-                        <div key={sheet} className="col-span-2 flex items-center justify-between py-0.5">
-                          <span className="text-xs text-muted-foreground">Pracownicy</span>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs text-muted-foreground">Aktywni</span>
-                            <Badge variant="secondary" className="text-xs font-mono h-5">{employeeStats.active}</Badge>
-                            <span className="text-xs text-muted-foreground ml-1">Zwolnieni</span>
-                            <Badge variant="outline" className="text-xs font-mono h-5">{employeeStats.dismissed}</Badge>
-                          </div>
-                        </div>
-                      );
+                      return [
+                        <div key="emp-active" className="flex items-center justify-between py-0.5">
+                          <span className="text-xs text-muted-foreground">Pracownicy aktywni</span>
+                          <Badge variant="secondary" className="text-xs font-mono h-5">{employeeStats.active}</Badge>
+                        </div>,
+                        <div key="emp-dismissed" className="flex items-center justify-between py-0.5">
+                          <span className="text-xs text-muted-foreground">Pracownicy zwolnieni</span>
+                          <Badge variant="outline" className="text-xs font-mono h-5">{employeeStats.dismissed}</Badge>
+                        </div>,
+                      ];
                     }
-                    return (
+                    return [
                       <div key={sheet} className="flex items-center justify-between py-0.5">
                         <span className="text-xs text-muted-foreground">{SHEET_LABELS[sheet] ?? sheet}</span>
                         <Badge variant="secondary" className="text-xs font-mono h-5">{data.rowCount}</Badge>
-                      </div>
-                    );
+                      </div>,
+                    ];
                   })}
                 </div>
               ) : (
