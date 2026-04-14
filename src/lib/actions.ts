@@ -328,6 +328,7 @@ const writeToAuditLog = async (actorId: string, actorName: string, action: strin
 };
 
 const FIELD_LABELS: Record<string, string> = {
+    // Wspólne
     firstName: "Imię",
     lastName: "Nazwisko",
     coordinatorId: "Koordynator",
@@ -339,11 +340,41 @@ const FIELD_LABELS: Record<string, string> = {
     zaklad: "Zakład",
     checkInDate: "Data zameldowania",
     checkOutDate: "Data wymeldowania",
+    comments: "Komentarz",
+    status: "Status",
+    // Pracownik
     contractStartDate: "Data rozpoczęcia umowy",
     contractEndDate: "Data zakończenia umowy",
     departureReportDate: "Data raportu wyjazdu",
-    comments: "Komentarz",
-    status: "Status",
+    // Mieszkaniec NZ
+    paymentType: "Typ płatności",
+    paymentAmount: "Kwota płatności",
+    // Mieszkaniec BOK
+    role: "Rola",
+    sendDate: "Data wysyłki",
+    dismissDate: "Data zwolnienia",
+    returnStatus: "Status powrotu",
+};
+
+const VALUE_LABELS: Record<string, string> = {
+    active: "Aktywny",
+    dismissed: "Zwolniony",
+    male: "Mężczyzna",
+    female: "Kobieta",
+};
+
+const toNotificationDisplayStr = (key: string, value: unknown, coordinators: { uid: string; name: string }[]): string | null => {
+    if (value === null || value === undefined || value === '') return null;
+    const areDates = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate',
+        'departureReportDate', 'sendDate', 'dismissDate', 'deductionEntryDate'].includes(key);
+    if (key === 'coordinatorId') {
+        return coordinators.find(c => c.uid === value)?.name || (value as string);
+    }
+    if (areDates && isValid(new Date(value as string))) {
+        return format(new Date(value as string), 'dd-MM-yyyy');
+    }
+    const strVal = String(value);
+    return VALUE_LABELS[strVal] ?? strVal;
 };
 
 // Pola pomijane w powiadomieniach (zbyt techniczne lub finansowe)
@@ -612,24 +643,12 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         const changes: NotificationChange[] = [];
         const { ...dbUpdates } = updates;
 
-        const toDisplayStr = (key: string, value: unknown): string | null => {
-            if (value === null || value === undefined || value === '') return null;
-            const areDates = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate'].includes(key);
-            if (key === 'coordinatorId') {
-                return settings.coordinators.find(c => c.uid === value)?.name || (value as string);
-            }
-            if (areDates && isValid(new Date(value as string))) {
-                return format(new Date(value as string), 'dd-MM-yyyy');
-            }
-            return String(value);
-        };
-
         for (const key in dbUpdates) {
             if (NOTIFICATION_SKIP_FIELDS.has(key)) continue;
 
             const typedKey = key as keyof Employee;
-            const oldValStr = toDisplayStr(key, originalEmployee[typedKey]);
-            const newValStr = toDisplayStr(key, dbUpdates[typedKey]);
+            const oldValStr = toNotificationDisplayStr(key, originalEmployee[typedKey], settings.coordinators);
+            const newValStr = toNotificationDisplayStr(key, dbUpdates[typedKey], settings.coordinators);
 
             // Pomiń jeśli faktycznie nic się nie zmieniło (uwzględnia null/undefined/"")
             if (oldValStr === newValStr) continue;
@@ -774,24 +793,12 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
         const updatedNonEmployeeData: NonEmployee = { ...originalNonEmployee, ...updates };
         const changes: NotificationChange[] = [];
 
-        const toNEDisplayStr = (key: string, value: unknown): string | null => {
-            if (value === null || value === undefined || value === '') return null;
-            const areDates = ['checkInDate', 'checkOutDate', 'departureReportDate'].includes(key);
-            if (key === 'coordinatorId') {
-                return settings.coordinators.find(c => c.uid === value)?.name || (value as string);
-            }
-            if (areDates && isValid(new Date(value as string))) {
-                return format(new Date(value as string), 'dd-MM-yyyy');
-            }
-            return String(value);
-        };
-
         for (const key in updates) {
             if (NOTIFICATION_SKIP_FIELDS.has(key)) continue;
 
             const typedKey = key as keyof NonEmployee;
-            const oldValStr = toNEDisplayStr(key, originalNonEmployee[typedKey]);
-            const newValStr = toNEDisplayStr(key, updates[typedKey]);
+            const oldValStr = toNotificationDisplayStr(key, originalNonEmployee[typedKey], settings.coordinators);
+            const newValStr = toNotificationDisplayStr(key, updates[typedKey], settings.coordinators);
 
             if (oldValStr === newValStr) continue;
 
@@ -894,24 +901,12 @@ export async function updateBokResident(id: string, updates: Partial<BokResident
 
         const changes: NotificationChange[] = [];
 
-        const toBokDisplayStr = (key: string, value: unknown): string | null => {
-            if (value === null || value === undefined || value === '') return null;
-            const areDates = ['checkInDate', 'checkOutDate', 'sendDate', 'dismissDate'].includes(key);
-            if (key === 'coordinatorId') {
-                return settings.coordinators.find(c => c.uid === value)?.name || (value as string);
-            }
-            if (areDates && isValid(new Date(value as string))) {
-                return format(new Date(value as string), 'dd-MM-yyyy');
-            }
-            return String(value);
-        };
-
         for (const key in updates) {
             if (NOTIFICATION_SKIP_FIELDS.has(key)) continue;
 
             const typedKey = key as keyof BokResident;
-            const oldValStr = toBokDisplayStr(key, originalResident[typedKey]);
-            const newValStr = toBokDisplayStr(key, updates[typedKey]);
+            const oldValStr = toNotificationDisplayStr(key, originalResident[typedKey], settings.coordinators);
+            const newValStr = toNotificationDisplayStr(key, updates[typedKey], settings.coordinators);
 
             if (oldValStr === newValStr) continue;
 
