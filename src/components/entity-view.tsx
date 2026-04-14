@@ -725,17 +725,17 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
             dismissedEmployees: filteredEmployees.filter(e => e.status === 'dismissed'),
             activeNonEmployees: filteredNonEmployees.filter(ne => ne.status !== 'dismissed'),
             dismissedNonEmployees: filteredNonEmployees.filter(ne => ne.status === 'dismissed'),
-            // Aktywni: no sendDate, no dismissDate, not dismissed
+            // Aktywni: brak dismissDate i sendDate (status = warunki zamieszkania, nie system)
             activeBokResidents: filteredBokResidents.filter(b =>
-                b.status !== 'dismissed' && !b.dismissDate && !b.sendDate
+                !b.dismissDate && !b.sendDate
             ),
-            // Wyslani: has sendDate, not yet dismissed
+            // Wyslani: ma sendDate, jeszcze nie zwolniony
             sentBokResidents: filteredBokResidents.filter(b =>
-                b.status !== 'dismissed' && !b.dismissDate && !!b.sendDate
+                !b.dismissDate && !!b.sendDate
             ),
-            // Zwolnieni: dismissed status OR has dismissDate
+            // Zwolnieni: ma dismissDate (status nie jest używany do tej logiki)
             dismissedBokResidents: filteredBokResidents.filter(b =>
-                b.status === 'dismissed' || !!b.dismissDate
+                !!b.dismissDate
             ),
             history: filteredHistory,
         }

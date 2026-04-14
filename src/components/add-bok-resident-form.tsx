@@ -346,7 +346,7 @@ export function AddBokResidentForm({
         occupied += allNonEmployees.filter(e => e.status === 'active' && e.address === selectedAddress && String(e.roomNumber) === room.name).length;
       }
       if (allBokResidents) {
-        occupied += allBokResidents.filter(e => (e.status === 'active' || !e.status || e.status === '') && e.address === selectedAddress && String(e.roomNumber) === room.name).length;
+        occupied += allBokResidents.filter(e => e.status !== 'dismissed' && !e.dismissDate && !e.sendDate && e.address === selectedAddress && String(e.roomNumber) === room.name).length;
       }
 
       return {

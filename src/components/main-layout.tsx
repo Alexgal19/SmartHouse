@@ -713,9 +713,9 @@ export default function MainLayout({
         if (!currentUser) return;
         const originalBokResidents = rawBokResidents;
         const formattedDate = format(dismissDate, 'yyyy-MM-dd');
-        setRawBokResidents(prev => prev ? prev.map(r => r.id === id ? { ...r, status: 'dismissed' as const, dismissDate: formattedDate } : r) : null);
+        setRawBokResidents(prev => prev ? prev.map(r => r.id === id ? { ...r, dismissDate: formattedDate } : r) : null);
         try {
-            await updateBokResident(id, { status: 'dismissed', dismissDate: formattedDate }, currentUser.uid);
+            await updateBokResident(id, { dismissDate: formattedDate }, currentUser.uid);
             toast({ title: "Sukces", description: "Mieszkaniec BOK został pomyślnie zwolniony." });
         } catch (e: unknown) {
             setRawBokResidents(originalBokResidents);
@@ -921,9 +921,9 @@ export default function MainLayout({
     const handleRestoreBokResident = useCallback(async (bokResident: BokResident) => {
         if (!currentUser) return;
         const originalBokResidents = rawBokResidents;
-        setRawBokResidents(prev => prev ? prev.map(r => r.id === bokResident.id ? { ...r, status: 'active' as const, dismissDate: null, checkOutDate: null } : r) : null);
+        setRawBokResidents(prev => prev ? prev.map(r => r.id === bokResident.id ? { ...r, dismissDate: null, checkOutDate: null } : r) : null);
         try {
-            await updateBokResident(bokResident.id, { status: 'active', dismissDate: null, checkOutDate: null }, currentUser.uid);
+            await updateBokResident(bokResident.id, { dismissDate: null, checkOutDate: null }, currentUser.uid);
             toast({ title: "Sukces", description: "Mieszkaniec BOK został przywrócony." });
         } catch (e: unknown) {
             setRawBokResidents(originalBokResidents);

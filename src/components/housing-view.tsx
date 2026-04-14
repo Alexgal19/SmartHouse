@@ -629,7 +629,7 @@ const useHousingData = () => {
     const allActiveOccupants: Occupant[] = [
       ...allEmployees.filter((e) => e.status === 'active'),
       ...allNonEmployees.filter((ne) => ne.status === 'active'),
-      ...allBokResidents.filter((bok) => bok.status === 'active' || !bok.status || bok.status === ''), // BOK occupants added before explicit statuses was enforced
+      ...allBokResidents.filter((bok) => bok.status !== 'dismissed' && !bok.dismissDate && !bok.sendDate),
     ];
 
     return addressesToDisplay.map((address) => {
