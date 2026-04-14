@@ -673,8 +673,7 @@ const useHousingData = () => {
         rooms: rooms,
       };
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allEmployees, allNonEmployees, settings, currentUser, selectedCoordinatorId]);
+  }, [allEmployees, allNonEmployees, allBokResidents, settings, currentUser, selectedCoordinatorId]);
 };
 
 const MobileAddressCard = ({
