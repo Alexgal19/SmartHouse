@@ -43,12 +43,15 @@ type AddressForAlert = {
   rooms: { id: string; name: string; capacity: number; isActive: boolean }[];
 };
 
+type CoordinatorForAlert = { uid: string; name: string };
+
 // ─── Detail extraction (for display in panels) ────────────────────────────
 export function extractAlertDetails(
   employees: Employee[],
   nonEmployees: NonEmployee[],
   bokResidents: BokResident[],
-  addresses: AddressForAlert[]
+  addresses: AddressForAlert[],
+  coordinators: CoordinatorForAlert[] = []
 ): AlertDetails {
   const t = alertToday();
 
@@ -188,6 +191,9 @@ export function extractAlertDetails(
     });
   }
 
+  const getCoordName = (id: string) =>
+    coordinators.find(c => c.uid === id)?.name ?? null;
+
   const duplicatePersons: AlertDetailItem[] = [];
   for (const [coordId, persons] of activeByCoordinator) {
     const nameGroups = new Map<string, PersonForDupe[]>();
@@ -195,13 +201,17 @@ export function extractAlertDetails(
       if (!nameGroups.has(p.normalizedName)) nameGroups.set(p.normalizedName, []);
       nameGroups.get(p.normalizedName)!.push(p);
     }
+    const coordName = coordId === '__none__' ? null : getCoordName(coordId);
     for (const group of nameGroups.values()) {
       if (group.length < 2) continue;
+      const extra = coordName
+        ? `${group.length}x — ${coordName}`
+        : `${group.length}x u koordynatora`;
       duplicatePersons.push({
         id: group[0].id,
         name: group[0].fullName,
         link: group[0].link,
-        extra: `${group.length}x u koordynatora`,
+        extra,
         coordinatorId: coordId === '__none__' ? null : coordId,
         coordinatorIds: coordId === '__none__' ? [] : [coordId],
       });

@@ -261,7 +261,7 @@ export async function POST(req: NextRequest) {
 
     if (allAlerts.length > 0) await sendAlerts(allAlerts, admins);
 
-    const details = extractAlertDetails(employees, nonEmployees, bokResidents, settings.addresses);
+    const details = extractAlertDetails(employees, nonEmployees, bokResidents, settings.addresses, settings.coordinators);
     const summary = {
       contractExpiry:        details.contractExpiry.length,
       bokStatusInconsistency: details.bokStatusInconsistency.length,
