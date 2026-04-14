@@ -163,45 +163,49 @@ export function extractAlertDetails(
     missingCheckInDate.push({ id: bok.id, name: bok.fullName, link: `/dashboard?view=employees&tab=bok-residents&edit=${bok.id}`, extra: 'BOK', coordinatorId: bok.coordinatorId ?? null });
   });
 
-  // Zdublowane osoby — tylko wśród aktywnych Pracowników (Zarządzanie mieszkańcami)
-  // NZ i BOK to oddzielne struktury — nie porównujemy ich z Pracownikami
-  // Weryfikacja tylko identycznych nazw: trim + uppercase — każda różnica znaku = różne osoby
+  // Zdublowane osoby — duplikat = ta sama osoba dwa razy u TEGO SAMEGO koordynatora
+  // Osoby o tym samym imieniu u różnych koordynatorów NIE są duplikatem
   type PersonForDupe = {
     id: string;
     fullName: string;
     normalizedName: string;
-    coordinatorId: string | null;
+    coordinatorId: string;
     link: string;
   };
 
-  const allActive: PersonForDupe[] = employees
-    .filter(e => e.status === 'active')
-    .map(e => ({
+  // Grupuj aktywnych pracowników wg koordynatora, potem sprawdzaj duplikaty w każdej grupie
+  const activeByCoordinator = new Map<string, PersonForDupe[]>();
+  for (const e of employees) {
+    if (e.status !== 'active') continue;
+    const coordId = e.coordinatorId || '__none__';
+    if (!activeByCoordinator.has(coordId)) activeByCoordinator.set(coordId, []);
+    activeByCoordinator.get(coordId)!.push({
       id: e.id,
       fullName: e.fullName,
       normalizedName: e.fullName.trim().toUpperCase().replace(/\s+/g, ' '),
-      coordinatorId: e.coordinatorId ?? null,
+      coordinatorId: coordId,
       link: `/dashboard?view=employees&edit=${e.id}`,
-    }));
-
-  const nameGroups = new Map<string, PersonForDupe[]>();
-  for (const p of allActive) {
-    if (!nameGroups.has(p.normalizedName)) nameGroups.set(p.normalizedName, []);
-    nameGroups.get(p.normalizedName)!.push(p);
+    });
   }
 
   const duplicatePersons: AlertDetailItem[] = [];
-  for (const group of nameGroups.values()) {
-    if (group.length < 2) continue;
-    const coordIds = [...new Set(group.map(p => p.coordinatorId).filter(Boolean) as string[])];
-    duplicatePersons.push({
-      id: group[0].id,
-      name: group[0].fullName,
-      link: group[0].link,
-      extra: `${group.length}x w Pracownicy`,
-      coordinatorId: coordIds.length === 1 ? coordIds[0] : null,
-      coordinatorIds: coordIds,
-    });
+  for (const [coordId, persons] of activeByCoordinator) {
+    const nameGroups = new Map<string, PersonForDupe[]>();
+    for (const p of persons) {
+      if (!nameGroups.has(p.normalizedName)) nameGroups.set(p.normalizedName, []);
+      nameGroups.get(p.normalizedName)!.push(p);
+    }
+    for (const group of nameGroups.values()) {
+      if (group.length < 2) continue;
+      duplicatePersons.push({
+        id: group[0].id,
+        name: group[0].fullName,
+        link: group[0].link,
+        extra: `${group.length}x u koordynatora`,
+        coordinatorId: coordId === '__none__' ? null : coordId,
+        coordinatorIds: coordId === '__none__' ? [] : [coordId],
+      });
+    }
   }
 
   return { contractExpiry, bokStatusInconsistency, capacityExceeded, missingPaymentData, missingCheckInDate, duplicatePersons };

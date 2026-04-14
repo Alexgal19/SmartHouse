@@ -171,63 +171,49 @@ function checkMissingPaymentData(nonEmployees: NonEmployee[]): Alert[] {
 
 // ─── Alert 9: Zdublowane osoby wśród aktywnych ────────────────────────────
 // Weryfikacja zdublowanych osób:
-// - Tylko wśród aktywnych Pracowników (Zarządzanie mieszkańcami)
-// - NZ i BOK to oddzielne struktury — nie są porównywane
-// - Dopasowanie tylko identyczne: trim + uppercase, każda różnica znaku = różne osoby
+// - Tylko wśród aktywnych Pracowników danego koordynatora
+// - Duplikat = ta sama osoba (imię+nazwisko) dwa razy u TEGO SAMEGO koordynatora
+// - Osoby o tym samym imieniu u różnych koordynatorów NIE są duplikatem
 function checkDuplicatePersons(
   employees: Employee[]
 ): Alert[] {
-  type PersonForDupe = {
-    id: string;
-    fullName: string;
-    normalizedName: string;
-    coordinatorId: string | null;
-    link: string;
-  };
+  // Grupuj aktywnych pracowników wg koordynatora
+  const byCoordinator = new Map<string, { id: string; fullName: string; normalizedName: string; link: string }[]>();
 
-  const allActive: PersonForDupe[] = employees
-    .filter(e => e.status === 'active')
-    .map(e => ({
+  for (const e of employees) {
+    if (e.status !== 'active') continue;
+    const coordId = e.coordinatorId || '__none__';
+    if (!byCoordinator.has(coordId)) byCoordinator.set(coordId, []);
+    byCoordinator.get(coordId)!.push({
       id: e.id,
       fullName: e.fullName,
       normalizedName: e.fullName.trim().toUpperCase().replace(/\s+/g, ' '),
-      coordinatorId: e.coordinatorId ?? null,
       link: `/dashboard?view=employees&edit=${e.id}`,
-    }));
-
-  const nameGroups = new Map<string, PersonForDupe[]>();
-  for (const p of allActive) {
-    if (!nameGroups.has(p.normalizedName)) nameGroups.set(p.normalizedName, []);
-    nameGroups.get(p.normalizedName)!.push(p);
-  }
-
-  // Grupuj duplikaty per koordynator — każdy koordynator dostaje swój alert
-  const byCoordinator = new Map<string, { name: string; count: number; link: string }[]>();
-
-  for (const group of nameGroups.values()) {
-    if (group.length < 2) continue;
-    const involvedCoordIds = [...new Set(group.map(p => p.coordinatorId ?? '__none__'))];
-
-    for (const coordId of involvedCoordIds) {
-      if (!byCoordinator.has(coordId)) byCoordinator.set(coordId, []);
-      byCoordinator.get(coordId)!.push({
-        name: group[0].fullName,
-        count: group.length,
-        link: group.find(p => (p.coordinatorId ?? '__none__') === coordId)?.link ?? group[0].link,
-      });
-    }
+    });
   }
 
   const alerts: Alert[] = [];
-  for (const [coordId, dupes] of byCoordinator) {
-    const lines = dupes.map(d => `${d.name} — ${d.count}x w Pracownicy`);
+
+  for (const [coordId, persons] of byCoordinator) {
+    // Sprawdź duplikaty tylko w obrębie tego koordynatora
+    const nameGroups = new Map<string, typeof persons>();
+    for (const p of persons) {
+      if (!nameGroups.has(p.normalizedName)) nameGroups.set(p.normalizedName, []);
+      nameGroups.get(p.normalizedName)!.push(p);
+    }
+
+    const dupes = [...nameGroups.values()].filter(g => g.length >= 2);
+    if (dupes.length === 0) continue;
+
+    const lines = dupes.map(g => `${g[0].fullName} — ${g.length}x w Pracownicy`);
     alerts.push({
       coordinatorIds: coordId === '__none__' ? [] : [coordId],
       title: `👥 Zdublowane osoby — ${dupes.length}`,
       body: lines.join('\n'),
-      link: dupes[0].link,
+      link: dupes[0][0].link,
     });
   }
+
   return alerts;
 }
 

@@ -297,7 +297,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         contractEndDate: safeFormat(plainObject.contractEndDate),
         departureReportDate: safeFormat(plainObject.departureReportDate),
         comments: (plainObject.comments || '') as string,
-        status: plainObject.status as 'active' | 'dismissed' || 'active',
+        status: plainObject.status === 'dismissed' ? 'dismissed' : 'active',
         depositReturned: depositReturned,
         depositReturnAmount: plainObject.depositReturnAmount ? parseFloat(plainObject.depositReturnAmount as string) : null,
         deductionRegulation: plainObject.deductionRegulation ? parseFloat(plainObject.deductionRegulation as string) : null,
