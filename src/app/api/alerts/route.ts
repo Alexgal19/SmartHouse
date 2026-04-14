@@ -171,39 +171,29 @@ function checkMissingPaymentData(nonEmployees: NonEmployee[]): Alert[] {
 
 // ─── Alert 9: Zdublowane osoby wśród aktywnych ────────────────────────────
 // Weryfikacja zdublowanych osób:
-// - Porównujemy wyłącznie Pracownicy ↔ NZ (BOK to oddzielna struktura)
+// - Tylko wśród aktywnych Pracowników (Zarządzanie mieszkańcami)
+// - NZ i BOK to oddzielne struktury — nie są porównywane
 // - Dopasowanie tylko identyczne: trim + uppercase, każda różnica znaku = różne osoby
 function checkDuplicatePersons(
-  employees: Employee[],
-  nonEmployees: NonEmployee[]
+  employees: Employee[]
 ): Alert[] {
   type PersonForDupe = {
     id: string;
     fullName: string;
     normalizedName: string;
     coordinatorId: string | null;
-    type: 'Pracownik' | 'NZ';
     link: string;
   };
 
-  const allActive: PersonForDupe[] = [
-    ...employees.filter(e => e.status === 'active').map(e => ({
+  const allActive: PersonForDupe[] = employees
+    .filter(e => e.status === 'active')
+    .map(e => ({
       id: e.id,
       fullName: e.fullName,
       normalizedName: e.fullName.trim().toUpperCase().replace(/\s+/g, ' '),
       coordinatorId: e.coordinatorId ?? null,
-      type: 'Pracownik' as const,
       link: `/dashboard?view=employees&edit=${e.id}`,
-    })),
-    ...nonEmployees.filter(nz => nz.status === 'active').map(nz => ({
-      id: nz.id,
-      fullName: nz.fullName,
-      normalizedName: nz.fullName.trim().toUpperCase().replace(/\s+/g, ' '),
-      coordinatorId: nz.coordinatorId ?? null,
-      type: 'NZ' as const,
-      link: `/dashboard?view=employees&tab=non-employees&edit=${nz.id}`,
-    })),
-  ];
+    }));
 
   const nameGroups = new Map<string, PersonForDupe[]>();
   for (const p of allActive) {
@@ -212,18 +202,17 @@ function checkDuplicatePersons(
   }
 
   // Grupuj duplikaty per koordynator — każdy koordynator dostaje swój alert
-  const byCoordinator = new Map<string, { name: string; types: string; link: string }[]>();
+  const byCoordinator = new Map<string, { name: string; count: number; link: string }[]>();
 
   for (const group of nameGroups.values()) {
     if (group.length < 2) continue;
-    const types = group.map(p => p.type).join(', ');
     const involvedCoordIds = [...new Set(group.map(p => p.coordinatorId ?? '__none__'))];
 
     for (const coordId of involvedCoordIds) {
       if (!byCoordinator.has(coordId)) byCoordinator.set(coordId, []);
       byCoordinator.get(coordId)!.push({
         name: group[0].fullName,
-        types,
+        count: group.length,
         link: group.find(p => (p.coordinatorId ?? '__none__') === coordId)?.link ?? group[0].link,
       });
     }
@@ -231,7 +220,7 @@ function checkDuplicatePersons(
 
   const alerts: Alert[] = [];
   for (const [coordId, dupes] of byCoordinator) {
-    const lines = dupes.map(d => `${d.name} — ${d.types}`);
+    const lines = dupes.map(d => `${d.name} — ${d.count}x w Pracownicy`);
     alerts.push({
       coordinatorIds: coordId === '__none__' ? [] : [coordId],
       title: `👥 Zdublowane osoby — ${dupes.length}`,
@@ -281,7 +270,7 @@ export async function POST(req: NextRequest) {
       ...checkCapacity(employees, nonEmployees, bokResidents, settings.addresses),
       ...checkMissingPaymentData(nonEmployees),
       ...checkMissingCheckInDate(employees, nonEmployees, bokResidents),
-      ...checkDuplicatePersons(employees, nonEmployees),
+      ...checkDuplicatePersons(employees),
     ];
 
     if (allAlerts.length > 0) await sendAlerts(allAlerts, admins);

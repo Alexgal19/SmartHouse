@@ -163,40 +163,26 @@ export function extractAlertDetails(
     missingCheckInDate.push({ id: bok.id, name: bok.fullName, link: `/dashboard?view=employees&tab=bok-residents&edit=${bok.id}`, extra: 'BOK', coordinatorId: bok.coordinatorId ?? null });
   });
 
-  // Zdublowane osoby — tylko wśród aktywnych Pracowników i NZ (Zarządzanie mieszkańcami)
-  // BOK to oddzielna struktura — nie porównujemy z Pracownikami/NZ
+  // Zdublowane osoby — tylko wśród aktywnych Pracowników (Zarządzanie mieszkańcami)
+  // NZ i BOK to oddzielne struktury — nie porównujemy ich z Pracownikami
   // Weryfikacja tylko identycznych nazw: trim + uppercase — każda różnica znaku = różne osoby
   type PersonForDupe = {
     id: string;
     fullName: string;
     normalizedName: string;
     coordinatorId: string | null;
-    type: 'Pracownik' | 'NZ';
     link: string;
   };
 
-  const allActive: PersonForDupe[] = [
-    ...employees
-      .filter(e => e.status === 'active')
-      .map(e => ({
-        id: e.id,
-        fullName: e.fullName,
-        normalizedName: e.fullName.trim().toUpperCase().replace(/\s+/g, ' '),
-        coordinatorId: e.coordinatorId ?? null,
-        type: 'Pracownik' as const,
-        link: `/dashboard?view=employees&edit=${e.id}`,
-      })),
-    ...nonEmployees
-      .filter(nz => nz.status === 'active')
-      .map(nz => ({
-        id: nz.id,
-        fullName: nz.fullName,
-        normalizedName: nz.fullName.trim().toUpperCase().replace(/\s+/g, ' '),
-        coordinatorId: nz.coordinatorId ?? null,
-        type: 'NZ' as const,
-        link: `/dashboard?view=employees&tab=non-employees&edit=${nz.id}`,
-      })),
-  ];
+  const allActive: PersonForDupe[] = employees
+    .filter(e => e.status === 'active')
+    .map(e => ({
+      id: e.id,
+      fullName: e.fullName,
+      normalizedName: e.fullName.trim().toUpperCase().replace(/\s+/g, ' '),
+      coordinatorId: e.coordinatorId ?? null,
+      link: `/dashboard?view=employees&edit=${e.id}`,
+    }));
 
   const nameGroups = new Map<string, PersonForDupe[]>();
   for (const p of allActive) {
@@ -207,13 +193,12 @@ export function extractAlertDetails(
   const duplicatePersons: AlertDetailItem[] = [];
   for (const group of nameGroups.values()) {
     if (group.length < 2) continue;
-    const types = group.map(p => p.type).join(', ');
     const coordIds = [...new Set(group.map(p => p.coordinatorId).filter(Boolean) as string[])];
     duplicatePersons.push({
       id: group[0].id,
       name: group[0].fullName,
       link: group[0].link,
-      extra: `${group.length} wpisy: ${types}`,
+      extra: `${group.length}x w Pracownicy`,
       coordinatorId: coordIds.length === 1 ? coordIds[0] : null,
       coordinatorIds: coordIds,
     });
