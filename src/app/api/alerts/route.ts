@@ -170,7 +170,9 @@ function checkMissingPaymentData(nonEmployees: NonEmployee[]): Alert[] {
 }
 
 // ─── Alert 9: Zdublowane osoby wśród aktywnych ────────────────────────────
-// BOK to oddzielna struktura — nie porównujemy z Pracownikami/NZ
+// Weryfikacja zdublowanych osób:
+// - Porównujemy wyłącznie Pracownicy ↔ NZ (BOK to oddzielna struktura)
+// - Dopasowanie tylko identyczne: trim + uppercase, każda różnica znaku = różne osoby
 function checkDuplicatePersons(
   employees: Employee[],
   nonEmployees: NonEmployee[]

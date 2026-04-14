@@ -165,6 +165,7 @@ export function extractAlertDetails(
 
   // Zdublowane osoby — tylko wśród aktywnych Pracowników i NZ (Zarządzanie mieszkańcami)
   // BOK to oddzielna struktura — nie porównujemy z Pracownikami/NZ
+  // Weryfikacja tylko identycznych nazw: trim + uppercase — każda różnica znaku = różne osoby
   type PersonForDupe = {
     id: string;
     fullName: string;
