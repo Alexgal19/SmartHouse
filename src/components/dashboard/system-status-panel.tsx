@@ -17,6 +17,12 @@ interface DataGuardStatus {
   snapshot: Record<string, SheetSnapshot> | null;
 }
 
+interface EmployeeStats {
+  active: number;
+  dismissed: number;
+  total: number;
+}
+
 interface AlertsSummary {
   totalAlerts: number;
   checkedAt: string;
@@ -110,6 +116,7 @@ function AlertRow({
 export function SystemStatusPanel() {
   const [dataGuard, setDataGuard] = useState<DataGuardStatus | null>(null);
   const [alerts, setAlerts] = useState<AlertsSummary | null>(null);
+  const [employeeStats, setEmployeeStats] = useState<EmployeeStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [runningGuard, setRunningGuard] = useState(false);
   const [runningAlerts, setRunningAlerts] = useState(false);
@@ -120,8 +127,12 @@ export function SystemStatusPanel() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/data-guard/status');
-      if (res.ok) setDataGuard(await res.json());
+      const [guardRes, statsRes] = await Promise.all([
+        fetch('/api/data-guard/status'),
+        fetch('/api/employees/stats'),
+      ]);
+      if (guardRes.ok) setDataGuard(await guardRes.json());
+      if (statsRes.ok) setEmployeeStats(await statsRes.json());
     } catch {
       setError('Błąd połączenia z API');
     } finally {
@@ -218,12 +229,27 @@ export function SystemStatusPanel() {
               {loading && <p className="text-xs text-muted-foreground">Ładowanie...</p>}
               {snapshot ? (
                 <div className="grid grid-cols-2 gap-1">
-                  {Object.entries(snapshot).map(([sheet, data]) => (
-                    <div key={sheet} className="flex items-center justify-between py-0.5">
-                      <span className="text-xs text-muted-foreground">{SHEET_LABELS[sheet] ?? sheet}</span>
-                      <Badge variant="secondary" className="text-xs font-mono h-5">{data.rowCount}</Badge>
-                    </div>
-                  ))}
+                  {Object.entries(snapshot).map(([sheet, data]) => {
+                    if (sheet === 'Employees' && employeeStats) {
+                      return (
+                        <div key={sheet} className="col-span-2 flex items-center justify-between py-0.5">
+                          <span className="text-xs text-muted-foreground">Pracownicy</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-muted-foreground">Aktywni</span>
+                            <Badge variant="secondary" className="text-xs font-mono h-5">{employeeStats.active}</Badge>
+                            <span className="text-xs text-muted-foreground ml-1">Zwolnieni</span>
+                            <Badge variant="outline" className="text-xs font-mono h-5">{employeeStats.dismissed}</Badge>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div key={sheet} className="flex items-center justify-between py-0.5">
+                        <span className="text-xs text-muted-foreground">{SHEET_LABELS[sheet] ?? sheet}</span>
+                        <Badge variant="secondary" className="text-xs font-mono h-5">{data.rowCount}</Badge>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 !loading && <p className="text-xs text-muted-foreground">Brak snapshotu — kliknij &quot;Sprawdź&quot; aby zainicjować.</p>
