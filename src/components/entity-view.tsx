@@ -1,13 +1,14 @@
 
 "use client"
-import React, { useState, useMemo, useTransition, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useTransition, useEffect, useRef, useCallback } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import type { Employee, Settings, NonEmployee, SessionData, AddressHistory, BokResident } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, PlusCircle, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, Users, UserX, LayoutGrid, List, Trash2, History, Briefcase } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, Users, UserX, LayoutGrid, List, Trash2, History, Briefcase, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format, parseISO, parse, isValid } from 'date-fns';
@@ -884,6 +885,89 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
 
 
 
+    // ─── Excel export ───────────────────────────────────────────────────────
+    const getCoordName = useCallback((id: string) =>
+        settings?.coordinators.find(c => c.uid === id)?.name || 'N/A',
+    [settings]);
+
+    const exportEntities = useCallback((data: Entity[], label: string) => {
+        const today = new Date().toISOString().slice(0, 10);
+        const rows = data.map(e => {
+            const isEmp = isEmployee(e);
+            const isBok = isBokResident(e);
+            const address = isEmp && e.address?.toLowerCase().startsWith('własne mieszkanie')
+                ? `Własne (${e.ownAddress || 'Brak danych'})`
+                : e.address || '';
+            const room = isEmp && e.address?.toLowerCase().startsWith('własne mieszkanie')
+                ? 'N/A'
+                : e.roomNumber || '';
+            if (isBok) {
+                return {
+                    'Nazwisko': e.lastName,
+                    'Imię': e.firstName,
+                    'Koordynator': getCoordName(e.coordinatorId),
+                    'Adres': e.address || '',
+                    'Pokój': e.roomNumber || '',
+                    'Powrót': e.returnStatus || '',
+                    'Data zameldowania': formatDate(e.checkInDate),
+                    'Status': e.status || '',
+                    'Data wysłania': formatDate(e.sendDate),
+                    'Zakład': e.zaklad || '',
+                    'Data wymeldowania': formatDate(e.checkOutDate),
+                    'Komentarze': e.comments || '',
+                };
+            }
+            const row: Record<string, string | number> = {
+                'Nazwisko': e.lastName,
+                'Imię': e.firstName,
+                'Koordynator': getCoordName(e.coordinatorId),
+                'Zakład': isEmp ? (e.zaklad || '') : '',
+                'Adres': address,
+                'Pokój': room,
+                'Data zameldowania': formatDate(e.checkInDate),
+                'Data wymeldowania': formatDate(e.checkOutDate),
+            };
+            if (isEmp) {
+                row['Koniec umowy'] = formatDate(e.contractEndDate);
+            } else if (!isBok) {
+                const ne = e as NonEmployee;
+                row['Typ płatności'] = ne.paymentType || '';
+                row['Kwota'] = ne.paymentAmount ?? '';
+            }
+            return row;
+        });
+        const ws = XLSX.utils.json_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, label);
+        XLSX.writeFile(wb, `${label}_${today}.xlsx`);
+    }, [getCoordName]);
+
+    const exportHistory = useCallback((data: AddressHistory[], label: string) => {
+        const today = new Date().toISOString().slice(0, 10);
+        const rows = data.map(h => ({
+            'Nazwisko': h.employeeLastName || '',
+            'Imię': h.employeeFirstName || '',
+            'Koordynator': h.coordinatorName || 'N/A',
+            'Zakład': h.department || '',
+            'Adres': h.address || '',
+            'Data zameldowania': formatDate(h.checkInDate),
+            'Data wymeldowania': formatDate(h.checkOutDate),
+        }));
+        const ws = XLSX.utils.json_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, label);
+        XLSX.writeFile(wb, `${label}_${today}.xlsx`);
+    }, []);
+
+    const ExportButton = ({ onClick, count }: { onClick: () => void; count: number }) => (
+        <div className="flex justify-end mb-2">
+            <Button variant="outline" size="sm" onClick={onClick} disabled={count === 0}>
+                <Download className="mr-2 h-4 w-4" />
+                Eksportuj Excel ({count})
+            </Button>
+        </div>
+    );
+
     const renderContent = (data: Entity[]) => (
         <>
             <ScrollArea className="h-[55vh] overflow-x-auto" style={{ opacity: isPending ? 0.6 : 1 }}>
@@ -1026,28 +1110,35 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                     {!isDriver && (
                         <>
                             <TabsContent forceMount value="active" className="mt-4 data-[state=inactive]:hidden">
-                            {viewMode === 'grid' && columnOptions?.zaklad && columnOptions.zaklad.length > 0 && (
-                                <div className="mb-3">
-                                    <Select
-                                        value={columnFilters.zaklad?.[0] || '_all'}
-                                        onValueChange={(val) => handleColumnFilterChange('zaklad', val === '_all' ? [] : [val])}
-                                    >
-                                        <SelectTrigger className="w-full">
-                                            <SelectValue placeholder="Filtruj po zakładzie" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="_all">Wszystkie zakłady</SelectItem>
-                                            {columnOptions.zaklad.map(opt => (
-                                                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            )}
-                            {renderContent(paginatedData as Entity[])}
-                        </TabsContent>
-                            <TabsContent forceMount value="dismissed" className="mt-4 data-[state=inactive]:hidden">{renderContent(paginatedData as Entity[])}</TabsContent>
-                            <TabsContent forceMount value="non-employees" className="mt-4 data-[state=inactive]:hidden">{renderContent(paginatedData as Entity[])}</TabsContent>
+                                <ExportButton count={dataMap.active.length} onClick={() => exportEntities(dataMap.active, 'Pracownicy_Aktywni')} />
+                                {viewMode === 'grid' && columnOptions?.zaklad && columnOptions.zaklad.length > 0 && (
+                                    <div className="mb-3">
+                                        <Select
+                                            value={columnFilters.zaklad?.[0] || '_all'}
+                                            onValueChange={(val) => handleColumnFilterChange('zaklad', val === '_all' ? [] : [val])}
+                                        >
+                                            <SelectTrigger className="w-full">
+                                                <SelectValue placeholder="Filtruj po zakładzie" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="_all">Wszystkie zakłady</SelectItem>
+                                                {columnOptions.zaklad.map(opt => (
+                                                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
+                                {renderContent(paginatedData as Entity[])}
+                            </TabsContent>
+                            <TabsContent forceMount value="dismissed" className="mt-4 data-[state=inactive]:hidden">
+                                <ExportButton count={dataMap.dismissed.length} onClick={() => exportEntities(dataMap.dismissed, 'Pracownicy_Zwolnieni')} />
+                                {renderContent(paginatedData as Entity[])}
+                            </TabsContent>
+                            <TabsContent forceMount value="non-employees" className="mt-4 data-[state=inactive]:hidden">
+                                <ExportButton count={dataMap['non-employees'].length} onClick={() => exportEntities(dataMap['non-employees'], 'Mieszkancy_NZ')} />
+                                {renderContent(paginatedData as Entity[])}
+                            </TabsContent>
                         </>
                     )}
                     {(currentUser.isAdmin || isDriver) && (
@@ -1069,6 +1160,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                                     </TabsTrigger>
                                 </TabsList>
                             </Tabs>
+                            <ExportButton count={bokData.length} onClick={() => exportEntities(bokData as Entity[], `BOK_${bokSubTab === 'active' ? 'Aktywni' : bokSubTab === 'sent' ? 'Wyslani' : 'Zwolnieni'}`)} />
                             <ScrollArea className="h-[55vh] overflow-x-auto" style={{ opacity: isPending ? 0.6 : 1 }}>
                                 {isMounted ? (
                                     viewMode === 'list' ? (
@@ -1125,7 +1217,12 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                             />
                         </TabsContent>
                     )}
-                    {!isDriver && <TabsContent forceMount value="history" className="mt-4 data-[state=inactive]:hidden">{renderHistoryContent()}</TabsContent>}
+                    {!isDriver && (
+                        <TabsContent forceMount value="history" className="mt-4 data-[state=inactive]:hidden">
+                            <ExportButton count={dataMap.history.length} onClick={() => exportHistory(dataMap.history as AddressHistory[], 'Historia_Adresow')} />
+                            {renderHistoryContent()}
+                        </TabsContent>
+                    )}
                 </Tabs>
             </CardContent>
 
