@@ -169,6 +169,85 @@ function checkMissingPaymentData(nonEmployees: NonEmployee[]): Alert[] {
     });
 }
 
+// ─── Alert 9: Zdublowane osoby wśród aktywnych ────────────────────────────
+function checkDuplicatePersons(
+  employees: Employee[],
+  nonEmployees: NonEmployee[],
+  bokResidents: BokResident[]
+): Alert[] {
+  type PersonForDupe = {
+    id: string;
+    fullName: string;
+    normalizedName: string;
+    coordinatorId: string | null;
+    type: 'Pracownik' | 'NZ' | 'BOK';
+    link: string;
+  };
+
+  const allActive: PersonForDupe[] = [
+    ...employees.filter(e => e.status === 'active').map(e => ({
+      id: e.id,
+      fullName: e.fullName,
+      normalizedName: e.fullName.trim().toUpperCase().replace(/\s+/g, ' '),
+      coordinatorId: e.coordinatorId ?? null,
+      type: 'Pracownik' as const,
+      link: `/dashboard?view=employees&edit=${e.id}`,
+    })),
+    ...nonEmployees.filter(nz => nz.status === 'active').map(nz => ({
+      id: nz.id,
+      fullName: nz.fullName,
+      normalizedName: nz.fullName.trim().toUpperCase().replace(/\s+/g, ' '),
+      coordinatorId: nz.coordinatorId ?? null,
+      type: 'NZ' as const,
+      link: `/dashboard?view=employees&tab=non-employees&edit=${nz.id}`,
+    })),
+    ...bokResidents.filter(bok => bok.status !== 'dismissed').map(bok => ({
+      id: bok.id,
+      fullName: bok.fullName,
+      normalizedName: bok.fullName.trim().toUpperCase().replace(/\s+/g, ' '),
+      coordinatorId: bok.coordinatorId ?? null,
+      type: 'BOK' as const,
+      link: `/dashboard?view=employees&tab=bok-residents&edit=${bok.id}`,
+    })),
+  ];
+
+  const nameGroups = new Map<string, PersonForDupe[]>();
+  for (const p of allActive) {
+    if (!nameGroups.has(p.normalizedName)) nameGroups.set(p.normalizedName, []);
+    nameGroups.get(p.normalizedName)!.push(p);
+  }
+
+  // Grupuj duplikaty per koordynator — każdy koordynator dostaje swój alert
+  const byCoordinator = new Map<string, { name: string; types: string; link: string }[]>();
+
+  for (const group of nameGroups.values()) {
+    if (group.length < 2) continue;
+    const types = group.map(p => p.type).join(', ');
+    const involvedCoordIds = [...new Set(group.map(p => p.coordinatorId ?? '__none__'))];
+
+    for (const coordId of involvedCoordIds) {
+      if (!byCoordinator.has(coordId)) byCoordinator.set(coordId, []);
+      byCoordinator.get(coordId)!.push({
+        name: group[0].fullName,
+        types,
+        link: group.find(p => (p.coordinatorId ?? '__none__') === coordId)?.link ?? group[0].link,
+      });
+    }
+  }
+
+  const alerts: Alert[] = [];
+  for (const [coordId, dupes] of byCoordinator) {
+    const lines = dupes.map(d => `${d.name} — ${d.types}`);
+    alerts.push({
+      coordinatorIds: coordId === '__none__' ? [] : [coordId],
+      title: `👥 Zdublowane osoby — ${dupes.length}`,
+      body: lines.join('\n'),
+      link: dupes[0].link,
+    });
+  }
+  return alerts;
+}
+
 // ─── Alert 8: Aktywny mieszkaniec bez daty zameldowania ───────────────────
 function checkMissingCheckInDate(
   employees: Employee[], nonEmployees: NonEmployee[], bokResidents: BokResident[]
@@ -208,6 +287,7 @@ export async function POST(req: NextRequest) {
       ...checkCapacity(employees, nonEmployees, bokResidents, settings.addresses),
       ...checkMissingPaymentData(nonEmployees),
       ...checkMissingCheckInDate(employees, nonEmployees, bokResidents),
+      ...checkDuplicatePersons(employees, nonEmployees, bokResidents),
     ];
 
     if (allAlerts.length > 0) await sendAlerts(allAlerts, admins);
@@ -219,6 +299,7 @@ export async function POST(req: NextRequest) {
       capacityExceeded:      details.capacityExceeded.length,
       missingPaymentData:    details.missingPaymentData.length,
       missingCheckInDate:    details.missingCheckInDate.length,
+      duplicatePersons:      details.duplicatePersons.length,
     };
 
     return NextResponse.json({

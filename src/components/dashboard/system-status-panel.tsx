@@ -41,6 +41,7 @@ const ALERT_LABELS: Record<string, string> = {
   capacityExceeded: 'Przekroczona pojemność',
   missingPaymentData: 'Brak danych płatności NZ',
   missingCheckInDate: 'Brak daty zameldowania',
+  duplicatePersons: 'Zdublowane osoby',
 };
 
 function timeAgo(isoDate: string): string {

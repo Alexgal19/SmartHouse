@@ -33,6 +33,7 @@ export interface AlertDetails {
   capacityExceeded: AlertDetailItem[];
   missingPaymentData: AlertDetailItem[];
   missingCheckInDate: AlertDetailItem[];
+  duplicatePersons: AlertDetailItem[];
 }
 
 type AddressForAlert = {
@@ -162,5 +163,69 @@ export function extractAlertDetails(
     missingCheckInDate.push({ id: bok.id, name: bok.fullName, link: `/dashboard?view=employees&tab=bok-residents&edit=${bok.id}`, extra: 'BOK', coordinatorId: bok.coordinatorId ?? null });
   });
 
-  return { contractExpiry, bokStatusInconsistency, capacityExceeded, missingPaymentData, missingCheckInDate };
+  // Zdublowane osoby — aktywni z identycznym pełnym imieniem i nazwiskiem
+  type PersonForDupe = {
+    id: string;
+    fullName: string;
+    normalizedName: string;
+    coordinatorId: string | null;
+    type: 'Pracownik' | 'NZ' | 'BOK';
+    link: string;
+  };
+
+  const allActive: PersonForDupe[] = [
+    ...employees
+      .filter(e => e.status === 'active')
+      .map(e => ({
+        id: e.id,
+        fullName: e.fullName,
+        normalizedName: e.fullName.trim().toUpperCase().replace(/\s+/g, ' '),
+        coordinatorId: e.coordinatorId ?? null,
+        type: 'Pracownik' as const,
+        link: `/dashboard?view=employees&edit=${e.id}`,
+      })),
+    ...nonEmployees
+      .filter(nz => nz.status === 'active')
+      .map(nz => ({
+        id: nz.id,
+        fullName: nz.fullName,
+        normalizedName: nz.fullName.trim().toUpperCase().replace(/\s+/g, ' '),
+        coordinatorId: nz.coordinatorId ?? null,
+        type: 'NZ' as const,
+        link: `/dashboard?view=employees&tab=non-employees&edit=${nz.id}`,
+      })),
+    ...bokResidents
+      .filter(bok => bok.status !== 'dismissed')
+      .map(bok => ({
+        id: bok.id,
+        fullName: bok.fullName,
+        normalizedName: bok.fullName.trim().toUpperCase().replace(/\s+/g, ' '),
+        coordinatorId: bok.coordinatorId ?? null,
+        type: 'BOK' as const,
+        link: `/dashboard?view=employees&tab=bok-residents&edit=${bok.id}`,
+      })),
+  ];
+
+  const nameGroups = new Map<string, PersonForDupe[]>();
+  for (const p of allActive) {
+    if (!nameGroups.has(p.normalizedName)) nameGroups.set(p.normalizedName, []);
+    nameGroups.get(p.normalizedName)!.push(p);
+  }
+
+  const duplicatePersons: AlertDetailItem[] = [];
+  for (const group of nameGroups.values()) {
+    if (group.length < 2) continue;
+    const types = group.map(p => p.type).join(', ');
+    const coordIds = [...new Set(group.map(p => p.coordinatorId).filter(Boolean) as string[])];
+    duplicatePersons.push({
+      id: group[0].id,
+      name: group[0].fullName,
+      link: group[0].link,
+      extra: `${group.length} wpisy: ${types}`,
+      coordinatorId: coordIds.length === 1 ? coordIds[0] : null,
+      coordinatorIds: coordIds,
+    });
+  }
+
+  return { contractExpiry, bokStatusInconsistency, capacityExceeded, missingPaymentData, missingCheckInDate, duplicatePersons };
 }
