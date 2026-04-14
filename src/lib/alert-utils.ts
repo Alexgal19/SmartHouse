@@ -163,13 +163,14 @@ export function extractAlertDetails(
     missingCheckInDate.push({ id: bok.id, name: bok.fullName, link: `/dashboard?view=employees&tab=bok-residents&edit=${bok.id}`, extra: 'BOK', coordinatorId: bok.coordinatorId ?? null });
   });
 
-  // Zdublowane osoby — aktywni z identycznym pełnym imieniem i nazwiskiem
+  // Zdublowane osoby — tylko wśród aktywnych Pracowników i NZ (Zarządzanie mieszkańcami)
+  // BOK to oddzielna struktura — nie porównujemy z Pracownikami/NZ
   type PersonForDupe = {
     id: string;
     fullName: string;
     normalizedName: string;
     coordinatorId: string | null;
-    type: 'Pracownik' | 'NZ' | 'BOK';
+    type: 'Pracownik' | 'NZ';
     link: string;
   };
 
@@ -193,16 +194,6 @@ export function extractAlertDetails(
         coordinatorId: nz.coordinatorId ?? null,
         type: 'NZ' as const,
         link: `/dashboard?view=employees&tab=non-employees&edit=${nz.id}`,
-      })),
-    ...bokResidents
-      .filter(bok => bok.status !== 'dismissed')
-      .map(bok => ({
-        id: bok.id,
-        fullName: bok.fullName,
-        normalizedName: bok.fullName.trim().toUpperCase().replace(/\s+/g, ' '),
-        coordinatorId: bok.coordinatorId ?? null,
-        type: 'BOK' as const,
-        link: `/dashboard?view=employees&tab=bok-residents&edit=${bok.id}`,
       })),
   ];
 

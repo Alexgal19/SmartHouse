@@ -170,17 +170,17 @@ function checkMissingPaymentData(nonEmployees: NonEmployee[]): Alert[] {
 }
 
 // ─── Alert 9: Zdublowane osoby wśród aktywnych ────────────────────────────
+// BOK to oddzielna struktura — nie porównujemy z Pracownikami/NZ
 function checkDuplicatePersons(
   employees: Employee[],
-  nonEmployees: NonEmployee[],
-  bokResidents: BokResident[]
+  nonEmployees: NonEmployee[]
 ): Alert[] {
   type PersonForDupe = {
     id: string;
     fullName: string;
     normalizedName: string;
     coordinatorId: string | null;
-    type: 'Pracownik' | 'NZ' | 'BOK';
+    type: 'Pracownik' | 'NZ';
     link: string;
   };
 
@@ -200,14 +200,6 @@ function checkDuplicatePersons(
       coordinatorId: nz.coordinatorId ?? null,
       type: 'NZ' as const,
       link: `/dashboard?view=employees&tab=non-employees&edit=${nz.id}`,
-    })),
-    ...bokResidents.filter(bok => bok.status !== 'dismissed').map(bok => ({
-      id: bok.id,
-      fullName: bok.fullName,
-      normalizedName: bok.fullName.trim().toUpperCase().replace(/\s+/g, ' '),
-      coordinatorId: bok.coordinatorId ?? null,
-      type: 'BOK' as const,
-      link: `/dashboard?view=employees&tab=bok-residents&edit=${bok.id}`,
     })),
   ];
 
@@ -287,7 +279,7 @@ export async function POST(req: NextRequest) {
       ...checkCapacity(employees, nonEmployees, bokResidents, settings.addresses),
       ...checkMissingPaymentData(nonEmployees),
       ...checkMissingCheckInDate(employees, nonEmployees, bokResidents),
-      ...checkDuplicatePersons(employees, nonEmployees, bokResidents),
+      ...checkDuplicatePersons(employees, nonEmployees),
     ];
 
     if (allAlerts.length > 0) await sendAlerts(allAlerts, admins);
