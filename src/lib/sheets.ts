@@ -584,13 +584,11 @@ async function getNotificationsFromSheet(doc: GoogleSpreadsheet, recipientId: st
 
         const filtered = allNotifications.filter(n => {
             if (isAdmin) {
-                // Admins see their own notifications + all important ones
-                const isImportant = ['success', 'destructive', 'warning'].includes(n.type);
-                return isImportant || n.recipientId === recipientId;
-            } else {
-                // Regular users only see notifications addressed to them
-                return n.recipientId === recipientId;
+                // Admins see all notifications
+                return true;
             }
+            // Regular coordinators only see notifications addressed to them
+            return n.recipientId === recipientId;
         });
 
         return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());

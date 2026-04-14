@@ -339,8 +339,18 @@ const FIELD_LABELS: Record<string, string> = {
     zaklad: "Zakład",
     checkInDate: "Data zameldowania",
     checkOutDate: "Data wymeldowania",
+    contractStartDate: "Data rozpoczęcia umowy",
+    contractEndDate: "Data zakończenia umowy",
+    departureReportDate: "Data raportu wyjazdu",
+    comments: "Komentarz",
     status: "Status",
 };
+
+// Pola pomijane w powiadomieniach (zbyt techniczne lub finansowe)
+const NOTIFICATION_SKIP_FIELDS = new Set([
+    'id', 'fullName', 'deductionReason', 'depositReturned', 'depositReturnAmount',
+    'deductionRegulation', 'deductionNo4Months', 'deductionNo30Days', 'deductionEntryDate',
+]);
 
 const generateSmartNotificationMessage = (
     actorName: string,
@@ -349,7 +359,7 @@ const generateSmartNotificationMessage = (
     changes: NotificationChange[] = []
 ): { message: string, type: NotificationType } => {
     const entityType = 'role' in entity ? 'mieszkańca BOK' : ('zaklad' in entity && entity.zaklad ? 'pracownika' : 'mieszkańca');
-    const entityFullName = `${entity.firstName} ${entity.lastName}`.trim();
+    const entityFullName = entity.fullName || `${entity.firstName} ${entity.lastName}`.trim();
     let message = '';
     let type: NotificationType = 'info';
 
@@ -602,43 +612,29 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         const changes: NotificationChange[] = [];
         const { ...dbUpdates } = updates;
 
+        const toDisplayStr = (key: string, value: unknown): string | null => {
+            if (value === null || value === undefined || value === '') return null;
+            const areDates = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate'].includes(key);
+            if (key === 'coordinatorId') {
+                return settings.coordinators.find(c => c.uid === value)?.name || (value as string);
+            }
+            if (areDates && isValid(new Date(value as string))) {
+                return format(new Date(value as string), 'dd-MM-yyyy');
+            }
+            return String(value);
+        };
+
         for (const key in dbUpdates) {
+            if (NOTIFICATION_SKIP_FIELDS.has(key)) continue;
+
             const typedKey = key as keyof Employee;
-            const oldValue = originalEmployee[typedKey];
-            const newValue = dbUpdates[typedKey];
+            const oldValStr = toDisplayStr(key, originalEmployee[typedKey]);
+            const newValStr = toDisplayStr(key, dbUpdates[typedKey]);
 
-            const areDates = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'deductionEntryDate'].includes(key);
+            // Pomiń jeśli faktycznie nic się nie zmieniło (uwzględnia null/undefined/"")
+            if (oldValStr === newValStr) continue;
 
-            let oldValStr: string | null = null;
-            if (oldValue !== null && oldValue !== undefined) {
-                if (key === 'deductionReason' && Array.isArray(oldValue)) {
-                    oldValStr = JSON.stringify(oldValue);
-                } else if (key === 'coordinatorId') {
-                    oldValStr = settings.coordinators.find(c => c.uid === oldValue)?.name || (oldValue as string);
-                } else if (areDates && isValid(new Date(oldValue as string))) {
-                    oldValStr = format(new Date(oldValue as string), 'dd-MM-yyyy');
-                } else {
-                    oldValStr = String(oldValue);
-                }
-            }
-
-            let newValStr: string | null = null;
-            if (newValue !== null && newValue !== undefined) {
-                if (key === 'deductionReason' && Array.isArray(newValue)) {
-                    newValStr = JSON.stringify(newValue);
-                } else if (key === 'coordinatorId') {
-                    newValStr = settings.coordinators.find(c => c.uid === newValue)?.name || (newValue as string);
-                } else if (areDates && isValid(new Date(newValue as string))) {
-                    newValStr = format(new Date(newValue as string), 'dd-MM-yyyy');
-                }
-                else {
-                    newValStr = String(newValue);
-                }
-            }
-
-            if (oldValStr !== newValStr) {
-                changes.push({ field: typedKey, oldValue: oldValStr || 'Brak', newValue: newValStr || 'Brak' });
-            }
+            changes.push({ field: typedKey, oldValue: oldValStr ?? 'Brak', newValue: newValStr ?? 'Brak' });
         }
 
         const serialized = serializeEmployee(updatedEmployeeData);
@@ -778,24 +774,28 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
         const updatedNonEmployeeData: NonEmployee = { ...originalNonEmployee, ...updates };
         const changes: NotificationChange[] = [];
 
+        const toNEDisplayStr = (key: string, value: unknown): string | null => {
+            if (value === null || value === undefined || value === '') return null;
+            const areDates = ['checkInDate', 'checkOutDate', 'departureReportDate'].includes(key);
+            if (key === 'coordinatorId') {
+                return settings.coordinators.find(c => c.uid === value)?.name || (value as string);
+            }
+            if (areDates && isValid(new Date(value as string))) {
+                return format(new Date(value as string), 'dd-MM-yyyy');
+            }
+            return String(value);
+        };
+
         for (const key in updates) {
+            if (NOTIFICATION_SKIP_FIELDS.has(key)) continue;
+
             const typedKey = key as keyof NonEmployee;
-            const oldValue = originalNonEmployee[typedKey];
-            const newValue = updates[typedKey];
+            const oldValStr = toNEDisplayStr(key, originalNonEmployee[typedKey]);
+            const newValStr = toNEDisplayStr(key, updates[typedKey]);
 
-            let oldValStr: string | null = null;
-            if (oldValue !== null && oldValue !== undefined) {
-                oldValStr = String(oldValue);
-            }
+            if (oldValStr === newValStr) continue;
 
-            let newValStr: string | null = null;
-            if (newValue !== null && newValue !== undefined) {
-                newValStr = String(newValue);
-            }
-
-            if (oldValStr !== newValStr) {
-                changes.push({ field: typedKey, oldValue: oldValStr || 'Brak', newValue: newValStr || 'Brak' });
-            }
+            changes.push({ field: typedKey, oldValue: oldValStr ?? 'Brak', newValue: newValStr ?? 'Brak' });
         }
 
         const serializedData = serializeNonEmployee(updatedNonEmployeeData);
@@ -894,14 +894,28 @@ export async function updateBokResident(id: string, updates: Partial<BokResident
 
         const changes: NotificationChange[] = [];
 
-        for (const key in updates) {
-            const typedKey = key as keyof BokResident;
-            const oldValue = originalResident[typedKey];
-            const newValue = updates[typedKey];
-
-            if (String(oldValue) !== String(newValue)) {
-                changes.push({ field: typedKey, oldValue: String(oldValue || 'Brak'), newValue: String(newValue || 'Brak') });
+        const toBokDisplayStr = (key: string, value: unknown): string | null => {
+            if (value === null || value === undefined || value === '') return null;
+            const areDates = ['checkInDate', 'checkOutDate', 'sendDate', 'dismissDate'].includes(key);
+            if (key === 'coordinatorId') {
+                return settings.coordinators.find(c => c.uid === value)?.name || (value as string);
             }
+            if (areDates && isValid(new Date(value as string))) {
+                return format(new Date(value as string), 'dd-MM-yyyy');
+            }
+            return String(value);
+        };
+
+        for (const key in updates) {
+            if (NOTIFICATION_SKIP_FIELDS.has(key)) continue;
+
+            const typedKey = key as keyof BokResident;
+            const oldValStr = toBokDisplayStr(key, originalResident[typedKey]);
+            const newValStr = toBokDisplayStr(key, updates[typedKey]);
+
+            if (oldValStr === newValStr) continue;
+
+            changes.push({ field: typedKey, oldValue: oldValStr ?? 'Brak', newValue: newValStr ?? 'Brak' });
         }
 
         const serialized = serializeBokResident(updatedResident);

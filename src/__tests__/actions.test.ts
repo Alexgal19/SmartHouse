@@ -179,8 +179,63 @@ describe('Server Actions', () => {
 
             const notificationData = mockNotificationSheet.addRow.mock.calls[0][0];
             expect(notificationData.message).toContain('Zaktualizował dane');
-            expect(notificationData.changes).toContain('comments');
+            expect(notificationData.changes).toContain('Komentarz');
             expect(notificationData.changes).toContain('Nowy komentarz');
+        });
+
+        it('should NOT create a notification when null and empty string differ only in type (Brak→Brak)', async () => {
+            const mockRow = {
+                get: (key: string) => ({ ...mockEmployees[0], ownAddress: null }[key as keyof Employee]),
+                set: jest.fn(),
+                save: jest.fn().mockResolvedValue(undefined),
+                toObject: () => ({ ...mockEmployees[0], ownAddress: null }),
+            };
+            const mockSheet = { getRows: jest.fn().mockResolvedValue([mockRow]), addRow: jest.fn() };
+            const mockNotificationSheet = { addRow: jest.fn().mockResolvedValue(undefined) };
+
+            mockedGetSheet.mockImplementation((sheetName: string) => {
+                if (sheetName === 'Employees') return Promise.resolve(mockSheet);
+                if (sheetName === 'Powiadomienia') return Promise.resolve(mockNotificationSheet);
+                return Promise.resolve({ getRows: jest.fn().mockResolvedValue([]), addRow: jest.fn() });
+            });
+
+            // ownAddress: null → '' — oba wyświetlają się jako "Brak", nie powinno być powiadomienia
+            await updateEmployee('emp-1', { ownAddress: '' }, 'coord-1');
+
+            expect(mockNotificationSheet.addRow).not.toHaveBeenCalled();
+        });
+
+        it('should NOT include deductionReason and financial fields in notification changes', async () => {
+            const mockRow = {
+                get: (key: string) => mockEmployees[0][key as keyof Employee],
+                set: jest.fn(),
+                save: jest.fn().mockResolvedValue(undefined),
+                toObject: () => ({ ...mockEmployees[0] }),
+            };
+            const mockSheet = { getRows: jest.fn().mockResolvedValue([mockRow]), addRow: jest.fn() };
+            const mockNotificationSheet = { addRow: jest.fn().mockResolvedValue(undefined) };
+            const mockAuditSheet = { addRow: jest.fn().mockResolvedValue(undefined) };
+
+            mockedGetSheet.mockImplementation((sheetName: string) => {
+                if (sheetName === 'Employees') return Promise.resolve(mockSheet);
+                if (sheetName === 'Powiadomienia') return Promise.resolve(mockNotificationSheet);
+                if (sheetName === 'AuditLog') return Promise.resolve(mockAuditSheet);
+                return Promise.resolve({ getRows: jest.fn().mockResolvedValue([]), addRow: jest.fn() });
+            });
+
+            await updateEmployee('emp-1', {
+                comments: 'Nowy komentarz',
+                depositReturned: 'Tak',
+                depositReturnAmount: 500,
+                deductionReason: [{ id: 'reason-0', label: 'Zgubienie kluczy', amount: null, checked: true }],
+            }, 'coord-1');
+
+            expect(mockNotificationSheet.addRow).toHaveBeenCalledTimes(1);
+            const changesJson = mockNotificationSheet.addRow.mock.calls[0][0].changes;
+            expect(changesJson).not.toContain('deductionReason');
+            expect(changesJson).not.toContain('depositReturned');
+            expect(changesJson).not.toContain('depositReturnAmount');
+            expect(changesJson).toContain('Komentarz');
         });
     });
 

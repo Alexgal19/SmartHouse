@@ -417,6 +417,16 @@ export default function MainLayout({
         }
     }, [currentUser, toast]);
 
+    const refreshNotificationsOnly = useCallback(async () => {
+        if (!currentUser) return;
+        try {
+            const notifications = await getNotifications(currentUser.uid, currentUser.isAdmin);
+            setAllNotifications(notifications);
+        } catch (e) {
+            console.error("Failed to refresh notifications:", e);
+        }
+    }, [currentUser]);
+
     const handleRefreshStatuses = useCallback(async (showNoChangesToast = false) => {
         try {
             const { updated } = await checkAndUpdateStatuses(currentUser?.uid);
@@ -519,6 +529,7 @@ export default function MainLayout({
                 .then(updatedEmployee => {
                     setRawEmployees(prev => prev ? prev.map(e => e.id === updatedEmployee.id ? updatedEmployee : e) : null);
                     toast({ title: "Sukces", description: "Dane pracownika zostały zaktualizowane." });
+                    refreshNotificationsOnly();
                 })
                 .catch((e: unknown) => {
                     setRawEmployees(originalEmployees);
@@ -533,7 +544,7 @@ export default function MainLayout({
                 toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się dodać pracownika." });
             }
         }
-    }, [currentUser, editingEmployee, rawEmployees, toast]);
+    }, [currentUser, editingEmployee, rawEmployees, toast, refreshNotificationsOnly]);
 
     const handleSaveNonEmployee = useCallback(async (data: Omit<NonEmployee, 'id' | 'status'>) => {
         if (!currentUser) return;
@@ -546,6 +557,7 @@ export default function MainLayout({
                 .then(updatedNonEmployee => {
                     setRawNonEmployees(prev => prev ? prev.map(e => e.id === updatedNonEmployee.id ? updatedNonEmployee : e) : null);
                     toast({ title: "Sukces", description: "Dane mieszkańca zostały zaktualizowane." });
+                    refreshNotificationsOnly();
                 })
                 .catch((e: unknown) => {
                     setRawNonEmployees(originalNonEmployees);
@@ -560,7 +572,7 @@ export default function MainLayout({
                 toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się dodać mieszkańca." });
             }
         }
-    }, [editingNonEmployee, currentUser, rawNonEmployees, toast]);
+    }, [editingNonEmployee, currentUser, rawNonEmployees, toast, refreshNotificationsOnly]);
 
     const handleSaveBokResident = useCallback(async (data: BokResidentFormData) => {
         if (!currentUser) return;
@@ -573,6 +585,7 @@ export default function MainLayout({
                 .then(updatedResident => {
                     setRawBokResidents(prev => prev ? prev.map(r => r.id === updatedResident.id ? updatedResident : r) : null);
                     toast({ title: "Sukces", description: "Dane mieszkańca BOK zostały zaktualizowane." });
+                    refreshNotificationsOnly();
                 })
                 .catch((e: unknown) => {
                     setRawBokResidents(originalBokResidents);
@@ -599,7 +612,7 @@ export default function MainLayout({
                 toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać mieszkańca BOK." });
             }
         }
-    }, [editingBokResident, currentUser, rawBokResidents, toast]);
+    }, [editingBokResident, currentUser, rawBokResidents, toast, refreshNotificationsOnly]);
 
     const handleSendBokResidentPush = useCallback(async (data: BokResidentFormData) => {
         if (!editingBokResident || !currentUser) return;
@@ -856,11 +869,12 @@ export default function MainLayout({
         try {
             await updateEmployee(employeeId, { status: 'dismissed', checkOutDate: formattedDate }, currentUser.uid);
             toast({ title: "Sukces", description: "Pracownik został zwolniony." });
+            refreshNotificationsOnly();
         } catch (e: unknown) {
             setRawEmployees(originalEmployees);
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zwolnić pracownika." });
         }
-    }, [currentUser, rawEmployees, toast]);
+    }, [currentUser, rawEmployees, toast, refreshNotificationsOnly]);
 
     const handleDismissNonEmployee = useCallback(async (nonEmployeeId: string, checkOutDate: Date) => {
         if (!currentUser) return;
@@ -870,11 +884,12 @@ export default function MainLayout({
         try {
             await updateNonEmployee(nonEmployeeId, { status: 'dismissed', checkOutDate: formattedDate }, currentUser.uid);
             toast({ title: "Sukces", description: "Mieszkaniec został zwolniony." });
+            refreshNotificationsOnly();
         } catch (e: unknown) {
             setRawNonEmployees(originalNonEmployees);
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zwolnić mieszkańca." });
         }
-    }, [currentUser, rawNonEmployees, toast]);
+    }, [currentUser, rawNonEmployees, toast, refreshNotificationsOnly]);
 
     const handleRestoreEmployee = useCallback(async (employee: Employee) => {
         if (!currentUser) return;
@@ -883,11 +898,12 @@ export default function MainLayout({
         try {
             await updateEmployee(employee.id, { status: 'active', checkOutDate: null }, currentUser.uid);
             toast({ title: "Sukces", description: "Pracownik został przywrócony." });
+            refreshNotificationsOnly();
         } catch (e: unknown) {
             setRawEmployees(originalEmployees);
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się przywrócić pracownika." });
         }
-    }, [currentUser, rawEmployees, toast]);
+    }, [currentUser, rawEmployees, toast, refreshNotificationsOnly]);
 
     const handleRestoreNonEmployee = useCallback(async (nonEmployee: NonEmployee) => {
         if (!currentUser) return;
