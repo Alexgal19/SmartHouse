@@ -168,6 +168,7 @@ export default function Header({
     }, [settings]);
 
     const filteredNotifications = useMemo(() => {
+        setVisibleCount(NOTIFICATIONS_PAGE_SIZE);
         return filterNotifications(notifications, {
             selectedCoordinatorId,
             employeeNameFilter,
@@ -203,10 +204,10 @@ export default function Header({
             <SheetTrigger asChild>
                  <Button variant="ghost" size="icon" className="relative text-foreground hover:bg-accent hover:text-accent-foreground">
                     <Bell className="h-5 w-5" />
-                    {unreadCount > 0 && <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">{unreadCount}</span>}
+                    {unreadCount > 0 && <span className="absolute -top-1 -right-1 flex min-w-[1.1rem] h-[1.1rem] px-0.5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">{unreadCount > 99 ? '99+' : unreadCount}</span>}
                 </Button>
             </SheetTrigger>
-            <SheetContent className="w-full sm:max-w-md" side="right">
+            <SheetContent className="w-full sm:max-w-md flex flex-col" side="right">
                 <SheetHeader className="flex-row justify-between items-center pr-6">
                     <div>
                         <SheetTitle>Powiadomienia</SheetTitle>
@@ -280,7 +281,7 @@ export default function Header({
                         </div>
                     )}
                 </div>
-                <ScrollArea className="h-[calc(100vh-22rem)] pr-6">
+                <ScrollArea className="flex-1 min-h-0 pr-6">
                     <div className="space-y-4 py-4">
                     {visibleNotifications.length > 0 ? (
                         <>
