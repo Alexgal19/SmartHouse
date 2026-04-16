@@ -5,7 +5,7 @@
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import {
@@ -300,6 +300,9 @@ export function AddNonEmployeeForm({
       });
     }
   }, [nonEmployee, isOpen, form, settings.addresses, currentUser]);
+
+  const watchedCheckOutDate = useWatch({ control: form.control, name: 'checkOutDate' });
+  const canDismiss = !!(watchedCheckOutDate instanceof Date && isValid(watchedCheckOutDate));
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     const formatDate = (date: Date | null | undefined): string | null => {
@@ -645,7 +648,14 @@ export function AddNonEmployeeForm({
               <div className="p-4 sm:p-6 pt-4 flex-shrink-0 flex flex-row items-center justify-between gap-3 bg-background border-t mt-auto">
                 <div className="flex justify-start">
                   {nonEmployee && nonEmployee.status === 'active' && (
-                    <Button type="button" variant="destructive" onClick={handleDismissClick} className="h-8 text-xs sm:text-sm px-3 sm:px-4">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={handleDismissClick}
+                      disabled={!canDismiss || isDismissing}
+                      title={!canDismiss ? 'Uzupełnij datę wymeldowania, aby zwolnić mieszkańca' : undefined}
+                      className="h-8 text-xs sm:text-sm px-3 sm:px-4"
+                    >
                       Zwolnij
                     </Button>
                   )}
