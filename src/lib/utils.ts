@@ -25,17 +25,41 @@ export async function batchPromises<T>(
     }
 }
 
+// Prefixes that are relevant for the admin notification panel.
+// Admin sees only: added employee/NZ, address change, dismiss (manual or auto).
+// BOK residents are excluded — messages for BOK contain 'BOK'.
+const ADMIN_RELEVANT_PREFIXES = [
+    'Dodał nowego pracownika',
+    'Dodał nowego mieszkańca',
+    'Zmienił adres pracownika',
+    'Zmienił adres mieszkańca',
+    'Zwolnił pracownika',
+    'Zwolnił mieszkańca',
+    'Automatycznie zwolnił pracownika',
+    'Automatycznie zwolnił mieszkańca',
+];
+
+export function isAdminRelevantNotification(message: string): boolean {
+    if (message.includes('BOK')) return false;
+    return ADMIN_RELEVANT_PREFIXES.some(prefix => message.startsWith(prefix));
+}
+
 type NotificationFilters = {
     selectedCoordinatorId?: string;
     employeeNameFilter?: string;
     selectedDate?: Date;
     readStatusFilter?: 'all' | 'read' | 'unread';
+    adminView?: boolean;
 }
 
 export function filterNotifications(notifications: Notification[], filters: NotificationFilters): Notification[] {
     let tempNotifications = [...notifications];
 
     const { selectedCoordinatorId, employeeNameFilter, selectedDate } = filters;
+
+    if (filters.adminView) {
+        tempNotifications = tempNotifications.filter(n => isAdminRelevantNotification(n.message));
+    }
 
     if (selectedCoordinatorId && selectedCoordinatorId !== 'all') {
         tempNotifications = tempNotifications.filter(n => n.recipientId === selectedCoordinatorId);

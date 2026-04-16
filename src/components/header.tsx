@@ -19,7 +19,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, formatDistanceToNow } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { MobileSidebarToggle } from '@/components/ui/sidebar';
-import { cn, filterNotifications } from '@/lib/utils';
+import { cn, filterNotifications, isAdminRelevantNotification } from '@/lib/utils';
 import { ModernHouseIcon } from './icons/modern-house-icon';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Label } from './ui/label';
@@ -160,7 +160,7 @@ export default function Header({
     const [readStatusFilter, setReadStatusFilter] = useState<'all' | 'read' | 'unread'>('all');
     const [visibleCount, setVisibleCount] = useState(NOTIFICATIONS_PAGE_SIZE);
     const [isSheetOpen, setIsSheetOpen] = useState(false);
-    const unreadCount = notifications.filter(n => !n.isRead).length;
+    const unreadCount = notifications.filter(n => !n.isRead && (!user.isAdmin || isAdminRelevantNotification(n.message))).length;
 
     const sortedCoordinators = useMemo(() => {
         if (!settings) return [];
@@ -174,6 +174,7 @@ export default function Header({
             employeeNameFilter,
             selectedDate,
             readStatusFilter,
+            adminView: user.isAdmin,
         });
     }, [notifications, selectedCoordinatorId, employeeNameFilter, selectedDate, readStatusFilter]);
 
