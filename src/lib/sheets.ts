@@ -3,7 +3,7 @@
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, Address, Coordinator, NotificationType, AddressHistory, BokResident, ControlCard, CleanlinessRating } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, Address, Coordinator, NotificationType, AddressHistory, BokResident, ControlCard, CleanlinessRating, StartList } from '../types';
 import { format, isValid, parse, parseISO } from 'date-fns';
 import * as XLSX from 'xlsx';
 
@@ -26,6 +26,7 @@ const SHEET_NAME_BOK_ROLES = 'BokRoles';
 const SHEET_NAME_BOK_RETURN_OPTIONS = 'BokReturnOptions';
 const SHEET_NAME_BOK_STATUSES = 'BokStatuses';
 const SHEET_NAME_CONTROL_CARDS = 'ControlCards';
+const SHEET_NAME_START_LISTS = 'StartLists';
 
 const TIMEOUT_MS = 15000; // 15 seconds
 
@@ -63,6 +64,7 @@ let addressHistoryCache: { data: AddressHistory[], timestamp: number } | null = 
 const DATA_CACHE_TTL = 60 * 1000; // 1 minute
 
 let controlCardsCache: { data: ControlCard[], timestamp: number } | null = null;
+let startListsCache: { data: StartList[], timestamp: number } | null = null;
 
 export async function invalidateEmployeesCache() { employeesCache = null; }
 export async function invalidateNonEmployeesCache() { nonEmployeesCache = null; }
@@ -70,6 +72,7 @@ export async function invalidateBokResidentsCache() { bokResidentsCache = null; 
 export async function invalidateAddressHistoryCache() { addressHistoryCache = null; }
 export async function invalidateSettingsCache() { settingsCache = null; }
 export async function invalidateControlCardsCache() { controlCardsCache = null; }
+export async function invalidateStartListsCache() { startListsCache = null; }
 
 function getAuth(): JWT {
     const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
@@ -861,4 +864,123 @@ export async function updateControlCard(cardId: string, updates: Partial<Omit<Co
     }
     await withTimeout(row.save(), TIMEOUT_MS, 'row.save(ControlCards)');
     controlCardsCache = null;
+}
+
+// ─── StartLists (per-address property characteristics) ─────────────────────
+
+const START_LIST_HEADERS = [
+    'addressId', 'addressName', 'housingType', 'distanceToWork', 'transport',
+    'distanceToShop', 'floorsCount', 'floorInBuilding', 'roomsCount',
+    'kitchensCount', 'bathroomsCount', 'placesCount', 'hasBalcony', 'standard',
+    'heating', 'heatingOther', 'kitchenPhotoUrls', 'bathroomPhotoUrls',
+    'roomsPhotoUrls', 'hallwayPhotoUrls', 'updatedAt', 'updatedBy', 'updatedById'
+];
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const deserializeStartList = (row: any): StartList | null => {
+    const addressId = row.get('addressId');
+    if (!addressId) return null;
+
+    const parseJsonArray = (val: unknown): string[] => {
+        if (!val || typeof val !== 'string') return [];
+        try { const p = JSON.parse(val); return Array.isArray(p) ? p : []; } catch { return []; }
+    };
+    const parseInt0 = (val: unknown): number => {
+        if (typeof val === 'number') return val;
+        if (typeof val === 'string') { const n = parseInt(val, 10); return isNaN(n) ? 0 : n; }
+        return 0;
+    };
+    const parseBool = (val: unknown): boolean => val === 'TRUE' || val === true || val === 'true';
+
+    let transport: import('../types').StartListTransport[] = [];
+    const rawT = row.get('transport');
+    if (rawT && typeof rawT === 'string') {
+        try {
+            const parsed = JSON.parse(rawT);
+            if (Array.isArray(parsed)) transport = parsed as import('../types').StartListTransport[];
+        // eslint-disable-next-line no-empty
+        } catch { }
+    }
+
+    return {
+        addressId: addressId as string,
+        addressName: (row.get('addressName') as string) || '',
+        housingType: ((row.get('housingType') as string) || 'Kwatera') as import('../types').StartListHousingType,
+        distanceToWork: (row.get('distanceToWork') as string) || '',
+        transport,
+        distanceToShop: (row.get('distanceToShop') as string) || '',
+        floorsCount: parseInt0(row.get('floorsCount')),
+        floorInBuilding: parseInt0(row.get('floorInBuilding')),
+        roomsCount: parseInt0(row.get('roomsCount')),
+        kitchensCount: parseInt0(row.get('kitchensCount')),
+        bathroomsCount: parseInt0(row.get('bathroomsCount')),
+        placesCount: parseInt0(row.get('placesCount')),
+        hasBalcony: parseBool(row.get('hasBalcony')),
+        standard: ((row.get('standard') as string) || 'Normalny') as import('../types').StartListStandard,
+        heating: ((row.get('heating') as string) || 'Centralne') as import('../types').StartListHeating,
+        heatingOther: (row.get('heatingOther') as string) || '',
+        kitchenPhotoUrls: parseJsonArray(row.get('kitchenPhotoUrls')),
+        bathroomPhotoUrls: parseJsonArray(row.get('bathroomPhotoUrls')),
+        roomsPhotoUrls: parseJsonArray(row.get('roomsPhotoUrls')),
+        hallwayPhotoUrls: parseJsonArray(row.get('hallwayPhotoUrls')),
+        updatedAt: (row.get('updatedAt') as string) || '',
+        updatedBy: (row.get('updatedBy') as string) || '',
+        updatedById: (row.get('updatedById') as string) || '',
+    };
+};
+
+export async function getStartLists(): Promise<StartList[]> {
+    if (startListsCache && (Date.now() - startListsCache.timestamp < DATA_CACHE_TTL)) {
+        return startListsCache.data;
+    }
+    const doc = await getDoc();
+    const sheet = doc.sheetsByTitle[SHEET_NAME_START_LISTS];
+    if (!sheet) {
+        startListsCache = { data: [], timestamp: Date.now() };
+        return [];
+    }
+    const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(StartLists)');
+    const data = rows.map(row => deserializeStartList(row)).filter((s): s is StartList => s !== null);
+    startListsCache = { data, timestamp: Date.now() };
+    return data;
+}
+
+export async function upsertStartList(data: StartList): Promise<void> {
+    const sheet = await getSheet(SHEET_NAME_START_LISTS, START_LIST_HEADERS);
+    const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(StartLists)');
+    const existing = rows.find(r => r.get('addressId') === data.addressId);
+
+    const payload: Record<string, string | number> = {
+        addressId: data.addressId,
+        addressName: data.addressName,
+        housingType: data.housingType,
+        distanceToWork: data.distanceToWork,
+        transport: JSON.stringify(data.transport),
+        distanceToShop: data.distanceToShop,
+        floorsCount: data.floorsCount,
+        floorInBuilding: data.floorInBuilding,
+        roomsCount: data.roomsCount,
+        kitchensCount: data.kitchensCount,
+        bathroomsCount: data.bathroomsCount,
+        placesCount: data.placesCount,
+        hasBalcony: data.hasBalcony ? 'TRUE' : 'FALSE',
+        standard: data.standard,
+        heating: data.heating,
+        heatingOther: data.heatingOther,
+        kitchenPhotoUrls: JSON.stringify(data.kitchenPhotoUrls || []),
+        bathroomPhotoUrls: JSON.stringify(data.bathroomPhotoUrls || []),
+        roomsPhotoUrls: JSON.stringify(data.roomsPhotoUrls || []),
+        hallwayPhotoUrls: JSON.stringify(data.hallwayPhotoUrls || []),
+        updatedAt: data.updatedAt,
+        updatedBy: data.updatedBy,
+        updatedById: data.updatedById,
+    };
+
+    if (existing) {
+        for (const [k, v] of Object.entries(payload)) existing.set(k, v as string);
+        await withTimeout(existing.save(), TIMEOUT_MS, 'row.save(StartLists)');
+    } else {
+        await withTimeout(sheet.addRow(payload), TIMEOUT_MS, 'sheet.addRow(StartLists)');
+    }
+    startListsCache = null;
 }

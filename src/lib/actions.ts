@@ -1,6 +1,6 @@
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, NonEmployee, DeductionReason, NotificationType, Coordinator, BokResident, ControlCard } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, NonEmployee, DeductionReason, NotificationType, Coordinator, BokResident, ControlCard, StartList } from '../types';
 import { revalidatePath } from 'next/cache';
 import {
     getSheet,
@@ -18,6 +18,8 @@ import {
     withTimeout,
     addControlCard as addControlCardToSheet,
     updateControlCard as updateControlCardInSheet,
+    getStartLists as getStartListsFromSheet,
+    upsertStartList as upsertStartListInSheet,
 } from './sheets';
 import { format, isValid, getDaysInMonth, parseISO, differenceInDays, max, min, parse as dateFnsParse, lastDayOfMonth } from 'date-fns';
 
@@ -2274,5 +2276,29 @@ export async function uploadControlCardPhotoAction(base64Image: string, fileName
     } catch (error: any) {
         console.error('Error during image upload to Firebase Storage:', error);
         return { url: '', error: error.message || 'Błąd serwera przy próbie odebrania zdjęcia' };
+    }
+}
+
+// --- Start-list (per-address property characteristics) ---
+
+export async function getStartListsAction(): Promise<StartList[]> {
+    try {
+        return await getStartListsFromSheet();
+    } catch (error) {
+        console.error('Error getting start lists:', error);
+        return [];
+    }
+}
+
+export async function saveStartListAction(
+    data: Omit<StartList, 'updatedAt'>
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        await upsertStartListInSheet({ ...data, updatedAt: new Date().toISOString() });
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error saving start list:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
     }
 }

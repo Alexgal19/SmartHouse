@@ -8,7 +8,7 @@ import {
     AlertCircle, Clock, ChevronRight, Building2,
     ShieldCheck, Wrench, ChevronDown, Bed,
     Camera, ImageIcon, X, Download, Loader2,
-    Lock, KeyRound
+    Lock, KeyRound, ListChecks
 } from 'lucide-react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,11 +22,67 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
-import type { SessionData, Address, ControlCard, CleanlinessRating, RoomRating } from "@/types";
+import type { SessionData, Address, ControlCard, CleanlinessRating, RoomRating, StartList, StartListHousingType, StartListTransport, StartListStandard, StartListHeating } from "@/types";
 import { useMainLayout } from '@/components/main-layout';
-import { saveControlCardAction, editControlCardAction, uploadControlCardPhotoAction } from '@/lib/actions';
+import { saveControlCardAction, editControlCardAction, uploadControlCardPhotoAction, saveStartListAction } from '@/lib/actions';
 import { format } from 'date-fns';
+
+// ─── Start-list constants & helpers ─────────────────────────────────────────
+
+const HOUSING_TYPES: StartListHousingType[] = ['Hostel', 'Dom', 'Kwatera'];
+const TRANSPORT_OPTIONS: StartListTransport[] = ['Pieszo', 'Komunikacja miejska', 'Samochód SMARTWORK'];
+const STANDARD_OPTIONS: StartListStandard[] = ['Wysoki', 'Normalny', 'Niski'];
+const HEATING_OPTIONS: StartListHeating[] = ['Piec gazowy', 'Centralne', 'Piec elektryczny', 'Piec węglowy', 'Inne'];
+
+const buildDefaultStartList = (address: Address, currentUser: SessionData): StartList => ({
+    addressId: address.id,
+    addressName: address.name,
+    housingType: 'Kwatera',
+    distanceToWork: '',
+    transport: [],
+    distanceToShop: '',
+    floorsCount: 0,
+    floorInBuilding: 0,
+    roomsCount: address.rooms?.length || 0,
+    kitchensCount: 1,
+    bathroomsCount: 1,
+    placesCount: (address.rooms || []).reduce((s, r) => s + (r.capacity || 0), 0),
+    hasBalcony: false,
+    standard: 'Normalny',
+    heating: 'Centralne',
+    heatingOther: '',
+    kitchenPhotoUrls: [],
+    bathroomPhotoUrls: [],
+    roomsPhotoUrls: [],
+    hallwayPhotoUrls: [],
+    updatedAt: '',
+    updatedBy: currentUser.name,
+    updatedById: currentUser.uid,
+});
+
+export const isStartListComplete = (sl: StartList | null | undefined): boolean => {
+    if (!sl) return false;
+    if (!sl.housingType) return false;
+    if (!sl.distanceToWork.trim()) return false;
+    if (!sl.transport || sl.transport.length === 0) return false;
+    if (!sl.distanceToShop.trim()) return false;
+    if (sl.roomsCount <= 0) return false;
+    if (sl.kitchensCount <= 0) return false;
+    if (sl.bathroomsCount <= 0) return false;
+    if (sl.placesCount <= 0) return false;
+    if (!sl.standard) return false;
+    if (!sl.heating) return false;
+    if (sl.heating === 'Inne' && !sl.heatingOther.trim()) return false;
+    if (sl.housingType === 'Dom' && sl.floorsCount <= 0) return false;
+    if ((sl.kitchenPhotoUrls || []).length === 0) return false;
+    if ((sl.bathroomPhotoUrls || []).length === 0) return false;
+    if ((sl.roomsPhotoUrls || []).length === 0) return false;
+    if ((sl.hallwayPhotoUrls || []).length === 0) return false;
+    return true;
+};
 
 // ─── PIN Lock Component ──────────────────────────────────────────────────
 
@@ -344,10 +400,266 @@ const buildFormFromCard = (card: ControlCard, address: Address): FormState => {
     };
 };
 
+// ─── Start-list Form ────────────────────────────────────────────────────────
+
+function StartListForm({
+    address, initial, currentUser, onSaved,
+}: {
+    address: Address;
+    initial: StartList | null;
+    currentUser: SessionData;
+    onSaved: (sl: StartList) => void;
+}) {
+    const { toast } = useToast();
+    const [isSaving, startSaving] = useTransition();
+    const [form, setForm] = useState<StartList>(() => initial || buildDefaultStartList(address, currentUser));
+    const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+    const [uploading, setUploading] = useState<Record<string, boolean>>({});
+
+    React.useEffect(() => {
+        setForm(initial || buildDefaultStartList(address, currentUser));
+    }, [initial, address, currentUser]);
+
+    const compressImage = (file: File): Promise<string> => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new window.Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX = 1200;
+                let w = img.width, h = img.height;
+                if (w > h) { if (w > MAX) { h *= MAX / w; w = MAX; } }
+                else { if (h > MAX) { w *= MAX / h; h = MAX; } }
+                canvas.width = w; canvas.height = h;
+                canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
+                resolve(canvas.toDataURL('image/jpeg', 0.7));
+            };
+            img.onerror = (e) => reject(e);
+        };
+        reader.onerror = (e) => reject(e);
+    });
+
+    const uploadFiles = async (files: FileList): Promise<string[]> => {
+        const out: string[] = [];
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            if (!file.type.startsWith('image/')) continue;
+            const base64 = await compressImage(file);
+            const res = await uploadControlCardPhotoAction(base64, file.name || 'photo.jpg', 'image/jpeg');
+            if (res.error) {
+                toast({ title: 'Błąd wgrywania', description: res.error, variant: 'destructive' });
+            } else if (res.url) {
+                out.push(res.url);
+            }
+        }
+        return out;
+    };
+
+    const handleAddPhotos = async (field: 'kitchenPhotoUrls' | 'bathroomPhotoUrls' | 'roomsPhotoUrls' | 'hallwayPhotoUrls', e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files?.length) return;
+        setUploading(prev => ({ ...prev, [field]: true }));
+        try {
+            const urls = await uploadFiles(e.target.files);
+            if (urls.length) {
+                setForm(prev => ({ ...prev, [field]: [...(prev[field] || []), ...urls] }));
+                toast({ title: 'Zdjęcia dodane ✅', description: `Wgrano ${urls.length}.` });
+            }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } catch (err: any) {
+            toast({ title: 'Błąd wgrywania', description: err.message, variant: 'destructive' });
+        } finally {
+            setUploading(prev => ({ ...prev, [field]: false }));
+            e.target.value = '';
+        }
+    };
+
+    const handleRemovePhoto = (field: 'kitchenPhotoUrls' | 'bathroomPhotoUrls' | 'roomsPhotoUrls' | 'hallwayPhotoUrls', idx: number) => {
+        setForm(prev => ({ ...prev, [field]: (prev[field] || []).filter((_, i) => i !== idx) }));
+    };
+
+    const toggleTransport = (opt: StartListTransport) => {
+        setForm(prev => ({
+            ...prev,
+            transport: prev.transport.includes(opt) ? prev.transport.filter(t => t !== opt) : [...prev.transport, opt],
+        }));
+    };
+
+    const handleSave = () => {
+        if (!isStartListComplete(form)) {
+            toast({ title: 'Uzupełnij wszystkie pola', description: 'Wszystkie pola i zdjęcia są wymagane.', variant: 'destructive' });
+            return;
+        }
+        startSaving(async () => {
+            const payload = { ...form, updatedBy: currentUser.name, updatedById: currentUser.uid };
+            const res = await saveStartListAction(payload);
+            if (res.success) {
+                const saved: StartList = { ...payload, updatedAt: new Date().toISOString() };
+                onSaved(saved);
+                toast({ title: 'Start-list zapisany ✅', description: `Dane dla "${address.name}" zapisane.` });
+            } else {
+                toast({ title: 'Błąd zapisu', description: res.error, variant: 'destructive' });
+            }
+        });
+    };
+
+    const NumberField = ({ label, value, onChange, min = 0 }: { label: string; value: number; onChange: (n: number) => void; min?: number }) => (
+        <div className="space-y-1.5">
+            <Label className="text-xs font-medium">{label}</Label>
+            <Input type="number" min={min} value={value} onChange={(e) => onChange(Math.max(min, parseInt(e.target.value) || 0))} className="h-9" />
+        </div>
+    );
+
+    return (
+        <div className="space-y-5">
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20 text-xs text-muted-foreground">
+                <ListChecks className="w-4 h-4 text-primary shrink-0" />
+                <span>Uzupełnij charakterystykę mieszkania. Dane są zapisywane per adres — wypełniasz raz, edytujesz w razie zmian.</span>
+            </div>
+
+            <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Typ mieszkania</Label>
+                <div className="grid grid-cols-3 gap-2">
+                    {HOUSING_TYPES.map(t => (
+                        <button key={t} type="button" onClick={() => setForm(p => ({ ...p, housingType: t }))}
+                            className={`px-3 py-2 rounded-md text-xs font-medium border transition-all ${form.housingType === t ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted border-border'}`}>
+                            {t}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Odległość do zakładu</Label>
+                    <Input placeholder="np. 5 km lub 300 m" value={form.distanceToWork} onChange={(e) => setForm(p => ({ ...p, distanceToWork: e.target.value }))} className="h-9" />
+                </div>
+                <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Odległość do sklepu</Label>
+                    <Input placeholder="np. 500 m" value={form.distanceToShop} onChange={(e) => setForm(p => ({ ...p, distanceToShop: e.target.value }))} className="h-9" />
+                </div>
+            </div>
+
+            <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Dojazd do zakładu</Label>
+                <div className="space-y-1.5">
+                    {TRANSPORT_OPTIONS.map(opt => (
+                        <label key={opt} className="flex items-center gap-2 p-2 rounded-md border bg-background hover:bg-muted/40 cursor-pointer transition-colors">
+                            <Checkbox checked={form.transport.includes(opt)} onCheckedChange={() => toggleTransport(opt)} />
+                            <span className="text-sm">{opt}</span>
+                        </label>
+                    ))}
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+                {form.housingType === 'Dom' && (
+                    <NumberField label="Ilość pięter (dom)" value={form.floorsCount} onChange={(n) => setForm(p => ({ ...p, floorsCount: n }))} min={1} />
+                )}
+                {form.housingType === 'Kwatera' && (
+                    <NumberField label="Piętro (kwatera)" value={form.floorInBuilding} onChange={(n) => setForm(p => ({ ...p, floorInBuilding: n }))} min={0} />
+                )}
+                {form.housingType === 'Hostel' && (
+                    <NumberField label="Piętro" value={form.floorInBuilding} onChange={(n) => setForm(p => ({ ...p, floorInBuilding: n }))} min={0} />
+                )}
+                <NumberField label="Ilość pokoi" value={form.roomsCount} onChange={(n) => setForm(p => ({ ...p, roomsCount: n }))} min={1} />
+                <NumberField label="Ilość kuchni" value={form.kitchensCount} onChange={(n) => setForm(p => ({ ...p, kitchensCount: n }))} min={1} />
+                <NumberField label="Ilość łazienek" value={form.bathroomsCount} onChange={(n) => setForm(p => ({ ...p, bathroomsCount: n }))} min={1} />
+                <NumberField label="Ilość miejsc" value={form.placesCount} onChange={(n) => setForm(p => ({ ...p, placesCount: n }))} min={1} />
+            </div>
+
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border">
+                <Label className="font-medium text-sm">Czy jest balkon?</Label>
+                <Switch checked={form.hasBalcony} onCheckedChange={(v) => setForm(p => ({ ...p, hasBalcony: v }))} />
+            </div>
+
+            <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Standard</Label>
+                <div className="grid grid-cols-3 gap-2">
+                    {STANDARD_OPTIONS.map(s => (
+                        <button key={s} type="button" onClick={() => setForm(p => ({ ...p, standard: s }))}
+                            className={`px-3 py-2 rounded-md text-xs font-medium border transition-all ${form.standard === s ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted border-border'}`}>
+                            {s}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Ogrzewanie</Label>
+                <Select value={form.heating} onValueChange={(v) => setForm(p => ({ ...p, heating: v as StartListHeating }))}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                        {HEATING_OPTIONS.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+                {form.heating === 'Inne' && (
+                    <Input placeholder="Opisz rodzaj ogrzewania..." value={form.heatingOther} onChange={(e) => setForm(p => ({ ...p, heatingOther: e.target.value }))} className="h-9 mt-2" />
+                )}
+            </div>
+
+            <section>
+                <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                    <span className="text-base">📷</span> Zdjęcia (wszystkie kategorie wymagane)
+                </h3>
+                <div className="space-y-3">
+                    <div className="p-3 rounded-lg border bg-muted/20">
+                        <PhotoUploadWidget
+                            label="🍳 Kuchnia" photoUrls={form.kitchenPhotoUrls} isUploading={!!uploading.kitchenPhotoUrls} canEdit={true}
+                            onAddPhotos={(e) => handleAddPhotos('kitchenPhotoUrls', e)}
+                            onRemove={(idx) => handleRemovePhoto('kitchenPhotoUrls', idx)}
+                            onLightbox={setLightboxImage}
+                        />
+                    </div>
+                    <div className="p-3 rounded-lg border bg-muted/20">
+                        <PhotoUploadWidget
+                            label="🚿 Łazienka" photoUrls={form.bathroomPhotoUrls} isUploading={!!uploading.bathroomPhotoUrls} canEdit={true}
+                            onAddPhotos={(e) => handleAddPhotos('bathroomPhotoUrls', e)}
+                            onRemove={(idx) => handleRemovePhoto('bathroomPhotoUrls', idx)}
+                            onLightbox={setLightboxImage}
+                        />
+                    </div>
+                    <div className="p-3 rounded-lg border bg-muted/20">
+                        <PhotoUploadWidget
+                            label="🛏️ Pokoje" photoUrls={form.roomsPhotoUrls} isUploading={!!uploading.roomsPhotoUrls} canEdit={true}
+                            onAddPhotos={(e) => handleAddPhotos('roomsPhotoUrls', e)}
+                            onRemove={(idx) => handleRemovePhoto('roomsPhotoUrls', idx)}
+                            onLightbox={setLightboxImage}
+                        />
+                    </div>
+                    <div className="p-3 rounded-lg border bg-muted/20">
+                        <PhotoUploadWidget
+                            label="🚪 Korytarze" photoUrls={form.hallwayPhotoUrls} isUploading={!!uploading.hallwayPhotoUrls} canEdit={true}
+                            onAddPhotos={(e) => handleAddPhotos('hallwayPhotoUrls', e)}
+                            onRemove={(idx) => handleRemovePhoto('hallwayPhotoUrls', idx)}
+                            onLightbox={setLightboxImage}
+                        />
+                    </div>
+                </div>
+            </section>
+
+            {form.updatedAt && (
+                <p className="text-[10px] text-muted-foreground">
+                    Ostatnia aktualizacja: {format(new Date(form.updatedAt), 'yyyy-MM-dd HH:mm')} — {form.updatedBy}
+                </p>
+            )}
+
+            <div className="flex justify-end pt-2">
+                <Button onClick={handleSave} disabled={isSaving} className="shadow-lg shadow-primary/20">
+                    {isSaving ? 'Zapisuję...' : 'Zapisz Start-list'}
+                </Button>
+            </div>
+
+            <Lightbox image={lightboxImage} onClose={() => setLightboxImage(null)} />
+        </div>
+    );
+}
+
 // ─── Form Dialog ─────────────────────────────────────────────────────────────
 
 function ControlCardDialog({
-    open, onClose, address, existingCard, currentUser, selectedMonth, onSaved,
+    open, onClose, address, existingCard, currentUser, selectedMonth, startList, onSaved, onStartListSaved,
 }: {
     open: boolean;
     onClose: () => void;
@@ -355,7 +667,9 @@ function ControlCardDialog({
     existingCard: ControlCard | null;
     currentUser: SessionData;
     selectedMonth: string;
+    startList: StartList | null;
     onSaved: (card: ControlCard) => void;
+    onStartListSaved: (sl: StartList) => void;
 }) {
     const { toast } = useToast();
     const [isPending, startTransition] = useTransition();
@@ -363,11 +677,28 @@ function ControlCardDialog({
         existingCard ? buildFormFromCard(existingCard, address) : buildDefaultForm(address)
     );
 
+    const slComplete = isStartListComplete(startList);
+    const [activeTab, setActiveTab] = useState<'startlist' | 'control'>(slComplete ? 'control' : 'startlist');
+
     React.useEffect(() => {
         if (open) {
             setForm(existingCard ? buildFormFromCard(existingCard, address) : buildDefaultForm(address));
+            setActiveTab(isStartListComplete(startList) ? 'control' : 'startlist');
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, existingCard, address]);
+
+    const handleTabChange = (val: string) => {
+        if (val === 'control' && !slComplete) {
+            toast({
+                title: 'Uzupełnij najpierw Start-list',
+                description: 'Aby wypełnić kartę kontroli, musisz najpierw uzupełnić formę Start-list dla tego adresu.',
+                variant: 'destructive',
+            });
+            return;
+        }
+        setActiveTab(val as 'startlist' | 'control');
+    };
 
     const isCurrentMonth = selectedMonth === format(new Date(), 'yyyy-MM');
     const canEdit = !existingCard || isCurrentMonth;
@@ -585,6 +916,32 @@ function ControlCardDialog({
                     </div>
                 )}
 
+                <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 h-auto">
+                        <TabsTrigger value="startlist" className="gap-1.5">
+                            <ListChecks className="w-3.5 h-3.5" />
+                            <span className="text-xs">Start-list</span>
+                            {slComplete
+                                ? <CheckCircle2 className="w-3 h-3 text-green-500" />
+                                : <AlertCircle className="w-3 h-3 text-red-500" />}
+                        </TabsTrigger>
+                        <TabsTrigger value="control" className="gap-1.5" disabled={!slComplete}>
+                            <ClipboardCheck className="w-3.5 h-3.5" />
+                            <span className="text-xs">Kontrola</span>
+                            {!slComplete && <Lock className="w-3 h-3 text-muted-foreground" />}
+                        </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="startlist" className="mt-4">
+                        <StartListForm
+                            address={address}
+                            initial={startList}
+                            currentUser={currentUser}
+                            onSaved={onStartListSaved}
+                        />
+                    </TabsContent>
+
+                    <TabsContent value="control" className="mt-4">
                 <div className="space-y-5">
                     {/* ── Pokoje per-room ── */}
                     {form.roomRatings.length > 0 && (
@@ -769,7 +1126,7 @@ function ControlCardDialog({
                     </div>
                 </div>
 
-                <DialogFooter className="gap-2 pt-2">
+                <DialogFooter className="gap-2 pt-4">
                     <Button variant="outline" onClick={onClose} disabled={isPending}>Anuluj</Button>
                     {canEdit && (
                         <Button onClick={handleSave} disabled={isPending} className="shadow-lg shadow-primary/20">
@@ -777,6 +1134,8 @@ function ControlCardDialog({
                         </Button>
                     )}
                 </DialogFooter>
+                    </TabsContent>
+                </Tabs>
             </DialogContent>
 
             <Lightbox 
@@ -789,7 +1148,7 @@ function ControlCardDialog({
 
 // ─── Address row ─────────────────────────────────────────────────────────────
 
-function AddressRow({ address, card, onClick }: { address: Address; card: ControlCard | null; onClick: () => void }) {
+function AddressRow({ address, card, startListOk, onClick }: { address: Address; card: ControlCard | null; startListOk: boolean; onClick: () => void }) {
     const avg = card ? calculateAverage(card) : 0;
     const hasIssue = card && (!card.appliancesWorking || card.roomRatings.some(r => r.rating < 4) || card.cleanKitchen < 4 || card.cleanBathroom < 4);
 
@@ -806,16 +1165,21 @@ function AddressRow({ address, card, onClick }: { address: Address; card: Contro
 
             <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{address.name}</p>
-                {card && (
-                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    {card && (
                         <span className="text-[10px] text-muted-foreground">{card.fillDate}</span>
-                        {hasIssue && (
-                            <span className="flex items-center gap-0.5 text-[10px] text-red-500">
-                                <Wrench className="w-2.5 h-2.5" /> Usterka
-                            </span>
-                        )}
-                    </div>
-                )}
+                    )}
+                    {hasIssue && (
+                        <span className="flex items-center gap-0.5 text-[10px] text-red-500">
+                            <Wrench className="w-2.5 h-2.5" /> Usterka
+                        </span>
+                    )}
+                    {!startListOk && (
+                        <span className="flex items-center gap-0.5 text-[10px] text-amber-600 font-medium">
+                            <AlertCircle className="w-2.5 h-2.5" /> Brak Start-list
+                        </span>
+                    )}
+                </div>
             </div>
 
             {card && (
@@ -833,11 +1197,12 @@ function AddressRow({ address, card, onClick }: { address: Address; card: Contro
 // ─── Locality Section (single-open accordion behavior) ───────────────────────
 
 function LocalitySection({
-    locality, addresses, cardsByAddress, isOpen, onToggle, onAddressClick,
+    locality, addresses, cardsByAddress, startListByAddress, isOpen, onToggle, onAddressClick,
 }: {
     locality: string;
     addresses: Address[];
     cardsByAddress: Map<string, ControlCard>;
+    startListByAddress: Map<string, StartList>;
     isOpen: boolean;
     onToggle: () => void;
     onAddressClick: (address: Address) => void;
@@ -883,6 +1248,7 @@ function LocalitySection({
                                     key={addr.id}
                                     address={addr}
                                     card={cardsByAddress.get(addr.id) ?? null}
+                                    startListOk={isStartListComplete(startListByAddress.get(addr.id))}
                                     onClick={() => onAddressClick(addr)}
                                 />
                             ))}
@@ -905,6 +1271,7 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
     const [search, setSearch] = useState('');
     const [activeFilter, setActiveFilter] = useState<'all' | 'pending' | 'done'>('all');
     const [controlCards, setControlCards] = useState<ControlCard[]>([]);
+    const [startLists, setStartLists] = useState<StartList[]>([]);
     const [isLoadingCards, setIsLoadingCards] = useState(true);
     const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
     const [openLocality, setOpenLocality] = useState<string | null>(null);
@@ -913,13 +1280,32 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
     React.useEffect(() => {
         if (!isUnlocked) return;
         setIsLoadingCards(true);
-        fetch('/api/control-cards')
-            .then(res => res.json())
-            .then((cards: ControlCard[]) => setControlCards(cards))
-            .catch(() => toast({ title: 'Błąd', description: 'Nie udało się załadować kart kontroli.', variant: 'destructive' }))
+        Promise.all([
+            fetch('/api/control-cards').then(res => res.json()),
+            fetch('/api/start-lists').then(res => res.json()),
+        ])
+            .then(([cards, lists]) => {
+                setControlCards(Array.isArray(cards) ? cards : []);
+                setStartLists(Array.isArray(lists) ? lists : []);
+            })
+            .catch(() => toast({ title: 'Błąd', description: 'Nie udało się załadować danych.', variant: 'destructive' }))
             .finally(() => setIsLoadingCards(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    const startListByAddress = useMemo(() => {
+        const map = new Map<string, StartList>();
+        startLists.forEach(sl => map.set(sl.addressId, sl));
+        return map;
+    }, [startLists]);
+
+    const handleStartListSaved = (sl: StartList) => {
+        setStartLists(prev => {
+            const idx = prev.findIndex(s => s.addressId === sl.addressId);
+            if (idx >= 0) { const n = [...prev]; n[idx] = sl; return n; }
+            return [...prev, sl];
+        });
+    };
 
     const qualifiedAddresses = useMemo(() => {
         if (!settings) return [];
@@ -1106,6 +1492,7 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
                             locality={locality}
                             addresses={addresses}
                             cardsByAddress={cardsByAddressInMonth}
+                            startListByAddress={startListByAddress}
                             isOpen={openLocality === locality}
                             onToggle={() => toggleLocality(locality)}
                             onAddressClick={setSelectedAddress}
@@ -1123,7 +1510,9 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
                     existingCard={selectedCard}
                     currentUser={currentUser}
                     selectedMonth={selectedMonth}
+                    startList={startListByAddress.get(selectedAddress.id) ?? null}
                     onSaved={handleCardSaved}
+                    onStartListSaved={handleStartListSaved}
                 />
             )}
         </div>

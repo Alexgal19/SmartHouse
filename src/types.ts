@@ -216,3 +216,39 @@ export type ControlCard = {
   appliancesWorking: boolean;
   comments: string;
 }
+
+export type StartListHousingType = 'Hostel' | 'Dom' | 'Kwatera';
+export type StartListTransport = 'Pieszo' | 'Komunikacja miejska' | 'Samochód SMARTWORK';
+export type StartListStandard = 'Wysoki' | 'Normalny' | 'Niski';
+export type StartListHeating =
+  | 'Piec gazowy'
+  | 'Centralne'
+  | 'Piec elektryczny'
+  | 'Piec węglowy'
+  | 'Inne';
+
+export type StartList = {
+  addressId: string;
+  addressName: string;
+  housingType: StartListHousingType;
+  distanceToWork: string;
+  transport: StartListTransport[];
+  distanceToShop: string;
+  floorsCount: number;        // dla domu — liczba pięter
+  floorInBuilding: number;    // dla kwatery — na którym piętrze (0 = parter)
+  roomsCount: number;
+  kitchensCount: number;
+  bathroomsCount: number;
+  placesCount: number;
+  hasBalcony: boolean;
+  standard: StartListStandard;
+  heating: StartListHeating;
+  heatingOther: string;
+  kitchenPhotoUrls: string[];
+  bathroomPhotoUrls: string[];
+  roomsPhotoUrls: string[];
+  hallwayPhotoUrls: string[];
+  updatedAt: string;          // ISO date-time
+  updatedBy: string;          // coordinator name
+  updatedById: string;        // coordinator uid
+}

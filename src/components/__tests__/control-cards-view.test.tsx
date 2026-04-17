@@ -42,6 +42,7 @@ jest.mock('@/lib/actions', () => ({
   saveControlCardAction: jest.fn(),
   editControlCardAction: jest.fn(),
   uploadControlCardPhotoAction: jest.fn(),
+  saveStartListAction: jest.fn(),
 }));
 
 // Mock useToast
@@ -50,12 +51,40 @@ jest.mock('@/components/ui/use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
 }));
 
-// Mock fetch
-const mockFetch = jest.fn().mockImplementation(() =>
-  Promise.resolve({
-    json: () => Promise.resolve([]),
-  })
-);
+// Fully populated Start-list for addr1 (so Kontrola tab is unlocked in tests)
+const completeStartList = {
+  addressId: 'addr1',
+  addressName: 'Address 1',
+  housingType: 'Kwatera',
+  distanceToWork: '5 km',
+  transport: ['Pieszo'],
+  distanceToShop: '300 m',
+  floorsCount: 0,
+  floorInBuilding: 2,
+  roomsCount: 3,
+  kitchensCount: 1,
+  bathroomsCount: 1,
+  placesCount: 6,
+  hasBalcony: true,
+  standard: 'Normalny',
+  heating: 'Centralne',
+  heatingOther: '',
+  kitchenPhotoUrls: ['https://storage.example.com/k.jpg'],
+  bathroomPhotoUrls: ['https://storage.example.com/b.jpg'],
+  roomsPhotoUrls: ['https://storage.example.com/r.jpg'],
+  hallwayPhotoUrls: ['https://storage.example.com/h.jpg'],
+  updatedAt: '2026-04-17T10:00:00.000Z',
+  updatedBy: 'Admin',
+  updatedById: 'uid1',
+};
+
+// Mock fetch — returns empty cards and a pre-filled Start-list for addr1
+const mockFetch = jest.fn().mockImplementation((url: string) => {
+  if (typeof url === 'string' && url.includes('/api/start-lists')) {
+    return Promise.resolve({ json: () => Promise.resolve([completeStartList]) });
+  }
+  return Promise.resolve({ json: () => Promise.resolve([]) });
+});
 global.fetch = mockFetch as typeof fetch;
 
 // ─── PIN Protection Tests ────────────────────────────────────────────────────
