@@ -16,24 +16,27 @@ jest.mock('framer-motion', () => ({
 }));
 
 // Mock the main layout context
+const mockSettings = {
+  addresses: [
+    { id: 'addr1', name: 'Address 1', locality: 'Locality 1', coordinatorIds: ['uid1'], isActive: true, rooms: [] },
+    { id: 'addr2', name: 'Address 2', locality: 'Locality 2', coordinatorIds: ['uid1'], isActive: true, rooms: [] }
+  ],
+  coordinators: [],
+  nationalities: [],
+  departments: [],
+  genders: [],
+  localities: ['Locality 1', 'Locality 2'],
+  paymentTypesNZ: [],
+  statuses: [],
+  bokRoles: [],
+  bokReturnOptions: [],
+  bokStatuses: []
+};
+
 jest.mock('@/components/main-layout', () => ({
   useMainLayout: () => ({
-    settings: {
-      addresses: [
-        { id: 'addr1', name: 'Address 1', locality: 'Locality 1', coordinatorIds: ['uid1'], isActive: true, rooms: [] },
-        { id: 'addr2', name: 'Address 2', locality: 'Locality 2', coordinatorIds: ['uid1'], isActive: true, rooms: [] }
-      ],
-      coordinators: [],
-      nationalities: [],
-      departments: [],
-      genders: [],
-      localities: ['Locality 1', 'Locality 2'],
-      paymentTypesNZ: [],
-      statuses: [],
-      bokRoles: [],
-      bokReturnOptions: [],
-      bokStatuses: []
-    }
+    settings: mockSettings,
+    rawSettings: mockSettings,
   })
 }));
 
@@ -43,6 +46,7 @@ jest.mock('@/lib/actions', () => ({
   editControlCardAction: jest.fn(),
   uploadControlCardPhotoAction: jest.fn(),
   saveStartListAction: jest.fn(),
+  setAddressNoMetersRequiredAction: jest.fn(),
 }));
 
 // Mock useToast
@@ -90,8 +94,8 @@ global.fetch = mockFetch as typeof fetch;
 // ─── PIN Protection Tests ────────────────────────────────────────────────────
 
 describe('ControlCardsView PIN Protection', () => {
-  const adminUser: SessionData = { uid: 'uid1', name: 'Admin', isAdmin: true, isLoggedIn: true, isDriver: false };
-  const coordinatorUser: SessionData = { uid: 'uid2', name: 'User', isAdmin: false, isLoggedIn: true, isDriver: false };
+  const adminUser: SessionData = { uid: 'uid1', name: 'Admin', isAdmin: true, isLoggedIn: true, isDriver: false, isRekrutacja: false };
+  const coordinatorUser: SessionData = { uid: 'uid2', name: 'User', isAdmin: false, isLoggedIn: true, isDriver: false, isRekrutacja: false };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -109,12 +113,12 @@ describe('ControlCardsView PIN Protection', () => {
     expect(screen.queryByText(/Karty Kontroli/i)).not.toBeInTheDocument();
   });
 
-  test('should unlock after entering correct PIN (2991)', async () => {
+  test('should unlock after entering correct PIN (1313)', async () => {
     render(<ControlCardsView currentUser={coordinatorUser} />);
     const input = screen.getByPlaceholderText(/Wprowadź kod PIN/i);
     const button = screen.getByText(/Odblokuj Dostęp/i);
 
-    fireEvent.change(input, { target: { value: '2991' } });
+    fireEvent.change(input, { target: { value: '1313' } });
     fireEvent.click(button);
 
     await waitFor(() => {
@@ -139,7 +143,7 @@ describe('ControlCardsView PIN Protection', () => {
 // ─── Meter Photo Upload Tests ────────────────────────────────────────────────
 
 describe('ControlCardDialog - Meter Photo Upload', () => {
-  const adminUser: SessionData = { uid: 'uid1', name: 'Admin', isAdmin: true, isLoggedIn: true, isDriver: false };
+  const adminUser: SessionData = { uid: 'uid1', name: 'Admin', isAdmin: true, isLoggedIn: true, isDriver: false, isRekrutacja: false };
 
   beforeAll(() => {
     // Mock canvas API used by compressImage
