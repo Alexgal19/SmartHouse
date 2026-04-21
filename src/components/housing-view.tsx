@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import type { Employee, NonEmployee, SessionData, Room, Settings, BokResident } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Bed, Building, BarChart2, Copy, Lock } from 'lucide-react';
+import { Bed, Building, BarChart2, Copy, Lock, Bus } from 'lucide-react';
 import { useMainLayout } from '@/components/main-layout';
 import { cn } from '@/lib/utils';
 import { Skeleton } from './ui/skeleton';
@@ -30,6 +30,13 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 import { Badge } from './ui/badge';
 import { getActiveAddressCapacity } from '@/lib/address-filters';
+import { bulkSetSendDateAction } from '@/lib/actions';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { CalendarIcon, Loader2, Check } from 'lucide-react';
+import { format } from 'date-fns';
+import { pl } from 'date-fns/locale';
+import { useToast } from '@/hooks/use-toast';
 
 type Occupant = Employee | NonEmployee | BokResident;
 type RoomWithOccupants = Room & { occupants: Occupant[]; occupantCount: number; available: number };
@@ -159,6 +166,10 @@ const AddressDetailView = ({
   currentUser,
   settings,
   handleUpdateSettings,
+  isSelectionMode,
+  selectedBokIds,
+  onToggleBokSelection,
+  onSaveSelection,
 }: {
   addresses: HousingData[];
   onOccupantClick: (occupant: Occupant) => void;
@@ -168,7 +179,15 @@ const AddressDetailView = ({
   currentUser: SessionData | null;
   settings: Settings | null;
   handleUpdateSettings: (updates: Partial<Settings>) => Promise<void>;
+  isSelectionMode: boolean;
+  selectedBokIds: Set<string>;
+  onToggleBokSelection: (id: string) => void;
+  onSaveSelection: (date: Date) => Promise<void>;
 }) => {
+  const [sendDate, setSendDate] = useState<Date | undefined>(undefined);
+  const [dateOpen, setDateOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const isSingleSelectedBlocked = useMemo(() => {
     const selected = addresses.filter((a) => selectedAddressIds.includes(a.id));
     return selected.length === 1 && selected[0].isActive === false;
@@ -376,21 +395,39 @@ const AddressDetailView = ({
                         {aggregatedAddressesData.occupants.map((o) => {
                           const fullName = `${o.lastName} ${o.firstName}`.trim();
                           return (
-                            <div key={o.id} className="flex items-center justify-between text-xs text-muted-foreground group">
+                            <div key={o.id} className="flex items-center justify-between text-xs group">
                               <span
-                                onClick={(e) => { e.stopPropagation(); onOccupantClick(o); }}
-                                className="flex-1 cursor-pointer hover:text-primary"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (isSelectionMode) {
+                                    if (isBokResident(o)) onToggleBokSelection(o.id);
+                                  } else {
+                                    onOccupantClick(o);
+                                  }
+                                }}
+                                className={cn(
+                                  'flex-1 cursor-pointer transition-colors',
+                                  isSelectionMode && !isBokResident(o) ? 'opacity-40 cursor-not-allowed' : 'hover:text-primary',
+                                  isSelectionMode && isBokResident(o) && selectedBokIds.has(o.id) && 'text-primary font-bold'
+                                )}
                               >
+                                {isSelectionMode && isBokResident(o) && (
+                                  <span className="mr-2 inline-flex items-center justify-center w-4 h-4 border rounded bg-white dark:bg-black">
+                                    {selectedBokIds.has(o.id) && <Check className="w-3 h-3 text-primary" />}
+                                  </span>
+                                )}
                                 {fullName}
                               </span>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                                onClick={(e) => { e.stopPropagation(); copyToClipboard(fullName, `Skopiowano: ${fullName}`); }}
-                              >
-                                <Copy className="h-3 w-3" />
-                              </Button>
+                              {!isSelectionMode && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                                  onClick={(e) => { e.stopPropagation(); copyToClipboard(fullName, `Skopiowano: ${fullName}`); }}
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </Button>
+                              )}
                             </div>
                           );
                         })}
@@ -471,21 +508,32 @@ const AddressDetailView = ({
                                 return (
                                   <div
                                     key={o.id}
-                                    className="flex items-center justify-between text-xs text-muted-foreground group"
+                                    className="flex items-center justify-between text-xs group"
                                   >
                                     <span
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        if (!isBlocked) onOccupantClick(o);
+                                        if (isBlocked) return;
+                                        if (isSelectionMode) {
+                                          if (isBokResident(o)) onToggleBokSelection(o.id);
+                                        } else {
+                                          onOccupantClick(o);
+                                        }
                                       }}
                                       className={cn(
-                                        'flex-1',
-                                        isBlocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:text-primary',
+                                        'flex-1 transition-colors',
+                                        isBlocked || (isSelectionMode && !isBokResident(o)) ? 'cursor-not-allowed opacity-40' : 'cursor-pointer hover:text-primary',
+                                        isSelectionMode && isBokResident(o) && selectedBokIds.has(o.id) && 'text-primary font-bold'
                                       )}
                                     >
+                                      {isSelectionMode && !isBlocked && isBokResident(o) && (
+                                        <span className="mr-2 inline-flex items-center justify-center w-4 h-4 border rounded bg-white dark:bg-black">
+                                          {selectedBokIds.has(o.id) && <Check className="w-3 h-3 text-primary" />}
+                                        </span>
+                                      )}
                                       {fullName}
                                     </span>
-                                    {!isBlocked && (
+                                    {!isBlocked && !isSelectionMode && (
                                       <Button
                                         variant="ghost"
                                         size="icon"
@@ -518,13 +566,30 @@ const AddressDetailView = ({
                           {aggregatedAddressesData.unassignedOccupants.map((o) => {
                             const fullName = `${o.lastName} ${o.firstName}`.trim();
                             return (
-                              <div key={o.id} className="flex items-center justify-between text-xs text-muted-foreground group">
+                              <div key={o.id} className="flex items-center justify-between text-xs group">
                                 <span
-                                  onClick={(e) => { e.stopPropagation(); onOccupantClick(o); }}
-                                  className="flex-1 cursor-pointer hover:text-primary"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (isSelectionMode) {
+                                      if (isBokResident(o)) onToggleBokSelection(o.id);
+                                    } else {
+                                      onOccupantClick(o);
+                                    }
+                                  }}
+                                  className={cn(
+                                    'flex-1 transition-colors',
+                                    (isSelectionMode && !isBokResident(o)) ? 'cursor-not-allowed opacity-40' : 'cursor-pointer hover:text-primary',
+                                    isSelectionMode && isBokResident(o) && selectedBokIds.has(o.id) && 'text-primary font-bold'
+                                  )}
                                 >
+                                  {isSelectionMode && isBokResident(o) && (
+                                    <span className="mr-2 inline-flex items-center justify-center w-4 h-4 border rounded bg-white dark:bg-black">
+                                      {selectedBokIds.has(o.id) && <Check className="w-3 h-3 text-primary" />}
+                                    </span>
+                                  )}
                                   {fullName}
                                 </span>
+                                {!isSelectionMode && (
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -533,6 +598,7 @@ const AddressDetailView = ({
                                 >
                                   <Copy className="h-3 w-3" />
                                 </Button>
+                                )}
                               </div>
                             );
                           })}
@@ -606,6 +672,52 @@ const AddressDetailView = ({
             </div>
           )}
         </ScrollArea>
+        {/* Floating selection bar in selection mode */}
+        {isSelectionMode && (
+          <div className="absolute bottom-0 left-0 right-0 p-4 bg-amber-50 dark:bg-amber-950/40 border-t flex flex-col sm:flex-row items-center justify-between gap-3 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.1)]">
+            <div className="text-sm font-semibold">
+              Wybrano: {selectedBokIds.size} osób do wysłania
+            </div>
+            {selectedBokIds.size > 0 && (
+              <div className="flex items-center gap-2">
+                <Popover open={dateOpen} onOpenChange={setDateOpen}>
+                    <PopoverTrigger asChild>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className={cn('h-8 text-xs', !sendDate && 'border-dashed border-amber-400')}
+                        >
+                            <CalendarIcon className="h-3.5 w-3.5 mr-1" />
+                            {sendDate ? format(sendDate, 'd MMM yyyy', { locale: pl }) : 'Wybierz datę'}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="end">
+                        <Calendar
+                            mode="single"
+                            selected={sendDate}
+                            onSelect={(d) => { setSendDate(d); setDateOpen(false); }}
+                            locale={pl}
+                            initialFocus
+                        />
+                    </PopoverContent>
+                </Popover>
+                <Button
+                  size="sm"
+                  className="h-8 text-xs bg-amber-600 hover:bg-amber-700 text-white"
+                  disabled={!sendDate || isSubmitting}
+                  onClick={async () => {
+                    setIsSubmitting(true);
+                    await onSaveSelection(sendDate!);
+                    setIsSubmitting(false);
+                  }}
+                >
+                  {isSubmitting ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Check className="w-3.5 h-3.5 mr-1" />}
+                  Zatwierdź
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -1017,6 +1129,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
     handleEditNonEmployeeClick,
     handleEditBokResidentClick,
     handleUpdateSettings,
+    refreshData,
   } = useMainLayout();
   const { isMobile } = useIsMobile();
   const searchParams = useSearchParams();
@@ -1024,6 +1137,9 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
   const [selectedRoomIds, setSelectedRoomIds] = useState<string[]>([]);
   const [mobileOpenItems, setMobileOpenItems] = useState<string[]>([]);
   const [deepLinkedAddressId, setDeepLinkedAddressId] = useState<string | null>(null);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedBokIds, setSelectedBokIds] = useState<Set<string>>(new Set());
+  const { toast } = useToast();
   const deepLinkApplied = useRef(false);
 
   const [filters, setFilters] = useState({
@@ -1154,6 +1270,32 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
     });
   };
 
+  const handleToggleBokSelection = (id: string) => {
+    setSelectedBokIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleSaveSelection = async (date: Date) => {
+    if (selectedBokIds.size === 0) return;
+    try {
+      const result = await bulkSetSendDateAction(Array.from(selectedBokIds), format(date, 'yyyy-MM-dd'), currentUser!.uid);
+      if (result.success) {
+        toast({ title: 'Zapisano ✅', description: `Data wysyłki ustawiona dla ${result.updatedCount} osób.` });
+        setSelectedBokIds(new Set());
+        setIsSelectionMode(false);
+        await refreshData(false, true);
+      } else {
+        toast({ variant: 'destructive', title: 'Błąd', description: result.error });
+      }
+    } catch (e) {
+      toast({ variant: 'destructive', title: 'Błąd', description: 'Nie udało się zapisać' });
+    }
+  };
+
   if (!rawHousingData || !settings) {
     return (
       <Card>
@@ -1171,8 +1313,26 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Zakwaterowanie</CardTitle>
-          <CardDescription>Przegląd adresów i mieszkańców</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Zakwaterowanie</CardTitle>
+              <CardDescription>Przegląd adresów i mieszkańców</CardDescription>
+            </div>
+            {(currentUser.isAdmin || currentUser.isDriver) && (
+              <Button
+                variant={isSelectionMode ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  setIsSelectionMode(!isSelectionMode);
+                  if (isSelectionMode) setSelectedBokIds(new Set());
+                }}
+                className={cn('h-8 text-xs gap-1', isSelectionMode && 'bg-amber-500 hover:bg-amber-600 text-white border-0')}
+              >
+                <Bus className="h-4 w-4" />
+                {isSelectionMode ? 'Wyjdź z trybu wysyłki' : 'Tryb wysyłki'}
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="mb-4">
@@ -1251,8 +1411,26 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start h-full">
       <Card className="h-full">
         <CardHeader className="p-4">
-          <CardTitle>Adresy</CardTitle>
-          <CardDescription>Wybierz adres, aby zobaczyć szczegóły.</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Adresy</CardTitle>
+              <CardDescription>Wybierz adres, aby zobaczyć szczegóły.</CardDescription>
+            </div>
+            {(currentUser.isAdmin || currentUser.isDriver) && (
+              <Button
+                variant={isSelectionMode ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  setIsSelectionMode(!isSelectionMode);
+                  if (isSelectionMode) setSelectedBokIds(new Set());
+                }}
+                className={cn('h-8 text-xs gap-1', isSelectionMode && 'bg-amber-500 hover:bg-amber-600 text-white border-0')}
+              >
+                <Bus className="h-4 w-4" />
+                {isSelectionMode ? 'Wyjdź z trybu wysyłki' : 'Tryb wysyłki'}
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="p-4 pt-0">
           <div className="space-y-4 mb-4">
@@ -1395,6 +1573,10 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
         currentUser={currentUser}
         settings={rawSettings ?? settings}
         handleUpdateSettings={handleUpdateSettings}
+        isSelectionMode={isSelectionMode}
+        selectedBokIds={selectedBokIds}
+        onToggleBokSelection={handleToggleBokSelection}
+        onSaveSelection={handleSaveSelection}
       />
     </div>
   );

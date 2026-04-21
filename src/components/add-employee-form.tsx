@@ -1,1110 +1,425 @@
-
-
-// DESIGN LOCKED: The layout and styling of this form, especially the footer buttons, is finalized (2026-02-17). Do not modify unless strictly necessary for new functionality.
 "use client";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import React, { useEffect, useMemo, useState } from 'react';
 import * as z from 'zod';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  DialogFooter,
-  DialogDescription,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { Employee, Settings, SessionData } from '@/types';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Info, X, Loader2, Eye, AlertTriangle } from 'lucide-react';
-import { AddressPreviewDialog } from '@/components/address-preview-dialog';
-import { Calendar } from '@/components/ui/calendar';
-import { format, parse, isValid, parseISO } from 'date-fns';
-import { pl } from 'date-fns/locale';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Combobox } from '@/components/ui/combobox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ChevronLeft, ChevronRight, Check, Loader2, User, MapPin, Briefcase, CalendarDays } from 'lucide-react';
+import { format, isValid } from 'date-fns';
+import { pl } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
-import { useMainLayout } from './main-layout';
+import { useMainLayout } from '@/components/main-layout';
+import type { Employee, Settings, SessionData, DeductionReason } from '@/types';
+import { cn } from '@/lib/utils';
+import {
+    WizardStepIndicator, WizardDateInput, OcrCameraButton,
+    WizardAddressPicker, WizardGenderPicker, buildAddressItems, type WizardAddressItem,
+} from '@/components/wizard-utils';
+import { EditEmployeeForm } from '@/components/edit-employee-form';
+
+// ─── Schema & types (kept for backward-compat with tests) ─────────────────────
 
 export const formSchema = z.object({
-  firstName: z.string().min(1, "Imię jest wymagane."),
-  lastName: z.string().min(1, "Nazwisko jest wymagane."),
-  coordinatorId: z.string().min(1, "Koordynator jest wymagany."),
-  locality: z.string().min(1, "Miejscowość jest wymagana."),
-  address: z.string().min(1, "Adres jest wymagany."),
-  ownAddress: z.string().optional(),
-  roomNumber: z.string(),
-  zaklad: z.string().min(1, "Zakład jest wymagany."),
-  nationality: z.string().min(1, "Narodowość jest wymagana."),
-  gender: z.string().min(1, "Płeć jest wymagana."),
-  checkInDate: z.date({ required_error: "Data zameldowania jest wymagana.", invalid_type_error: "Data zameldowania jest wymagana." }),
-  checkOutDate: z.date().nullable().optional(),
-  contractStartDate: z.date().nullable().optional(),
-  contractEndDate: z.date().nullable().optional(),
-  departureReportDate: z.date().nullable().optional(),
-  comments: z.string().optional(),
-  depositReturned: z.enum(['Tak', 'Nie', 'Nie dotyczy']).nullable().optional(),
-  depositReturnAmount: z.number().nullable().optional(),
-  deductionRegulation: z.number().nullable().optional(),
-  deductionNo4Months: z.number().nullable().optional(),
-  deductionNo30Days: z.number().nullable().optional(),
-  deductionReason: z.array(z.object({
-    id: z.string(),
-    label: z.string(),
-    amount: z.number().nullable(),
-    checked: z.boolean(),
-  })).optional(),
-  deductionEntryDate: z.date().nullable().optional(),
-}).superRefine((data, ctx) => {
-  const hasDeductions =
-    data.depositReturned === 'Nie' ||
-    (data.depositReturnAmount ?? 0) > 0 ||
-    (data.deductionRegulation ?? 0) > 0 ||
-    (data.deductionNo4Months ?? 0) > 0 ||
-    (data.deductionNo30Days ?? 0) > 0 ||
-    (data.deductionReason || []).some(r => r.checked && (r.amount ?? 0) > 0);
-
-  if (hasDeductions && !data.deductionEntryDate) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['deductionEntryDate'],
-      message: 'Data jest wymagana, jeśli wprowadzono potrącenia lub kaucja nie jest zwracana.',
-    });
-  }
-
-  if (data.address?.toLowerCase().includes('własne mieszkanie') && !data.ownAddress) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['ownAddress'],
-      message: 'Adres własny jest wymagany, jeśli wybrano tę opcję.',
-    });
-  }
-
-  if (!data.address?.toLowerCase().includes('własne mieszkanie') && !data.roomNumber) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['roomNumber'],
-      message: 'Pokój jest wymagany.',
-    });
-  }
+    firstName: z.string().min(1, 'Imię jest wymagane.'),
+    lastName: z.string().min(1, 'Nazwisko jest wymagane.'),
+    coordinatorId: z.string().min(1, 'Koordynator jest wymagany.'),
+    locality: z.string().min(1, 'Miejscowość jest wymagana.'),
+    address: z.string().min(1, 'Adres jest wymagany.'),
+    ownAddress: z.string().optional(),
+    roomNumber: z.string(),
+    zaklad: z.string().min(1, 'Zakład jest wymagany.'),
+    nationality: z.string().min(1, 'Narodowość jest wymagana.'),
+    gender: z.string().min(1, 'Płeć jest wymagana.'),
+    checkInDate: z.date({ required_error: 'Data zameldowania jest wymagana.' }),
+    checkOutDate: z.date().nullable().optional(),
+    contractStartDate: z.date().nullable().optional(),
+    contractEndDate: z.date().nullable().optional(),
+    departureReportDate: z.date().nullable().optional(),
+    comments: z.string().optional(),
+    depositReturned: z.union([z.literal('Tak'), z.literal('Nie'), z.literal('Nie dotyczy')]).nullable().optional(),
+    depositReturnAmount: z.number().nullable().optional(),
+    deductionRegulation: z.number().nullable().optional(),
+    deductionNo4Months: z.number().nullable().optional(),
+    deductionNo30Days: z.number().nullable().optional(),
+    deductionReason: z.array(z.object({
+        id: z.string(), label: z.string(), amount: z.number().nullable(), checked: z.boolean(),
+    })).optional(),
+    deductionEntryDate: z.date().nullable().optional(),
 });
 
-
 export type EmployeeFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate' | 'contractStartDate' | 'contractEndDate' | 'departureReportDate' | 'deductionEntryDate' | 'locality'> & {
-  checkInDate: string | null;
-  checkOutDate?: string | null;
-  contractStartDate?: string | null;
-  contractEndDate?: string | null;
-  departureReportDate?: string | null;
-  deductionEntryDate?: string | null;
+    checkInDate: string | null;
+    checkOutDate?: string | null;
+    contractStartDate?: string | null;
+    contractEndDate?: string | null;
+    departureReportDate?: string | null;
+    deductionEntryDate?: string | null;
 };
 
-const defaultDeductionReasons: { label: string }[] = [
-  { label: 'Zgubienie kluczy' },
-  { label: 'Zniszczenie mienia' },
-  { label: 'Palenie w pokoju' },
-  { label: 'Niestosowanie się do regulaminu' },
+const DEFAULT_DEDUCTION_REASONS: DeductionReason[] = [
+    { id: '1', label: 'Zgubienie kluczy', amount: null, checked: false },
+    { id: '2', label: 'Zniszczenie mienia', amount: null, checked: false },
+    { id: '3', label: 'Palenie w pokoju', amount: null, checked: false },
+    { id: '4', label: 'Niestosowanie się do regulaminu', amount: null, checked: false },
 ];
 
-const parseDate = (dateString: string | null | undefined): Date | undefined => {
-  if (!dateString) return undefined;
-  const date = parseISO(dateString); // Expect YYYY-MM-DD
-  return isValid(date) ? date : undefined;
-};
-
-const formatDate = (date: Date | null | undefined): string | null => {
-  if (!date) return null;
-  return format(date, 'yyyy-MM-dd');
-}
-
-const DateInput = ({
-  value,
-  onChange,
-  disabled,
-  id,
-}: {
-  value?: Date | null;
-  onChange: (date?: Date | null) => void;
-  disabled?: (date: Date) => boolean;
-  id?: string;
-}) => {
-  const [inputValue, setInputValue] = useState('');
-  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-
-  useEffect(() => {
-    if (value && isValid(value)) {
-      setInputValue(format(value, 'yyyy-MM-dd'));
-    } else {
-      setInputValue('');
-    }
-  }, [value]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(e.target.value);
-    if (e.target.value === '') {
-      onChange(null);
-      return;
-    }
-    const parsedDate = parse(e.target.value, 'yyyy-MM-dd', new Date());
-    if (isValid(parsedDate)) {
-      onChange(parsedDate);
-    }
-  };
-
-  const handleDateSelect = (date?: Date | null) => {
-    if (date && isValid(date)) {
-      onChange(date);
-      setInputValue(format(date, 'yyyy-MM-dd'));
-      setIsPopoverOpen(false);
-    } else {
-      onChange(null);
-      setInputValue('');
-    }
-  };
-
-  const handleClear = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    handleDateSelect(null);
-  }
-
-  return (
-    <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-      <PopoverTrigger asChild>
-        <div className="relative">
-          <Input
-            id={id}
-            type="text"
-            value={inputValue}
-            onChange={handleInputChange}
-            placeholder="rrrr-mm-dd"
-            className="pr-10 min-h-[44px]"
-          />
-          <button
-            type="button"
-            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center rounded hover:bg-muted touch-manipulation"
-            onClick={handleClear}
-            aria-label={value ? "Wyczyść datę" : "Wybierz datę"}
-          >
-            {value ? (
-              <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-            ) : (
-              <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-            )}
-          </button>
-        </div>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="center" sideOffset={5}>
-        <Calendar
-          locale={pl}
-          mode="single"
-          selected={value && isValid(value) ? value : undefined}
-          onSelect={(d) => handleDateSelect(d ?? null)}
-          disabled={disabled}
-          initialFocus
-          className="rounded-md border"
-        />
-      </PopoverContent>
-    </Popover>
-  );
-};
-
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export function AddEmployeeForm({
-  isOpen,
-  onOpenChange,
-  onSave,
-  settings,
-  employee,
-  currentUser,
-  initialData
+    isOpen,
+    onOpenChange,
+    onSave,
+    settings,
+    employee,
+    currentUser,
+    initialData,
 }: {
-  isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
-  onSave: (data: EmployeeFormData) => void;
-  settings: Settings;
-  employee: Employee | null;
-  initialData?: Partial<EmployeeFormData>;
-  currentUser: SessionData;
+    isOpen: boolean;
+    onOpenChange: (isOpen: boolean) => void;
+    onSave: (data: EmployeeFormData) => void;
+    settings: Settings;
+    employee: Employee | null;
+    currentUser: SessionData;
+    initialData?: Partial<EmployeeFormData>;
 }) {
-  const { toast } = useToast();
-  const { handleDismissEmployee, allEmployees, allNonEmployees, allBokResidents } = useMainLayout();
-  const [isDismissing, setIsDismissing] = useState(false);
-  const [isAddressPreviewOpen, setIsAddressPreviewOpen] = useState(false);
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema, {
-    }),
-    defaultValues: {
-      firstName: '',
-      lastName: '',
-      coordinatorId: '',
-      locality: '',
-      address: '',
-      ownAddress: '',
-      roomNumber: '',
-      zaklad: '',
-      nationality: '',
-      gender: '',
-      checkInDate: new Date(),
-      checkOutDate: null,
-      contractStartDate: null,
-      contractEndDate: null,
-      departureReportDate: null,
-      comments: '',
-      depositReturned: null,
-      depositReturnAmount: null,
-      deductionRegulation: null,
-      deductionNo4Months: null,
-      deductionNo30Days: null,
-      deductionReason: defaultDeductionReasons.map((reason, index) => ({
-        ...reason,
-        id: `reason-${index}`,
-        amount: null,
-        checked: false
-      })),
-      deductionEntryDate: null,
-    },
-  });
-
-  const selectedCoordinatorId = form.watch('coordinatorId');
-  const selectedLocality = form.watch('locality');
-  const selectedAddress = form.watch('address');
-  const watchedFirstName = form.watch('firstName');
-  const watchedLastName = form.watch('lastName');
-
-  const duplicateEmployee = useMemo(() => {
-    if (employee) return null; // tryb edycji — nie sprawdzaj
-    if (!watchedFirstName?.trim() || !watchedLastName?.trim()) return null;
-    if (!allEmployees) return null;
-    const coordId = selectedCoordinatorId || (currentUser.isAdmin ? '' : currentUser.uid);
-    const first = watchedFirstName.trim().toLowerCase();
-    const last = watchedLastName.trim().toLowerCase();
-    return allEmployees.find(
-      (e) =>
-        e.status === 'active' &&
-        e.coordinatorId === coordId &&
-        e.firstName?.trim().toLowerCase() === first &&
-        e.lastName?.trim().toLowerCase() === last,
-    ) ?? null;
-  }, [employee, watchedFirstName, watchedLastName, allEmployees, selectedCoordinatorId, currentUser]);
-  const isOwnAddressSelected = selectedAddress?.toLowerCase().includes('własne mieszkanie');
-
-  const availableLocalities = useMemo(() => {
-    if (!settings.addresses) return [];
-    if (!selectedCoordinatorId) return [];
-
-    const coordinatorAddresses = settings.addresses.filter(addr =>
-      addr.coordinatorIds.includes(selectedCoordinatorId)
-    );
-    const localities = coordinatorAddresses.map(addr => addr.locality).filter((value, index, self) => self.indexOf(value) === index);
-    return localities.sort((a, b) => a.localeCompare(b));
-  }, [settings.addresses, selectedCoordinatorId]);
-
-  const localityOptions = useMemo(() => {
-    return availableLocalities.map(l => ({ value: l, label: l }));
-  }, [availableLocalities]);
-
-  const availableAddresses = useMemo(() => {
-    if (!selectedLocality) return [];
-    if (!selectedCoordinatorId) return [];
-    const filtered = settings.addresses.filter(a =>
-      a.locality === selectedLocality && a.coordinatorIds.includes(selectedCoordinatorId)
-    );
-    return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
-  }, [settings.addresses, selectedLocality, selectedCoordinatorId]);
-
-  const availableRoomsWithCapacity = useMemo(() => {
-    const rooms = settings.addresses.find(a => a.name === selectedAddress)?.rooms || [];
-    return [...rooms].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(room => {
-      let occupied = 0;
-      
-      if (allEmployees) {
-        occupied += allEmployees.filter(e => e.status === 'active' && e.address === selectedAddress && e.roomNumber === room.name).length;
-      }
-      if (allNonEmployees) {
-        occupied += allNonEmployees.filter(e => e.status === 'active' && e.address === selectedAddress && e.roomNumber === room.name).length;
-      }
-      if (allBokResidents) {
-        occupied += allBokResidents.filter(e => (e.status === 'active' || !e.status || e.status === '') && e.address === selectedAddress && e.roomNumber === room.name).length;
-      }
-
-      return {
-        ...room,
-        occupied,
-        available: Math.max(0, room.capacity - occupied)
-      };
-    });
-  }, [settings.addresses, selectedAddress, allEmployees, allNonEmployees, allBokResidents]);
-
-  const availableDepartments = useMemo(() => {
-    if (!selectedCoordinatorId) return [];
-    const coordinator = settings.coordinators.find(c => c.uid === selectedCoordinatorId);
-    return coordinator ? [...coordinator.departments].sort((a, b) => a.localeCompare(b)) : [];
-  }, [settings.coordinators, selectedCoordinatorId]);
-
-  useEffect(() => {
     if (employee) {
-      const currentDeductions = employee.deductionReason || [];
-      const combinedDeductions = defaultDeductionReasons.map((defaultReason, index) => {
-        const existing = currentDeductions.find(r => r.label === defaultReason.label);
-        return {
-          id: `reason-${index}`,
-          label: defaultReason.label,
-          amount: existing?.amount ?? null,
-          checked: existing?.checked ?? false,
-        }
-      });
+        return <EditEmployeeForm isOpen={isOpen} onOpenChange={onOpenChange} onSave={onSave} settings={settings} employee={employee} currentUser={currentUser} initialData={initialData} />;
+    }
+    return <AddEmployeeWizard isOpen={isOpen} onOpenChange={onOpenChange} onSave={onSave} settings={settings} currentUser={currentUser} initialData={initialData} />;
+}
 
-      const employeeAddress = settings.addresses.find(a => a.name === employee.address);
-      const employeeLocality = employeeAddress ? employeeAddress.locality : '';
+function AddEmployeeWizard({
+    isOpen,
+    onOpenChange,
+    onSave,
+    settings,
+    currentUser,
+    initialData,
+}: {
+    isOpen: boolean;
+    onOpenChange: (isOpen: boolean) => void;
+    onSave: (data: EmployeeFormData) => void;
+    settings: Settings;
+    currentUser: SessionData;
+    initialData?: Partial<EmployeeFormData>;
+}) {
+    const { toast } = useToast();
+    const { allEmployees, allNonEmployees, allBokResidents } = useMainLayout();
 
-      form.reset({
-        firstName: employee.firstName ?? '',
-        lastName: employee.lastName ?? '',
-        coordinatorId: employee.coordinatorId ?? '',
-        locality: employeeLocality,
-        address: employee.address ?? '',
-        ownAddress: employee.ownAddress ?? '',
-        roomNumber: employee.roomNumber ?? '',
-        zaklad: employee.zaklad ?? '',
-        nationality: employee.nationality ?? '',
-        gender: employee.gender ?? '',
-        checkInDate: parseDate(employee.checkInDate) ?? new Date(),
-        checkOutDate: parseDate(employee.checkOutDate) ?? null,
-        contractStartDate: parseDate(employee.contractStartDate) ?? null,
-        contractEndDate: parseDate(employee.contractEndDate) ?? null,
-        departureReportDate: parseDate(employee.departureReportDate) ?? null,
-        comments: employee.comments ?? '',
-        depositReturned: employee.depositReturned ?? null,
-        depositReturnAmount: employee.depositReturnAmount ?? null,
-        deductionRegulation: employee.deductionRegulation ?? null,
-        deductionNo4Months: employee.deductionNo4Months ?? null,
-        deductionNo30Days: employee.deductionNo30Days ?? null,
-        deductionReason: combinedDeductions,
-        deductionEntryDate: parseDate(employee.deductionEntryDate) ?? null,
-      });
-    } else {
-      form.reset({
-        firstName: initialData?.firstName ?? '',
-        lastName: initialData?.lastName ?? '',
-        coordinatorId: currentUser.isAdmin ? (initialData?.coordinatorId ?? '') : currentUser.uid,
-        locality: '',
-        address: '',
-        ownAddress: '',
-        roomNumber: '',
-        zaklad: initialData?.zaklad ?? '',
-        nationality: initialData?.nationality ?? '',
-        gender: '',
-        checkInDate: new Date(),
-        checkOutDate: null,
-        contractStartDate: null,
-        contractEndDate: null,
-        departureReportDate: null,
+    type WizardData = {
+        firstName: string;
+        lastName: string;
+        addressName: string;
+        roomNumber: string;
+        ownAddress: string;
+        coordinatorId: string;
+        nationality: string;
+        gender: string;
+        zaklad: string;
+        checkInDate: Date | null;
+        checkOutDate: Date | null;
+        contractStartDate: Date | null;
+        contractEndDate: Date | null;
+        departureReportDate: Date | null;
+        comments: string;
+        depositReturned: 'Tak' | 'Nie' | 'Nie dotyczy' | null;
+        depositReturnAmount: string;
+        deductionRegulation: string;
+        deductionNo4Months: string;
+        deductionNo30Days: string;
+        deductionReason: DeductionReason[];
+        deductionEntryDate: Date | null;
+    };
+
+    const makeDefault = (): WizardData => ({
+        firstName: '', lastName: '',
+        addressName: '', roomNumber: '', ownAddress: '',
+        coordinatorId: currentUser.isAdmin ? '' : currentUser.uid,
+        nationality: '', gender: '', zaklad: '',
+        checkInDate: new Date(), checkOutDate: null,
+        contractStartDate: null, contractEndDate: null, departureReportDate: null,
         comments: '',
-        depositReturned: null,
-        depositReturnAmount: null,
-        deductionRegulation: null,
-        deductionNo4Months: null,
-        deductionNo30Days: null,
-        deductionReason: defaultDeductionReasons.map((reason, index) => ({
-          ...reason,
-          id: `reason-${index}`,
-          amount: null,
-          checked: false
-        })),
+        depositReturned: null, depositReturnAmount: '',
+        deductionRegulation: '', deductionNo4Months: '', deductionNo30Days: '',
+        deductionReason: DEFAULT_DEDUCTION_REASONS.map((r) => ({ ...r })),
         deductionEntryDate: null,
-      });
-    }
-  }, [employee, isOpen, form, settings, currentUser, initialData]);
+    });
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    const OWN_KEY = '__own__';
 
-    if (employee) {
-      const addressChanged = values.address !== employee.address;
-      const checkInDateChanged = values.checkInDate?.getTime() !== parseDate(employee.checkInDate)?.getTime();
+    const STEPS = ['Osoba', 'Lokalizacja', 'Praca', 'Daty', 'Podsumowanie'];
+    const [step, setStep] = useState(0);
+    const [data, setData] = useState<WizardData>(makeDefault());
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-      if (addressChanged && !checkInDateChanged) {
-        toast({
-          variant: 'destructive',
-          title: 'Uwaga',
-          description: 'Zmień datę zameldowania, aby poprawnie zarejestrować zmianę adresu.',
-        });
-        return; // Stop submission
-      }
-    }
+    const set = (patch: Partial<WizardData>) => setData((p) => ({ ...p, ...patch }));
+    const isOwn = data.addressName === OWN_KEY;
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { locality: _, ...restOfValues } = values;
+    useEffect(() => {
+        if (!isOpen) return;
+        setStep(0);
+        if (initialData) {
+            const d = makeDefault();
+            if (initialData.firstName) d.firstName = initialData.firstName;
+            if (initialData.lastName) d.lastName = initialData.lastName;
+            if (initialData.nationality) d.nationality = initialData.nationality;
+            if (initialData.zaklad) d.zaklad = initialData.zaklad;
+            setData(d);
+        } else {
+            setData(makeDefault());
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen]);
 
-    const formData: EmployeeFormData = {
-      ...restOfValues,
-      checkInDate: formatDate(values.checkInDate),
-      checkOutDate: formatDate(values.checkOutDate),
-      contractStartDate: formatDate(values.contractStartDate),
-      contractEndDate: formatDate(values.contractEndDate),
-      departureReportDate: formatDate(values.departureReportDate),
-      deductionEntryDate: formatDate(values.deductionEntryDate),
+    const addressItems: WizardAddressItem[] = useMemo(() => {
+        const coordId = data.coordinatorId || null;
+        const filtered = coordId
+            ? settings.addresses.filter((a) => a.coordinatorIds.includes(coordId))
+            : settings.addresses;
+        return buildAddressItems(
+            filtered,
+            (allEmployees || []).filter((e) => e.status === 'active'),
+            (allNonEmployees || []).filter((e) => e.status === 'active'),
+            (allBokResidents || []).filter((b) => b.status !== 'dismissed' && !b.dismissDate && !b.sendDate),
+        );
+    }, [settings.addresses, allEmployees, allNonEmployees, allBokResidents, data.coordinatorId]);
+
+    const coordOptions = useMemo(
+        () => [...settings.coordinators].sort((a, b) => a.name.localeCompare(b.name)).map((c) => ({ value: c.uid, label: c.name })),
+        [settings.coordinators]
+    );
+    const nationalityOptions = useMemo(
+        () => [...settings.nationalities].sort((a, b) => a.localeCompare(b)).map((n) => ({ value: n, label: n })),
+        [settings.nationalities]
+    );
+    const sortedGenders = useMemo(() => [...settings.genders].sort((a, b) => a.localeCompare(b)), [settings.genders]);
+    const departmentOptions = useMemo(() => {
+        if (!data.coordinatorId) return [];
+        const coordinator = settings.coordinators.find((c) => c.uid === data.coordinatorId);
+        return coordinator
+            ? [...coordinator.departments].sort((a, b) => a.localeCompare(b)).map((d) => ({ value: d, label: d }))
+            : [];
+    }, [settings.coordinators, data.coordinatorId]);
+
+    const canProceed = useMemo(() => {
+        if (step === 0) return data.firstName.trim() !== '' && data.lastName.trim() !== '' && data.coordinatorId !== '' && data.nationality !== '';
+        if (step === 1) return isOwn ? true : data.addressName !== '' && data.roomNumber !== '';
+        if (step === 2) return data.gender !== '' && data.zaklad !== '';
+        if (step === 3) return data.checkInDate != null && isValid(data.checkInDate);
+        return true;
+    }, [step, data, isOwn]);
+
+    const fmt = (d: Date | null | undefined): string | null =>
+        d && isValid(d) ? format(d, 'yyyy-MM-dd') : null;
+
+    const handleSubmit = async () => {
+        setIsSubmitting(true);
+        try {
+            const formData: EmployeeFormData = {
+                firstName: data.firstName.trim(),
+                lastName: data.lastName.trim(),
+                coordinatorId: data.coordinatorId,
+                address: isOwn ? 'Własne mieszkanie' : data.addressName,
+                ownAddress: isOwn ? data.ownAddress : undefined,
+                roomNumber: isOwn ? '' : data.roomNumber,
+                zaklad: data.zaklad,
+                nationality: data.nationality,
+                gender: data.gender,
+                checkInDate: fmt(data.checkInDate),
+                checkOutDate: fmt(data.checkOutDate),
+                contractStartDate: fmt(data.contractStartDate),
+                contractEndDate: fmt(data.contractEndDate),
+                departureReportDate: fmt(data.departureReportDate),
+                deductionEntryDate: fmt(data.deductionEntryDate),
+                comments: data.comments || undefined,
+                depositReturned: data.depositReturned ?? undefined,
+                depositReturnAmount: data.depositReturnAmount !== '' ? Number(data.depositReturnAmount) : null,
+                deductionRegulation: data.deductionRegulation !== '' ? Number(data.deductionRegulation) : null,
+                deductionNo4Months: data.deductionNo4Months !== '' ? Number(data.deductionNo4Months) : null,
+                deductionNo30Days: data.deductionNo30Days !== '' ? Number(data.deductionNo30Days) : null,
+                deductionReason: data.deductionReason,
+            };
+            onSave(formData);
+            onOpenChange(false);
+        } catch (e) {
+            toast({ variant: 'destructive', title: 'Błąd', description: e instanceof Error ? e.message : 'Nie udało się zapisać.' });
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
-    try {
-      await onSave(formData);
-      onOpenChange(false);
-    } catch (e) {
-      console.error('Form submission failed:', e);
-    }
-  };
+    const summaryRows = [
+        { label: 'Nazwisko', value: data.lastName || '—', step: 0 },
+        { label: 'Imię', value: data.firstName || '—', step: 0 },
+        { label: 'Narodowość', value: data.nationality || '—', step: 0 },
+        { label: 'Koordynator', value: settings.coordinators.find((c) => c.uid === data.coordinatorId)?.name || '—', step: 0 },
+        { label: 'Adres', value: isOwn ? `Własne: ${data.ownAddress || '—'}` : data.addressName || '—', step: 1 },
+        { label: 'Pokój', value: isOwn ? 'N/A' : data.roomNumber || '—', step: 1 },
+        { label: 'Zakład', value: data.zaklad || '—', step: 2 },
+        { label: 'Płeć', value: data.gender || '—', step: 2 },
+        { label: 'Zameldowanie', value: fmt(data.checkInDate) ?? '—', step: 3 },
+        { label: 'Umowa od', value: fmt(data.contractStartDate) ?? '—', step: 3 },
+        { label: 'Umowa do', value: fmt(data.contractEndDate) ?? '—', step: 3 },
+    ];
 
-  const handleCoordinatorChange = (value: string) => {
-    form.setValue('coordinatorId', value);
-    form.setValue('locality', '');
-    form.setValue('address', '');
-    form.setValue('ownAddress', '');
-    form.setValue('roomNumber', '');
-    form.setValue('zaklad', '');
-  }
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-[95vw] sm:max-w-lg h-[92vh] max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden">
+                <WizardStepIndicator steps={STEPS} current={step} />
 
-  const handleLocalityChange = (value: string) => {
-    form.setValue('locality', value);
-    form.setValue('address', '');
-    form.setValue('ownAddress', '');
-    form.setValue('roomNumber', '');
-  }
-
-  const handleAddressChange = (value: string) => {
-    form.setValue('address', value);
-    if (value.toLowerCase().includes('własne mieszkanie')) {
-      form.setValue('roomNumber', '1');
-    } else {
-      form.setValue('ownAddress', '');
-      form.setValue('roomNumber', '');
-    }
-  };
-
-  const handleDismissClick = async () => {
-    if (!employee || isDismissing) return;
-
-    const checkOutDate = form.getValues('checkOutDate');
-
-    // Validate type and existence
-    if (!checkOutDate || !(checkOutDate instanceof Date) || !isValid(checkOutDate)) {
-      form.setError('checkOutDate', {
-        type: 'manual',
-        message: 'Data wymeldowania jest wymagana i musi być poprawna, aby zwolnić pracownika.',
-      });
-      return;
-    }
-
-
-
-    // update the checkout date first
-    const values = form.getValues();
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { locality: _, ...restOfValues } = values;
-    const formData: EmployeeFormData = {
-      ...restOfValues,
-      checkInDate: formatDate(values.checkInDate),
-      checkOutDate: formatDate(values.checkOutDate),
-      contractStartDate: formatDate(values.contractStartDate),
-      contractEndDate: formatDate(values.contractEndDate),
-      departureReportDate: formatDate(values.departureReportDate),
-      deductionEntryDate: formatDate(values.deductionEntryDate),
-    };
-
-    setIsDismissing(true);
-    try {
-      await onSave(formData);
-      await handleDismissEmployee(employee.id, checkOutDate);
-      onOpenChange(false);
-    } catch (e) {
-      console.error('Dismiss failed:', e);
-    } finally {
-      setIsDismissing(false);
-    }
-  };
-
-  const sortedCoordinators = useMemo(() => {
-    return [...settings.coordinators].sort((a, b) => a.name.localeCompare(b.name));
-  }, [settings.coordinators]);
-
-  const sortedNationalities = useMemo(() => [...settings.nationalities].sort((a, b) => a.localeCompare(b)), [settings.nationalities]);
-  const sortedGenders = useMemo(() => [...settings.genders].sort((a, b) => a.localeCompare(b)), [settings.genders]);
-
-  const coordinatorOptions = useMemo(() => sortedCoordinators.map(c => ({ value: c.uid, label: c.name })), [sortedCoordinators]);
-  const nationalityOptions = useMemo(() => sortedNationalities.map(n => ({ value: n, label: n })), [sortedNationalities]);
-  const departmentOptions = useMemo(() => availableDepartments.map(d => ({ value: d, label: d })), [availableDepartments]);
-
-  return (
-    <>
-      <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-[95vw] sm:max-w-2xl lg:max-w-4xl h-[90vh] max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
-          <DialogHeader className="p-4 sm:p-6 pb-2 sm:pb-4 flex-shrink-0">
-            <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
-              <div>
-                <DialogTitle>{employee ? 'Edytuj dane pracownika' : 'Dodaj nowego pracownika'}</DialogTitle>
-                <DialogDescription className="text-xs sm:text-sm">
-                  Wypełnij poniższe pola, aby {employee ? 'zaktualizować' : 'dodać'} pracownika.
-                </DialogDescription>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsAddressPreviewOpen(true)}
-                  type="button"
-                  className="w-full sm:w-auto h-8 text-xs sm:text-sm px-3"
-                >
-                  <Eye className="h-3 w-3 sm:mr-2" />
-                  <span className="ml-2">Podgląd miejsc</span>
-                </Button>
-              </div>
-            </div>
-          </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
-              <Tabs defaultValue="basic" className="w-full flex-1 flex flex-col overflow-hidden">
-                <div className="px-4 sm:px-6 flex-shrink-0">
-                  <TabsList className="grid w-full grid-cols-2 h-auto">
-                    <TabsTrigger value="basic" className="text-xs sm:text-sm px-2 py-3">Dane podstawowe</TabsTrigger>
-                    <TabsTrigger value="finance" className="text-xs sm:text-sm px-2 py-3">Finanse i potrącenia</TabsTrigger>
-                  </TabsList>
-                </div>
-                <ScrollArea className="flex-1 mt-4">
-                  <TabsContent value="basic" className="mt-0 h-full">
-                    <div className="space-y-4 px-4 sm:px-6 pb-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                        <FormField
-                          control={form.control}
-                          name="lastName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Nazwisko</FormLabel>
-                              <FormControl><Input placeholder="Kowalski" {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="firstName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Imię</FormLabel>
-                              <FormControl><Input placeholder="Jan" {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      {duplicateEmployee && (
-                        <div className="flex items-start gap-3 rounded-md border border-amber-500/50 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
-                          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-500" />
-                          <span>
-                            Uwaga: pracownik <strong>{duplicateEmployee.firstName} {duplicateEmployee.lastName}</strong> jest już aktywny u tego koordynatora. Sprawdź listę aktywnych pracowników przed dodaniem.
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-                        <FormField
-                          control={form.control}
-                          name="coordinatorId"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                              <FormLabel>Koordynator</FormLabel>
-                              <FormControl>
-                                <Combobox
-                                  options={coordinatorOptions}
-                                  value={field.value}
-                                  onChange={handleCoordinatorChange}
-                                  placeholder="Wybierz koordynatora"
-                                  searchPlaceholder="Szukaj koordynatora..."
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="nationality"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                              <FormLabel>Narodowość</FormLabel>
-                              <FormControl>
-                                <Combobox
-                                  options={nationalityOptions}
-                                  value={field.value || ''}
-                                  onChange={field.onChange}
-                                  placeholder="Wybierz narodowość"
-                                  searchPlaceholder="Szukaj narodowości..."
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="gender"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Płeć</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value || ''}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Wybierz płeć" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                  {sortedGenders.filter(Boolean).map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                        <FormField
-                          control={form.control}
-                          name="locality"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                              <FormLabel>Miejscowość</FormLabel>
-                              <FormControl>
-                                <Combobox
-                                  options={localityOptions}
-                                  value={field.value || ''}
-                                  onChange={handleLocalityChange}
-                                  placeholder={!selectedCoordinatorId ? "Najpierw wybierz koordynatora" : "Wybierz miejscowość"}
-                                  searchPlaceholder="Szukaj miejscowości..."
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="address"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Adres</FormLabel>
-                              <Select onValueChange={handleAddressChange} value={field.value || ''} disabled={!selectedLocality}>
-                                <FormControl><SelectTrigger><SelectValue placeholder={!selectedLocality ? "Najpierw wybierz miejscowość" : "Wybierz adres"} /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                  {availableAddresses.filter(a => a.name).map(a => (
-                                    <SelectItem key={a.id} value={a.name} disabled={!a.isActive}>
-                                      {a.name} {!a.isActive ? '(Niedostępny)' : ''}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        {isOwnAddressSelected && (
-                          <FormField
-                            control={form.control}
-                            name="ownAddress"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Adres własnego mieszkania</FormLabel>
-                                <FormControl><Input placeholder="np. ul. Testowa 1, 00-000 Warszawa" {...field} /></FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        )}
-                        <FormField
-                          control={form.control}
-                          name="roomNumber"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Pokój</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value || ''} disabled={!selectedAddress || isOwnAddressSelected}>
-                                <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : (isOwnAddressSelected ? "1" : "Wybierz pokój")} /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                  {availableRoomsWithCapacity.filter(r => r.name).map(r => (
-                                    <SelectItem key={r.id} value={r.name} disabled={!r.isActive || r.isLocked}>
-                                      {r.name} {r.isActive ? (r.isLocked ? '(Zablokowany)' : `(${r.available} wolnych z ${r.capacity})`) : '(Niedostępny)'}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="zaklad"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                              <FormLabel>Zakład</FormLabel>
-                              <FormControl>
-                                <Combobox
-                                  options={departmentOptions}
-                                  value={field.value || ''}
-                                  onChange={field.onChange}
-                                  placeholder={!selectedCoordinatorId ? "Najpierw wybierz koordynatora" : "Wybierz zakład"}
-                                  searchPlaceholder="Szukaj zakładu..."
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-                        <FormField
-                          control={form.control}
-                          name="checkInDate"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                              <FormLabel>Data zameldowania</FormLabel>
-                              <FormControl>
-                                <DateInput
-                                  value={field.value ?? undefined}
-                                  onChange={field.onChange}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="checkOutDate"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                              <FormLabel>Data wymeldowania</FormLabel>
-                              <FormControl>
-                                <DateInput value={field.value ?? undefined} onChange={field.onChange} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="departureReportDate"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                              <FormLabel>Data zgłoszenia wyjazdu</FormLabel>
-                              <FormControl>
-                                <DateInput value={field.value ?? undefined} onChange={field.onChange} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                        <FormField
-                          control={form.control}
-                          name="contractStartDate"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                              <FormLabel>Umowa od</FormLabel>
-                              <FormControl>
-                                <DateInput value={field.value ?? undefined} onChange={field.onChange} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="contractEndDate"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                              <FormLabel>Umowa do</FormLabel>
-                              <FormControl>
-                                <DateInput value={field.value ?? undefined} onChange={field.onChange} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      <FormField
-                        control={form.control}
-                        name="comments"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Komentarze</FormLabel>
-                            <FormControl><Input placeholder="Dodatkowe informacje..." {...field} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </TabsContent>
-                  <TabsContent value="finance" className="mt-0 h-full">
-                    <div className="space-y-4 px-4 sm:px-6 pb-4">
-                      <h3 className="text-lg font-medium">Finanse i potrącenia</h3>
-                      <FormField
-                        control={form.control}
-                        name="deductionEntryDate"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-col">
-                            <FormLabel>Data wpisania potrącenia</FormLabel>
-                            <FormControl>
-                              <DateInput
-                                value={field.value ?? undefined}
-                                onChange={field.onChange}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                        <FormField
-                          control={form.control}
-                          name="depositReturned"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Zwrot kaucji</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value || ''}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Status zwrotu kaucji" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                  <SelectItem value="Tak">Tak</SelectItem>
-                                  <SelectItem value="Nie">Nie</SelectItem>
-                                  <SelectItem value="Nie dotyczy">Nie dotyczy</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="depositReturnAmount"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Kwota zwrotu kaucji (PLN)</FormLabel>
-                              <FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))} value={field.value ?? ''} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-                        <FormField
-                          control={form.control}
-                          name="deductionRegulation"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="flex items-center">
-                                Potrącenie (Regulamin)
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild><Info className="h-3 w-3 ml-1 cursor-help" /></TooltipTrigger>
-                                    <TooltipContent><p>Potrącenie za nieprzestrzeganie regulaminu.</p></TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              </FormLabel>
-                              <FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))} value={field.value ?? ''} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="deductionNo4Months"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="flex items-center">
-                                Potrącenie (4 msc)
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild><Info className="h-3 w-3 ml-1 cursor-help" /></TooltipTrigger>
-                                    <TooltipContent><p>Potrącenie za okres krótszy niż 4 miesiące.</p></TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              </FormLabel>
-                              <FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))} value={field.value ?? ''} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="deductionNo30Days"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="flex items-center">
-                                Potrącenie (30 dni)
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild><Info className="h-3 w-3 ml-1 cursor-help" /></TooltipTrigger>
-                                    <TooltipContent><p>Potrącenie za wypowiedzenie krótsze niż 30 dni.</p></TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              </FormLabel>
-                              <FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))} value={field.value ?? ''} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      <FormField
-                        control={form.control}
-                        name="deductionReason"
-                        render={() => (
-                          <FormItem>
-                            <div className="mb-4">
-                              <FormLabel className="text-base">Inne potrącenia</FormLabel>
-                              <p className="text-sm text-muted-foreground">
-                                Wybierz powody dodatkowych potrąceń.
-                              </p>
+                <ScrollArea className="flex-1 overflow-y-auto">
+                    {/* Step 0: Osoba */}
+                    {step === 0 && (
+                        <div className="flex flex-col gap-5 p-6 sm:p-8">
+                            <div className="text-center space-y-1">
+                                <User className="w-9 h-9 mx-auto text-primary" />
+                                <h2 className="text-xl font-bold">Dane osoby</h2>
                             </div>
-                            {(form.getValues('deductionReason') || []).map((reason, index) => (
-                              <FormField
-                                key={reason.id}
-                                control={form.control}
-                                name={`deductionReason.${index}.checked`}
-                                render={({ field }) => (
-                                  <FormItem
-                                    key={reason.id}
-                                    className="flex flex-row items-start space-x-3 space-y-0 mb-3"
-                                  >
-                                    <FormControl>
-                                      <Checkbox
-                                        id={reason.id}
-                                        checked={field.value}
-                                        onCheckedChange={(checked) => {
-                                          field.onChange(checked)
-                                          if (!checked) {
-                                            form.setValue(`deductionReason.${index}.amount`, null)
-                                          }
-                                        }}
-                                        className="mt-1"
-                                      />
-                                    </FormControl>
-                                    <div className="flex flex-col sm:grid sm:grid-cols-2 gap-2 sm:gap-x-4 w-full">
-                                      <Label htmlFor={reason.id} className="font-normal text-sm">
-                                        {reason.label}
-                                      </Label>
-                                      <FormField
-                                        control={form.control}
-                                        name={`deductionReason.${index}.amount`}
-                                        render={({ field: amountField }) => (
-                                          <Input
-                                            type="number"
-                                            placeholder="PLN"
-                                            className="h-10 sm:h-9 min-h-[44px] sm:min-h-0"
-                                            inputMode="decimal"
-                                            {...amountField}
-                                            onChange={e => {
-                                              const value = e.target.value;
-                                              const numericValue = value === '' ? null : parseFloat(value);
-                                              amountField.onChange(numericValue);
-                                              if (numericValue !== null && numericValue > 0) {
-                                                form.setValue(`deductionReason.${index}.checked`, true);
-                                              }
-                                            }}
-                                            value={amountField.value ?? ''}
-                                          />
-                                        )}
-                                      />
+                            <OcrCameraButton
+                                settings={settings}
+                                onResult={(r) => {
+                                    if (r.firstName) set({ firstName: r.firstName });
+                                    if (r.lastName) set({ lastName: r.lastName });
+                                    if (r.nationality) set({ nationality: r.nationality });
+                                }}
+                            />
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium">Nazwisko <span className="text-destructive">*</span></label>
+                                    <Input placeholder="Kowalski" value={data.lastName} onChange={(e) => set({ lastName: e.target.value })} className="h-12 text-base" />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium">Imię <span className="text-destructive">*</span></label>
+                                    <Input placeholder="Jan" value={data.firstName} onChange={(e) => set({ firstName: e.target.value })} className="h-12 text-base" />
+                                </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium">Koordynator <span className="text-destructive">*</span></label>
+                                <Combobox options={coordOptions} value={data.coordinatorId} onChange={(v) => set({ coordinatorId: v, addressName: '', roomNumber: '', ownAddress: '', zaklad: '' })} placeholder="Wybierz koordynatora" searchPlaceholder="Szukaj..." />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium">Narodowość <span className="text-destructive">*</span></label>
+                                <Combobox options={nationalityOptions} value={data.nationality} onChange={(v) => set({ nationality: v })} placeholder="Wybierz narodowość" searchPlaceholder="Szukaj..." />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Step 1: Lokalizacja */}
+                    {step === 1 && (
+                        <div className="flex flex-col gap-4 p-4 sm:p-6">
+                            <div className="text-center space-y-1">
+                                <MapPin className="w-9 h-9 mx-auto text-primary" />
+                                <h2 className="text-xl font-bold">Lokalizacja</h2>
+                                <p className="text-sm text-muted-foreground">Wybierz adres i pokój</p>
+                            </div>
+                            <WizardAddressPicker
+                                items={addressItems}
+                                selectedAddressName={data.addressName}
+                                selectedRoom={data.roomNumber}
+                                onSelect={(name, room) => set({ addressName: name, roomNumber: room, ownAddress: '' })}
+                                allowOwnAddress
+                                ownAddressValue={data.ownAddress}
+                                onOwnAddressChange={(v) => set({ ownAddress: v })}
+                            />
+                        </div>
+                    )}
+
+                    {/* Step 2: Praca */}
+                    {step === 2 && (
+                        <div className="flex flex-col gap-4 p-6 sm:p-8">
+                            <div className="text-center space-y-1">
+                                <Briefcase className="w-9 h-9 mx-auto text-primary" />
+                                <h2 className="text-xl font-bold">Praca</h2>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium">Zakład <span className="text-destructive">*</span></label>
+                                <Combobox options={departmentOptions} value={data.zaklad} onChange={(v) => set({ zaklad: v })} placeholder={!data.coordinatorId ? 'Najpierw wybierz koordynatora' : 'Wybierz zakład'} searchPlaceholder="Szukaj..." />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium">Płeć <span className="text-destructive">*</span></label>
+                                <WizardGenderPicker genders={sortedGenders} value={data.gender} onChange={(g) => set({ gender: g })} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium">Komentarze</label>
+                                <Input placeholder="Dodatkowe informacje..." value={data.comments} onChange={(e) => set({ comments: e.target.value })} className="h-11" />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Step 3: Daty */}
+                    {step === 3 && (
+                        <div className="flex flex-col gap-4 p-6 sm:p-8">
+                            <div className="text-center space-y-1">
+                                <CalendarDays className="w-9 h-9 mx-auto text-primary" />
+                                <h2 className="text-xl font-bold">Daty</h2>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium">Data zameldowania <span className="text-destructive">*</span></label>
+                                <WizardDateInput value={data.checkInDate} onChange={(d) => set({ checkInDate: d })} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium">Data wymeldowania</label>
+                                <WizardDateInput value={data.checkOutDate} onChange={(d) => set({ checkOutDate: d })} placeholder="Opcjonalnie" />
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium">Umowa od</label>
+                                    <WizardDateInput value={data.contractStartDate} onChange={(d) => set({ contractStartDate: d })} placeholder="Opcjonalnie" />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium">Umowa do</label>
+                                    <WizardDateInput value={data.contractEndDate} onChange={(d) => set({ contractEndDate: d })} placeholder="Opcjonalnie" />
+                                </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium">Data zgłoszenia wyjazdu</label>
+                                <WizardDateInput value={data.departureReportDate} onChange={(d) => set({ departureReportDate: d })} placeholder="Opcjonalnie" />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Step 4: Podsumowanie */}
+                    {step === 4 && (
+                        <div className="flex flex-col gap-4 p-6 sm:p-8">
+                            <div className="text-center space-y-1">
+                                <Check className="w-9 h-9 mx-auto text-primary" />
+                                <h2 className="text-xl font-bold">Podsumowanie</h2>
+                            </div>
+                            <div className="rounded-xl border divide-y">
+                                {summaryRows.map(({ label, value, step: s }) => (
+                                    <div key={label} className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 cursor-pointer group" onClick={() => setStep(s)}>
+                                        <div>
+                                            <div className="text-xs text-muted-foreground">{label}</div>
+                                            <div className="text-sm font-medium">{value}</div>
+                                        </div>
+                                        <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                                     </div>
-                                  </FormItem>
-                                )}
-                              />
-                            ))}
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </TabsContent>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </ScrollArea>
-              </Tabs>
 
-              <div className="p-4 sm:p-6 pt-4 flex-shrink-0 flex flex-row items-center justify-between gap-3 bg-background border-t mt-auto">
-                <div className="flex justify-start">
-                  {employee && employee.status === 'active' && (
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      onClick={handleDismissClick}
-                      disabled={isDismissing}
-                      className="h-8 text-xs sm:text-sm px-3 sm:px-4"
-                    >
-                      {isDismissing && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-                      Zwolnij
+                <div className="p-4 border-t bg-background flex items-center justify-between gap-3 flex-shrink-0">
+                    <Button variant="ghost" onClick={step === 0 ? () => onOpenChange(false) : () => setStep((s) => s - 1)} disabled={isSubmitting} className="h-11 px-4 text-sm">
+                        <ChevronLeft className="w-4 h-4 mr-1" />{step === 0 ? 'Anuluj' : 'Wstecz'}
                     </Button>
-                  )}
+                    {step < STEPS.length - 1 ? (
+                        <Button onClick={() => setStep((s) => s + 1)} disabled={!canProceed} className="h-11 px-6 text-sm font-semibold">
+                            Dalej <ChevronRight className="w-4 h-4 ml-1" />
+                        </Button>
+                    ) : (
+                        <Button onClick={handleSubmit} disabled={isSubmitting} className="h-11 px-6 text-sm font-semibold">
+                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            <Check className="w-4 h-4 mr-2" />Dodaj pracownika
+                        </Button>
+                    )}
                 </div>
-                <div className="flex flex-row gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => onOpenChange(false)}
-                    className="h-8 text-xs sm:text-sm px-3 sm:px-4"
-                  >
-                    Anuluj
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={form.formState.isSubmitting}
-                    className="h-8 text-xs sm:text-sm px-3 sm:px-4"
-                  >
-                    {form.formState.isSubmitting && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-                    Zapisz
-                  </Button>
-                </div>
-              </div>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      <AddressPreviewDialog
-        isOpen={isAddressPreviewOpen}
-        onOpenChange={setIsAddressPreviewOpen}
-        settings={settings}
-        allEmployees={allEmployees}
-        allNonEmployees={allNonEmployees}
-        coordinatorId={selectedCoordinatorId}
-        onApplySelection={(locality, address, roomNumber) => {
-          form.setValue('locality', locality);
-          form.setValue('address', address);
-          form.setValue('roomNumber', roomNumber);
-          toast({
-            title: "Wybór zastosowany",
-            description: `${address}, pokój ${roomNumber} został wybrany.`
-          });
-        }}
-      />
-    </>
-  );
+            </DialogContent>
+        </Dialog>
+    );
 }

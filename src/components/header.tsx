@@ -176,7 +176,7 @@ export default function Header({
             readStatusFilter,
             adminView: user.isAdmin,
         });
-    }, [notifications, selectedCoordinatorId, employeeNameFilter, selectedDate, readStatusFilter]);
+    }, [notifications, selectedCoordinatorId, employeeNameFilter, selectedDate, readStatusFilter, user.isAdmin]);
 
     const visibleNotifications = useMemo(() => {
         return filteredNotifications.slice(0, visibleCount);

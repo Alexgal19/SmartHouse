@@ -20,5 +20,7 @@ declare module 'iron-session' {
     uid: string;
     name: string;
     isAdmin: boolean;
+    isDriver: boolean;
+    isRekrutacja: boolean;
   }
 }

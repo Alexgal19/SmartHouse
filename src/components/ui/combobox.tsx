@@ -61,10 +61,21 @@ export function Combobox({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full min-w-[200px] max-w-[calc(100vw-2rem)] p-0" align="start" sideOffset={5}>
-        <Command className="max-h-[40vh] overflow-auto">
+      <PopoverContent
+        className="p-0"
+        style={{
+          width: "var(--radix-popover-trigger-width)",
+          maxHeight: "var(--radix-popover-content-available-height)",
+        }}
+        align="start"
+        sideOffset={5}
+      >
+        <Command className="flex flex-col overflow-hidden rounded-md">
           <CommandInput placeholder={searchPlaceholder} className="h-10" />
-          <CommandList className="max-h-[30vh]">
+          <CommandList
+            className="overflow-y-auto"
+            onWheel={(e) => e.stopPropagation()}
+          >
             <CommandEmpty>{notFoundMessage}</CommandEmpty>
             <CommandGroup>
               {options.map((option) => (

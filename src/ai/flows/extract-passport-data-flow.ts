@@ -9,6 +9,8 @@ export type ExtractPassportDataInput = {
 export type ExtractPassportDataOutput = {
   firstName: string;
   lastName: string;
+  nationality: string;
+  passportNumber: string;
 };
 
 function extractBase64AndMime(dataUrl: string): { base64: string; mimeType: string } {
@@ -60,18 +62,59 @@ Indian passports often have a unique name structure:
 - The given names section (after "<<") contains ALL other names — include every one of them
 - Do NOT move parts of the given name into the surname or vice versa — follow the MRZ structure exactly
 
-## Step 4 — Cross-verify and return
+## Step 4 — Extract the nationality (country name)
+- From MRZ line 1, positions 11–13 (3-letter ISO country code)
+- Also cross-check VIZ "Nationality" / "Citizenship" field
+- Return the country name IN POLISH. Common mappings:
+  - UKR → "Ukraina"
+  - POL → "Polska"
+  - BLR → "Białoruś"
+  - IND → "Indie"
+  - COL → "Kolumbia"
+  - MDA → "Mołdawia"
+  - GEO → "Gruzja"
+  - RUS → "Rosja"
+  - UZB → "Uzbekistan"
+  - KAZ → "Kazachstan"
+  - TKM → "Turkmenistan"
+  - TJK → "Tadżykistan"
+  - KGZ → "Kirgistan"
+  - AZE → "Azerbejdżan"
+  - ARM → "Armenia"
+  - TUR → "Turcja"
+  - VNM → "Wietnam"
+  - NPL → "Nepal"
+  - BGD → "Bangladesz"
+  - PAK → "Pakistan"
+  - PHL → "Filipiny"
+  - IDN → "Indonezja"
+  - ECU → "Ekwador"
+  - PER → "Peru"
+  - BRA → "Brazylia"
+  - VEN → "Wenezuela"
+  - ROU → "Rumunia"
+  - MDA → "Mołdawia"
+- For other codes, use the Polish exonym of the country (e.g. "Niemcy", "Włochy", "Stany Zjednoczone")
+- If nationality cannot be determined, return an empty string
+
+## Step 5 — Extract the passport/document number
+- From MRZ line 2, positions 1–9 (may contain "<" filler characters — strip them)
+- Cross-check with the VIZ "Passport No." / "Document No." field
+- Return the alphanumeric value, uppercase, without spaces or fillers
+- If the number cannot be read, return an empty string
+
+## Step 6 — Cross-verify and return
 - If both MRZ and VIZ are readable, prefer MRZ for accuracy but verify with VIZ
 - If only VIZ is readable, use VIZ
 - Return ALL given names (first + middle names) — never truncate compound names
 - Return ALL surname parts — many cultures use compound surnames (Latin American, Indian, Spanish, Portuguese)
 - Preserve diacritics and special characters from the VIZ (ñ, ü, ć, ź, ø, etc.) — the MRZ strips them, so restore from VIZ when possible
 - Capitalize properly: first letter of each word uppercase, rest lowercase (e.g. "Juan Carlos", not "JUAN CARLOS")
-- Valid characters: letters (including accented), spaces, hyphens, apostrophes
-- If you cannot read the name clearly, return empty strings
+- Valid characters in names: letters (including accented), spaces, hyphens, apostrophes
+- If you cannot read a field clearly, return an empty string for that field
 
 Respond with ONLY valid JSON, no markdown, no explanation:
-{"firstName": "...", "lastName": "..."}`;
+{"firstName": "...", "lastName": "...", "nationality": "...", "passportNumber": "..."}`;
 
   const result = await model.generateContent([
     { text: prompt },
@@ -88,7 +131,7 @@ Respond with ONLY valid JSON, no markdown, no explanation:
   // Strip markdown code blocks if present
   const clean = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
 
-  let parsed: { firstName?: string; lastName?: string };
+  let parsed: { firstName?: string; lastName?: string; nationality?: string; passportNumber?: string };
   try {
     parsed = JSON.parse(clean);
   } catch {
@@ -97,10 +140,12 @@ Respond with ONLY valid JSON, no markdown, no explanation:
 
   const firstName = (parsed.firstName || '').trim();
   const lastName = (parsed.lastName || '').trim();
+  const nationality = (parsed.nationality || '').trim();
+  const passportNumber = (parsed.passportNumber || '').trim().replace(/[<\s]/g, '').toUpperCase();
 
   if (!firstName && !lastName) {
     throw new Error('Nie udało się rozpoznać imienia i nazwiska. Upewnij się, że zdjęcie jest ostre i strona z danymi jest widoczna.');
   }
 
-  return { firstName, lastName };
+  return { firstName, lastName, nationality, passportNumber };
 }

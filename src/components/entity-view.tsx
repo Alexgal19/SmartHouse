@@ -49,7 +49,7 @@ const formatDate = (dateString?: string | null) => {
 }
 
 type Entity = Employee | NonEmployee | BokResident;
-type SortableField = 'lastName' | 'firstName' | 'coordinatorId' | 'address' | 'roomNumber' | 'checkInDate' | 'checkOutDate' | 'coordinatorName' | 'department' | 'sendDate' | 'zaklad' | 'returnStatus' | 'status' | 'comments';
+type SortableField = 'lastName' | 'firstName' | 'coordinatorId' | 'address' | 'roomNumber' | 'checkInDate' | 'checkOutDate' | 'coordinatorName' | 'department' | 'sendDate' | 'zaklad' | 'returnStatus' | 'status' | 'comments' | 'passportNumber';
 
 
 const isBokResident = (entity: Entity): entity is BokResident => 'role' in entity;
@@ -191,6 +191,7 @@ const EntityTable = React.memo(({ entities, onEdit, onRestore, isDismissed, sett
                         {isBokTab && <FilterableHeader label="Data wysłania" field="sendDate" currentFilterValues={columnFilters?.sendDate} onFilterChange={onColumnFilterChange} options={columnOptions?.sendDate} isDateFilter onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
                         {isBokTab && <FilterableHeader label="Zakład" field="zaklad" currentFilterValues={columnFilters?.zaklad} onFilterChange={onColumnFilterChange} options={columnOptions?.zaklad} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
                         <FilterableHeader label="Data wymeldowania" field="checkOutDate" currentFilterValues={columnFilters?.checkOutDate} onFilterChange={onColumnFilterChange} options={columnOptions?.checkOutDate} isDateFilter onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        {isBokTab && <FilterableHeader label="Nr paszportu" field="passportNumber" currentFilterValues={columnFilters?.passportNumber} onFilterChange={onColumnFilterChange} options={columnOptions?.passportNumber} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
                         {isBokTab && <FilterableHeader label="Komentarze" field="comments" currentFilterValues={columnFilters?.comments} onFilterChange={onColumnFilterChange} options={columnOptions?.comments} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
                         <TableHead><span className="sr-only">Akcje</span></TableHead>
                     </TableRow>
@@ -234,6 +235,7 @@ const EntityTable = React.memo(({ entities, onEdit, onRestore, isDismissed, sett
                                     {isBokTab && <TableCell>{isBokResident(entity) ? formatDate(entity.sendDate) || '-' : '-'}</TableCell>}
                                     {isBokTab && <TableCell>{isBokResident(entity) ? entity.zaklad || '-' : '-'}</TableCell>}
                                     <TableCell>{formatDate(entity.checkOutDate)}</TableCell>
+                                    {isBokTab && <TableCell>{isBokResident(entity) ? entity.passportNumber || '-' : '-'}</TableCell>}
                                     {isBokTab && <TableCell className="max-w-[150px] truncate" title={isBokResident(entity) ? entity.comments || '' : undefined}>{isBokResident(entity) ? entity.comments || '-' : '-'}</TableCell>}
                                     <TableCell onClick={(e) => e.stopPropagation()}>
                                         <EntityActions {...{ entity, onEdit, onRestore, onPermanentDelete, isDismissed }} />
@@ -826,65 +828,6 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         return options;
     }, [tab, bokData, dataMap.history, currentData, settings]);
 
-    if (!settings || !allEmployees || !allNonEmployees || !allBokResidents || !addressHistory) {
-        return (
-            <Card>
-                <CardHeader>
-                    <Skeleton className="h-8 w-1/3" />
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-4">
-                        <Skeleton className="h-24 w-full" />
-                        <Skeleton className="h-24 w-full" />
-                        <Skeleton className="h-24 w-full" />
-                    </div>
-                </CardContent>
-            </Card>
-        );
-    }
-
-    const handleRestore = async (entity: Entity) => {
-        if (isBokResident(entity)) {
-            await handleRestoreBokResident(entity);
-        } else if (isEmployee(entity)) {
-            await handleRestoreEmployee(entity);
-        } else {
-            await handleRestoreNonEmployee(entity as NonEmployee);
-        }
-    };
-
-    const handlePermanentDelete = async (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => {
-        if (type === 'employee') {
-            await handleDeleteEmployee(id, currentUser.uid);
-        } else if (type === 'bok-resident') {
-            await handleDeleteBokResident(id, currentUser.uid);
-        } else {
-            await handleDeleteNonEmployee(id, currentUser.uid);
-        }
-    };
-
-    const handleEdit = (entity: Entity) => {
-        if (isBokResident(entity)) {
-            handleEditBokResidentClick(entity);
-        } else if (isEmployee(entity)) {
-            handleEditEmployeeClick(entity);
-        } else {
-            handleEditNonEmployeeClick(entity as NonEmployee);
-        }
-    }
-
-    const handleAdd = (type: 'employee' | 'non-employee' | 'bok-resident') => {
-        if (type === 'non-employee') {
-            handleAddNonEmployeeClick();
-        } else if (type === 'bok-resident') {
-            handleAddBokResidentClick();
-        } else {
-            handleAddEmployeeClick();
-        }
-    }
-
-
-
     // ─── Excel export ───────────────────────────────────────────────────────
     const getCoordName = useCallback((id: string) =>
         settings?.coordinators.find(c => c.uid === id)?.name || 'N/A',
@@ -958,6 +901,65 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         XLSX.utils.book_append_sheet(wb, ws, label);
         XLSX.writeFile(wb, `${label}_${today}.xlsx`);
     }, []);
+
+    if (!settings || !allEmployees || !allNonEmployees || !allBokResidents || !addressHistory) {
+        return (
+            <Card>
+                <CardHeader>
+                    <Skeleton className="h-8 w-1/3" />
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-4">
+                        <Skeleton className="h-24 w-full" />
+                        <Skeleton className="h-24 w-full" />
+                        <Skeleton className="h-24 w-full" />
+                    </div>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    const handleRestore = async (entity: Entity) => {
+        if (isBokResident(entity)) {
+            await handleRestoreBokResident(entity);
+        } else if (isEmployee(entity)) {
+            await handleRestoreEmployee(entity);
+        } else {
+            await handleRestoreNonEmployee(entity as NonEmployee);
+        }
+    };
+
+    const handlePermanentDelete = async (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => {
+        if (type === 'employee') {
+            await handleDeleteEmployee(id, currentUser.uid);
+        } else if (type === 'bok-resident') {
+            await handleDeleteBokResident(id, currentUser.uid);
+        } else {
+            await handleDeleteNonEmployee(id, currentUser.uid);
+        }
+    };
+
+    const handleEdit = (entity: Entity) => {
+        if (isBokResident(entity)) {
+            handleEditBokResidentClick(entity);
+        } else if (isEmployee(entity)) {
+            handleEditEmployeeClick(entity);
+        } else {
+            handleEditNonEmployeeClick(entity as NonEmployee);
+        }
+    }
+
+    const handleAdd = (type: 'employee' | 'non-employee' | 'bok-resident') => {
+        if (type === 'non-employee') {
+            handleAddNonEmployeeClick();
+        } else if (type === 'bok-resident') {
+            handleAddBokResidentClick();
+        } else {
+            handleAddEmployeeClick();
+        }
+    }
+
+
 
     const ExportButton = ({ onClick, count }: { onClick: () => void; count: number }) => (
         <div className="flex justify-end mb-2">

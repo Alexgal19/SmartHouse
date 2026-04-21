@@ -25,6 +25,7 @@ export default async function DashboardLayout({
     name: session.name,
     isAdmin: session.isAdmin,
     isDriver: session.isDriver || false,
+    isRekrutacja: session.isRekrutacja || false,
   };
 
   return <ClientLayout initialSession={sessionData}>{children}</ClientLayout>;
