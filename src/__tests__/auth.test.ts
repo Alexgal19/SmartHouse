@@ -71,6 +71,7 @@ describe('Authentication', () => {
                 name: 'Admin',
                 isAdmin: true,
                 isDriver: false,
+                isRekrutacja: false,
             });
             expect(mockSession.save).toHaveBeenCalled();
             expect(mockSession.isLoggedIn).toBe(true);
@@ -100,6 +101,7 @@ describe('Authentication', () => {
                 name: 'Jan Kowalski',
                 isAdmin: false,
                 isDriver: false,
+                isRekrutacja: false,
             });
             expect(mockSession.save).toHaveBeenCalled();
             expect(mockSession.isLoggedIn).toBe(true);

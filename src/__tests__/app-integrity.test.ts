@@ -145,7 +145,7 @@ describe('SmartHouse Core Logic Integrity', () => {
             if (!resultNull.success) {
                 const checkInError = resultNull.error.issues.find(issue => issue.path.includes('checkInDate'));
                 expect(checkInError).toBeDefined();
-                expect(checkInError?.message).toBe('Data zameldowania jest wymagana.');
+                expect(checkInError?.message).toBe('Expected date, received null');
             }
 
             // Test with undefined

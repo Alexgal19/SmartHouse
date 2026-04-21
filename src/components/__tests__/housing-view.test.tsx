@@ -1,9 +1,13 @@
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { FilterControls } from '../housing-view';
+
+// Mock actions to avoid firebase-admin initialization in tests
+jest.mock('@/lib/actions', () => ({
+    bulkSetSendDateAction: jest.fn(),
+}));
 
 // Mock UI components that might cause issues in JSDOM or are complex
 jest.mock('@/components/ui/select', () => ({
@@ -26,11 +30,11 @@ jest.mock('@/components/ui/select', () => ({
 
 jest.mock('@/components/ui/switch', () => ({
     Switch: ({ checked, onCheckedChange, id }: any) => (
-        <input 
-            type="checkbox" 
-            id={id} 
-            checked={checked} 
-            onChange={e => onCheckedChange(e.target.checked)} 
+        <input
+            type="checkbox"
+            id={id}
+            checked={checked}
+            onChange={e => onCheckedChange(e.target.checked)}
             data-testid="switch-mock"
         />
     ),
@@ -55,7 +59,7 @@ describe('FilterControls', () => {
         bokReturnOptions: [],
         bokStatuses: []
     } as any;
-    
+
     const mockCurrentUser = { uid: 'coord1', isAdmin: true, name: 'Admin', isLoggedIn: true, role: 'admin' } as any;
 
     const initialFilters = {
@@ -88,7 +92,7 @@ describe('FilterControls', () => {
         fireEvent.click(switchControl);
         expect(mockOnFilterChange).toHaveBeenCalledWith({ ...initialFilters, showOnlyAvailable: true });
     });
-    
+
     it('should call onFilterChange when locality changes', () => {
         render(<FilterControls filters={initialFilters} onFilterChange={mockOnFilterChange} settings={mockSettings} currentUser={mockCurrentUser} />);
         const select = screen.getByTestId('select-mock');

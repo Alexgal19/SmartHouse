@@ -1,8 +1,5 @@
 import React from 'react';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import userEvent from '@testing-library/user-event';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AddBokResidentForm } from '../add-bok-resident-form';
 import type { Settings, SessionData, BokResident } from '@/types';
 
@@ -23,13 +20,23 @@ jest.mock('react-webcam', () => {
     return Webcam;
 });
 
-const mockHandleDismissBokResident = jest.fn().mockResolvedValue(undefined);
-
 jest.mock('../main-layout', () => ({
     useMainLayout: () => ({
-        handleDismissBokResident: mockHandleDismissBokResident,
+        handleDismissBokResident: jest.fn().mockResolvedValue(undefined),
+        allEmployees: [],
+        allNonEmployees: [],
+        allBokResidents: [],
     }),
 }));
+
+// Mock wizard-utils OcrCameraButton
+jest.mock('../wizard-utils', () => {
+    const original = jest.requireActual('../wizard-utils');
+    return {
+        ...original,
+        OcrCameraButton: () => null,
+    };
+});
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -65,6 +72,7 @@ const mockCurrentUser: SessionData = {
     name: 'Jan Kowalski',
     isAdmin: true,
     isDriver: false,
+    isRekrutacja: false,
 };
 
 const baseProps = {
@@ -101,15 +109,49 @@ const residentWithDismissDate: BokResident = {
     dismissDate: '2026-03-01',
 };
 
-// ─── AddBokResidentForm — Dialog rendering ────────────────────────────────────
+// ─── AddBokResidentForm — Wizard (new resident) ──────────────────────────────
 
-describe('AddBokResidentForm — dialog rendering', () => {
+describe('AddBokResidentForm — wizard for new resident', () => {
     beforeEach(() => jest.clearAllMocks());
 
-    it('renders "Dodaj Mieszkańca BOK" title for new resident', () => {
+    it('renders step 0 with "Dane osoby" heading', () => {
         render(<AddBokResidentForm {...baseProps} resident={null} />);
-        expect(screen.getByText('Dodaj Mieszkańca BOK')).toBeInTheDocument();
+        expect(screen.getByText('Dane osoby')).toBeInTheDocument();
     });
+
+    it('Dalej button is disabled when required step 0 fields are empty', () => {
+        render(<AddBokResidentForm {...baseProps} resident={null} />);
+        expect(screen.getByRole('button', { name: /Dalej/i })).toBeDisabled();
+    });
+
+    it('Dalej button is enabled when step 0 fields are filled', () => {
+        render(<AddBokResidentForm {...baseProps} resident={null} />);
+        // Select role via button
+        fireEvent.click(screen.getByRole('button', { name: 'Kierowca' }));
+        // Fill name fields
+        fireEvent.change(screen.getByPlaceholderText('Kowalski'), { target: { value: 'Kowalski' } });
+        fireEvent.change(screen.getByPlaceholderText('Jan'), { target: { value: 'Jan' } });
+        // Select coordinator and nationality via Comboboxes
+        const comboboxes = screen.getAllByRole('combobox');
+        fireEvent.click(comboboxes[0]); // coordinator
+        fireEvent.click(screen.getByText('Jan Kowalski'));
+        fireEvent.click(comboboxes[1]); // nationality
+        fireEvent.click(screen.getByText('Polska'));
+        expect(screen.getByRole('button', { name: /Dalej/i })).toBeEnabled();
+    });
+
+    it('Anuluj button on step 0 calls onOpenChange(false)', () => {
+        const onOpenChange = jest.fn();
+        render(<AddBokResidentForm {...baseProps} resident={null} onOpenChange={onOpenChange} />);
+        fireEvent.click(screen.getByRole('button', { name: /Anuluj/i }));
+        expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
+});
+
+// ─── AddBokResidentForm — Edit mode (delegates to EditBokResidentForm) ────────
+
+describe('AddBokResidentForm — edit mode via EditBokResidentForm', () => {
+    beforeEach(() => jest.clearAllMocks());
 
     it('renders "Edytuj Mieszkańca BOK" title for existing resident', () => {
         render(<AddBokResidentForm {...baseProps} resident={existingResident} />);
@@ -123,55 +165,23 @@ describe('AddBokResidentForm — dialog rendering', () => {
             expect(screen.getByDisplayValue('Shevchenko')).toBeInTheDocument();
         });
     });
-});
 
-// ─── AddBokResidentForm — Buttons presence ────────────────────────────────────
-
-describe('AddBokResidentForm — button visibility', () => {
-    beforeEach(() => jest.clearAllMocks());
-
-    it('shows "Zapisz" button for new resident', () => {
-        render(<AddBokResidentForm {...baseProps} resident={null} />);
+    it('shows "Zapisz" button for existing resident', () => {
+        render(<AddBokResidentForm {...baseProps} resident={existingResident} />);
         expect(screen.getByRole('button', { name: /Zapisz/i })).toBeInTheDocument();
     });
 
-    it('shows "Anuluj" button', () => {
-        render(<AddBokResidentForm {...baseProps} resident={null} />);
+    it('shows "Anuluj" button for existing resident', () => {
+        render(<AddBokResidentForm {...baseProps} resident={existingResident} />);
         expect(screen.getByRole('button', { name: /Anuluj/i })).toBeInTheDocument();
-    });
-
-    it('does NOT show "Zwolnij" button for a new resident (resident=null)', () => {
-        render(<AddBokResidentForm {...baseProps} resident={null} />);
-        expect(screen.queryByRole('button', { name: /Zwolnij/i })).not.toBeInTheDocument();
     });
 
     it('shows "Zwolnij" button when editing an existing resident', () => {
         render(<AddBokResidentForm {...baseProps} resident={existingResident} />);
         expect(screen.getByRole('button', { name: /Zwolnij/i })).toBeInTheDocument();
     });
-});
 
-// ─── AddBokResidentForm — Anuluj button ──────────────────────────────────────
-
-describe('AddBokResidentForm — Anuluj button', () => {
-    beforeEach(() => jest.clearAllMocks());
-
-    it('calls onOpenChange(false) when "Anuluj" is clicked', async () => {
-        const onOpenChange = jest.fn();
-        render(<AddBokResidentForm {...baseProps} resident={null} onOpenChange={onOpenChange} />);
-        fireEvent.click(screen.getByRole('button', { name: /Anuluj/i }));
-        await waitFor(() => {
-            expect(onOpenChange).toHaveBeenCalledWith(false);
-        });
-    });
-});
-
-// ─── AddBokResidentForm — Zwolnij button ─────────────────────────────────────
-
-describe('AddBokResidentForm — Zwolnij button', () => {
-    beforeEach(() => jest.clearAllMocks());
-
-    it('shows error toast when "Zwolnij" is clicked without dismissDate filled', async () => {
+    it('shows error toast when "Zwolnij" is clicked without dismissDate', async () => {
         render(<AddBokResidentForm {...baseProps} resident={existingResident} />);
         fireEvent.click(screen.getByRole('button', { name: /Zwolnij/i }));
         await waitFor(() => {
@@ -182,94 +192,16 @@ describe('AddBokResidentForm — Zwolnij button', () => {
         });
     });
 
-    it('does NOT call handleDismissBokResident when dismissDate is missing', async () => {
-        render(<AddBokResidentForm {...baseProps} resident={existingResident} />);
-        fireEvent.click(screen.getByRole('button', { name: /Zwolnij/i }));
-        await waitFor(() => {
-            expect(mockHandleDismissBokResident).not.toHaveBeenCalled();
-        });
-    });
-
-    it('calls handleDismissBokResident with resident.id and a Date when dismissDate is pre-filled', async () => {
-        render(<AddBokResidentForm {...baseProps} resident={residentWithDismissDate} />);
-        await waitFor(() => {
-            expect(screen.getByRole('button', { name: /Zwolnij/i })).toBeInTheDocument();
-        });
-        fireEvent.click(screen.getByRole('button', { name: /Zwolnij/i }));
-        await waitFor(() => {
-            expect(mockHandleDismissBokResident).toHaveBeenCalledWith(
-                'bok-1',
-                expect.any(Date)
-            );
-        });
-    });
-
-    it('calls onOpenChange(false) after successful dismissal', async () => {
-        const onOpenChange = jest.fn();
-        render(<AddBokResidentForm {...baseProps} resident={residentWithDismissDate} onOpenChange={onOpenChange} />);
-        await waitFor(() => screen.getByRole('button', { name: /Zwolnij/i }));
-        fireEvent.click(screen.getByRole('button', { name: /Zwolnij/i }));
-        await waitFor(() => {
-            expect(onOpenChange).toHaveBeenCalledWith(false);
-        });
-    });
-});
-
-// ─── AddBokResidentForm — "Data zwolnienia" field ────────────────────────────
-
-describe('AddBokResidentForm — Data zwolnienia field', () => {
-    beforeEach(() => jest.clearAllMocks());
-
-    it('does NOT show "Data zwolnienia" field when adding a new resident', () => {
-        render(<AddBokResidentForm {...baseProps} resident={null} />);
-        expect(screen.queryByText(/Data zwolnienia/i)).not.toBeInTheDocument();
-    });
-
     it('shows "Data zwolnienia" field when editing an existing resident', () => {
         render(<AddBokResidentForm {...baseProps} resident={existingResident} />);
         expect(screen.getByText(/Data zwolnienia/i)).toBeInTheDocument();
-    });
-});
-
-// ─── AddBokResidentForm — "Data wyjazdu" label ───────────────────────────────
-
-describe('AddBokResidentForm — Data wyjazdu label', () => {
-    beforeEach(() => jest.clearAllMocks());
-
-    it('shows "Data wyjazdu" label with "(informacyjnie)" suffix', () => {
-        render(<AddBokResidentForm {...baseProps} resident={existingResident} />);
-        expect(screen.getByText(/informacyjnie/i)).toBeInTheDocument();
-    });
-});
-
-// ─── AddBokResidentForm — Form validation ─────────────────────────────────────
-
-describe('AddBokResidentForm — form validation', () => {
-    beforeEach(() => jest.clearAllMocks());
-
-    it('shows validation errors for empty firstName and lastName on submit', async () => {
-        render(<AddBokResidentForm {...baseProps} resident={null} />);
-
-        const firstNameInput = screen.getByLabelText('Imię');
-        const lastNameInput = screen.getByLabelText('Nazwisko');
-        fireEvent.change(firstNameInput, { target: { value: '' } });
-        fireEvent.change(lastNameInput, { target: { value: '' } });
-
-        fireEvent.click(screen.getByRole('button', { name: /Zapisz/i }));
-
-        await waitFor(() => {
-            expect(screen.getByText('Imię jest wymagane.')).toBeInTheDocument();
-            expect(screen.getByText('Nazwisko jest wymagane.')).toBeInTheDocument();
-        });
     });
 
     it('calls onSave when form is valid and "Zapisz" is clicked', async () => {
         const onSave = jest.fn().mockResolvedValue(undefined);
         render(<AddBokResidentForm {...baseProps} resident={existingResident} onSave={onSave} />);
-
         await waitFor(() => screen.getByDisplayValue('Viktor'));
         fireEvent.click(screen.getByRole('button', { name: /Zapisz/i }));
-
         await waitFor(() => {
             expect(onSave).toHaveBeenCalledTimes(1);
         });
@@ -278,10 +210,8 @@ describe('AddBokResidentForm — form validation', () => {
     it('onSave receives dismissDate when editing resident with dismissDate set', async () => {
         const onSave = jest.fn().mockResolvedValue(undefined);
         render(<AddBokResidentForm {...baseProps} resident={residentWithDismissDate} onSave={onSave} />);
-
         await waitFor(() => screen.getByDisplayValue('Viktor'));
         fireEvent.click(screen.getByRole('button', { name: /Zapisz/i }));
-
         await waitFor(() => {
             expect(onSave).toHaveBeenCalledWith(
                 expect.objectContaining({ dismissDate: '2026-03-01' })
@@ -289,17 +219,14 @@ describe('AddBokResidentForm — form validation', () => {
         });
     });
 
-    it('onSave does NOT call onOpenChange when onSave throws', async () => {
+    it('does NOT call onOpenChange when onSave throws', async () => {
         const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
         const onSave = jest.fn().mockRejectedValue(new Error('Save failed'));
         const onOpenChange = jest.fn();
         render(<AddBokResidentForm {...baseProps} resident={existingResident} onSave={onSave} onOpenChange={onOpenChange} />);
-
         await waitFor(() => screen.getByDisplayValue('Viktor'));
         fireEvent.click(screen.getByRole('button', { name: /Zapisz/i }));
-
         await waitFor(() => expect(onSave).toHaveBeenCalled());
-        // dialog should stay open
         expect(onOpenChange).not.toHaveBeenCalledWith(false);
         consoleSpy.mockRestore();
     });

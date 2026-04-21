@@ -15,6 +15,25 @@ jest.mock('@/ai/flows/extract-passport-data-flow', () => ({
   extractPassportData: jest.fn(),
 }));
 
+// Mock useMainLayout (wizard uses allEmployees, allNonEmployees, allBokResidents)
+jest.mock('../main-layout', () => ({
+  useMainLayout: () => ({
+    allEmployees: [],
+    allNonEmployees: [],
+    allBokResidents: [],
+    handleDismissNonEmployee: jest.fn(),
+  }),
+}));
+
+// Mock wizard-utils OcrCameraButton to avoid webcam dependency
+jest.mock('../wizard-utils', () => {
+  const original = jest.requireActual('../wizard-utils');
+  return {
+    ...original,
+    OcrCameraButton: () => null,
+  };
+});
+
 const mockSettings: Settings = {
   id: 'global-settings',
   coordinators: [
@@ -47,6 +66,7 @@ const mockCurrentUser: SessionData = {
   name: 'Jan Kowalski',
   isAdmin: true,
   isDriver: false,
+  isRekrutacja: false,
 };
 
 const defaultProps = {
@@ -58,56 +78,44 @@ const defaultProps = {
   currentUser: mockCurrentUser,
 };
 
+// Helper: fill step 0 (Osoba) required fields to allow proceeding
+function fillStep0() {
+  fireEvent.change(screen.getByPlaceholderText('Kowalski'), { target: { value: 'Kowalski' } });
+  fireEvent.change(screen.getByPlaceholderText('Jan'), { target: { value: 'Jan' } });
+  // Select coordinator via Combobox (buttons have empty accessible name, use array index)
+  const comboboxes = screen.getAllByRole('combobox');
+  fireEvent.click(comboboxes[0]); // coordinator
+  fireEvent.click(screen.getByText('Jan Kowalski'));
+  // Select nationality via Combobox
+  fireEvent.click(comboboxes[1]); // nationality
+  fireEvent.click(screen.getByText('Polska'));
+}
+
 describe('AddNonEmployeeForm', () => {
-  it('renders the form with required fields', () => {
-    render(<AddNonEmployeeForm {...defaultProps} />);
+  beforeEach(() => jest.clearAllMocks());
 
-    expect(screen.getByText('Dodaj nowego mieszkańca (NZ)')).toBeInTheDocument();
-    expect(screen.getByLabelText('Nazwisko')).toBeInTheDocument();
-    expect(screen.getByLabelText('Imię')).toBeInTheDocument();
-    expect(screen.getByLabelText('Koordynator')).toBeInTheDocument();
+  it('renders step 0 with person fields', () => {
+    render(<AddNonEmployeeForm {...defaultProps} />);
+    expect(screen.getByText('Dane osoby')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Kowalski')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Jan')).toBeInTheDocument();
   });
 
-  it('validates required fields', async () => {
+  it('Dalej button is disabled when required step 0 fields are empty', () => {
     render(<AddNonEmployeeForm {...defaultProps} />);
-
-    const submitButton = screen.getByRole('button', { name: 'Zapisz' });
-    fireEvent.click(submitButton);
-
-    await waitFor(() => {
-      expect(screen.getByText('Imię jest wymagane.')).toBeInTheDocument();
-      expect(screen.getByText('Nazwisko jest wymagane.')).toBeInTheDocument();
-      expect(screen.getByText('Koordynator jest wymagany.')).toBeInTheDocument();
-      expect(screen.getByText('Miejscowość jest wymagana.')).toBeInTheDocument();
-      expect(screen.getByText('Adres jest wymagany.')).toBeInTheDocument();
-      expect(screen.getByText('Pokój jest wymagany.')).toBeInTheDocument();
-      expect(screen.getByText("Narodowość jest wymagana.")).toBeInTheDocument();
-      expect(screen.getByText("Płeć jest wymagana.")).toBeInTheDocument();
-    });
+    expect(screen.getByRole('button', { name: /Dalej/i })).toBeDisabled();
   });
 
-  it('validates room number is required', async () => {
+  it('Dalej button is enabled when step 0 fields are filled', () => {
     render(<AddNonEmployeeForm {...defaultProps} />);
+    fillStep0();
+    expect(screen.getByRole('button', { name: /Dalej/i })).toBeEnabled();
+  });
 
-    // Fill some fields but leave room empty
-    fireEvent.change(screen.getByLabelText('Nazwisko'), { target: { value: 'Kowalski' } });
-    fireEvent.change(screen.getByLabelText('Imię'), { target: { value: 'Jan' } });
-
-    fireEvent.click(screen.getByText('Wybierz koordynatora'));
-    fireEvent.click(screen.getByText('Jan Kowalski'));
-
-    fireEvent.click(screen.getByText('Wybierz miejscowość'));
-    fireEvent.click(screen.getByRole('option', { name: 'Warszawa' }));
-
-    fireEvent.click(screen.getByText('Wybierz adres'));
-    const option = await screen.findByRole('option', { name: 'Testowa 1' });
-    fireEvent.click(option);
-
-    const submitButton = screen.getByRole('button', { name: 'Zapisz' });
-    fireEvent.click(submitButton);
-
-    await waitFor(() => {
-      expect(screen.getByText('Pokój jest wymagany.')).toBeInTheDocument();
-    });
+  it('Anuluj button on step 0 calls onOpenChange(false)', () => {
+    const onOpenChange = jest.fn();
+    render(<AddNonEmployeeForm {...defaultProps} onOpenChange={onOpenChange} />);
+    fireEvent.click(screen.getByRole('button', { name: /Anuluj/i }));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });

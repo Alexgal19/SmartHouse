@@ -58,6 +58,7 @@ const mockSession: SessionData = {
   name: 'Test User',
   isAdmin: false,
   isDriver: false,
+    isRekrutacja: false,
 };
 
 describe('DashboardView', () => {

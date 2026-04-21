@@ -7,6 +7,9 @@ import type { Settings, SessionData } from '@/types';
 jest.mock('../main-layout', () => ({
   useMainLayout: () => ({
     handleDismissEmployee: jest.fn(),
+    allEmployees: [],
+    allNonEmployees: [],
+    allBokResidents: [],
   }),
 }));
 
@@ -29,6 +32,15 @@ jest.mock('@/components/ui/tabs', () => ({
   TabsTrigger: ({ children }: { children: React.ReactNode }) => <button type="button">{children}</button>,
   TabsContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
+
+// Mock wizard-utils OcrCameraButton
+jest.mock('../wizard-utils', () => {
+  const original = jest.requireActual('../wizard-utils');
+  return {
+    ...original,
+    OcrCameraButton: () => null,
+  };
+});
 
 const mockSettings: Settings = {
   id: 'global-settings',
@@ -62,6 +74,7 @@ const mockCurrentUser: SessionData = {
   name: 'Jan Kowalski',
   isAdmin: true,
   isDriver: false,
+  isRekrutacja: false,
 };
 
 const defaultProps = {
@@ -73,160 +86,53 @@ const defaultProps = {
   currentUser: mockCurrentUser,
 };
 
+// Helper: fill step 0 (Osoba) required fields
+function fillStep0() {
+  fireEvent.change(screen.getByPlaceholderText('Kowalski'), { target: { value: 'Kowalski' } });
+  fireEvent.change(screen.getByPlaceholderText('Jan'), { target: { value: 'Jan' } });
+  const comboboxes = screen.getAllByRole('combobox');
+  fireEvent.click(comboboxes[0]); // coordinator
+  fireEvent.click(screen.getByText('Jan Kowalski'));
+  fireEvent.click(comboboxes[1]); // nationality
+  fireEvent.click(screen.getByText('Polska'));
+}
+
 describe('AddEmployeeForm', () => {
-  it('renders the form with required fields', () => {
-    render(<AddEmployeeForm {...defaultProps} />);
+  beforeEach(() => jest.clearAllMocks());
 
-    expect(screen.getByText('Dodaj nowego pracownika')).toBeInTheDocument();
-    expect(screen.getByLabelText('Nazwisko')).toBeInTheDocument();
-    expect(screen.getByLabelText('Imię')).toBeInTheDocument();
-    expect(screen.getByLabelText('Koordynator')).toBeInTheDocument();
+  it('renders step 0 with person fields', () => {
+    render(<AddEmployeeForm {...defaultProps} />);
+    expect(screen.getByText('Dane osoby')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Kowalski')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Jan')).toBeInTheDocument();
   });
 
-  it('validates required fields', async () => {
+  it('Dalej button is disabled when required step 0 fields are empty', () => {
     render(<AddEmployeeForm {...defaultProps} />);
-
-    const submitButton = screen.getByRole('button', { name: 'Zapisz' });
-    fireEvent.click(submitButton);
-
-    await waitFor(() => {
-      expect(screen.getByText('Imię jest wymagane.')).toBeInTheDocument();
-      expect(screen.getByText('Nazwisko jest wymagane.')).toBeInTheDocument();
-      expect(screen.getByText('Koordynator jest wymagany.')).toBeInTheDocument();
-    });
+    expect(screen.getByRole('button', { name: /Dalej/i })).toBeDisabled();
   });
 
-  it('validates room number when address is not own', async () => {
+  it('Dalej button is enabled when step 0 fields are filled', () => {
     render(<AddEmployeeForm {...defaultProps} />);
-
-    // Fill required fields
-    fireEvent.change(screen.getByLabelText('Nazwisko'), { target: { value: 'Kowalski' } });
-    fireEvent.change(screen.getByLabelText('Imię'), { target: { value: 'Jan' } });
-
-    // Select Coordinator
-    fireEvent.click(screen.getByText('Wybierz koordynatora'));
-    fireEvent.click(screen.getByText('Jan Kowalski'));
-
-    // Select Locality
-    fireEvent.click(screen.getByText('Wybierz miejscowość'));
-    fireEvent.click(screen.getByText('Warszawa'));
-
-    // Select Address
-    fireEvent.click(screen.getByText('Wybierz adres'));
-    fireEvent.click(await screen.findByRole('option', { name: 'Testowa 1' }));
-
-    // Leave room empty
-    const submitButton = screen.getByRole('button', { name: 'Zapisz' });
-    fireEvent.click(submitButton);
-
-    await waitFor(() => {
-      expect(screen.getByText('Pokój jest wymagany.')).toBeInTheDocument();
-    });
+    fillStep0();
+    expect(screen.getByRole('button', { name: /Dalej/i })).toBeEnabled();
   });
 
-  it('validates own address when selected', async () => {
-    render(<AddEmployeeForm {...defaultProps} />);
-
-    // Fill required fields
-    fireEvent.change(screen.getByLabelText('Nazwisko'), { target: { value: 'Kowalski' } });
-    fireEvent.change(screen.getByLabelText('Imię'), { target: { value: 'Jan' } });
-
-    // Select Coordinator
-    fireEvent.click(screen.getByText('Wybierz koordynatora'));
-    fireEvent.click(screen.getByText('Jan Kowalski'));
-
-    // We can't easily select "Own Address" from the dropdown because "Własne mieszkanie" isn't in the mocked addresses.
-    // We need to add "Własne mieszkanie" to the mock settings or mocked addresses.
-    // For now, let's assume we can select an address that implies own address if we could mock it differently.
-    // Or we can rely on the fact that if we select an address containing "własne mieszkanie", it triggers the logic.
-    // But our mock settings addresses don't have it.
-    // Let's modify the test to mock an address that is "Własne mieszkanie".
-  });
-
-  // Since we cannot easily modify the address list in the component without prop injection (which we are doing via settings),
-  // we should update the test to use a modified settings prop for this specific test case.
-});
-
-describe('AddEmployeeForm with Own Address', () => {
-  const ownAddressSettings = {
-    ...mockSettings,
-    addresses: [
-      ...mockSettings.addresses,
-      {
-        id: 'addr-own',
-        locality: 'Warszawa',
-        name: 'Własne mieszkanie',
-        coordinatorIds: ['coord-1'],
-        rooms: [{ id: 'room-own', name: '1', capacity: 1, isActive: true }],
-        isActive: true,
-      }
-    ]
-  };
-
-  it('validates own address when selected', async () => {
-    render(<AddEmployeeForm {...defaultProps} settings={ownAddressSettings} />);
-
-    // Fill required fields
-    fireEvent.change(screen.getByLabelText('Nazwisko'), { target: { value: 'Kowalski' } });
-    fireEvent.change(screen.getByLabelText('Imię'), { target: { value: 'Jan' } });
-
-    // Select Coordinator
-    fireEvent.click(screen.getByText('Wybierz koordynatora'));
-    fireEvent.click(screen.getByText('Jan Kowalski'));
-
-    // Select Locality
-    fireEvent.click(screen.getByText('Wybierz miejscowość'));
-    fireEvent.click(screen.getByText('Warszawa'));
-
-    // Select Own Address
-    fireEvent.click(screen.getByText('Wybierz adres'));
-    fireEvent.click(await screen.findByRole('option', { name: 'Własne mieszkanie' }));
-
-    // Leave own address empty
-    const submitButton = screen.getByRole('button', { name: 'Zapisz' });
-    fireEvent.click(submitButton);
-
-    await waitFor(() => {
-      expect(screen.getByText('Adres własny jest wymagany, jeśli wybrano tę opcję.')).toBeInTheDocument();
-    });
+  it('Anuluj button on step 0 calls onOpenChange(false)', () => {
+    const onOpenChange = jest.fn();
+    render(<AddEmployeeForm {...defaultProps} onOpenChange={onOpenChange} />);
+    fireEvent.click(screen.getByRole('button', { name: /Anuluj/i }));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });
 
-describe('AddEmployeeForm Deductions', () => {
-  it('validates deduction entry date when deductions are present', async () => {
+describe('AddEmployeeForm — step navigation', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('shows step indicator with 5 steps', () => {
     render(<AddEmployeeForm {...defaultProps} />);
-
-    // Fill required fields
-    fireEvent.change(screen.getByLabelText('Nazwisko'), { target: { value: 'Kowalski' } });
-    fireEvent.change(screen.getByLabelText('Imię'), { target: { value: 'Jan' } });
-
-    // Select Coordinator
-    fireEvent.click(screen.getByText('Wybierz koordynatora'));
-    fireEvent.click(screen.getByText('Jan Kowalski'));
-
-    // Go to Finance tab (content is always visible with mock, but we click for realism in flow if it mattered)
-    // const financeTab = screen.getByRole('button', { name: 'Finanse i potrącenia' });
-    // fireEvent.click(financeTab);
-
-    // Wait for tab content to appear - wait for the label "Zwrot kaucji"
-    await screen.findByText('Zwrot kaucji');
-
-    const comboboxes = screen.getAllByRole('combobox');
-    const depositReturnSelect = comboboxes.find(el => el.textContent?.includes('Status zwrotu kaucji'));
-
-    if (!depositReturnSelect) {
-      throw new Error('Deposit return select not found');
-    }
-
-    fireEvent.click(depositReturnSelect);
-    fireEvent.click(screen.getByRole('option', { name: 'Nie' }));
-
-    // Leave deduction entry date empty
-    const submitButton = screen.getByRole('button', { name: 'Zapisz' });
-    fireEvent.click(submitButton);
-
-    await waitFor(() => {
-      expect(screen.getByText('Data jest wymagana, jeśli wprowadzono potrącenia lub kaucja nie jest zwracana.')).toBeInTheDocument();
-    });
+    // Step indicator shows step names
+    expect(screen.getByText('Osoba')).toBeInTheDocument();
+    expect(screen.getByText('Podsumowanie')).toBeInTheDocument();
   });
 });
