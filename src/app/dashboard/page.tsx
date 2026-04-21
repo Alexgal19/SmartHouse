@@ -11,6 +11,7 @@ import { useSearchParams } from 'next/navigation';
 import EntityView from '@/components/entity-view';
 import HousingView from '@/components/housing-view';
 import ControlCardsView from '@/components/control-cards-view';
+import OdbiorView from '@/components/odbior-view';
 import dynamic from 'next/dynamic';
 
 
@@ -46,6 +47,9 @@ function CurrentView({ activeView, currentUser }: { activeView: View; currentUse
             <div className={activeView !== 'control-cards' ? 'hidden' : ''}>
                 <ControlCardsView currentUser={currentUser} />
             </div>
+            <div className={activeView !== 'odbior' ? 'hidden' : ''}>
+                <OdbiorView currentUser={currentUser} />
+            </div>
             <div className={activeView !== 'settings' ? 'hidden' : ''}>
                 <DynamicSettingsView currentUser={currentUser} />
             </div>
@@ -58,7 +62,7 @@ export default function DashboardPage() {
     const { currentUser, settings } = useMainLayout();
     let activeView = searchParams.get('view') as View;
     if (!activeView) {
-        activeView = currentUser?.isDriver ? 'employees' : 'dashboard';
+        activeView = (currentUser?.isDriver || currentUser?.isRekrutacja) ? 'odbior' : 'dashboard';
     }
     if (!currentUser || !settings) {
         return (
