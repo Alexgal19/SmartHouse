@@ -7,8 +7,8 @@ import Link from 'next/link';
 import { SidebarProvider } from './ui/sidebar';
 import Header from './header';
 import { MobileNav } from './mobile-nav';
-import type { View, Notification, Employee, Settings, Address, SessionData, NonEmployee, AddressHistory, BokResident } from '@/types';
-import { Home, Settings as SettingsIcon, Users, Building, ClipboardCheck } from 'lucide-react';
+import type { View, Notification, Employee, Settings, Address, SessionData, NonEmployee, AddressHistory, BokResident, OdbiorEntry } from '@/types';
+import { Home, Settings as SettingsIcon, Users, Building, ClipboardCheck, Truck } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     addEmployee,
@@ -35,7 +35,7 @@ import {
     sendPushNotification,
     updateCoordinatorSubscription,
 } from '@/lib/actions';
-import { getSettings, getEmployees, getNonEmployees, getBokResidents, getNotifications, getRawAddressHistory } from '@/lib/sheets';
+import { getSettings, getEmployees, getNonEmployees, getBokResidents, getNotifications, getRawAddressHistory, getOdbiorEntries } from '@/lib/sheets';
 import { logout } from '../lib/auth';
 import { useToast } from '../hooks/use-toast';
 import { AddEmployeeForm, type EmployeeFormData } from './add-employee-form';
@@ -81,6 +81,7 @@ type MainLayoutContextType = {
     allEmployees: Employee[] | null;
     allNonEmployees: NonEmployee[] | null;
     allBokResidents: BokResident[] | null;
+    odbiorEntries: OdbiorEntry[] | null;
     addressHistory: AddressHistory[] | null;
     rawEmployees: Employee[] | null;
     rawNonEmployees: NonEmployee[] | null;
@@ -158,6 +159,7 @@ export default function MainLayout({
 
     const navItems = useMemo(() => [
         { view: 'dashboard', icon: Home, label: 'Pulpit' },
+        { view: 'odbior', icon: Truck, label: 'Odbiór' },
         { view: 'employees', icon: Users, label: 'Mieszkańcy' },
         { view: 'housing', icon: Building, label: 'Zakwaterowanie' },
         { view: 'control-cards', icon: ClipboardCheck, label: 'Karty mieszkań' },
@@ -167,8 +169,9 @@ export default function MainLayout({
     const activeView = useMemo(() => {
         const view = searchParams.get('view') as View;
         if (view) return view;
-        return initialSession.isDriver ? 'employees' : 'dashboard';
-    }, [searchParams, initialSession.isDriver]);
+        if (initialSession.isDriver || initialSession.isRekrutacja) return 'odbior';
+        return 'dashboard';
+    }, [searchParams, initialSession.isDriver, initialSession.isRekrutacja]);
 
     const editEntityId = searchParams.get('edit');
 
@@ -180,6 +183,7 @@ export default function MainLayout({
     const [rawBokResidents, setRawBokResidents] = useState<BokResident[] | null>(null);
     const [rawSettings, setRawSettings] = useState<Settings | null>(null);
     const [addressHistory, setAddressHistory] = useState<AddressHistory[] | null>(null);
+    const [odbiorEntries, setOdbiorEntries] = useState<OdbiorEntry[] | null>(null);
 
     const [pushSubscription, setPushSubscription] = useState<string | null>(null);
 
@@ -264,13 +268,13 @@ export default function MainLayout({
     }, []);
 
     const visibleNavItems = useMemo(() => {
-        if (currentUser?.isDriver) {
-            return navItems.filter(item => item.view === 'employees' || item.view === 'housing');
+        if (currentUser?.isDriver || currentUser?.isRekrutacja) {
+            return navItems.filter(item => item.view === 'odbior' || item.view === 'employees' || item.view === 'housing' || item.view === 'control-cards');
         }
         if (currentUser?.isAdmin) {
             return navItems;
         }
-        return navItems.filter(item => item.view !== 'settings');
+        return navItems.filter(item => item.view !== 'settings' && item.view !== 'odbior');
     }, [currentUser, navItems]);
 
     const handleLogout = useCallback(async () => {
@@ -340,12 +344,13 @@ export default function MainLayout({
             // Fetch largest datasets first individually
 
             // Fetch all datasets in parallel — no artificial delays needed
-            const [employeesResult, nonEmployeesResult, bokResidentsResult, notificationsResult, addressHistoryResult] = await Promise.all([
+            const [employeesResult, nonEmployeesResult, bokResidentsResult, notificationsResult, addressHistoryResult, odbiorEntriesResult] = await Promise.all([
                 getEmployees().catch(e => { console.error("Failed to fetch employees:", e); return [] as Employee[]; }),
                 getNonEmployees().catch(e => { console.error("Failed to fetch non-employees:", e); return [] as NonEmployee[]; }),
                 getBokResidents().catch(e => { console.error("Failed to fetch BOK:", e); return [] as BokResident[]; }),
                 getNotifications(currentUser.uid, currentUser.isAdmin).catch(e => { console.error("Failed to fetch notifications:", e); return [] as Notification[]; }),
-                getRawAddressHistory().catch(e => { console.error("Failed to fetch history:", e); return [] as AddressHistory[]; })
+                getRawAddressHistory().catch(e => { console.error("Failed to fetch history:", e); return [] as AddressHistory[]; }),
+                getOdbiorEntries().catch(e => { console.error("Failed to fetch odbior entries:", e); return [] as OdbiorEntry[]; }),
             ]);
 
             const employees = employeesResult;
@@ -353,6 +358,7 @@ export default function MainLayout({
             const bokResidents = bokResidentsResult;
             const notifications = notificationsResult;
             const rawAddressHistory = addressHistoryResult;
+            const odbiorEntriesData = odbiorEntriesResult;
 
             // Client-side enrichment of Address History
             const allPeopleMap = new Map([...employees, ...nonEmployees, ...bokResidents].map(p => [p.id, p]));
@@ -373,6 +379,7 @@ export default function MainLayout({
             setRawBokResidents(bokResidents);
             setRawEmployees(employees);
             setAddressHistory(enrichedAddressHistory);
+            setOdbiorEntries(odbiorEntriesData);
 
             if (currentUser.isAdmin) {
                 const allActive = [...(employees || []).filter(e => e.status === 'active'), ...(nonEmployees || [])];
@@ -1052,6 +1059,7 @@ export default function MainLayout({
         allEmployees,
         allNonEmployees,
         allBokResidents,
+        odbiorEntries,
         addressHistory: filteredData.addressHistory,
         rawEmployees,
         rawNonEmployees,
@@ -1099,6 +1107,7 @@ export default function MainLayout({
         allEmployees,
         allNonEmployees,
         allBokResidents,
+        odbiorEntries,
         filteredData.addressHistory,
         rawEmployees,
         rawNonEmployees,

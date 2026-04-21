@@ -1,6 +1,6 @@
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, NonEmployee, DeductionReason, NotificationType, Coordinator, BokResident, ControlCard, StartList } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, NonEmployee, DeductionReason, NotificationType, Coordinator, BokResident, ControlCard, StartList, OdbiorEntry, OdbiorType } from '../types';
 import { revalidatePath } from 'next/cache';
 import {
     getSheet,
@@ -20,6 +20,12 @@ import {
     updateControlCard as updateControlCardInSheet,
     getStartLists as getStartListsFromSheet,
     upsertStartList as upsertStartListInSheet,
+    getOdbiorEntries as getOdbiorEntriesFromSheet,
+    addOdbiorEntry as addOdbiorEntryToSheet,
+    updateOdbiorEntry as updateOdbiorEntryInSheet,
+    deleteOdbiorEntry as deleteOdbiorEntryFromSheet,
+    deleteBokResidentById as deleteBokResidentByIdFromSheet,
+    invalidateOdbiorEntriesCache,
 } from './sheets';
 import { format, isValid, getDaysInMonth, parseISO, differenceInDays, max, min, parse as dateFnsParse, lastDayOfMonth } from 'date-fns';
 
@@ -44,7 +50,7 @@ const NON_EMPLOYEE_HEADERS = [
 
 const BOK_RESIDENT_HEADERS = [
     'id', 'role', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'address', 'roomNumber',
-    'zaklad', 'gender', 'checkInDate', 'checkOutDate', 'returnStatus', 'status', 'comments', 'sendDate', 'dismissDate'
+    'zaklad', 'gender', 'passportNumber', 'checkInDate', 'checkOutDate', 'returnStatus', 'status', 'comments', 'sendDate', 'dismissDate'
 ];
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
@@ -181,8 +187,8 @@ const serializeNotification = (notification: Notification): Record<string, strin
     };
 };
 
-const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'isDriver', 'departments', 'password', 'visibilityMode', 'pushSubscription'];
-const ADDRESS_HEADERS = ['id', 'locality', 'name', 'coordinatorIds', 'isActive'];
+const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'isDriver', 'isRekrutacja', 'departments', 'password', 'visibilityMode', 'pushSubscription'];
+const ADDRESS_HEADERS = ['id', 'locality', 'name', 'coordinatorIds', 'isActive', 'noMetersRequired'];
 const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targetType', 'targetId', 'details'];
 
 
@@ -1283,11 +1289,18 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
 
                         const newIsActive = addr.isActive !== false;
 
+                        const noMetersRaw = row.get('noMetersRequired');
+                        const currentNoMeters = (noMetersRaw === undefined || noMetersRaw === null || String(noMetersRaw).trim() === '')
+                            ? false
+                            : String(noMetersRaw).toUpperCase() === 'TRUE';
+                        const newNoMeters = addr.noMetersRequired === true;
+
                         return (
                             currentName !== addr.name ||
                             currentLocality !== addr.locality ||
                             currentCoordinatorIds !== newCoordinatorIds ||
-                            currentIsActive !== newIsActive
+                            currentIsActive !== newIsActive ||
+                            currentNoMeters !== newNoMeters
                         );
                     });
 
@@ -1312,6 +1325,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                     row.set('locality', addr.locality);
                     row.set('coordinatorIds', newCoordinatorIds);
                     row.set('isActive', newIsActive);
+                    row.set('noMetersRequired', addr.noMetersRequired === true ? 'TRUE' : 'FALSE');
                     await withTimeout(row.save(), TIMEOUT_MS, 'row.save(Addresses)');
                 }, 100);
 
@@ -1322,6 +1336,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                         locality: addr.locality,
                         coordinatorIds: (addr.coordinatorIds || []).join(','),
                         isActive: addr.isActive !== false ? 'TRUE' : 'FALSE',
+                        noMetersRequired: addr.noMetersRequired === true ? 'TRUE' : 'FALSE',
                     })), { raw: false, insert: true }), TIMEOUT_MS, 'sheet.addRows(Addresses)');
                 }
 
@@ -1410,6 +1425,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                     if (row) {
                         const newIsAdmin = String(coord.isAdmin).toUpperCase();
                         const newIsDriver = String(coord.isDriver || false).toUpperCase();
+                        const newIsRekrutacja = String(coord.isRekrutacja || false).toUpperCase();
                         const newDepartments = coord.departments.join(',');
                         const newVisibilityMode = coord.visibilityMode || 'department';
 
@@ -1417,6 +1433,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                         if (row.get('name') !== coord.name) hasChanges = true;
                         if (String(row.get('isAdmin')).toUpperCase() !== newIsAdmin) hasChanges = true;
                         if (String(row.get('isDriver') || 'FALSE').toUpperCase() !== newIsDriver) hasChanges = true;
+                        if (String(row.get('isRekrutacja') || 'FALSE').toUpperCase() !== newIsRekrutacja) hasChanges = true;
                         if (row.get('departments') !== newDepartments) hasChanges = true;
                         if (row.get('visibilityMode') !== newVisibilityMode) hasChanges = true;
                         if (coord.password && row.get('password') !== coord.password) hasChanges = true;
@@ -1425,6 +1442,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                             row.set('name', coord.name);
                             row.set('isAdmin', newIsAdmin);
                             row.set('isDriver', newIsDriver);
+                            row.set('isRekrutacja', newIsRekrutacja);
                             row.set('departments', newDepartments);
                             row.set('visibilityMode', newVisibilityMode);
                             if (coord.password) {
@@ -1441,6 +1459,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                         departments: c.departments.join(','),
                         isAdmin: String(c.isAdmin).toUpperCase(),
                         isDriver: String(c.isDriver || false).toUpperCase(),
+                        isRekrutacja: String(c.isRekrutacja || false).toUpperCase(),
                         visibilityMode: c.visibilityMode || 'department',
                         pushSubscription: c.pushSubscription || '',
                     })), { raw: false, insert: true }), TIMEOUT_MS, 'sheet.addRows(Coordinators)');
@@ -2290,6 +2309,26 @@ export async function getStartListsAction(): Promise<StartList[]> {
     }
 }
 
+export async function setAddressNoMetersRequiredAction(
+    addressId: string,
+    value: boolean
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const sheet = await getSheet(SHEET_NAME_ADDRESSES, ADDRESS_HEADERS);
+        const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Addresses/noMeters)');
+        const row = rows.find(r => r.get('id') === addressId);
+        if (!row) return { success: false, error: 'Nie znaleziono adresu' };
+
+        row.set('noMetersRequired', value ? 'TRUE' : 'FALSE');
+        await withTimeout(row.save(), TIMEOUT_MS, 'row.save(Addresses/noMeters)');
+        invalidateSettingsCache();
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (err) {
+        return { success: false, error: err instanceof Error ? err.message : 'Nieznany błąd' };
+    }
+}
+
 export async function saveStartListAction(
     data: Omit<StartList, 'updatedAt'>
 ): Promise<{ success: boolean; error?: string }> {
@@ -2299,6 +2338,326 @@ export async function saveStartListAction(
         return { success: true };
     } catch (error) {
         console.error('Error saving start list:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+// --- Odbior entries (kierowca/rekrutacja form-first BOK intake) ---
+
+export async function getOdbiorEntriesAction(): Promise<OdbiorEntry[]> {
+    try {
+        return await getOdbiorEntriesFromSheet();
+    } catch (error) {
+        console.error('Error getting odbior entries:', error);
+        return [];
+    }
+}
+
+type OdbiorEntryCreateInput = {
+    type: OdbiorType;
+    firstName: string;
+    lastName: string;
+    nationality: string;
+    gender: string;
+    passportNumber: string;
+    addressId: string;
+    addressName: string;
+    roomNumber: string;
+    date: string;
+    createdBy: string;
+    createdById: string;
+};
+
+export async function addOdbiorEntryAction(
+    input: OdbiorEntryCreateInput
+): Promise<{ success: boolean; error?: string; entry?: OdbiorEntry }> {
+    try {
+        if (!input.firstName || !input.lastName) {
+            return { success: false, error: 'Imię i nazwisko są wymagane.' };
+        }
+        const entry: OdbiorEntry = {
+            id: `odb-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            type: input.type,
+            status: 'nowy',
+            firstName: input.firstName.trim(),
+            lastName: input.lastName.trim(),
+            nationality: input.nationality.trim(),
+            gender: input.gender.trim(),
+            passportNumber: input.passportNumber.trim(),
+            addressId: input.addressId,
+            addressName: input.addressName,
+            roomNumber: input.roomNumber,
+            date: input.date,
+            createdAt: new Date().toISOString(),
+            createdBy: input.createdBy,
+            createdById: input.createdById,
+            convertedToBokId: null,
+        };
+        await addOdbiorEntryToSheet(entry);
+        revalidatePath('/dashboard');
+        return { success: true, entry };
+    } catch (error) {
+        console.error('Error adding odbior entry:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+export async function updateOdbiorEntryAction(
+    id: string,
+    updates: Partial<OdbiorEntry>
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        await updateOdbiorEntryInSheet(id, updates);
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error updating odbior entry:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+export async function convertOdbiorToBokAction(
+    id: string,
+    extra: { role: string; coordinatorId: string; zaklad: string; status: string; returnStatus: string },
+    actorUid: string
+): Promise<{ success: boolean; error?: string; bokId?: string }> {
+    try {
+        const entries = await getOdbiorEntriesFromSheet();
+        const entry = entries.find(e => e.id === id);
+        if (!entry) return { success: false, error: 'Wpis Odbiór nie istnieje.' };
+        if (entry.status === 'przekonwertowany') {
+            return { success: false, error: 'Ten wpis został już przekonwertowany.' };
+        }
+
+        const bok = await addBokResident({
+            role: extra.role,
+            firstName: entry.firstName,
+            lastName: entry.lastName,
+            fullName: `${entry.lastName} ${entry.firstName}`.trim(),
+            coordinatorId: extra.coordinatorId,
+            nationality: entry.nationality,
+            address: entry.addressName,
+            roomNumber: entry.roomNumber,
+            zaklad: extra.zaklad,
+            gender: entry.gender,
+            passportNumber: entry.passportNumber,
+            checkInDate: entry.date,
+            checkOutDate: null,
+            sendDate: null,
+            dismissDate: null,
+            returnStatus: extra.returnStatus,
+            status: extra.status,
+            comments: '',
+        }, actorUid);
+
+        await updateOdbiorEntryInSheet(id, { status: 'przekonwertowany', convertedToBokId: bok.id });
+        await invalidateOdbiorEntriesCache();
+        revalidatePath('/dashboard');
+        return { success: true, bokId: bok.id };
+    } catch (error) {
+        console.error('Error converting odbior entry to BOK:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+// Single action for the Odbiór "Zakwaterowanie" tile:
+// creates a BOK resident immediately AND logs an OdbiorEntry as history.
+export async function updateOdbiorZakwaterowanieAction(
+    odbiorId: string,
+    bokId: string | null,
+    updates: {
+        firstName: string;
+        lastName: string;
+        nationality: string;
+        gender: string;
+        passportNumber: string;
+        addressId: string;
+        addressName: string;
+        roomNumber: string;
+        date: string;
+    },
+    actorUid: string,
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        // Update OdbiorEntry
+        await updateOdbiorEntryInSheet(odbiorId, {
+            firstName: updates.firstName.trim(),
+            lastName: updates.lastName.trim(),
+            nationality: updates.nationality.trim(),
+            gender: updates.gender.trim(),
+            passportNumber: updates.passportNumber.trim(),
+            addressId: updates.addressId,
+            addressName: updates.addressName,
+            roomNumber: updates.roomNumber,
+            date: updates.date,
+        });
+        await invalidateOdbiorEntriesCache();
+
+        // Update linked BokResident
+        if (bokId) {
+            await updateBokResident(bokId, {
+                firstName: updates.firstName.trim(),
+                lastName: updates.lastName.trim(),
+                fullName: `${updates.lastName.trim()} ${updates.firstName.trim()}`.trim(),
+                nationality: updates.nationality.trim(),
+                gender: updates.gender.trim(),
+                passportNumber: updates.passportNumber.trim(),
+                address: updates.addressName,
+                roomNumber: updates.roomNumber,
+                checkInDate: updates.date,
+            }, actorUid);
+        }
+
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error updating odbior entry:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+export async function addOdbiorZakwaterowanieAction(
+    input: OdbiorEntryCreateInput,
+): Promise<{ success: boolean; error?: string; bokId?: string }> {
+    try {
+        if (!input.firstName || !input.lastName) {
+            return { success: false, error: 'Imię i nazwisko są wymagane.' };
+        }
+
+        const bok = await addBokResident({
+            role: '',
+            firstName: input.firstName.trim(),
+            lastName: input.lastName.trim(),
+            fullName: `${input.lastName.trim()} ${input.firstName.trim()}`.trim(),
+            coordinatorId: input.createdById,
+            nationality: input.nationality.trim(),
+            address: input.addressName,
+            roomNumber: input.roomNumber,
+            zaklad: '',
+            gender: input.gender.trim(),
+            passportNumber: input.passportNumber.trim(),
+            checkInDate: input.date,
+            checkOutDate: null,
+            sendDate: null,
+            dismissDate: null,
+            returnStatus: '',
+            status: 'active',
+            comments: '',
+        }, input.createdById);
+
+        const entry: OdbiorEntry = {
+            id: `odb-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            type: input.type,
+            status: 'przekonwertowany',
+            firstName: input.firstName.trim(),
+            lastName: input.lastName.trim(),
+            nationality: input.nationality.trim(),
+            gender: input.gender.trim(),
+            passportNumber: input.passportNumber.trim(),
+            addressId: input.addressId,
+            addressName: input.addressName,
+            roomNumber: input.roomNumber,
+            date: input.date,
+            createdAt: new Date().toISOString(),
+            createdBy: input.createdBy,
+            createdById: input.createdById,
+            convertedToBokId: bok.id,
+        };
+        await addOdbiorEntryToSheet(entry);
+        await invalidateOdbiorEntriesCache();
+        revalidatePath('/dashboard');
+        return { success: true, bokId: bok.id };
+    } catch (error) {
+        console.error('Error adding odbior zakwaterowanie:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+export async function deleteOdbiorEntryAction(
+    odbiorId: string,
+    bokId: string | null,
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        // Delete the OdbiorEntry row
+        await deleteOdbiorEntryFromSheet(odbiorId);
+
+        // If this entry has a linked BOK resident, delete that too
+        if (bokId) {
+            try {
+                await deleteBokResidentByIdFromSheet(bokId);
+                await invalidateBokResidentsCache();
+            } catch (bokErr) {
+                // BOK may have already been deleted — log but don't fail
+                console.warn(`[deleteOdbiorEntryAction] BOK resident ${bokId} not found or already deleted:`, bokErr);
+            }
+        }
+
+        await invalidateOdbiorEntriesCache();
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error deleting odbior entry:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+// ─── Wysyłka BOK ──────────────────────────────────────────────────────────────
+
+export async function bulkSetSendDateAction(
+    bokIds: string[],
+    sendDate: string,
+    actorUid: string,
+): Promise<{ success: boolean; updatedCount: number; error?: string }> {
+    if (bokIds.length === 0) return { success: true, updatedCount: 0 };
+    try {
+        const sheet = await getSheet(SHEET_NAME_BOK_RESIDENTS, BOK_RESIDENT_HEADERS);
+        const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(BokResidents)');
+        let updatedCount = 0;
+        for (const id of bokIds) {
+            const row = rows.find(r => r.get('id') === id);
+            if (row) {
+                row.set('sendDate', sendDate);
+                await withTimeout(row.save(), TIMEOUT_MS, 'row.save(BokResident.sendDate)');
+                updatedCount++;
+            }
+        }
+        await invalidateBokResidentsCache();
+        revalidatePath('/dashboard');
+        void actorUid; // audit log skipped for bulk — avoid noisy notifications
+        return { success: true, updatedCount };
+    } catch (error) {
+        console.error('Error bulk setting sendDate:', error);
+        return { success: false, updatedCount: 0, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+export async function updateSendDateAction(
+    bokId: string,
+    sendDate: string | null,
+    actorUid: string,
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        await updateBokResident(bokId, { sendDate }, actorUid);
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error updating sendDate:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+export async function dismissBokResidentAction(
+    bokId: string,
+    actorUid: string,
+    dismissDate?: string,
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const date = dismissDate || format(new Date(), 'yyyy-MM-dd');
+        await updateBokResident(bokId, { dismissDate: date, status: 'dismissed' }, actorUid);
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error dismissing BOK resident:', error);
         return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
     }
 }

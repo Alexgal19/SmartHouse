@@ -27,7 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import type { SessionData, Address, ControlCard, CleanlinessRating, RoomRating, StartList, StartListHousingType, StartListTransport, StartListStandard, StartListHeating } from "@/types";
 import { useMainLayout } from '@/components/main-layout';
-import { saveControlCardAction, editControlCardAction, uploadControlCardPhotoAction, saveStartListAction } from '@/lib/actions';
+import { saveControlCardAction, editControlCardAction, uploadControlCardPhotoAction, saveStartListAction, setAddressNoMetersRequiredAction } from '@/lib/actions';
 import { format } from 'date-fns';
 
 // ─── Start-list constants & helpers ─────────────────────────────────────────
@@ -92,7 +92,7 @@ function PINLock({ onUnlock }: { onUnlock: () => void }) {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (pin === '2991') {
+        if (pin === '1313') {
             onUnlock();
         } else {
             setError(true);
@@ -659,7 +659,7 @@ function StartListForm({
 // ─── Form Dialog ─────────────────────────────────────────────────────────────
 
 function ControlCardDialog({
-    open, onClose, address, existingCard, currentUser, selectedMonth, startList, onSaved, onStartListSaved,
+    open, onClose, address, existingCard, currentUser, selectedMonth, startList, onSaved, onStartListSaved, onNoMetersToggled,
 }: {
     open: boolean;
     onClose: () => void;
@@ -670,6 +670,7 @@ function ControlCardDialog({
     startList: StartList | null;
     onSaved: (card: ControlCard) => void;
     onStartListSaved: (sl: StartList) => void;
+    onNoMetersToggled: (addressId: string, value: boolean) => void;
 }) {
     const { toast } = useToast();
     const [isPending, startTransition] = useTransition();
@@ -678,18 +679,19 @@ function ControlCardDialog({
     );
 
     const slComplete = isStartListComplete(startList);
-    const [activeTab, setActiveTab] = useState<'startlist' | 'control'>(slComplete ? 'control' : 'startlist');
+    const controlUnlocked = slComplete || currentUser.isAdmin;
+    const [activeTab, setActiveTab] = useState<'startlist' | 'control'>(controlUnlocked ? 'control' : 'startlist');
 
     React.useEffect(() => {
         if (open) {
             setForm(existingCard ? buildFormFromCard(existingCard, address) : buildDefaultForm(address));
-            setActiveTab(isStartListComplete(startList) ? 'control' : 'startlist');
+            setActiveTab(isStartListComplete(startList) || currentUser.isAdmin ? 'control' : 'startlist');
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, existingCard, address]);
 
     const handleTabChange = (val: string) => {
-        if (val === 'control' && !slComplete) {
+        if (val === 'control' && !controlUnlocked) {
             toast({
                 title: 'Uzupełnij najpierw Start-list',
                 description: 'Aby wypełnić kartę kontroli, musisz najpierw uzupełnić formę Start-list dla tego adresu.',
@@ -925,10 +927,10 @@ function ControlCardDialog({
                                 ? <CheckCircle2 className="w-3 h-3 text-green-500" />
                                 : <AlertCircle className="w-3 h-3 text-red-500" />}
                         </TabsTrigger>
-                        <TabsTrigger value="control" className="gap-1.5" disabled={!slComplete}>
+                        <TabsTrigger value="control" className="gap-1.5" disabled={!controlUnlocked}>
                             <ClipboardCheck className="w-3.5 h-3.5" />
                             <span className="text-xs">Kontrola</span>
-                            {!slComplete && <Lock className="w-3 h-3 text-muted-foreground" />}
+                            {!controlUnlocked && <Lock className="w-3 h-3 text-muted-foreground" />}
                         </TabsTrigger>
                     </TabsList>
 
@@ -1082,22 +1084,43 @@ function ControlCardDialog({
                     
                     {/* ── Liczniki ── */}
                     <section>
-                        <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                            <span className="text-base">⚡</span> Liczniki
-                        </h3>
-                        <div className="pl-1">
-                            <div className="p-3 rounded-lg border bg-muted/20 space-y-3">
-                                <PhotoUploadWidget
-                                    label="Zdjęcia liczników (prąd, woda, itp.)"
-                                    photoUrls={form.meterPhotoUrls || []}
-                                    isUploading={isUploadingMeter}
-                                    canEdit={canEdit}
-                                    onAddPhotos={(e) => handleAddCommonPhotos('meter', e)}
-                                    onRemove={(idx) => handleRemoveCommonPhoto('meter', idx)}
-                                    onLightbox={setLightboxImage}
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="font-semibold text-sm flex items-center gap-2">
+                                <span className="text-base">⚡</span> Liczniki
+                            </h3>
+                            <label className="flex items-center gap-2 cursor-pointer select-none">
+                                <span className="text-xs text-muted-foreground">Brak liczników</span>
+                                <Switch
+                                    checked={!!address.noMetersRequired}
+                                    onCheckedChange={async (v) => {
+                                        onNoMetersToggled(address.id, v);
+                                        const res = await setAddressNoMetersRequiredAction(address.id, v);
+                                        if (!res.success) onNoMetersToggled(address.id, !v);
+                                    }}
                                 />
-                            </div>
+                            </label>
                         </div>
+                        {address.noMetersRequired ? (
+                            <div className="pl-1">
+                                <div className="p-3 rounded-lg border border-muted bg-muted/10 text-xs text-muted-foreground flex items-center gap-2">
+                                    <span>⚡</span> Liczniki nie dotyczą tej kwatery — oznaczone przez admina.
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="pl-1">
+                                <div className="p-3 rounded-lg border bg-muted/20 space-y-3">
+                                    <PhotoUploadWidget
+                                        label="Zdjęcia liczników (prąd, woda, itp.)"
+                                        photoUrls={form.meterPhotoUrls || []}
+                                        isUploading={isUploadingMeter}
+                                        canEdit={canEdit}
+                                        onAddPhotos={(e) => handleAddCommonPhotos('meter', e)}
+                                        onRemove={(idx) => handleRemoveCommonPhoto('meter', idx)}
+                                        onLightbox={setLightboxImage}
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </section>
 
                     {/* ── Sprzęt ── */}
@@ -1148,7 +1171,7 @@ function ControlCardDialog({
 
 // ─── Address row ─────────────────────────────────────────────────────────────
 
-function AddressRow({ address, card, startListOk, onClick }: { address: Address; card: ControlCard | null; startListOk: boolean; onClick: () => void }) {
+function AddressRow({ address, card, startListOk, onClick }: { address: Address; card: ControlCard | null; startListOk: boolean; onClick: () => void; }) {
     const avg = card ? calculateAverage(card) : 0;
     const hasIssue = card && (!card.appliancesWorking || card.roomRatings.some(r => r.rating < 4) || card.cleanKitchen < 4 || card.cleanBathroom < 4);
 
@@ -1178,6 +1201,9 @@ function AddressRow({ address, card, startListOk, onClick }: { address: Address;
                         <span className="flex items-center gap-0.5 text-[10px] text-amber-600 font-medium">
                             <AlertCircle className="w-2.5 h-2.5" /> Brak Start-list
                         </span>
+                    )}
+                    {address.noMetersRequired && (
+                        <span className="text-[10px] text-muted-foreground">bez liczników</span>
                     )}
                 </div>
             </div>
@@ -1263,7 +1289,7 @@ function LocalitySection({
 // ─── Main View ────────────────────────────────────────────────────────────────
 
 export default function ControlCardsView({ currentUser }: { currentUser: SessionData }) {
-    const { settings } = useMainLayout();
+    const { rawSettings } = useMainLayout();
     const { toast } = useToast();
 
     const monthOptions = useMemo(() => getMonthOptions(), []);
@@ -1291,7 +1317,7 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
             .catch(() => toast({ title: 'Błąd', description: 'Nie udało się załadować danych.', variant: 'destructive' }))
             .finally(() => setIsLoadingCards(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [isUnlocked]);
 
     const startListByAddress = useMemo(() => {
         const map = new Map<string, StartList>();
@@ -1307,15 +1333,21 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
         });
     };
 
+    const [noMetersOverrides, setNoMetersOverrides] = useState<Map<string, boolean>>(new Map());
+
+    const handleNoMetersToggled = (addressId: string, value: boolean) => {
+        setNoMetersOverrides(prev => new Map(prev).set(addressId, value));
+    };
+
     const qualifiedAddresses = useMemo(() => {
-        if (!settings) return [];
-        return settings.addresses.filter(addr => {
+        if (!rawSettings) return [];
+        return rawSettings.addresses.filter(addr => {
             if (!addr.isActive) return false;
             if (isPrivateAddress(addr.name)) return false;
             if (currentUser.isAdmin) return true;
             return addr.coordinatorIds.includes(currentUser.uid);
         });
-    }, [settings, currentUser]);
+    }, [rawSettings, currentUser]);
 
     // Auto-open first locality on load
     React.useEffect(() => {
@@ -1356,12 +1388,19 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
         displayedAddresses.forEach(a => {
             const loc = a.locality || 'Inne';
             if (!map.has(loc)) map.set(loc, []);
-            map.get(loc)!.push(a);
+            const resolved = noMetersOverrides.has(a.id)
+                ? { ...a, noMetersRequired: noMetersOverrides.get(a.id) }
+                : a;
+            map.get(loc)!.push(resolved);
         });
         return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
-    }, [displayedAddresses]);
+    }, [displayedAddresses, noMetersOverrides]);
 
     const selectedCard = selectedAddress ? cardsByAddressInMonth.get(selectedAddress.id) ?? null : null;
+
+    const resolvedSelectedAddress = selectedAddress
+        ? { ...selectedAddress, noMetersRequired: noMetersOverrides.has(selectedAddress.id) ? noMetersOverrides.get(selectedAddress.id) : selectedAddress.noMetersRequired }
+        : null;
 
     const handleCardSaved = (card: ControlCard) => {
         setControlCards(prev => {
@@ -1379,7 +1418,7 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
         return <PINLock onUnlock={() => setIsUnlocked(true)} />;
     }
 
-    if (!settings) {
+    if (!rawSettings) {
         return <div className="space-y-3">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-xl" />)}</div>;
     }
 
@@ -1502,17 +1541,18 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
             )}
 
             {/* Form dialog */}
-            {selectedAddress && (
+            {resolvedSelectedAddress && (
                 <ControlCardDialog
-                    open={!!selectedAddress}
+                    open={!!resolvedSelectedAddress}
                     onClose={() => setSelectedAddress(null)}
-                    address={selectedAddress}
+                    address={resolvedSelectedAddress}
                     existingCard={selectedCard}
                     currentUser={currentUser}
                     selectedMonth={selectedMonth}
-                    startList={startListByAddress.get(selectedAddress.id) ?? null}
+                    startList={startListByAddress.get(resolvedSelectedAddress.id) ?? null}
                     onSaved={handleCardSaved}
                     onStartListSaved={handleStartListSaved}
+                    onNoMetersToggled={handleNoMetersToggled}
                 />
             )}
         </div>

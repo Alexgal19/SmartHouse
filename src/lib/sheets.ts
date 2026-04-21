@@ -3,7 +3,7 @@
 import { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, Address, Coordinator, NotificationType, AddressHistory, BokResident, ControlCard, CleanlinessRating, StartList } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, Address, Coordinator, NotificationType, AddressHistory, BokResident, ControlCard, CleanlinessRating, StartList, OdbiorEntry } from '../types';
 import { format, isValid, parse, parseISO } from 'date-fns';
 import * as XLSX from 'xlsx';
 
@@ -27,6 +27,7 @@ const SHEET_NAME_BOK_RETURN_OPTIONS = 'BokReturnOptions';
 const SHEET_NAME_BOK_STATUSES = 'BokStatuses';
 const SHEET_NAME_CONTROL_CARDS = 'ControlCards';
 const SHEET_NAME_START_LISTS = 'StartLists';
+const SHEET_NAME_ODBIOR_ENTRIES = 'OdbiorEntries';
 
 const TIMEOUT_MS = 15000; // 15 seconds
 
@@ -65,6 +66,7 @@ const DATA_CACHE_TTL = 60 * 1000; // 1 minute
 
 let controlCardsCache: { data: ControlCard[], timestamp: number } | null = null;
 let startListsCache: { data: StartList[], timestamp: number } | null = null;
+let odbiorEntriesCache: { data: OdbiorEntry[], timestamp: number } | null = null;
 
 export async function invalidateEmployeesCache() { employeesCache = null; }
 export async function invalidateNonEmployeesCache() { nonEmployeesCache = null; }
@@ -72,6 +74,7 @@ export async function invalidateBokResidentsCache() { bokResidentsCache = null; 
 export async function invalidateAddressHistoryCache() { addressHistoryCache = null; }
 export async function invalidateSettingsCache() { settingsCache = null; }
 export async function invalidateControlCardsCache() { controlCardsCache = null; }
+export async function invalidateOdbiorEntriesCache() { odbiorEntriesCache = null; }
 export async function invalidateStartListsCache() { startListsCache = null; }
 
 function getAuth(): JWT {
@@ -421,6 +424,7 @@ const deserializeBokResident = (row: Record<string, unknown>): BokResident | nul
         roomNumber: (plainObject.roomNumber || '') as string,
         zaklad: (plainObject.zaklad || '') as string,
         gender: (plainObject.gender || '') as string,
+        passportNumber: (plainObject.passportNumber || '') as string,
         checkInDate: checkInDate,
         checkOutDate: safeFormat(plainObject.checkOutDate),
         sendDate: safeFormat(plainObject['data wysłania']) || safeFormat(plainObject.sendDate),
@@ -532,13 +536,19 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet, bypassCache = false)
                 isActive = String(isActiveRaw).toUpperCase() === 'TRUE';
             }
 
+            const noMetersRaw = rowObj.noMetersRequired;
+            const noMetersRequired = noMetersRaw !== undefined && noMetersRaw !== null && String(noMetersRaw).trim() !== ''
+                ? String(noMetersRaw).toUpperCase() === 'TRUE'
+                : false;
+
             return {
                 id: rowObj.id as string,
                 name: rowObj.name as string,
                 locality: rowObj.locality as string,
                 coordinatorIds: (rowObj?.coordinatorIds as string || '').split(',').filter(Boolean),
                 rooms: [...(roomsByAddressId.get(rowObj.id as string) || [])],
-                isActive
+                isActive,
+                noMetersRequired,
             }
         });
 
@@ -548,6 +558,7 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet, bypassCache = false)
                 name: rowObj.name as string,
                 isAdmin: rowObj.isAdmin === 'TRUE',
                 isDriver: rowObj.isDriver === 'TRUE',
+                isRekrutacja: rowObj.isRekrutacja === 'TRUE',
                 departments: (rowObj?.departments as string || '').split(',').filter(Boolean),
                 password: rowObj.password as string,
                 visibilityMode: (rowObj.visibilityMode as 'department' | 'strict') || 'department',
@@ -984,3 +995,122 @@ export async function upsertStartList(data: StartList): Promise<void> {
     }
     startListsCache = null;
 }
+
+// ─── OdbiorEntries (recepcja: zakwaterowanie / rozmowa / badania) ──────────
+
+const ODBIOR_ENTRY_HEADERS = [
+    'id', 'type', 'status', 'firstName', 'lastName', 'nationality', 'gender',
+    'passportNumber', 'addressId', 'addressName', 'roomNumber', 'date',
+    'createdAt', 'createdBy', 'createdById', 'convertedToBokId',
+];
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const deserializeOdbiorEntry = (row: any): OdbiorEntry | null => {
+    const id = row.get('id');
+    if (!id) return null;
+    return {
+        id: id as string,
+        type: ((row.get('type') as string) || 'zakwaterowanie') as import('../types').OdbiorType,
+        status: ((row.get('status') as string) || 'nowy') as import('../types').OdbiorStatus,
+        firstName: (row.get('firstName') as string) || '',
+        lastName: (row.get('lastName') as string) || '',
+        nationality: (row.get('nationality') as string) || '',
+        gender: (row.get('gender') as string) || '',
+        passportNumber: (row.get('passportNumber') as string) || '',
+        addressId: (row.get('addressId') as string) || '',
+        addressName: (row.get('addressName') as string) || '',
+        roomNumber: (row.get('roomNumber') as string) || '',
+        date: (row.get('date') as string) || '',
+        createdAt: (row.get('createdAt') as string) || '',
+        createdBy: (row.get('createdBy') as string) || '',
+        createdById: (row.get('createdById') as string) || '',
+        convertedToBokId: (row.get('convertedToBokId') as string) || null,
+    };
+};
+
+export async function getOdbiorEntries(): Promise<OdbiorEntry[]> {
+    if (odbiorEntriesCache && (Date.now() - odbiorEntriesCache.timestamp < DATA_CACHE_TTL)) {
+        return odbiorEntriesCache.data;
+    }
+    const doc = await getDoc();
+    const rows = await getSheetData(doc, SHEET_NAME_ODBIOR_ENTRIES);
+    const data = rows.map(row => deserializeOdbiorEntry(row)).filter((e): e is OdbiorEntry => e !== null);
+    odbiorEntriesCache = { data, timestamp: Date.now() };
+    return data;
+}
+
+function serializeOdbiorEntry(entry: OdbiorEntry): Record<string, string> {
+    return {
+        id: entry.id,
+        type: entry.type,
+        status: entry.status,
+        firstName: entry.firstName,
+        lastName: entry.lastName,
+        nationality: entry.nationality,
+        gender: entry.gender,
+        passportNumber: entry.passportNumber,
+        addressId: entry.addressId,
+        addressName: entry.addressName,
+        roomNumber: entry.roomNumber,
+        date: entry.date,
+        createdAt: entry.createdAt,
+        createdBy: entry.createdBy,
+        createdById: entry.createdById,
+        convertedToBokId: entry.convertedToBokId || '',
+    };
+}
+
+export async function addOdbiorEntry(entry: OdbiorEntry): Promise<void> {
+    const sheet = await getSheet(SHEET_NAME_ODBIOR_ENTRIES, ODBIOR_ENTRY_HEADERS);
+    await withTimeout(sheet.addRow(serializeOdbiorEntry(entry), { raw: false, insert: true }), TIMEOUT_MS, 'sheet.addRow(OdbiorEntries)');
+    if (odbiorEntriesCache) {
+        odbiorEntriesCache.data.push(entry);
+        odbiorEntriesCache.timestamp = Date.now();
+    }
+}
+
+export async function updateOdbiorEntry(id: string, updates: Partial<OdbiorEntry>): Promise<void> {
+    const sheet = await getSheet(SHEET_NAME_ODBIOR_ENTRIES, ODBIOR_ENTRY_HEADERS);
+    const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(OdbiorEntries)');
+    const row = rows.find(r => r.get('id') === id);
+    if (!row) throw new Error(`OdbiorEntry ${id} nie istnieje`);
+    for (const [k, v] of Object.entries(updates)) {
+        if (v === undefined) continue;
+        row.set(k, (v === null ? '' : String(v)));
+    }
+    await withTimeout(row.save(), TIMEOUT_MS, 'row.save(OdbiorEntries)');
+    if (odbiorEntriesCache) {
+        const idx = odbiorEntriesCache.data.findIndex(e => e.id === id);
+        if (idx !== -1) {
+            odbiorEntriesCache.data[idx] = { ...odbiorEntriesCache.data[idx], ...updates };
+            odbiorEntriesCache.timestamp = Date.now();
+        }
+    }
+}
+
+export async function deleteOdbiorEntry(id: string): Promise<void> {
+    const sheet = await getSheet(SHEET_NAME_ODBIOR_ENTRIES, ODBIOR_ENTRY_HEADERS);
+    const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(OdbiorEntries)');
+    const row = rows.find(r => r.get('id') === id);
+    if (!row) throw new Error(`OdbiorEntry ${id} nie istnieje`);
+    // eslint-disable-next-line no-restricted-syntax -- approved: odbior history entries are non-critical intake logs, deletion is a required UX feature
+    await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(OdbiorEntries)');
+    if (odbiorEntriesCache) {
+        odbiorEntriesCache.data = odbiorEntriesCache.data.filter(e => e.id !== id);
+        odbiorEntriesCache.timestamp = Date.now();
+    }
+}
+
+export async function deleteBokResidentById(bokId: string): Promise<void> {
+    const sheet = await getSheet(SHEET_NAME_BOK_RESIDENTS, [
+        'id', 'role', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'address', 'roomNumber',
+        'zaklad', 'gender', 'passportNumber', 'checkInDate', 'checkOutDate', 'returnStatus', 'status', 'comments', 'sendDate', 'dismissDate'
+    ]);
+    const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(BokResidents)');
+    const row = rows.find(r => r.get('id') === bokId);
+    if (!row) throw new Error(`BokResident ${bokId} nie istnieje`);
+    // eslint-disable-next-line no-restricted-syntax -- approved: bok resident deletion triggered explicitly by admin action
+    await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(BokResidents)');
+    bokResidentsCache = null;
+}
+

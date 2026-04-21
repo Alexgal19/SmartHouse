@@ -1,6 +1,6 @@
 // This file contains all the TypeScript type definitions for the application's data structures.
 
-export type View = 'dashboard' | 'employees' | 'settings' | 'housing' | 'control-cards';
+export type View = 'dashboard' | 'employees' | 'settings' | 'housing' | 'control-cards' | 'odbior';
 
 export type Address = {
   id: string;
@@ -9,6 +9,7 @@ export type Address = {
   coordinatorIds: string[];
   rooms: Room[];
   isActive: boolean;
+  noMetersRequired?: boolean;
 }
 
 export type Room = {
@@ -24,6 +25,7 @@ export type Coordinator = {
   name: string;
   isAdmin: boolean;
   isDriver?: boolean;
+  isRekrutacja?: boolean;
   departments: string[];
   password?: string;
   visibilityMode?: 'department' | 'strict';
@@ -57,6 +59,7 @@ export type BokResident = {
   roomNumber: string;
   zaklad: string;
   gender: string;
+  passportNumber?: string;
   checkInDate: string | null;
   checkOutDate: string | null;
   sendDate: string | null;
@@ -187,6 +190,7 @@ export type SessionData = {
   name: string;
   isAdmin: boolean;
   isDriver: boolean;
+  isRekrutacja: boolean;
 }
 
 export type CleanlinessRating = number; // 1-10 scale
@@ -251,4 +255,26 @@ export type StartList = {
   updatedAt: string;          // ISO date-time
   updatedBy: string;          // coordinator name
   updatedById: string;        // coordinator uid
+}
+
+export type OdbiorType = 'zakwaterowanie' | 'rozmowa_rekrutacyjna' | 'badania';
+export type OdbiorStatus = 'nowy' | 'przekonwertowany';
+
+export type OdbiorEntry = {
+  id: string;
+  type: OdbiorType;
+  status: OdbiorStatus;
+  firstName: string;
+  lastName: string;
+  nationality: string;
+  gender: string;
+  passportNumber: string;
+  addressId: string;
+  addressName: string;
+  roomNumber: string;
+  date: string;               // YYYY-MM-DD
+  createdAt: string;          // ISO date-time
+  createdBy: string;          // coordinator name (kierowca/rekrutacja)
+  createdById: string;        // coordinator uid
+  convertedToBokId?: string | null;
 }
