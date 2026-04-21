@@ -428,6 +428,8 @@ const deserializeBokResident = (row: Record<string, unknown>): BokResident | nul
         checkInDate: checkInDate,
         checkOutDate: safeFormat(plainObject.checkOutDate),
         sendDate: safeFormat(plainObject['data wysłania']) || safeFormat(plainObject.sendDate),
+        sendTime: (plainObject.sendTime || '') as string,
+        sendReason: (plainObject.sendReason || '') as string,
         dismissDate: safeFormat(plainObject.dismissDate),
         returnStatus: (plainObject.returnStatus || '') as string,
         status: (plainObject.status || '') as string,
@@ -757,7 +759,7 @@ export async function deleteAddressHistoryEntry(historyId: string) {
 const CONTROL_CARD_HEADERS = [
     'id', 'addressId', 'addressName', 'coordinatorId', 'coordinatorName',
     'controlMonth', 'fillDate', 'roomRatings', 'cleanKitchen', 'cleanBathroom',
-    'kitchenPhotoUrls', 'bathroomPhotoUrls', 'meterPhotoUrls', 'appliancesWorking', 'comments'
+    'kitchenPhotoUrls', 'bathroomPhotoUrls', 'meterPhotoUrls', 'appliancesWorking', 'comments', 'deleted'
 ];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -816,6 +818,7 @@ const deserializeControlCard = (row: any): ControlCard | null => {
         meterPhotoUrls: parseJsonArray(row.get('meterPhotoUrls')),
         appliancesWorking: row.get('appliancesWorking') === 'TRUE' || row.get('appliancesWorking') === true,
         comments: (row.get('comments') as string) || '',
+        deleted: row.get('deleted') === 'TRUE' || row.get('deleted') === true,
     };
 };
 
@@ -827,7 +830,9 @@ export async function getControlCards(): Promise<ControlCard[]> {
     const sheet = doc.sheetsByTitle[SHEET_NAME_CONTROL_CARDS];
     if (!sheet) return [];
     const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(ControlCards)');
-    const data = rows.map(row => deserializeControlCard(row)).filter((c): c is ControlCard => c !== null);
+    const data = rows
+        .map(row => deserializeControlCard(row))
+        .filter((c): c is ControlCard => c !== null && !c.deleted);
     controlCardsCache = { data, timestamp: Date.now() };
     return data;
 }
@@ -865,7 +870,7 @@ export async function updateControlCard(cardId: string, updates: Partial<Omit<Co
     for (const key of keys) {
         const value = updates[key];
         if (value === undefined) continue;
-        if (key === 'appliancesWorking') {
+        if (key === 'appliancesWorking' || key === 'deleted') {
             row.set(key, (value as boolean) ? 'TRUE' : 'FALSE');
         } else if (key === 'roomRatings' || key === 'kitchenPhotoUrls' || key === 'bathroomPhotoUrls' || key === 'meterPhotoUrls') {
             row.set(key, JSON.stringify(value));

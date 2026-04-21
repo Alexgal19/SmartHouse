@@ -27,7 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import type { SessionData, Address, ControlCard, CleanlinessRating, RoomRating, StartList, StartListHousingType, StartListTransport, StartListStandard, StartListHeating } from "@/types";
 import { useMainLayout } from '@/components/main-layout';
-import { saveControlCardAction, editControlCardAction, uploadControlCardPhotoAction, saveStartListAction, setAddressNoMetersRequiredAction } from '@/lib/actions';
+import { saveControlCardAction, editControlCardAction, deleteControlCardAction, uploadControlCardPhotoAction, saveStartListAction, setAddressNoMetersRequiredAction } from '@/lib/actions';
 import { format } from 'date-fns';
 
 // ─── Start-list constants & helpers ─────────────────────────────────────────
@@ -63,7 +63,7 @@ const buildDefaultStartList = (address: Address, currentUser: SessionData): Star
     updatedById: currentUser.uid,
 });
 
-export const isStartListComplete = (sl: StartList | null | undefined): boolean => {
+const isStartListFieldsComplete = (sl: StartList | null | undefined): boolean => {
     if (!sl) return false;
     if (!sl.housingType) return false;
     if (!sl.distanceToWork.trim()) return false;
@@ -77,10 +77,22 @@ export const isStartListComplete = (sl: StartList | null | undefined): boolean =
     if (!sl.heating) return false;
     if (sl.heating === 'Inne' && !sl.heatingOther.trim()) return false;
     if (sl.housingType === 'Dom' && sl.floorsCount <= 0) return false;
-    if ((sl.kitchenPhotoUrls || []).length === 0) return false;
-    if ((sl.bathroomPhotoUrls || []).length === 0) return false;
-    if ((sl.roomsPhotoUrls || []).length === 0) return false;
-    if ((sl.hallwayPhotoUrls || []).length === 0) return false;
+    return true;
+};
+
+const getMissingStartListPhotos = (sl: StartList): string[] => {
+    const missing: string[] = [];
+    if ((sl.kitchenPhotoUrls || []).length === 0) missing.push('kuchnia');
+    if ((sl.bathroomPhotoUrls || []).length === 0) missing.push('łazienka');
+    if ((sl.roomsPhotoUrls || []).length === 0) missing.push('pokoje');
+    if ((sl.hallwayPhotoUrls || []).length === 0) missing.push('korytarz');
+    return missing;
+};
+
+export const isStartListComplete = (sl: StartList | null | undefined): boolean => {
+    if (!sl) return false;
+    if (!isStartListFieldsComplete(sl)) return false;
+    if (getMissingStartListPhotos(sl).length > 0) return false;
     return true;
 };
 
@@ -327,8 +339,8 @@ const RatingField = ({
     <div className="space-y-2">
         <div className="flex justify-between items-center">
             <Label className="text-sm font-medium">{label}</Label>
-            <span className={`text-sm font-bold ${value >= 8 ? 'text-green-500' : value >= 4 ? 'text-yellow-600' : 'text-red-500'}`}>
-                {value}/10
+            <span className={`text-sm font-bold ${value === 0 ? 'text-muted-foreground' : value >= 8 ? 'text-green-500' : value >= 4 ? 'text-yellow-600' : 'text-red-500'}`}>
+                {value === 0 ? '—/10' : `${value}/10`}
             </span>
         </div>
         <div className="flex gap-1 justify-between">
@@ -365,15 +377,26 @@ type FormState = {
 };
 
 const buildDefaultForm = (address: Address): FormState => ({
-    roomRatings: address.rooms.map(r => ({ roomId: r.id, roomName: r.name, rating: 10, comment: '', photoUrls: [] })),
-    cleanKitchen: 10,
-    cleanBathroom: 10,
+    roomRatings: address.rooms.map(r => ({ roomId: r.id, roomName: r.name, rating: 0, comment: '', photoUrls: [] })),
+    cleanKitchen: 0,
+    cleanBathroom: 0,
     kitchenPhotoUrls: [],
     bathroomPhotoUrls: [],
     meterPhotoUrls: [],
     appliancesWorking: true,
     comments: '',
 });
+
+const isControlFormComplete = (form: FormState, address: Address): boolean => {
+    if (form.roomRatings.some(r => !r.rating || r.rating === 0)) return false;
+    if (form.roomRatings.some(r => !r.photoUrls || r.photoUrls.length === 0)) return false;
+    if (!form.cleanKitchen || form.cleanKitchen === 0) return false;
+    if (!form.kitchenPhotoUrls || form.kitchenPhotoUrls.length === 0) return false;
+    if (!form.cleanBathroom || form.cleanBathroom === 0) return false;
+    if (!form.bathroomPhotoUrls || form.bathroomPhotoUrls.length === 0) return false;
+    if (!address.noMetersRequired && (!form.meterPhotoUrls || form.meterPhotoUrls.length === 0)) return false;
+    return true;
+};
 
 const buildFormFromCard = (card: ControlCard, address: Address): FormState => {
     // Merge saved room ratings with current rooms (in case rooms changed)
@@ -415,17 +438,23 @@ function StartListForm({
     const [form, setForm] = useState<StartList>(() => initial || buildDefaultStartList(address, currentUser));
     const [lightboxImage, setLightboxImage] = useState<string | null>(null);
     const [uploading, setUploading] = useState<Record<string, boolean>>({});
+    const prevInitialRef = React.useRef(initial);
 
     React.useEffect(() => {
-        setForm(initial || buildDefaultStartList(address, currentUser));
-    }, [initial, address, currentUser]);
+        if (initial !== prevInitialRef.current) {
+            prevInitialRef.current = initial;
+            setForm(initial || buildDefaultStartList(address, currentUser));
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initial]);
 
     const compressImage = (file: File): Promise<string> => new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
         reader.onload = (event) => {
+            const dataUrl = event.target?.result as string;
             const img = new window.Image();
-            img.src = event.target?.result as string;
+            img.src = dataUrl;
             img.onload = () => {
                 const canvas = document.createElement('canvas');
                 const MAX = 1200;
@@ -436,16 +465,20 @@ function StartListForm({
                 canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
                 resolve(canvas.toDataURL('image/jpeg', 0.7));
             };
-            img.onerror = (e) => reject(e);
+            // Fallback for formats canvas can't decode (e.g. HEIC on some browsers)
+            img.onerror = () => resolve(dataUrl);
         };
         reader.onerror = (e) => reject(e);
     });
+
+    const isImageFile = (file: File) =>
+        file.type.startsWith('image/') || /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(file.name) || file.type === '';
 
     const uploadFiles = async (files: FileList): Promise<string[]> => {
         const out: string[] = [];
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
-            if (!file.type.startsWith('image/')) continue;
+            if (!isImageFile(file)) continue;
             const base64 = await compressImage(file);
             const res = await uploadControlCardPhotoAction(base64, file.name || 'photo.jpg', 'image/jpeg');
             if (res.error) {
@@ -487,9 +520,13 @@ function StartListForm({
     };
 
     const handleSave = () => {
-        if (!isStartListComplete(form)) {
-            toast({ title: 'Uzupełnij wszystkie pola', description: 'Wszystkie pola i zdjęcia są wymagane.', variant: 'destructive' });
+        if (!isStartListFieldsComplete(form)) {
+            toast({ title: 'Uzupełnij wymagane pola', description: 'Wypełnij typ, odległości, transport, liczby pomieszczeń, standard i ogrzewanie.', variant: 'destructive' });
             return;
+        }
+        const missingPhotos = getMissingStartListPhotos(form);
+        if (missingPhotos.length > 0) {
+            toast({ title: 'Zapis bez zdjęć', description: `Zapis nastąpi, ale brakuje zdjęć: ${missingPhotos.join(', ')}.` });
         }
         startSaving(async () => {
             const payload = { ...form, updatedBy: currentUser.name, updatedById: currentUser.uid };
@@ -659,7 +696,7 @@ function StartListForm({
 // ─── Form Dialog ─────────────────────────────────────────────────────────────
 
 function ControlCardDialog({
-    open, onClose, address, existingCard, currentUser, selectedMonth, startList, onSaved, onStartListSaved, onNoMetersToggled,
+    open, onClose, address, existingCard, currentUser, selectedMonth, startList, onSaved, onStartListSaved, onNoMetersToggled, onDeleted,
 }: {
     open: boolean;
     onClose: () => void;
@@ -671,6 +708,7 @@ function ControlCardDialog({
     onSaved: (card: ControlCard) => void;
     onStartListSaved: (sl: StartList) => void;
     onNoMetersToggled: (addressId: string, value: boolean) => void;
+    onDeleted: (cardId: string) => void;
 }) {
     const { toast } = useToast();
     const [isPending, startTransition] = useTransition();
@@ -679,16 +717,20 @@ function ControlCardDialog({
     );
 
     const slComplete = isStartListComplete(startList);
-    const controlUnlocked = slComplete || currentUser.isAdmin;
+    const controlUnlocked = !!startList || currentUser.isAdmin;
     const [activeTab, setActiveTab] = useState<'startlist' | 'control'>(controlUnlocked ? 'control' : 'startlist');
+    const prevOpenRef = React.useRef(false);
 
     React.useEffect(() => {
-        if (open) {
+        const justOpened = open && !prevOpenRef.current;
+        prevOpenRef.current = open;
+        if (justOpened) {
             setForm(existingCard ? buildFormFromCard(existingCard, address) : buildDefaultForm(address));
-            setActiveTab(isStartListComplete(startList) || currentUser.isAdmin ? 'control' : 'startlist');
+            setActiveTab(!!startList || currentUser.isAdmin ? 'control' : 'startlist');
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, existingCard, address]);
+
 
     const handleTabChange = (val: string) => {
         if (val === 'control' && !controlUnlocked) {
@@ -727,8 +769,9 @@ function ControlCardDialog({
             const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onload = (event) => {
+                const dataUrl = event.target?.result as string;
                 const img = new window.Image();
-                img.src = event.target?.result as string;
+                img.src = dataUrl;
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
                     const MAX_WIDTH = 1200;
@@ -744,9 +787,10 @@ function ControlCardDialog({
                     canvas.height = height;
                     const ctx = canvas.getContext('2d');
                     ctx?.drawImage(img, 0, 0, width, height);
-                    resolve(canvas.toDataURL('image/jpeg', 0.7)); 
+                    resolve(canvas.toDataURL('image/jpeg', 0.7));
                 };
-                img.onerror = (error) => reject(error);
+                // Fallback for formats canvas can't decode (e.g. HEIC on some browsers)
+                img.onerror = () => resolve(dataUrl);
             };
             reader.onerror = (error) => reject(error);
         });
@@ -755,10 +799,11 @@ function ControlCardDialog({
     // Generic photo upload handler
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const uploadPhotos = async (files: FileList, key: 'kitchen' | 'bathroom' | string): Promise<string[]> => {
+        const isImg = (f: File) => f.type.startsWith('image/') || /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(f.name) || f.type === '';
         const newPhotos: string[] = [];
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
-            if (!file.type.startsWith('image/')) continue;
+            if (!isImg(file)) continue;
             const base64 = await compressImage(file);
             const res = await uploadControlCardPhotoAction(base64, file.name || 'photo.jpg', 'image/jpeg');
             if (res.error) {
@@ -849,12 +894,36 @@ function ControlCardDialog({
     };
 
     const [openRoomId, setOpenRoomId] = useState<string | null>(null);
+    const [showResetConfirm, setShowResetConfirm] = useState(false);
 
     const toggleRoom = (roomId: string) => {
         setOpenRoomId(prev => prev === roomId ? null : roomId);
     };
 
+    const handleReset = () => {
+        if (!existingCard) return;
+        const cardId = existingCard.id;
+        onDeleted(cardId);
+        onClose();
+        setShowResetConfirm(false);
+        deleteControlCardAction(cardId).then(result => {
+            if (!result.success) {
+                toast({ title: 'Błąd resetowania', description: result.error, variant: 'destructive' });
+            }
+        });
+    };
+
+    const formComplete = isControlFormComplete(form, address);
+
     const handleSave = () => {
+        if (!formComplete) {
+            toast({
+                title: 'Uzupełnij wszystkie pola',
+                description: 'Każdy pokój, kuchnia, łazienka i liczniki wymagają co najmniej jednego zdjęcia.',
+                variant: 'destructive',
+            });
+            return;
+        }
         if (existingCard) {
             // Optimistic update — zamknij dialog i zaktualizuj listę natychmiast
             const optimisticCard = { ...existingCard, ...form, fillDate: new Date().toISOString().slice(0, 10) };
@@ -939,7 +1008,10 @@ function ControlCardDialog({
                             address={address}
                             initial={startList}
                             currentUser={currentUser}
-                            onSaved={onStartListSaved}
+                            onSaved={(sl) => {
+                                onStartListSaved(sl);
+                                setActiveTab('control');
+                            }}
                         />
                     </TabsContent>
 
@@ -1149,10 +1221,33 @@ function ControlCardDialog({
                     </div>
                 </div>
 
+                {canEdit && existingCard && (
+                    <div className="pt-3">
+                        {showResetConfirm ? (
+                            <div className="flex items-center justify-between gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-sm">
+                                <span className="text-destructive font-medium text-xs">Wyczyścić całą kartę i zacząć od nowa?</span>
+                                <div className="flex gap-2 shrink-0">
+                                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowResetConfirm(false)}>Nie</Button>
+                                    <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={handleReset}>Tak, resetuj</Button>
+                                </div>
+                            </div>
+                        ) : (
+                            <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setShowResetConfirm(true)}>
+                                Resetuj kartę
+                            </Button>
+                        )}
+                    </div>
+                )}
+
                 <DialogFooter className="gap-2 pt-4">
                     <Button variant="outline" onClick={onClose} disabled={isPending}>Anuluj</Button>
                     {canEdit && (
-                        <Button onClick={handleSave} disabled={isPending} className="shadow-lg shadow-primary/20">
+                        <Button
+                            onClick={handleSave}
+                            disabled={isPending || !formComplete}
+                            title={!formComplete ? 'Uzupełnij zdjęcia we wszystkich sekcjach' : undefined}
+                            className="shadow-lg shadow-primary/20"
+                        >
                             {isPending ? 'Zapisuję...' : existingCard ? 'Zaktualizuj' : 'Zapisz kontrolę'}
                         </Button>
                     )}
@@ -1171,7 +1266,7 @@ function ControlCardDialog({
 
 // ─── Address row ─────────────────────────────────────────────────────────────
 
-function AddressRow({ address, card, startListOk, onClick }: { address: Address; card: ControlCard | null; startListOk: boolean; onClick: () => void; }) {
+function AddressRow({ address, card, onClick }: { address: Address; card: ControlCard | null; onClick: () => void; }) {
     const avg = card ? calculateAverage(card) : 0;
     const hasIssue = card && (!card.appliancesWorking || card.roomRatings.some(r => r.rating < 4) || card.cleanKitchen < 4 || card.cleanBathroom < 4);
 
@@ -1197,11 +1292,6 @@ function AddressRow({ address, card, startListOk, onClick }: { address: Address;
                             <Wrench className="w-2.5 h-2.5" /> Usterka
                         </span>
                     )}
-                    {!startListOk && (
-                        <span className="flex items-center gap-0.5 text-[10px] text-amber-600 font-medium">
-                            <AlertCircle className="w-2.5 h-2.5" /> Brak Start-list
-                        </span>
-                    )}
                     {address.noMetersRequired && (
                         <span className="text-[10px] text-muted-foreground">bez liczników</span>
                     )}
@@ -1223,12 +1313,11 @@ function AddressRow({ address, card, startListOk, onClick }: { address: Address;
 // ─── Locality Section (single-open accordion behavior) ───────────────────────
 
 function LocalitySection({
-    locality, addresses, cardsByAddress, startListByAddress, isOpen, onToggle, onAddressClick,
+    locality, addresses, cardsByAddress, isOpen, onToggle, onAddressClick,
 }: {
     locality: string;
     addresses: Address[];
     cardsByAddress: Map<string, ControlCard>;
-    startListByAddress: Map<string, StartList>;
     isOpen: boolean;
     onToggle: () => void;
     onAddressClick: (address: Address) => void;
@@ -1274,7 +1363,6 @@ function LocalitySection({
                                     key={addr.id}
                                     address={addr}
                                     card={cardsByAddress.get(addr.id) ?? null}
-                                    startListOk={isStartListComplete(startListByAddress.get(addr.id))}
                                     onClick={() => onAddressClick(addr)}
                                 />
                             ))}
@@ -1410,6 +1498,11 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
         });
     };
 
+    const handleCardDeleted = (cardId: string) => {
+        setControlCards(prev => prev.filter(c => c.id !== cardId));
+        setSelectedAddress(null);
+    };
+
     const toggleLocality = (loc: string) => {
         setOpenLocality(prev => prev === loc ? null : loc);
     };
@@ -1531,7 +1624,6 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
                             locality={locality}
                             addresses={addresses}
                             cardsByAddress={cardsByAddressInMonth}
-                            startListByAddress={startListByAddress}
                             isOpen={openLocality === locality}
                             onToggle={() => toggleLocality(locality)}
                             onAddressClick={setSelectedAddress}
@@ -1553,6 +1645,7 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
                     onSaved={handleCardSaved}
                     onStartListSaved={handleStartListSaved}
                     onNoMetersToggled={handleNoMetersToggled}
+                    onDeleted={handleCardDeleted}
                 />
             )}
         </div>

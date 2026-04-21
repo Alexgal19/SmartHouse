@@ -31,6 +31,11 @@ import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 import { Badge } from './ui/badge';
 import { getActiveAddressCapacity } from '@/lib/address-filters';
 import { bulkSetSendDateAction } from '@/lib/actions';
+
+const SEND_REASONS = ['Badania wstępne', 'Badania okresowe', 'Na PKP'] as const;
+type SendReason = (typeof SEND_REASONS)[number];
+
+type PersonSendData = { date: Date | undefined; time: string; reason: SendReason | '' };
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon, Loader2, Check } from 'lucide-react';
@@ -157,6 +162,60 @@ const StatsCharts = ({ occupants, chartConfig }: { occupants: Occupant[]; chartC
   );
 };
 
+const PersonSendRow = ({
+  id, name, data, onUpdate, onRemove,
+}: {
+  id: string;
+  name: string;
+  data: PersonSendData;
+  onUpdate: (id: string, patch: Partial<PersonSendData>) => void;
+  onRemove: (id: string) => void;
+}) => {
+  const [dateOpen, setDateOpen] = useState(false);
+  return (
+    <div className="rounded border bg-white dark:bg-amber-950/60 p-2 space-y-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold truncate mr-2">{name}</span>
+        <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => onRemove(id)}>
+          <span className="text-xs">✕</span>
+        </Button>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {/* Data */}
+        <Popover open={dateOpen} onOpenChange={setDateOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className={cn('h-7 text-xs px-2', !data.date && 'border-dashed border-amber-400')}>
+              <CalendarIcon className="h-3 w-3 mr-1" />
+              {data.date ? format(data.date, 'd MMM yyyy', { locale: pl }) : 'Data'}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar mode="single" selected={data.date} onSelect={(d) => { onUpdate(id, { date: d }); setDateOpen(false); }} locale={pl} initialFocus />
+          </PopoverContent>
+        </Popover>
+        {/* Godzina */}
+        <Input
+          type="time"
+          value={data.time}
+          onChange={(e) => onUpdate(id, { time: e.target.value })}
+          className={cn('h-7 text-xs w-24 px-2', !data.time && 'border-dashed border-amber-400')}
+        />
+        {/* Powód */}
+        <Select value={data.reason} onValueChange={(v) => onUpdate(id, { reason: v as SendReason })}>
+          <SelectTrigger className={cn('h-7 text-xs w-36', !data.reason && 'border-dashed border-amber-400')}>
+            <SelectValue placeholder="Powód" />
+          </SelectTrigger>
+          <SelectContent>
+            {SEND_REASONS.map((r) => (
+              <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+};
+
 const AddressDetailView = ({
   addresses,
   onOccupantClick,
@@ -167,8 +226,10 @@ const AddressDetailView = ({
   settings,
   handleUpdateSettings,
   isSelectionMode,
-  selectedBokIds,
+  selectedBokData,
+  selectedBokNames,
   onToggleBokSelection,
+  onUpdatePersonSendData,
   onSaveSelection,
 }: {
   addresses: HousingData[];
@@ -180,12 +241,12 @@ const AddressDetailView = ({
   settings: Settings | null;
   handleUpdateSettings: (updates: Partial<Settings>) => Promise<void>;
   isSelectionMode: boolean;
-  selectedBokIds: Set<string>;
-  onToggleBokSelection: (id: string) => void;
-  onSaveSelection: (date: Date) => Promise<void>;
+  selectedBokData: Map<string, PersonSendData>;
+  selectedBokNames: Map<string, string>;
+  onToggleBokSelection: (id: string, name: string) => void;
+  onUpdatePersonSendData: (id: string, patch: Partial<PersonSendData>) => void;
+  onSaveSelection: () => Promise<void>;
 }) => {
-  const [sendDate, setSendDate] = useState<Date | undefined>(undefined);
-  const [dateOpen, setDateOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const isSingleSelectedBlocked = useMemo(() => {
@@ -339,8 +400,8 @@ const AddressDetailView = ({
           </span>
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-[calc(100vh - 16rem)]">
+      <CardContent className={cn('flex flex-col', isSelectionMode && 'pb-0')}>
+        <ScrollArea className={cn(isSelectionMode ? 'h-[calc(100vh-20rem)]' : 'h-[calc(100vh-16rem)]')}>
           {aggregatedAddressesData.isMultiple ? (
             <div className="space-y-6">
               <div>
@@ -400,7 +461,7 @@ const AddressDetailView = ({
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   if (isSelectionMode) {
-                                    if (isBokResident(o)) onToggleBokSelection(o.id);
+                                    if (isBokResident(o)) onToggleBokSelection(o.id, `${o.lastName} ${o.firstName}`.trim());
                                   } else {
                                     onOccupantClick(o);
                                   }
@@ -408,12 +469,12 @@ const AddressDetailView = ({
                                 className={cn(
                                   'flex-1 cursor-pointer transition-colors',
                                   isSelectionMode && !isBokResident(o) ? 'opacity-40 cursor-not-allowed' : 'hover:text-primary',
-                                  isSelectionMode && isBokResident(o) && selectedBokIds.has(o.id) && 'text-primary font-bold'
+                                  isSelectionMode && isBokResident(o) && selectedBokData.has(o.id) && 'text-primary font-bold'
                                 )}
                               >
                                 {isSelectionMode && isBokResident(o) && (
                                   <span className="mr-2 inline-flex items-center justify-center w-4 h-4 border rounded bg-white dark:bg-black">
-                                    {selectedBokIds.has(o.id) && <Check className="w-3 h-3 text-primary" />}
+                                    {selectedBokData.has(o.id) && <Check className="w-3 h-3 text-primary" />}
                                   </span>
                                 )}
                                 {fullName}
@@ -515,20 +576,23 @@ const AddressDetailView = ({
                                         e.stopPropagation();
                                         if (isBlocked) return;
                                         if (isSelectionMode) {
-                                          if (isBokResident(o)) onToggleBokSelection(o.id);
+                                          if (isBokResident(o)) onToggleBokSelection(o.id, `${o.lastName} ${o.firstName}`.trim());
                                         } else {
                                           onOccupantClick(o);
                                         }
                                       }}
                                       className={cn(
                                         'flex-1 transition-colors',
-                                        isBlocked || (isSelectionMode && !isBokResident(o)) ? 'cursor-not-allowed opacity-40' : 'cursor-pointer hover:text-primary',
-                                        isSelectionMode && isBokResident(o) && selectedBokIds.has(o.id) && 'text-primary font-bold'
+                                        isBlocked ? 'cursor-not-allowed opacity-40' :
+                                          isSelectionMode && isBokResident(o) ? 'cursor-pointer hover:text-primary' :
+                                          isSelectionMode ? 'text-muted-foreground' :
+                                          'cursor-pointer hover:text-primary',
+                                        isSelectionMode && isBokResident(o) && selectedBokData.has(o.id) && 'text-primary font-bold'
                                       )}
                                     >
                                       {isSelectionMode && !isBlocked && isBokResident(o) && (
                                         <span className="mr-2 inline-flex items-center justify-center w-4 h-4 border rounded bg-white dark:bg-black">
-                                          {selectedBokIds.has(o.id) && <Check className="w-3 h-3 text-primary" />}
+                                          {selectedBokData.has(o.id) && <Check className="w-3 h-3 text-primary" />}
                                         </span>
                                       )}
                                       {fullName}
@@ -571,7 +635,7 @@ const AddressDetailView = ({
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     if (isSelectionMode) {
-                                      if (isBokResident(o)) onToggleBokSelection(o.id);
+                                      if (isBokResident(o)) onToggleBokSelection(o.id, `${o.lastName} ${o.firstName}`.trim());
                                     } else {
                                       onOccupantClick(o);
                                     }
@@ -579,12 +643,12 @@ const AddressDetailView = ({
                                   className={cn(
                                     'flex-1 transition-colors',
                                     (isSelectionMode && !isBokResident(o)) ? 'cursor-not-allowed opacity-40' : 'cursor-pointer hover:text-primary',
-                                    isSelectionMode && isBokResident(o) && selectedBokIds.has(o.id) && 'text-primary font-bold'
+                                    isSelectionMode && isBokResident(o) && selectedBokData.has(o.id) && 'text-primary font-bold'
                                   )}
                                 >
                                   {isSelectionMode && isBokResident(o) && (
                                     <span className="mr-2 inline-flex items-center justify-center w-4 h-4 border rounded bg-white dark:bg-black">
-                                      {selectedBokIds.has(o.id) && <Check className="w-3 h-3 text-primary" />}
+                                      {selectedBokData.has(o.id) && <Check className="w-3 h-3 text-primary" />}
                                     </span>
                                   )}
                                   {fullName}
@@ -672,49 +736,45 @@ const AddressDetailView = ({
             </div>
           )}
         </ScrollArea>
-        {/* Floating selection bar in selection mode */}
+        {/* Selection bar shown below the scroll area */}
         {isSelectionMode && (
-          <div className="absolute bottom-0 left-0 right-0 p-4 bg-amber-50 dark:bg-amber-950/40 border-t flex flex-col sm:flex-row items-center justify-between gap-3 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.1)]">
-            <div className="text-sm font-semibold">
-              Wybrano: {selectedBokIds.size} osób do wysłania
-            </div>
-            {selectedBokIds.size > 0 && (
-              <div className="flex items-center gap-2">
-                <Popover open={dateOpen} onOpenChange={setDateOpen}>
-                    <PopoverTrigger asChild>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className={cn('h-8 text-xs', !sendDate && 'border-dashed border-amber-400')}
-                        >
-                            <CalendarIcon className="h-3.5 w-3.5 mr-1" />
-                            {sendDate ? format(sendDate, 'd MMM yyyy', { locale: pl }) : 'Wybierz datę'}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="end">
-                        <Calendar
-                            mode="single"
-                            selected={sendDate}
-                            onSelect={(d) => { setSendDate(d); setDateOpen(false); }}
-                            locale={pl}
-                            initialFocus
-                        />
-                    </PopoverContent>
-                </Popover>
+          <div className="mt-2 border rounded-md bg-amber-50 dark:bg-amber-950/40">
+            <div className="px-3 py-2 flex items-center justify-between border-b border-amber-200 dark:border-amber-800">
+              <span className="text-sm font-semibold">Wybrano: {selectedBokData.size} osób do wysłania</span>
+              {selectedBokData.size > 0 && (
                 <Button
                   size="sm"
-                  className="h-8 text-xs bg-amber-600 hover:bg-amber-700 text-white"
-                  disabled={!sendDate || isSubmitting}
+                  className="h-7 text-xs bg-amber-600 hover:bg-amber-700 text-white"
+                  disabled={isSubmitting || Array.from(selectedBokData.values()).some(d => !d.date || !d.time || !d.reason)}
                   onClick={async () => {
                     setIsSubmitting(true);
-                    await onSaveSelection(sendDate!);
+                    await onSaveSelection();
                     setIsSubmitting(false);
                   }}
                 >
                   {isSubmitting ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Check className="w-3.5 h-3.5 mr-1" />}
-                  Zatwierdź
+                  Zatwierdź wszystkich
                 </Button>
-              </div>
+              )}
+            </div>
+            {selectedBokData.size > 0 && (
+              <ScrollArea className="max-h-56">
+                <div className="p-2 space-y-2">
+                  {Array.from(selectedBokData.entries()).map(([id, data]) => {
+                    const nameEntry = selectedBokNames.get(id) ?? id;
+                    return (
+                      <PersonSendRow
+                        key={id}
+                        id={id}
+                        name={nameEntry}
+                        data={data}
+                        onUpdate={onUpdatePersonSendData}
+                        onRemove={(removeId) => onToggleBokSelection(removeId, '')}
+                      />
+                    );
+                  })}
+                </div>
+              </ScrollArea>
             )}
           </div>
         )}
@@ -741,7 +801,11 @@ const useHousingData = () => {
     const allActiveOccupants: Occupant[] = [
       ...allEmployees.filter((e) => e.status === 'active'),
       ...allNonEmployees.filter((ne) => ne.status === 'active'),
-      ...allBokResidents.filter((bok) => bok.status !== 'dismissed' && !bok.dismissDate && !bok.sendDate),
+      ...allBokResidents.filter((bok) => {
+        if (bok.status === 'dismissed' || bok.dismissDate) return false;
+        if (!bok.sendDate) return true;
+        return bok.sendReason === 'Badania wstępne' || bok.sendReason === 'Badania okresowe';
+      }),
     ];
 
     return addressesToDisplay.map((address) => {
@@ -1138,7 +1202,8 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
   const [mobileOpenItems, setMobileOpenItems] = useState<string[]>([]);
   const [deepLinkedAddressId, setDeepLinkedAddressId] = useState<string | null>(null);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
-  const [selectedBokIds, setSelectedBokIds] = useState<Set<string>>(new Set());
+  const [selectedBokData, setSelectedBokData] = useState<Map<string, PersonSendData>>(new Map());
+  const [selectedBokNames, setSelectedBokNames] = useState<Map<string, string>>(new Map());
   const { toast } = useToast();
   const deepLinkApplied = useRef(false);
 
@@ -1270,22 +1335,44 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
     });
   };
 
-  const handleToggleBokSelection = (id: string) => {
-    setSelectedBokIds(prev => {
-      const next = new Set(prev);
+  const handleToggleBokSelection = (id: string, name: string) => {
+    setSelectedBokData(prev => {
+      const next = new Map(prev);
       if (next.has(id)) next.delete(id);
-      else next.add(id);
+      else next.set(id, { date: undefined, time: '', reason: '' });
+      return next;
+    });
+    setSelectedBokNames(prev => {
+      const next = new Map(prev);
+      if (next.has(id)) next.delete(id);
+      else next.set(id, name);
       return next;
     });
   };
 
-  const handleSaveSelection = async (date: Date) => {
-    if (selectedBokIds.size === 0) return;
+  const handleUpdatePersonSendData = (id: string, patch: Partial<PersonSendData>) => {
+    setSelectedBokData(prev => {
+      const next = new Map(prev);
+      const current = next.get(id);
+      if (current) next.set(id, { ...current, ...patch });
+      return next;
+    });
+  };
+
+  const handleSaveSelection = async () => {
+    if (selectedBokData.size === 0) return;
     try {
-      const result = await bulkSetSendDateAction(Array.from(selectedBokIds), format(date, 'yyyy-MM-dd'), currentUser!.uid);
+      const entries = Array.from(selectedBokData.entries()).map(([id, d]) => ({
+        id,
+        sendDate: format(d.date!, 'yyyy-MM-dd'),
+        sendTime: d.time,
+        sendReason: d.reason,
+      }));
+      const result = await bulkSetSendDateAction(entries, currentUser!.uid);
       if (result.success) {
         toast({ title: 'Zapisano ✅', description: `Data wysyłki ustawiona dla ${result.updatedCount} osób.` });
-        setSelectedBokIds(new Set());
+        setSelectedBokData(new Map());
+        setSelectedBokNames(new Map());
         setIsSelectionMode(false);
         await refreshData(false, true);
       } else {
@@ -1324,7 +1411,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                 size="sm"
                 onClick={() => {
                   setIsSelectionMode(!isSelectionMode);
-                  if (isSelectionMode) setSelectedBokIds(new Set());
+                  if (isSelectionMode) { setSelectedBokData(new Map()); setSelectedBokNames(new Map()); }
                 }}
                 className={cn('h-8 text-xs gap-1', isSelectionMode && 'bg-amber-500 hover:bg-amber-600 text-white border-0')}
               >
@@ -1422,7 +1509,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                 size="sm"
                 onClick={() => {
                   setIsSelectionMode(!isSelectionMode);
-                  if (isSelectionMode) setSelectedBokIds(new Set());
+                  if (isSelectionMode) { setSelectedBokData(new Map()); setSelectedBokNames(new Map()); }
                 }}
                 className={cn('h-8 text-xs gap-1', isSelectionMode && 'bg-amber-500 hover:bg-amber-600 text-white border-0')}
               >
@@ -1574,8 +1661,10 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
         settings={rawSettings ?? settings}
         handleUpdateSettings={handleUpdateSettings}
         isSelectionMode={isSelectionMode}
-        selectedBokIds={selectedBokIds}
+        selectedBokData={selectedBokData}
+        selectedBokNames={selectedBokNames}
         onToggleBokSelection={handleToggleBokSelection}
+        onUpdatePersonSendData={handleUpdatePersonSendData}
         onSaveSelection={handleSaveSelection}
       />
     </div>

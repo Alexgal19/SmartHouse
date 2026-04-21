@@ -63,6 +63,8 @@ export type BokResident = {
   checkInDate: string | null;
   checkOutDate: string | null;
   sendDate: string | null;
+  sendTime?: string | null;
+  sendReason?: string | null;
   dismissDate: string | null;
   returnStatus: string;
   status: string;
@@ -219,6 +221,7 @@ export type ControlCard = {
   meterPhotoUrls?: string[];
   appliancesWorking: boolean;
   comments: string;
+  deleted?: boolean;
 }
 
 export type StartListHousingType = 'Hostel' | 'Dom' | 'Kwatera';

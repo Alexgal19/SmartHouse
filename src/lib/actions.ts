@@ -50,7 +50,7 @@ const NON_EMPLOYEE_HEADERS = [
 
 const BOK_RESIDENT_HEADERS = [
     'id', 'role', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'address', 'roomNumber',
-    'zaklad', 'gender', 'passportNumber', 'checkInDate', 'checkOutDate', 'returnStatus', 'status', 'comments', 'sendDate', 'dismissDate'
+    'zaklad', 'gender', 'passportNumber', 'checkInDate', 'checkOutDate', 'returnStatus', 'status', 'comments', 'sendDate', 'sendTime', 'sendReason', 'dismissDate'
 ];
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
@@ -2257,6 +2257,19 @@ export async function editControlCardAction(
     }
 }
 
+export async function deleteControlCardAction(
+    cardId: string,
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        await updateControlCardInSheet(cardId, { deleted: true });
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error deleting control card:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
 // --- Image processing ---
 export async function uploadControlCardPhotoAction(base64Image: string, fileName: string, mimeType: string): Promise<{ url: string; error?: string }> {
     try {
@@ -2604,26 +2617,27 @@ export async function deleteOdbiorEntryAction(
 // ─── Wysyłka BOK ──────────────────────────────────────────────────────────────
 
 export async function bulkSetSendDateAction(
-    bokIds: string[],
-    sendDate: string,
+    entries: { id: string; sendDate: string; sendTime: string; sendReason: string }[],
     actorUid: string,
 ): Promise<{ success: boolean; updatedCount: number; error?: string }> {
-    if (bokIds.length === 0) return { success: true, updatedCount: 0 };
+    if (entries.length === 0) return { success: true, updatedCount: 0 };
     try {
         const sheet = await getSheet(SHEET_NAME_BOK_RESIDENTS, BOK_RESIDENT_HEADERS);
         const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(BokResidents)');
         let updatedCount = 0;
-        for (const id of bokIds) {
-            const row = rows.find(r => r.get('id') === id);
+        for (const entry of entries) {
+            const row = rows.find(r => r.get('id') === entry.id);
             if (row) {
-                row.set('sendDate', sendDate);
+                row.set('sendDate', entry.sendDate);
+                row.set('sendTime', entry.sendTime);
+                row.set('sendReason', entry.sendReason);
                 await withTimeout(row.save(), TIMEOUT_MS, 'row.save(BokResident.sendDate)');
                 updatedCount++;
             }
         }
         await invalidateBokResidentsCache();
         revalidatePath('/dashboard');
-        void actorUid; // audit log skipped for bulk — avoid noisy notifications
+        void actorUid;
         return { success: true, updatedCount };
     } catch (error) {
         console.error('Error bulk setting sendDate:', error);

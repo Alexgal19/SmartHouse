@@ -125,6 +125,7 @@ type MainLayoutContextType = {
     pushSubscription: string | null;
     setPushSubscription: React.Dispatch<React.SetStateAction<string | null>>;
     handleUpdateCoordinatorSubscription: (token: string | null) => Promise<void>;
+    patchRawBokResident: (id: string, patch: Partial<BokResident>) => void;
 };
 
 type RefreshDataResult = {
@@ -730,6 +731,10 @@ export default function MainLayout({
         }
     }, [currentUser, rawBokResidents, toast]);
 
+    const patchRawBokResident = useCallback((id: string, patch: Partial<BokResident>) => {
+        setRawBokResidents(prev => prev ? prev.map(r => r.id === id ? { ...r, ...patch } : r) : null);
+    }, []);
+
     const handleUpdateSettings = useCallback(async (newSettings: Partial<Settings>) => {
         if (!rawSettings || !currentUser?.isAdmin) {
             toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administrator może zmieniać ustawienia." });
@@ -1103,6 +1108,7 @@ export default function MainLayout({
         pushSubscription,
         setPushSubscription,
         handleUpdateCoordinatorSubscription,
+        patchRawBokResident,
     }), [
         allEmployees,
         allNonEmployees,
@@ -1150,6 +1156,7 @@ export default function MainLayout({
         pushSubscription,
         setPushSubscription,
         handleUpdateCoordinatorSubscription,
+        patchRawBokResident,
     ]);
 
     if (!settings || !currentUser || !allEmployees || !allNonEmployees) {
