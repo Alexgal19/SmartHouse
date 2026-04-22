@@ -15,6 +15,7 @@ import dynamic from 'next/dynamic';
 import { QuickActions } from './dashboard/quick-actions';
 import { SystemStatusPanel } from './dashboard/system-status-panel';
 import { CoordinatorAlertsPanel } from './dashboard/coordinator-alerts-panel';
+import { ControlCardCommentsPanel } from './dashboard/control-card-comments-panel';
 import { AddressPreviewDialog } from './address-preview-dialog';
 
 const DynamicDashboardCharts = dynamic(() => import('./dashboard/charts').then(mod => mod.DashboardCharts), {
@@ -117,6 +118,7 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
         />
         <QuickActions onOpenAddressPreview={() => setIsAddressPreviewOpen(true)} />
         <CoordinatorAlertsPanel />
+        <ControlCardCommentsPanel currentUser={currentUser} settings={settings} />
         {currentUser.isAdmin && <SystemStatusPanel />}
         <DynamicDashboardCharts
           employees={allEmployees}
