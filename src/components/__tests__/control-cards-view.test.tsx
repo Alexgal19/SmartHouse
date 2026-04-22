@@ -234,7 +234,7 @@ describe('ControlCardDialog - Meter Photo Upload', () => {
     });
   });
 
-  test('displays the uploaded photo after a successful upload', async () => {
+  test('displays photo immediately as data URL, then replaces with server URL after upload', async () => {
     (uploadControlCardPhotoAction as jest.Mock).mockResolvedValue({
       url: 'https://storage.example.com/meter-photo.jpg',
     });
@@ -245,13 +245,19 @@ describe('ControlCardDialog - Meter Photo Upload', () => {
     const mockFile = new File(['imagedata'], 'meter.jpg', { type: 'image/jpeg' });
     fireEvent.change(galleryInput, { target: { files: [mockFile] } });
 
+    // Photo appears immediately as data URL (offline-first)
+    await waitFor(() => {
+      expect(screen.getByAltText('Zdjęcie 1')).toBeInTheDocument();
+    });
+
+    // After background upload completes, src is replaced with server URL
     await waitFor(() => {
       const img = screen.getByAltText('Zdjęcie 1');
       expect(img).toHaveAttribute('src', 'https://storage.example.com/meter-photo.jpg');
     });
   });
 
-  test('does not add a photo when the server returns an upload error', async () => {
+  test('shows photo as pending (data URL) when server upload fails — no error toast', async () => {
     (uploadControlCardPhotoAction as jest.Mock).mockResolvedValue({
       url: '',
       error: 'Zdjęcie jest za duże (maksymalnie 5MB)',
@@ -266,30 +272,13 @@ describe('ControlCardDialog - Meter Photo Upload', () => {
     await waitFor(() => {
       expect(uploadControlCardPhotoAction).toHaveBeenCalled();
     });
-    expect(screen.queryByAltText('Zdjęcie 1')).not.toBeInTheDocument();
-  });
 
-  test('shows an error toast when the upload fails', async () => {
-    (uploadControlCardPhotoAction as jest.Mock).mockResolvedValue({
-      url: '',
-      error: 'Zdjęcie jest za duże (maksymalnie 5MB)',
-    });
-
-    await openMeterDialog();
-    const galleryInput = getMeterGalleryInput();
-
-    const mockFile = new File(['imagedata'], 'big-photo.jpg', { type: 'image/jpeg' });
-    fireEvent.change(galleryInput, { target: { files: [mockFile] } });
-
-    await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: 'Błąd wgrywania',
-          description: 'Zdjęcie jest za duże (maksymalnie 5MB)',
-          variant: 'destructive',
-        })
-      );
-    });
+    // Photo is shown immediately as data URL even when upload fails
+    expect(screen.getByAltText('Zdjęcie 1')).toBeInTheDocument();
+    // No destructive error toast for silent background upload failure
+    expect(mockToast).not.toHaveBeenCalledWith(
+      expect.objectContaining({ variant: 'destructive', title: 'Błąd wgrywania' })
+    );
   });
 
   test('removes a meter photo when the delete button is clicked', async () => {
@@ -304,8 +293,9 @@ describe('ControlCardDialog - Meter Photo Upload', () => {
     const mockFile = new File(['imagedata'], 'meter.jpg', { type: 'image/jpeg' });
     fireEvent.change(galleryInput, { target: { files: [mockFile] } });
 
+    // Wait until background upload completes and delete button becomes available
     await waitFor(() => {
-      expect(screen.getByAltText('Zdjęcie 1')).toBeInTheDocument();
+      expect(screen.getByTitle('Usuń zdjęcie')).toBeInTheDocument();
     });
 
     // Click the delete button on the thumbnail

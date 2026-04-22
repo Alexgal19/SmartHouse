@@ -8,7 +8,7 @@ import {
     AlertCircle, Clock, ChevronRight, Building2,
     ShieldCheck, Wrench, ChevronDown, Bed,
     Camera, ImageIcon, X, Download, Loader2,
-    Lock, KeyRound, ListChecks
+    Lock, KeyRound, ListChecks, CloudOff
 } from 'lucide-react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -205,17 +205,24 @@ function PhotoUploadWidget({
             </div>
             {(photoUrls.length > 0 || isUploading) ? (
                 <div className="border border-border/40 rounded-lg p-2 bg-background flex gap-2 flex-wrap items-center">
-                    {photoUrls.map((url, idx) => (
+                    {photoUrls.map((url, idx) => {
+                        const isPending = url.startsWith('data:');
+                        return (
                         <div key={idx} className="relative group rounded-md border border-border/50 overflow-hidden w-16 h-16 bg-muted">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                                 src={url}
                                 alt={`Zdjęcie ${idx + 1}`}
                                 className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                                onClick={() => onLightbox(url)}
+                                onClick={() => !isPending && onLightbox(url)}
                                 loading="lazy"
                             />
-                            {canEdit && (
+                            {isPending && (
+                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center" title="Oczekuje na wgranie do sieci">
+                                    <CloudOff className="w-4 h-4 text-white/90" />
+                                </div>
+                            )}
+                            {canEdit && !isPending && (
                                 <button
                                     type="button"
                                     title="Usuń zdjęcie"
@@ -226,7 +233,8 @@ function PhotoUploadWidget({
                                 </button>
                             )}
                         </div>
-                    ))}
+                        );
+                    })}
                     {isUploading && (
                         <div className="w-16 h-16 bg-muted/50 rounded-md border flex items-center justify-center border-dashed">
                             <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
@@ -474,20 +482,29 @@ function StartListForm({
     const isImageFile = (file: File) =>
         file.type.startsWith('image/') || /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(file.name) || file.type === '';
 
+    const replaceStartListUrl = React.useCallback((from: string, to: string) => {
+        setForm(prev => ({
+            ...prev,
+            kitchenPhotoUrls: (prev.kitchenPhotoUrls || []).map(u => u === from ? to : u),
+            bathroomPhotoUrls: (prev.bathroomPhotoUrls || []).map(u => u === from ? to : u),
+            roomsPhotoUrls: (prev.roomsPhotoUrls || []).map(u => u === from ? to : u),
+            hallwayPhotoUrls: (prev.hallwayPhotoUrls || []).map(u => u === from ? to : u),
+        }));
+    }, []);
+
     const uploadFiles = async (files: FileList): Promise<string[]> => {
-        const out: string[] = [];
+        const dataUrls: string[] = [];
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
             if (!isImageFile(file)) continue;
-            const base64 = await compressImage(file);
-            const res = await uploadControlCardPhotoAction(base64, file.name || 'photo.jpg', 'image/jpeg');
-            if (res.error) {
-                toast({ title: 'Błąd wgrywania', description: res.error, variant: 'destructive' });
-            } else if (res.url) {
-                out.push(res.url);
-            }
+            const dataUrl = await compressImage(file);
+            dataUrls.push(dataUrl);
+            // Background upload — replace data URL with server URL on success
+            uploadControlCardPhotoAction(dataUrl, file.name || 'photo.jpg', 'image/jpeg')
+                .then(res => { if (res.url) replaceStartListUrl(dataUrl, res.url); })
+                .catch(() => {});
         }
-        return out;
+        return dataUrls; // Return data URLs immediately for display
     };
 
     const handleAddPhotos = async (field: 'kitchenPhotoUrls' | 'bathroomPhotoUrls' | 'roomsPhotoUrls' | 'hallwayPhotoUrls', e: React.ChangeEvent<HTMLInputElement>) => {
@@ -519,7 +536,7 @@ function StartListForm({
         }));
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!isStartListFieldsComplete(form)) {
             toast({ title: 'Uzupełnij wymagane pola', description: 'Wypełnij typ, odległości, transport, liczby pomieszczeń, standard i ogrzewanie.', variant: 'destructive' });
             return;
@@ -528,8 +545,44 @@ function StartListForm({
         if (missingPhotos.length > 0) {
             toast({ title: 'Zapis bez zdjęć', description: `Zapis nastąpi, ale brakuje zdjęć: ${missingPhotos.join(', ')}.` });
         }
+
+        // Flush any photos still waiting as data URLs (taken offline)
+        let currentForm = form;
+        const pendingUrls = [
+            ...(currentForm.kitchenPhotoUrls || []),
+            ...(currentForm.bathroomPhotoUrls || []),
+            ...(currentForm.roomsPhotoUrls || []),
+            ...(currentForm.hallwayPhotoUrls || []),
+        ].filter(u => u.startsWith('data:'));
+
+        if (pendingUrls.length > 0) {
+            toast({ title: 'Wgrywanie zdjęć...', description: `Synchronizuję ${pendingUrls.length} zdjęcie(a) offline...` });
+            const results = await Promise.all(
+                pendingUrls.map(dataUrl =>
+                    uploadControlCardPhotoAction(dataUrl, 'photo.jpg', 'image/jpeg')
+                        .then(res => ({ dataUrl, serverUrl: res.url ?? null }))
+                        .catch(() => ({ dataUrl, serverUrl: null }))
+                )
+            );
+            const failed = results.filter(r => !r.serverUrl);
+            if (failed.length > 0) {
+                toast({ title: 'Brak połączenia z siecią', description: `Nie udało się wgrać ${failed.length} zdjęcia(ń). Sprawdź internet i spróbuj zapisać ponownie.`, variant: 'destructive' });
+                return;
+            }
+            const urlMap = new Map(results.map(r => [r.dataUrl, r.serverUrl!]));
+            const rep = (u: string) => urlMap.get(u) ?? u;
+            currentForm = {
+                ...currentForm,
+                kitchenPhotoUrls: (currentForm.kitchenPhotoUrls || []).map(rep),
+                bathroomPhotoUrls: (currentForm.bathroomPhotoUrls || []).map(rep),
+                roomsPhotoUrls: (currentForm.roomsPhotoUrls || []).map(rep),
+                hallwayPhotoUrls: (currentForm.hallwayPhotoUrls || []).map(rep),
+            };
+            setForm(currentForm);
+        }
+
         startSaving(async () => {
-            const payload = { ...form, updatedBy: currentUser.name, updatedById: currentUser.uid };
+            const payload = { ...currentForm, updatedBy: currentUser.name, updatedById: currentUser.uid };
             const res = await saveStartListAction(payload);
             if (res.success) {
                 const saved: StartList = { ...payload, updatedAt: new Date().toISOString() };
@@ -717,8 +770,7 @@ function ControlCardDialog({
     );
 
     const slComplete = isStartListComplete(startList);
-    const controlUnlocked = !!startList || currentUser.isAdmin;
-    const [activeTab, setActiveTab] = useState<'startlist' | 'control'>(controlUnlocked ? 'control' : 'startlist');
+    const [activeTab, setActiveTab] = useState<'startlist' | 'control'>('control');
     const prevOpenRef = React.useRef(false);
 
     React.useEffect(() => {
@@ -726,21 +778,13 @@ function ControlCardDialog({
         prevOpenRef.current = open;
         if (justOpened) {
             setForm(existingCard ? buildFormFromCard(existingCard, address) : buildDefaultForm(address));
-            setActiveTab(!!startList || currentUser.isAdmin ? 'control' : 'startlist');
+            setActiveTab('control');
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, existingCard, address]);
 
 
     const handleTabChange = (val: string) => {
-        if (val === 'control' && !controlUnlocked) {
-            toast({
-                title: 'Uzupełnij najpierw Start-list',
-                description: 'Aby wypełnić kartę kontroli, musisz najpierw uzupełnić formę Start-list dla tego adresu.',
-                variant: 'destructive',
-            });
-            return;
-        }
         setActiveTab(val as 'startlist' | 'control');
     };
 
@@ -796,23 +840,23 @@ function ControlCardDialog({
         });
     };
 
-    // Generic photo upload handler
+    // Generic photo upload handler — tries server upload; on failure (no network) falls back to data URL
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const uploadPhotos = async (files: FileList, key: 'kitchen' | 'bathroom' | string): Promise<string[]> => {
         const isImg = (f: File) => f.type.startsWith('image/') || /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(f.name) || f.type === '';
-        const newPhotos: string[] = [];
+        const results: string[] = [];
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
             if (!isImg(file)) continue;
-            const base64 = await compressImage(file);
-            const res = await uploadControlCardPhotoAction(base64, file.name || 'photo.jpg', 'image/jpeg');
-            if (res.error) {
-                toast({ title: 'Błąd wgrywania', description: res.error, variant: 'destructive' });
-            } else if (res.url) {
-                newPhotos.push(res.url);
+            const dataUrl = await compressImage(file);
+            try {
+                const res = await uploadControlCardPhotoAction(dataUrl, file.name || 'photo.jpg', 'image/jpeg');
+                results.push(res.url ? res.url : dataUrl); // server URL or data URL fallback
+            } catch {
+                results.push(dataUrl); // No network — store locally, upload on save
             }
         }
-        return newPhotos;
+        return results;
     };
 
     const handleAddPhotos = async (roomId: string, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -915,7 +959,7 @@ function ControlCardDialog({
 
     const formComplete = isControlFormComplete(form, address);
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!formComplete) {
             toast({
                 title: 'Uzupełnij wszystkie pola',
@@ -924,12 +968,48 @@ function ControlCardDialog({
             });
             return;
         }
+
+        // Flush any photos still stored as data URLs (taken offline)
+        let currentForm = form;
+        const pendingUrls = [
+            ...currentForm.meterPhotoUrls,
+            ...currentForm.kitchenPhotoUrls,
+            ...currentForm.bathroomPhotoUrls,
+            ...currentForm.roomRatings.flatMap(r => r.photoUrls || []),
+        ].filter((u): u is string => typeof u === 'string' && u.startsWith('data:'));
+
+        if (pendingUrls.length > 0) {
+            toast({ title: 'Wgrywanie zdjęć...', description: `Synchronizuję ${pendingUrls.length} zdjęcie(a) offline...` });
+            const results = await Promise.all(
+                pendingUrls.map(dataUrl =>
+                    uploadControlCardPhotoAction(dataUrl, 'photo.jpg', 'image/jpeg')
+                        .then(res => ({ dataUrl, serverUrl: res.url ?? null }))
+                        .catch(() => ({ dataUrl, serverUrl: null }))
+                )
+            );
+            const failed = results.filter(r => !r.serverUrl);
+            if (failed.length > 0) {
+                toast({ title: 'Brak połączenia z siecią', description: `Nie udało się wgrać ${failed.length} zdjęcia(ń). Sprawdź internet i spróbuj zapisać ponownie.`, variant: 'destructive' });
+                return;
+            }
+            const urlMap = new Map(results.map(r => [r.dataUrl, r.serverUrl!]));
+            const rep = (u: string) => urlMap.get(u) ?? u;
+            currentForm = {
+                ...currentForm,
+                meterPhotoUrls: currentForm.meterPhotoUrls.map(rep),
+                kitchenPhotoUrls: currentForm.kitchenPhotoUrls.map(rep),
+                bathroomPhotoUrls: currentForm.bathroomPhotoUrls.map(rep),
+                roomRatings: currentForm.roomRatings.map(r => ({ ...r, photoUrls: (r.photoUrls || []).map(rep) })),
+            };
+            setForm(currentForm);
+        }
+
         if (existingCard) {
             // Optimistic update — zamknij dialog i zaktualizuj listę natychmiast
-            const optimisticCard = { ...existingCard, ...form, fillDate: new Date().toISOString().slice(0, 10) };
+            const optimisticCard = { ...existingCard, ...currentForm, fillDate: new Date().toISOString().slice(0, 10) };
             onSaved(optimisticCard);
             onClose();
-            editControlCardAction(existingCard.id, form).then(result => {
+            editControlCardAction(existingCard.id, currentForm).then(result => {
                 if (result.success) {
                     toast({ title: 'Zaktualizowano ✅', description: `Karta dla "${address.name}" zapisana.` });
                 } else {
@@ -949,7 +1029,7 @@ function ControlCardDialog({
                     coordinatorName: currentUser.name,
                     controlMonth: selectedMonth,
                     fillDate: new Date().toISOString().slice(0, 10),
-                    ...form,
+                    ...currentForm,
                 };
                 const result = await saveControlCardAction(cardData);
                 if (result.success && result.id) {
@@ -996,10 +1076,12 @@ function ControlCardDialog({
                                 ? <CheckCircle2 className="w-3 h-3 text-green-500" />
                                 : <AlertCircle className="w-3 h-3 text-red-500" />}
                         </TabsTrigger>
-                        <TabsTrigger value="control" className="gap-1.5" disabled={!controlUnlocked}>
+                        <TabsTrigger value="control" className="gap-1.5">
                             <ClipboardCheck className="w-3.5 h-3.5" />
                             <span className="text-xs">Kontrola</span>
-                            {!controlUnlocked && <Lock className="w-3 h-3 text-muted-foreground" />}
+                            {formComplete
+                                ? <CheckCircle2 className="w-3 h-3 text-green-500" />
+                                : <AlertCircle className="w-3 h-3 text-orange-400" />}
                         </TabsTrigger>
                     </TabsList>
 
