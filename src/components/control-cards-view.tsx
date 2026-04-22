@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useMemo, useTransition } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ClipboardCheck, Search, CheckCircle2,
@@ -1461,6 +1462,7 @@ function LocalitySection({
 export default function ControlCardsView({ currentUser }: { currentUser: SessionData }) {
     const { rawSettings } = useMainLayout();
     const { toast } = useToast();
+    const searchParams = useSearchParams();
 
     const monthOptions = useMemo(() => getMonthOptions(), []);
     const [selectedMonth, setSelectedMonth] = useState(monthOptions[0].value);
@@ -1472,6 +1474,7 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
     const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
     const [openLocality, setOpenLocality] = useState<string | null>(null);
     const [isUnlocked, setIsUnlocked] = useState(currentUser.isAdmin);
+    const [deepLinkHandled, setDeepLinkHandled] = useState(false);
 
     React.useEffect(() => {
         if (!isUnlocked) return;
@@ -1527,6 +1530,20 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [qualifiedAddresses]);
+
+    // Deep-link: open address dialog when ?address=<id> is in URL
+    React.useEffect(() => {
+        if (deepLinkHandled || isLoadingCards || qualifiedAddresses.length === 0) return;
+        const addressId = searchParams.get('address');
+        if (!addressId) return;
+        const found = qualifiedAddresses.find(a => a.id === addressId);
+        if (found) {
+            setOpenLocality(found.locality || 'Inne');
+            setSelectedAddress(found);
+        }
+        setDeepLinkHandled(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [qualifiedAddresses, isLoadingCards]);
 
     const cardsByAddressInMonth = useMemo(() => {
         const map = new Map<string, ControlCard>();

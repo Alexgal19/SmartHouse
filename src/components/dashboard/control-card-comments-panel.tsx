@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Bell, BellOff } from 'lucide-react';
+import { RefreshCw, Bell, BellOff, ExternalLink } from 'lucide-react';
 import type { ControlCard, SessionData, Settings } from '@/types';
 
 interface CommentItem {
   cardId: string;
+  addressId: string;
   coordinator: string;
   locality: string;
   addressName: string;
@@ -48,6 +50,7 @@ function extractComments(
     if (card.comments?.trim()) {
       items.push({
         cardId: card.id,
+        addressId: card.addressId,
         coordinator: card.coordinatorName,
         locality,
         addressName: card.addressName,
@@ -62,6 +65,7 @@ function extractComments(
       if (room.comment?.trim()) {
         items.push({
           cardId: `${card.id}-${room.roomId}`,
+          addressId: card.addressId,
           coordinator: card.coordinatorName,
           locality,
           addressName: card.addressName,
@@ -152,24 +156,28 @@ export function ControlCardCommentsPanel({ currentUser, settings }: Props) {
             {items!.map((item, i) => (
               <div key={item.cardId}>
                 {i > 0 && <div className="border-t border-muted my-2" />}
-                <div className="space-y-0.5">
-                  <p className="text-xs font-medium text-foreground">
-                    {item.coordinator}
-                    {item.locality && (
-                      <span className="text-muted-foreground font-normal"> · {item.locality} · {item.addressName}</span>
-                    )}
-                    {!item.locality && (
-                      <span className="text-muted-foreground font-normal"> · {item.addressName}</span>
-                    )}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{item.context}</p>
-                  <p className="text-xs text-foreground italic line-clamp-3 whitespace-pre-wrap">
-                    &ldquo;{item.text}&rdquo;
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {formatMonth(item.controlMonth)} · {formatDate(item.fillDate)}
-                  </p>
-                </div>
+                <Link
+                  href={`/dashboard?view=control-cards&address=${item.addressId}`}
+                  className="block rounded-md hover:bg-muted/50 transition-colors -mx-2 px-2 py-1 group"
+                >
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-medium text-foreground flex items-center gap-1">
+                      {item.coordinator}
+                      {item.locality
+                        ? <span className="text-muted-foreground font-normal"> · {item.locality} · {item.addressName}</span>
+                        : <span className="text-muted-foreground font-normal"> · {item.addressName}</span>
+                      }
+                      <ExternalLink className="h-2.5 w-2.5 text-muted-foreground opacity-0 group-hover:opacity-60 flex-shrink-0 ml-0.5 transition-opacity" />
+                    </p>
+                    <p className="text-xs text-muted-foreground">{item.context}</p>
+                    <p className="text-xs text-foreground italic line-clamp-3 whitespace-pre-wrap">
+                      &ldquo;{item.text}&rdquo;
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {formatMonth(item.controlMonth)} · {formatDate(item.fillDate)}
+                    </p>
+                  </div>
+                </Link>
               </div>
             ))}
             {total > LIMIT && (
