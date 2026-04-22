@@ -127,7 +127,7 @@ export default function OdbiorView({ currentUser }: { currentUser: SessionData }
                     bokResidents={allBokResidents || []}
                     currentUser={currentUser}
                     patchResident={patchRawBokResident}
-                    onRefresh={async () => { await refreshData(false, true); }}
+                    onRefresh={() => { refreshData(false, true); }}
                 />
             )}
 
@@ -137,7 +137,7 @@ export default function OdbiorView({ currentUser }: { currentUser: SessionData }
                     isOpen={isZakwaterowanieOpen}
                     onOpenChange={handleDialogClose}
                     currentUser={currentUser}
-                    onSaved={async () => { await refreshData(false, true); }}
+                    onSaved={() => { refreshData(false, true); }}
                 />
             )}
 

@@ -27,7 +27,7 @@ interface OsobyDoWyslaniaProps {
     bokResidents: BokResident[];
     currentUser: SessionData;
     patchResident: (id: string, patch: Partial<BokResident>) => void;
-    onRefresh: () => Promise<void>;
+    onRefresh: () => void;
 }
 
 const fmtDate = (v: string | null | undefined) => {
@@ -135,7 +135,6 @@ export function OsobyDoWyslaniaView({
                     title: type === 'cofnij' ? 'Cofnięto wysyłkę ✅' : 'Osoba zwolniona ✅',
                     description: `${resident.lastName} ${resident.firstName} — ${type === 'cofnij' ? 'wróciła do Aktywni BOK' : 'przeniesiona do Zwolnieni'}`,
                 });
-                onRefresh(); // fire-and-forget background sync
             } else {
                 // Revert on failure
                 patchResident(resident.id, resident);

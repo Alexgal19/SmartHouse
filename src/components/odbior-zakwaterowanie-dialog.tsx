@@ -513,7 +513,7 @@ export function OdbiorZakwaterowanieDialog({
     editEntry?: OdbiorEntry | null;
 }) {
     const { toast } = useToast();
-    const { settings, allEmployees, allNonEmployees, allBokResidents } = useMainLayout();
+    const { settings, allEmployees, allNonEmployees, allBokResidents, addRawOdbiorEntry, patchRawOdbiorEntry, addRawBokResident, patchRawBokResident } = useMainLayout();
     const [step, setStep] = useState<Step>(0);
     const [data, setData] = useState<WizardData>({ ...DEFAULT_DATA, date: new Date() });
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -593,25 +593,41 @@ export function OdbiorZakwaterowanieDialog({
         setIsSubmitting(true);
         try {
             if (isEditing && editEntry) {
+                const patch = {
+                    firstName: data.firstName.trim(),
+                    lastName: data.lastName.trim(),
+                    nationality: data.nationality.trim(),
+                    gender: data.gender.trim(),
+                    passportNumber: data.passportNumber.trim(),
+                    addressId: data.addressId,
+                    addressName: data.addressName,
+                    roomNumber: data.roomNumber,
+                    date: format(data.date, 'yyyy-MM-dd'),
+                };
                 const result = await updateOdbiorZakwaterowanieAction(
                     editEntry.id,
                     editEntry.convertedToBokId ?? null,
-                    {
-                        firstName: data.firstName.trim(),
-                        lastName: data.lastName.trim(),
-                        nationality: data.nationality.trim(),
-                        gender: data.gender.trim(),
-                        passportNumber: data.passportNumber.trim(),
-                        addressId: data.addressId,
-                        addressName: data.addressName,
-                        roomNumber: data.roomNumber,
-                        date: format(data.date, 'yyyy-MM-dd'),
-                    },
+                    patch,
                     currentUser.uid,
                 );
                 if (!result.success) {
                     toast({ variant: 'destructive', title: 'Błąd zapisu', description: result.error || 'Nie udało się zapisać.' });
                     return;
+                }
+                // Optimistic update
+                patchRawOdbiorEntry(editEntry.id, patch);
+                if (editEntry.convertedToBokId) {
+                    patchRawBokResident(editEntry.convertedToBokId, {
+                        firstName: patch.firstName,
+                        lastName: patch.lastName,
+                        fullName: `${patch.lastName} ${patch.firstName}`.trim(),
+                        nationality: patch.nationality,
+                        gender: patch.gender,
+                        passportNumber: patch.passportNumber,
+                        address: patch.addressName,
+                        roomNumber: patch.roomNumber,
+                        checkInDate: patch.date,
+                    });
                 }
                 toast({ title: 'Zaktualizowano', description: `Dane ${data.lastName} ${data.firstName} zaktualizowane.` });
             } else {
@@ -633,6 +649,9 @@ export function OdbiorZakwaterowanieDialog({
                     toast({ variant: 'destructive', title: 'Błąd zapisu', description: result.error || 'Nie udało się zapisać.' });
                     return;
                 }
+                // Optimistic update — add new entry and BOK resident immediately
+                if (result.entry) addRawOdbiorEntry(result.entry);
+                if (result.bokResident) addRawBokResident(result.bokResident);
                 toast({ title: 'Zapisano', description: `${data.lastName} ${data.firstName} dodany do BOK.` });
             }
             onOpenChange(false);

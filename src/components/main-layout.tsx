@@ -126,6 +126,9 @@ type MainLayoutContextType = {
     setPushSubscription: React.Dispatch<React.SetStateAction<string | null>>;
     handleUpdateCoordinatorSubscription: (token: string | null) => Promise<void>;
     patchRawBokResident: (id: string, patch: Partial<BokResident>) => void;
+    addRawBokResident: (resident: BokResident) => void;
+    addRawOdbiorEntry: (entry: OdbiorEntry) => void;
+    patchRawOdbiorEntry: (id: string, patch: Partial<OdbiorEntry>) => void;
 };
 
 type RefreshDataResult = {
@@ -735,6 +738,18 @@ export default function MainLayout({
         setRawBokResidents(prev => prev ? prev.map(r => r.id === id ? { ...r, ...patch } : r) : null);
     }, []);
 
+    const addRawBokResident = useCallback((resident: BokResident) => {
+        setRawBokResidents(prev => prev ? [...prev, resident] : [resident]);
+    }, []);
+
+    const addRawOdbiorEntry = useCallback((entry: OdbiorEntry) => {
+        setOdbiorEntries(prev => prev ? [entry, ...prev] : [entry]);
+    }, []);
+
+    const patchRawOdbiorEntry = useCallback((id: string, patch: Partial<OdbiorEntry>) => {
+        setOdbiorEntries(prev => prev ? prev.map(e => e.id === id ? { ...e, ...patch } : e) : null);
+    }, []);
+
     const handleUpdateSettings = useCallback(async (newSettings: Partial<Settings>) => {
         if (!rawSettings || !currentUser?.isAdmin) {
             toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administrator może zmieniać ustawienia." });
@@ -750,8 +765,7 @@ export default function MainLayout({
             toast({ title: "Sukces", description: "Ustawienia zostały zaktualizowane." });
             router.refresh(); // Ensure server-side cache is invalidated and fresh data is fetched
 
-            // Force cache bypass to ensure fresh data is fetched after settings update
-            await refreshData(false, true);
+            refreshData(false, true); // fire-and-forget — settings already updated optimistically
         } catch (e) {
             setRawSettings(originalSettings); // Revert on error
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać ustawień." });
@@ -1109,6 +1123,9 @@ export default function MainLayout({
         setPushSubscription,
         handleUpdateCoordinatorSubscription,
         patchRawBokResident,
+        addRawBokResident,
+        addRawOdbiorEntry,
+        patchRawOdbiorEntry,
     }), [
         allEmployees,
         allNonEmployees,
@@ -1157,6 +1174,9 @@ export default function MainLayout({
         setPushSubscription,
         handleUpdateCoordinatorSubscription,
         patchRawBokResident,
+        addRawBokResident,
+        addRawOdbiorEntry,
+        patchRawOdbiorEntry,
     ]);
 
     if (!settings || !currentUser || !allEmployees || !allNonEmployees) {

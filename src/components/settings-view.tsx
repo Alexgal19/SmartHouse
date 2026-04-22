@@ -661,7 +661,7 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
         try {
             await transferEmployees(transferFrom, transferTo);
             toast({ title: "Sukces", description: "Pracownicy zostali przeniesieni." });
-            await refreshData(false);
+            refreshData(false); // fire-and-forget — lista zaktualizuje się po odświeżeniu z serwera
         } catch (e) {
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się przenieść pracowników." });
         } finally {

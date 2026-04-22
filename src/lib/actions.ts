@@ -2531,7 +2531,7 @@ export async function updateOdbiorZakwaterowanieAction(
 
 export async function addOdbiorZakwaterowanieAction(
     input: OdbiorEntryCreateInput,
-): Promise<{ success: boolean; error?: string; bokId?: string }> {
+): Promise<{ success: boolean; error?: string; bokId?: string; entry?: OdbiorEntry; bokResident?: BokResident }> {
     try {
         if (!input.firstName || !input.lastName) {
             return { success: false, error: 'Imię i nazwisko są wymagane.' };
@@ -2579,7 +2579,7 @@ export async function addOdbiorZakwaterowanieAction(
         await addOdbiorEntryToSheet(entry);
         await invalidateOdbiorEntriesCache();
         revalidatePath('/dashboard');
-        return { success: true, bokId: bok.id };
+        return { success: true, bokId: bok.id, entry, bokResident: bok };
     } catch (error) {
         console.error('Error adding odbior zakwaterowanie:', error);
         return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };

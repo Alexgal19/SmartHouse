@@ -1194,6 +1194,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
     handleEditBokResidentClick,
     handleUpdateSettings,
     refreshData,
+    patchRawBokResident,
   } = useMainLayout();
   const { isMobile } = useIsMobile();
   const searchParams = useSearchParams();
@@ -1370,11 +1371,15 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
       }));
       const result = await bulkSetSendDateAction(entries, currentUser!.uid);
       if (result.success) {
+        // Optimistic update — immediately reflect in UI without waiting for Sheets
+        for (const entry of entries) {
+          patchRawBokResident(entry.id, { sendDate: entry.sendDate, sendTime: entry.sendTime, sendReason: entry.sendReason });
+        }
         toast({ title: 'Zapisano ✅', description: `Data wysyłki ustawiona dla ${result.updatedCount} osób.` });
         setSelectedBokData(new Map());
         setSelectedBokNames(new Map());
         setIsSelectionMode(false);
-        await refreshData(false, true);
+        refreshData(false, true); // fire-and-forget background sync
       } else {
         toast({ variant: 'destructive', title: 'Błąd', description: result.error });
       }
