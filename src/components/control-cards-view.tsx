@@ -465,13 +465,13 @@ function StartListForm({
             img.src = dataUrl;
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                const MAX = 1200;
+                const MAX = 2000;
                 let w = img.width, h = img.height;
                 if (w > h) { if (w > MAX) { h *= MAX / w; w = MAX; } }
                 else { if (h > MAX) { w *= MAX / h; h = MAX; } }
                 canvas.width = w; canvas.height = h;
                 canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
-                resolve(canvas.toDataURL('image/jpeg', 0.7));
+                resolve(canvas.toDataURL('image/jpeg', 0.85));
             };
             // Fallback for formats canvas can't decode (e.g. HEIC on some browsers)
             img.onerror = () => resolve(dataUrl);
@@ -818,8 +818,8 @@ function ControlCardDialog({
                 img.src = dataUrl;
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 1200;
-                    const MAX_HEIGHT = 1200;
+                    const MAX_WIDTH = 2000;
+                    const MAX_HEIGHT = 2000;
                     let width = img.width;
                     let height = img.height;
                     if (width > height) {
@@ -831,7 +831,7 @@ function ControlCardDialog({
                     canvas.height = height;
                     const ctx = canvas.getContext('2d');
                     ctx?.drawImage(img, 0, 0, width, height);
-                    resolve(canvas.toDataURL('image/jpeg', 0.7));
+                    resolve(canvas.toDataURL('image/jpeg', 0.85));
                 };
                 // Fallback for formats canvas can't decode (e.g. HEIC on some browsers)
                 img.onerror = () => resolve(dataUrl);
