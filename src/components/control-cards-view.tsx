@@ -1474,7 +1474,7 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
     const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
     const [openLocality, setOpenLocality] = useState<string | null>(null);
     const [isUnlocked, setIsUnlocked] = useState(currentUser.isAdmin);
-    const [deepLinkHandled, setDeepLinkHandled] = useState(false);
+
 
     React.useEffect(() => {
         if (!isUnlocked) return;
@@ -1532,8 +1532,9 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
     }, [qualifiedAddresses]);
 
     // Deep-link: open address dialog when ?address=<id> is in URL
+    // Re-runs whenever searchParams change so clicking from dashboard always opens the modal
     React.useEffect(() => {
-        if (deepLinkHandled || isLoadingCards || qualifiedAddresses.length === 0) return;
+        if (isLoadingCards || qualifiedAddresses.length === 0) return;
         const addressId = searchParams.get('address');
         if (!addressId) return;
         const found = qualifiedAddresses.find(a => a.id === addressId);
@@ -1541,9 +1542,8 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
             setOpenLocality(found.locality || 'Inne');
             setSelectedAddress(found);
         }
-        setDeepLinkHandled(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [qualifiedAddresses, isLoadingCards]);
+    }, [searchParams, qualifiedAddresses, isLoadingCards]);
 
     const cardsByAddressInMonth = useMemo(() => {
         const map = new Map<string, ControlCard>();

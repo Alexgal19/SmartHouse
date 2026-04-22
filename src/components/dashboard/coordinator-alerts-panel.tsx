@@ -93,7 +93,14 @@ export function CoordinatorAlertsPanel() {
     }
   };
 
-  useEffect(() => { fetchAlerts(); }, []);
+  const AUTO_REFRESH_MS = 60 * 60 * 1000; // 1 hour
+
+  useEffect(() => {
+    fetchAlerts();
+    const interval = setInterval(() => fetchAlerts(true), AUTO_REFRESH_MS);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const totalCount = data
     ? Object.values(data.details).reduce((s, arr) => s + arr.length, 0)
