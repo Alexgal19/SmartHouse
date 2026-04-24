@@ -37,6 +37,19 @@ jest.mock('@/lib/firebase-admin', () => ({
     adminMessaging: {
         send: jest.fn(),
     },
+    adminDb: null,
+}));
+
+// Mock auth — Server Actions now require a valid session; bypass in unit tests
+jest.mock('@/lib/auth', () => ({
+    getSession: jest.fn().mockResolvedValue({
+        isLoggedIn: true,
+        uid: 'coord-1',
+        name: 'Jan Kowalski',
+        isAdmin: true,
+        isDriver: false,
+        isRekrutacja: false,
+    }),
 }));
 
 // Mock next/cache
