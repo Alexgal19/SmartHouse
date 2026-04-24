@@ -1254,11 +1254,16 @@ const ExcelImport = ({ onImport, title, description, requiredFields, optionalFie
     );
 }
 
+const COORDINATOR_SECTION_PASSWORD = '2121';
+
 function SettingsManager({ rawSettings, handleUpdateSettings }: { rawSettings: Settings, handleUpdateSettings: (settings: Partial<Settings>) => Promise<void> }) {
     const { toast } = useToast();
     const [isAddressFormOpen, setIsAddressFormOpen] = useState(false);
     const [editingAddress, setEditingAddress] = useState<Address | null>(null);
     const { allEmployees, allNonEmployees } = useMainLayout();
+    const [coordUnlocked, setCoordUnlocked] = useState(false);
+    const [coordPwdInput, setCoordPwdInput] = useState('');
+    const [coordPwdError, setCoordPwdError] = useState(false);
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -1435,13 +1440,66 @@ function SettingsManager({ rawSettings, handleUpdateSettings }: { rawSettings: S
                             <AccordionItem value="coordinators">
                                 <AccordionTrigger>Zarządzanie koordynatorami</AccordionTrigger>
                                 <AccordionContent className="p-2">
-                                    <CoordinatorManager
-                                        form={form}
-                                        fields={coordFields}
-                                        append={appendCoord}
-                                        remove={removeCoord}
-                                        departments={(watchedDepartments || []).map((d: { value: string }) => d.value)}
-                                    />
+                                    {coordUnlocked ? (
+                                        <div className="space-y-3">
+                                            <div className="flex justify-end">
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => { setCoordUnlocked(false); setCoordPwdInput(''); setCoordPwdError(false); }}
+                                                >
+                                                    Zablokuj
+                                                </Button>
+                                            </div>
+                                            <CoordinatorManager
+                                                form={form}
+                                                fields={coordFields}
+                                                append={appendCoord}
+                                                remove={removeCoord}
+                                                departments={(watchedDepartments || []).map((d: { value: string }) => d.value)}
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-center gap-3 py-6">
+                                            <p className="text-sm text-muted-foreground">Wprowadź hasło, aby zarządzać koordynatorami</p>
+                                            <div className="flex gap-2 w-full max-w-xs">
+                                                <Input
+                                                    type="password"
+                                                    placeholder="Hasło"
+                                                    value={coordPwdInput}
+                                                    onChange={(e) => { setCoordPwdInput(e.target.value); setCoordPwdError(false); }}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            if (coordPwdInput === COORDINATOR_SECTION_PASSWORD) {
+                                                                setCoordUnlocked(true);
+                                                                setCoordPwdInput('');
+                                                                setCoordPwdError(false);
+                                                            } else {
+                                                                setCoordPwdError(true);
+                                                            }
+                                                        }
+                                                    }}
+                                                    className={coordPwdError ? 'border-destructive' : ''}
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        if (coordPwdInput === COORDINATOR_SECTION_PASSWORD) {
+                                                            setCoordUnlocked(true);
+                                                            setCoordPwdInput('');
+                                                            setCoordPwdError(false);
+                                                        } else {
+                                                            setCoordPwdError(true);
+                                                        }
+                                                    }}
+                                                >
+                                                    Odblokuj
+                                                </Button>
+                                            </div>
+                                            {coordPwdError && <p className="text-xs text-destructive">Nieprawidłowe hasło</p>}
+                                        </div>
+                                    )}
                                 </AccordionContent>
                             </AccordionItem>
                             <AccordionItem value="addresses">
