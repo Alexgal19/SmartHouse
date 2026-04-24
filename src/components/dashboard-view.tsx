@@ -118,7 +118,7 @@ export default function DashboardView({ currentUser }: { currentUser: SessionDat
         />
         <QuickActions onOpenAddressPreview={() => setIsAddressPreviewOpen(true)} />
         <CoordinatorAlertsPanel />
-        <ControlCardCommentsPanel currentUser={currentUser} settings={settings} />
+        {currentUser.isAdmin && <ControlCardCommentsPanel currentUser={currentUser} settings={settings} />}
         {currentUser.isAdmin && <SystemStatusPanel />}
         <DynamicDashboardCharts
           employees={allEmployees}
