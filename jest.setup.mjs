@@ -9,15 +9,36 @@ global.ResizeObserver = class ResizeObserver {
 
 
 
-// Mock Firebase Admin
+// Mock firebase-admin package
 jest.mock('firebase-admin', () => ({
-  credential: {
-    cert: jest.fn(),
-  },
+  apps: [],
+  credential: { cert: jest.fn() },
   initializeApp: jest.fn(),
-  messaging: jest.fn(() => ({
-    send: jest.fn(),
-  })),
+  messaging: jest.fn(() => ({ send: jest.fn() })),
+  firestore: Object.assign(jest.fn(() => null), {
+    FieldValue: { increment: jest.fn((n) => n) },
+  }),
+}));
+
+// Mock @/lib/firebase-admin wrapper — ensures adminDb and adminMessaging are
+// always available in tests without needing the real Firebase credentials
+jest.mock('@/lib/firebase-admin', () => ({
+  adminMessaging: { send: jest.fn() },
+  adminDb: null,
+}));
+
+// Mock @/lib/auth — Server Actions call requireSession() which calls cookies(),
+// which throws outside Next.js request scope. Global mock prevents this in
+// every test file without needing per-file boilerplate.
+jest.mock('@/lib/auth', () => ({
+  getSession: jest.fn().mockResolvedValue({
+    isLoggedIn: true,
+    uid: 'coord-1',
+    name: 'Jan Kowalski',
+    isAdmin: true,
+    isDriver: false,
+    isRekrutacja: false,
+  }),
 }));
 
 // Mock Next.js Navigation

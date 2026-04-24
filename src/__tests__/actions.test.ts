@@ -32,25 +32,7 @@ import { GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
 import { adminMessaging } from '@/lib/firebase-admin';
 import type { Settings, Employee, NonEmployee, BokResident } from '@/types';
 
-// Mock firebase-admin
-jest.mock('@/lib/firebase-admin', () => ({
-    adminMessaging: {
-        send: jest.fn(),
-    },
-    adminDb: null,
-}));
-
-// Mock auth — Server Actions now require a valid session; bypass in unit tests
-jest.mock('@/lib/auth', () => ({
-    getSession: jest.fn().mockResolvedValue({
-        isLoggedIn: true,
-        uid: 'coord-1',
-        name: 'Jan Kowalski',
-        isAdmin: true,
-        isDriver: false,
-        isRekrutacja: false,
-    }),
-}));
+// firebase-admin and auth are mocked globally in jest.setup.mjs
 
 // Mock next/cache
 jest.mock('next/cache', () => ({

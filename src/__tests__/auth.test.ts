@@ -1,3 +1,6 @@
+// Undo the global mock from jest.setup.mjs — this file tests the real implementation
+jest.unmock('@/lib/auth');
+
 import { login, logout, getSession } from '@/lib/auth';
 import * as sheets from '@/lib/sheets';
 import { redirect } from 'next/navigation';
