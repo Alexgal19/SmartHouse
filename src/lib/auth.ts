@@ -7,6 +7,7 @@ import type { SessionData } from '@/types';
 import { getSettings } from '@/lib/sheets';
 import { redirect } from 'next/navigation';
 import { sessionOptions } from '@/lib/session';
+import bcrypt from 'bcryptjs';
 
 // Simple in-memory rate limiter: max 10 failed attempts per IP per 15 minutes
 const loginAttempts = new Map<string, { count: number; resetAt: number }>();
@@ -70,7 +71,24 @@ export async function login(name: string, password_input: string) {
   }
 
   const settings = await getSettings();
-  const user = settings.coordinators.find(c => c.name.toLowerCase() === name.toLowerCase() && c.password === password_input);
+  const candidate = settings.coordinators.find(c => c.name.toLowerCase() === name.toLowerCase());
+
+  let passwordValid = false;
+  if (candidate?.password) {
+    const storedPwd = candidate.password;
+    if (storedPwd.startsWith('$2')) {
+      // Zahashowane hasło (bcrypt)
+      passwordValid = await bcrypt.compare(password_input, storedPwd);
+    } else {
+      // Plaintext (stary format — akceptuj, ale zaloguj ostrzeżenie)
+      passwordValid = storedPwd === password_input;
+      if (passwordValid) {
+        console.warn(`[auth] Koordynator "${candidate.name}" używa niezahashowanego hasła. Uruchom migrację haseł.`);
+      }
+    }
+  }
+
+  const user = passwordValid ? candidate : undefined;
 
   if (user) {
     clearAttempts(ip);

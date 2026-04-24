@@ -34,6 +34,21 @@ import * as XLSX from 'xlsx';
 import { adminMessaging } from './firebase-admin';
 import { batchPromises } from './utils';
 import admin from 'firebase-admin';
+import { getSession } from './auth';
+
+/** Wymaga aktywnej sesji — rzuca jeśli niezalogowany. */
+async function requireSession() {
+    const session = await getSession();
+    if (!session.isLoggedIn) throw new Error('Nieautoryzowany dostęp.');
+    return session;
+}
+
+/** Wymaga sesji admina — rzuca jeśli brak uprawnień. */
+async function requireAdmin() {
+    const session = await requireSession();
+    if (!session.isAdmin) throw new Error('Brak uprawnień administratora.');
+    return session;
+}
 
 const EMPLOYEE_HEADERS = [
     'id', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'ownAddress', 'roomNumber',
@@ -548,8 +563,10 @@ const validateRoomAvailability = (settings: Settings, addressName: string | unde
     }
 }
 
-export async function addEmployee(employeeData: Partial<Employee>, actorUid: string): Promise<Employee> {
+export async function addEmployee(employeeData: Partial<Employee>, _actorUid: string): Promise<Employee> {
     try {
+        const session = await requireSession();
+        const actorUid = session.uid;
         const settings = await getSettings();
         const actor = findActor(actorUid, settings);
 
@@ -598,8 +615,10 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
 }
 
 
-export async function updateEmployee(employeeId: string, updates: Partial<Employee>, actorUid: string): Promise<Employee> {
+export async function updateEmployee(employeeId: string, updates: Partial<Employee>, _actorUid: string): Promise<Employee> {
     try {
+        const session = await requireSession();
+        const actorUid = session.uid;
         if (updates.status === 'dismissed' && !updates.checkOutDate) {
             throw new Error('Data wymeldowania jest wymagana przy zwalnianiu pracownika.');
         }
@@ -686,6 +705,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
 
 export async function deleteEmployee(employeeId: string, _actorUid: string): Promise<string> {
     try {
+        await requireSession();
         const addressHistory = await getRawAddressHistory();
 
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
@@ -713,8 +733,10 @@ export async function deleteEmployee(employeeId: string, _actorUid: string): Pro
     }
 }
 
-export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id' | 'status'>, actorUid: string): Promise<NonEmployee> {
+export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id' | 'status'>, _actorUid: string): Promise<NonEmployee> {
     try {
+        const session = await requireSession();
+        const actorUid = session.uid;
         const settings = await getSettings();
         const actor = findActor(actorUid, settings);
 
@@ -754,8 +776,10 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id' | '
     }
 }
 
-export async function updateNonEmployee(id: string, updates: Partial<NonEmployee>, actorUid: string): Promise<NonEmployee> {
+export async function updateNonEmployee(id: string, updates: Partial<NonEmployee>, _actorUid: string): Promise<NonEmployee> {
     try {
+        const session = await requireSession();
+        const actorUid = session.uid;
         if (updates.status === 'dismissed' && !updates.checkOutDate) {
             throw new Error('Data wymeldowania jest wymagana przy zwalnianiu osoby niebędącej pracownikiem.');
         }
@@ -835,6 +859,7 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
 
 export async function deleteNonEmployee(id: string, _actorUid: string): Promise<string> {
     try {
+        await requireSession();
         const addressHistory = await getRawAddressHistory();
 
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
@@ -859,8 +884,10 @@ export async function deleteNonEmployee(id: string, _actorUid: string): Promise<
     }
 }
 
-export async function addBokResident(residentData: Omit<BokResident, 'id'>, actorUid: string): Promise<BokResident> {
+export async function addBokResident(residentData: Omit<BokResident, 'id'>, _actorUid: string): Promise<BokResident> {
     try {
+        const session = await requireSession();
+        const actorUid = session.uid;
         const settings = await getSettings();
         const actor = findActor(actorUid, settings);
 
@@ -887,8 +914,10 @@ export async function addBokResident(residentData: Omit<BokResident, 'id'>, acto
     }
 }
 
-export async function updateBokResident(id: string, updates: Partial<BokResident>, actorUid: string): Promise<BokResident> {
+export async function updateBokResident(id: string, updates: Partial<BokResident>, _actorUid: string): Promise<BokResident> {
     try {
+        const session = await requireSession();
+        const actorUid = session.uid;
         const settings = await getSettings();
         const actor = findActor(actorUid, settings);
 
@@ -942,6 +971,7 @@ export async function updateBokResident(id: string, updates: Partial<BokResident
 
 export async function deleteBokResident(id: string, _actorUid: string): Promise<string> {
     try {
+        await requireSession();
         // Clean up associated address history entries (same as deleteEmployee/deleteNonEmployee)
         const addressHistory = await getRawAddressHistory();
 
@@ -973,6 +1003,7 @@ export async function deleteBokResident(id: string, _actorUid: string): Promise<
 export async function bulkDeleteBokResidents(ids: string[], _actorUid: string): Promise<void> {
     if (ids.length === 0) return;
     try {
+        await requireAdmin();
         const addressHistory = await getRawAddressHistory();
         const sheet = await getSheet(SHEET_NAME_BOK_RESIDENTS, BOK_RESIDENT_HEADERS);
         const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(BokResident)');
@@ -1002,6 +1033,7 @@ export async function bulkDeleteBokResidents(ids: string[], _actorUid: string): 
 
 export async function bulkDeleteEmployees(status: 'active' | 'dismissed', _actorUid: string): Promise<void> {
     try {
+        await requireAdmin();
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows();
         const rowsToDelete = rows.filter((row) => row.get('status') === status);
@@ -1025,8 +1057,10 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', _actor
     }
 }
 
-export async function bulkDeleteEmployeesByCoordinator(coordinatorId: string, actorUid: string): Promise<void> {
+export async function bulkDeleteEmployeesByCoordinator(coordinatorId: string, _actorUid: string): Promise<void> {
     try {
+        const session = await requireAdmin();
+        const actorUid = session.uid;
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows();
         const rowsToDelete = rows.filter((row) => row.get('coordinatorId') === coordinatorId);
@@ -1060,8 +1094,10 @@ export async function bulkDeleteEmployeesByCoordinator(coordinatorId: string, ac
     }
 }
 
-export async function bulkDeleteEmployeesByDepartment(department: string, actorUid: string): Promise<void> {
+export async function bulkDeleteEmployeesByDepartment(department: string, _actorUid: string): Promise<void> {
     try {
+        const session = await requireAdmin();
+        const actorUid = session.uid;
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows();
         const rowsToDelete = rows.filter((row) => row.get('zaklad') === department);
@@ -1096,6 +1132,7 @@ export async function bulkDeleteEmployeesByDepartment(department: string, actorU
 
 export async function transferEmployees(fromCoordinatorId: string, toCoordinatorId: string): Promise<void> {
     try {
+        await requireAdmin();
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows();
         const rowsToTransfer = rows.filter((row) => row.get('coordinatorId') === fromCoordinatorId);
@@ -1124,10 +1161,12 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
     }
 }
 
-export async function checkAndUpdateStatuses(actorUid?: string): Promise<{ updated: number }> {
+export async function checkAndUpdateStatuses(_actorUid?: string): Promise<{ updated: number }> {
     try {
+        const session = await requireSession();
+        const actorUid = session.uid;
         const settings = await getSettings();
-        const actor = findActor(actorUid || 'system', settings);
+        const actor = findActor(actorUid, settings);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         let updatedCount = 0;
@@ -1248,6 +1287,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
     };
 
     try {
+        await requireAdmin();
         // Parallelize simple lists update with concurrency control (max 3 concurrent)
         const simpleListTasks: (() => Promise<void>)[] = [];
         if (newSettings.nationalities) simpleListTasks.push(() => updateSimpleList(SHEET_NAME_NATIONALITIES, newSettings.nationalities!));
@@ -1483,6 +1523,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
 
 export async function updateNotificationReadStatus(notificationId: string, isRead: boolean): Promise<void> {
     try {
+        await requireSession();
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
         const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Notifications)');
         const row = rows.find((r) => r.get('id') === notificationId);
@@ -1501,6 +1542,7 @@ export async function updateNotificationReadStatus(notificationId: string, isRea
 
 export async function clearAllNotifications(): Promise<void> {
     try {
+        await requireSession();
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
         // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: clear all notifications (user-triggered bulk action), approved by owner
         await withTimeout(sheet.clearRows(), TIMEOUT_MS, 'sheet.clearRows(Notifications)');
@@ -1513,6 +1555,7 @@ export async function clearAllNotifications(): Promise<void> {
 
 export async function deleteNotification(notificationId: string): Promise<void> {
     try {
+        await requireSession();
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
         const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Notifications)');
         const rowToDelete = rows.find(row => row.get('id') === notificationId);
@@ -1532,6 +1575,7 @@ export async function deleteNotification(notificationId: string): Promise<void> 
 
 export async function generateAccommodationReport(year: number, month: number, coordinatorId: string, includeAddressHistory: boolean): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
     try {
+        await requireSession();
         const [employees, settings, addressHistory] = await Promise.all([
             getEmployees(),
             getSettings(),
@@ -1647,6 +1691,7 @@ export async function generateAccommodationReport(year: number, month: number, c
 
 export async function generateNzCostsReport(year: number, month: number, coordinatorId: string): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
     try {
+        await requireSession();
         const [nonEmployees, settings] = await Promise.all([getNonEmployees(), getSettings()]);
         const coordinatorMap = new Map(settings.coordinators.map((c: { uid: string; name: string; }) => [c.uid, c.name]));
 
@@ -1728,6 +1773,7 @@ export async function generateNzCostsReport(year: number, month: number, coordin
 
 export async function generateDeductionsReport(year: number, month: number, coordinatorId: string): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
     try {
+        await requireSession();
         const [employees, settings] = await Promise.all([getEmployees(), getSettings()]);
         const coordinatorMap = new Map(settings.coordinators.map((c: { uid: string; name: string; }) => [c.uid, c.name]));
 
@@ -2048,20 +2094,25 @@ const processImport = async (
     }
 }
 
-export async function importEmployeesFromExcel(fileContent: string, actorUid: string, settings: Settings): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
-    return processImport(fileContent, actorUid, 'employee', settings);
+export async function importEmployeesFromExcel(fileContent: string, _actorUid: string, settings: Settings): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
+    const session = await requireSession();
+    return processImport(fileContent, session.uid, 'employee', settings);
 }
 
-export async function importNonEmployeesFromExcel(fileContent: string, actorUid: string, settings: Settings): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
-    return processImport(fileContent, actorUid, 'non-employee', settings);
+export async function importNonEmployeesFromExcel(fileContent: string, _actorUid: string, settings: Settings): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
+    const session = await requireSession();
+    return processImport(fileContent, session.uid, 'non-employee', settings);
 }
 
-export async function importBokResidentsFromExcel(fileContent: string, actorUid: string, settings: Settings): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
-    return processImport(fileContent, actorUid, 'bok-resident', settings);
+export async function importBokResidentsFromExcel(fileContent: string, _actorUid: string, settings: Settings): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
+    const session = await requireSession();
+    return processImport(fileContent, session.uid, 'bok-resident', settings);
 }
 
-export async function deleteAddressHistoryEntry(historyId: string, actorUid: string): Promise<void> {
+export async function deleteAddressHistoryEntry(historyId: string, _actorUid: string): Promise<void> {
     try {
+        const session = await requireSession();
+        const actorUid = session.uid;
         const settings = await getSettings();
         const actor = findActor(actorUid, settings);
 
@@ -2078,7 +2129,9 @@ export async function deleteAddressHistoryEntry(historyId: string, actorUid: str
 }
 
 
-export async function migrateFullNames(actorUid: string): Promise<{ migratedEmployees: number; migratedNonEmployees: number }> {
+export async function migrateFullNames(_actorUid: string): Promise<{ migratedEmployees: number; migratedNonEmployees: number }> {
+    const session = await requireAdmin();
+    const actorUid = session.uid;
     const settings = await getSettings();
     const actor = findActor(actorUid, settings);
 
@@ -2130,6 +2183,7 @@ export async function migrateFullNames(actorUid: string): Promise<{ migratedEmpl
 
 export async function updateCoordinatorSubscription(coordinatorId: string, subscription: string | null): Promise<void> {
     try {
+        await requireSession();
         const sheet = await getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS);
         const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Coordinators)');
         const coordinatorRow = rows.find(row => row.get('uid') === coordinatorId);
@@ -2234,6 +2288,7 @@ export async function saveControlCardAction(
     cardData: Omit<ControlCard, 'id'>
 ): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
+        await requireSession();
         const id = await addControlCardToSheet(cardData);
         revalidatePath('/dashboard');
         return { success: true, id };
@@ -2248,6 +2303,7 @@ export async function editControlCardAction(
     updates: Partial<Omit<ControlCard, 'id' | 'addressId' | 'coordinatorId' | 'controlMonth'>>
 ): Promise<{ success: boolean; error?: string }> {
     try {
+        await requireSession();
         await updateControlCardInSheet(cardId, { ...updates, fillDate: new Date().toISOString().slice(0, 10) });
         revalidatePath('/dashboard');
         return { success: true };
@@ -2261,6 +2317,7 @@ export async function deleteControlCardAction(
     cardId: string,
 ): Promise<{ success: boolean; error?: string }> {
     try {
+        await requireSession();
         await updateControlCardInSheet(cardId, { deleted: true });
         revalidatePath('/dashboard');
         return { success: true };
@@ -2273,6 +2330,7 @@ export async function deleteControlCardAction(
 // --- Image processing ---
 export async function uploadControlCardPhotoAction(base64Image: string, fileName: string, mimeType: string): Promise<{ url: string; error?: string }> {
     try {
+        await requireSession();
         if (!base64Image || !base64Image.includes('base64,')) {
             return { url: '', error: 'Nieprawidłowy format zdjęcia' };
         }
@@ -2315,6 +2373,7 @@ export async function uploadControlCardPhotoAction(base64Image: string, fileName
 
 export async function getStartListsAction(): Promise<StartList[]> {
     try {
+        await requireSession();
         return await getStartListsFromSheet();
     } catch (error) {
         console.error('Error getting start lists:', error);
@@ -2327,6 +2386,7 @@ export async function setAddressNoMetersRequiredAction(
     value: boolean
 ): Promise<{ success: boolean; error?: string }> {
     try {
+        await requireAdmin();
         const sheet = await getSheet(SHEET_NAME_ADDRESSES, ADDRESS_HEADERS);
         const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Addresses/noMeters)');
         const row = rows.find(r => r.get('id') === addressId);
@@ -2346,6 +2406,7 @@ export async function saveStartListAction(
     data: Omit<StartList, 'updatedAt'>
 ): Promise<{ success: boolean; error?: string }> {
     try {
+        await requireSession();
         await upsertStartListInSheet({ ...data, updatedAt: new Date().toISOString() });
         revalidatePath('/dashboard');
         return { success: true };
@@ -2359,6 +2420,7 @@ export async function saveStartListAction(
 
 export async function getOdbiorEntriesAction(): Promise<OdbiorEntry[]> {
     try {
+        await requireSession();
         return await getOdbiorEntriesFromSheet();
     } catch (error) {
         console.error('Error getting odbior entries:', error);
@@ -2385,6 +2447,9 @@ export async function addOdbiorEntryAction(
     input: OdbiorEntryCreateInput
 ): Promise<{ success: boolean; error?: string; entry?: OdbiorEntry }> {
     try {
+        const session = await requireSession();
+        // Override createdById from session to prevent client spoofing
+        input = { ...input, createdById: session.uid };
         if (!input.firstName || !input.lastName) {
             return { success: false, error: 'Imię i nazwisko są wymagane.' };
         }
@@ -2420,6 +2485,7 @@ export async function updateOdbiorEntryAction(
     updates: Partial<OdbiorEntry>
 ): Promise<{ success: boolean; error?: string }> {
     try {
+        await requireSession();
         await updateOdbiorEntryInSheet(id, updates);
         revalidatePath('/dashboard');
         return { success: true };
@@ -2432,9 +2498,11 @@ export async function updateOdbiorEntryAction(
 export async function convertOdbiorToBokAction(
     id: string,
     extra: { role: string; coordinatorId: string; zaklad: string; status: string; returnStatus: string },
-    actorUid: string
+    _actorUid: string
 ): Promise<{ success: boolean; error?: string; bokId?: string }> {
     try {
+        const session = await requireSession();
+        const actorUid = session.uid;
         const entries = await getOdbiorEntriesFromSheet();
         const entry = entries.find(e => e.id === id);
         if (!entry) return { success: false, error: 'Wpis Odbiór nie istnieje.' };
@@ -2489,9 +2557,11 @@ export async function updateOdbiorZakwaterowanieAction(
         roomNumber: string;
         date: string;
     },
-    actorUid: string,
+    _actorUid: string,
 ): Promise<{ success: boolean; error?: string }> {
     try {
+        const session = await requireSession();
+        const actorUid = session.uid;
         // Update OdbiorEntry
         await updateOdbiorEntryInSheet(odbiorId, {
             firstName: updates.firstName.trim(),
@@ -2533,6 +2603,9 @@ export async function addOdbiorZakwaterowanieAction(
     input: OdbiorEntryCreateInput,
 ): Promise<{ success: boolean; error?: string; bokId?: string; entry?: OdbiorEntry; bokResident?: BokResident }> {
     try {
+        const session = await requireSession();
+        // Override createdById from session to prevent client spoofing
+        input = { ...input, createdById: session.uid };
         if (!input.firstName || !input.lastName) {
             return { success: false, error: 'Imię i nazwisko są wymagane.' };
         }
@@ -2591,6 +2664,7 @@ export async function deleteOdbiorEntryAction(
     bokId: string | null,
 ): Promise<{ success: boolean; error?: string }> {
     try {
+        await requireSession();
         // Delete the OdbiorEntry row
         await deleteOdbiorEntryFromSheet(odbiorId);
 
@@ -2618,10 +2692,11 @@ export async function deleteOdbiorEntryAction(
 
 export async function bulkSetSendDateAction(
     entries: { id: string; sendDate: string; sendTime: string; sendReason: string }[],
-    actorUid: string,
+    _actorUid: string,
 ): Promise<{ success: boolean; updatedCount: number; error?: string }> {
     if (entries.length === 0) return { success: true, updatedCount: 0 };
     try {
+        await requireSession();
         const sheet = await getSheet(SHEET_NAME_BOK_RESIDENTS, BOK_RESIDENT_HEADERS);
         const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(BokResidents)');
         let updatedCount = 0;
@@ -2637,7 +2712,6 @@ export async function bulkSetSendDateAction(
         }
         await invalidateBokResidentsCache();
         revalidatePath('/dashboard');
-        void actorUid;
         return { success: true, updatedCount };
     } catch (error) {
         console.error('Error bulk setting sendDate:', error);
@@ -2648,10 +2722,11 @@ export async function bulkSetSendDateAction(
 export async function updateSendDateAction(
     bokId: string,
     sendDate: string | null,
-    actorUid: string,
+    _actorUid: string,
 ): Promise<{ success: boolean; error?: string }> {
     try {
-        await updateBokResident(bokId, { sendDate }, actorUid);
+        // actorUid is taken from session inside updateBokResident
+        await updateBokResident(bokId, { sendDate }, '');
         revalidatePath('/dashboard');
         return { success: true };
     } catch (error) {
@@ -2662,12 +2737,13 @@ export async function updateSendDateAction(
 
 export async function dismissBokResidentAction(
     bokId: string,
-    actorUid: string,
+    _actorUid: string,
     dismissDate?: string,
 ): Promise<{ success: boolean; error?: string }> {
     try {
         const date = dismissDate || format(new Date(), 'yyyy-MM-dd');
-        await updateBokResident(bokId, { dismissDate: date, status: 'dismissed' }, actorUid);
+        // actorUid taken from session inside updateBokResident
+        await updateBokResident(bokId, { dismissDate: date, status: 'dismissed' }, '');
         revalidatePath('/dashboard');
         return { success: true };
     } catch (error) {
