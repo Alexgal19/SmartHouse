@@ -22,30 +22,44 @@ function safeIpDocId(ip: string): string {
 
 async function checkRateLimit(ip: string): Promise<void> {
   if (!adminDb) return;
-  const now = Date.now();
-  const snap = await adminDb.collection('loginRateLimits').doc(safeIpDocId(ip)).get();
-  const data = snap.data();
-  if (data && now < data.resetAt && data.count >= MAX_ATTEMPTS) {
-    throw new Error('Zbyt wiele nieudanych prób logowania. Spróbuj ponownie za 15 minut.');
+  try {
+    const now = Date.now();
+    const snap = await adminDb.collection('loginRateLimits').doc(safeIpDocId(ip)).get();
+    const data = snap.data();
+    if (data && now < data.resetAt && data.count >= MAX_ATTEMPTS) {
+      throw new Error('Zbyt wiele nieudanych prób logowania. Spróbuj ponownie za 15 minut.');
+    }
+  } catch (e) {
+    // Rethrow only rate-limit errors; swallow Firestore infra errors gracefully
+    if (e instanceof Error && e.message.includes('Zbyt wiele')) throw e;
+    console.warn('[auth] checkRateLimit Firestore error (degraded gracefully):', e);
   }
 }
 
 async function recordFailedAttempt(ip: string): Promise<void> {
   if (!adminDb) return;
-  const now = Date.now();
-  const ref = adminDb.collection('loginRateLimits').doc(safeIpDocId(ip));
-  const snap = await ref.get();
-  const data = snap.data();
-  if (data && now < data.resetAt) {
-    await ref.update({ count: admin.firestore.FieldValue.increment(1) });
-  } else {
-    await ref.set({ count: 1, resetAt: now + WINDOW_MS });
+  try {
+    const now = Date.now();
+    const ref = adminDb.collection('loginRateLimits').doc(safeIpDocId(ip));
+    const snap = await ref.get();
+    const data = snap.data();
+    if (data && now < data.resetAt) {
+      await ref.update({ count: admin.firestore.FieldValue.increment(1) });
+    } else {
+      await ref.set({ count: 1, resetAt: now + WINDOW_MS });
+    }
+  } catch (e) {
+    console.warn('[auth] recordFailedAttempt Firestore error (degraded gracefully):', e);
   }
 }
 
 async function clearAttempts(ip: string): Promise<void> {
   if (!adminDb) return;
-  await adminDb.collection('loginRateLimits').doc(safeIpDocId(ip)).delete();
+  try {
+    await adminDb.collection('loginRateLimits').doc(safeIpDocId(ip)).delete();
+  } catch (e) {
+    console.warn('[auth] clearAttempts Firestore error (degraded gracefully):', e);
+  }
 }
 
 export async function getSession(): Promise<IronSession<SessionData>> {
