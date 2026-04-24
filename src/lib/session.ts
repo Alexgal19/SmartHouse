@@ -11,6 +11,7 @@ export const sessionOptions: SessionOptions = {
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
     httpOnly: true,
+    maxAge: 8 * 60 * 60, // 8 godzin
   },
 };
 

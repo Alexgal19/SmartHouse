@@ -36,8 +36,10 @@ messaging.onBackgroundMessage((payload) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   
-  // Try to find the URL in the data payload
-  const urlToOpen = event.notification.data?.url || event.notification.data?.click_action || '/';
+  const rawUrl = event.notification.data?.url || event.notification.data?.click_action || '/';
+  // Only allow URLs on the same origin to prevent open-redirect via malicious push payloads
+  const isSameOrigin = rawUrl.startsWith(self.registration.scope) || rawUrl.startsWith('/');
+  const urlToOpen = isSameOrigin ? rawUrl : '/';
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {

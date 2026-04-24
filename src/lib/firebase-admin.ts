@@ -20,6 +20,7 @@ if (!admin.apps.length) {
 }
 
 export const adminMessaging = admin.apps.length ? admin.messaging() : null;
+export const adminDb = admin.apps.length ? admin.firestore() : null;
 
 if (!adminMessaging) {
   console.error('[FCM] Firebase Admin Messaging is not initialized. Push notifications will NOT be sent. Check GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_PRIVATE_KEY in .env.local');

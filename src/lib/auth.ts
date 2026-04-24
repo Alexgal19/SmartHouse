@@ -8,32 +8,44 @@ import { getSettings } from '@/lib/sheets';
 import { redirect } from 'next/navigation';
 import { sessionOptions } from '@/lib/session';
 import bcrypt from 'bcryptjs';
+import admin from 'firebase-admin';
+import { adminDb } from '@/lib/firebase-admin';
 
-// Simple in-memory rate limiter: max 10 failed attempts per IP per 15 minutes
-const loginAttempts = new Map<string, { count: number; resetAt: number }>();
+// Rate limiter backed by Firestore — works across serverless instances
+// Falls back silently if Firestore is unavailable
 const MAX_ATTEMPTS = 10;
 const WINDOW_MS = 15 * 60 * 1000;
 
-function checkRateLimit(ip: string): void {
-  const now = Date.now();
-  const entry = loginAttempts.get(ip);
+function safeIpDocId(ip: string): string {
+  return ip.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 128);
+}
 
-  if (entry && now < entry.resetAt) {
-    if (entry.count >= MAX_ATTEMPTS) {
-      throw new Error('Zbyt wiele nieudanych prób logowania. Spróbuj ponownie za 15 minut.');
-    }
-  } else {
-    loginAttempts.set(ip, { count: 0, resetAt: now + WINDOW_MS });
+async function checkRateLimit(ip: string): Promise<void> {
+  if (!adminDb) return;
+  const now = Date.now();
+  const snap = await adminDb.collection('loginRateLimits').doc(safeIpDocId(ip)).get();
+  const data = snap.data();
+  if (data && now < data.resetAt && data.count >= MAX_ATTEMPTS) {
+    throw new Error('Zbyt wiele nieudanych prób logowania. Spróbuj ponownie za 15 minut.');
   }
 }
 
-function recordFailedAttempt(ip: string): void {
-  const entry = loginAttempts.get(ip);
-  if (entry) entry.count++;
+async function recordFailedAttempt(ip: string): Promise<void> {
+  if (!adminDb) return;
+  const now = Date.now();
+  const ref = adminDb.collection('loginRateLimits').doc(safeIpDocId(ip));
+  const snap = await ref.get();
+  const data = snap.data();
+  if (data && now < data.resetAt) {
+    await ref.update({ count: admin.firestore.FieldValue.increment(1) });
+  } else {
+    await ref.set({ count: 1, resetAt: now + WINDOW_MS });
+  }
 }
 
-function clearAttempts(ip: string): void {
-  loginAttempts.delete(ip);
+async function clearAttempts(ip: string): Promise<void> {
+  if (!adminDb) return;
+  await adminDb.collection('loginRateLimits').doc(safeIpDocId(ip)).delete();
 }
 
 export async function getSession(): Promise<IronSession<SessionData>> {
@@ -54,7 +66,7 @@ export async function getSession(): Promise<IronSession<SessionData>> {
 
 export async function login(name: string, password_input: string) {
   const ip = (await headers()).get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
-  checkRateLimit(ip);
+  await checkRateLimit(ip);
 
   // Hardcoded admin check
   if (name.toLowerCase() === 'admin' && password_input === process.env.ADMIN_PASSWORD) {
@@ -65,7 +77,7 @@ export async function login(name: string, password_input: string) {
     session.isAdmin = true;
     session.isDriver = false;
     session.isRekrutacja = false;
-    clearAttempts(ip);
+    await clearAttempts(ip);
     await session.save();
     return { success: true, user: { uid: 'admin-hardcoded', name: 'Admin', isAdmin: true, isDriver: false, isRekrutacja: false } };
   }
@@ -91,7 +103,7 @@ export async function login(name: string, password_input: string) {
   const user = passwordValid ? candidate : undefined;
 
   if (user) {
-    clearAttempts(ip);
+    await clearAttempts(ip);
     const session = await getSession();
     session.isLoggedIn = true;
     session.uid = user.uid;
@@ -103,7 +115,7 @@ export async function login(name: string, password_input: string) {
     return { success: true, user: { uid: user.uid, name: user.name, isAdmin: user.isAdmin, isDriver: user.isDriver || false, isRekrutacja: user.isRekrutacja || false } };
   }
 
-  recordFailedAttempt(ip);
+  await recordFailedAttempt(ip);
   throw new Error("Nieprawidłowa nazwa użytkownika lub hasło.");
 }
 
