@@ -1119,3 +1119,77 @@ export async function deleteBokResidentById(bokId: string): Promise<void> {
     bokResidentsCache = null;
 }
 
+// ─── OdbiorZgloszenia ─────────────────────────────────────────────────────────
+
+import type { OdbiorZgloszenie } from '../types';
+
+const SHEET_NAME_ODBIOR = 'OdbiorZgloszenia';
+let odbiorCache: OdbiorZgloszenie[] | null = null;
+export async function invalidateOdbiorCache() { odbiorCache = null; }
+
+const ODBIOR_HEADERS = [
+    'id', 'dataZgloszenia', 'numerTelefonu', 'skad', 'komentarzSkad',
+    'iloscOsob', 'komentarz', 'zdjeciaUrls', 'rekruterId', 'rekruterNazwa',
+    'status', 'kierowcaId', 'kierowcaNazwa', 'osoby', 'nastepnyKrok', 'dataZakonczenia',
+];
+
+export async function getOdbiorZgloszenia(): Promise<OdbiorZgloszenie[]> {
+    if (odbiorCache) return odbiorCache;
+    const doc = await getDoc();
+    const rows = await getSheetData(doc, SHEET_NAME_ODBIOR);
+    odbiorCache = rows.map(row => ({
+        id: row['id'] ?? '',
+        dataZgloszenia: row['dataZgloszenia'] ?? '',
+        numerTelefonu: row['numerTelefonu'] ?? '',
+        skad: (row['skad'] ?? 'inne') as OdbiorZgloszenie['skad'],
+        komentarzSkad: row['komentarzSkad'] ?? '',
+        iloscOsob: parseInt(row['iloscOsob'] ?? '0', 10),
+        komentarz: row['komentarz'] ?? '',
+        zdjeciaUrls: row['zdjeciaUrls'] ?? '',
+        rekruterId: row['rekruterId'] ?? '',
+        rekruterNazwa: row['rekruterNazwa'] ?? '',
+        status: (row['status'] ?? 'Nieprzyjęte') as OdbiorZgloszenie['status'],
+        kierowcaId: row['kierowcaId'] ?? '',
+        kierowcaNazwa: row['kierowcaNazwa'] ?? '',
+        osoby: row['osoby'] ?? '[]',
+        nastepnyKrok: row['nastepnyKrok'] ?? '',
+        dataZakonczenia: row['dataZakonczenia'] ?? '',
+    }));
+    return odbiorCache;
+}
+
+export async function addOdbiorZgloszenieRow(data: Omit<OdbiorZgloszenie, 'id'>): Promise<OdbiorZgloszenie> {
+    const sheet = await getSheet(SHEET_NAME_ODBIOR, ODBIOR_HEADERS);
+    const id = `ODB-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+    const row = { id, ...data, iloscOsob: String(data.iloscOsob) };
+    await withTimeout(sheet.addRow(row), TIMEOUT_MS, 'sheet.addRow(OdbiorZgloszenia)');
+    odbiorCache = null;
+    return { id, ...data };
+}
+
+export async function updateOdbiorZgloszenie(
+    id: string,
+    updates: Partial<Omit<OdbiorZgloszenie, 'id'>>
+): Promise<void> {
+    const sheet = await getSheet(SHEET_NAME_ODBIOR, ODBIOR_HEADERS);
+    const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(OdbiorZgloszenia)');
+    const row = rows.find(r => r.get('id') === id);
+    if (!row) throw new Error(`OdbiorZgloszenie ${id} nie istnieje`);
+    for (const [key, value] of Object.entries(updates)) {
+        if (value === undefined) continue;
+        row.set(key, String(value));
+    }
+    await withTimeout(row.save(), TIMEOUT_MS, 'row.save(OdbiorZgloszenia)');
+    odbiorCache = null;
+}
+
+// eslint-disable-next-line no-restricted-syntax -- approved by owner: admin/recruiter explicit deletion of pickup submissions
+export async function deleteOdbiorZgloszenie(id: string): Promise<void> {
+    const sheet = await getSheet(SHEET_NAME_ODBIOR, ODBIOR_HEADERS);
+    const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(OdbiorZgloszenia)');
+    const row = rows.find(r => r.get('id') === id);
+    if (!row) throw new Error(`OdbiorZgloszenie ${id} nie istnieje`);
+    await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(OdbiorZgloszenia)');
+    odbiorCache = null;
+}
+

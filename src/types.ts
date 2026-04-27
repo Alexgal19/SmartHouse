@@ -261,6 +261,32 @@ export type StartList = {
 }
 
 export type OdbiorType = 'zakwaterowanie' | 'rozmowa_rekrutacyjna' | 'badania';
+// ─── OdbiorZgloszenia (moduł zgłoszeń odbioru) ───────────────────────────────
+
+export type OdbiorZgloszenieStatus = 'Nieprzyjęte' | 'W trakcie' | 'Zakończone' | 'Dostarczone';
+export type OdbiorZgloszenieSkad = 'autobusowa' | 'pociagowa' | 'inne';
+export type NastepnyKrok = 'zakwaterowanie' | 'badania' | 'rozmowa' | '';
+export type OsobaWOdbiorze = { imie: string; nazwisko: string; paszport: string };
+
+export type OdbiorZgloszenie = {
+    id: string;
+    dataZgloszenia: string;
+    numerTelefonu: string;
+    skad: OdbiorZgloszenieSkad;
+    komentarzSkad: string;
+    iloscOsob: number;
+    komentarz: string;
+    zdjeciaUrls: string;
+    rekruterId: string;
+    rekruterNazwa: string;
+    status: OdbiorZgloszenieStatus;
+    kierowcaId: string;
+    kierowcaNazwa: string;
+    osoby: string;
+    nastepnyKrok: string;
+    dataZakonczenia: string;
+};
+
 export type OdbiorStatus = 'nowy' | 'przekonwertowany';
 
 export type OdbiorEntry = {
