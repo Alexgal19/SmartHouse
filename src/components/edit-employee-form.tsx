@@ -40,7 +40,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon, Info, X, Loader2, Eye, AlertTriangle } from 'lucide-react';
 import { AddressPreviewDialog } from '@/components/address-preview-dialog';
 import { Calendar } from '@/components/ui/calendar';
-import { format, parse, isValid, parseISO } from 'date-fns';
+import { format, isValid, parseISO } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -141,6 +141,23 @@ const formatDate = (date: Date | null | undefined): string | null => {
   return format(date, 'yyyy-MM-dd');
 }
 
+function parseDateText(text: string): Date | null {
+  const t = text.trim();
+  const sep = t.match(/^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})$/);
+  if (sep) {
+    const d = parseInt(sep[1], 10), m = parseInt(sep[2], 10) - 1, y = parseInt(sep[3], 10);
+    const date = new Date(y, m, d);
+    if (isValid(date) && date.getDate() === d && date.getMonth() === m && date.getFullYear() === y) return date;
+  }
+  const compact = t.match(/^(\d{2})(\d{2})(\d{4})$/);
+  if (compact) {
+    const d = parseInt(compact[1], 10), m = parseInt(compact[2], 10) - 1, y = parseInt(compact[3], 10);
+    const date = new Date(y, m, d);
+    if (isValid(date) && date.getDate() === d && date.getMonth() === m && date.getFullYear() === y) return date;
+  }
+  return null;
+}
+
 const DateInput = ({
   value,
   onChange,
@@ -152,83 +169,111 @@ const DateInput = ({
   disabled?: (date: Date) => boolean;
   id?: string;
 }) => {
-  const [inputValue, setInputValue] = useState('');
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [textMode, setTextMode] = useState(false);
+  const [textValue, setTextValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const lastPointerDownRef = useRef(0);
+
+  const enterTextMode = () => {
+    setIsPopoverOpen(false);
+    setTextValue(value && isValid(value) ? format(value, 'dd.MM.yyyy') : '');
+    setTextMode(true);
+  };
+
+  const commitText = () => {
+    const parsed = parseDateText(textValue);
+    if (parsed) onChange(parsed);
+    setTextMode(false);
+  };
 
   useEffect(() => {
-    if (value && isValid(value)) {
-      setInputValue(format(value, 'yyyy-MM-dd'));
-    } else {
-      setInputValue('');
+    if (textMode) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
     }
-  }, [value]);
+  }, [textMode]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(e.target.value);
-    if (e.target.value === '') {
-      onChange(null);
-      return;
-    }
-    const parsedDate = parse(e.target.value, 'yyyy-MM-dd', new Date());
-    if (isValid(parsedDate)) {
-      onChange(parsedDate);
+  const handlePointerDown = (e: React.PointerEvent) => {
+    const now = Date.now();
+    if (now - lastPointerDownRef.current < 300) {
+      e.preventDefault();
+      lastPointerDownRef.current = 0;
+      enterTextMode();
+    } else {
+      lastPointerDownRef.current = now;
     }
   };
 
-  const handleDateSelect = (date?: Date | null) => {
-    if (date && isValid(date)) {
-      onChange(date);
-      setInputValue(format(date, 'yyyy-MM-dd'));
-      setIsPopoverOpen(false);
-    } else {
-      onChange(null);
-      setInputValue('');
-    }
-  };
-
-  const handleClear = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    handleDateSelect(null);
+  if (textMode) {
+    return (
+      <div className="relative">
+        <input
+          ref={inputRef}
+          id={id}
+          type="text"
+          value={textValue}
+          onChange={(e) => setTextValue(e.target.value)}
+          onBlur={commitText}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') { e.preventDefault(); commitText(); }
+            if (e.key === 'Escape') setTextMode(false);
+          }}
+          placeholder="dd.mm.rrrr"
+          className="w-full min-h-[44px] rounded-md border border-primary bg-background px-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+      </div>
+    );
   }
 
   return (
-    <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-      <PopoverTrigger asChild>
-        <div className="relative">
-          <Input
-            id={id}
-            type="text"
-            value={inputValue}
-            onChange={handleInputChange}
-            placeholder="rrrr-mm-dd"
-            className="pr-10 min-h-[44px]"
-          />
+    <div className="relative">
+      <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+        <PopoverTrigger asChild>
           <button
             type="button"
-            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center rounded hover:bg-muted touch-manipulation"
-            onClick={handleClear}
-            aria-label={value ? "Wyczyść datę" : "Wybierz datę"}
+            id={id}
+            onPointerDown={handlePointerDown}
+            className="flex w-full min-h-[44px] items-center rounded-md border border-input bg-background px-3 pr-10 text-sm text-left hover:bg-muted/30"
           >
-            {value ? (
-              <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-            ) : (
-              <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-            )}
+            <span className={value && isValid(value) ? '' : 'text-muted-foreground'}>
+              {value && isValid(value) ? format(value, 'yyyy-MM-dd') : 'rrrr-mm-dd'}
+            </span>
           </button>
-        </div>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="center" sideOffset={5}>
-        <Calendar
-          locale={pl}
-          mode="single"
-          selected={value && isValid(value) ? value : undefined}
-          onSelect={(d) => handleDateSelect(d ?? null)}
-          disabled={disabled}
-          initialFocus
-          className="rounded-md border"
-        />
-      </PopoverContent>
-    </Popover>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="center" sideOffset={5}>
+          <Calendar
+            locale={pl}
+            mode="single"
+            selected={value && isValid(value) ? value : undefined}
+            onSelect={(d) => { onChange(d ?? null); setIsPopoverOpen(false); }}
+            disabled={disabled}
+            initialFocus
+            className="rounded-md border"
+          />
+        </PopoverContent>
+      </Popover>
+      <button
+        type="button"
+        className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center rounded hover:bg-muted touch-manipulation"
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (value) {
+            onChange(null);
+          } else {
+            setIsPopoverOpen(true);
+          }
+        }}
+        aria-label={value ? "Wyczyść datę" : "Wybierz datę"}
+      >
+        {value ? (
+          <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+        ) : (
+          <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+        )}
+      </button>
+    </div>
   );
 };
 

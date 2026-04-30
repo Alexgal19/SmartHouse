@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { getEmployees, getNonEmployees, getBokResidents, getSettings } from '@/lib/sheets';

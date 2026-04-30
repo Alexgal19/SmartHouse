@@ -29,9 +29,11 @@ export async function POST(req: NextRequest) {
         });
     } catch (error) {
         console.error('Błąd OCR:', error);
+        const message = error instanceof Error ? error.message : 'Błąd OCR.';
+        const isRateLimit = message.includes('Przekroczono limit') || message.includes('429') || message.toLowerCase().includes('too many requests');
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Błąd OCR.' },
-            { status: 500 }
+            { error: message },
+            { status: isRateLimit ? 429 : 500 }
         );
     }
 }

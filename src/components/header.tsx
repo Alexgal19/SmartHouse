@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -103,12 +103,84 @@ const NotificationItem = ({ n, onClick, onDelete, onToggleReadStatus, style }: {
 )
 }
 
+function parseDateText(text: string): Date | undefined {
+    const t = text.trim();
+    const sep = t.match(/^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})$/);
+    if (sep) {
+        const d = parseInt(sep[1], 10), m = parseInt(sep[2], 10) - 1, y = parseInt(sep[3], 10);
+        const date = new Date(y, m, d);
+        if (date.getDate() === d && date.getMonth() === m && date.getFullYear() === y) return date;
+    }
+    const compact = t.match(/^(\d{2})(\d{2})(\d{4})$/);
+    if (compact) {
+        const d = parseInt(compact[1], 10), m = parseInt(compact[2], 10) - 1, y = parseInt(compact[3], 10);
+        const date = new Date(y, m, d);
+        if (date.getDate() === d && date.getMonth() === m && date.getFullYear() === y) return date;
+    }
+    return undefined;
+}
+
 const DatePicker = ({ date, setDate, placeholder }: { date?: Date, setDate: (date?: Date) => void, placeholder: string }) => {
+    const [open, setOpen] = useState(false);
+    const [textMode, setTextMode] = useState(false);
+    const [textValue, setTextValue] = useState('');
+    const inputRef = useRef<HTMLInputElement>(null);
+    const lastPointerDownRef = useRef(0);
+
+    const enterTextMode = () => {
+        setOpen(false);
+        setTextValue(date ? format(date, 'dd.MM.yyyy') : '');
+        setTextMode(true);
+    };
+
+    const commitText = () => {
+        const parsed = parseDateText(textValue);
+        if (parsed) setDate(parsed);
+        setTextMode(false);
+    };
+
+    useEffect(() => {
+        if (textMode) {
+            inputRef.current?.focus();
+            inputRef.current?.select();
+        }
+    }, [textMode]);
+
+    const handlePointerDown = (e: React.PointerEvent) => {
+        const now = Date.now();
+        if (now - lastPointerDownRef.current < 300) {
+            e.preventDefault();
+            lastPointerDownRef.current = 0;
+            enterTextMode();
+        } else {
+            lastPointerDownRef.current = now;
+        }
+    };
+
+    if (textMode) {
+        return (
+            <input
+                ref={inputRef}
+                type="text"
+                value={textValue}
+                onChange={(e) => setTextValue(e.target.value)}
+                onBlur={commitText}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); commitText(); }
+                    if (e.key === 'Escape') setTextMode(false);
+                }}
+                placeholder="dd.mm.rrrr"
+                className="w-full h-9 rounded-md border border-primary bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+        );
+    }
+
     return (
-        <Popover>
+        <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
                 <Button
                     variant={"outline"}
+                    onPointerDown={handlePointerDown}
                     className={cn(
                         "w-full h-9 justify-start text-left font-normal text-sm",
                         !date && "text-muted-foreground"
@@ -122,13 +194,13 @@ const DatePicker = ({ date, setDate, placeholder }: { date?: Date, setDate: (dat
                 <Calendar
                     mode="single"
                     selected={date}
-                    onSelect={setDate}
+                    onSelect={(d) => { setDate(d); setOpen(false); }}
                     initialFocus
                     locale={pl}
                 />
             </PopoverContent>
         </Popover>
-    )
+    );
 }
 
 const NOTIFICATIONS_PAGE_SIZE = 30;

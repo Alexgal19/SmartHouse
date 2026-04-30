@@ -7,11 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Combobox } from '@/components/ui/combobox';
 
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
+import { WizardDateInput } from '@/components/wizard-utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-    CalendarIcon, Camera, Loader2, X, ChevronRight,
+    Camera, Loader2, X, ChevronRight,
     ChevronLeft, Check, Bed, MapPin, User, ClipboardList,
 } from 'lucide-react';
 import { format, isValid } from 'date-fns';
@@ -358,8 +357,6 @@ function StepSzczegoly({
     onChange: (patch: Partial<WizardData>) => void;
     settings: ReturnType<typeof useMainLayout>['settings'];
 }) {
-    const [calendarOpen, setCalendarOpen] = useState(false);
-
     const sortedGenders = useMemo(
         () => [...(settings?.genders || [])].sort((a, b) => a.localeCompare(b)),
         [settings]
@@ -406,30 +403,10 @@ function StepSzczegoly({
 
             <div className="space-y-1.5">
                 <label className="text-sm font-medium">Data przyjęcia</label>
-                <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-                    <PopoverTrigger asChild>
-                        <button
-                            type="button"
-                            className="flex h-12 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-base"
-                        >
-                            <span className={data.date && isValid(data.date) ? '' : 'text-muted-foreground'}>
-                                {data.date && isValid(data.date)
-                                    ? format(data.date, 'd MMMM yyyy', { locale: pl })
-                                    : 'Wybierz datę'}
-                            </span>
-                            <CalendarIcon className="h-5 w-5 text-muted-foreground" />
-                        </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                            locale={pl}
-                            mode="single"
-                            selected={data.date && isValid(data.date) ? data.date : undefined}
-                            onSelect={(d) => { onChange({ date: d ?? new Date() }); setCalendarOpen(false); }}
-                            initialFocus
-                        />
-                    </PopoverContent>
-                </Popover>
+                <WizardDateInput
+                    value={data.date}
+                    onChange={(d) => onChange({ date: d ?? new Date() })}
+                />
             </div>
         </div>
     );
@@ -505,12 +482,14 @@ export function OdbiorZakwaterowanieDialog({
     currentUser,
     onSaved,
     editEntry,
+    prefillData,
 }: {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     currentUser: SessionData;
     onSaved?: () => void;
     editEntry?: OdbiorEntry | null;
+    prefillData?: { firstName?: string; lastName?: string; passportNumber?: string };
 }) {
     const { toast } = useToast();
     const { settings, allEmployees, allNonEmployees, allBokResidents, addRawOdbiorEntry, patchRawOdbiorEntry, addRawBokResident, patchRawBokResident } = useMainLayout();
@@ -537,9 +516,17 @@ export function OdbiorZakwaterowanieDialog({
                     date: isValid(parsed) ? parsed : new Date(),
                 });
             } else {
-                setData({ ...DEFAULT_DATA, date: new Date() });
+                setData({
+                    ...DEFAULT_DATA,
+                    date: new Date(),
+                    firstName: prefillData?.firstName ?? '',
+                    lastName: prefillData?.lastName ?? '',
+                    passportNumber: prefillData?.passportNumber ?? '',
+                });
             }
         }
+        // prefillData intentionally excluded — applies only on dialog open, not on every prefill change
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen, editEntry]);
 
     const onChange = (patch: Partial<WizardData>) => setData((prev) => ({ ...prev, ...patch }));

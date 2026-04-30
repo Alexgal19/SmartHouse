@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import type { OdbiorZgloszenie, OsobaWOdbiorze, SessionData } from '@/types';
+import { OdbiorZakwaterowanieDialog } from '@/components/odbior-zakwaterowanie-dialog';
 import {
     Dialog,
     DialogContent,
@@ -38,7 +39,7 @@ function parseOsoby(raw: string): OsobaWOdbiorze[] {
 function StatusBadge({ status, isNew }: { status: string; isNew?: boolean }) {
     if (isNew) {
         return (
-            <span className="inline-flex items-center rounded-full bg-red-500 text-white text-xs font-bold px-3 py-1">
+            <span className="inline-flex items-center rounded-full bg-destructive text-white text-xs font-bold px-3 py-1">
                 NOWE
             </span>
         );
@@ -46,8 +47,8 @@ function StatusBadge({ status, isNew }: { status: string; isNew?: boolean }) {
     const styles: Record<string, string> = {
         'Nieprzyjęte': 'bg-red-100 text-red-700 border border-red-200',
         'W trakcie':   'bg-amber-100 text-amber-700 border border-amber-200',
-        'Zakończone':  'bg-green-100 text-green-700 border border-green-200',
-        'Dostarczone': 'bg-green-100 text-green-700 border border-green-200',
+        'Zakończone':  'bg-success/20 text-success-foreground border border-green-200',
+        'Dostarczone': 'bg-success/20 text-success-foreground border border-green-200',
     };
     return (
         <span className={cn('inline-flex items-center rounded-full text-xs font-semibold px-3 py-1', styles[status] ?? 'bg-gray-100 text-gray-700')}>
@@ -378,10 +379,11 @@ function EditPersonRow({ person, onSave, onCancel }: {
 // ─── Karta — W trakcie ───────────────────────────────────────────────────────
 
 function KartaWTrakcie({
-    z, onAction,
+    z, onAction, onZakwaterowanieClick,
 }: {
     z: OdbiorZgloszenie;
     onAction: (action: 'odrzuc' | 'zakoncz' | 'update', payload: Partial<OdbiorZgloszenie>) => Promise<void>;
+    onZakwaterowanieClick?: (osoba: OsobaWOdbiorze | null) => void;
 }) {
     const osoby = parseOsoby(z.osoby);
     const [localOsoby, setLocalOsoby] = useState<OsobaWOdbiorze[]>(osoby);
@@ -443,8 +445,11 @@ function KartaWTrakcie({
     };
 
     const handleKrok = async (krok: string) => {
-        await onAction('update', { nastepnyKrok: krok });
-        toast({ title: 'Zapisano', description: `Następny krok: ${krok}` });
+        const newKrok = activeKrok === krok ? '' : krok;
+        await onAction('update', { nastepnyKrok: newKrok });
+        if (newKrok) {
+            toast({ title: 'Zapisano', description: `Następny krok: ${newKrok}` });
+        }
     };
 
     const handleOdrzuc = async () => {
@@ -483,6 +488,9 @@ function KartaWTrakcie({
                                     {o.paszport && <span className="text-muted-foreground ml-2 text-xs">Paszport: {o.paszport}</span>}
                                 </div>
                                 <div className="flex gap-1">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-600 hover:text-blue-700 hover:bg-blue-50" title="Zakwateruj" onClick={() => onZakwaterowanieClick?.(o)}>
+                                        <Bed className="h-3.5 w-3.5" />
+                                    </Button>
                                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditIdx(i)}>
                                         <Pencil className="h-3.5 w-3.5" />
                                     </Button>
@@ -537,7 +545,13 @@ function KartaWTrakcie({
                             variant={activeKrok === value ? 'default' : 'outline'}
                             size="sm"
                             className="gap-1.5 text-xs"
-                            onClick={() => handleKrok(value)}
+                            onClick={() => {
+                                const isDeselect = activeKrok === value;
+                                handleKrok(value);
+                                if (value === 'zakwaterowanie' && !isDeselect) {
+                                    onZakwaterowanieClick?.(localOsoby[0] ?? null);
+                                }
+                            }}
                         >
                             <Icon className="h-3.5 w-3.5" /> {label}
                         </Button>
@@ -608,8 +622,19 @@ export default function OdbiorDetailDialog({
 }: OdbiorDetailDialogProps) {
     const { toast } = useToast();
     const [localZ, setLocalZ] = useState(zgloszenie);
+    const [zakwatOpen, setZakwatOpen] = useState(false);
+    const [zakwatPrefill, setZakwatPrefill] = useState<{ firstName?: string; lastName?: string; passportNumber?: string } | undefined>();
 
     React.useEffect(() => { setLocalZ(zgloszenie); }, [zgloszenie]);
+
+    const handleZakwaterowanieClick = (osoba: OsobaWOdbiorze | null) => {
+        setZakwatPrefill(osoba ? {
+            firstName: osoba.imie,
+            lastName: osoba.nazwisko,
+            passportNumber: osoba.paszport,
+        } : undefined);
+        setZakwatOpen(true);
+    };
 
     const counts = {
         'Nieprzyjęte': allZgloszenia.filter(z => z.status === 'Nieprzyjęte').length,
@@ -684,6 +709,7 @@ export default function OdbiorDetailDialog({
     };
 
     return (
+        <>
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-lg w-full max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
@@ -715,7 +741,7 @@ export default function OdbiorDetailDialog({
                     </TabsContent>
 
                     <TabsContent value="W trakcie" className="mt-4">
-                        <KartaWTrakcie z={localZ} onAction={handleWTrakcieAction} />
+                        <KartaWTrakcie z={localZ} onAction={handleWTrakcieAction} onZakwaterowanieClick={handleZakwaterowanieClick} />
                     </TabsContent>
 
                     <TabsContent value="Zakończone" className="mt-4">
@@ -724,5 +750,13 @@ export default function OdbiorDetailDialog({
                 </Tabs>
             </DialogContent>
         </Dialog>
+
+        <OdbiorZakwaterowanieDialog
+            isOpen={zakwatOpen}
+            onOpenChange={setZakwatOpen}
+            currentUser={currentUser}
+            prefillData={zakwatPrefill}
+        />
+        </>
     );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { format, parseISO, isValid } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +30,23 @@ interface OsobyDoWyslaniaProps {
     onRefresh: () => void;
 }
 
+function parseDateText(text: string): Date | null {
+    const t = text.trim();
+    const sep = t.match(/^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})$/);
+    if (sep) {
+        const d = parseInt(sep[1], 10), m = parseInt(sep[2], 10) - 1, y = parseInt(sep[3], 10);
+        const date = new Date(y, m, d);
+        if (isValid(date) && date.getDate() === d && date.getMonth() === m && date.getFullYear() === y) return date;
+    }
+    const compact = t.match(/^(\d{2})(\d{2})(\d{4})$/);
+    if (compact) {
+        const d = parseInt(compact[1], 10), m = parseInt(compact[2], 10) - 1, y = parseInt(compact[3], 10);
+        const date = new Date(y, m, d);
+        if (isValid(date) && date.getDate() === d && date.getMonth() === m && date.getFullYear() === y) return date;
+    }
+    return null;
+}
+
 const fmtDate = (v: string | null | undefined) => {
     if (!v) return '—';
     const d = parseISO(v);
@@ -56,6 +73,9 @@ export function OsobyDoWyslaniaView({
     const [editDateFor, setEditDateFor] = useState<string | null>(null);
     const [datePickerValue, setDatePickerValue] = useState<Date | undefined>(undefined);
     const [isSavingDate, setIsSavingDate] = useState(false);
+    const [textDateFor, setTextDateFor] = useState<string | null>(null);
+    const [dateTextValue, setDateTextValue] = useState('');
+    const lastPointerDownRef = useRef<{ id: string; time: number }>({ id: '', time: 0 });
 
     // Filters
     const [filterName, setFilterName] = useState('');
@@ -313,6 +333,30 @@ export function OsobyDoWyslaniaView({
                                                         <div className="flex flex-col gap-1 md:items-center">
                                                             <div className="flex items-center gap-2">
                                                                 <span className="text-xs text-muted-foreground whitespace-nowrap">Data wysłania:</span>
+                                                                {textDateFor === r.id ? (
+                                                                    <input
+                                                                        autoFocus
+                                                                        type="text"
+                                                                        value={dateTextValue}
+                                                                        onChange={(e) => setDateTextValue(e.target.value)}
+                                                                        onBlur={() => {
+                                                                            const parsed = parseDateText(dateTextValue);
+                                                                            if (parsed) handleSaveDate(r, parsed);
+                                                                            setTextDateFor(null);
+                                                                        }}
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter') {
+                                                                                e.preventDefault();
+                                                                                const parsed = parseDateText(dateTextValue);
+                                                                                if (parsed) handleSaveDate(r, parsed);
+                                                                                setTextDateFor(null);
+                                                                            }
+                                                                            if (e.key === 'Escape') setTextDateFor(null);
+                                                                        }}
+                                                                        placeholder="dd.mm.rrrr"
+                                                                        className="w-24 text-xs border border-primary rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary bg-background"
+                                                                    />
+                                                                ) : (
                                                                 <Popover
                                                                     open={editDateFor === r.id}
                                                                     onOpenChange={(open) => {
@@ -327,6 +371,18 @@ export function OsobyDoWyslaniaView({
                                                                 >
                                                                     <PopoverTrigger asChild>
                                                                         <button
+                                                                            onPointerDown={(e) => {
+                                                                                const now = Date.now();
+                                                                                if (lastPointerDownRef.current.id === r.id && now - lastPointerDownRef.current.time < 300) {
+                                                                                    e.preventDefault();
+                                                                                    lastPointerDownRef.current = { id: '', time: 0 };
+                                                                                    setEditDateFor(null);
+                                                                                    setDateTextValue(r.sendDate ? fmtDate(r.sendDate) || '' : '');
+                                                                                    setTextDateFor(r.id);
+                                                                                } else {
+                                                                                    lastPointerDownRef.current = { id: r.id, time: now };
+                                                                                }
+                                                                            }}
                                                                             className={cn(
                                                                                 'flex items-center gap-1 text-xs font-medium rounded px-1.5 py-0.5 transition-colors',
                                                                                 'bg-primary/10 text-primary hover:bg-primary/20',
@@ -357,6 +413,7 @@ export function OsobyDoWyslaniaView({
                                                                         )}
                                                                     </PopoverContent>
                                                                 </Popover>
+                                                                )}
                                                             </div>
                                                             {r.sendTime && (
                                                                 <div className="flex items-center gap-1 text-xs text-muted-foreground">

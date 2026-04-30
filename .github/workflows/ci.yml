@@ -1,0 +1,59 @@
+name: CI — Lint, Test, Build
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: Lint + Test + Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npm test -- --ci --coverage --passWithNoTests
+
+      - name: Build
+        run: next build
+        env:
+          # Wymagane do buildu — wartości stub dla CI (nie produkcja)
+          GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL || 'ci@example.com' }}
+          GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY || '{}' }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID || 'stub' }}
+          IRON_SESSION_PASSWORD: ${{ secrets.IRON_SESSION_PASSWORD || 'ci-stub-password-32-chars-minimum!!' }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD || 'stub' }}
+          NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ secrets.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'stub' }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY || 'stub' }}
+
+      - name: Build summary
+        if: always()
+        run: |
+          echo "### CI Result ${{ job.status == 'success' && '✅' || '❌' }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Branch: \`${{ github.head_ref || github.ref_name }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit: \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Czas: $(date -u '+%Y-%m-%d %H:%M UTC')" >> "$GITHUB_STEP_SUMMARY"

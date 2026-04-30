@@ -58,6 +58,23 @@ export function WizardStepIndicator({ steps, current }: { steps: string[]; curre
 
 // ─── Date input ───────────────────────────────────────────────────────────────
 
+function parseDateText(text: string): Date | null {
+    const t = text.trim();
+    const sep = t.match(/^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})$/);
+    if (sep) {
+        const d = parseInt(sep[1], 10), m = parseInt(sep[2], 10) - 1, y = parseInt(sep[3], 10);
+        const date = new Date(y, m, d);
+        if (isValid(date) && date.getDate() === d && date.getMonth() === m && date.getFullYear() === y) return date;
+    }
+    const compact = t.match(/^(\d{2})(\d{2})(\d{4})$/);
+    if (compact) {
+        const d = parseInt(compact[1], 10), m = parseInt(compact[2], 10) - 1, y = parseInt(compact[3], 10);
+        const date = new Date(y, m, d);
+        if (isValid(date) && date.getDate() === d && date.getMonth() === m && date.getFullYear() === y) return date;
+    }
+    return null;
+}
+
 export function WizardDateInput({
     value,
     onChange,
@@ -70,11 +87,70 @@ export function WizardDateInput({
     className?: string;
 }) {
     const [open, setOpen] = useState(false);
+    const [textMode, setTextMode] = useState(false);
+    const [textValue, setTextValue] = useState('');
+    const inputRef = useRef<HTMLInputElement>(null);
+    const lastPointerDownRef = useRef(0);
+
+    const enterTextMode = () => {
+        setOpen(false);
+        setTextValue(value && isValid(value) ? format(value, 'dd.MM.yyyy') : '');
+        setTextMode(true);
+    };
+
+    const commitText = () => {
+        const parsed = parseDateText(textValue);
+        if (parsed) onChange(parsed);
+        setTextMode(false);
+    };
+
+    useEffect(() => {
+        if (textMode) {
+            inputRef.current?.focus();
+            inputRef.current?.select();
+        }
+    }, [textMode]);
+
+    // Detects double-click/tap on pointerDown — before Popover's click handler fires.
+    // On second press within 300ms: preventDefault stops the click event so Popover won't toggle.
+    const handlePointerDown = (e: React.PointerEvent) => {
+        const now = Date.now();
+        if (now - lastPointerDownRef.current < 300) {
+            e.preventDefault();
+            lastPointerDownRef.current = 0;
+            enterTextMode();
+        } else {
+            lastPointerDownRef.current = now;
+        }
+    };
+
+    if (textMode) {
+        return (
+            <input
+                ref={inputRef}
+                type="text"
+                value={textValue}
+                onChange={(e) => setTextValue(e.target.value)}
+                onBlur={commitText}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); commitText(); }
+                    if (e.key === 'Escape') setTextMode(false);
+                }}
+                placeholder="dd.mm.rrrr"
+                className={cn(
+                    'flex h-12 w-full rounded-md border border-primary bg-background px-3 py-2 text-base ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+                    className,
+                )}
+            />
+        );
+    }
+
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
                 <button
                     type="button"
+                    onPointerDown={handlePointerDown}
                     className={cn(
                         'flex h-12 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-base',
                         className,
@@ -122,10 +198,19 @@ export function OcrCameraButton({
     const webcamRef = useRef<Webcam>(null);
     const [open, setOpen] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
+    const [cameraError, setCameraError] = useState<string | null>(null);
+
+    const handleOpen = () => {
+        setCameraError(null);
+        setOpen(true);
+    };
 
     const handleCapture = () => {
         const dataUri = webcamRef.current?.getScreenshot();
-        if (!dataUri) return;
+        if (!dataUri) {
+            toast({ variant: 'destructive', title: 'Błąd kamery', description: 'Nie udało się zrobić zdjęcia. Sprawdź uprawnienia kamery w przeglądarce.' });
+            return;
+        }
         setIsScanning(true);
         extractPassportData({ photoDataUri: dataUri })
             .then(({ firstName, lastName, nationality, passportNumber }) => {
@@ -166,7 +251,7 @@ export function OcrCameraButton({
         <>
             <button
                 type="button"
-                onClick={() => setOpen(true)}
+                onClick={handleOpen}
                 disabled={disabled || isScanning}
                 className="w-full flex items-center justify-center gap-3 rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 active:scale-[0.98] transition-all py-5 text-primary font-semibold text-base disabled:opacity-50"
             >
@@ -189,7 +274,17 @@ export function OcrCameraButton({
                             screenshotFormat="image/jpeg"
                             videoConstraints={{ facingMode: { ideal: 'environment' } }}
                             className="w-full"
+                            onUserMediaError={(err) => {
+                                setCameraError(err instanceof Error ? err.message : 'Brak dostępu do kamery');
+                            }}
                         />
+                        {cameraError && (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 text-white p-4 text-center gap-2">
+                                <Camera className="w-8 h-8 opacity-50" />
+                                <p className="text-sm font-medium">Brak dostępu do kamery</p>
+                                <p className="text-xs text-white/70">Pozwól na dostęp w ustawieniach przeglądarki i odśwież stronę.</p>
+                            </div>
+                        )}
                         <button
                             type="button"
                             onClick={() => setOpen(false)}

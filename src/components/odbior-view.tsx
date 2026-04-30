@@ -36,10 +36,10 @@ const INITIAL_STATS = { dostarczone: 0, wTrakcie: 0 };
 const INITIAL_SUBMISSIONS: { id: string; status: string; date: string; from: string; persons: number; recruiter: string }[] = [];
 
 const STATUS_STYLES: Record<string, string> = {
-    'Dostarczone': 'text-green-600 bg-green-50 border border-green-200',
+    'Dostarczone': 'text-success bg-green-50 border border-green-200',
     'W trakcie':   'text-amber-600 bg-amber-50 border border-amber-200',
-    'Nieprzyjęte': 'text-red-600 bg-red-50 border border-red-200',
-    'Zakończone':  'text-green-600 bg-green-50 border border-green-200',
+    'Nieprzyjęte': 'text-destructive bg-red-50 border border-red-200',
+    'Zakończone':  'text-success bg-green-50 border border-green-200',
 };
 
 const formSchema = z.object({
@@ -364,11 +364,11 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
                 <Card className="border-2 border-green-300 bg-green-50">
                     <CardContent className="p-4 space-y-1">
                         <div className="flex items-center gap-2">
-                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-white text-xs font-bold shrink-0">1</span>
+                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-success text-white text-xs font-bold shrink-0">1</span>
                             <span className="text-sm font-semibold text-green-800">Dostarczone</span>
                         </div>
                         <p className="text-3xl font-bold text-green-900 pl-8">{stats.dostarczone}</p>
-                        <p className="text-xs text-green-700 pl-8">Wszystkie zakończone</p>
+                        <p className="text-xs text-success-foreground pl-8">Wszystkie zakończone</p>
                     </CardContent>
                 </Card>
 

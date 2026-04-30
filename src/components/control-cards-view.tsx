@@ -9,7 +9,7 @@ import {
     AlertCircle, Clock, ChevronRight, Building2,
     ShieldCheck, Wrench, ChevronDown, Bed,
     Camera, ImageIcon, X, Download, Loader2,
-    Lock, KeyRound, ListChecks, CloudOff
+    Lock, KeyRound, ListChecks, CloudOff, Trophy
 } from 'lucide-react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ import type { SessionData, Address, ControlCard, CleanlinessRating, RoomRating, 
 import { useMainLayout } from '@/components/main-layout';
 import { saveControlCardAction, editControlCardAction, deleteControlCardAction, uploadControlCardPhotoAction, saveStartListAction, setAddressNoMetersRequiredAction } from '@/lib/actions';
 import { format } from 'date-fns';
+import { pl } from 'date-fns/locale';
 
 // ─── Start-list constants & helpers ─────────────────────────────────────────
 
@@ -310,7 +311,7 @@ const getMonthOptions = () => {
     const now = new Date();
     for (let i = 0; i < 12; i++) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        options.push({ value: format(d, 'yyyy-MM'), label: format(d, 'LLLL yyyy').replace(/^\w/, c => c.toUpperCase()) });
+        options.push({ value: format(d, 'yyyy-MM'), label: format(d, 'LLLL yyyy', { locale: pl }).replace(/^\w/, c => c.toUpperCase()) });
     }
     return options;
 };
@@ -1457,6 +1458,100 @@ function LocalitySection({
     );
 }
 
+// ─── Ranking Chart ───────────────────────────────────────────────────────────
+
+function computeAvgRating(card: ControlCard): number {
+    const roomSum = card.roomRatings.reduce((s, r) => s + r.rating, 0);
+    const count = card.roomRatings.length + 2;
+    return (roomSum + (card.cleanKitchen || 0) + (card.cleanBathroom || 0)) / count;
+}
+
+function getRatingBarColor(score: number): string {
+    if (score >= 8) return 'bg-green-500';
+    if (score >= 6) return 'bg-yellow-400';
+    if (score >= 4) return 'bg-orange-400';
+    return 'bg-red-500';
+}
+
+function getRatingTextColor(score: number): string {
+    if (score >= 8) return 'text-green-600';
+    if (score >= 6) return 'text-yellow-600';
+    if (score >= 4) return 'text-orange-500';
+    return 'text-red-500';
+}
+
+const MEDALS = ['🥇', '🥈', '🥉'];
+
+function RankingChart({ cards }: { cards: ControlCard[] }) {
+    const [collapsed, setCollapsed] = useState(true);
+
+    const ranked = useMemo(() => {
+        return cards
+            .map(card => ({ card, avg: computeAvgRating(card) }))
+            .sort((a, b) => b.avg - a.avg);
+    }, [cards]);
+
+    if (ranked.length === 0) return null;
+
+    return (
+        <Card className="border-border/50 overflow-hidden">
+            <button
+                onClick={() => setCollapsed(prev => !prev)}
+                className="w-full flex items-center justify-between p-3 hover:bg-muted/30 transition-colors"
+            >
+                <div className="flex items-center gap-2">
+                    <Trophy className="w-4 h-4 text-amber-500" />
+                    <span className="font-semibold text-sm">Ranking mieszkań</span>
+                    <Badge variant="secondary" className="text-xs">{ranked.length}</Badge>
+                </div>
+                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${collapsed ? '' : 'rotate-180'}`} />
+            </button>
+
+            <AnimatePresence initial={false}>
+                {!collapsed && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.25 }}
+                        className="overflow-hidden"
+                    >
+                        <div className="px-3 pb-3 space-y-2">
+                            <p className="text-xs text-muted-foreground pb-1 border-b border-border/40">
+                                Średnia ocena ogólna (pokoje + kuchnia + łazienka) — od najlepszego
+                            </p>
+                            {ranked.map(({ card, avg }, idx) => (
+                                <div key={card.id} className="flex items-center gap-2 text-sm">
+                                    <div className="w-6 text-center shrink-0">
+                                        {idx < 3
+                                            ? <span className="text-base leading-none">{MEDALS[idx]}</span>
+                                            : <span className="text-xs text-muted-foreground font-medium">{idx + 1}</span>
+                                        }
+                                    </div>
+                                    <span className="w-36 md:w-48 truncate text-xs text-foreground shrink-0" title={card.addressName}>
+                                        {card.addressName}
+                                    </span>
+                                    <div className="flex-1 h-4 bg-muted rounded-full overflow-hidden">
+                                        <motion.div
+                                            className={`h-full rounded-full ${getRatingBarColor(avg)}`}
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${(avg / 10) * 100}%` }}
+                                            transition={{ duration: 0.5, delay: idx * 0.04, ease: 'easeOut' }}
+                                        />
+                                    </div>
+                                    <span className={`w-8 text-right text-xs font-bold shrink-0 ${getRatingTextColor(avg)}`}>
+                                        {avg.toFixed(1)}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </Card>
+    );
+}
+
 // ─── Main View ────────────────────────────────────────────────────────────────
 
 export default function ControlCardsView({ currentUser }: { currentUser: SessionData }) {
@@ -1678,6 +1773,11 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
                         />
                     </div>
                 </div>
+            )}
+
+            {/* Ranking chart */}
+            {cardsByAddressInMonth.size > 0 && (
+                <RankingChart cards={Array.from(cardsByAddressInMonth.values())} />
             )}
 
             {/* Filters bar */}

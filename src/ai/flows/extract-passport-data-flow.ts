@@ -21,6 +21,40 @@ function extractBase64AndMime(dataUrl: string): { base64: string; mimeType: stri
   return { mimeType: 'image/jpeg', base64: dataUrl };
 }
 
+function isRateLimitError(error: unknown): boolean {
+  if (error instanceof Error) {
+    const msg = error.message.toLowerCase();
+    return msg.includes('429') || 
+           msg.includes('too many requests') || 
+           msg.includes('resource_exhausted') || 
+           msg.includes('quota exceeded');
+  }
+  return false;
+}
+
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxAttempts = 3,
+  baseDelayMs = 2000,
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (!isRateLimitError(error) || attempt === maxAttempts) break;
+      const delay = baseDelayMs * Math.pow(2, attempt - 1);
+      console.warn(`[AI OCR] Próba ${attempt} nieudana (rate limit). Ponawiam za ${delay}ms...`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  if (isRateLimitError(lastError)) {
+    throw new Error('Przekroczono limit zapytań do AI (429). Poczekaj minutę i spróbuj ponownie lub sprawdź limity w Google AI Studio.');
+  }
+  throw lastError;
+}
+
 export async function extractPassportData(input: ExtractPassportDataInput): Promise<ExtractPassportDataOutput> {
   const apiKey = process.env.GOOGLE_GENAI_API_KEY;
   if (!apiKey) {
@@ -28,7 +62,8 @@ export async function extractPassportData(input: ExtractPassportDataInput): Prom
   }
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+  // Switching to gemini-2.5-flash as gemini-2.0-flash is hitting legacy quota limits (429)
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
   const { base64, mimeType } = extractBase64AndMime(input.photoDataUri);
 
@@ -42,89 +77,58 @@ Read names from EVERY available source:
 A) Visual Recognition Zone (VIZ) — the printed text fields on the document page
 B) Machine Readable Zone (MRZ) — the 2 or 3 lines of uppercase characters at the bottom
 
-## Step 3 — MRZ decoding rules
-The MRZ is the most reliable source. Decode it as follows:
+## Step 3 — MRZ decoding rules (THE GOLD STANDARD)
+The MRZ is the most reliable source for the structure of the name. Decode it exactly:
 - The surname and given names are separated by "<<"
-- Within given names, each "<" is a space between names
-- Within surnames, each "<" is a space between name parts
-- Example: "ESCOBAR<CALDERON<<JUAN<CARLOS<" → surname: "Escobar Calderon", firstName: "Juan Carlos"
-- Example: "GARCIA<LOPEZ<<MARIA<JOSE<" → surname: "Garcia Lopez", firstName: "Maria Jose"
-- Example: "KOWALSKI<<ANNA<MARIA<" → surname: "Kowalski", firstName: "Anna Maria"
-- Example: "KUMAR<<RAJESH<" → surname: "Kumar", firstName: "Rajesh"
-- Example: "SHARMA<<AMIT<KUMAR<" → surname: "Sharma", firstName: "Amit Kumar"
-- Example: "VENKATA<SUBRAMANIAN<<SRINIVASA<RAGHAVAN<" → surname: "Venkata Subramanian", firstName: "Srinivasa Raghavan"
+- Within given names, each single "<" is a space between names. CAPTURE ALL OF THEM.
+- Within surnames, each single "<" is a space between name parts. CAPTURE ALL OF THEM.
+- CRITICAL: Never truncate names. If there are 3 given names, return all 3.
+- Examples:
+  - "ESCOBAR<CALDERON<<JUAN<CARLOS<" → lastName: "Escobar Calderon", firstName: "Juan Carlos"
+  - "GARCIA<LOPEZ<<MARIA<JOSE<ANGELICA<" → lastName: "Garcia Lopez", firstName: "Maria Jose Angelica"
+  - "KUMAR<<ABHISHEK<SINGH<" → lastName: "Kumar", firstName: "Abhishek Singh"
+  - "DOS<SANTOS<FERREIRA<<ANA<PAULA<" → lastName: "Dos Santos Ferreira", firstName: "Ana Paula"
+  - "SINGH<<BALWINDER<" → lastName: "Singh", firstName: "Balwinder"
+  - "VENKATA<SUBRAMANIAN<<SRINIVASA<RAGHAVAN<" → lastName: "Venkata Subramanian", firstName: "Srinivasa Raghavan"
 
-## Step 3b — Indian passport special rules
-Indian passports often have a unique name structure:
-- The "Surname" field may contain a single family name OR be empty
-- The "Given Name(s)" field may contain: first name + father's name, or multiple given names
-- In MRZ, the surname section comes before "<<" — it is always the family/last name
-- The given names section (after "<<") contains ALL other names — include every one of them
-- Do NOT move parts of the given name into the surname or vice versa — follow the MRZ structure exactly
+## Step 3b — Special Handling for Complex Names
+- **Latin American (e.g. Colombia, Mexico)**: Use BOTH surnames (Paternal and Maternal) as provided in MRZ or VIZ.
+- **Indian**: If the "Surname" field is empty in VIZ, but MRZ has a name before "<<", use that as lastName. If MRZ has nothing before "<<", all names go into firstName.
+- **Middle names**: ALWAYS include them in the "firstName" field. Do not ignore them.
+- **Titles/Suffixes**: Ignore titles like "DR.", "MR.", "MRS.", but capture all legal names.
 
 ## Step 4 — Extract the nationality (country name)
 - From MRZ line 1, positions 11–13 (3-letter ISO country code)
 - Also cross-check VIZ "Nationality" / "Citizenship" field
 - Return the country name IN POLISH. Common mappings:
-  - UKR → "Ukraina"
-  - POL → "Polska"
-  - BLR → "Białoruś"
-  - IND → "Indie"
-  - COL → "Kolumbia"
-  - MDA → "Mołdawia"
-  - GEO → "Gruzja"
-  - RUS → "Rosja"
-  - UZB → "Uzbekistan"
-  - KAZ → "Kazachstan"
-  - TKM → "Turkmenistan"
-  - TJK → "Tadżykistan"
-  - KGZ → "Kirgistan"
-  - AZE → "Azerbejdżan"
-  - ARM → "Armenia"
-  - TUR → "Turcja"
-  - VNM → "Wietnam"
-  - NPL → "Nepal"
-  - BGD → "Bangladesz"
-  - PAK → "Pakistan"
-  - PHL → "Filipiny"
-  - IDN → "Indonezja"
-  - ECU → "Ekwador"
-  - PER → "Peru"
-  - BRA → "Brazylia"
-  - VEN → "Wenezuela"
-  - ROU → "Rumunia"
-  - MDA → "Mołdawia"
-- For other codes, use the Polish exonym of the country (e.g. "Niemcy", "Włochy", "Stany Zjednoczone")
-- If nationality cannot be determined, return an empty string
+  - UKR → "Ukraina", POL → "Polska", BLR → "Białoruś", IND → "Indie", COL → "Kolumbia"
+  - MDA → "Mołdawia", GEO → "Gruzja", RUS → "Rosja", UZB → "Uzbekistan", KAZ → "Kazachstan"
+  - VNM → "Wietnam", NPL → "Nepal", BGD → "Bangladesz", PAK → "Pakistan", PHL → "Filipiny"
+  - ECU → "Ekwador", PER → "Peru", BRA → "Brazylia", VEN → "Wenezuela", ROU → "Rumunia"
 
 ## Step 5 — Extract the passport/document number
-- From MRZ line 2, positions 1–9 (may contain "<" filler characters — strip them)
-- Cross-check with the VIZ "Passport No." / "Document No." field
-- Return the alphanumeric value, uppercase, without spaces or fillers
-- If the number cannot be read, return an empty string
+- From MRZ line 2, positions 1–9. Strip "<" fillers.
+- Return the alphanumeric value, uppercase.
 
-## Step 6 — Cross-verify and return
-- If both MRZ and VIZ are readable, prefer MRZ for accuracy but verify with VIZ
-- If only VIZ is readable, use VIZ
-- Return ALL given names (first + middle names) — never truncate compound names
-- Return ALL surname parts — many cultures use compound surnames (Latin American, Indian, Spanish, Portuguese)
-- Preserve diacritics and special characters from the VIZ (ñ, ü, ć, ź, ø, etc.) — the MRZ strips them, so restore from VIZ when possible
-- Capitalize properly: first letter of each word uppercase, rest lowercase (e.g. "Juan Carlos", not "JUAN CARLOS")
-- Valid characters in names: letters (including accented), spaces, hyphens, apostrophes
-- If you cannot read a field clearly, return an empty string for that field
+## Step 6 — Verification & Formatting
+- Prefer MRZ for structure, VIZ for correct spelling/diacritics (ñ, ü, etc.).
+- Capitalize properly (e.g. "Juan Carlos", "Escobar Calderon").
+- **Constraint**: "firstName" must contain all given and middle names. "lastName" must contain all surname parts.
 
-Respond with ONLY valid JSON, no markdown, no explanation:
+Respond with ONLY valid JSON:
 {"firstName": "...", "lastName": "...", "nationality": "...", "passportNumber": "..."}`;
 
-  const result = await model.generateContent([
-    { text: prompt },
-    {
-      inlineData: {
-        mimeType: mimeType as 'image/jpeg' | 'image/png' | 'image/webp',
-        data: base64,
+  const result = await withRetry(() =>
+    model.generateContent([
+      { text: prompt },
+      {
+        inlineData: {
+          mimeType: mimeType as 'image/jpeg' | 'image/png' | 'image/webp',
+          data: base64,
+        },
       },
-    },
-  ]);
+    ])
+  );
 
   const text = result.response.text().trim();
 
