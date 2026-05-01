@@ -427,7 +427,7 @@ const generateSmartNotificationMessage = (
             type = 'destructive';
             break;
         case 'automatycznie zwolnił':
-            message = `Automatycznie zwolnił ${entityType} ${entityFullName} z powodu upływu daty wymeldowania.`;
+            message = `automatycznie zwolnił ${entityType} ${entityFullName} z powodu upływu daty wymeldowania.`;
             type = 'warning';
             break;
         case 'wysłał do Ciebie':
@@ -1163,10 +1163,8 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
 
 export async function checkAndUpdateStatuses(_actorUid?: string): Promise<{ updated: number }> {
     try {
-        const session = await requireSession();
-        const actorUid = session.uid;
         const settings = await getSettings();
-        const actor = findActor(actorUid, settings);
+        const actor = findActor('system', settings);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         let updatedCount = 0;

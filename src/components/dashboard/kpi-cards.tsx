@@ -48,6 +48,7 @@ const KpiCard = ({ title, value, icon, onClick, description, isHighlighted }: Kp
     </Card>
 );
 
+
 export function DashboardKPIs({
     employees,
     nonEmployees,
@@ -65,7 +66,6 @@ export function DashboardKPIs({
         const activeEmployees = employees.filter(e => e.status === 'active');
         const activeNonEmployees = nonEmployees.filter(ne => ne.status === 'active');
         const allActiveOccupants = [...activeEmployees, ...activeNonEmployees];
-
         const upcomingCheckoutsList = allActiveOccupants.filter(o => {
             if (!o.checkOutDate) return false;
             const today = new Date();
