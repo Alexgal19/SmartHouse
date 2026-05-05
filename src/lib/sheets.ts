@@ -1219,3 +1219,6 @@ export async function deleteOdbiorZgloszenie(id: string): Promise<void> {
     odbiorCache = null;
 }
 
+export async function pingSheets(): Promise<void> {
+    await withTimeout(getDoc(), 5000, 'pingSheets');
+}
