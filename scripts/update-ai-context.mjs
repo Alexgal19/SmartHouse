@@ -9,6 +9,8 @@
  *   1. Key npm dependencies with versions
  *   2. Git status (current branch + last 5 commits)
  *   3. Project file tree (depth ≤ 4, common dirs excluded)
+ *   4. Code statistics (file/line counts)
+ *   5. API routes with HTTP methods
  */
 
 import { execSync } from 'child_process';
@@ -99,9 +101,18 @@ ${dirtySection}`;
 // ─── 3. File Tree ────────────────────────────────────────────────────────────
 
 const IGNORE = new Set([
+  // build & tooling artifacts
   'node_modules', '.next', '.git', '.swc', '.firebase',
-  'playwright-report', 'test-results', 'tsconfig.tsbuildinfo',
-  'package-lock.json', 'firebase-debug.log', '.modified',
+  'tsconfig.tsbuildinfo', 'package-lock.json', 'firebase-debug.log', '.modified',
+  // test output (tracked in git but not useful for AI context)
+  'playwright-report', 'test-results',
+  // junk / temp files in root
+  'static_analysis_semgrep_1', 'workspace',
+  'check_sheet.js', 'lint-results.json', 'lint-results.txt', 'test_output.txt',
+  // macOS metadata
+  '.DS_Store',
+  // IDE / cloud IDE config (no code value)
+  '.roo', '.codesandbox', '.idx', '.devcontainer',
 ]);
 
 function buildTree(dir, prefix = '', depth = 0) {
@@ -112,7 +123,6 @@ function buildTree(dir, prefix = '', depth = 0) {
     entries = readdirSync(dir)
       .filter(e => !IGNORE.has(e) && !e.endsWith('.tsbuildinfo'))
       .sort((a, b) => {
-        // directories first, then files
         const aDir = statSync(join(dir, a)).isDirectory();
         const bDir = statSync(join(dir, b)).isDirectory();
         if (aDir !== bDir) return aDir ? -1 : 1;
@@ -146,6 +156,80 @@ function getFileTree() {
   return `\`\`\`\nSmartHouse/\n${tree}\`\`\``;
 }
 
+// ─── 4. Code Statistics ──────────────────────────────────────────────────────
+
+function getCodeStats() {
+  const tsFileCount = run(
+    `find src -type f \\( -name "*.ts" -o -name "*.tsx" \\) | grep -v "__mocks__" | wc -l`,
+    '?'
+  ).trim();
+
+  const tsLineCount = run(
+    `find src -type f \\( -name "*.ts" -o -name "*.tsx" \\) | grep -v "__mocks__" | xargs wc -l 2>/dev/null | tail -1 | awk '{print $1}'`,
+    '?'
+  ).trim();
+
+  const testFileCount = run(
+    `find src tests -type f \\( -name "*.test.ts" -o -name "*.test.tsx" -o -name "*.spec.ts" -o -name "*.spec.tsx" \\) 2>/dev/null | wc -l`,
+    '?'
+  ).trim();
+
+  const componentCount = run(
+    `find src/components -type f \\( -name "*.tsx" \\) 2>/dev/null | wc -l`,
+    '?'
+  ).trim();
+
+  return [
+    '| Metric | Value |',
+    '|--------|-------|',
+    `| TypeScript / TSX files | ${tsFileCount} |`,
+    `| Total lines (TS/TSX) | ${tsLineCount} |`,
+    `| Test files (unit + E2E) | ${testFileCount} |`,
+    `| React components | ${componentCount} |`,
+  ].join('\n');
+}
+
+// ─── 5. API Routes ───────────────────────────────────────────────────────────
+
+function getApiRoutes() {
+  const routeFilesRaw = run(
+    `find src/app/api -name "route.ts" 2>/dev/null`,
+    ''
+  );
+
+  if (!routeFilesRaw) return '_No API routes found_';
+
+  const HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'];
+  const rows = [];
+
+  for (const file of routeFilesRaw.split('\n').filter(Boolean)) {
+    let content = '';
+    try {
+      content = readFileSync(resolve(ROOT, file), 'utf-8');
+    } catch {
+      continue;
+    }
+
+    const methods = HTTP_METHODS.filter(m =>
+      new RegExp(`export\\s+(async\\s+)?function\\s+${m}\\b`).test(content)
+    );
+
+    const routePath = file
+      .replace('src/app/api', '/api')
+      .replace('/route.ts', '') || '/api';
+
+    rows.push(`| \`${routePath}\` | ${methods.map(m => `\`${m}\``).join(', ')} |`);
+  }
+
+  if (rows.length === 0) return '_No exported HTTP handlers found_';
+
+  return [
+    '| Route | Methods |',
+    '|-------|---------|',
+    ...rows.sort(),
+  ].join('\n');
+}
+
 // ─── Compose & Write ─────────────────────────────────────────────────────────
 
 function generate() {
@@ -171,9 +255,21 @@ ${getGitStatus()}
 
 ---
 
+## 📊 Code Statistics
+
+${getCodeStats()}
+
+---
+
+## 🛣️ API Routes
+
+${getApiRoutes()}
+
+---
+
 ## 🗂️ Project File Tree
 
-> Excludes: \`node_modules/\`, \`.next/\`, \`.git/\`, build artifacts. Max depth: 4.
+> Excludes: \`node_modules/\`, \`.next/\`, \`.git/\`, build artifacts, IDE configs, temp files. Max depth: 4.
 
 ${getFileTree()}
 
