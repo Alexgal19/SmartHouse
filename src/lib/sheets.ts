@@ -1219,6 +1219,9 @@ export async function deleteOdbiorZgloszenie(id: string): Promise<void> {
     odbiorCache = null;
 }
 
+// Note: getDoc() has a 5-minute in-process cache (DOC_TTL). When the cache is warm,
+// this resolves instantly without a live network call. Treat the health endpoint as
+// "Sheets was reachable within the last 5 minutes", not a real-time connectivity check.
 export async function pingSheets(): Promise<void> {
     await withTimeout(getDoc(), 5000, 'pingSheets');
 }
