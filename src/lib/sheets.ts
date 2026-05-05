@@ -6,6 +6,7 @@ import { JWT } from 'google-auth-library';
 import type { Employee, Settings, Notification, NotificationChange, Room, NonEmployee, DeductionReason, Address, Coordinator, NotificationType, AddressHistory, BokResident, ControlCard, CleanlinessRating, StartList, OdbiorEntry } from '../types';
 import { format, isValid, parse, parseISO } from 'date-fns';
 import * as XLSX from 'xlsx';
+import { singleflight } from './singleflight';
 
 const SPREADSHEET_ID = '1UYe8N29Q3Eus-6UEOkzCNfzwSKmQ-kpITgj4SWWhpbw';
 const SHEET_NAME_EMPLOYEES = 'Employees';
@@ -617,41 +618,53 @@ async function getNotificationsFromSheet(doc: GoogleSpreadsheet, recipientId: st
 // --- Granular Exported Functions ---
 
 export async function getSettings(bypassCache = false): Promise<Settings> {
-    const doc = await getDoc();
-    return await getSettingsFromSheet(doc, bypassCache);
+    if (bypassCache) {
+        const doc = await getDoc();
+        return getSettingsFromSheet(doc, true);
+    }
+    return singleflight('settings', async () => {
+        const doc = await getDoc();
+        return getSettingsFromSheet(doc, false);
+    });
 }
 
 export async function getEmployees(): Promise<Employee[]> {
     if (employeesCache && (Date.now() - employeesCache.timestamp < DATA_CACHE_TTL)) {
         return employeesCache.data;
     }
-    const doc = await getDoc();
-    const rows = await getSheetData(doc, SHEET_NAME_EMPLOYEES);
-    const data = rows.map(row => deserializeEmployee(row)).filter((e): e is Employee => e !== null);
-    employeesCache = { data, timestamp: Date.now() };
-    return data;
+    return singleflight('employees', async () => {
+        const doc = await getDoc();
+        const rows = await getSheetData(doc, SHEET_NAME_EMPLOYEES);
+        const data = rows.map(row => deserializeEmployee(row)).filter((e): e is Employee => e !== null);
+        employeesCache = { data, timestamp: Date.now() };
+        return data;
+    });
 }
 
 export async function getNonEmployees(): Promise<NonEmployee[]> {
     if (nonEmployeesCache && (Date.now() - nonEmployeesCache.timestamp < DATA_CACHE_TTL)) {
         return nonEmployeesCache.data;
     }
-    const doc = await getDoc();
-    const rows = await getSheetData(doc, SHEET_NAME_NON_EMPLOYEES);
-    const data = rows.map(row => deserializeNonEmployee(row)).filter((e): e is NonEmployee => e !== null);
-    nonEmployeesCache = { data, timestamp: Date.now() };
-    return data;
+    return singleflight('nonEmployees', async () => {
+        const doc = await getDoc();
+        const rows = await getSheetData(doc, SHEET_NAME_NON_EMPLOYEES);
+        const data = rows.map(row => deserializeNonEmployee(row)).filter((e): e is NonEmployee => e !== null);
+        nonEmployeesCache = { data, timestamp: Date.now() };
+        return data;
+    });
 }
 
 export async function getBokResidents(): Promise<BokResident[]> {
     if (bokResidentsCache && (Date.now() - bokResidentsCache.timestamp < DATA_CACHE_TTL)) {
         return bokResidentsCache.data;
     }
-    const doc = await getDoc();
-    const rows = await getSheetData(doc, SHEET_NAME_BOK_RESIDENTS);
-    const data = rows.map(row => deserializeBokResident(row)).filter((e): e is BokResident => e !== null);
-    bokResidentsCache = { data, timestamp: Date.now() };
-    return data;
+    return singleflight('bokResidents', async () => {
+        const doc = await getDoc();
+        const rows = await getSheetData(doc, SHEET_NAME_BOK_RESIDENTS);
+        const data = rows.map(row => deserializeBokResident(row)).filter((e): e is BokResident => e !== null);
+        bokResidentsCache = { data, timestamp: Date.now() };
+        return data;
+    });
 }
 
 export async function getNotifications(userId: string, userIsAdmin: boolean): Promise<Notification[]> {
@@ -663,13 +676,15 @@ export async function getRawAddressHistory(): Promise<AddressHistory[]> {
     if (addressHistoryCache && (Date.now() - addressHistoryCache.timestamp < DATA_CACHE_TTL)) {
         return addressHistoryCache.data;
     }
-    const doc = await getDoc();
-    const rows = await getSheetData(doc, SHEET_NAME_ADDRESS_HISTORY);
-    // Return raw history without enrichment
-    const data = rows.map(row => deserializeAddressHistory(row)).filter((h): h is AddressHistory => h !== null);
+    return singleflight('addressHistory', async () => {
+        const doc = await getDoc();
+        const rows = await getSheetData(doc, SHEET_NAME_ADDRESS_HISTORY);
+        // Return raw history without enrichment
+        const data = rows.map(row => deserializeAddressHistory(row)).filter((h): h is AddressHistory => h !== null);
 
-    addressHistoryCache = { data, timestamp: Date.now() };
-    return data;
+        addressHistoryCache = { data, timestamp: Date.now() };
+        return data;
+    });
 }
 
 export async function getAllSheetsData(userId?: string, userIsAdmin?: boolean) {
@@ -826,15 +841,17 @@ export async function getControlCards(): Promise<ControlCard[]> {
     if (controlCardsCache && (Date.now() - controlCardsCache.timestamp < DATA_CACHE_TTL)) {
         return controlCardsCache.data;
     }
-    const doc = await getDoc();
-    const sheet = doc.sheetsByTitle[SHEET_NAME_CONTROL_CARDS];
-    if (!sheet) return [];
-    const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(ControlCards)');
-    const data = rows
-        .map(row => deserializeControlCard(row))
-        .filter((c): c is ControlCard => c !== null && !c.deleted);
-    controlCardsCache = { data, timestamp: Date.now() };
-    return data;
+    return singleflight('controlCards', async () => {
+        const doc = await getDoc();
+        const sheet = doc.sheetsByTitle[SHEET_NAME_CONTROL_CARDS];
+        if (!sheet) return [];
+        const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(ControlCards)');
+        const data = rows
+            .map(row => deserializeControlCard(row))
+            .filter((c): c is ControlCard => c !== null && !c.deleted);
+        controlCardsCache = { data, timestamp: Date.now() };
+        return data;
+    });
 }
 
 export async function addControlCard(card: Omit<ControlCard, 'id'>): Promise<string> {
@@ -949,16 +966,18 @@ export async function getStartLists(): Promise<StartList[]> {
     if (startListsCache && (Date.now() - startListsCache.timestamp < DATA_CACHE_TTL)) {
         return startListsCache.data;
     }
-    const doc = await getDoc();
-    const sheet = doc.sheetsByTitle[SHEET_NAME_START_LISTS];
-    if (!sheet) {
-        startListsCache = { data: [], timestamp: Date.now() };
-        return [];
-    }
-    const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(StartLists)');
-    const data = rows.map(row => deserializeStartList(row)).filter((s): s is StartList => s !== null);
-    startListsCache = { data, timestamp: Date.now() };
-    return data;
+    return singleflight('startLists', async () => {
+        const doc = await getDoc();
+        const sheet = doc.sheetsByTitle[SHEET_NAME_START_LISTS];
+        if (!sheet) {
+            startListsCache = { data: [], timestamp: Date.now() };
+            return [];
+        }
+        const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(StartLists)');
+        const data = rows.map(row => deserializeStartList(row)).filter((s): s is StartList => s !== null);
+        startListsCache = { data, timestamp: Date.now() };
+        return data;
+    });
 }
 
 export async function upsertStartList(data: StartList): Promise<void> {
@@ -1037,11 +1056,13 @@ export async function getOdbiorEntries(): Promise<OdbiorEntry[]> {
     if (odbiorEntriesCache && (Date.now() - odbiorEntriesCache.timestamp < DATA_CACHE_TTL)) {
         return odbiorEntriesCache.data;
     }
-    const doc = await getDoc();
-    const rows = await getSheetData(doc, SHEET_NAME_ODBIOR_ENTRIES);
-    const data = rows.map(row => deserializeOdbiorEntry(row)).filter((e): e is OdbiorEntry => e !== null);
-    odbiorEntriesCache = { data, timestamp: Date.now() };
-    return data;
+    return singleflight('odbiorEntries', async () => {
+        const doc = await getDoc();
+        const rows = await getSheetData(doc, SHEET_NAME_ODBIOR_ENTRIES);
+        const data = rows.map(row => deserializeOdbiorEntry(row)).filter((e): e is OdbiorEntry => e !== null);
+        odbiorEntriesCache = { data, timestamp: Date.now() };
+        return data;
+    });
 }
 
 function serializeOdbiorEntry(entry: OdbiorEntry): Record<string, string> {
@@ -1135,27 +1156,29 @@ const ODBIOR_HEADERS = [
 
 export async function getOdbiorZgloszenia(): Promise<OdbiorZgloszenie[]> {
     if (odbiorCache) return odbiorCache;
-    const doc = await getDoc();
-    const rows = await getSheetData(doc, SHEET_NAME_ODBIOR);
-    odbiorCache = rows.map(row => ({
-        id: row['id'] ?? '',
-        dataZgloszenia: row['dataZgloszenia'] ?? '',
-        numerTelefonu: row['numerTelefonu'] ?? '',
-        skad: (row['skad'] ?? 'inne') as OdbiorZgloszenie['skad'],
-        komentarzSkad: row['komentarzSkad'] ?? '',
-        iloscOsob: parseInt(row['iloscOsob'] ?? '0', 10),
-        komentarz: row['komentarz'] ?? '',
-        zdjeciaUrls: row['zdjeciaUrls'] ?? '',
-        rekruterId: row['rekruterId'] ?? '',
-        rekruterNazwa: row['rekruterNazwa'] ?? '',
-        status: (row['status'] ?? 'Nieprzyjęte') as OdbiorZgloszenie['status'],
-        kierowcaId: row['kierowcaId'] ?? '',
-        kierowcaNazwa: row['kierowcaNazwa'] ?? '',
-        osoby: row['osoby'] ?? '[]',
-        nastepnyKrok: row['nastepnyKrok'] ?? '',
-        dataZakonczenia: row['dataZakonczenia'] ?? '',
-    }));
-    return odbiorCache;
+    return singleflight('odbiorZgloszenia', async () => {
+        const doc = await getDoc();
+        const rows = await getSheetData(doc, SHEET_NAME_ODBIOR);
+        odbiorCache = rows.map(row => ({
+            id: row['id'] ?? '',
+            dataZgloszenia: row['dataZgloszenia'] ?? '',
+            numerTelefonu: row['numerTelefonu'] ?? '',
+            skad: (row['skad'] ?? 'inne') as OdbiorZgloszenie['skad'],
+            komentarzSkad: row['komentarzSkad'] ?? '',
+            iloscOsob: parseInt(row['iloscOsob'] ?? '0', 10),
+            komentarz: row['komentarz'] ?? '',
+            zdjeciaUrls: row['zdjeciaUrls'] ?? '',
+            rekruterId: row['rekruterId'] ?? '',
+            rekruterNazwa: row['rekruterNazwa'] ?? '',
+            status: (row['status'] ?? 'Nieprzyjęte') as OdbiorZgloszenie['status'],
+            kierowcaId: row['kierowcaId'] ?? '',
+            kierowcaNazwa: row['kierowcaNazwa'] ?? '',
+            osoby: row['osoby'] ?? '[]',
+            nastepnyKrok: row['nastepnyKrok'] ?? '',
+            dataZakonczenia: row['dataZakonczenia'] ?? '',
+        }));
+        return odbiorCache!;
+    });
 }
 
 export async function addOdbiorZgloszenieRow(data: Omit<OdbiorZgloszenie, 'id'>): Promise<OdbiorZgloszenie> {
