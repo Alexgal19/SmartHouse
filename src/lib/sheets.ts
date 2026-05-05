@@ -622,6 +622,9 @@ export async function getSettings(bypassCache = false): Promise<Settings> {
         const doc = await getDoc();
         return getSettingsFromSheet(doc, true);
     }
+    if (settingsCache && (Date.now() - settingsCache.timestamp < SETTINGS_CACHE_TTL)) {
+        return settingsCache.data;
+    }
     return singleflight('settings', async () => {
         const doc = await getDoc();
         return getSettingsFromSheet(doc, false);
