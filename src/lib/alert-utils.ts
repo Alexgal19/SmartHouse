@@ -32,7 +32,6 @@ export interface AlertDetails {
   bokStatusInconsistency: AlertDetailItem[];
   capacityExceeded: AlertDetailItem[];
   missingPaymentData: AlertDetailItem[];
-  missingCheckInDate: AlertDetailItem[];
   duplicatePersons: AlertDetailItem[];
 }
 
@@ -151,20 +150,6 @@ export function extractAlertDetails(
       };
     });
 
-  // Missing check-in date
-  const missingCheckInDate: AlertDetailItem[] = [];
-  employees.forEach(e => {
-    if (e.status !== 'active' || e.checkInDate) return;
-    missingCheckInDate.push({ id: e.id, name: e.fullName, link: `/dashboard?view=employees&edit=${e.id}`, extra: 'Pracownik', coordinatorId: e.coordinatorId ?? null });
-  });
-  nonEmployees.forEach(nz => {
-    if (nz.status !== 'active' || nz.checkInDate) return;
-    missingCheckInDate.push({ id: nz.id, name: nz.fullName, link: `/dashboard?view=employees&tab=non-employees&edit=${nz.id}`, extra: 'NZ', coordinatorId: nz.coordinatorId ?? null });
-  });
-  bokResidents.forEach(bok => {
-    if (bok.status === 'dismissed' || bok.checkInDate) return;
-    missingCheckInDate.push({ id: bok.id, name: bok.fullName, link: `/dashboard?view=employees&tab=bok-residents&edit=${bok.id}`, extra: 'BOK', coordinatorId: bok.coordinatorId ?? null });
-  });
 
   // Zdublowane osoby — duplikat = ta sama osoba dwa razy u TEGO SAMEGO koordynatora
   // Osoby o tym samym imieniu u różnych koordynatorów NIE są duplikatem
@@ -218,5 +203,5 @@ export function extractAlertDetails(
     }
   }
 
-  return { contractExpiry, bokStatusInconsistency, capacityExceeded, missingPaymentData, missingCheckInDate, duplicatePersons };
+  return { contractExpiry, bokStatusInconsistency, capacityExceeded, missingPaymentData, duplicatePersons };
 }

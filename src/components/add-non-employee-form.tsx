@@ -184,7 +184,7 @@ function AddNonEmployeeWizard({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-[95vw] sm:max-w-lg h-[92vh] max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden">
+            <DialogContent data-testid="add-non-employee-dialog" className="max-w-[95vw] sm:max-w-lg h-[92vh] max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden">
                 <WizardStepIndicator steps={STEPS} current={step} />
 
                 <ScrollArea className="flex-1 overflow-y-auto">

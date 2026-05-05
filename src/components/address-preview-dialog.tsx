@@ -277,7 +277,7 @@ export function AddressPreviewDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-[96vw] sm:max-w-3xl lg:max-w-5xl max-h-[92vh] p-3 sm:p-6 gap-3 sm:gap-4">
+      <DialogContent data-testid="address-preview-dialog" className="max-w-[96vw] sm:max-w-3xl lg:max-w-5xl max-h-[92vh] p-3 sm:p-6 gap-3 sm:gap-4">
         <DialogHeader>
           <DialogTitle className="text-base sm:text-lg">Podgląd i wybór dostępności miejsc</DialogTitle>
           <DialogDescription className="text-xs sm:text-sm">

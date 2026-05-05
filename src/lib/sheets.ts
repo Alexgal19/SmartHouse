@@ -820,6 +820,21 @@ const deserializeControlCard = (row: any): ControlCard | null => {
         try { const p = JSON.parse(val); return Array.isArray(p) ? p : []; } catch { return []; }
     };
 
+    const parseComments = (val: unknown): import('../types').ControlCardComment[] => {
+        if (!val || typeof val !== 'string') return [];
+        try {
+            const parsed = JSON.parse(val);
+            if (Array.isArray(parsed)) return parsed as import('../types').ControlCardComment[];
+        } catch {
+            // Not JSON, wrap old string
+            const trimmed = val.trim();
+            if (trimmed) {
+                return [{ id: `old-${Math.random().toString(36).substring(2, 9)}`, text: trimmed, status: 'Nie przyjęte' }];
+            }
+        }
+        return [];
+    };
+
     return {
         id: id as string,
         addressId: addressId as string,
@@ -835,7 +850,7 @@ const deserializeControlCard = (row: any): ControlCard | null => {
         bathroomPhotoUrls: parseJsonArray(row.get('bathroomPhotoUrls')),
         meterPhotoUrls: parseJsonArray(row.get('meterPhotoUrls')),
         appliancesWorking: row.get('appliancesWorking') === 'TRUE' || row.get('appliancesWorking') === true,
-        comments: (row.get('comments') as string) || '',
+        comments: parseComments(row.get('comments')),
         deleted: row.get('deleted') === 'TRUE' || row.get('deleted') === true,
     };
 };
@@ -875,7 +890,7 @@ export async function addControlCard(card: Omit<ControlCard, 'id'>): Promise<str
         bathroomPhotoUrls: JSON.stringify(card.bathroomPhotoUrls || []),
         meterPhotoUrls: JSON.stringify(card.meterPhotoUrls || []),
         appliancesWorking: card.appliancesWorking ? 'TRUE' : 'FALSE',
-        comments: card.comments,
+        comments: JSON.stringify(card.comments || []),
     }), TIMEOUT_MS, 'sheet.addRow(ControlCards)');
     controlCardsCache = null;
     return id;
@@ -892,7 +907,7 @@ export async function updateControlCard(cardId: string, updates: Partial<Omit<Co
         if (value === undefined) continue;
         if (key === 'appliancesWorking' || key === 'deleted') {
             row.set(key, (value as boolean) ? 'TRUE' : 'FALSE');
-        } else if (key === 'roomRatings' || key === 'kitchenPhotoUrls' || key === 'bathroomPhotoUrls' || key === 'meterPhotoUrls') {
+        } else if (key === 'roomRatings' || key === 'kitchenPhotoUrls' || key === 'bathroomPhotoUrls' || key === 'meterPhotoUrls' || key === 'comments') {
             row.set(key, JSON.stringify(value));
         } else {
             row.set(key, value as string);
@@ -1209,12 +1224,12 @@ export async function updateOdbiorZgloszenie(
     odbiorCache = null;
 }
 
-// eslint-disable-next-line no-restricted-syntax -- approved by owner: admin/recruiter explicit deletion of pickup submissions
 export async function deleteOdbiorZgloszenie(id: string): Promise<void> {
     const sheet = await getSheet(SHEET_NAME_ODBIOR, ODBIOR_HEADERS);
     const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(OdbiorZgloszenia)');
     const row = rows.find(r => r.get('id') === id);
     if (!row) throw new Error(`OdbiorZgloszenie ${id} nie istnieje`);
+    // eslint-disable-next-line no-restricted-syntax -- approved by owner: admin/recruiter explicit deletion of pickup submissions
     await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(OdbiorZgloszenia)');
     odbiorCache = null;
 }

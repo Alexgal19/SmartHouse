@@ -217,26 +217,6 @@ function checkDuplicatePersons(
   return alerts;
 }
 
-// ─── Alert 8: Aktywny mieszkaniec bez daty zameldowania ───────────────────
-function checkMissingCheckInDate(
-  employees: Employee[], nonEmployees: NonEmployee[], bokResidents: BokResident[]
-): Alert[] {
-  const alerts: Alert[] = [];
-  employees.forEach(e => {
-    if (e.status !== 'active' || e.checkInDate) return;
-    alerts.push({ coordinatorIds: e.coordinatorId ? [e.coordinatorId] : [], title: `📅 Brak daty zameldowania`, body: `${e.fullName} (Pracownik) — brak daty zameldowania.`, link: `/dashboard?view=employees&edit=${e.id}` });
-  });
-  nonEmployees.forEach(nz => {
-    if (nz.status !== 'active' || nz.checkInDate) return;
-    alerts.push({ coordinatorIds: nz.coordinatorId ? [nz.coordinatorId] : [], title: `📅 Brak daty zameldowania`, body: `${nz.fullName} (NZ) — brak daty zameldowania.`, link: `/dashboard?view=employees&tab=non-employees&edit=${nz.id}` });
-  });
-  bokResidents.forEach(bok => {
-    if (bok.status === 'dismissed' || bok.checkInDate) return;
-    alerts.push({ coordinatorIds: bok.coordinatorId ? [bok.coordinatorId] : [], title: `📅 Brak daty zameldowania`, body: `${bok.fullName} (BOK) — brak daty zameldowania.`, link: `/dashboard?view=employees&tab=bok-residents&edit=${bok.id}` });
-  });
-  return alerts;
-}
-
 // ─── Route handler ─────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   if (!authorize(req)) {
@@ -255,7 +235,6 @@ export async function POST(req: NextRequest) {
       ...checkBokStatusInconsistency(bokResidents),
       ...checkCapacity(employees, nonEmployees, bokResidents, settings.addresses),
       ...checkMissingPaymentData(nonEmployees),
-      ...checkMissingCheckInDate(employees, nonEmployees, bokResidents),
       ...checkDuplicatePersons(employees),
     ];
 
@@ -267,7 +246,6 @@ export async function POST(req: NextRequest) {
       bokStatusInconsistency: details.bokStatusInconsistency.length,
       capacityExceeded:      details.capacityExceeded.length,
       missingPaymentData:    details.missingPaymentData.length,
-      missingCheckInDate:    details.missingCheckInDate.length,
       duplicatePersons:      details.duplicatePersons.length,
     };
 

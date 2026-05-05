@@ -447,6 +447,7 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
                                                         variant="outline"
                                                         size="icon"
                                                         className="h-8 w-8"
+                                                        aria-label="Szczegóły"
                                                         onClick={() => handleEyeClick(row.id)}
                                                     >
                                                         <Eye className="h-4 w-4" />
@@ -456,6 +457,7 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
                                                             variant="outline"
                                                             size="icon"
                                                             className="h-8 w-8 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                                                            aria-label="Usuń"
                                                             onClick={() => setDeleteConfirmId(row.id)}
                                                         >
                                                             <Trash2 className="h-4 w-4" />

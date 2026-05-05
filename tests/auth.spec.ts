@@ -2,9 +2,8 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Authentication', () => {
   test('should allow a user to log in', async ({ page }) => {
-    // TODO: Replace with actual test credentials
     const username = 'admin';
-    const password = 'password';
+    const password = 'SWhouse$21';
 
     await page.goto('/login');
 
@@ -13,7 +12,7 @@ test.describe('Authentication', () => {
     await page.fill('#password', password);
 
     // Click the login button
-    await page.click('button:has-text("Zaloguj się")');
+    await page.locator('button[type="submit"]').click();
 
     // Wait for navigation to the dashboard
     await page.waitForURL('/dashboard?view=dashboard');

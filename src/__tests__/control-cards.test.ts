@@ -21,7 +21,7 @@ const mockControlCard: ControlCard = {
   kitchenPhotoUrls: ['kurl1'],
   bathroomPhotoUrls: ['burl1'],
   appliancesWorking: true,
-  comments: 'All good'
+  comments: [],
 };
 
 // Mock the 'google-spreadsheet' library

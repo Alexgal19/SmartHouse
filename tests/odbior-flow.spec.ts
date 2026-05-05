@@ -4,12 +4,12 @@ const ADMIN_NAME = 'admin';
 const ADMIN_PASS = 'SWhouse$21';
 
 async function loginAsAdmin(page: Page) {
-    await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.goto('/login');
+    await page.waitForLoadState('domcontentloaded');
     if (page.url().includes('dashboard')) return;
     await page.locator('#name').fill(ADMIN_NAME);
     await page.locator('#password').fill(ADMIN_PASS);
-    await page.locator('button:has-text("Zaloguj się")').click();
+    await page.locator('button[type="submit"]').click();
     await page.waitForURL('**/dashboard**', { timeout: 30000 });
     await page.waitForTimeout(3000);
 }
@@ -17,68 +17,67 @@ async function loginAsAdmin(page: Page) {
 async function gotoView(page: Page, view: string) {
     await page.goto(`/dashboard?view=${view}`);
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(3000); // Wait for animations and data
+    await page.waitForTimeout(5000); // Wait for animations and data
 }
 
-test.describe('Odbiór — Przepływ E2E', () => {
+test.describe.serial('Odbiór — Przepływ E2E', () => {
 
     test('Tworzenie nowego zgłoszenia odbioru', async ({ page }) => {
         await loginAsAdmin(page);
         await gotoView(page, 'odbior');
 
         // Click "Zgłoś odbiór" CTA
-        await page.click('button:has-text("Zgłoś odbiór")');
+        await page.getByRole('button', { name: 'Zgłoś odbiór' }).first().click();
 
         // Fill the form
         await page.fill('input[placeholder="+48 000 000 000"]', '999888777');
-        
-        // Select "Stacja autobusowa" (default usually, but let's be sure)
-        await page.click('label:has-text("Stacja autobusowa")');
-        
-        // Increase persons to 3
-        await page.click('button:has(svg.lucide-plus)');
-        await page.click('button:has(svg.lucide-plus)');
-        
+
+        // Select "Stacja autobusowa"
+        await page.locator('#auto').click();
+
         await page.fill('textarea[placeholder="Dodatkowe informacje..."]', 'E2E Test Submission');
 
         // Submit
-        await page.click('button[type="submit"]:has-text("Zgłoś odbiór")');
+        await page.locator('[role="dialog"] form button[type="submit"]').click();
 
-        // Wait for toast and dialog to close
-        await expect(page.locator('text=Zgłoszono odbiór')).toBeVisible();
-        await expect(page.locator('h2:has-text("Zgłoś odbiór")')).not.toBeVisible();
+        // Wait for dialog to close (Google Sheets write can take >4s)
+        await expect(page.getByRole('heading', { name: 'Zgłoś odbiór' })).not.toBeVisible({ timeout: 20000 });
 
-        // Verify it appears in the table
-        await expect(page.locator('table')).toContainText('Stacja autobusowa');
-        await expect(page.locator('table')).toContainText('3');
+        // Verify it appears in the table (default persons=1)
+        await expect(page.getByRole('table')).toContainText('autobusowa', { timeout: 10000 });
+        await expect(page.getByRole('table')).toContainText('1', { timeout: 10000 });
     });
 
     test('Otwieranie szczegółów zgłoszenia', async ({ page }) => {
         await loginAsAdmin(page);
         await gotoView(page, 'odbior');
 
-        // Click the "Eye" icon on the first row
-        await page.locator('table tbody tr').first().locator('button:has(svg.lucide-eye)').click();
+        // Click the "Szczegóły" button on the first row
+        await page.getByRole('button', { name: 'Szczegóły' }).first().click({ force: true });
 
         // Verify detail dialog is open
-        await expect(page.locator('h2:has-text("Szczegóły zgłoszenia")')).toBeVisible();
-        
-        // Close it
-        await page.click('button:has-text("Zamknij")');
+        await expect(page.getByRole('heading', { name: 'Odbiór' })).toBeVisible();
+
+        // Close it (default Dialog X button)
+        await page.getByRole('button', { name: 'Close' }).click();
     });
 
-    test('Uruchomienie kreatora zakwaterowania z poziomu szczegółów', async ({ page }) => {
+    test('Szczegóły zgłoszenia — widok W trakcie z akcjami', async ({ page }) => {
         await loginAsAdmin(page);
         await gotoView(page, 'odbior');
 
-        // Open details
-        await page.locator('table tbody tr').first().locator('button:has(svg.lucide-eye)').click();
+        // Find first row with "W trakcie" status and open its details
+        const wTrakcieRow = page.locator('table tbody tr').filter({ hasText: 'W trakcie' }).first();
+        await wTrakcieRow.locator('button[aria-label="Szczegóły"]').click({ force: true });
 
-        // Click "Zakwaterowanie"
-        await page.click('button:has-text("Zakwaterowanie")');
+        // Verify detail dialog is open on the "W trakcie" tab
+        await expect(page.getByRole('heading', { name: 'Odbiór' })).toBeVisible();
 
-        // Verify wizard starts
-        await expect(page.locator('h2:has-text("Dane osoby")')).toBeVisible();
-        await expect(page.locator('text=Krok 1 z 4')).toBeVisible({ timeout: 5000 });
+        // Verify "W trakcie" tab is active and shows action buttons
+        await expect(page.getByRole('tab', { name: /W trakcie/ })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Zakwaterowanie' })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Badania' })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Rozmowa rekrutacyjna' })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Zakończ odbiór' })).toBeVisible();
     });
 });

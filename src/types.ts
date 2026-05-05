@@ -205,6 +205,14 @@ export type RoomRating = {
   photoUrls?: string[];
 }
 
+export type ControlCardCommentStatus = 'Nie przyjęte' | 'W trakcie' | 'Temat rozwiązany';
+
+export type ControlCardComment = {
+  id: string;
+  text: string;
+  status: ControlCardCommentStatus;
+};
+
 export type ControlCard = {
   id: string;
   addressId: string;
@@ -220,7 +228,7 @@ export type ControlCard = {
   bathroomPhotoUrls?: string[];
   meterPhotoUrls?: string[];
   appliancesWorking: boolean;
-  comments: string;
+  comments: ControlCardComment[];
   deleted?: boolean;
 }
 

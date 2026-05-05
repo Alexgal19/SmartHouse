@@ -4,20 +4,22 @@ const ADMIN_NAME = 'admin';
 const ADMIN_PASS = 'SWhouse$21';
 
 async function loginAsAdmin(page: Page) {
-    await page.goto('/');
+    await page.goto('/login');
     await page.waitForLoadState('domcontentloaded');
     if (page.url().includes('dashboard')) return;
     await page.locator('#name').fill(ADMIN_NAME);
     await page.locator('#password').fill(ADMIN_PASS);
-    await page.locator('button:has-text("Zaloguj się")').click();
-    await page.waitForURL('**/dashboard**', { timeout: 20000 });
-    await page.waitForTimeout(2000);
+    await page.locator('button[type="submit"]').click();
+    await page.waitForURL('**/dashboard**', { timeout: 30000 });
+    await page.waitForTimeout(3000);
 }
 
 async function goto(page: Page, view: string) {
     await page.goto(`/dashboard?view=${view}`);
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(5000); // wait for data
+    // Wait for main-layout data fetch to finish (Google Sheets can be slow)
+    await expect(page.getByText('Wczytywanie danych...')).not.toBeVisible({ timeout: 15000 });
+    await page.waitForTimeout(1000); // buffer for render
 }
 
 test.use({ storageState: undefined });
@@ -27,12 +29,12 @@ test.describe('SmartHouse — testy regresji', () => {
 
     // ── 1. Autentykacja ───────────────────────────────────────────────────────
     test('Logowanie — poprawne dane', async ({ page }) => {
-        await page.goto('/');
+        await page.goto('/login');
         await page.waitForLoadState('domcontentloaded');
         await page.locator('#name').fill(ADMIN_NAME);
         await page.locator('#password').fill(ADMIN_PASS);
-        await page.locator('button:has-text("Zaloguj się")').click();
-        await page.waitForURL('**/dashboard**', { timeout: 20000 });
+        await page.locator('button[type="submit"]').click();
+        await page.waitForURL('**/dashboard**', { timeout: 30000 });
         expect(page.url()).toContain('dashboard');
     });
 
@@ -53,8 +55,8 @@ test.describe('SmartHouse — testy regresji', () => {
         await page.screenshot({ path: '/tmp/ss_dashboard.png', fullPage: true });
         const body = await page.innerText('body');
         expect(body.length).toBeGreaterThan(100);
-        // There should be navigation items
-        await expect(page.locator('nav, [role="navigation"]').first()).toBeVisible();
+        // Sidebar navigation should be present
+        await expect(page.getByText('Pulpit').first()).toBeVisible();
     });
 
     // ── 3. Widok Mieszkańcy ───────────────────────────────────────────────────
@@ -127,8 +129,8 @@ test.describe('SmartHouse — testy regresji', () => {
 
         await page.screenshot({ path: '/tmp/ss_odbior.png', fullPage: true });
         const body = await page.innerText('body');
-        expect(body).toContain('Historia przyjęć');
-        expect(body).toContain('Zakwaterowanie');
+        expect(body).toContain('Ostatnie zgłoszenia');
+        expect(body).toContain('Zgłoś odbiór');
         console.log(`Odbiór load time: ${elapsed}ms`);
 
         // Skeleton should NOT be present (data pre-loaded from context)
@@ -136,20 +138,19 @@ test.describe('SmartHouse — testy regresji', () => {
         console.log(`Skeleton elements: ${skeletonCount}`);
     });
 
-    test('Odbiór — kafelek Zakwaterowanie otwiera dialog', async ({ page }) => {
+    test('Odbiór — kafelek Zgłoś odbiór otwiera dialog', async ({ page }) => {
         await loginAsAdmin(page);
         await goto(page, 'odbior');
-        
-        await page.locator('button:has-text("Zakwaterowanie")').first().click();
-        await page.waitForTimeout(1500);
 
-        const dialog = page.locator('[role="dialog"]');
+        await page.getByRole('button', { name: 'Zgłoś odbiór' }).first().click();
+
+        const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible({ timeout: 5000 });
         await page.screenshot({ path: '/tmp/ss_odbior_dialog.png', fullPage: true });
 
         // Dialog should have form fields
         const dialogText = await dialog.innerText();
-        expect(dialogText).toMatch(/Imię|Nazwisko|Data|Adres/i);
+        expect(dialogText).toMatch(/Numer telefonu|Miejsce odbioru|Ilość osób/i);
 
         await page.keyboard.press('Escape');
         await page.waitForTimeout(500);

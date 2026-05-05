@@ -3,40 +3,39 @@ import { test, expect } from '@playwright/test';
 test.describe('Dashboard', () => {
   // Log in before each test
   test.beforeEach(async ({ page }) => {
-    // TODO: Replace with actual test credentials
     const username = 'admin';
-    const password = 'password';
+    const password = 'SWhouse$21';
 
     await page.goto('/login');
     await page.fill('#name', username);
     await page.fill('#password', password);
-    await page.click('button:has-text("Zaloguj się")');
+    await page.locator('button[type="submit"]').click();
     await page.waitForURL('/dashboard?view=dashboard');
   });
 
   test('should display the dashboard with KPI cards and quick actions', async ({ page }) => {
-    // Check for KPI cards
-    await expect(page.locator('div:has-text("Wszyscy pracownicy")')).toBeVisible();
-    await expect(page.locator('div:has-text("Mieszkańcy (NZ)")')).toBeVisible();
-    await expect(page.locator('div:has-text("Używane mieszkania")')).toBeVisible();
-    await expect(page.locator('div:has-text("Wykwaterowania (30 dni)")')).toBeVisible();
+    // Check for KPI cards (use heading role to avoid strict-mode violations in WebKit)
+    await expect(page.getByRole('heading', { name: 'Wszyscy pracownicy', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Mieszkańcy (NZ)', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Używane mieszkania', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Wykwaterowania (30 dni)', exact: true })).toBeVisible();
 
     // Check for Quick Actions
-    await expect(page.locator('h2:has-text("Szybkie działania")')).toBeVisible();
-    await expect(page.locator('button:has-text("Dodaj pracownika")')).toBeVisible();
-    await expect(page.locator('button:has-text("Dodaj mieszkańca (NZ)")')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Szybkie działania', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Dodaj pracownika', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Dodaj mieszkańca (NZ)', exact: true })).toBeVisible();
   });
 
   test('should navigate to correct views when quick action buttons are clicked', async ({ page }) => {
     // Test "Add Non-Employee" button
-    await page.click('button:has-text("Dodaj mieszkańca (NZ)")');
-    const nonEmployeeDialog = page.locator('div[role="dialog"]:has-text("Dodaj nowego mieszkańca (NZ)")');
-    await expect(nonEmployeeDialog).toBeVisible();
+    await page.getByRole('button', { name: 'Dodaj mieszkańca (NZ)', exact: true }).click();
+    const nonEmployeeDialog = page.getByTestId('add-non-employee-dialog');
+    await expect(nonEmployeeDialog.getByText('Dane osoby')).toBeVisible();
     // Close the dialog
-    await nonEmployeeDialog.locator('button[aria-label="Close"]').click();
+    await nonEmployeeDialog.getByRole('button', { name: 'Close' }).click();
 
     // Test "Search Resident" button
-    await page.click('button:has-text("Wyszukaj mieszkańca")');
+    await page.getByRole('button', { name: 'Wyszukaj mieszkańca', exact: true }).click();
     await expect(page).toHaveURL('/dashboard?view=employees');
 
     // Go back to dashboard for next test

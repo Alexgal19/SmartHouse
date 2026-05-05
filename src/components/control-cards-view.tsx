@@ -26,7 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
-import type { SessionData, Address, ControlCard, CleanlinessRating, RoomRating, StartList, StartListHousingType, StartListTransport, StartListStandard, StartListHeating } from "@/types";
+import type { SessionData, Address, ControlCard, CleanlinessRating, RoomRating, StartList, StartListHousingType, StartListTransport, StartListStandard, StartListHeating, ControlCardComment, ControlCardCommentStatus } from "@/types";
 import { useMainLayout } from '@/components/main-layout';
 import { saveControlCardAction, editControlCardAction, deleteControlCardAction, uploadControlCardPhotoAction, saveStartListAction, setAddressNoMetersRequiredAction } from '@/lib/actions';
 import { format } from 'date-fns';
@@ -383,7 +383,7 @@ type FormState = {
     bathroomPhotoUrls: string[];
     meterPhotoUrls: string[];
     appliancesWorking: boolean;
-    comments: string;
+    comments: ControlCardComment[];
 };
 
 const buildDefaultForm = (address: Address): FormState => ({
@@ -394,7 +394,7 @@ const buildDefaultForm = (address: Address): FormState => ({
     bathroomPhotoUrls: [],
     meterPhotoUrls: [],
     appliancesWorking: true,
-    comments: '',
+    comments: [],
 });
 
 const isControlFormComplete = (form: FormState, address: Address): boolean => {
@@ -429,7 +429,7 @@ const buildFormFromCard = (card: ControlCard, address: Address): FormState => {
         bathroomPhotoUrls: card.bathroomPhotoUrls || [],
         meterPhotoUrls: card.meterPhotoUrls || [],
         appliancesWorking: card.appliancesWorking,
-        comments: card.comments,
+        comments: Array.isArray(card.comments) ? card.comments : [],
     };
 };
 
@@ -1293,15 +1293,80 @@ function ControlCardDialog({
                     </div>
 
                     {/* ── Komentarze ── */}
-                    <div className="space-y-1.5">
-                        <Label className="font-medium text-sm">📝 Komentarze / Usterki</Label>
-                        <Textarea
-                            disabled={!canEdit}
-                            placeholder={form.appliancesWorking ? "Dodatkowe uwagi (opcjonalne)..." : "Opisz usterki do naprawy..."}
-                            value={form.comments}
-                            onChange={(e) => setForm(prev => ({ ...prev, comments: e.target.value }))}
-                            className="min-h-[72px] resize-none"
-                        />
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <Label className="font-medium text-sm">📝 Komentarze / Usterki</Label>
+                            {canEdit && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 text-xs"
+                                    onClick={() => setForm(prev => ({
+                                        ...prev,
+                                        comments: [...prev.comments, { id: `new-${Date.now()}-${Math.random().toString(36).substring(2)}`, text: '', status: 'Nie przyjęte' }]
+                                    }))}
+                                >
+                                    + Dodaj komentarz
+                                </Button>
+                            )}
+                        </div>
+                        {form.comments.length === 0 ? (
+                            <div className="text-center p-4 border border-dashed rounded-lg bg-muted/20 text-muted-foreground text-xs">
+                                {`Brak uwag. Kliknij "Dodaj komentarz", aby zgłosić usterkę.`}
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {form.comments.map((comment) => (
+                                    <div key={comment.id} className="p-3 rounded-lg border bg-muted/10 space-y-2 relative">
+                                        {canEdit && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setForm(prev => ({
+                                                    ...prev,
+                                                    comments: prev.comments.filter(c => c.id !== comment.id)
+                                                }))}
+                                                className="absolute -top-2 -right-2 bg-destructive text-white rounded-full p-1 shadow hover:scale-110 transition-transform"
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        )}
+                                        <Textarea
+                                            disabled={!canEdit}
+                                            placeholder="Treść komentarza/usterki..."
+                                            value={comment.text}
+                                            onChange={(e) => setForm(prev => ({
+                                                ...prev,
+                                                comments: prev.comments.map(c => c.id === comment.id ? { ...c, text: e.target.value } : c)
+                                            }))}
+                                            className="min-h-[60px] resize-none text-sm"
+                                        />
+                                        <div className="flex flex-wrap gap-2 pt-1">
+                                            {(['Nie przyjęte', 'W trakcie', 'Temat rozwiązany'] as ControlCardCommentStatus[]).map(status => (
+                                                <button
+                                                    key={status}
+                                                    type="button"
+                                                    disabled={!canEdit}
+                                                    onClick={() => setForm(prev => ({
+                                                        ...prev,
+                                                        comments: prev.comments.map(c => c.id === comment.id ? { ...c, status } : c)
+                                                    }))}
+                                                    className={`px-2.5 py-1 text-[10px] font-medium rounded-full border transition-all ${
+                                                        comment.status === status
+                                                            ? status === 'Nie przyjęte' ? 'bg-red-500/10 text-red-600 border-red-500/30 animate-pulse'
+                                                            : status === 'W trakcie' ? 'bg-yellow-500/10 text-yellow-600 border-yellow-500/30 animate-pulse'
+                                                            : 'bg-green-500/10 text-green-600 border-green-500/30 animate-pulse'
+                                                            : 'bg-background text-muted-foreground border-border hover:bg-muted'
+                                                    } ${!canEdit && 'opacity-70 cursor-not-allowed'}`}
+                                                >
+                                                    {status === 'Nie przyjęte' ? '🔴' : status === 'W trakcie' ? '🟡' : '🟢'} {status}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
 

@@ -3,14 +3,13 @@ import { test, expect } from '@playwright/test';
 test.describe('Housing View', () => {
   // Log in before each test
   test.beforeEach(async ({ page }) => {
-    // TODO: Replace with actual test credentials
     const username = 'admin';
-    const password = 'password';
+    const password = 'SWhouse$21';
 
     await page.goto('/login');
     await page.fill('#name', username);
     await page.fill('#password', password);
-    await page.click('button:has-text("Zaloguj się")');
+    await page.locator('button[type="submit"]').click();
     await page.waitForURL('/dashboard?view=dashboard');
     
     // Navigate to housing view
@@ -23,17 +22,17 @@ test.describe('Housing View', () => {
 
     // Filter by name
     await page.fill('#search-address', 'Testowa');
-    await expect(page.locator('div.p-2:has-text("Testowa 1")')).toBeVisible();
-    await expect(page.locator('div.p-2:has-text("Inny Adres")')).not.toBeVisible();
+    await expect(page.getByText('Testowa 1', { exact: false }).first()).toBeVisible();
+    await expect(page.getByText('Inny Adres', { exact: false }).first()).not.toBeVisible();
 
     // Clear the name filter
     await page.fill('#search-address', '');
 
     // Filter by locality
     await page.locator('#search-locality').click();
-    await page.locator('div[role="option"]:has-text("Kraków")').click();
-    await expect(page.locator('h2:has-text("Kraków")')).toBeVisible();
-    await expect(page.locator('h2:has-text("Warszawa")')).not.toBeVisible();
+    await page.getByRole('option', { name: 'Kraków', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Kraków', exact: true }).first()).toBeVisible();
+    await expect(page.getByText('Warszawa', { exact: false }).first()).not.toBeVisible();
     
     // Filter by availability
     await page.locator('label[for="show-available"]').click();
@@ -45,12 +44,12 @@ test.describe('Housing View', () => {
 
   test('should show address details when an address is clicked', async ({ page }) => {
     // This test assumes an address "Testowa 1" exists.
-    await page.click('div.p-2:has-text("Testowa 1")');
+    await page.getByText('Testowa 1', { exact: false }).first().click();
 
-    const detailsView = page.locator('div.lg\\:col-span-2.h-full');
-    await expect(detailsView.locator('h2:has-text("Testowa 1")')).toBeVisible();
-    
+    const detailsView = page.getByRole('main');
+    await expect(detailsView.getByRole('heading', { name: 'Testowa 1', exact: true }).first()).toBeVisible();
+
     // Check for room details
-    await expect(detailsView.locator('div:has-text("Pokój 101")')).toBeVisible();
+    await expect(detailsView.getByText('Pokój 101', { exact: false }).first()).toBeVisible();
   });
 });

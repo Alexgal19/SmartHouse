@@ -29,7 +29,6 @@ export async function GET() {
       bokStatusInconsistency: all.bokStatusInconsistency.filter(d => d.coordinatorId === uid),
       capacityExceeded:      all.capacityExceeded.filter(d => d.coordinatorIds?.includes(uid)),
       missingPaymentData:    all.missingPaymentData.filter(d => d.coordinatorId === uid),
-      missingCheckInDate:    all.missingCheckInDate.filter(d => d.coordinatorId === uid),
       duplicatePersons:      all.duplicatePersons.filter(d =>
         d.coordinatorIds?.includes(uid) || d.coordinatorId === uid
       ),

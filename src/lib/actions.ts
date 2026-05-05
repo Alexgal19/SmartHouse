@@ -19,6 +19,7 @@ import {
     addControlCard as addControlCardToSheet,
     updateControlCard as updateControlCardInSheet,
     getStartLists as getStartListsFromSheet,
+    getControlCards as getControlCardsFromSheet,
     upsertStartList as upsertStartListInSheet,
     getOdbiorEntries as getOdbiorEntriesFromSheet,
     addOdbiorEntry as addOdbiorEntryToSheet,
@@ -2307,6 +2308,32 @@ export async function editControlCardAction(
         return { success: true };
     } catch (error) {
         console.error('Error editing control card:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+export async function updateControlCardCommentStatusAction(
+    cardId: string,
+    commentId: string,
+    newStatus: import('@/types').ControlCardCommentStatus
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        await requireSession();
+        // Fetch existing card to get comments array
+        const cards = await getControlCardsFromSheet();
+        const card = cards.find((c) => c.id === cardId);
+        if (!card) return { success: false, error: 'Control card not found' };
+
+        // Update comment status
+        const updatedComments = card.comments.map((c) => 
+            c.id === commentId ? { ...c, status: newStatus } : c
+        );
+
+        await updateControlCardInSheet(cardId, { comments: updatedComments });
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error updating comment status:', error);
         return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
     }
 }

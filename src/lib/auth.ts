@@ -56,6 +56,7 @@ async function recordFailedAttempt(ip: string): Promise<void> {
 async function clearAttempts(ip: string): Promise<void> {
   if (!adminDb) return;
   try {
+    // eslint-disable-next-line no-restricted-syntax -- Firestore document delete, not Google Sheets; required for rate limit cleanup
     await adminDb.collection('loginRateLimits').doc(safeIpDocId(ip)).delete();
   } catch (e) {
     console.warn('[auth] clearAttempts Firestore error (degraded gracefully):', e);

@@ -538,7 +538,13 @@ export default function MainLayout({
             // fire-and-forget — dialog zamknie się natychmiast po optimistic update
             updateEmployee(editingEmployee.id, { ...data }, currentUser.uid)
                 .then(updatedEmployee => {
-                    setRawEmployees(prev => prev ? prev.map(e => e.id === updatedEmployee.id ? updatedEmployee : e) : null);
+                    setRawEmployees(prev => prev ? prev.map(e => {
+                        if (e.id !== updatedEmployee.id) return e;
+                        // Preserve 'dismissed' status if handleDismissEmployee already set it
+                        // (race condition: server response arrives before dismiss write completes)
+                        if (e.status === 'dismissed') return { ...updatedEmployee, status: 'dismissed' as const };
+                        return updatedEmployee;
+                    }) : null);
                     toast({ title: "Sukces", description: "Dane pracownika zostały zaktualizowane." });
                     refreshNotificationsOnly();
                 })
@@ -566,7 +572,12 @@ export default function MainLayout({
             // fire-and-forget — dialog zamknie się natychmiast po optimistic update
             updateNonEmployee(editingNonEmployee.id, data, currentUser.uid)
                 .then(updatedNonEmployee => {
-                    setRawNonEmployees(prev => prev ? prev.map(e => e.id === updatedNonEmployee.id ? updatedNonEmployee : e) : null);
+                    setRawNonEmployees(prev => prev ? prev.map(e => {
+                        if (e.id !== updatedNonEmployee.id) return e;
+                        // Preserve 'dismissed' status if handleDismissNonEmployee already set it
+                        if (e.status === 'dismissed') return { ...updatedNonEmployee, status: 'dismissed' as const };
+                        return updatedNonEmployee;
+                    }) : null);
                     toast({ title: "Sukces", description: "Dane mieszkańca zostały zaktualizowane." });
                     refreshNotificationsOnly();
                 })
@@ -594,7 +605,15 @@ export default function MainLayout({
             // fire-and-forget — dialog zamknie się natychmiast po optimistic update
             updateBokResident(editingBokResident.id, data, currentUser.uid)
                 .then(updatedResident => {
-                    setRawBokResidents(prev => prev ? prev.map(r => r.id === updatedResident.id ? updatedResident : r) : null);
+                    setRawBokResidents(prev => prev ? prev.map(r => {
+                        if (r.id !== updatedResident.id) return r;
+                        // Preserve dismissDate if handleDismissBokResident already set it
+                        // (race condition: server response arrives before dismiss write completes)
+                        if (r.dismissDate && !updatedResident.dismissDate) {
+                            return { ...updatedResident, dismissDate: r.dismissDate };
+                        }
+                        return updatedResident;
+                    }) : null);
                     toast({ title: "Sukces", description: "Dane mieszkańca BOK zostały zaktualizowane." });
                     refreshNotificationsOnly();
                 })

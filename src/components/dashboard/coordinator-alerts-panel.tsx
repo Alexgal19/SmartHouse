@@ -18,7 +18,6 @@ const ALERT_CONFIG: { key: keyof AlertDetails; label: string; icon: string }[] =
   { key: 'bokStatusInconsistency', label: 'Niespójny status BOK',    icon: '⚠️' },
   { key: 'capacityExceeded',      label: 'Przekroczona pojemność',   icon: '🏠' },
   { key: 'missingPaymentData',    label: 'Brak danych płatności NZ', icon: '💳' },
-  { key: 'missingCheckInDate',    label: 'Brak daty zameldowania',   icon: '📅' },
   { key: 'duplicatePersons',      label: 'Zdublowane osoby',         icon: '👥' },
 ];
 
