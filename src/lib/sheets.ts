@@ -627,7 +627,7 @@ export async function getSettings(bypassCache = false): Promise<Settings> {
     }
     return singleflight('settings', async () => {
         const doc = await getDoc();
-        return getSettingsFromSheet(doc, false);
+        return getSettingsFromSheet(doc, false); // cache always cold here; getSettingsFromSheet will fetch and populate it
     });
 }
 
