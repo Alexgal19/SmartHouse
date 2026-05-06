@@ -5,7 +5,7 @@
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import {
@@ -340,6 +340,8 @@ export function EditEmployeeForm({
   const selectedAddress = form.watch('address');
   const watchedFirstName = form.watch('firstName');
   const watchedLastName = form.watch('lastName');
+  const watchedCheckOutDate = useWatch({ control: form.control, name: 'checkOutDate' });
+  const canDismiss = !!(watchedCheckOutDate instanceof Date && isValid(watchedCheckOutDate));
 
   const duplicateEmployee = useMemo(() => {
     if (employee) return null; // tryb edycji — nie sprawdzaj
@@ -1101,7 +1103,8 @@ export function EditEmployeeForm({
                       type="button"
                       variant="destructive"
                       onClick={handleDismissClick}
-                      disabled={isDismissing}
+                      disabled={!canDismiss || isDismissing}
+                      title={!canDismiss ? 'Uzupełnij datę wymeldowania, aby zwolnić pracownika' : undefined}
                       className="h-8 text-xs sm:text-sm px-3 sm:px-4"
                     >
                       {isDismissing && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
