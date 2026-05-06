@@ -41,6 +41,7 @@ const roomSchema = z.object({
     name: z.string().min(1, 'Nazwa pokoju jest wymagana.'),
     capacity: z.coerce.number().min(1, 'Pojemność musi być większa od 0.'),
     isActive: z.boolean().default(true),
+    isLocked: z.boolean().default(false),
 });
 
 const addressSchema = z.object({
@@ -205,7 +206,7 @@ export function AddressForm({
                                 <div className="space-y-2 rounded-md border p-4">
                                     <div className="flex justify-between items-center mb-4">
                                         <h3 className="font-medium">Pokoje</h3>
-                                        <Button type="button" variant="outline" size="sm" onClick={() => appendRoom({ id: `room-${Date.now()}`, name: '', capacity: 1, isActive: true })}>
+                                        <Button type="button" variant="outline" size="sm" onClick={() => appendRoom({ id: `room-${Date.now()}`, name: '', capacity: 1, isActive: true, isLocked: false })}>
                                             <PlusCircle className="mr-2 h-4 w-4" /> Dodaj pokój
                                         </Button>
                                     </div>
