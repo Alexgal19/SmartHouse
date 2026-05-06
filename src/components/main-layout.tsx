@@ -782,15 +782,12 @@ export default function MainLayout({
             const updatedSettings = await updateSettings(newSettings);
             setRawSettings(prev => ({ ...prev!, ...updatedSettings }));
             toast({ title: "Sukces", description: "Ustawienia zostały zaktualizowane." });
-            router.refresh(); // Ensure server-side cache is invalidated and fresh data is fetched
-
-            refreshData(false, true); // fire-and-forget — settings already updated optimistically
         } catch (e) {
             setRawSettings(originalSettings); // Revert on error
             toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać ustawień." });
             throw e; // Re-throw to inform caller of failure
         }
-    }, [rawSettings, currentUser, toast, router, refreshData]);
+    }, [rawSettings, currentUser, toast]);
 
     const handleAddEmployeeClick = useCallback(() => {
         setEditingEmployee(null);
