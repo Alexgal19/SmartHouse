@@ -523,11 +523,17 @@ async function getSettingsFromSheet(doc: GoogleSpreadsheet, bypassCache = false)
                     isActive = String(isActiveRaw).toUpperCase() === 'TRUE';
                 }
 
+                const isLockedRaw = rowObj.isLocked !== undefined ? rowObj.isLocked : rowObj['islocked'];
+                const isLocked = isLockedRaw !== undefined && isLockedRaw !== null && String(isLockedRaw).trim() !== ''
+                    ? String(isLockedRaw).toUpperCase() === 'TRUE'
+                    : false;
+
                 roomsByAddressId.get(addressId)!.push({
                     id: rowObj.id as string,
                     name: rowObj.name as string,
                     capacity: Number(rowObj.capacity) || 0,
                     isActive: isActive,
+                    isLocked: isLocked,
                 });
             }
         });

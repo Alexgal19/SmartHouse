@@ -560,6 +560,9 @@ const validateRoomAvailability = (settings: Settings, addressName: string | unde
             if (room && room.isActive === false) {
                 throw new Error(`Pokój "${room.name}" w adresie "${address.name}" jest wyłączony z użytku.`);
             }
+            if (room && room.isLocked === true) {
+                throw new Error(`Pokój "${room.name}" w adresie "${address.name}" jest zablokowany i nie można do niego przypisywać mieszkańców.`);
+            }
         }
     }
 }
@@ -1303,7 +1306,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
         if (newSettings.addresses) {
             await (async () => {
                 const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ADDRESS_HEADERS);
-                const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity', 'isActive']);
+                const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity', 'isActive', 'isLocked']);
 
                 const currentAddressRows = await withTimeout(addressesSheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Addresses)');
                 const toAddAddr = newSettings.addresses!.filter(a => !currentAddressRows.some(r => r.get('id') === a.id));
@@ -1392,13 +1395,20 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                     .filter(room => {
                         const row = currentRoomRows.find(r => r.get('id') === room.id)!;
                         const newIsActive = room.isActive !== false ? 'TRUE' : 'FALSE';
+                        const newIsLocked = room.isLocked === true ? 'TRUE' : 'FALSE';
                         const newCapacity = String(room.capacity);
+
+                        const currentIsLockedRaw = row.get('isLocked');
+                        const currentIsLocked = (currentIsLockedRaw === undefined || currentIsLockedRaw === null || String(currentIsLockedRaw).trim() === '')
+                            ? 'FALSE'
+                            : String(currentIsLockedRaw).toUpperCase();
 
                         return (
                             row.get('addressId') !== room.addressId ||
                             row.get('name') !== room.name ||
                             String(row.get('capacity')) !== newCapacity ||
-                            String(row.get('isActive')).toUpperCase() !== newIsActive
+                            String(row.get('isActive')).toUpperCase() !== newIsActive ||
+                            currentIsLocked !== newIsLocked
                         );
                     });
 
@@ -1423,6 +1433,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                     row.set('name', room.name);
                     row.set('capacity', newCapacity);
                     row.set('isActive', newIsActive);
+                    row.set('isLocked', room.isLocked === true ? 'TRUE' : 'FALSE');
                     await withTimeout(row.save(), TIMEOUT_MS, 'row.save(Rooms)');
                 }, 100);
 
@@ -1437,6 +1448,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                             name: room.name,
                             capacity: String(room.capacity),
                             isActive: room.isActive !== false ? 'TRUE' : 'FALSE',
+                            isLocked: room.isLocked === true ? 'TRUE' : 'FALSE',
                         })), { raw: false, insert: true }), TIMEOUT_MS, 'sheet.addRows(Rooms)');
                         if (i + chunkSize < toAddRooms.length) await new Promise(r => setTimeout(r, 200));
                     }
