@@ -792,6 +792,7 @@ function ControlCardDialog({
 
     const isCurrentMonth = selectedMonth === format(new Date(), 'yyyy-MM');
     const canEdit = !existingCard || isCurrentMonth;
+    const canEditStatus = currentUser.isAdmin;
 
     const setRoomRating = (roomId: string, rating: CleanlinessRating) => {
         setForm(prev => ({
@@ -1346,7 +1347,7 @@ function ControlCardDialog({
                                                 <button
                                                     key={status}
                                                     type="button"
-                                                    disabled={!canEdit}
+                                                    disabled={!canEditStatus}
                                                     onClick={() => setForm(prev => ({
                                                         ...prev,
                                                         comments: prev.comments.map(c => c.id === comment.id ? { ...c, status } : c)
@@ -1357,7 +1358,7 @@ function ControlCardDialog({
                                                             : status === 'W trakcie' ? 'bg-yellow-500/10 text-yellow-600 border-yellow-500/30 animate-pulse'
                                                             : 'bg-green-500/10 text-green-600 border-green-500/30 animate-pulse'
                                                             : 'bg-background text-muted-foreground border-border hover:bg-muted'
-                                                    } ${!canEdit && 'opacity-70 cursor-not-allowed'}`}
+                                                    } ${!canEditStatus && 'opacity-70 cursor-not-allowed'}`}
                                                 >
                                                     {status === 'Nie przyjęte' ? '🔴' : status === 'W trakcie' ? '🟡' : '🟢'} {status}
                                                 </button>
