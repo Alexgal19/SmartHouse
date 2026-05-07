@@ -91,9 +91,9 @@ const mockFetch = jest.fn().mockImplementation((url: string) => {
 });
 global.fetch = mockFetch as typeof fetch;
 
-// ─── PIN Protection Tests ────────────────────────────────────────────────────
+// ─── Access Tests ────────────────────────────────────────────────────────────
 
-describe('ControlCardsView PIN Protection', () => {
+describe('ControlCardsView Access', () => {
   const adminUser: SessionData = { uid: 'uid1', name: 'Admin', isAdmin: true, isLoggedIn: true, isDriver: false, isRekrutacja: false };
   const coordinatorUser: SessionData = { uid: 'uid2', name: 'User', isAdmin: false, isLoggedIn: true, isDriver: false, isRekrutacja: false };
 
@@ -101,42 +101,16 @@ describe('ControlCardsView PIN Protection', () => {
     jest.clearAllMocks();
   });
 
-  test('should bypass PIN lock for admin users', () => {
+  test('should show view for admin users without PIN lock', () => {
     render(<ControlCardsView currentUser={adminUser} />);
     expect(screen.queryByText(/Moduł Zablokowany/i)).not.toBeInTheDocument();
     expect(screen.getByText(/Karty Kontroli/i)).toBeInTheDocument();
   });
 
-  test('should show PIN lock for non-admin users', () => {
+  test('should show view for non-admin users without PIN lock', () => {
     render(<ControlCardsView currentUser={coordinatorUser} />);
-    expect(screen.getByText(/Moduł Zablokowany/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Karty Kontroli/i)).not.toBeInTheDocument();
-  });
-
-  test('should unlock after entering correct PIN (1313)', async () => {
-    render(<ControlCardsView currentUser={coordinatorUser} />);
-    const input = screen.getByPlaceholderText(/Wprowadź kod PIN/i);
-    const button = screen.getByText(/Odblokuj Dostęp/i);
-
-    fireEvent.change(input, { target: { value: '1313' } });
-    fireEvent.click(button);
-
-    await waitFor(() => {
-      expect(screen.queryByText(/Moduł Zablokowany/i)).not.toBeInTheDocument();
-      expect(screen.getByText(/Karty Kontroli/i)).toBeInTheDocument();
-    });
-  });
-
-  test('should show error and clear input on incorrect PIN', async () => {
-    render(<ControlCardsView currentUser={coordinatorUser} />);
-    const input = screen.getByPlaceholderText(/Wprowadź kod PIN/i);
-    const button = screen.getByText(/Odblokuj Dostęp/i);
-
-    fireEvent.change(input, { target: { value: 'wrong' } });
-    fireEvent.click(button);
-
-    expect(screen.getByText(/Nieprawidłowy kod PIN/i)).toBeInTheDocument();
-    expect(input).toHaveValue('');
+    expect(screen.queryByText(/Moduł Zablokowany/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Karty Kontroli/i)).toBeInTheDocument();
   });
 });
 

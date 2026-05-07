@@ -1633,7 +1633,7 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
     const [isLoadingCards, setIsLoadingCards] = useState(true);
     const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
     const [openLocality, setOpenLocality] = useState<string | null>(null);
-    const [isUnlocked, setIsUnlocked] = useState(currentUser.isAdmin);
+    const [isUnlocked, setIsUnlocked] = useState(true);
 
 
     React.useEffect(() => {
