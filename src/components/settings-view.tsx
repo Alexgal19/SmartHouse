@@ -26,6 +26,7 @@ import { useMainLayout } from './main-layout';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
+import { useLanguage } from '@/lib/i18n';
 
 const coordinatorSchema = z.object({
     uid: z.string(),
@@ -53,6 +54,7 @@ const formSchema = z.object({
 
 const AddMultipleDialog = ({ open, onOpenChange, onAdd, listTitle }: { open: boolean; onOpenChange: (open: boolean) => void; onAdd: (items: string[]) => void; listTitle: string; }) => {
     const [text, setText] = useState('');
+    const { t } = useLanguage();
 
     const handleAdd = () => {
         const items = text.split('\n').map(item => item.trim()).filter(item => item.length > 0);
@@ -67,9 +69,9 @@ const AddMultipleDialog = ({ open, onOpenChange, onAdd, listTitle }: { open: boo
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Dodaj wiele do: {listTitle}</DialogTitle>
+                    <DialogTitle>{t('settings.addMultipleTitle', { title: listTitle })}</DialogTitle>
                     <DialogDescription>
-                        Wklej lub wpisz listę elementów, każdy w nowej linii.
+                        {t('settings.addMultipleDesc')}
                     </DialogDescription>
                 </DialogHeader>
                 <Textarea
@@ -79,8 +81,8 @@ const AddMultipleDialog = ({ open, onOpenChange, onAdd, listTitle }: { open: boo
                     className="h-48"
                 />
                 <DialogFooter>
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>Anuluj</Button>
-                    <Button onClick={handleAdd}>Dodaj z listy</Button>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Button>
+                    <Button onClick={handleAdd}>{t('settings.addFromList')}</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -91,6 +93,7 @@ const AddMultipleDialog = ({ open, onOpenChange, onAdd, listTitle }: { open: boo
 const ListManager = ({ name, title, fields, append, remove, control }: { name: FieldPath<z.infer<typeof formSchema>>; title: string; fields: Record<"id", string>[]; append: (obj: { value: string } | { value: string }[]) => void; remove: (index: number) => void; control: Control<z.infer<typeof formSchema>> }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isAddMultipleOpen, setIsAddMultipleOpen] = useState(false);
+    const { t } = useLanguage();
     const watchedValues = useWatch({ control, name }) as { value: string }[] | undefined;
 
     const filteredFields = useMemo(() => {
@@ -114,13 +117,13 @@ const ListManager = ({ name, title, fields, append, remove, control }: { name: F
                 <div className="space-y-2 pt-2">
                     <div className="flex justify-between items-center mb-4 gap-2">
                         <Input
-                            placeholder="Szukaj..."
+                            placeholder={t('settings.searchItems')}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="h-9"
                         />
                         <Button type="button" variant="outline" size="sm" onClick={() => setIsAddMultipleOpen(true)} className="shrink-0">
-                            <PlusCircle className="mr-2 h-4 w-4" /> Dodaj
+                            <PlusCircle className="mr-2 h-4 w-4" /> {t('settings.addItems')}
                         </Button>
                     </div>
                     {filteredFields.map((field) => (
@@ -139,7 +142,7 @@ const ListManager = ({ name, title, fields, append, remove, control }: { name: F
                             )}
                         />
                     ))}
-                    {filteredFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Brak pozycji pasujących do wyszukiwania.</p>}
+                    {filteredFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">{t('settings.noItemsFound')}</p>}
                     <AddMultipleDialog
                         open={isAddMultipleOpen}
                         onOpenChange={setIsAddMultipleOpen}
@@ -155,6 +158,7 @@ const ListManager = ({ name, title, fields, append, remove, control }: { name: F
 const CoordinatorManager = ({ form, fields, append, remove, departments }: { form: ReturnType<typeof useForm<z.infer<typeof formSchema>>>; fields: Record<"id", string>[], append: UseFieldArrayAppend<z.infer<typeof formSchema>, "coordinators">, remove: UseFieldArrayRemove, departments: string[] }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [visibleFields, setVisibleFields] = useState<Record<string, { name: boolean, pass: boolean }>>({});
+    const { t } = useLanguage();
     const watchedCoordinators = useWatch({ control: form.control, name: 'coordinators' });
 
     const toggleVisibility = (id: string, field: 'name' | 'pass', _originalIndex: number) => {
@@ -181,16 +185,16 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
     return (
         <div className="space-y-4 rounded-md border p-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-                <h3 className="font-medium">Koordynatorzy</h3>
+                <h3 className="font-medium">{t('settings.coordinators')}</h3>
                 <div className="flex w-full sm:w-auto items-center gap-2 flex-wrap">
                     <Input
-                        placeholder="Szukaj koordynatora..."
+                        placeholder={t('settings.searchCoordinator')}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full sm:w-64 h-9"
                     />
                     <Button type="button" variant="outline" size="sm" onClick={() => append({ uid: `coord-${Date.now()}`, name: '', password: '', isAdmin: false, isDriver: false, isRekrutacja: false, departments: [], visibilityMode: 'department' })}>
-                        <PlusCircle className="mr-2 h-4 w-4" /> Dodaj koordynatora
+                        <PlusCircle className="mr-2 h-4 w-4" /> {t('settings.addCoordinator')}
                     </Button>
                 </div>
             </div>
@@ -200,8 +204,8 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                     <AccordionItem value={field.id} key={field.id} className="border rounded-md px-4 animate-fade-in-up" style={{ animationDelay: `${field.originalIndex * 50}ms`, animationFillMode: 'backwards' }}>
                         <AccordionTrigger>
                             <div className="flex items-center justify-between w-full pr-4">
-                                <span className="font-semibold">{form.getValues(`coordinators.${field.originalIndex}.name`) || `Nowy koordynator`}</span>
-                                <span className="text-sm text-muted-foreground">{form.getValues(`coordinators.${field.originalIndex}.isAdmin`) ? 'Admin' : 'Koordynator'}</span>
+                                <span className="font-semibold">{form.getValues(`coordinators.${field.originalIndex}.name`) || t('settings.newCoordinator')}</span>
+                                <span className="text-sm text-muted-foreground">{form.getValues(`coordinators.${field.originalIndex}.isAdmin`) ? t('common.admin') : t('common.coordinator')}</span>
                             </div>
                         </AccordionTrigger>
                         <AccordionContent>
@@ -211,7 +215,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                     name={`coordinators.${field.originalIndex}.name`}
                                     render={({ field: nameField }) => (
                                         <FormItem>
-                                            <FormLabel>Imię (Login)</FormLabel>
+                                            <FormLabel>{t('settings.coordinatorLoginName')}</FormLabel>
                                             <div className="relative">
                                                 <FormControl>
                                                     <Input {...nameField} />
@@ -226,13 +230,13 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                     name={`coordinators.${field.originalIndex}.password`}
                                     render={({ field: passField }) => (
                                         <FormItem>
-                                            <FormLabel>Hasło</FormLabel>
+                                            <FormLabel>{t('settings.coordinatorPasswordLabel')}</FormLabel>
                                             <div className="relative">
                                                 <FormControl>
                                                     <Input
                                                         type={visibleFields[field.id]?.pass ? 'text' : 'password'}
                                                         {...passField}
-                                                        placeholder="Kliknij oko, aby wyświetlić lub zmienić"
+                                                        placeholder={t('settings.passwordEyeHint')}
                                                     />
                                                 </FormControl>
                                                 <Button
@@ -255,7 +259,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                     name={`coordinators.${field.originalIndex}.departments`}
                                     render={({ field: parentField }) => (
                                         <FormItem>
-                                            <FormLabel>Zakłady</FormLabel>
+                                            <FormLabel>{t('settings.coordinatorDepts')}</FormLabel>
                                             <div className="space-y-2">
                                                 {(parentField.value || []).map((_dept, deptIndex) => (
                                                     <div key={deptIndex} className="flex items-center gap-2">
@@ -267,7 +271,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                                                     <Select onValueChange={deptField.onChange} value={deptField.value}>
                                                                         <FormControl>
                                                                             <SelectTrigger>
-                                                                                <SelectValue placeholder="Wybierz zakład" />
+                                                                                <SelectValue placeholder={t('settings.selectDept')} />
                                                                             </SelectTrigger>
                                                                         </FormControl>
                                                                         <SelectContent>
@@ -302,7 +306,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                                     }}
                                                 >
                                                     <PlusCircle className="h-4 w-4 mr-2" />
-                                                    Dodaj zakład
+                                                    {t('settings.addDept')}
                                                 </Button>
                                             </div>
                                             <FormMessage />
@@ -315,12 +319,12 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                     name={`coordinators.${field.originalIndex}.visibilityMode`}
                                     render={({ field: modeField }) => (
                                         <FormItem>
-                                            <FormLabel>Tryb widoczności</FormLabel>
+                                            <FormLabel>{t('settings.visibilityModeLabel')}</FormLabel>
                                             <Select onValueChange={modeField.onChange} value={modeField.value || 'department'}>
-                                                <FormControl><SelectTrigger><SelectValue placeholder="Wybierz tryb" /></SelectTrigger></FormControl>
+                                                <FormControl><SelectTrigger><SelectValue placeholder={t('settings.selectMode')} /></SelectTrigger></FormControl>
                                                 <SelectContent>
-                                                    <SelectItem value="department">Globalny (wg zakładów)</SelectItem>
-                                                    <SelectItem value="strict">Ścisły (wg przypisania)</SelectItem>
+                                                    <SelectItem value="department">{t('settings.visibilityGlobal')}</SelectItem>
+                                                    <SelectItem value="strict">{t('settings.visibilityStrict')}</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                             <FormMessage />
@@ -339,7 +343,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                                     <Switch checked={adminField.value} onCheckedChange={adminField.onChange} />
                                                 </FormControl>
                                                 <FormLabel className="font-normal">
-                                                    Uprawnienia administratora
+                                                    {t('settings.adminPerms')}
                                                 </FormLabel>
                                                 <FormMessage />
                                             </FormItem>
@@ -359,7 +363,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                                 <Switch checked={driverField.value || false} onCheckedChange={driverField.onChange} />
                                             </FormControl>
                                             <FormLabel className="font-normal">
-                                                Uprawnienia kierowcy (dostęp do Odbioru i BOK)
+                                                {t('settings.driverPerms')}
                                             </FormLabel>
                                             <FormMessage />
                                         </FormItem>
@@ -374,7 +378,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                                 <Switch checked={rekrField.value || false} onCheckedChange={rekrField.onChange} />
                                             </FormControl>
                                             <FormLabel className="font-normal">
-                                                Uprawnienia rekrutacji (dostęp do Odbioru i BOK)
+                                                {t('settings.rekrutacjaPerms')}
                                             </FormLabel>
                                             <FormMessage />
                                         </FormItem>
@@ -383,7 +387,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                                 <div className="flex justify-end pt-4 mt-4 border-t">
                                     <Button type="submit" disabled={!form.formState.isDirty || form.formState.isSubmitting}>
                                         {form.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                        Zapisz zmiany
+                                        {t('settings.saveChanges')}
                                     </Button>
                                 </div>
                             </div>
@@ -391,7 +395,7 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                     </AccordionItem>
                 ))}
             </Accordion>
-            {filteredFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Brak koordynatorów pasujących do wyszukiwania.</p>}
+            {filteredFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">{t('settings.noCoordinatorsFound')}</p>}
         </div>
     );
 };
@@ -402,6 +406,7 @@ const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove,
     const [filterCoordinatorId, setFilterCoordinatorId] = useState('all');
     const [filterLocality, setFilterLocality] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
+    const { t } = useLanguage();
 
     const coordinatorMap = useMemo(() => new Map(coordinators.map(c => [c.uid, c.name])), [coordinators]);
     const sortedCoordinators = useMemo(() => [...coordinators].sort((a, b) => a.name.localeCompare(b.name)), [coordinators]);
@@ -457,34 +462,34 @@ const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove,
     return (
         <div className="space-y-4 rounded-md border p-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-                <h3 className="font-medium">Adresy i pokoje</h3>
+                <h3 className="font-medium">{t('settings.addressesAndRooms')}</h3>
                 <div className="flex w-full sm:w-auto items-center gap-2 flex-wrap">
                     <Input
-                        placeholder="Szukaj adresu..."
+                        placeholder={t('settings.searchAddress')}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="h-9 w-full sm:w-48"
                     />
                     <Select value={filterLocality} onValueChange={setFilterLocality}>
                         <SelectTrigger className="w-full sm:w-[180px] h-9">
-                            <SelectValue placeholder="Filtruj wg miejscowości" />
+                            <SelectValue placeholder={t('settings.filterByLocality')} />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="all">Wszystkie miejscowości</SelectItem>
+                            <SelectItem value="all">{t('settings.allLocalities')}</SelectItem>
                             {sortedLocalities.filter(Boolean).map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
                         </SelectContent>
                     </Select>
                     <Select value={filterCoordinatorId} onValueChange={setFilterCoordinatorId}>
                         <SelectTrigger className="w-full sm:w-[200px] h-9">
-                            <SelectValue placeholder="Filtruj wg koordynatora" />
+                            <SelectValue placeholder={t('settings.filterByCoordinator')} />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
+                            <SelectItem value="all">{t('settings.allCoordinators')}</SelectItem>
                             {sortedCoordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
                     <Button type="button" variant="outline" size="sm" onClick={() => onAdd(filterCoordinatorId)}>
-                        <PlusCircle className="mr-2 h-4 w-4" /> Dodaj
+                        <PlusCircle className="mr-2 h-4 w-4" /> {t('common.add')}
                     </Button>
                 </div>
             </div>
@@ -525,7 +530,7 @@ const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove,
                     })}
                 </div>
             ) : (
-                <p className="text-sm text-muted-foreground text-center py-2">Brak adresów pasujących do kryteriów.</p>
+                <p className="text-sm text-muted-foreground text-center py-2">{t('settings.noAddressesFound')}</p>
             )}
         </div>
     );
@@ -534,6 +539,7 @@ const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove,
 const DataMigration = () => {
     const { handleMigrateFullNames } = useMainLayout();
     const [isLoading, setIsLoading] = useState(false);
+    const { t } = useLanguage();
 
     const onMigrate = async () => {
         setIsLoading(true);
@@ -544,34 +550,34 @@ const DataMigration = () => {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Migracja Danych</CardTitle>
-                <CardDescription>Jednorazowe akcje do porządkowania danych w arkuszach.</CardDescription>
+                <CardTitle>{t('settings.dataMigration')}</CardTitle>
+                <CardDescription>{t('settings.dataMigrationDesc')}</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="flex items-center justify-between rounded-lg border p-4">
                     <div>
-                        <h3 className="font-medium">Migracja Imienia i Nazwiska</h3>
+                        <h3 className="font-medium">{t('settings.migrateNamesTitle')}</h3>
                         <p className="text-sm text-muted-foreground">
-                            Przeszukuje arkusze i dzieli pole `fullName` na `firstName` i `lastName` dla starych rekordów.
+                            {t('settings.migrateNamesDesc')}
                         </p>
                     </div>
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
                             <Button variant="outline" disabled={isLoading}>
                                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <DatabaseZap className="mr-2 h-4 w-4" />}
-                                Uruchom migrację
+                                {t('settings.runMigration')}
                             </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                             <AlertDialogHeader>
-                                <AlertDialogTitle>Czy na pewno chcesz uruchomić migrację?</AlertDialogTitle>
+                                <AlertDialogTitle>{t('settings.migrationConfirmTitle')}</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                    Ta operacja przeanalizuje wszystkie rekordy pracowników i mieszkańców i uzupełni brakujące pola `firstName` i `lastName` na podstawie istniejącego pola `fullName`. Operacja jest bezpieczna, ale może potrwać chwilę.
+                                    {t('settings.migrationConfirmDesc')}
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                                <AlertDialogCancel>Anuluj</AlertDialogCancel>
-                                <AlertDialogAction onClick={onMigrate}>Uruchom</AlertDialogAction>
+                                <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                                <AlertDialogAction onClick={onMigrate}>{t('settings.runMigrationConfirm')}</AlertDialogAction>
                             </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>
@@ -595,6 +601,7 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
     const [deleteDepartment, setDeleteDepartment] = useState('');
 
     const { toast } = useToast();
+    const { t } = useLanguage();
     const { handleBulkDeleteEmployeesByDepartment, handleBulkDeleteEmployees, handleBulkDeleteEmployeesByCoordinator, refreshData } = useMainLayout();
 
     const sortedCoordinators = useMemo(() => {
@@ -609,7 +616,7 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
 
     const handleBulkDelete = async (status: 'active' | 'dismissed') => {
         if (!currentUser || !currentUser.isAdmin) {
-            toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administratorzy mogą wykonać tę akcję." });
+            toast({ variant: "destructive", title: t('settings.noPerms'), description: t('settings.noPermsDesc') });
             return;
         }
 
@@ -624,7 +631,7 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
 
     const handleCoordinatorDelete = async () => {
         if (!deleteCoordinatorId) {
-            toast({ variant: 'destructive', title: 'Błąd', description: 'Wybierz koordynatora.' });
+            toast({ variant: 'destructive', title: t('common.error'), description: t('settings.noCoordinator') });
             return;
         }
         setIsDeletingByCoord(true);
@@ -637,7 +644,7 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
 
     const handleDepartmentDelete = async () => {
         if (!deleteDepartment) {
-            toast({ variant: 'destructive', title: 'Błąd', description: 'Wybierz zakład.' });
+            toast({ variant: 'destructive', title: t('common.error'), description: t('settings.noDept') });
             return;
         }
         setIsDeletingByDept(true);
@@ -650,20 +657,20 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
 
     const handleTransfer = async () => {
         if (!transferFrom || !transferTo) {
-            toast({ variant: 'destructive', title: 'Błąd', description: 'Wybierz obu koordynatorów.' });
+            toast({ variant: 'destructive', title: t('common.error'), description: t('settings.noCoordinator') });
             return;
         }
         if (transferFrom === transferTo) {
-            toast({ variant: 'destructive', title: 'Błąd', description: 'Nie można przenieść pracowników do tego samego koordynatora.' });
+            toast({ variant: 'destructive', title: t('common.error'), description: t('settings.cannotTransferSame') });
             return;
         }
         setIsTransferring(true);
         try {
             await transferEmployees(transferFrom, transferTo);
-            toast({ title: "Sukces", description: "Pracownicy zostali przeniesieni." });
+            toast({ title: t('common.success'), description: t('settings.transferSuccess') });
             refreshData(false); // fire-and-forget — lista zaktualizuje się po odświeżeniu z serwera
         } catch (e) {
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się przenieść pracowników." });
+            toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('settings.transferFailed') });
         } finally {
             setIsTransferring(false);
         }
@@ -672,37 +679,37 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Akcje masowe</CardTitle>
-                <CardDescription>Zarządzaj danymi pracowników hurtowo.</CardDescription>
+                <CardTitle>{t('settings.bulkActions')}</CardTitle>
+                <CardDescription>{t('settings.bulkActionsDesc')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="flex flex-col sm:flex-row items-start justify-between rounded-lg border border-destructive/50 bg-destructive/10 p-4 gap-4">
                     <div className="flex-1">
-                        <h3 className="font-medium text-destructive">Masowe usuwanie</h3>
-                        <p className="text-sm text-destructive/80">Te akcje są nieodwracalne.</p>
+                        <h3 className="font-medium text-destructive">{t('settings.bulkDelete')}</h3>
+                        <p className="text-sm text-destructive/80">{t('settings.bulkDeleteIrreversible')}</p>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
                                 <Button variant="destructive" disabled={isDeletingActive} className="w-full">
                                     {isDeletingActive ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                                    Usuń wszystkich aktywnych
+                                    {t('settings.deleteAllActive')}
                                 </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                                 <AlertDialogHeader>
-                                    <AlertDialogTitle>Czy na pewno chcesz usunąć WSZYSTKICH aktywnych pracowników?</AlertDialogTitle>
-                                    <AlertDialogDescription>Ta operacja jest nieodwracalna. Wszyscy pracownicy ze statusem &quot;aktywny&quot; zostaną trwale usunięci.</AlertDialogDescription>
+                                    <AlertDialogTitle>{t('settings.confirmDeleteAllActive')}</AlertDialogTitle>
+                                    <AlertDialogDescription>{t('settings.confirmDeleteAllActiveDesc')}</AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                    <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                                    <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                                     <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={async () => {
                                         try {
                                             await handleBulkDelete('active');
                                         } catch (e) {
                                             console.error('Bulk delete failed:', e);
                                         }
-                                    }}>Potwierdź i usuń</AlertDialogAction>
+                                    }}>{t('settings.confirmAndDelete')}</AlertDialogAction>
                                 </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
@@ -710,23 +717,23 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
                             <AlertDialogTrigger asChild>
                                 <Button variant="destructive" disabled={isDeletingDismissed} className="w-full">
                                     {isDeletingDismissed ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                                    Usuń wszystkich zwolnionych
+                                    {t('settings.deleteAllDismissed')}
                                 </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                                 <AlertDialogHeader>
-                                    <AlertDialogTitle>Czy na pewno chcesz usunąć WSZYSTKICH zwolnionych pracowników?</AlertDialogTitle>
-                                    <AlertDialogDescription>Ta operacja jest nieodwracalna. Wszyscy pracownicy ze statusem &quot;zwolniony&quot; zostaną trwale usunięci.</AlertDialogDescription>
+                                    <AlertDialogTitle>{t('settings.confirmDeleteAllDismissed')}</AlertDialogTitle>
+                                    <AlertDialogDescription>{t('settings.confirmDeleteAllDismissedDesc')}</AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                    <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                                    <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                                     <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={async () => {
                                         try {
                                             await handleBulkDelete('dismissed');
                                         } catch (e) {
                                             console.error('Bulk delete failed:', e);
                                         }
-                                    }}>Potwierdź i usuń</AlertDialogAction>
+                                    }}>{t('settings.confirmAndDelete')}</AlertDialogAction>
                                 </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
@@ -736,23 +743,23 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
                 {currentUser.isAdmin && rawSettings?.coordinators && (
                     <div className="rounded-lg border p-4 space-y-4">
                         <div className="flex-1">
-                            <h3 className="font-medium">Przenoszenie pracowników</h3>
-                            <p className="text-sm text-muted-foreground">Przenieś wszystkich pracowników od jednego koordynatora do drugiego.</p>
+                            <h3 className="font-medium">{t('settings.transferEmployeesTitle')}</h3>
+                            <p className="text-sm text-muted-foreground">{t('settings.transferEmployeesDesc')}</p>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
                             <div className="space-y-2">
-                                <Label>Od koordynatora</Label>
+                                <Label>{t('settings.fromCoordinator')}</Label>
                                 <Select value={transferFrom} onValueChange={setTransferFrom}>
-                                    <SelectTrigger><SelectValue placeholder="Wybierz koordynatora" /></SelectTrigger>
+                                    <SelectTrigger><SelectValue placeholder={t('settings.selectCoordinator')} /></SelectTrigger>
                                     <SelectContent>
                                         {sortedCoordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label>Do koordynatora</Label>
+                                <Label>{t('settings.toCoordinator')}</Label>
                                 <Select value={transferTo} onValueChange={setTransferTo}>
-                                    <SelectTrigger><SelectValue placeholder="Wybierz koordynatora" /></SelectTrigger>
+                                    <SelectTrigger><SelectValue placeholder={t('settings.selectCoordinator')} /></SelectTrigger>
                                     <SelectContent>
                                         {sortedCoordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                                     </SelectContent>
@@ -760,7 +767,7 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
                             </div>
                             <Button onClick={handleTransfer} disabled={isTransferring}>
                                 {isTransferring ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                Przenieś
+                                {t('settings.transfer')}
                             </Button>
                         </div>
                     </div>
@@ -768,14 +775,14 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
                 {currentUser.isAdmin && rawSettings?.coordinators && (
                     <div className="rounded-lg border p-4 space-y-4 border-destructive/50 bg-destructive/10">
                         <div className="flex-1">
-                            <h3 className="font-medium text-destructive">Usuwanie pracowników koordynatora</h3>
-                            <p className="text-sm text-destructive/80">Trwale usuwa wszystkich pracowników (aktywnych i zwolnionych) przypisanych do wybranego koordynatora. Ta akcja jest nieodwracalna.</p>
+                            <h3 className="font-medium text-destructive">{t('settings.deleteByCoordinatorTitle')}</h3>
+                            <p className="text-sm text-destructive/80">{t('settings.deleteByCoordinatorDesc')}</p>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
                             <div className="space-y-2">
-                                <Label>Koordynator</Label>
+                                <Label>{t('settings.coordinator')}</Label>
                                 <Select value={deleteCoordinatorId} onValueChange={setDeleteCoordinatorId}>
-                                    <SelectTrigger><SelectValue placeholder="Wybierz koordynatora" /></SelectTrigger>
+                                    <SelectTrigger><SelectValue placeholder={t('settings.selectCoordinator')} /></SelectTrigger>
                                     <SelectContent>
                                         {sortedCoordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                                     </SelectContent>
@@ -785,25 +792,25 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
                                 <AlertDialogTrigger asChild>
                                     <Button variant="destructive" disabled={isDeletingByCoord || !deleteCoordinatorId}>
                                         {isDeletingByCoord ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                                        Usuń pracowników
+                                        {t('settings.deleteEmployees')}
                                     </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                     <AlertDialogHeader>
-                                        <AlertDialogTitle>Czy na pewno chcesz usunąć WSZYSTKICH pracowników tego koordynatora?</AlertDialogTitle>
+                                        <AlertDialogTitle>{t('settings.confirmDeleteByCoordinator')}</AlertDialogTitle>
                                         <AlertDialogDescription>
-                                            Ta operacja jest nieodwracalna. Wszyscy pracownicy przypisani do <span className="font-bold">{sortedCoordinators.find(c => c.uid === deleteCoordinatorId)?.name}</span> zostaną trwale usunięci.
+                                            {t('settings.confirmDeleteByCoordinatorDesc', { name: sortedCoordinators.find(c => c.uid === deleteCoordinatorId)?.name ?? '' })}
                                         </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
-                                        <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                                        <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                                         <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={async () => {
                                             try {
                                                 await handleCoordinatorDelete();
                                             } catch (e) {
                                                 console.error('Coordinator delete failed:', e);
                                             }
-                                        }}>Potwierdź i usuń</AlertDialogAction>
+                                        }}>{t('settings.confirmAndDelete')}</AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
                             </AlertDialog>
@@ -813,14 +820,14 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
                 {currentUser.isAdmin && rawSettings?.departments && (
                     <div className="rounded-lg border p-4 space-y-4 border-destructive/50 bg-destructive/10">
                         <div className="flex-1">
-                            <h3 className="font-medium text-destructive">Usuwanie pracowników wg zakładu</h3>
-                            <p className="text-sm text-destructive/80">Trwale usuwa wszystkich pracowników (aktywnych i zwolnionych) przypisanych do wybranego zakładu. Ta akcja jest nieodwracalna.</p>
+                            <h3 className="font-medium text-destructive">{t('settings.deleteByDeptTitle')}</h3>
+                            <p className="text-sm text-destructive/80">{t('settings.deleteByDeptDesc')}</p>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
                             <div className="space-y-2">
-                                <Label>Zakład</Label>
+                                <Label>{t('settings.department')}</Label>
                                 <Select value={deleteDepartment} onValueChange={setDeleteDepartment}>
-                                    <SelectTrigger><SelectValue placeholder="Wybierz zakład" /></SelectTrigger>
+                                    <SelectTrigger><SelectValue placeholder={t('settings.selectDepartment')} /></SelectTrigger>
                                     <SelectContent>
                                         {sortedDepartments.filter(Boolean).map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
                                     </SelectContent>
@@ -830,25 +837,25 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
                                 <AlertDialogTrigger asChild>
                                     <Button variant="destructive" disabled={isDeletingByDept || !deleteDepartment}>
                                         {isDeletingByDept ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                                        Usuń pracowników
+                                        {t('settings.deleteEmployees')}
                                     </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                     <AlertDialogHeader>
-                                        <AlertDialogTitle>Czy na pewno chcesz usunąć WSZYSTKICH pracowników z tego zakładu?</AlertDialogTitle>
+                                        <AlertDialogTitle>{t('settings.confirmDeleteByDept')}</AlertDialogTitle>
                                         <AlertDialogDescription>
-                                            Ta operacja jest nieodwracalna. Wszyscy pracownicy przypisani do zakładu <span className="font-bold">{deleteDepartment}</span> zostaną trwale usunięci.
+                                            {t('settings.confirmDeleteByDeptDesc', { name: deleteDepartment })}
                                         </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
-                                        <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                                        <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                                         <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={async () => {
                                             try {
                                                 await handleDepartmentDelete();
                                             } catch (e) {
                                                 console.error('Department delete failed:', e);
                                             }
-                                        }}>Potwierdź i usuń</AlertDialogAction>
+                                        }}>{t('settings.confirmAndDelete')}</AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
                             </AlertDialog>
@@ -867,6 +874,7 @@ const AccommodationReportGenerator = ({ rawSettings, currentUser }: { rawSetting
     const [coordinatorId, setCoordinatorId] = useState<string>(currentUser.isAdmin ? 'all' : currentUser.uid);
     const [includeAddressHistory, setIncludeAddressHistory] = useState(false);
     const { toast } = useToast();
+    const { t } = useLanguage();
 
     const sortedCoordinators = useMemo(() => {
         if (!rawSettings?.coordinators) return [];
@@ -885,12 +893,12 @@ const AccommodationReportGenerator = ({ rawSettings, currentUser }: { rawSetting
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
-                toast({ title: "Sukces", description: "Raport zakwaterowania został wygenerowany." });
+                toast({ title: t('common.success'), description: t('settings.reportAccommodationSuccess') });
             } else {
-                throw new Error(result.message || 'Nie udało się wygenerować raportu.');
+                throw new Error(result.message || t('settings.reportFailedGeneric'));
             }
         } catch (e) {
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Wystąpił nieznany błąd." });
+            toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('settings.unknownError') });
         } finally {
             setIsLoading(false);
         }
@@ -902,14 +910,14 @@ const AccommodationReportGenerator = ({ rawSettings, currentUser }: { rawSetting
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Raport zakwaterowania</CardTitle>
-                <CardDescription>Generuje raport XLSX pokazujący stan zakwaterowania w wybranym okresie.</CardDescription>
+                <CardTitle>{t('settings.accommodationReport')}</CardTitle>
+                <CardDescription>{t('settings.accommodationReportDesc')}</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4 items-end">
                         <div className="space-y-2">
-                            <Label>Rok</Label>
+                            <Label>{t('settings.year')}</Label>
                             <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
@@ -918,7 +926,7 @@ const AccommodationReportGenerator = ({ rawSettings, currentUser }: { rawSetting
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label>Miesiąc</Label>
+                            <Label>{t('settings.month')}</Label>
                             <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
@@ -928,11 +936,11 @@ const AccommodationReportGenerator = ({ rawSettings, currentUser }: { rawSetting
                         </div>
                         {currentUser.isAdmin && (
                             <div className="space-y-2">
-                                <Label>Koordynator</Label>
+                                <Label>{t('settings.coordinator')}</Label>
                                 <Select value={coordinatorId} onValueChange={setCoordinatorId}>
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
+                                        <SelectItem value="all">{t('settings.allCoordinatorsOption')}</SelectItem>
                                         {sortedCoordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
@@ -940,12 +948,12 @@ const AccommodationReportGenerator = ({ rawSettings, currentUser }: { rawSetting
                         )}
                         <Button onClick={handleGenerate} disabled={isLoading} className="w-full">
                             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                            <span className="ml-2">Generuj raport</span>
+                            <span className="ml-2">{t('settings.generateReportBtn')}</span>
                         </Button>
                     </div>
                     <div className="flex items-center space-x-2 pt-4">
                         <Switch id="include-history" checked={includeAddressHistory} onCheckedChange={setIncludeAddressHistory} />
-                        <Label htmlFor="include-history">Uwzględnij historię zmian adresów w raporcie</Label>
+                        <Label htmlFor="include-history">{t('settings.includeHistory')}</Label>
                     </div>
                 </div>
             </CardContent>
@@ -959,6 +967,7 @@ const NzReportsGenerator = ({ rawSettings, currentUser }: { rawSettings: Setting
     const [month, setMonth] = useState(new Date().getMonth() + 1);
     const [coordinatorId, setCoordinatorId] = useState<string>(currentUser.isAdmin ? 'all' : currentUser.uid);
     const { toast } = useToast();
+    const { t } = useLanguage();
 
     const sortedCoordinators = useMemo(() => {
         if (!rawSettings?.coordinators) return [];
@@ -977,12 +986,12 @@ const NzReportsGenerator = ({ rawSettings, currentUser }: { rawSettings: Setting
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
-                toast({ title: "Sukces", description: "Raport kosztów (NZ) został wygenerowany." });
+                toast({ title: t('common.success'), description: t('settings.reportNzSuccess') });
             } else {
-                throw new Error(result.message || 'Nie udało się wygenerować raportu.');
+                throw new Error(result.message || t('settings.reportFailedGeneric'));
             }
         } catch (e) {
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Wystąpił nieznany błąd." });
+            toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('settings.unknownError') });
         } finally {
             setIsLoading(false);
         }
@@ -994,13 +1003,13 @@ const NzReportsGenerator = ({ rawSettings, currentUser }: { rawSettings: Setting
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Generowanie raportu kosztów (NZ)</CardTitle>
-                <CardDescription>Wygeneruj raport przychodów od mieszkańców (NZ) w formacie XLSX.</CardDescription>
+                <CardTitle>{t('settings.nzCostsReport')}</CardTitle>
+                <CardDescription>{t('settings.nzCostsReportDesc')}</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4 items-end">
                     <div className="space-y-2">
-                        <Label>Rok</Label>
+                        <Label>{t('settings.year')}</Label>
                         <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
@@ -1009,7 +1018,7 @@ const NzReportsGenerator = ({ rawSettings, currentUser }: { rawSettings: Setting
                         </Select>
                     </div>
                     <div className="space-y-2">
-                        <Label>Miesiąc</Label>
+                        <Label>{t('settings.month')}</Label>
                         <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
@@ -1019,11 +1028,11 @@ const NzReportsGenerator = ({ rawSettings, currentUser }: { rawSettings: Setting
                     </div>
                     {currentUser.isAdmin && (
                         <div className="space-y-2">
-                            <Label>Koordynator</Label>
+                            <Label>{t('settings.coordinator')}</Label>
                             <Select value={coordinatorId} onValueChange={setCoordinatorId}>
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
+                                    <SelectItem value="all">{t('settings.allCoordinatorsOption')}</SelectItem>
                                     {sortedCoordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
@@ -1031,7 +1040,7 @@ const NzReportsGenerator = ({ rawSettings, currentUser }: { rawSettings: Setting
                     )}
                     <Button onClick={handleGenerate} disabled={isLoading} className="w-full">
                         {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                        <span className="ml-2">Generuj raport (NZ)</span>
+                        <span className="ml-2">{t('settings.generateNzReport')}</span>
                     </Button>
                 </div>
             </CardContent>
@@ -1045,6 +1054,7 @@ const DeductionsReportGenerator = ({ rawSettings, currentUser }: { rawSettings: 
     const [month, setMonth] = useState(new Date().getMonth() + 1);
     const [coordinatorId, setCoordinatorId] = useState<string>(currentUser.isAdmin ? 'all' : currentUser.uid);
     const { toast } = useToast();
+    const { t } = useLanguage();
 
     const sortedCoordinators = useMemo(() => {
         if (!rawSettings?.coordinators) return [];
@@ -1063,12 +1073,12 @@ const DeductionsReportGenerator = ({ rawSettings, currentUser }: { rawSettings: 
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
-                toast({ title: "Sukces", description: "Raport potrąceń został wygenerowany." });
+                toast({ title: t('common.success'), description: t('settings.reportDeductionsSuccess') });
             } else {
-                throw new Error(result.message || 'Nie udało się wygenerować raportu.');
+                throw new Error(result.message || t('settings.reportFailedGeneric'));
             }
         } catch (e) {
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Wystąpił nieznany błąd." });
+            toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('settings.unknownError') });
         } finally {
             setIsLoading(false);
         }
@@ -1080,13 +1090,13 @@ const DeductionsReportGenerator = ({ rawSettings, currentUser }: { rawSettings: 
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Generowanie raportu potrąceń</CardTitle>
-                <CardDescription>Wygeneruj zbiorcze zestawienie potrąceń dla pracowników w formacie XLSX.</CardDescription>
+                <CardTitle>{t('settings.deductionsReport')}</CardTitle>
+                <CardDescription>{t('settings.deductionsReportDesc')}</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4 items-end">
                     <div className="space-y-2">
-                        <Label>Rok</Label>
+                        <Label>{t('settings.year')}</Label>
                         <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
@@ -1095,7 +1105,7 @@ const DeductionsReportGenerator = ({ rawSettings, currentUser }: { rawSettings: 
                         </Select>
                     </div>
                     <div className="space-y-2">
-                        <Label>Miesiąc potrąceń (według daty wpisu)</Label>
+                        <Label>{t('settings.deductionMonth')}</Label>
                         <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
@@ -1105,11 +1115,11 @@ const DeductionsReportGenerator = ({ rawSettings, currentUser }: { rawSettings: 
                     </div>
                     {currentUser.isAdmin && (
                         <div className="space-y-2">
-                            <Label>Koordynator</Label>
+                            <Label>{t('settings.coordinator')}</Label>
                             <Select value={coordinatorId} onValueChange={setCoordinatorId}>
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
+                                    <SelectItem value="all">{t('settings.allCoordinatorsOption')}</SelectItem>
                                     {sortedCoordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
@@ -1117,11 +1127,11 @@ const DeductionsReportGenerator = ({ rawSettings, currentUser }: { rawSettings: 
                     )}
                     <Button onClick={handleGenerate} disabled={isLoading} className="w-full">
                         {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                        <span className="ml-2">Generuj raport</span>
+                        <span className="ml-2">{t('settings.generateReportBtn')}</span>
                     </Button>
                 </div>
                 <p className="text-xs text-muted-foreground mt-4">
-                    Raport uwzględnia potrącenia dla wybranego miesiąca. Ujmuje również stare wpisy bez sprecyzowanej daty na karcie powiadomień.
+                    {t('settings.deductionsReportNote')}
                 </p>
             </CardContent>
         </Card>
@@ -1143,30 +1153,31 @@ const ExcelImportGuideDialog = ({
     requiredFields: string[];
     optionalFields: string[];
 }) => {
+    const { t } = useLanguage();
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-xl">
                 <DialogHeader>
                     <DialogTitle>{title}</DialogTitle>
                     <DialogDescription>
-                        Upewnij się, że Twój plik Excel ma poprawną strukturę przed importem. Nazwy kolumn nie uwzględniają wielkości liter.
+                        {t('settings.importGuideDesc')}
                     </DialogDescription>
                 </DialogHeader>
                 <ScrollArea className="max-h-[60vh] -mr-6 pr-6">
                     <div className="space-y-4 p-1">
                         <div>
-                            <h4 className="font-semibold mb-2">Kolumny Wymagane</h4>
+                            <h4 className="font-semibold mb-2">{t('settings.requiredColumns')}</h4>
                             <div className="flex flex-wrap gap-2">
                                 {requiredFields.map(field => (
                                     <Badge key={field} variant="destructive">{field}</Badge>
                                 ))}
                             </div>
                             <p className="text-xs text-muted-foreground mt-2">
-                                Te kolumny muszą istnieć i być wypełnione dla każdego rekordu.
+                                {t('settings.requiredColumnsNote')}
                             </p>
                         </div>
                         <div>
-                            <h4 className="font-semibold mb-2">Kolumny Opcjonalne</h4>
+                            <h4 className="font-semibold mb-2">{t('settings.optionalColumns')}</h4>
                             <div className="flex flex-wrap gap-2">
                                 {optionalFields.map(field => (
                                     <Badge key={field} variant="secondary">{field}</Badge>
@@ -1176,8 +1187,8 @@ const ExcelImportGuideDialog = ({
                     </div>
                 </ScrollArea>
                 <DialogFooter>
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>Anuluj</Button>
-                    <Button onClick={onContinue}>Zrozumiałem, kontynuuj</Button>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Button>
+                    <Button onClick={onContinue}>{t('settings.continueImport')}</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -1194,6 +1205,7 @@ const ExcelImport = ({ onImport, title, description, requiredFields, optionalFie
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isGuideOpen, setIsGuideOpen] = useState(false);
+    const { t } = useLanguage();
 
     const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -1239,13 +1251,13 @@ const ExcelImport = ({ onImport, title, description, requiredFields, optionalFie
                     ) : (
                         <Upload className="mr-2 h-4 w-4" />
                     )}
-                    Wybierz plik i importuj
+                    {t('settings.chooseFileImport')}
                 </Button>
                 <ExcelImportGuideDialog
                     open={isGuideOpen}
                     onOpenChange={setIsGuideOpen}
                     onContinue={handleContinueImport}
-                    title={`Przewodnik importu: ${title}`}
+                    title={t('settings.importGuideTitle', { title })}
                     requiredFields={requiredFields}
                     optionalFields={optionalFields}
                 />
@@ -1258,6 +1270,7 @@ const COORDINATOR_SECTION_PASSWORD = '2121';
 
 function SettingsManager({ rawSettings, handleUpdateSettings }: { rawSettings: Settings, handleUpdateSettings: (settings: Partial<Settings>) => Promise<void> }) {
     const { toast } = useToast();
+    const { t } = useLanguage();
     const [isAddressFormOpen, setIsAddressFormOpen] = useState(false);
     const [editingAddress, setEditingAddress] = useState<Address | null>(null);
     const { allEmployees, allNonEmployees } = useMainLayout();
@@ -1326,11 +1339,11 @@ function SettingsManager({ rawSettings, handleUpdateSettings }: { rawSettings: S
         };
 
         form.reset(form.getValues()); // Reset dirty state to disable button
-        toast({ title: "Zapisywanie...", description: "Zmiany są zapisywane w tle." });
+        toast({ title: t('settings.savingStr'), description: t('settings.savingInBackground') });
 
         try {
             await handleUpdateSettings(newSettings);
-            toast({ title: "Sukces", description: "Ustawienia list i koordynatorów zostały zaktualizowane." });
+            toast({ title: t('common.success'), description: t('settings.listsAndCoordinatorsUpdated') });
 
             form.reset({
                 ...form.getValues(),
@@ -1345,7 +1358,7 @@ function SettingsManager({ rawSettings, handleUpdateSettings }: { rawSettings: S
                 coordinators: newSettings.coordinators,
             });
         } catch (e) {
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać ustawień. Cofnięto zmiany." });
+            toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('settings.addressSaveFailed') });
         }
     };
 
@@ -1368,15 +1381,15 @@ function SettingsManager({ rawSettings, handleUpdateSettings }: { rawSettings: S
         const previousSettings = rawSettings;
         form.setValue('addresses', newAddresses, { shouldDirty: false });
         setIsAddressFormOpen(false);
-        toast({ title: "Zapisywanie...", description: "Adres jest zapisywany w tle." });
+        toast({ title: t('settings.savingStr'), description: t('settings.savingAddress') });
 
         try {
             await handleUpdateSettings({ addresses: newAddresses });
-            toast({ title: "Sukces", description: "Adres został zapisany." });
+            toast({ title: t('common.success'), description: t('settings.addressSaved') });
         } catch (e) {
             // Rollback
             form.setValue('addresses', previousSettings.addresses, { shouldDirty: false });
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać adresu. Cofnięto zmiany." });
+            toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('settings.addressSaveFailed') });
         }
     };
 
@@ -1386,15 +1399,15 @@ function SettingsManager({ rawSettings, handleUpdateSettings }: { rawSettings: S
 
         const previousSettings = rawSettings;
         form.setValue('addresses', newAddresses, { shouldDirty: false });
-        toast({ title: "Usuwanie...", description: "Adres jest usuwany w tle." });
+        toast({ title: t('settings.savingStr'), description: t('settings.deletingAddress') });
 
         try {
             await handleUpdateSettings({ addresses: newAddresses });
-            toast({ title: "Sukces", description: "Adres został usunięty." });
+            toast({ title: t('common.success'), description: t('settings.addressDeleted') });
         } catch (e) {
             // Rollback
             form.setValue('addresses', previousSettings.addresses, { shouldDirty: false });
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć adresu. Cofnięto zmiany." });
+            toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('settings.addressDeleteFailed') });
         }
     }
 
@@ -1413,15 +1426,15 @@ function SettingsManager({ rawSettings, handleUpdateSettings }: { rawSettings: S
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Ustawienia aplikacji</CardTitle>
-                <CardDescription>Zarządzaj globalnymi ustawieniami aplikacji, takimi jak listy, adresy i koordynatorzy.</CardDescription>
+                <CardTitle>{t('settings.appSettings')}</CardTitle>
+                <CardDescription>{t('settings.appSettingsDesc')}</CardDescription>
             </CardHeader>
             <CardContent>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                         <Accordion type="single" collapsible className="w-full">
                             <AccordionItem value="lists">
-                                <AccordionTrigger>Zarządzanie listami</AccordionTrigger>
+                                <AccordionTrigger>{t('settings.manageLists')}</AccordionTrigger>
                                 <AccordionContent className="p-2">
                                     <Accordion type="multiple" className="w-full space-y-2">
                                         <ListManager name="nationalities" title="Narodowości" fields={natFields} append={appendNat} remove={removeNat} control={form.control} />
@@ -1430,7 +1443,7 @@ function SettingsManager({ rawSettings, handleUpdateSettings }: { rawSettings: S
                                         <ListManager name="localities" title="Miejscowości" fields={locFields} append={appendLoc} remove={removeLoc} control={form.control} />
                                         <ListManager name="paymentTypesNZ" title="Rodzaje płatności NZ" fields={paymentNzFields} append={appendPaymentNz} remove={removePaymentNz} control={form.control} />
                                         <div className="py-2"><div className="border-t"></div></div>
-                                        <p className="text-sm font-semibold text-muted-foreground mb-2">Ustawienia BOK</p>
+                                        <p className="text-sm font-semibold text-muted-foreground mb-2">{t('settings.bokSettings')}</p>
                                         <ListManager name="statuses" title="Status" fields={statusFields} append={appendStatus} remove={removeStatus} control={form.control} />
                                         <ListManager name="bokRoles" title="Kierowcy BOK" fields={bokRoleFields} append={appendBokRole} remove={removeBokRole} control={form.control} />
                                         <ListManager name="bokReturnOptions" title="Opcje Powrotu BOK" fields={bokReturnOptionFields} append={appendBokReturnOption} remove={removeBokReturnOption} control={form.control} />
@@ -1438,7 +1451,7 @@ function SettingsManager({ rawSettings, handleUpdateSettings }: { rawSettings: S
                                 </AccordionContent>
                             </AccordionItem>
                             <AccordionItem value="coordinators">
-                                <AccordionTrigger>Zarządzanie koordynatorami</AccordionTrigger>
+                                <AccordionTrigger>{t('settings.manageCoordinators')}</AccordionTrigger>
                                 <AccordionContent className="p-2">
                                     {coordUnlocked ? (
                                         <div className="space-y-3">
@@ -1449,7 +1462,7 @@ function SettingsManager({ rawSettings, handleUpdateSettings }: { rawSettings: S
                                                     size="sm"
                                                     onClick={() => { setCoordUnlocked(false); setCoordPwdInput(''); setCoordPwdError(false); }}
                                                 >
-                                                    Zablokuj
+                                                    {t('settings.lockSection')}
                                                 </Button>
                                             </div>
                                             <CoordinatorManager
@@ -1462,11 +1475,11 @@ function SettingsManager({ rawSettings, handleUpdateSettings }: { rawSettings: S
                                         </div>
                                     ) : (
                                         <div className="flex flex-col items-center gap-3 py-6">
-                                            <p className="text-sm text-muted-foreground">Wprowadź hasło, aby zarządzać koordynatorami</p>
+                                            <p className="text-sm text-muted-foreground">{t('settings.enterPasswordCoord')}</p>
                                             <div className="flex gap-2 w-full max-w-xs">
                                                 <Input
                                                     type="password"
-                                                    placeholder="Hasło"
+                                                    placeholder={t('settings.password')}
                                                     value={coordPwdInput}
                                                     onChange={(e) => { setCoordPwdInput(e.target.value); setCoordPwdError(false); }}
                                                     onKeyDown={(e) => {
@@ -1494,16 +1507,16 @@ function SettingsManager({ rawSettings, handleUpdateSettings }: { rawSettings: S
                                                         }
                                                     }}
                                                 >
-                                                    Odblokuj
+                                                    {t('settings.unlockSection')}
                                                 </Button>
                                             </div>
-                                            {coordPwdError && <p className="text-xs text-destructive">Nieprawidłowe hasło</p>}
+                                            {coordPwdError && <p className="text-xs text-destructive">{t('settings.wrongPassword')}</p>}
                                         </div>
                                     )}
                                 </AccordionContent>
                             </AccordionItem>
                             <AccordionItem value="addresses">
-                                <AccordionTrigger>Zarządzanie adresami</AccordionTrigger>
+                                <AccordionTrigger>{t('settings.manageAddresses')}</AccordionTrigger>
                                 <AccordionContent className="p-2">
                                     <AddressManager
                                         addresses={watchedAddresses || []}
@@ -1522,7 +1535,7 @@ function SettingsManager({ rawSettings, handleUpdateSettings }: { rawSettings: S
                         <div className="flex justify-end">
                             <Button type="submit" disabled={!form.formState.isDirty || form.formState.isSubmitting}>
                                 {form.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                Zapisz zmiany
+                                {t('settings.saveChanges')}
                             </Button>
                         </div>
                     </form>
@@ -1544,6 +1557,7 @@ function SettingsManager({ rawSettings, handleUpdateSettings }: { rawSettings: S
 
 export default function SettingsView({ currentUser }: { currentUser: SessionData }) {
     const { toast } = useToast();
+    const { t } = useLanguage();
     const { handleImportEmployees, handleImportNonEmployees, handleImportBokResidents, handleUpdateSettings, rawSettings } = useMainLayout();
     const [isEmployeeImportLoading, setIsEmployeeImportLoading] = useState(false);
     const [isNonEmployeeImportLoading, setIsNonEmployeeImportLoading] = useState(false);
@@ -1551,7 +1565,7 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
 
     const runEmployeeImport = async (fileContent: string) => {
         if (!rawSettings) {
-            toast({ variant: 'destructive', title: 'Błąd', description: 'Ustawienia nie są załadowane. Spróbuj ponownie za chwilę.' });
+            toast({ variant: 'destructive', title: t('common.error'), description: t('settings.settingsNotLoaded') });
             return;
         }
         setIsEmployeeImportLoading(true);
@@ -1561,7 +1575,7 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
 
     const runNonEmployeeImport = async (fileContent: string) => {
         if (!rawSettings) {
-            toast({ variant: 'destructive', title: 'Błąd', description: 'Ustawienia nie są załadowane. Spróbuj ponownie za chwilę.' });
+            toast({ variant: 'destructive', title: t('common.error'), description: t('settings.settingsNotLoaded') });
             return;
         }
         setIsNonEmployeeImportLoading(true);
@@ -1571,7 +1585,7 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
 
     const runBokResidentImport = async (fileContent: string) => {
         if (!rawSettings) {
-            toast({ variant: 'destructive', title: 'Błąd', description: 'Ustawienia nie są załadowane. Spróbuj ponownie za chwilę.' });
+            toast({ variant: 'destructive', title: t('common.error'), description: t('settings.settingsNotLoaded') });
             return;
         }
         setIsBokImportLoading(true);
@@ -1592,10 +1606,10 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
         return (
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center text-destructive"><FileWarning className="mr-2" />Brak uprawnień</CardTitle>
+                    <CardTitle className="flex items-center text-destructive"><FileWarning className="mr-2" />{t('settings.noPerms')}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p>Nie masz uprawnień do przeglądania tej strony.</p>
+                    <p>{t('settings.noPermsDesc')}</p>
                 </CardContent>
             </Card>
         )
@@ -1623,24 +1637,24 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <ExcelImport
                     onImport={runEmployeeImport}
-                    title="Import Pracowników"
-                    description="Zaimportuj nowych pracowników z pliku XLSX."
+                    title={t('settings.importEmployees')}
+                    description={t('settings.importEmployeesDesc')}
                     requiredFields={employeeRequiredFields}
                     optionalFields={employeeOptionalFields}
                     isLoading={isEmployeeImportLoading}
                 />
                 <ExcelImport
                     onImport={runNonEmployeeImport}
-                    title="Import Mieszkańców (NZ)"
-                    description="Zaimportuj nowych mieszkańców (NZ) z pliku XLSX."
+                    title={t('settings.importNz')}
+                    description={t('settings.importNzDesc')}
                     requiredFields={nonEmployeeRequiredFields}
                     optionalFields={nonEmployeeOptionalFields}
                     isLoading={isNonEmployeeImportLoading}
                 />
                 <ExcelImport
                     onImport={runBokResidentImport}
-                    title="Import Pracowników BOK"
-                    description="Zaimportuj nowych pracowników BOK z pliku XLSX."
+                    title={t('settings.importBok')}
+                    description={t('settings.importBokDesc')}
                     requiredFields={bokResidentRequiredFields}
                     optionalFields={bokResidentOptionalFields}
                     isLoading={isBokImportLoading}

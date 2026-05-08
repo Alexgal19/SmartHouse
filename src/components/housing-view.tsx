@@ -31,6 +31,7 @@ import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 import { Badge } from './ui/badge';
 import { getActiveAddressCapacity } from '@/lib/address-filters';
 import { bulkSetSendDateAction } from '@/lib/actions';
+import { useLanguage } from '@/lib/i18n';
 
 const SEND_REASONS = ['Badania wstępne', 'Badania okresowe', 'Na PKP'] as const;
 type SendReason = (typeof SEND_REASONS)[number];
@@ -93,12 +94,13 @@ const NoDataState = ({ message, className }: { message: string; className?: stri
 
 const StatsCharts = ({ occupants, chartConfig }: { occupants: Occupant[]; chartConfig: ChartConfig }) => {
   const statsData = useMemo(() => calculateStats(occupants), [occupants]);
+  const { t } = useLanguage();
 
   return (
     <div className="space-y-4">
       <Card className="bg-muted/50">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Wg narodowości</CardTitle>
+          <CardTitle className="text-sm">{t('charts.byNationality')}</CardTitle>
         </CardHeader>
         <CardContent>
           {statsData.nationalities.length > 0 ? (
@@ -123,13 +125,13 @@ const StatsCharts = ({ occupants, chartConfig }: { occupants: Occupant[]; chartC
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <NoDataState message="Brak danych" />
+            <NoDataState message={t('common.noDataShort')} />
           )}
         </CardContent>
       </Card>
       <Card className="bg-muted/50">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Wg płci</CardTitle>
+          <CardTitle className="text-sm">{t('charts.byGender')}</CardTitle>
         </CardHeader>
         <CardContent>
           {statsData.genders.length > 0 ? (
@@ -154,7 +156,7 @@ const StatsCharts = ({ occupants, chartConfig }: { occupants: Occupant[]; chartC
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <NoDataState message="Brak danych" />
+            <NoDataState message={t('common.noDataShort')} />
           )}
         </CardContent>
       </Card>
@@ -172,6 +174,7 @@ const PersonSendRow = ({
   onRemove: (id: string) => void;
 }) => {
   const [dateOpen, setDateOpen] = useState(false);
+  const { t } = useLanguage();
   return (
     <div className="rounded border bg-white dark:bg-amber-950/60 p-2 space-y-1.5">
       <div className="flex items-center justify-between">
@@ -186,7 +189,7 @@ const PersonSendRow = ({
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className={cn('h-7 text-xs px-2', !data.date && 'border-dashed border-amber-400')}>
               <CalendarIcon className="h-3 w-3 mr-1" />
-              {data.date ? format(data.date, 'd MMM yyyy', { locale: pl }) : 'Data'}
+              {data.date ? format(data.date, 'd MMM yyyy', { locale: pl }) : t('common.date')}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
@@ -203,7 +206,7 @@ const PersonSendRow = ({
         {/* Powód */}
         <Select value={data.reason} onValueChange={(v) => onUpdate(id, { reason: v as SendReason })}>
           <SelectTrigger className={cn('h-7 text-xs w-36', !data.reason && 'border-dashed border-amber-400')}>
-            <SelectValue placeholder="Powód" />
+            <SelectValue placeholder={t('housing.sendReasonShort')} />
           </SelectTrigger>
           <SelectContent>
             {SEND_REASONS.map((r) => (
@@ -248,7 +251,8 @@ const AddressDetailView = ({
   onSaveSelection: () => Promise<void>;
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+  const { t } = useLanguage();
+
   const isSingleSelectedBlocked = useMemo(() => {
     const selected = addresses.filter((a) => selectedAddressIds.includes(a.id));
     return selected.length === 1 && selected[0].isActive === false;
@@ -287,7 +291,7 @@ const AddressDetailView = ({
     return {
       isMultiple: true,
       isOwnAddress: false,
-      name: `${selectedAddressesData.length} wybrane adresy`,
+      name: t('housing.multipleAddresses', { count: String(selectedAddressesData.length) }),
       occupants: allOccupants,
       unassignedOccupants: allUnassigned,
       occupantCount: totalOccupantCount,
@@ -309,7 +313,7 @@ const AddressDetailView = ({
 
     return {
       isMultiple: rooms.length > 1,
-      name: rooms.length > 1 ? `${rooms.length} wybrane pokoje` : `Pokój ${rooms[0].name}`,
+      name: rooms.length > 1 ? t('housing.multipleRooms', { count: String(rooms.length) }) : t('housing.room', { name: rooms[0].name }),
       occupants: allOccupants,
       occupantCount: totalOccupantCount,
       capacity: totalCapacity,
@@ -329,11 +333,11 @@ const AddressDetailView = ({
     return (
       <Card className="lg:col-span-2 h-full">
         <CardHeader>
-          <CardTitle>Szczegóły adresu</CardTitle>
-          <CardDescription>Wybierz adres z listy, aby zobaczyć szczegóły.</CardDescription>
+          <CardTitle>{t('housing.addressDetails')}</CardTitle>
+          <CardDescription>{t('housing.selectAddressPrompt')}</CardDescription>
         </CardHeader>
         <CardContent>
-          <NoDataState message="Nie wybrano adresu" />
+          <NoDataState message={t('housing.noAddressSelected')} />
         </CardContent>
       </Card>
     );
@@ -348,7 +352,7 @@ const AddressDetailView = ({
             {isSingleSelectedBlocked && (
               <Badge variant="destructive" className="ml-2 text-xs">
                 <Lock className="h-3 w-3 mr-1" />
-                Zablokowany
+                {t('housing.blockedAddress')}
               </Badge>
             )}
           </div>
@@ -361,7 +365,7 @@ const AddressDetailView = ({
                   htmlFor={`lock-address-${aggregatedAddressesData.id}`}
                   className="text-xs text-muted-foreground cursor-pointer font-normal"
                 >
-                  {aggregatedAddressesData.isActive ? 'Zablokuj adres' : 'Odblokuj adres'}
+                  {aggregatedAddressesData.isActive ? t('housing.lockAddress') : t('housing.unlockAddress')}
                 </Label>
                 <Switch
                   id={`lock-address-${aggregatedAddressesData.id}`}
@@ -388,7 +392,7 @@ const AddressDetailView = ({
         <CardDescription>
           <span>
             {(selectedRoomsData || aggregatedAddressesData).occupantCount} /{' '}
-            {(selectedRoomsData || aggregatedAddressesData).capacity} mieszkańców
+            {(selectedRoomsData || aggregatedAddressesData).capacity} {t('housing.residents').toLowerCase()}
           </span>
           <span
             className={cn(
@@ -396,7 +400,7 @@ const AddressDetailView = ({
               (selectedRoomsData || aggregatedAddressesData).available > 0 ? 'text-green-600' : 'text-red-600',
             )}
           >
-            ({(selectedRoomsData || aggregatedAddressesData).available} wolnych miejsc)
+            ({(selectedRoomsData || aggregatedAddressesData).available} {t('housing.freePlaces')})
           </span>
         </CardDescription>
       </CardHeader>
@@ -405,11 +409,11 @@ const AddressDetailView = ({
           {aggregatedAddressesData.isMultiple ? (
             <div className="space-y-6">
               <div>
-                <h3 className="font-semibold mb-4">Statystyki łączne</h3>
+                <h3 className="font-semibold mb-4">{t('housing.totalStats')}</h3>
                 <StatsCharts occupants={aggregatedAddressesData.occupants} chartConfig={chartConfig} />
               </div>
               <div>
-                <h3 className="font-semibold mb-4">Statystyki indywidualne</h3>
+                <h3 className="font-semibold mb-4">{t('housing.individualStats')}</h3>
                 <Accordion type="multiple" className="w-full space-y-3">
                   {selectedAddressesData.map((address) => (
                     <Card key={address.id} className="overflow-hidden">
@@ -427,7 +431,7 @@ const AddressDetailView = ({
                               </span>
                             </div>
                             <CardDescription className="text-xs pt-1 text-left">
-                              Wolne miejsca:{' '}
+                              {t('housing.freePlacesLabel')}{' '}
                               <span
                                 className={cn('font-bold', address.available > 0 ? 'text-green-600' : 'text-red-600')}
                               >
@@ -450,7 +454,7 @@ const AddressDetailView = ({
               <div className="space-y-4">
                 {aggregatedAddressesData.isOwnAddress ? (
                   <>
-                    <h3 className="font-semibold">Mieszkańcy ({aggregatedAddressesData.occupantCount})</h3>
+                    <h3 className="font-semibold">{t('housing.residents')} ({aggregatedAddressesData.occupantCount})</h3>
                     {aggregatedAddressesData.occupants.length > 0 ? (
                       <div className="rounded-md border p-3 space-y-1">
                         {aggregatedAddressesData.occupants.map((o) => {
@@ -494,12 +498,12 @@ const AddressDetailView = ({
                         })}
                       </div>
                     ) : (
-                      <NoDataState message="Brak mieszkańców" />
+                      <NoDataState message={t('housing.noOccupants')} />
                     )}
                   </>
                 ) : (
                   <>
-                    <h3 className="font-semibold">Pokoje</h3>
+                    <h3 className="font-semibold">{t('housing.rooms')}</h3>
                     {aggregatedAddressesData.rooms.length > 0 ? (
                       aggregatedAddressesData.rooms
                         .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true }))
@@ -522,7 +526,7 @@ const AddressDetailView = ({
                             <div className="flex justify-between items-center font-medium">
                               <div className="flex items-center gap-2">
                                 <Bed className="h-4 w-4 text-muted-foreground" />
-                                Pokój {room.name}
+                                {t('housing.room', { name: room.name })}
                                 {room.isLocked && <Lock className="h-3 w-3 ml-1 text-yellow-600" />}
                               </div>
                               <div className="flex items-center gap-3">
@@ -537,7 +541,7 @@ const AddressDetailView = ({
                                       htmlFor={`disable-room-${room.id}`}
                                       className="text-xs text-muted-foreground cursor-pointer font-normal"
                                     >
-                                      {room.isActive ? 'Zablokuj' : 'Odblokuj'}
+                                      {room.isActive ? t('housing.lockRoom') : t('housing.unlockRoom')}
                                     </Label>
                                     <Switch
                                       id={`disable-room-${room.id}`}
@@ -617,13 +621,13 @@ const AddressDetailView = ({
                           </div>
                         ))
                     ) : (
-                      <NoDataState message="Brak pokoi dla tego adresu" />
+                      <NoDataState message={t('housing.noRoomsForAddress')} />
                     )}
                     {aggregatedAddressesData.unassignedOccupants && aggregatedAddressesData.unassignedOccupants.length > 0 && (
                       <div className="rounded-md border p-3 bg-muted/30">
                         <div className="flex items-center gap-2 font-medium mb-2">
                           <Bed className="h-4 w-4 text-muted-foreground" />
-                          <span>Bez przypisanego pokoju</span>
+                          <span>{t('housing.unassignedRoom')}</span>
                           <span className="text-sm text-muted-foreground">({aggregatedAddressesData.unassignedOccupants.length})</span>
                         </div>
                         <div className="pl-4 space-y-1">
@@ -677,11 +681,11 @@ const AddressDetailView = ({
                   selectedRoomsData.isMultiple ? (
                     <div className="space-y-6">
                       <div>
-                        <h3 className="font-semibold mb-4">Statystyki łączne dla pokoi</h3>
+                        <h3 className="font-semibold mb-4">{t('housing.statsForRooms')}</h3>
                         <StatsCharts occupants={selectedRoomsData.occupants} chartConfig={chartConfig} />
                       </div>
                       <div>
-                        <h3 className="font-semibold mb-4">Statystyki indywidualne dla pokoi</h3>
+                        <h3 className="font-semibold mb-4">{t('housing.individualStatsRooms')}</h3>
                         <Accordion type="multiple" className="w-full space-y-3">
                           {selectedRoomsData.rooms.map((room) => (
                             <Card key={room.id} className="overflow-hidden">
@@ -690,7 +694,7 @@ const AddressDetailView = ({
                                   <div className="w-full">
                                     <div className="flex justify-between items-start">
                                       <CardTitle className="text-base font-semibold flex items-center gap-2">
-                                        Pokój {room.name}
+                                        {t('housing.room', { name: room.name })}
                                       </CardTitle>
                                       <span className="text-base">
                                         <span>
@@ -699,7 +703,7 @@ const AddressDetailView = ({
                                       </span>
                                     </div>
                                     <CardDescription className="text-xs pt-1 text-left">
-                                      Wolne miejsca:{' '}
+                                      {t('housing.freePlacesLabel')}{' '}
                                       <span
                                         className={cn(
                                           'font-bold',
@@ -722,13 +726,13 @@ const AddressDetailView = ({
                     </div>
                   ) : (
                     <>
-                      <h3 className="font-semibold">Statystyki dla pokoju {selectedRoomsData.rooms[0].name}</h3>
+                      <h3 className="font-semibold">{t('housing.statsForRoom', { name: selectedRoomsData.rooms[0].name })}</h3>
                       <StatsCharts occupants={selectedRoomsData.occupants} chartConfig={chartConfig} />
                     </>
                   )
                 ) : (
                   <>
-                    <h3 className="font-semibold">Statystyki dla adresu</h3>
+                    <h3 className="font-semibold">{t('housing.statsForAddress')}</h3>
                     <StatsCharts occupants={aggregatedAddressesData.occupants} chartConfig={chartConfig} />
                   </>
                 )}
@@ -740,7 +744,7 @@ const AddressDetailView = ({
         {isSelectionMode && (
           <div className="mt-2 border rounded-md bg-amber-50 dark:bg-amber-950/40">
             <div className="px-3 py-2 flex items-center justify-between border-b border-amber-200 dark:border-amber-800">
-              <span className="text-sm font-semibold">Wybrano: {selectedBokData.size} osób do wysłania</span>
+              <span className="text-sm font-semibold">{t('housing.selectedForSending', { count: String(selectedBokData.size) })}</span>
               {selectedBokData.size > 0 && (
                 <Button
                   size="sm"
@@ -753,7 +757,7 @@ const AddressDetailView = ({
                   }}
                 >
                   {isSubmitting ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Check className="w-3.5 h-3.5 mr-1" />}
-                  Zatwierdź wszystkich
+                  {t('housing.confirmAllSelected')}
                 </Button>
               )}
             </div>
@@ -870,6 +874,7 @@ const MobileAddressCard = ({
   isHighlighted?: boolean;
 }) => {
   const { copyToClipboard } = useCopyToClipboard();
+  const { t } = useLanguage();
 
   return (
     <Card
@@ -892,7 +897,7 @@ const MobileAddressCard = ({
                 {!address.isActive && (
                   <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
                     <Lock className="h-3 w-3 mr-0.5" />
-                    Zablokowany
+                    {t('housing.blockedAddress')}
                   </Badge>
                 )}
               </CardTitle>
@@ -903,7 +908,7 @@ const MobileAddressCard = ({
               </span>
             </div>
             <CardDescription className="text-xs pt-1 text-left">
-              Wolne miejsca:{' '}
+              {t('housing.freePlacesLabel')}{' '}
               <span className={cn('font-bold', address.available > 0 ? 'text-green-600' : 'text-red-600')}>
                 {address.available}
               </span>
@@ -915,7 +920,7 @@ const MobileAddressCard = ({
             {currentUser.isAdmin && (
               <div className="flex items-center justify-between rounded-md border p-3 bg-muted/30">
                 <Label htmlFor={`lock-address-mobile-${address.id}`} className="text-sm font-medium cursor-pointer">
-                  {address.isActive ? 'Zablokuj adres' : 'Odblokuj adres'}
+                  {address.isActive ? t('housing.lockAddress') : t('housing.unlockAddress')}
                 </Label>
                 <Switch
                   id={`lock-address-mobile-${address.id}`}
@@ -940,7 +945,7 @@ const MobileAddressCard = ({
             <div>
               {address.isOwnAddress ? (
                 <>
-                  <h4 className="text-sm font-semibold mb-2">Mieszkańcy ({address.occupantCount})</h4>
+                  <h4 className="text-sm font-semibold mb-2">{t('housing.residents')} ({address.occupantCount})</h4>
                   {address.occupants.length > 0 ? (
                     <div className="rounded-md border p-3 space-y-1">
                       {address.occupants.map((o) => {
@@ -966,12 +971,12 @@ const MobileAddressCard = ({
                       })}
                     </div>
                   ) : (
-                    <p className="text-xs text-muted-foreground">Brak mieszkańców</p>
+                    <p className="text-xs text-muted-foreground">{t('housing.noOccupants')}</p>
                   )}
                 </>
               ) : (
                 <>
-                  <h4 className="text-sm font-semibold mb-2">Pokoje</h4>
+                  <h4 className="text-sm font-semibold mb-2">{t('housing.rooms')}</h4>
                   <div className="space-y-2">
                     {address.rooms
                       .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true }))
@@ -988,7 +993,7 @@ const MobileAddressCard = ({
                           <div className="flex justify-between items-center font-medium text-sm">
                             <div className="flex items-center gap-2">
                               <Bed className="h-4 w-4 text-muted-foreground" />
-                              Pokój {room.name}
+                              {t('housing.room', { name: room.name })}
                               {room.isLocked && <Lock className="h-3 w-3 text-yellow-600" />}
                             </div>
                             <div className="flex items-center gap-3">
@@ -1003,7 +1008,7 @@ const MobileAddressCard = ({
                                     htmlFor={`lock-${room.id}`}
                                     className="text-xs text-muted-foreground cursor-pointer"
                                   >
-                                    {room.isLocked ? 'Odblokuj' : 'Zablokuj'}
+                                    {room.isLocked ? t('housing.unlockRoom') : t('housing.lockRoom')}
                                   </Label>
                                   <Switch
                                     id={`lock-${room.id}`}
@@ -1069,7 +1074,7 @@ const MobileAddressCard = ({
                     <div className="mt-2 rounded-md border p-3 bg-muted/30">
                       <div className="flex items-center gap-2 font-medium text-sm mb-2">
                         <Bed className="h-4 w-4 text-muted-foreground" />
-                        <span>Bez przypisanego pokoju</span>
+                        <span>{t('housing.unassignedRoom')}</span>
                         <span className="text-xs text-muted-foreground">({address.unassignedOccupants.length})</span>
                       </div>
                       <div className="pl-4 space-y-1">
@@ -1101,7 +1106,7 @@ const MobileAddressCard = ({
               )}
             </div>
             <div>
-              <h4 className="text-sm font-semibold mb-2">Statystyki</h4>
+              <h4 className="text-sm font-semibold mb-2">{t('housing.statistics')}</h4>
               <StatsCharts
                 occupants={address.occupants}
                 chartConfig={{
@@ -1142,6 +1147,7 @@ export const FilterControls = ({
     return uniqueLocalities.sort((a, b) => a.localeCompare(b));
   }, [settings, currentUser]);
 
+  const { t } = useLanguage();
   const handleValueChange = (key: string, value: string | boolean) => {
     onFilterChange({ ...filters, [key]: value });
   };
@@ -1149,22 +1155,22 @@ export const FilterControls = ({
   return (
     <div className="flex flex-wrap items-end gap-4">
       <div className="grid flex-1 min-w-[150px] items-center gap-1.5">
-        <Label htmlFor="search-address">Szukaj adresu</Label>
+        <Label htmlFor="search-address">{t('housing.searchAddress')}</Label>
         <Input
           id="search-address"
-          placeholder="Wpisz nazwę adresu..."
+          placeholder={t('housing.typeAddressName')}
           value={filters.name as string}
           onChange={(e) => handleValueChange('name', e.target.value)}
         />
       </div>
       <div className="grid flex-1 min-w-[150px] items-center gap-1.5">
-        <Label htmlFor="search-locality">Miejscowość</Label>
+        <Label htmlFor="search-locality">{t('housing.locality')}</Label>
         <Select value={filters.locality as string} onValueChange={(v) => handleValueChange('locality', v)}>
           <SelectTrigger id="search-locality">
-            <SelectValue placeholder="Wszystkie miejscowości" />
+            <SelectValue placeholder={t('housing.allLocalities')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Wszystkie miejscowości</SelectItem>
+            <SelectItem value="all">{t('housing.allLocalities')}</SelectItem>
             {sortedLocalities.filter(Boolean).map((l) => (
               <SelectItem key={l} value={l}>
                 {l}
@@ -1179,7 +1185,7 @@ export const FilterControls = ({
           checked={filters.showOnlyAvailable as boolean}
           onCheckedChange={(checked) => handleValueChange('showOnlyAvailable', checked)}
         />
-        <Label htmlFor="show-available">Tylko z wolnymi miejscami</Label>
+        <Label htmlFor="show-available">{t('housing.onlyAvailable')}</Label>
       </div>
     </div>
   );
@@ -1206,6 +1212,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
   const [selectedBokData, setSelectedBokData] = useState<Map<string, PersonSendData>>(new Map());
   const [selectedBokNames, setSelectedBokNames] = useState<Map<string, string>>(new Map());
   const { toast } = useToast();
+  const { t } = useLanguage();
   const deepLinkApplied = useRef(false);
 
   const [filters, setFilters] = useState({
@@ -1375,16 +1382,16 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
         for (const entry of entries) {
           patchRawBokResident(entry.id, { sendDate: entry.sendDate, sendTime: entry.sendTime, sendReason: entry.sendReason });
         }
-        toast({ title: 'Zapisano ✅', description: `Data wysyłki ustawiona dla ${result.updatedCount} osób.` });
+        toast({ title: t('housing.bulkSendDateSuccess'), description: `Data wysyłki ustawiona dla ${result.updatedCount} osób.` });
         setSelectedBokData(new Map());
         setSelectedBokNames(new Map());
         setIsSelectionMode(false);
         refreshData(false, true); // fire-and-forget background sync
       } else {
-        toast({ variant: 'destructive', title: 'Błąd', description: result.error });
+        toast({ variant: 'destructive', title: t('common.error'), description: result.error });
       }
     } catch (e) {
-      toast({ variant: 'destructive', title: 'Błąd', description: 'Nie udało się zapisać' });
+      toast({ variant: 'destructive', title: t('common.error'), description: t('housing.bulkSendDateError') });
     }
   };
 
@@ -1407,8 +1414,8 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Zakwaterowanie</CardTitle>
-              <CardDescription>Przegląd adresów i mieszkańców</CardDescription>
+              <CardTitle>{t('housing.housing')}</CardTitle>
+              <CardDescription>{t('housing.housingDesc')}</CardDescription>
             </div>
             {(currentUser.isAdmin || currentUser.isDriver) && (
               <Button
@@ -1421,7 +1428,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                 className={cn('h-8 text-xs gap-1', isSelectionMode && 'bg-amber-500 hover:bg-amber-600 text-white border-0')}
               >
                 <Bus className="h-4 w-4" />
-                {isSelectionMode ? 'Wyjdź z trybu wysyłki' : 'Tryb wysyłki'}
+                {isSelectionMode ? t('housing.exitSendMode') : t('housing.sendMode')}
               </Button>
             )}
           </div>
@@ -1471,7 +1478,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                       {locality}
                       {availablePlaces > 0 && (
                         <Badge variant="secondary" className="ml-2">
-                          {availablePlaces} wolnych
+                          {t('housing.freePlacesShort', { count: String(availablePlaces) })}
                         </Badge>
                       )}
                     </h2>
@@ -1505,8 +1512,8 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
         <CardHeader className="p-4">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Adresy</CardTitle>
-              <CardDescription>Wybierz adres, aby zobaczyć szczegóły.</CardDescription>
+              <CardTitle>{t('housing.addresses')}</CardTitle>
+              <CardDescription>{t('housing.selectAddressDetails')}</CardDescription>
             </div>
             {(currentUser.isAdmin || currentUser.isDriver) && (
               <Button
@@ -1519,7 +1526,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                 className={cn('h-8 text-xs gap-1', isSelectionMode && 'bg-amber-500 hover:bg-amber-600 text-white border-0')}
               >
                 <Bus className="h-4 w-4" />
-                {isSelectionMode ? 'Wyjdź z trybu wysyłki' : 'Tryb wysyłki'}
+                {isSelectionMode ? t('housing.exitSendMode') : t('housing.sendMode')}
               </Button>
             )}
           </div>
@@ -1563,7 +1570,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                           {!address.isActive && (
                             <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
                               <Lock className="h-3 w-3 mr-0.5" />
-                              Zablokowany
+                              {t('housing.blockedAddress')}
                             </Badge>
                           )}
                         </CardTitle>
@@ -1574,7 +1581,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                         </span>
                       </div>
                       <CardDescription className="text-xs pt-1">
-                        Wolne miejsca:{' '}
+                        {t('housing.freePlacesLabel')}{' '}
                         <span className={cn('font-bold', address.available > 0 ? 'text-green-600' : 'text-red-600')}>
                           {address.available}
                         </span>
@@ -1593,7 +1600,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                         {locality}
                         {availablePlaces > 0 && (
                           <Badge variant="secondary" className="ml-2">
-                            {availablePlaces} wolnych
+                            {t('housing.freePlacesShort', { count: String(availablePlaces) })}
                           </Badge>
                         )}
                       </div>
@@ -1627,7 +1634,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                                 {!address.isActive && (
                                   <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
                                     <Lock className="h-3 w-3 mr-0.5" />
-                                    Zablokowany
+                                    {t('housing.blockedAddress')}
                                   </Badge>
                                 )}
                               </CardTitle>
@@ -1638,7 +1645,7 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
                               </span>
                             </div>
                             <CardDescription className="text-xs pt-1">
-                              Wolne miejsca:{' '}
+                              {t('housing.freePlacesLabel')}{' '}
                               <span
                                 className={cn('font-bold', address.available > 0 ? 'text-green-600' : 'text-red-600')}
                               >

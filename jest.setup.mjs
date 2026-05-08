@@ -111,5 +111,25 @@ jest.mock('@/components/main-layout', () => ({
   })),
 }));
 
+// Mock i18n — LanguageProvider is not available in jsdom; use real Polish translations
+jest.mock('@/lib/i18n', () => {
+  const { pl } = require('@/lib/translations/pl');
+  return {
+    useLanguage: () => ({
+      lang: 'pl',
+      setLang: jest.fn(),
+      t: (key, params) => {
+        let text = pl[key] ?? key;
+        if (params) {
+          text = Object.entries(params).reduce((s, [k, v]) => s.replaceAll(`{${k}}`, String(v)), text);
+        }
+        return text;
+      },
+      dateLocale: undefined,
+    }),
+    LanguageProvider: ({ children }) => children,
+  };
+});
+
 // Mock scrollIntoView for JSDOM
 window.HTMLElement.prototype.scrollIntoView = jest.fn();

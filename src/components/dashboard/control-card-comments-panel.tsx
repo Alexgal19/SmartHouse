@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw, Bell, BellOff, ExternalLink } from 'lucide-react';
 import type { ControlCard, SessionData, Settings, ControlCardCommentStatus } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
+import { useLanguage } from '@/lib/i18n';
 
 interface CommentItem {
   cardId: string;
@@ -101,6 +102,7 @@ interface Props {
 }
 
 export function ControlCardCommentsPanel({ currentUser, settings }: Props) {
+  const { t } = useLanguage();
   const [items, setItems] = useState<CommentItem[] | null>(null);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -116,12 +118,12 @@ export function ControlCardCommentsPanel({ currentUser, settings }: Props) {
       const res = await updateControlCardCommentStatusAction(cardId, commentId, newStatus);
       if (res.success) {
         setItems(prev => prev?.map(it => it.commentId === commentId ? { ...it, status: newStatus } : it) ?? null);
-        toast({ title: 'Status zaktualizowany' });
+        toast({ title: t('dashboard.statusUpdated') });
       } else {
-        toast({ title: 'Błąd aktualizacji', description: res.error, variant: 'destructive' });
+        toast({ title: t('dashboard.statusUpdateError'), description: res.error, variant: 'destructive' });
       }
     } catch (e) {
-      toast({ title: 'Wystąpił błąd', description: String(e), variant: 'destructive' });
+      toast({ title: t('dashboard.errorOccurred'), description: String(e), variant: 'destructive' });
     } finally {
       setUpdatingCommentId(null);
     }
@@ -165,7 +167,7 @@ export function ControlCardCommentsPanel({ currentUser, settings }: Props) {
             : items?.length === 0
               ? <BellOff className="h-4 w-4 text-green-500" />
               : <Bell className="h-4 w-4 text-muted-foreground" />}
-          Komentarze z kart kontroli
+          {t('dashboard.controlCardComments')}
           {hasComments && (
             <Badge variant="destructive" className="text-xs h-5 px-1.5">{total}</Badge>
           )}
@@ -178,17 +180,17 @@ export function ControlCardCommentsPanel({ currentUser, settings }: Props) {
           disabled={refreshing}
         >
           <RefreshCw className={`h-3 w-3 mr-1 ${refreshing ? 'animate-spin' : ''}`} />
-          Odśwież
+          {t('common.refresh')}
         </Button>
       </CardHeader>
 
       <CardContent>
         {loading ? (
-          <p className="text-xs text-muted-foreground">Ładowanie...</p>
+          <p className="text-xs text-muted-foreground">{t('common.loading')}</p>
         ) : error ? (
-          <p className="text-xs text-destructive">Błąd ładowania komentarzy.</p>
+          <p className="text-xs text-destructive">{t('dashboard.commentsLoadError')}</p>
         ) : !hasComments ? (
-          <p className="text-xs text-green-600 font-medium">✓ Brak komentarzy</p>
+          <p className="text-xs text-green-600 font-medium">{t('dashboard.noComments')}</p>
         ) : (
           <div className="space-y-3">
             {items!.map((item, i) => (
@@ -217,27 +219,34 @@ export function ControlCardCommentsPanel({ currentUser, settings }: Props) {
                   </Link>
                   {item.status && (
                     <div className="flex flex-wrap gap-1.5 mt-2 mb-1 pointer-events-auto">
-                      {(['Nie przyjęte', 'W trakcie', 'Temat rozwiązany'] as ControlCardCommentStatus[]).map(status => (
-                        <button
-                          key={status}
-                          type="button"
-                          disabled={updatingCommentId === item.commentId}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleStatusChange(item.cardId, item.commentId, status);
-                          }}
-                          className={`px-2 py-0.5 text-[10px] font-medium rounded-full border transition-all ${
-                            item.status === status
-                              ? status === 'Nie przyjęte' ? 'bg-red-500/10 text-red-600 border-red-500/30 animate-pulse'
-                              : status === 'W trakcie' ? 'bg-yellow-500/10 text-yellow-600 border-yellow-500/30 animate-pulse'
-                              : 'bg-green-500/10 text-green-600 border-green-500/30 animate-pulse'
-                              : 'bg-background text-muted-foreground border-border hover:bg-muted'
-                          } ${updatingCommentId === item.commentId && 'opacity-50 cursor-not-allowed'}`}
-                        >
-                          {status === 'Nie przyjęte' ? '🔴' : status === 'W trakcie' ? '🟡' : '🟢'} {status}
-                        </button>
-                      ))}
+                      {(['Nie przyjęte', 'W trakcie', 'Temat rozwiązany'] as ControlCardCommentStatus[]).map((status) => {
+                        const statusLabelMap: Record<string, string> = {
+                          'Nie przyjęte': t('controlCards.commentStatusNew'),
+                          'W trakcie': t('controlCards.commentStatusInProgress'),
+                          'Temat rozwiązany': t('controlCards.commentStatusResolved'),
+                        };
+                        return (
+                          <button
+                            key={status}
+                            type="button"
+                            disabled={updatingCommentId === item.commentId}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleStatusChange(item.cardId, item.commentId, status);
+                            }}
+                            className={`px-2 py-0.5 text-[10px] font-medium rounded-full border transition-all ${
+                              item.status === status
+                                ? status === 'Nie przyjęte' ? 'bg-red-500/10 text-red-600 border-red-500/30 animate-pulse'
+                                : status === 'W trakcie' ? 'bg-yellow-500/10 text-yellow-600 border-yellow-500/30 animate-pulse'
+                                : 'bg-green-500/10 text-green-600 border-green-500/30 animate-pulse'
+                                : 'bg-background text-muted-foreground border-border hover:bg-muted'
+                            } ${updatingCommentId === item.commentId && 'opacity-50 cursor-not-allowed'}`}
+                          >
+                            {status === 'Nie przyjęte' ? '🔴' : status === 'W trakcie' ? '🟡' : '🟢'} {statusLabelMap[status]}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -245,7 +254,7 @@ export function ControlCardCommentsPanel({ currentUser, settings }: Props) {
             ))}
             {total > LIMIT && (
               <p className="text-[10px] text-muted-foreground text-center pt-1">
-                Wyświetlono {LIMIT} z {total} komentarzy
+                {t('dashboard.showingOf', { shown: LIMIT, total })}
               </p>
             )}
           </div>

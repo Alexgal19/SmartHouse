@@ -9,6 +9,7 @@ import Header from './header';
 import { MobileNav } from './mobile-nav';
 import type { View, Notification, Employee, Settings, Address, SessionData, NonEmployee, AddressHistory, BokResident, OdbiorEntry } from '@/types';
 import { Home, Settings as SettingsIcon, Users, Building, ClipboardCheck, Truck } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     addEmployee,
@@ -47,6 +48,7 @@ import { ModernHouseIcon } from './icons/modern-house-icon';
 import { differenceInDays, parseISO, format } from 'date-fns';
 
 const HouseLoader = () => {
+    const { t } = useLanguage();
     return (
         <div className="relative w-48 h-48 flex flex-col items-center justify-center">
             <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full">
@@ -71,7 +73,7 @@ const HouseLoader = () => {
                 />
             </svg>
             <p className="absolute bottom-10 text-sm text-muted-foreground animate-pulse-text">
-                Wczytywanie danych...
+                {t('loading.data')}
             </p>
         </div>
     );
@@ -157,18 +159,19 @@ export default function MainLayout({
     initialSession: SessionData;
     children: React.ReactNode;
 }) {
+    const { t } = useLanguage();
     const router = useRouter();
     const routerRef = useRef(router);
     const searchParams = useSearchParams();
 
     const navItems = useMemo(() => [
-        { view: 'dashboard', icon: Home, label: 'Pulpit' },
-        { view: 'odbior', icon: Truck, label: 'Odbiór' },
-        { view: 'employees', icon: Users, label: 'Mieszkańcy' },
-        { view: 'housing', icon: Building, label: 'Zakwaterowanie' },
-        { view: 'control-cards', icon: ClipboardCheck, label: 'Karty mieszkań' },
-        { view: 'settings', icon: SettingsIcon, label: 'Ustawienia' },
-    ], []) as { view: View; icon: React.ElementType; label: string }[];
+        { view: 'dashboard', icon: Home, label: t('nav.dashboard') },
+        { view: 'odbior', icon: Truck, label: t('nav.odbior') },
+        { view: 'employees', icon: Users, label: t('nav.employees') },
+        { view: 'housing', icon: Building, label: t('nav.housing') },
+        { view: 'control-cards', icon: ClipboardCheck, label: t('nav.controlCards') },
+        { view: 'settings', icon: SettingsIcon, label: t('nav.settings') },
+    ], [t]) as { view: View; icon: React.ElementType; label: string }[];
 
     const activeView = useMemo(() => {
         const view = searchParams.get('view') as View;
@@ -304,23 +307,23 @@ export default function MainLayout({
             await updateNotificationReadStatus(notificationId, isRead);
         } catch (e: unknown) {
             setAllNotifications(originalNotifications);
-            toast({ variant: "destructive", title: "Błąd", description: "Nie udało się zaktualizować statusu powiadomienia." });
+            toast({ variant: "destructive", title: t('common.error'), description: t('toast.notifStatusError') });
         }
-    }, [allNotifications, toast]);
+    }, [allNotifications, toast, t]);
 
     const handleClearNotifications = useCallback(async () => {
         if (!currentUser?.isAdmin) {
-            toast({ variant: "destructive", title: "Błąd uprawnień", description: "Tylko administratorzy mogą wykonać tę akcję." });
+            toast({ variant: "destructive", title: t('common.permError'), description: t('toast.adminOnly') });
             return;
         }
         try {
             await clearAllNotifications();
             setAllNotifications([]);
-            toast({ title: "Sukces", description: "Wszystkie powiadomienia zostały usunięte." });
+            toast({ title: t('common.success'), description: t('toast.notifsCleaned') });
         } catch (e) {
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć powiadomienia." });
+            toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.notifDeleteError') });
         }
-    }, [currentUser, toast]);
+    }, [currentUser, toast, t]);
 
     const handleDeleteNotification = useCallback(async (notificationId: string) => {
         const originalNotifications = allNotifications;
@@ -328,12 +331,12 @@ export default function MainLayout({
 
         try {
             await deleteNotification(notificationId);
-            toast({ title: "Sukces", description: "Powiadomienie zostało usunięte." });
+            toast({ title: t('common.success'), description: t('toast.notifDeleted') });
         } catch (e: unknown) {
-            setAllNotifications(originalNotifications); // Revert
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć powiadomienia." });
+            setAllNotifications(originalNotifications);
+            toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.notifDeleteError') });
         }
-    }, [allNotifications, toast]);
+    }, [allNotifications, toast, t]);
 
     const refreshData = useCallback(async (showToast = true, bypassCache = false) => {
         if (!currentUser) return;
@@ -406,7 +409,7 @@ export default function MainLayout({
             }
 
             if (showToast) {
-                toast({ title: "Sukces", description: "Dane zostały odświeżone." });
+                toast({ title: t('common.success'), description: t('toast.dataRefreshed') });
             }
 
             // Return structure compatible with previous implementation if needed by callers
@@ -422,11 +425,11 @@ export default function MainLayout({
             console.error(error);
             toast({
                 variant: "destructive",
-                title: "Błąd krytyczny ładowania danych",
-                description: `Nie udało się pobrać podstawowych danych z serwera. ${error instanceof Error ? error.message : ''}`,
+                title: t('toast.dataLoadError'),
+                description: `${t('toast.dataLoadErrorDesc')} ${error instanceof Error ? error.message : ''}`,
             });
         }
-    }, [currentUser, toast]);
+    }, [currentUser, toast, t]);
 
     const refreshNotificationsOnly = useCallback(async () => {
         if (!currentUser) return;
@@ -442,15 +445,15 @@ export default function MainLayout({
         try {
             const { updated } = await checkAndUpdateStatuses(currentUser?.uid);
             if (updated > 0) {
-                toast({ title: "Sukces", description: `Zaktualizowano statusy dla ${updated} osób.` });
-                refreshData(false); // fire-and-forget — sync z serwerem w tle
+                toast({ title: t('common.success'), description: t('toast.statusesUpdated', { count: updated }) });
+                refreshData(false);
             } else if (showNoChangesToast) {
-                toast({ title: "Brak zmian", description: "Wszyscy mają aktualne statusy." });
+                toast({ title: t('toast.noChanges'), description: t('toast.statusesCurrent') });
             }
         } catch (e) {
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się odświeżyć statusów." });
+            toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.statusUpdateError') });
         }
-    }, [refreshData, toast, currentUser]);
+    }, [refreshData, toast, currentUser, t]);
 
     const handleUpdateCoordinatorSubscription = useCallback(async (token: string | null) => {
         if (!currentUser) return;
@@ -458,9 +461,9 @@ export default function MainLayout({
             await updateCoordinatorSubscription(currentUser.uid, token);
         } catch (e) {
             console.error("Failed to update coordinator subscription:", e);
-            toast({ variant: "destructive", title: "Błąd", description: "Nie udało się zaktualizować subskrypcji powiadomień." });
+            toast({ variant: "destructive", title: t('common.error'), description: t('toast.subscriptionError') });
         }
-    }, [currentUser, toast]);
+    }, [currentUser, toast, t]);
 
     useEffect(() => {
         if (currentUser) {
@@ -545,23 +548,23 @@ export default function MainLayout({
                         if (e.status === 'dismissed') return { ...updatedEmployee, status: 'dismissed' as const };
                         return updatedEmployee;
                     }) : null);
-                    toast({ title: "Sukces", description: "Dane pracownika zostały zaktualizowane." });
+                    toast({ title: t('common.success'), description: t('toast.employeeUpdated') });
                     refreshNotificationsOnly();
                 })
                 .catch((e: unknown) => {
                     setRawEmployees(originalEmployees);
-                    toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zaktualizować pracownika." });
+                    toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.employeeUpdateError') });
                 });
         } else {
             try {
                 const newEmployee = await addEmployee(data, currentUser.uid);
                 setRawEmployees(prev => prev ? [...prev, newEmployee] : [newEmployee]);
-                toast({ title: "Sukces", description: "Nowy pracownik został dodany." });
+                toast({ title: t('common.success'), description: t('toast.employeeAdded') });
             } catch (e: unknown) {
-                toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się dodać pracownika." });
+                toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.employeeAddError') });
             }
         }
-    }, [currentUser, editingEmployee, rawEmployees, toast, refreshNotificationsOnly]);
+    }, [currentUser, editingEmployee, rawEmployees, toast, refreshNotificationsOnly, t]);
 
     const handleSaveNonEmployee = useCallback(async (data: Omit<NonEmployee, 'id' | 'status'>) => {
         if (!currentUser) return;
@@ -578,23 +581,23 @@ export default function MainLayout({
                         if (e.status === 'dismissed') return { ...updatedNonEmployee, status: 'dismissed' as const };
                         return updatedNonEmployee;
                     }) : null);
-                    toast({ title: "Sukces", description: "Dane mieszkańca zostały zaktualizowane." });
+                    toast({ title: t('common.success'), description: t('toast.residentUpdated') });
                     refreshNotificationsOnly();
                 })
                 .catch((e: unknown) => {
                     setRawNonEmployees(originalNonEmployees);
-                    toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zaktualizować mieszkańca." });
+                    toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.residentUpdateError') });
                 });
         } else {
             try {
                 const newNonEmployee = await addNonEmployee(data, currentUser.uid);
                 setRawNonEmployees(prev => prev ? [...prev, newNonEmployee] : [newNonEmployee]);
-                toast({ title: "Sukces", description: "Nowy mieszkaniec został dodany." });
+                toast({ title: t('common.success'), description: t('toast.residentAdded') });
             } catch (e) {
-                toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się dodać mieszkańca." });
+                toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.residentAddError') });
             }
         }
-    }, [editingNonEmployee, currentUser, rawNonEmployees, toast, refreshNotificationsOnly]);
+    }, [editingNonEmployee, currentUser, rawNonEmployees, toast, refreshNotificationsOnly, t]);
 
     const handleSaveBokResident = useCallback(async (data: BokResidentFormData) => {
         if (!currentUser) return;
@@ -614,12 +617,12 @@ export default function MainLayout({
                         }
                         return updatedResident;
                     }) : null);
-                    toast({ title: "Sukces", description: "Dane mieszkańca BOK zostały zaktualizowane." });
+                    toast({ title: t('common.success'), description: t('toast.bokResidentUpdated') });
                     refreshNotificationsOnly();
                 })
                 .catch((e: unknown) => {
                     setRawBokResidents(originalBokResidents);
-                    toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zaktualizować mieszkańca BOK." });
+                    toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.bokResidentUpdateError') });
                 });
         } else {
             try {
@@ -637,12 +640,12 @@ export default function MainLayout({
                 };
                 const newResident = await addBokResident(newResidentData, currentUser.uid);
                 setRawBokResidents(prev => prev ? [...prev, newResident] : [newResident]);
-                toast({ title: "Sukces", description: "Nowy mieszkaniec BOK został dodany." });
+                toast({ title: t('common.success'), description: t('toast.bokResidentAdded') });
             } catch (e) {
-                toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać mieszkańca BOK." });
+                toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.bokResidentAddError') });
             }
         }
-    }, [editingBokResident, currentUser, rawBokResidents, toast, refreshNotificationsOnly]);
+    }, [editingBokResident, currentUser, rawBokResidents, toast, refreshNotificationsOnly, t]);
 
     const handleSendBokResidentPush = useCallback(async (data: BokResidentFormData) => {
         if (!editingBokResident || !currentUser) return;
@@ -665,8 +668,8 @@ export default function MainLayout({
             }
 
             if (pushError) {
-                toast({ variant: 'destructive', title: 'Błąd', description: pushError });
-                return; // Do not update sendDate, leave resident in "Aktywni"
+                toast({ variant: 'destructive', title: t('common.error'), description: pushError });
+                return;
             }
 
             // Mark the resident as sent by recording today's date and updating server state
@@ -691,12 +694,12 @@ export default function MainLayout({
             );
 
             setRawBokResidents(prev => prev ? prev.map(r => r.id === updatedResident.id ? updatedResident : r) : null);
-            toast({ title: 'Sukces', description: 'Powiadomienie PUSH zostało wysłane i zmiany zapisane.' });
+            toast({ title: t('common.success'), description: t('toast.pushSent') });
 
         } catch (e) {
-            toast({ variant: 'destructive', title: 'Błąd', description: e instanceof Error ? e.message : 'Nie udało się oznaczyć mieszkańca.' });
+            toast({ variant: 'destructive', title: t('common.error'), description: e instanceof Error ? e.message : t('toast.bokResidentUpdateError') });
         }
-    }, [editingBokResident, currentUser, toast]);
+    }, [editingBokResident, currentUser, toast, t]);
 
     const handleDeleteNonEmployee = useCallback(async (id: string, actorUid: string) => {
         if (!currentUser) return;
@@ -705,12 +708,12 @@ export default function MainLayout({
 
         try {
             await deleteNonEmployee(id, actorUid);
-            toast({ title: "Sukces", description: "Mieszkaniec został usunięty." });
+            toast({ title: t('common.success'), description: t('toast.residentDeleted') });
         } catch (e) {
             setRawNonEmployees(originalNonEmployees);
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć mieszkańca." });
+            toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.residentDeleteError') });
         }
-    }, [currentUser, rawNonEmployees, toast]);
+    }, [currentUser, rawNonEmployees, toast, t]);
 
     const handleDeleteBokResident = useCallback(async (id: string, actorUid: string) => {
         if (!currentUser) return;
@@ -719,12 +722,12 @@ export default function MainLayout({
 
         try {
             await deleteBokResident(id, actorUid);
-            toast({ title: "Sukces", description: "Mieszkaniec BOK został usunięty." });
+            toast({ title: t('common.success'), description: t('toast.bokResidentDeleted') });
         } catch (e) {
             setRawBokResidents(originalBokResidents);
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć mieszkańca BOK." });
+            toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.bokResidentDeleteError') });
         }
-    }, [currentUser, rawBokResidents, toast]);
+    }, [currentUser, rawBokResidents, toast, t]);
 
     const handleBulkDeleteBokResidents = useCallback(async (ids: string[]) => {
         if (!currentUser) return;
@@ -732,12 +735,12 @@ export default function MainLayout({
         setRawBokResidents(prev => prev ? prev.filter(r => !ids.includes(r.id)) : null);
         try {
             await bulkDeleteBokResidents(ids, currentUser.uid);
-            toast({ title: "Sukces", description: `Usunięto ${ids.length} mieszkańców BOK.` });
+            toast({ title: t('common.success'), description: t('toast.bokBulkDeleted', { count: ids.length }) });
         } catch (e) {
             setRawBokResidents(originalBokResidents);
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć mieszkańców BOK." });
+            toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.bokBulkDeleteError') });
         }
-    }, [currentUser, rawBokResidents, toast]);
+    }, [currentUser, rawBokResidents, toast, t]);
 
     const handleDismissBokResident = useCallback(async (id: string, dismissDate: Date) => {
         if (!currentUser) return;
@@ -746,12 +749,12 @@ export default function MainLayout({
         setRawBokResidents(prev => prev ? prev.map(r => r.id === id ? { ...r, dismissDate: formattedDate } : r) : null);
         try {
             await updateBokResident(id, { dismissDate: formattedDate }, currentUser.uid);
-            toast({ title: "Sukces", description: "Mieszkaniec BOK został pomyślnie zwolniony." });
+            toast({ title: t('common.success'), description: t('toast.bokResidentDismissed') });
         } catch (e: unknown) {
             setRawBokResidents(originalBokResidents);
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zwolnić mieszkańca BOK." });
+            toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.bokResidentDismissError') });
         }
-    }, [currentUser, rawBokResidents, toast]);
+    }, [currentUser, rawBokResidents, toast, t]);
 
     const patchRawBokResident = useCallback((id: string, patch: Partial<BokResident>) => {
         setRawBokResidents(prev => prev ? prev.map(r => r.id === id ? { ...r, ...patch } : r) : null);
@@ -771,7 +774,7 @@ export default function MainLayout({
 
     const handleUpdateSettings = useCallback(async (newSettings: Partial<Settings>) => {
         if (!rawSettings || !currentUser?.isAdmin) {
-            toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administrator może zmieniać ustawienia." });
+            toast({ variant: "destructive", title: t('common.noPerms'), description: t('toast.adminOnly') });
             return;
         }
 
@@ -781,13 +784,13 @@ export default function MainLayout({
         try {
             const updatedSettings = await updateSettings(newSettings);
             setRawSettings(prev => ({ ...prev!, ...updatedSettings }));
-            toast({ title: "Sukces", description: "Ustawienia zostały zaktualizowane." });
+            toast({ title: t('common.success'), description: t('toast.settingsSaved') });
         } catch (e) {
-            setRawSettings(originalSettings); // Revert on error
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zapisać ustawień." });
-            throw e; // Re-throw to inform caller of failure
+            setRawSettings(originalSettings);
+            toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.settingsError') });
+            throw e;
         }
-    }, [rawSettings, currentUser, toast]);
+    }, [rawSettings, currentUser, toast, t]);
 
     const handleAddEmployeeClick = useCallback(() => {
         setEditingEmployee(null);
@@ -851,57 +854,54 @@ export default function MainLayout({
 
     const handleBulkDeleteEmployees = useCallback(async (_entityType: 'employee' | 'non-employee', status: 'active' | 'dismissed') => {
         if (!currentUser || !currentUser.isAdmin) {
-            toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administratorzy mogą wykonać tę akcję." });
+            toast({ variant: "destructive", title: t('common.noPerms'), description: t('toast.adminOnly') });
             return false;
         }
 
         try {
             await bulkDeleteEmployees(status, currentUser.uid);
             setRawEmployees(prev => prev ? prev.filter(e => e.status !== status) : null);
-            toast({ title: "Sukces", description: `Wszyscy ${status === 'active' ? 'aktywni' : 'zwolnieni'} pracownicy zostali usunięci.` });
-            // refreshData(false); // Removed to prevent "Zombie Record" issue due to race condition
+            toast({ title: t('common.success'), description: status === 'active' ? t('toast.bulkDeleteActive') : t('toast.bulkDeleteDismissed') });
             return true;
         } catch (e) {
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć pracowników." });
+            toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.bulkDeleteError') });
             return false;
         }
-    }, [currentUser, toast]);
+    }, [currentUser, toast, t]);
 
     const handleBulkDeleteEmployeesByCoordinator = useCallback(async (coordinatorId: string) => {
         if (!currentUser || !currentUser.isAdmin) {
-            toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administratorzy mogą wykonać tę akcję." });
+            toast({ variant: "destructive", title: t('common.noPerms'), description: t('toast.adminOnly') });
             return false;
         }
 
         try {
             await bulkDeleteEmployeesByCoordinator(coordinatorId, currentUser.uid);
             setRawEmployees(prev => prev ? prev.filter(e => e.coordinatorId !== coordinatorId) : null);
-            toast({ title: "Sukces", description: `Wszyscy pracownicy wybranego koordynatora zostali usunięci.` });
-            // refreshData(false); // Removed to prevent "Zombie Record" issue due to race condition
+            toast({ title: t('common.success'), description: t('toast.bulkDeleteByCoordinator') });
             return true;
         } catch (e) {
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć pracowników." });
+            toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.bulkDeleteError') });
             return false;
         }
-    }, [currentUser, toast]);
+    }, [currentUser, toast, t]);
 
     const handleBulkDeleteEmployeesByDepartment = useCallback(async (department: string) => {
         if (!currentUser || !currentUser.isAdmin) {
-            toast({ variant: "destructive", title: "Brak uprawnień", description: "Tylko administratorzy mogą wykonać tę akcję." });
+            toast({ variant: "destructive", title: t('common.noPerms'), description: t('toast.adminOnly') });
             return false;
         }
 
         try {
             await bulkDeleteEmployeesByDepartment(department, currentUser.uid);
             setRawEmployees(prev => prev ? prev.filter(e => e.zaklad !== department) : null);
-            toast({ title: "Sukces", description: `Wszyscy pracownicy z zakładu "${department}" zostali usunięci.` });
-            // refreshData(false); // Removed to prevent "Zombie Record" issue due to race condition
+            toast({ title: t('common.success'), description: t('toast.bulkDeleteByDepartment', { dept: department }) });
             return true;
         } catch (e) {
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć pracowników." });
+            toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.bulkDeleteError') });
             return false;
         }
-    }, [currentUser, toast]);
+    }, [currentUser, toast, t]);
 
     const handleDismissEmployee = useCallback(async (employeeId: string, checkOutDate: Date) => {
         if (!currentUser) return;
@@ -910,13 +910,13 @@ export default function MainLayout({
         setRawEmployees(prev => prev ? prev.map(e => e.id === employeeId ? { ...e, status: 'dismissed' as const, checkOutDate: formattedDate } : e) : null);
         try {
             await updateEmployee(employeeId, { status: 'dismissed', checkOutDate: formattedDate }, currentUser.uid);
-            toast({ title: "Sukces", description: "Pracownik został zwolniony." });
+            toast({ title: t('common.success'), description: t('toast.employeeDismissed') });
             refreshNotificationsOnly();
         } catch (e: unknown) {
             setRawEmployees(originalEmployees);
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zwolnić pracownika." });
+            toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.employeeDismissError') });
         }
-    }, [currentUser, rawEmployees, toast, refreshNotificationsOnly]);
+    }, [currentUser, rawEmployees, toast, refreshNotificationsOnly, t]);
 
     const handleDismissNonEmployee = useCallback(async (nonEmployeeId: string, checkOutDate: Date) => {
         if (!currentUser) return;
@@ -925,13 +925,13 @@ export default function MainLayout({
         setRawNonEmployees(prev => prev ? prev.map(n => n.id === nonEmployeeId ? { ...n, status: 'dismissed' as const, checkOutDate: formattedDate } : n) : null);
         try {
             await updateNonEmployee(nonEmployeeId, { status: 'dismissed', checkOutDate: formattedDate }, currentUser.uid);
-            toast({ title: "Sukces", description: "Mieszkaniec został zwolniony." });
+            toast({ title: t('common.success'), description: t('toast.residentDismissed') });
             refreshNotificationsOnly();
         } catch (e: unknown) {
             setRawNonEmployees(originalNonEmployees);
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się zwolnić mieszkańca." });
+            toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.residentDismissError') });
         }
-    }, [currentUser, rawNonEmployees, toast, refreshNotificationsOnly]);
+    }, [currentUser, rawNonEmployees, toast, refreshNotificationsOnly, t]);
 
     const handleRestoreEmployee = useCallback(async (employee: Employee) => {
         if (!currentUser) return;
@@ -939,13 +939,13 @@ export default function MainLayout({
         setRawEmployees(prev => prev ? prev.map(e => e.id === employee.id ? { ...e, status: 'active' as const, checkOutDate: null } : e) : null);
         try {
             await updateEmployee(employee.id, { status: 'active', checkOutDate: null }, currentUser.uid);
-            toast({ title: "Sukces", description: "Pracownik został przywrócony." });
+            toast({ title: t('common.success'), description: t('toast.employeeRestored') });
             refreshNotificationsOnly();
         } catch (e: unknown) {
             setRawEmployees(originalEmployees);
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się przywrócić pracownika." });
+            toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.employeeRestoreError') });
         }
-    }, [currentUser, rawEmployees, toast, refreshNotificationsOnly]);
+    }, [currentUser, rawEmployees, toast, refreshNotificationsOnly, t]);
 
     const handleRestoreNonEmployee = useCallback(async (nonEmployee: NonEmployee) => {
         if (!currentUser) return;
@@ -953,12 +953,12 @@ export default function MainLayout({
         setRawNonEmployees(prev => prev ? prev.map(n => n.id === nonEmployee.id ? { ...n, status: 'active' as const, checkOutDate: null } : n) : null);
         try {
             await updateNonEmployee(nonEmployee.id, { status: 'active', checkOutDate: null }, currentUser.uid);
-            toast({ title: "Sukces", description: "Mieszkaniec został przywrócony." });
+            toast({ title: t('common.success'), description: t('toast.residentRestored') });
         } catch (e: unknown) {
             setRawNonEmployees(originalNonEmployees);
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się przywrócić mieszkańca." });
+            toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.residentRestoreError') });
         }
-    }, [currentUser, rawNonEmployees, toast]);
+    }, [currentUser, rawNonEmployees, toast, t]);
 
     const handleRestoreBokResident = useCallback(async (bokResident: BokResident) => {
         if (!currentUser) return;
@@ -966,12 +966,12 @@ export default function MainLayout({
         setRawBokResidents(prev => prev ? prev.map(r => r.id === bokResident.id ? { ...r, dismissDate: null, checkOutDate: null } : r) : null);
         try {
             await updateBokResident(bokResident.id, { dismissDate: null, checkOutDate: null }, currentUser.uid);
-            toast({ title: "Sukces", description: "Mieszkaniec BOK został przywrócony." });
+            toast({ title: t('common.success'), description: t('toast.bokResidentRestored') });
         } catch (e: unknown) {
             setRawBokResidents(originalBokResidents);
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się przywrócić mieszkańca BOK." });
+            toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.bokResidentRestoreError') });
         }
-    }, [currentUser, rawBokResidents, toast]);
+    }, [currentUser, rawBokResidents, toast, t]);
 
     const handleDeleteEmployee = useCallback(async (employeeId: string, actorUid: string) => {
         if (!currentUser) return;
@@ -980,48 +980,48 @@ export default function MainLayout({
 
         try {
             await deleteEmployee(employeeId, actorUid);
-            toast({ title: "Sukces", description: "Pracownik został usunięty." });
+            toast({ title: t('common.success'), description: t('toast.employeeDeleted') });
         } catch (e: unknown) {
             setRawEmployees(originalEmployees);
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć pracownika." });
+            toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.employeeDeleteError') });
         }
-    }, [currentUser, rawEmployees, toast]);
+    }, [currentUser, rawEmployees, toast, t]);
 
     const handleDeleteAddressHistory = useCallback(async (historyId: string, actorUid: string) => {
         if (!currentUser) return;
         try {
             await deleteAddressHistoryEntry(historyId, actorUid);
-            toast({ title: "Sukces", description: "Wpis z historii został usunięty." });
-            refreshData(false); // fire-and-forget — sync z serwerem w tle
+            toast({ title: t('common.success'), description: t('toast.historyDeleted') });
+            refreshData(false);
         } catch (e: unknown) {
-            toast({ variant: "destructive", title: "Błąd", description: e instanceof Error ? e.message : "Nie udało się usunąć wpisu z historii." });
+            toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.historyDeleteError') });
         }
-    }, [currentUser, refreshData, toast]);
+    }, [currentUser, refreshData, toast, t]);
 
     const handleImportEmployees = useCallback(async (fileContent: string, settings: Settings) => {
         if (!currentUser) return;
         try {
             const result = await importEmployeesFromExcel(fileContent, currentUser.uid, settings);
 
-            let description = `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} wierszy.`;
+            let description = t('toast.importSuccess', { count: result.importedCount, total: result.totalRows });
             if (result.errors.length > 0) {
-                description += ` Błędy: ${result.errors.join('; ')}`;
+                description += ` ${t('toast.importErrors', { errors: result.errors.join('; ') })}`;
             }
 
             toast({
-                title: "Import zakończony",
+                title: t('toast.importComplete'),
                 description: description,
                 duration: result.errors.length > 0 ? 10000 : 5000,
             });
-            refreshData(false); // fire-and-forget — sync z serwerem w tle
+            refreshData(false);
         } catch (e) {
             toast({
                 variant: "destructive",
-                title: "Błąd importu",
-                description: e instanceof Error ? e.message : 'Nieznany błąd serwera.'
+                title: t('toast.importError'),
+                description: e instanceof Error ? e.message : t('toast.unknownServerError')
             });
         }
-    }, [currentUser, refreshData, toast]);
+    }, [currentUser, refreshData, toast, t]);
 
     const handleImportNonEmployees = useCallback(async (fileContent: string, settings: Settings) => {
         if (!currentUser) return;
@@ -1029,25 +1029,25 @@ export default function MainLayout({
             const { importNonEmployeesFromExcel } = await import('@/lib/actions');
             const result = await importNonEmployeesFromExcel(fileContent, currentUser.uid, settings);
 
-            let description = `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} wierszy.`;
+            let description = t('toast.importSuccess', { count: result.importedCount, total: result.totalRows });
             if (result.errors.length > 0) {
-                description += ` Błędy: ${result.errors.join('; ')}`;
+                description += ` ${t('toast.importErrors', { errors: result.errors.join('; ') })}`;
             }
 
             toast({
-                title: "Import zakończony",
+                title: t('toast.importComplete'),
                 description: description,
                 duration: result.errors.length > 0 ? 10000 : 5000,
             });
-            refreshData(false); // fire-and-forget — sync z serwerem w tle
+            refreshData(false);
         } catch (e) {
             toast({
                 variant: "destructive",
-                title: "Błąd importu mieszkańców (NZ)",
-                description: e instanceof Error ? e.message : 'Nieznany błąd serwera.'
+                title: t('toast.nzImportError'),
+                description: e instanceof Error ? e.message : t('toast.unknownServerError')
             });
         }
-    }, [currentUser, refreshData, toast]);
+    }, [currentUser, refreshData, toast, t]);
 
     const handleImportBokResidents = useCallback(async (fileContent: string, settings: Settings) => {
         if (!currentUser) return;
@@ -1055,40 +1055,40 @@ export default function MainLayout({
             const { importBokResidentsFromExcel } = await import('@/lib/actions');
             const result = await importBokResidentsFromExcel(fileContent, currentUser.uid, settings);
 
-            let description = `Pomyślnie zaimportowano ${result.importedCount} z ${result.totalRows} wierszy.`;
+            let description = t('toast.importSuccess', { count: result.importedCount, total: result.totalRows });
             if (result.errors.length > 0) {
-                description += ` Błędy: ${result.errors.join('; ')}`;
+                description += ` ${t('toast.importErrors', { errors: result.errors.join('; ') })}`;
             }
 
             toast({
-                title: "Import zakończony",
+                title: t('toast.importComplete'),
                 description: description,
                 duration: result.errors.length > 0 ? 10000 : 5000,
             });
-            refreshData(false); // fire-and-forget — sync z serwerem w tle
+            refreshData(false);
         } catch (e) {
             toast({
                 variant: "destructive",
-                title: "Błąd importu pracowników BOK",
-                description: e instanceof Error ? e.message : 'Nieznany błąd serwera.'
+                title: t('toast.bokImportError'),
+                description: e instanceof Error ? e.message : t('toast.unknownServerError')
             });
         }
-    }, [currentUser, refreshData, toast]);
+    }, [currentUser, refreshData, toast, t]);
 
     const handleMigrateFullNames = useCallback(async () => {
         if (!currentUser) return;
         try {
             const result = await migrateFullNames(currentUser.uid);
-            toast({ title: "Sukces", description: `Zmigrowano ${result.migratedEmployees} pracowników i ${result.migratedNonEmployees} mieszkańców.` });
-            refreshData(false); // fire-and-forget — sync z serwerem w tle
+            toast({ title: t('common.success'), description: t('toast.migrationSuccess', { employees: result.migratedEmployees, residents: result.migratedNonEmployees }) });
+            refreshData(false);
         } catch (e) {
             toast({
                 variant: "destructive",
-                title: "Błąd migracji",
-                description: e instanceof Error ? e.message : 'Nieznany błąd serwera.'
+                title: t('toast.migrationError'),
+                description: e instanceof Error ? e.message : t('toast.unknownServerError')
             });
         }
-    }, [currentUser, refreshData, toast]);
+    }, [currentUser, refreshData, toast, t]);
 
     const contextValue: MainLayoutContextType = useMemo(() => ({
         allEmployees,

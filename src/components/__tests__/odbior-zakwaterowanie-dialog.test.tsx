@@ -122,7 +122,7 @@ describe('OdbiorZakwaterowanieDialog', () => {
     expect(screen.getByText('Juan')).toBeInTheDocument();
     expect(screen.getByText('Chopina 11a')).toBeInTheDocument();
 
-    const submitButton = screen.getByRole('button', { name: /Zatwierdź/i });
+    const submitButton = screen.getByRole('button', { name: /Potwierdź|Zatwierdź/i });
     fireEvent.click(submitButton);
 
     await waitFor(() => {

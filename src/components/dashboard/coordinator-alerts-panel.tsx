@@ -7,27 +7,31 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw, Bell, BellOff, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import type { AlertDetailItem, AlertDetails } from '@/lib/alert-utils';
+import { useLanguage } from '@/lib/i18n';
+import type { TFunction } from '@/lib/i18n';
 
 interface MyAlerts {
   checkedAt: string;
   details: AlertDetails;
 }
 
-const ALERT_CONFIG: { key: keyof AlertDetails; label: string; icon: string }[] = [
-  { key: 'contractExpiry',        label: 'Wygasające umowy',         icon: '📋' },
-  { key: 'bokStatusInconsistency', label: 'Niespójny status BOK',    icon: '⚠️' },
-  { key: 'capacityExceeded',      label: 'Przekroczona pojemność',   icon: '🏠' },
-  { key: 'missingPaymentData',    label: 'Brak danych płatności NZ', icon: '💳' },
-  { key: 'duplicatePersons',      label: 'Zdublowane osoby',         icon: '👥' },
-];
+function getAlertConfig(t: TFunction): { key: keyof AlertDetails; label: string; icon: string }[] {
+  return [
+    { key: 'contractExpiry',        label: t('alert.contractExpiry'),         icon: '📋' },
+    { key: 'bokStatusInconsistency', label: t('alert.bokStatusInconsistency'), icon: '⚠️' },
+    { key: 'capacityExceeded',      label: t('alert.capacityExceeded'),        icon: '🏠' },
+    { key: 'missingPaymentData',    label: t('alert.missingPaymentData'),      icon: '💳' },
+    { key: 'duplicatePersons',      label: t('alert.duplicatePersons'),        icon: '👥' },
+  ];
+}
 
-function timeAgo(isoDate: string): string {
+function timeAgo(isoDate: string, t: TFunction): string {
   const diff = Math.round((Date.now() - new Date(isoDate).getTime()) / 60000);
-  if (diff < 1) return 'przed chwilą';
-  if (diff < 60) return `${diff} min temu`;
+  if (diff < 1) return t('time.justNow');
+  if (diff < 60) return t('time.minutesAgo', { count: diff });
   const hours = Math.floor(diff / 60);
-  if (hours < 24) return `${hours}h temu`;
-  return `${Math.floor(hours / 24)}d temu`;
+  if (hours < 24) return t('time.hoursAgo', { count: hours });
+  return t('time.daysAgo', { count: Math.floor(hours / 24) });
 }
 
 function DetailList({ items }: { items: AlertDetailItem[] }) {
@@ -77,6 +81,7 @@ function AlertRow({ icon, label, items }: { icon: string; label: string; items: 
 }
 
 export function CoordinatorAlertsPanel() {
+  const { t } = useLanguage();
   const [data, setData] = useState<MyAlerts | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -92,7 +97,7 @@ export function CoordinatorAlertsPanel() {
     }
   };
 
-  const AUTO_REFRESH_MS = 60 * 60 * 1000; // 1 hour
+  const AUTO_REFRESH_MS = 60 * 60 * 1000;
 
   useEffect(() => {
     fetchAlerts();
@@ -106,6 +111,7 @@ export function CoordinatorAlertsPanel() {
     : null;
 
   const hasAlerts = totalCount !== null && totalCount > 0;
+  const alertConfig = getAlertConfig(t);
 
   return (
     <Card>
@@ -116,14 +122,14 @@ export function CoordinatorAlertsPanel() {
             : totalCount === 0
               ? <BellOff className="h-4 w-4 text-green-500" />
               : <Bell className="h-4 w-4 text-muted-foreground" />}
-          Moje alerty
+          {t('dashboard.myAlerts')}
           {hasAlerts && (
             <Badge variant="destructive" className="text-xs h-5 px-1.5">{totalCount}</Badge>
           )}
         </CardTitle>
         <div className="flex items-center gap-2">
           {data?.checkedAt && (
-            <span className="text-xs text-muted-foreground">{timeAgo(data.checkedAt)}</span>
+            <span className="text-xs text-muted-foreground">{timeAgo(data.checkedAt, t)}</span>
           )}
           <Button
             size="sm"
@@ -133,21 +139,21 @@ export function CoordinatorAlertsPanel() {
             disabled={refreshing}
           >
             <RefreshCw className={`h-3 w-3 mr-1 ${refreshing ? 'animate-spin' : ''}`} />
-            Odśwież
+            {t('common.refresh')}
           </Button>
         </div>
       </CardHeader>
 
       <CardContent>
         {loading ? (
-          <p className="text-xs text-muted-foreground">Ładowanie...</p>
+          <p className="text-xs text-muted-foreground">{t('common.loading')}</p>
         ) : !data ? (
-          <p className="text-xs text-destructive">Błąd ładowania alertów.</p>
+          <p className="text-xs text-destructive">{t('dashboard.alertsLoadError')}</p>
         ) : totalCount === 0 ? (
-          <p className="text-xs text-green-600 font-medium">✓ Brak alertów — wszystko OK</p>
+          <p className="text-xs text-green-600 font-medium">{t('dashboard.noAlerts')}</p>
         ) : (
           <div className="space-y-0.5">
-            {ALERT_CONFIG.map(({ key, label, icon }) => (
+            {alertConfig.map(({ key, label, icon }) => (
               <AlertRow
                 key={key}
                 icon={icon}

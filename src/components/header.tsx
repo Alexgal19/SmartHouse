@@ -3,6 +3,7 @@
 "use client";
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import type { Locale } from 'date-fns';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,7 +18,7 @@ import type { SessionData, View, Notification, Settings } from '@/types';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, formatDistanceToNow } from 'date-fns';
-import { pl } from 'date-fns/locale';
+import { useLanguage } from '@/lib/i18n';
 import { MobileSidebarToggle } from '@/components/ui/sidebar';
 import { cn, filterNotifications, isAdminRelevantNotification } from '@/lib/utils';
 import { ModernHouseIcon } from './icons/modern-house-icon';
@@ -28,12 +29,13 @@ import { Checkbox } from './ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
 
-const NotificationItem = ({ n, onClick, onDelete, onToggleReadStatus, style }: {
+const NotificationItem = ({ n, onClick, onDelete, onToggleReadStatus, style, dateLocale }: {
     n: Notification;
     onClick: (n: Notification) => void;
     onDelete: (notificationId: string) => void;
     onToggleReadStatus: (notificationId: string, isRead: boolean) => void;
-    style?: React.CSSProperties
+    style?: React.CSSProperties;
+    dateLocale: Locale;
 }) => {
     
     const itemClasses = cn(
@@ -71,7 +73,7 @@ const NotificationItem = ({ n, onClick, onDelete, onToggleReadStatus, style }: {
                     <div className="flex-1">
                         <p className="text-sm leading-tight"><span className="font-bold">{n.actorName}</span> {n.message}</p>
                         <p className="text-xs text-muted-foreground mt-1">
-                            {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true, locale: pl })}
+                            {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true, locale: dateLocale })}
                         </p>
                     </div>
                     <Button 
@@ -120,7 +122,7 @@ function parseDateText(text: string): Date | undefined {
     return undefined;
 }
 
-const DatePicker = ({ date, setDate, placeholder }: { date?: Date, setDate: (date?: Date) => void, placeholder: string }) => {
+const DatePicker = ({ date, setDate, placeholder, dateLocale }: { date?: Date, setDate: (date?: Date) => void, placeholder: string, dateLocale: Locale }) => {
     const [open, setOpen] = useState(false);
     const [textMode, setTextMode] = useState(false);
     const [textValue, setTextValue] = useState('');
@@ -196,7 +198,7 @@ const DatePicker = ({ date, setDate, placeholder }: { date?: Date, setDate: (dat
                     selected={date}
                     onSelect={(d) => { setDate(d); setOpen(false); }}
                     initialFocus
-                    locale={pl}
+                    locale={dateLocale}
                 />
             </PopoverContent>
         </Popover>
@@ -226,6 +228,7 @@ export default function Header({
   onDeleteNotification: (notificationId: string) => void;
   onToggleNotificationReadStatus: (notificationId: string, isRead: boolean) => void;
 }) {
+    const { t, lang, setLang, dateLocale } = useLanguage();
     const [selectedCoordinatorId, setSelectedCoordinatorId] = useState('all');
     const [employeeNameFilter, setEmployeeNameFilter] = useState('');
     const [selectedDate, setSelectedDate] = useState<Date | undefined>();
@@ -283,8 +286,8 @@ export default function Header({
             <SheetContent className="w-full sm:max-w-md flex flex-col" side="right">
                 <SheetHeader className="flex-row justify-between items-center pr-6">
                     <div>
-                        <SheetTitle>Powiadomienia</SheetTitle>
-                        <SheetDescription>Ostatnie zmiany w systemie.</SheetDescription>
+                        <SheetTitle>{t('header.notifications')}</SheetTitle>
+                        <SheetDescription>{t('header.latestChanges')}</SheetDescription>
                     </div>
                      {notifications.length > 0 && user.isAdmin && (
                         <Button variant="ghost" size="icon" onClick={onClearNotifications}>
@@ -295,13 +298,13 @@ export default function Header({
                 <div className="py-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {user.isAdmin && settings && (
                         <div className="space-y-2">
-                            <Label>Filtruj wg koordynatora</Label>
+                            <Label>{t('header.filterByCoordinator')}</Label>
                             <Select value={selectedCoordinatorId} onValueChange={setSelectedCoordinatorId}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Wybierz koordynatora" />
+                                    <SelectValue placeholder={t('header.allCoordinators')} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">Wszyscy koordynatorzy</SelectItem>
+                                    <SelectItem value="all">{t('header.allCoordinators')}</SelectItem>
                                     {sortedCoordinators.map(c => (
                                         <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>
                                     ))}
@@ -310,34 +313,35 @@ export default function Header({
                         </div>
                     )}
                     <div className="space-y-2">
-                        <Label>Filtruj wg pracownika</Label>
-                        <Input 
-                            placeholder="Wpisz imię/nazwisko..."
+                        <Label>{t('header.filterByEmployee')}</Label>
+                        <Input
+                            placeholder={t('header.enterName')}
                             value={employeeNameFilter}
                             onChange={(e) => setEmployeeNameFilter(e.target.value)}
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label>Filtruj wg statusu</Label>
+                        <Label>{t('header.filterByStatus')}</Label>
                         <Select value={readStatusFilter} onValueChange={(val: 'all' | 'read' | 'unread') => setReadStatusFilter(val)}>
                             <SelectTrigger>
-                                <SelectValue placeholder="Wybierz status" />
+                                <SelectValue placeholder={t('header.filterByStatus')} />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">Wszystkie</SelectItem>
-                                <SelectItem value="unread">Nieprzeczytane</SelectItem>
-                                <SelectItem value="read">Przeczytane</SelectItem>
+                                <SelectItem value="all">{t('header.allStatuses')}</SelectItem>
+                                <SelectItem value="unread">{t('header.unread')}</SelectItem>
+                                <SelectItem value="read">{t('header.read')}</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
                  </div>
                  <div className="py-2 mb-2 border-t border-border">
                     <div className="space-y-2">
-                        <Label>Filtruj wg daty</Label>
+                        <Label>{t('header.filterByDate')}</Label>
                         <DatePicker
                             date={selectedDate}
                             setDate={setSelectedDate}
-                            placeholder="Wybierz datę"
+                            placeholder={t('header.selectDate')}
+                            dateLocale={dateLocale}
                         />
                     </div>
                      {(selectedDate || selectedCoordinatorId !== 'all' || employeeNameFilter !== '' || readStatusFilter !== 'all') && (
@@ -349,7 +353,7 @@ export default function Header({
                                 setReadStatusFilter('all');
                             }}>
                                 <XCircle className="mr-2 h-4 w-4" />
-                                Wyczyść filtry
+                                {t('header.clearFilters')}
                             </Button>
                         </div>
                     )}
@@ -365,6 +369,7 @@ export default function Header({
                                     onClick={onNotificationClick}
                                     onDelete={onDeleteNotification}
                                     onToggleReadStatus={onToggleNotificationReadStatus}
+                                    dateLocale={dateLocale}
                                     style={index < MAX_ANIMATED_ITEMS ? {
                                         animationDelay: `${index * 30}ms`,
                                         animationFillMode: 'backwards'
@@ -378,18 +383,28 @@ export default function Header({
                                     className="w-full"
                                     onClick={() => setVisibleCount(prev => prev + NOTIFICATIONS_PAGE_SIZE)}
                                 >
-                                    Załaduj więcej ({filteredNotifications.length - visibleCount} pozostało)
+                                    {t('header.loadMore')} ({filteredNotifications.length - visibleCount} {t('header.remaining')})
                                 </Button>
                             )}
                         </>
                     ) : (
-                        <div className="text-center text-muted-foreground py-12">Brak powiadomień pasujących do filtrów.</div>
+                        <div className="text-center text-muted-foreground py-12">{t('header.noNotifications')}</div>
                     )}
                     </div>
                 </ScrollArea>
             </SheetContent>
         </Sheet>
         
+        <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLang(lang === 'pl' ? 'en' : 'pl')}
+            className="text-xs font-semibold text-muted-foreground hover:text-foreground px-2 h-8"
+            title={t('header.language')}
+        >
+            {lang === 'pl' ? 'EN' : 'PL'}
+        </Button>
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="overflow-hidden rounded-full text-foreground hover:bg-accent hover:text-accent-foreground">
@@ -397,14 +412,14 @@ export default function Header({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>{user.name} ({user.isAdmin ? 'Admin' : 'Koordynator'})</DropdownMenuLabel>
+            <DropdownMenuLabel>{user.name} ({user.isAdmin ? t('common.admin') : t('common.coordinator')})</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem disabled>Profil</DropdownMenuItem>
-            <DropdownMenuItem disabled>Wsparcie</DropdownMenuItem>
+            <DropdownMenuItem disabled>{t('header.profile')}</DropdownMenuItem>
+            <DropdownMenuItem disabled>{t('header.support')}</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onLogout} className="text-destructive">
                 <LogOut className="mr-2 h-4 w-4" />
-                Wyloguj się
+                {t('header.logout')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

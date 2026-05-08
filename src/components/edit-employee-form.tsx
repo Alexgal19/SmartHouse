@@ -41,8 +41,8 @@ import { CalendarIcon, Info, X, Loader2, Eye, AlertTriangle } from 'lucide-react
 import { AddressPreviewDialog } from '@/components/address-preview-dialog';
 import { Calendar } from '@/components/ui/calendar';
 import { format, isValid, parseISO } from 'date-fns';
-import { pl } from 'date-fns/locale';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useLanguage } from '@/lib/i18n';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -169,6 +169,7 @@ const DateInput = ({
   disabled?: (date: Date) => boolean;
   id?: string;
 }) => {
+  const { t, dateLocale } = useLanguage();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [textMode, setTextMode] = useState(false);
   const [textValue, setTextValue] = useState('');
@@ -243,7 +244,7 @@ const DateInput = ({
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="center" sideOffset={5}>
           <Calendar
-            locale={pl}
+            locale={dateLocale}
             mode="single"
             selected={value && isValid(value) ? value : undefined}
             onSelect={(d) => { onChange(d ?? null); setIsPopoverOpen(false); }}
@@ -265,7 +266,7 @@ const DateInput = ({
             setIsPopoverOpen(true);
           }
         }}
-        aria-label={value ? "Wyczyść datę" : "Wybierz datę"}
+        aria-label={value ? t('form.clearField') : t('form.selectDate')}
       >
         {value ? (
           <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
@@ -295,6 +296,7 @@ export function EditEmployeeForm({
   initialData?: Partial<EmployeeFormData>;
   currentUser: SessionData;
 }) {
+  const { t, dateLocale } = useLanguage();
   const { toast } = useToast();
   const { handleDismissEmployee, allEmployees, allNonEmployees, allBokResidents } = useMainLayout();
   const [isDismissing, setIsDismissing] = useState(false);
@@ -497,8 +499,8 @@ export function EditEmployeeForm({
       if (addressChanged && !checkInDateChanged) {
         toast({
           variant: 'destructive',
-          title: 'Uwaga',
-          description: 'Zmień datę zameldowania, aby poprawnie zarejestrować zmianę adresu.',
+          title: t('common.warning') || 'Uwaga',
+          description: t('form.changeCheckInToRegisterAddressChange') || 'Zmień datę zameldowania, aby poprawnie zarejestrować zmianę adresu.',
         });
         return; // Stop submission
       }
@@ -560,7 +562,7 @@ export function EditEmployeeForm({
     if (!checkOutDate || !(checkOutDate instanceof Date) || !isValid(checkOutDate)) {
       form.setError('checkOutDate', {
         type: 'manual',
-        message: 'Data wymeldowania jest wymagana i musi być poprawna, aby zwolnić pracownika.',
+        message: t('form.dismissCheckOutInvalid'),
       });
       return;
     }
@@ -612,9 +614,9 @@ export function EditEmployeeForm({
           <DialogHeader className="p-4 sm:p-6 pb-2 sm:pb-4 flex-shrink-0">
             <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
               <div>
-                <DialogTitle>{employee ? 'Edytuj dane pracownika' : 'Dodaj nowego pracownika'}</DialogTitle>
+                <DialogTitle>{employee ? t('form.editEmployee') : t('form.addEmployee')}</DialogTitle>
                 <DialogDescription className="text-xs sm:text-sm">
-                  Wypełnij poniższe pola, aby {employee ? 'zaktualizować' : 'dodać'} pracownika.
+                  {employee ? t('form.fillFieldsToUpdateEmployee') : t('form.fillFieldsToAddEmployee')}
                 </DialogDescription>
               </div>
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
@@ -625,7 +627,7 @@ export function EditEmployeeForm({
                   className="w-full sm:w-auto h-8 text-xs sm:text-sm px-3"
                 >
                   <Eye className="h-3 w-3 sm:mr-2" />
-                  <span className="ml-2">Podgląd miejsc</span>
+                  <span className="ml-2">{t('form.addressPreview')}</span>
                 </Button>
               </div>
             </div>
@@ -635,8 +637,8 @@ export function EditEmployeeForm({
               <Tabs defaultValue="basic" className="w-full flex-1 flex flex-col overflow-hidden">
                 <div className="px-4 sm:px-6 flex-shrink-0">
                   <TabsList className="grid w-full grid-cols-2 h-auto">
-                    <TabsTrigger value="basic" className="text-xs sm:text-sm px-2 py-3">Dane podstawowe</TabsTrigger>
-                    <TabsTrigger value="finance" className="text-xs sm:text-sm px-2 py-3">Finanse i potrącenia</TabsTrigger>
+                    <TabsTrigger value="basic" className="text-xs sm:text-sm px-2 py-3">{t('form.basicData')}</TabsTrigger>
+                    <TabsTrigger value="finance" className="text-xs sm:text-sm px-2 py-3">{t('form.financesAndDeductions')}</TabsTrigger>
                   </TabsList>
                 </div>
                 <ScrollArea className="flex-1 mt-4">
@@ -648,7 +650,7 @@ export function EditEmployeeForm({
                           name="lastName"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Nazwisko</FormLabel>
+                              <FormLabel>{t('form.lastName2')}</FormLabel>
                               <FormControl><Input placeholder="Kowalski" {...field} /></FormControl>
                               <FormMessage />
                             </FormItem>
@@ -659,7 +661,7 @@ export function EditEmployeeForm({
                           name="firstName"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Imię</FormLabel>
+                              <FormLabel>{t('form.firstName2')}</FormLabel>
                               <FormControl><Input placeholder="Jan" {...field} /></FormControl>
                               <FormMessage />
                             </FormItem>
@@ -671,7 +673,7 @@ export function EditEmployeeForm({
                         <div className="flex items-start gap-3 rounded-md border border-amber-500/50 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
                           <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-500" />
                           <span>
-                            Uwaga: pracownik <strong>{duplicateEmployee.firstName} {duplicateEmployee.lastName}</strong> jest już aktywny u tego koordynatora. Sprawdź listę aktywnych pracowników przed dodaniem.
+                            {t('form.duplicateEmployeeWarning', { name: `${duplicateEmployee.firstName} ${duplicateEmployee.lastName}` })}
                           </span>
                         </div>
                       )}
@@ -682,14 +684,14 @@ export function EditEmployeeForm({
                           name="coordinatorId"
                           render={({ field }) => (
                             <FormItem className="flex flex-col">
-                              <FormLabel>Koordynator</FormLabel>
+                              <FormLabel>{t('form.coordinator')}</FormLabel>
                               <FormControl>
                                 <Combobox
                                   options={coordinatorOptions}
                                   value={field.value}
                                   onChange={handleCoordinatorChange}
-                                  placeholder="Wybierz koordynatora"
-                                  searchPlaceholder="Szukaj koordynatora..."
+                                  placeholder={t('form.selectCoordinator')}
+                                  searchPlaceholder={t('form.searchCoordinator')}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -701,14 +703,14 @@ export function EditEmployeeForm({
                           name="nationality"
                           render={({ field }) => (
                             <FormItem className="flex flex-col">
-                              <FormLabel>Narodowość</FormLabel>
+                              <FormLabel>{t('form.nationality')}</FormLabel>
                               <FormControl>
                                 <Combobox
                                   options={nationalityOptions}
                                   value={field.value || ''}
                                   onChange={field.onChange}
-                                  placeholder="Wybierz narodowość"
-                                  searchPlaceholder="Szukaj narodowości..."
+                                  placeholder={t('form.selectNationality')}
+                                  searchPlaceholder={t('form.searchNationality')}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -720,9 +722,9 @@ export function EditEmployeeForm({
                           name="gender"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Płeć</FormLabel>
+                              <FormLabel>{t('form.gender')}</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value || ''}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Wybierz płeć" /></SelectTrigger></FormControl>
+                                <FormControl><SelectTrigger><SelectValue placeholder={t('form.selectGender')} /></SelectTrigger></FormControl>
                                 <SelectContent>
                                   {sortedGenders.filter(Boolean).map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
                                 </SelectContent>
@@ -739,14 +741,14 @@ export function EditEmployeeForm({
                           name="locality"
                           render={({ field }) => (
                             <FormItem className="flex flex-col">
-                              <FormLabel>Miejscowość</FormLabel>
+                              <FormLabel>{t('form.locality')}</FormLabel>
                               <FormControl>
                                 <Combobox
                                   options={localityOptions}
                                   value={field.value || ''}
                                   onChange={handleLocalityChange}
-                                  placeholder={!selectedCoordinatorId ? "Najpierw wybierz koordynatora" : "Wybierz miejscowość"}
-                                  searchPlaceholder="Szukaj miejscowości..."
+                                  placeholder={!selectedCoordinatorId ? t('form.firstSelectCoord') : t('form.selectLocality')}
+                                  searchPlaceholder={t('form.searchLocality')}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -758,13 +760,13 @@ export function EditEmployeeForm({
                           name="address"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Adres</FormLabel>
+                              <FormLabel>{t('form.address')}</FormLabel>
                               <Select onValueChange={handleAddressChange} value={field.value || ''} disabled={!selectedLocality}>
-                                <FormControl><SelectTrigger><SelectValue placeholder={!selectedLocality ? "Najpierw wybierz miejscowość" : "Wybierz adres"} /></SelectTrigger></FormControl>
+                                <FormControl><SelectTrigger><SelectValue placeholder={!selectedLocality ? t('form.firstSelectLocality') : t('form.selectAddress')} /></SelectTrigger></FormControl>
                                 <SelectContent>
                                   {availableAddresses.filter(a => a.name).map(a => (
                                     <SelectItem key={a.id} value={a.name} disabled={!a.isActive}>
-                                      {a.name} {!a.isActive ? '(Niedostępny)' : ''}
+                                      {a.name} {!a.isActive ? `(${t('common.unavailable')})` : ''}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
@@ -779,7 +781,7 @@ export function EditEmployeeForm({
                             name="ownAddress"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Adres własnego mieszkania</FormLabel>
+                                <FormLabel>{t('form.ownAddress')}</FormLabel>
                                 <FormControl><Input placeholder="np. ul. Testowa 1, 00-000 Warszawa" {...field} /></FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -791,13 +793,13 @@ export function EditEmployeeForm({
                           name="roomNumber"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Pokój</FormLabel>
+                              <FormLabel>{t('form.room')}</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value || ''} disabled={!selectedAddress || isOwnAddressSelected}>
-                                <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : (isOwnAddressSelected ? "1" : "Wybierz pokój")} /></SelectTrigger></FormControl>
+                                <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? t('form.firstSelectAddress') : (isOwnAddressSelected ? "1" : t('form.selectRoom'))} /></SelectTrigger></FormControl>
                                 <SelectContent>
                                   {availableRoomsWithCapacity.filter(r => r.name).map(r => (
                                     <SelectItem key={r.id} value={r.name} disabled={!r.isActive || r.isLocked}>
-                                      {r.name} {r.isActive ? (r.isLocked ? '(Zablokowany)' : `(${r.available} wolnych z ${r.capacity})`) : '(Niedostępny)'}
+                                      {r.name} {r.isActive ? (r.isLocked ? `(${t('housing.locked')})` : `(${t('housing.roomCapacity', { available: r.available, capacity: r.capacity })})`) : `(${t('common.unavailable')})`}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
@@ -811,14 +813,14 @@ export function EditEmployeeForm({
                           name="zaklad"
                           render={({ field }) => (
                             <FormItem className="flex flex-col">
-                              <FormLabel>Zakład</FormLabel>
+                              <FormLabel>{t('form.department')}</FormLabel>
                               <FormControl>
                                 <Combobox
                                   options={departmentOptions}
                                   value={field.value || ''}
                                   onChange={field.onChange}
-                                  placeholder={!selectedCoordinatorId ? "Najpierw wybierz koordynatora" : "Wybierz zakład"}
-                                  searchPlaceholder="Szukaj zakładu..."
+                                  placeholder={!selectedCoordinatorId ? t('form.firstSelectCoord') : t('form.selectDept')}
+                                  searchPlaceholder={t('form.searchDepartment')}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -833,7 +835,7 @@ export function EditEmployeeForm({
                           name="checkInDate"
                           render={({ field }) => (
                             <FormItem className="flex flex-col">
-                              <FormLabel>Data zameldowania</FormLabel>
+                              <FormLabel>{t('form.checkInDate')}</FormLabel>
                               <FormControl>
                                 <DateInput
                                   value={field.value ?? undefined}
@@ -849,7 +851,7 @@ export function EditEmployeeForm({
                           name="checkOutDate"
                           render={({ field }) => (
                             <FormItem className="flex flex-col">
-                              <FormLabel>Data wymeldowania</FormLabel>
+                              <FormLabel>{t('form.checkOutDate')}</FormLabel>
                               <FormControl>
                                 <DateInput value={field.value ?? undefined} onChange={field.onChange} />
                               </FormControl>
@@ -862,7 +864,7 @@ export function EditEmployeeForm({
                           name="departureReportDate"
                           render={({ field }) => (
                             <FormItem className="flex flex-col">
-                              <FormLabel>Data zgłoszenia wyjazdu</FormLabel>
+                              <FormLabel>{t('form.departureDate')}</FormLabel>
                               <FormControl>
                                 <DateInput value={field.value ?? undefined} onChange={field.onChange} />
                               </FormControl>
@@ -877,7 +879,7 @@ export function EditEmployeeForm({
                           name="contractStartDate"
                           render={({ field }) => (
                             <FormItem className="flex flex-col">
-                              <FormLabel>Umowa od</FormLabel>
+                              <FormLabel>{t('form.contractFrom')}</FormLabel>
                               <FormControl>
                                 <DateInput value={field.value ?? undefined} onChange={field.onChange} />
                               </FormControl>
@@ -890,7 +892,7 @@ export function EditEmployeeForm({
                           name="contractEndDate"
                           render={({ field }) => (
                             <FormItem className="flex flex-col">
-                              <FormLabel>Umowa do</FormLabel>
+                              <FormLabel>{t('form.contractTo')}</FormLabel>
                               <FormControl>
                                 <DateInput value={field.value ?? undefined} onChange={field.onChange} />
                               </FormControl>
@@ -905,8 +907,8 @@ export function EditEmployeeForm({
                         name="comments"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Komentarze</FormLabel>
-                            <FormControl><Input placeholder="Dodatkowe informacje..." {...field} /></FormControl>
+                            <FormLabel>{t('form.comments')}</FormLabel>
+                            <FormControl><Input placeholder={t('form.additionalInfo')} {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -915,13 +917,13 @@ export function EditEmployeeForm({
                   </TabsContent>
                   <TabsContent value="finance" className="mt-0 h-full">
                     <div className="space-y-4 px-4 sm:px-6 pb-4">
-                      <h3 className="text-lg font-medium">Finanse i potrącenia</h3>
+                      <h3 className="text-lg font-medium">{t('form.financesAndDeductions')}</h3>
                       <FormField
                         control={form.control}
                         name="deductionEntryDate"
                         render={({ field }) => (
                           <FormItem className="flex flex-col">
-                            <FormLabel>Data wpisania potrącenia</FormLabel>
+                            <FormLabel>{t('form.deductionEntryDate')}</FormLabel>
                             <FormControl>
                               <DateInput
                                 value={field.value ?? undefined}
@@ -938,9 +940,9 @@ export function EditEmployeeForm({
                           name="depositReturned"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Zwrot kaucji</FormLabel>
+                              <FormLabel>{t('form.depositReturned')}</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value || ''}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Status zwrotu kaucji" /></SelectTrigger></FormControl>
+                                <FormControl><SelectTrigger><SelectValue placeholder={t('form.depositReturnStatus')} /></SelectTrigger></FormControl>
                                 <SelectContent>
                                   <SelectItem value="Tak">Tak</SelectItem>
                                   <SelectItem value="Nie">Nie</SelectItem>
@@ -956,7 +958,7 @@ export function EditEmployeeForm({
                           name="depositReturnAmount"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Kwota zwrotu kaucji (PLN)</FormLabel>
+                              <FormLabel>{t('form.depositReturnAmount')}</FormLabel>
                               <FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))} value={field.value ?? ''} /></FormControl>
                               <FormMessage />
                             </FormItem>
@@ -970,11 +972,11 @@ export function EditEmployeeForm({
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel className="flex items-center">
-                                Potrącenie (Regulamin)
+                                {t('form.deductionRegulation')}
                                 <TooltipProvider>
                                   <Tooltip>
                                     <TooltipTrigger asChild><Info className="h-3 w-3 ml-1 cursor-help" /></TooltipTrigger>
-                                    <TooltipContent><p>Potrącenie za nieprzestrzeganie regulaminu.</p></TooltipContent>
+                                    <TooltipContent><p>{t('form.deductionRegulationTooltip')}</p></TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
                               </FormLabel>
@@ -989,11 +991,11 @@ export function EditEmployeeForm({
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel className="flex items-center">
-                                Potrącenie (4 msc)
+                                {t('form.deductionNo4Months')}
                                 <TooltipProvider>
                                   <Tooltip>
                                     <TooltipTrigger asChild><Info className="h-3 w-3 ml-1 cursor-help" /></TooltipTrigger>
-                                    <TooltipContent><p>Potrącenie za okres krótszy niż 4 miesiące.</p></TooltipContent>
+                                    <TooltipContent><p>{t('form.deductionNo4MonthsTooltip')}</p></TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
                               </FormLabel>
@@ -1008,11 +1010,11 @@ export function EditEmployeeForm({
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel className="flex items-center">
-                                Potrącenie (30 dni)
+                                {t('form.deductionNo30Days')}
                                 <TooltipProvider>
                                   <Tooltip>
                                     <TooltipTrigger asChild><Info className="h-3 w-3 ml-1 cursor-help" /></TooltipTrigger>
-                                    <TooltipContent><p>Potrącenie za wypowiedzenie krótsze niż 30 dni.</p></TooltipContent>
+                                    <TooltipContent><p>{t('form.deductionNo30DaysTooltip')}</p></TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
                               </FormLabel>
@@ -1028,9 +1030,9 @@ export function EditEmployeeForm({
                         render={() => (
                           <FormItem>
                             <div className="mb-4">
-                              <FormLabel className="text-base">Inne potrącenia</FormLabel>
+                              <FormLabel className="text-base">{t('form.otherDeductions')}</FormLabel>
                               <p className="text-sm text-muted-foreground">
-                                Wybierz powody dodatkowych potrąceń.
+                                {t('form.selectDeductionReasons')}
                               </p>
                             </div>
                             {(form.getValues('deductionReason') || []).map((reason, index) => (
@@ -1104,11 +1106,11 @@ export function EditEmployeeForm({
                       variant="destructive"
                       onClick={handleDismissClick}
                       disabled={!canDismiss || isDismissing}
-                      title={!canDismiss ? 'Uzupełnij datę wymeldowania, aby zwolnić pracownika' : undefined}
+                      title={!canDismiss ? t('form.dismissCheckOutRequired') : undefined}
                       className="h-8 text-xs sm:text-sm px-3 sm:px-4"
                     >
                       {isDismissing && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-                      Zwolnij
+                      {t('form.dismiss')}
                     </Button>
                   )}
                 </div>
@@ -1119,7 +1121,7 @@ export function EditEmployeeForm({
                     onClick={() => onOpenChange(false)}
                     className="h-8 text-xs sm:text-sm px-3 sm:px-4"
                   >
-                    Anuluj
+                    {t('common.cancel')}
                   </Button>
                   <Button
                     type="submit"
@@ -1127,7 +1129,7 @@ export function EditEmployeeForm({
                     className="h-8 text-xs sm:text-sm px-3 sm:px-4"
                   >
                     {form.formState.isSubmitting && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-                    Zapisz
+                    {t('common.save')}
                   </Button>
                 </div>
               </div>
@@ -1148,8 +1150,8 @@ export function EditEmployeeForm({
           form.setValue('address', address);
           form.setValue('roomNumber', roomNumber);
           toast({
-            title: "Wybór zastosowany",
-            description: `${address}, pokój ${roomNumber} został wybrany.`
+            title: t('form.addressPreviewApplied'),
+            description: t('form.addressPreviewAppliedDesc', { address, roomNumber })
           });
         }}
       />

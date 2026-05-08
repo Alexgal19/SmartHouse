@@ -38,7 +38,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon, X, Loader2, Send, Camera } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, isValid, parseISO } from 'date-fns';
-import { pl } from 'date-fns/locale';
+import { useLanguage } from '@/lib/i18n';
 import { Combobox } from '@/components/ui/combobox';
 import Webcam from 'react-webcam';
 import { extractPassportData } from '@/ai/flows/extract-passport-data-flow';
@@ -104,6 +104,7 @@ const DateInput = ({
   disabled?: (date: Date) => boolean;
   id?: string;
 }) => {
+  const { t, dateLocale } = useLanguage();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [textMode, setTextMode] = useState(false);
   const [textValue, setTextValue] = useState('');
@@ -178,7 +179,7 @@ const DateInput = ({
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="center" sideOffset={5}>
           <Calendar
-            locale={pl}
+            locale={dateLocale}
             mode="single"
             selected={value && isValid(value) ? value : undefined}
             onSelect={(d) => { onChange(d ?? null); setIsPopoverOpen(false); }}
@@ -196,7 +197,7 @@ const DateInput = ({
           e.stopPropagation();
           if (value) { onChange(null); } else { setIsPopoverOpen(true); }
         }}
-        aria-label={value ? "Wyczyść datę" : "Wybierz datę"}
+        aria-label={value ? t('form.clearField') : t('form.selectDate')}
       >
         {value ? (
           <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
@@ -226,6 +227,7 @@ export function EditBokResidentForm({
   currentUser: SessionData;
   onSendPush?: (data: BokResidentFormData) => Promise<void>;
 }) {
+  const { t, dateLocale } = useLanguage();
   const { toast } = useToast();
   const [isSendingPush, setIsSendingPush] = React.useState(false);
   const webcamRef = React.useRef<Webcam>(null);
@@ -257,12 +259,12 @@ export function EditBokResidentForm({
         .then(({ firstName, lastName }) => {
           form.setValue('firstName', firstName, { shouldValidate: true });
           form.setValue('lastName', lastName, { shouldValidate: true });
-          toast({ title: 'Sukces', description: 'Dane z dokumentu zostały wczytane.' });
+          toast({ title: t('common.success'), description: t('form.passportDataLoaded') });
           setIsCameraOpen(false);
         })
         .catch((error) => {
           console.error('OCR Error:', error);
-          let description = 'Nie udało się odczytać danych z dokumentu. Upewnij się, że ostrość jest prawidłowa i kod na dole znajduje się w kadrze.';
+          let description = t('form.scanErrorDesc');
 
           if (error instanceof Error && error.message) {
             description = error.message;
@@ -270,7 +272,7 @@ export function EditBokResidentForm({
 
           toast({
             variant: 'destructive',
-            title: 'Błąd skanowania',
+            title: t('form.scanError'),
             description,
           });
         })
@@ -305,7 +307,7 @@ export function EditBokResidentForm({
       onOpenChange(false);
     } catch (error) {
       console.error("Error in onSendPush:", error);
-      toast({ variant: 'destructive', title: 'Błąd funkcji', description: 'Napotkano problem podczas wysyłania powiadomienia.' });
+      toast({ variant: 'destructive', title: t('common.functionError'), description: t('form.pushSendErrorDesc') });
     } finally {
       setIsSendingPush(false);
     }
@@ -314,7 +316,7 @@ export function EditBokResidentForm({
   const handleDismissClick = async () => {
     const dismissDate = form.getValues('dismissDate');
     if (!resident || !dismissDate) {
-      toast({ variant: "destructive", title: "Błąd", description: "Wypełnij pole \"Data zwolnienia\" przed zwolnieniem mieszkańca BOK!" });
+      toast({ variant: "destructive", title: t('common.error'), description: t('form.dismissDateRequiredBok') });
       return;
     }
 
@@ -494,9 +496,9 @@ export function EditBokResidentForm({
           <DialogHeader className="p-4 sm:p-6 pb-2 sm:pb-4 flex-shrink-0">
             <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
               <div>
-                <DialogTitle>{resident ? 'Edytuj Mieszkańca BOK' : 'Dodaj Mieszkańca BOK'}</DialogTitle>
+                <DialogTitle>{resident ? t('form.editBokResident') : t('form.addBokResident')}</DialogTitle>
                 <DialogDescription className="text-xs sm:text-sm">
-                  Wypełnij poniższe pola.
+                  {t('form.fillFields')}
                 </DialogDescription>
               </div>
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
@@ -512,8 +514,8 @@ export function EditBokResidentForm({
                   ) : (
                     <Camera className="h-3 w-3 sm:mr-2" />
                   )}
-                  <span className="ml-2 hidden sm:inline">Zrób zdjęcie paszportu</span>
-                  <span className="ml-2 sm:hidden">Zdjęcie</span>
+                  <span className="ml-2 hidden sm:inline">{t('form.takePassportPhoto')}</span>
+                  <span className="ml-2 sm:hidden">{t('form.photo')}</span>
                 </Button>
               </div>
             </div>
@@ -528,9 +530,9 @@ export function EditBokResidentForm({
                     name="role"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Kierowca-Recepcja</FormLabel>
+                        <FormLabel>{t('form.driverReception')}</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value || ''}>
-                          <FormControl><SelectTrigger><SelectValue placeholder="Wybierz rolę" /></SelectTrigger></FormControl>
+                          <FormControl><SelectTrigger><SelectValue placeholder={t('form.selectRole')} /></SelectTrigger></FormControl>
                           <SelectContent>
                             {sortedBokRoles.filter(Boolean).map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                           </SelectContent>
@@ -546,7 +548,7 @@ export function EditBokResidentForm({
                       name="lastName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Nazwisko</FormLabel>
+                          <FormLabel>{t('form.lastName2')}</FormLabel>
                           <FormControl><Input placeholder="Kowalski" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
@@ -557,7 +559,7 @@ export function EditBokResidentForm({
                       name="firstName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Imię</FormLabel>
+                          <FormLabel>{t('form.firstName2')}</FormLabel>
                           <FormControl><Input placeholder="Jan" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
@@ -570,7 +572,7 @@ export function EditBokResidentForm({
                     name="coordinatorId"
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
-                        <FormLabel>Koordynator</FormLabel>
+                        <FormLabel>{t('form.coordinator')}</FormLabel>
                         <FormControl>
                           <Combobox
                             options={coordinatorOptions}
@@ -580,8 +582,8 @@ export function EditBokResidentForm({
                               form.setValue('address', '');
                               form.setValue('roomNumber', '');
                             }}
-                            placeholder="Wybierz koordynatora"
-                            searchPlaceholder="Szukaj koordynatora..."
+                            placeholder={t('form.selectCoordinator')}
+                            searchPlaceholder={t('form.searchCoordinator')}
                           />
                         </FormControl>
                         <FormMessage />
@@ -595,14 +597,14 @@ export function EditBokResidentForm({
                       name="nationality"
                       render={({ field }) => (
                         <FormItem className="flex flex-col">
-                          <FormLabel>Narodowość</FormLabel>
+                          <FormLabel>{t('form.nationality')}</FormLabel>
                           <FormControl>
                             <Combobox
                               options={nationalityOptions}
                               value={field.value || ''}
                               onChange={field.onChange}
-                              placeholder="Wybierz narodowość"
-                              searchPlaceholder="Szukaj narodowości..."
+                              placeholder={t('form.selectNationality')}
+                              searchPlaceholder={t('form.searchNationality')}
                             />
                           </FormControl>
                           <FormMessage />
@@ -614,9 +616,9 @@ export function EditBokResidentForm({
                       name="gender"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Płeć</FormLabel>
+                          <FormLabel>{t('form.gender')}</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value || ''}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz płeć" /></SelectTrigger></FormControl>
+                            <FormControl><SelectTrigger><SelectValue placeholder={t('form.selectGender')} /></SelectTrigger></FormControl>
                             <SelectContent>
                               {sortedGenders.filter(Boolean).map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
                             </SelectContent>
@@ -633,7 +635,7 @@ export function EditBokResidentForm({
                       name="locality"
                       render={({ field }) => (
                         <FormItem className="flex flex-col">
-                          <FormLabel>Miejscowość</FormLabel>
+                          <FormLabel>{t('form.locality')}</FormLabel>
                           <FormControl>
                             <Combobox
                               options={localityOptions}
@@ -643,8 +645,8 @@ export function EditBokResidentForm({
                                 form.setValue('address', '');
                                 form.setValue('roomNumber', '');
                               }}
-                              placeholder={!selectedCoordinatorId ? "Wybierz koordynatora" : "Wybierz miejscowość"}
-                              searchPlaceholder="Szukaj miejscowości..."
+                              placeholder={!selectedCoordinatorId ? t('form.firstSelectCoord') : t('form.selectLocality')}
+                              searchPlaceholder={t('form.searchLocality')}
                             />
                           </FormControl>
                           <FormMessage />
@@ -656,16 +658,16 @@ export function EditBokResidentForm({
                       name="address"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Adres</FormLabel>
+                          <FormLabel>{t('form.address')}</FormLabel>
                           <Select onValueChange={(val) => {
                             field.onChange(val);
                             form.setValue('roomNumber', '');
                           }} value={field.value || ''} disabled={!selectedLocality}>
-                            <FormControl><SelectTrigger><SelectValue placeholder={!selectedLocality ? "Wybierz miejscowość" : "Wybierz adres"} /></SelectTrigger></FormControl>
+                            <FormControl><SelectTrigger><SelectValue placeholder={!selectedLocality ? t('form.firstSelectLocality') : t('form.selectAddress')} /></SelectTrigger></FormControl>
                             <SelectContent>
                               {availableAddresses.filter(a => a.name).map(a => (
                                 <SelectItem key={a.id} value={a.name} disabled={!a.isActive}>
-                                  {a.name} {!a.isActive ? '(Niedostępny)' : ''}
+                                  {a.name} {!a.isActive ? `(${t('common.unavailable')})` : ''}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -679,13 +681,13 @@ export function EditBokResidentForm({
                       name="roomNumber"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Pokój</FormLabel>
+                          <FormLabel>{t('form.room')}</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value || ''} disabled={!selectedAddress}>
-                            <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : "Wybierz pokój"} /></SelectTrigger></FormControl>
+                            <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? t('form.firstSelectAddress') : t('form.selectRoom')} /></SelectTrigger></FormControl>
                             <SelectContent>
                               {availableRoomsWithCapacity.filter(r => r.name).map(r => (
                                 <SelectItem key={r.id} value={r.name} disabled={!r.isActive || r.isLocked}>
-                                  {r.name} {r.isActive ? (r.isLocked ? '(Zablokowany)' : `(${r.available} wolnych z ${r.capacity})`) : '(Niedostępny)'}
+                                  {r.name} {r.isActive ? (r.isLocked ? `(${t('housing.locked')})` : `(${t('housing.roomCapacity', { available: r.available, capacity: r.capacity })})`) : `(${t('common.unavailable')})`}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -702,7 +704,7 @@ export function EditBokResidentForm({
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
                         <div className="flex justify-between items-center">
-                          <FormLabel>Zakład</FormLabel>
+                          <FormLabel>{t('form.department')}</FormLabel>
                           {field.value && (
                             <Button
                               type="button"
@@ -710,10 +712,10 @@ export function EditBokResidentForm({
                               size="sm"
                               className="h-8 w-8 min-h-[44px] min-w-[44px] sm:h-6 sm:w-6 sm:min-h-0 sm:min-w-0 p-0 hover:bg-muted flex items-center justify-center"
                               onClick={() => field.onChange('')}
-                              aria-label="Wyczyść pole"
+                              aria-label={t('form.clearField')}
                             >
                               <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                              <span className="sr-only">Wyczyść</span>
+                              <span className="sr-only">{t('common.clear')}</span>
                             </Button>
                           )}
                         </div>
@@ -722,8 +724,8 @@ export function EditBokResidentForm({
                             options={departmentOptions}
                             value={field.value || ''}
                             onChange={field.onChange}
-                            placeholder="Wybierz zakład"
-                            searchPlaceholder="Szukaj zakładu..."
+                            placeholder={t('form.selectDept')}
+                            searchPlaceholder={t('form.searchDepartment')}
                           />
                         </FormControl>
                         <FormMessage />
@@ -737,7 +739,7 @@ export function EditBokResidentForm({
                       name="checkInDate"
                       render={({ field }) => (
                         <FormItem className="flex flex-col">
-                          <FormLabel>Data zameldowania</FormLabel>
+                          <FormLabel>{t('form.checkInDate')}</FormLabel>
                           <FormControl>
                             <DateInput
                               value={field.value ?? undefined}
@@ -753,7 +755,7 @@ export function EditBokResidentForm({
                       name="checkOutDate"
                       render={({ field }) => (
                         <FormItem className="flex flex-col">
-                          <FormLabel>Data wyjazdu <span className="text-xs text-muted-foreground font-normal">(informacyjnie)</span></FormLabel>
+                          <FormLabel>{t('form.checkOutDate')} <span className="text-xs text-muted-foreground font-normal">({t('form.informational')})</span></FormLabel>
                           <FormControl>
                             <DateInput value={field.value ?? undefined} onChange={field.onChange} />
                           </FormControl>
@@ -769,7 +771,7 @@ export function EditBokResidentForm({
                       name="dismissDate"
                       render={({ field }) => (
                         <FormItem className="flex flex-col">
-                          <FormLabel>Data zwolnienia</FormLabel>
+                          <FormLabel>{t('form.dismissDate')}</FormLabel>
                           <FormControl>
                             <DateInput value={field.value ?? undefined} onChange={field.onChange} />
                           </FormControl>
@@ -786,7 +788,7 @@ export function EditBokResidentForm({
                       render={({ field }) => (
                         <FormItem>
                           <div className="flex justify-between items-center">
-                            <FormLabel>Powrót</FormLabel>
+                            <FormLabel>{t('form.returnStatus')}</FormLabel>
                             {field.value && (
                               <Button
                                 type="button"
@@ -794,15 +796,15 @@ export function EditBokResidentForm({
                                 size="sm"
                                 className="h-8 w-8 min-h-[44px] min-w-[44px] sm:h-6 sm:w-6 sm:min-h-0 sm:min-w-0 p-0 hover:bg-muted flex items-center justify-center"
                                 onClick={() => field.onChange('')}
-                                aria-label="Wyczyść pole"
+                                aria-label={t('form.clearField')}
                               >
                                 <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                                <span className="sr-only">Wyczyść</span>
+                                <span className="sr-only">{t('common.clear')}</span>
                               </Button>
                             )}
                           </div>
                           <Select onValueChange={field.onChange} value={field.value || ''}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz opcję" /></SelectTrigger></FormControl>
+                            <FormControl><SelectTrigger><SelectValue placeholder={t('form.selectOption')} /></SelectTrigger></FormControl>
                             <SelectContent>
                               {sortedBokReturnOptions.filter(Boolean).map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                             </SelectContent>
@@ -817,7 +819,7 @@ export function EditBokResidentForm({
                       render={({ field }) => (
                         <FormItem>
                           <div className="flex justify-between items-center">
-                            <FormLabel>Status</FormLabel>
+                            <FormLabel>{t('form.status')}</FormLabel>
                             {field.value && (
                               <Button
                                 type="button"
@@ -825,15 +827,15 @@ export function EditBokResidentForm({
                                 size="sm"
                                 className="h-8 w-8 min-h-[44px] min-w-[44px] sm:h-6 sm:w-6 sm:min-h-0 sm:min-w-0 p-0 hover:bg-muted flex items-center justify-center"
                                 onClick={() => field.onChange('')}
-                                aria-label="Wyczyść pole"
+                                aria-label={t('form.clearField')}
                               >
                                 <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                                <span className="sr-only">Wyczyść</span>
+                                <span className="sr-only">{t('common.clear')}</span>
                               </Button>
                             )}
                           </div>
                           <Select onValueChange={field.onChange} value={field.value || ''}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz status" /></SelectTrigger></FormControl>
+                            <FormControl><SelectTrigger><SelectValue placeholder={t('form.selectStatus')} /></SelectTrigger></FormControl>
                             <SelectContent>
                               {sortedStatuses.filter(Boolean).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                             </SelectContent>
@@ -849,8 +851,8 @@ export function EditBokResidentForm({
                     name="comments"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Komentarze</FormLabel>
-                        <FormControl><Input placeholder="Dodatkowe informacje..." {...field} /></FormControl>
+                        <FormLabel>{t('form.comments')}</FormLabel>
+                        <FormControl><Input placeholder={t('form.additionalInfo')} {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -869,7 +871,7 @@ export function EditBokResidentForm({
                       className="h-8 text-xs sm:text-sm px-3 sm:px-4"
                     >
                       {isDismissing && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-                      Zwolnij
+                      {t('form.dismiss')}
                     </Button>
                   )}
                 </div>
@@ -880,7 +882,7 @@ export function EditBokResidentForm({
                     onClick={() => onOpenChange(false)}
                     className="h-8 text-xs sm:text-sm px-3 sm:px-4"
                   >
-                    Anuluj
+                    {t('common.cancel')}
                   </Button>
                   {resident && onSendPush && (
                     <Button
@@ -893,7 +895,7 @@ export function EditBokResidentForm({
                       {isSendingPush
                         ? <Loader2 className="mr-2 h-3 w-3 animate-spin" />
                         : <Send className="mr-2 h-3 w-3" />}
-                      Wyślij
+                      {t('common.send')}
                     </Button>
                   )}
                   <Button
@@ -902,7 +904,7 @@ export function EditBokResidentForm({
                     className="h-8 text-xs sm:text-sm px-3 sm:px-4"
                   >
                     {form.formState.isSubmitting && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-                    Zapisz
+                    {t('common.save')}
                   </Button>
                 </div>
               </div>
@@ -913,9 +915,9 @@ export function EditBokResidentForm({
       <Dialog open={isCameraOpen} onOpenChange={handleCloseCamera}>
         <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh]">
           <DialogHeader>
-            <DialogTitle>Zrób zdjęcie paszportu</DialogTitle>
+            <DialogTitle>{t('form.takePassportPhoto')}</DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
-              Umieść stronę paszportu z danymi w kadrze, tak aby pola &quot;Surname&quot; (Nazwisko) i &quot;Given Names&quot; (Imiona) były dobrze widoczne z bliska. Skanowanie wymaga połączenia z Internetem (Google Cloud).
+              {t('form.passportPhotoDesc')}
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center space-y-4">
@@ -945,12 +947,12 @@ export function EditBokResidentForm({
                 {isScanning ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Analizowanie AI (Google Cloud)...
+                    {t('form.analyzingAI')}
                   </>
                 ) : (
                   <>
                     <Camera className="mr-2 h-4 w-4" />
-                    Zrób zdjęcie (OCR)
+                    {t('form.takePhotoOCR')}
                   </>
                 )}
               </Button>
@@ -960,7 +962,7 @@ export function EditBokResidentForm({
                 disabled={isScanning}
                 className="w-full sm:w-auto min-h-[44px]"
               >
-                Anuluj
+                {t('common.cancel')}
               </Button>
             </div>
           </div>

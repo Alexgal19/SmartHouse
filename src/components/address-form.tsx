@@ -34,6 +34,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 import type { Address, Settings } from '@/types';
 import { PlusCircle, Trash2, Loader2 } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n';
 
 
 const roomSchema = z.object({
@@ -67,6 +68,7 @@ export function AddressForm({
     settings: Settings,
     address: Address | null;
 }) {
+    const { t } = useLanguage();
     const form = useForm<z.infer<typeof addressSchema>>({
         resolver: zodResolver(addressSchema),
     });
@@ -121,9 +123,9 @@ export function AddressForm({
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-2xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
                 <DialogHeader>
-                    <DialogTitle>{address?.name ? 'Edytuj adres' : 'Dodaj nowy adres'}</DialogTitle>
+                    <DialogTitle>{address?.name ? t('address.editAddress') : t('address.addNewAddress')}</DialogTitle>
                     <DialogDescription>
-                        Wypełnij poniższe pola, aby {address?.name ? 'zaktualizować' : 'dodać'} adres i zarządzać pokojami.
+                        {address?.name ? t('address.editDescription') : t('address.addDescription')}
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
@@ -135,10 +137,10 @@ export function AddressForm({
                                     name="locality"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Miejscowość</FormLabel>
+                                            <FormLabel>{t('form.locality')}</FormLabel>
                                             <Select onValueChange={field.onChange} value={field.value}>
                                                 <FormControl>
-                                                    <SelectTrigger><SelectValue placeholder="Wybierz miejscowość" /></SelectTrigger>
+                                                    <SelectTrigger><SelectValue placeholder={t('form.selectLocality')} /></SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent>
                                                     {settings.localities.filter(Boolean).map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
@@ -153,8 +155,8 @@ export function AddressForm({
                                     name="name"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Adres (ulica i numer)</FormLabel>
-                                            <FormControl><Input placeholder="np. ul. Słoneczna 5" {...field} /></FormControl>
+                                            <FormLabel>{t('address.streetAndNumber')}</FormLabel>
+                                            <FormControl><Input placeholder={t('address.streetExample')} {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}
@@ -162,7 +164,7 @@ export function AddressForm({
 
 
                                 <div className="space-y-2 rounded-md border p-4">
-                                    <FormLabel>Przypisani koordynatorzy</FormLabel>
+                                    <FormLabel>{t('address.assignedCoordinators')}</FormLabel>
                                     <div className="space-y-2">
                                         {coordFields.map((field, index) => (
                                             <div key={field.id} className="flex items-center gap-2">
@@ -173,7 +175,7 @@ export function AddressForm({
                                                         <FormItem className="flex-1">
                                                             <Select onValueChange={(val) => field.onChange(val)} value={field.value}>
                                                                 <FormControl>
-                                                                    <SelectTrigger><SelectValue placeholder="Wybierz koordynatora" /></SelectTrigger>
+                                                                    <SelectTrigger><SelectValue placeholder={t('form.selectCoordinator')} /></SelectTrigger>
                                                                 </FormControl>
                                                                 <SelectContent>
                                                                     {settings.coordinators.map(c => <SelectItem key={c.uid} value={c.uid}>{c.name}</SelectItem>)}
@@ -197,7 +199,7 @@ export function AddressForm({
                                         disabled={availableCoordinators.length === 0}
                                     >
                                         <PlusCircle className="mr-2 h-4 w-4" />
-                                        Dodaj koordynatora
+                                        {t('address.addCoordinator')}
                                     </Button>
                                     <FormMessage>{form.formState.errors.coordinatorIds?.message}</FormMessage>
                                 </div>
@@ -205,9 +207,9 @@ export function AddressForm({
 
                                 <div className="space-y-2 rounded-md border p-4">
                                     <div className="flex justify-between items-center mb-4">
-                                        <h3 className="font-medium">Pokoje</h3>
+                                        <h3 className="font-medium">{t('housing.rooms')}</h3>
                                         <Button type="button" variant="outline" size="sm" onClick={() => appendRoom({ id: `room-${Date.now()}`, name: '', capacity: 1, isActive: true, isLocked: false })}>
-                                            <PlusCircle className="mr-2 h-4 w-4" /> Dodaj pokój
+                                            <PlusCircle className="mr-2 h-4 w-4" /> {t('address.addRoom')}
                                         </Button>
                                     </div>
                                     {roomFields.map((field, index) => (
@@ -217,10 +219,10 @@ export function AddressForm({
                                                 name={`rooms.${index}.name`}
                                                 render={({ field: nameField }) => (
                                                     <FormItem className="flex-1">
-                                                        <FormLabel className="sr-only">Nazwa pokoju</FormLabel>
+                                                        <FormLabel className="sr-only">{t('address.roomName')}</FormLabel>
                                                         <FormControl>
                                                             <Input
-                                                                placeholder="Nazwa pokoju"
+                                                                placeholder={t('address.roomName')}
                                                                 {...nameField}
                                                             />
                                                         </FormControl>
@@ -233,11 +235,11 @@ export function AddressForm({
                                                 name={`rooms.${index}.capacity`}
                                                 render={({ field: capacityField }) => (
                                                     <FormItem className="w-28">
-                                                        <FormLabel className="sr-only">Pojemność</FormLabel>
+                                                        <FormLabel className="sr-only">{t('housing.capacity')}</FormLabel>
                                                         <FormControl>
                                                             <Input
                                                                 type="number"
-                                                                placeholder="Pojemność"
+                                                                placeholder={t('housing.capacity')}
                                                                 {...capacityField}
                                                                 onChange={(e) => {
                                                                     const val = e.target.value === '' ? '' : Number(e.target.value);
@@ -255,18 +257,18 @@ export function AddressForm({
                                             </Button>
                                         </div>
                                     ))}
-                                    {roomFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Brak pokoi dla tego adresu.</p>}
+                                    {roomFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">{t('address.noRoomsForAddress')}</p>}
                                 </div>
 
                             </div>
                         </ScrollArea>
                         <DialogFooter className="p-6 pt-4 -mb-6 -mx-6">
                             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                                Anuluj
+                                {t('common.cancel')}
                             </Button>
                             <Button type="submit" disabled={form.formState.isSubmitting}>
                                 {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Zapisz
+                                {t('common.save')}
                             </Button>
                         </DialogFooter>
                     </form>

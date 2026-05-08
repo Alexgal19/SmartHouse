@@ -30,7 +30,8 @@ import type { SessionData, Address, ControlCard, CleanlinessRating, RoomRating, 
 import { useMainLayout } from '@/components/main-layout';
 import { saveControlCardAction, editControlCardAction, deleteControlCardAction, uploadControlCardPhotoAction, saveStartListAction, setAddressNoMetersRequiredAction } from '@/lib/actions';
 import { format } from 'date-fns';
-import { pl } from 'date-fns/locale';
+import type { Locale } from 'date-fns';
+import { useLanguage } from '@/lib/i18n';
 
 // ─── Start-list constants & helpers ─────────────────────────────────────────
 
@@ -82,12 +83,12 @@ const isStartListFieldsComplete = (sl: StartList | null | undefined): boolean =>
     return true;
 };
 
-const getMissingStartListPhotos = (sl: StartList): string[] => {
-    const missing: string[] = [];
-    if ((sl.kitchenPhotoUrls || []).length === 0) missing.push('kuchnia');
-    if ((sl.bathroomPhotoUrls || []).length === 0) missing.push('łazienka');
-    if ((sl.roomsPhotoUrls || []).length === 0) missing.push('pokoje');
-    if ((sl.hallwayPhotoUrls || []).length === 0) missing.push('korytarz');
+const getMissingStartListPhotos = (sl: StartList): ('kitchen' | 'bathroom' | 'rooms' | 'hallways')[] => {
+    const missing: ('kitchen' | 'bathroom' | 'rooms' | 'hallways')[] = [];
+    if ((sl.kitchenPhotoUrls || []).length === 0) missing.push('kitchen');
+    if ((sl.bathroomPhotoUrls || []).length === 0) missing.push('bathroom');
+    if ((sl.roomsPhotoUrls || []).length === 0) missing.push('rooms');
+    if ((sl.hallwayPhotoUrls || []).length === 0) missing.push('hallways');
     return missing;
 };
 
@@ -103,6 +104,7 @@ export const isStartListComplete = (sl: StartList | null | undefined): boolean =
 function PINLock({ onUnlock }: { onUnlock: () => void }) {
     const [pin, setPin] = useState('');
     const [error, setError] = useState(false);
+    const { t } = useLanguage();
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -120,16 +122,16 @@ function PINLock({ onUnlock }: { onUnlock: () => void }) {
             <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-6">
                 <Lock className="w-8 h-8 text-primary" />
             </div>
-            <h2 className="text-2xl font-bold mb-2">Moduł Zablokowany</h2>
+            <h2 className="text-2xl font-bold mb-2">{t('controlCards.moduleBlocked')}</h2>
             <p className="text-muted-foreground mb-8 max-w-sm">
-                Ta sekcja jest tymczasowo zablokowana. Wprowadź kod dostępu, aby kontynuować.
+                {t('controlCards.moduleBlockedDesc')}
             </p>
             <form onSubmit={handleSubmit} className="w-full max-w-[280px] space-y-4">
                 <div className="relative">
                     <KeyRound className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                         type="password"
-                        placeholder="Wprowadź kod PIN"
+                        placeholder={t('controlCards.enterPin')}
                         className={`pl-9 text-center tracking-[0.5em] font-mono text-lg ${error ? 'border-destructive ring-destructive shadow-[0_0_10px_rgba(239,68,68,0.2)]' : ''}`}
                         value={pin}
                         onChange={(e) => setPin(e.target.value)}
@@ -137,11 +139,11 @@ function PINLock({ onUnlock }: { onUnlock: () => void }) {
                     />
                 </div>
                 <Button type="submit" className="w-full shadow-lg shadow-primary/20">
-                    Odblokuj Dostęp
+                    {t('controlCards.unlockAccess')}
                 </Button>
                 {error && (
                     <p className="text-xs text-red-500 font-medium animate-in slide-in-from-top-1">
-                        Nieprawidłowy kod PIN. Spróbuj ponownie.
+                        {t('controlCards.wrongPin')}
                     </p>
                 )}
             </form>
@@ -164,6 +166,7 @@ function PhotoUploadWidget({
 }) {
     const cameraRef = React.useRef<HTMLInputElement>(null);
     const galleryRef = React.useRef<HTMLInputElement>(null);
+    const { t } = useLanguage();
     return (
         <div className="space-y-1.5">
             <div className="flex justify-between items-center">
@@ -183,7 +186,7 @@ function PhotoUploadWidget({
                             />
                             <Button type="button" size="sm" variant="secondary" className="h-7 text-[10px] gap-1 pointer-events-none" disabled={isUploading}>
                                 {isUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Camera className="w-3 h-3" />}
-                                Aparat
+                                {t('controlCards.camera')}
                             </Button>
                         </div>
                         {/* Galeria */}
@@ -199,7 +202,7 @@ function PhotoUploadWidget({
                             />
                             <Button type="button" size="sm" variant="outline" className="h-7 text-[10px] gap-1 pointer-events-none" disabled={isUploading}>
                                 <ImageIcon className="w-3 h-3" />
-                                Galeria
+                                {t('controlCards.gallery')}
                             </Button>
                         </div>
                     </div>
@@ -214,20 +217,20 @@ function PhotoUploadWidget({
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                                 src={url}
-                                alt={`Zdjęcie ${idx + 1}`}
+                                alt={t('controlCards.imageAlt', { n: String(idx + 1) })}
                                 className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
                                 onClick={() => !isPending && onLightbox(url)}
                                 loading="lazy"
                             />
                             {isPending && (
-                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center" title="Oczekuje na wgranie do sieci">
+                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center" title={t('controlCards.pendingUpload')}>
                                     <CloudOff className="w-4 h-4 text-white/90" />
                                 </div>
                             )}
                             {canEdit && !isPending && (
                                 <button
                                     type="button"
-                                    title="Usuń zdjęcie"
+                                    title={t('controlCards.deletePhoto')}
                                     onClick={() => onRemove(idx)}
                                     className="absolute top-0.5 right-0.5 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow"
                                 >
@@ -246,7 +249,7 @@ function PhotoUploadWidget({
             ) : (
                 <div className="border border-dashed border-border/60 rounded-lg p-4 flex flex-col items-center justify-center text-muted-foreground gap-1">
                     <ImageIcon className="w-5 h-5 opacity-40" />
-                    <span className="text-[10px]">Brak wgranych zdjęć</span>
+                    <span className="text-[10px]">{t('controlCards.noPhotos')}</span>
                 </div>
             )}
         </div>
@@ -257,20 +260,21 @@ function PhotoUploadWidget({
 
 function Lightbox({ image, onClose }: { image: string | null; onClose: () => void }) {
     if (!image) return null;
+    const { t } = useLanguage();
 
     return (
         <Dialog open={!!image} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="max-w-[95vw] max-h-[95vh] w-auto h-auto p-0 bg-transparent border-none shadow-none ring-0 focus:ring-0">
                 <DialogHeader className="sr-only">
-                    <DialogTitle>Podgląd zdjęcia</DialogTitle>
-                    <DialogDescription>Powiększony widok wybranego zdjęcia.</DialogDescription>
+                    <DialogTitle>{t('controlCards.previewTitle')}</DialogTitle>
+                    <DialogDescription>{t('controlCards.previewDesc')}</DialogDescription>
                 </DialogHeader>
                 <div className="relative flex flex-col items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
                     <motion.img
                         initial={{ scale: 0.9, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         src={image}
-                        alt="Podgląd"
+                        alt={t('controlCards.previewTitle')}
                         className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl overflow-hidden cursor-default pointer-events-auto"
                     />
                     <div className="absolute top-6 right-6 flex gap-3 pointer-events-auto">
@@ -306,12 +310,12 @@ const isPrivateAddress = (name: string): boolean => {
     return n.startsWith('wlasne mieszkan');
 };
 
-const getMonthOptions = () => {
+const getMonthOptions = (dateLocale: Locale) => {
     const options = [];
     const now = new Date();
     for (let i = 0; i < 12; i++) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        options.push({ value: format(d, 'yyyy-MM'), label: format(d, 'LLLL yyyy', { locale: pl }).replace(/^\w/, c => c.toUpperCase()) });
+        options.push({ value: format(d, 'yyyy-MM'), label: format(d, 'LLLL yyyy', { locale: dateLocale }).replace(/^\w/, c => c.toUpperCase()) });
     }
     return options;
 };
@@ -443,6 +447,7 @@ function StartListForm({
     currentUser: SessionData;
     onSaved: (sl: StartList) => void;
 }) {
+    const { t } = useLanguage();
     const { toast } = useToast();
     const [isSaving, startSaving] = useTransition();
     const [form, setForm] = useState<StartList>(() => initial || buildDefaultStartList(address, currentUser));
@@ -516,11 +521,11 @@ function StartListForm({
             const urls = await uploadFiles(e.target.files);
             if (urls.length) {
                 setForm(prev => ({ ...prev, [field]: [...(prev[field] || []), ...urls] }));
-                toast({ title: 'Zdjęcia dodane ✅', description: `Wgrano ${urls.length}.` });
+                toast({ title: t('controlCards.photosAdded'), description: t('controlCards.uploadedCount', { count: urls.length }) });
             }
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
-            toast({ title: 'Błąd wgrywania', description: err.message, variant: 'destructive' });
+            toast({ title: t('controlCards.uploadError'), description: err.message, variant: 'destructive' });
         } finally {
             setUploading(prev => ({ ...prev, [field]: false }));
             e.target.value = '';
@@ -540,12 +545,19 @@ function StartListForm({
 
     const handleSave = async () => {
         if (!isStartListFieldsComplete(form)) {
-            toast({ title: 'Uzupełnij wymagane pola', description: 'Wypełnij typ, odległości, transport, liczby pomieszczeń, standard i ogrzewanie.', variant: 'destructive' });
+            toast({ title: t('controlCards.fillRequiredFields'), description: t('controlCards.fillRequiredFieldsDesc'), variant: 'destructive' });
             return;
         }
         const missingPhotos = getMissingStartListPhotos(form);
         if (missingPhotos.length > 0) {
-            toast({ title: 'Zapis bez zdjęć', description: `Zapis nastąpi, ale brakuje zdjęć: ${missingPhotos.join(', ')}.` });
+            const photoTypeMap: Record<string, string> = {
+                kitchen: t('controlCards.kitchen'),
+                bathroom: t('controlCards.bathroom'),
+                rooms: t('controlCards.rooms'),
+                hallways: t('controlCards.hallways'),
+            };
+            const translated = missingPhotos.map(p => photoTypeMap[p] || p).join(', ');
+            toast({ title: t('controlCards.saveWithoutPhotos'), description: t('controlCards.missingPhotos', { photos: translated }) });
         }
 
         // Flush any photos still waiting as data URLs (taken offline)
@@ -558,7 +570,7 @@ function StartListForm({
         ].filter(u => u.startsWith('data:'));
 
         if (pendingUrls.length > 0) {
-            toast({ title: 'Wgrywanie zdjęć...', description: `Synchronizuję ${pendingUrls.length} zdjęcie(a) offline...` });
+            toast({ title: t('controlCards.uploadingPhotos'), description: t('controlCards.syncingPhotos', { count: pendingUrls.length }) });
             const results = await Promise.all(
                 pendingUrls.map(dataUrl =>
                     uploadControlCardPhotoAction(dataUrl, 'photo.jpg', 'image/jpeg')
@@ -568,7 +580,7 @@ function StartListForm({
             );
             const failed = results.filter(r => !r.serverUrl);
             if (failed.length > 0) {
-                toast({ title: 'Brak połączenia z siecią', description: `Nie udało się wgrać ${failed.length} zdjęcia(ń). Sprawdź internet i spróbuj zapisać ponownie.`, variant: 'destructive' });
+                toast({ title: t('controlCards.noNetwork'), description: t('controlCards.noNetworkDesc', { count: failed.length }), variant: 'destructive' });
                 return;
             }
             const urlMap = new Map(results.map(r => [r.dataUrl, r.serverUrl!]));
@@ -589,9 +601,9 @@ function StartListForm({
             if (res.success) {
                 const saved: StartList = { ...payload, updatedAt: new Date().toISOString() };
                 onSaved(saved);
-                toast({ title: 'Start-list zapisany ✅', description: `Dane dla "${address.name}" zapisane.` });
+                toast({ title: t('controlCards.startListSaved'), description: t('controlCards.startListSavedDesc', { name: address.name }) });
             } else {
-                toast({ title: 'Błąd zapisu', description: res.error, variant: 'destructive' });
+                toast({ title: t('controlCards.saveError'), description: res.error, variant: 'destructive' });
             }
         });
     };
@@ -607,11 +619,11 @@ function StartListForm({
         <div className="space-y-5">
             <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20 text-xs text-muted-foreground">
                 <ListChecks className="w-4 h-4 text-primary shrink-0" />
-                <span>Uzupełnij charakterystykę mieszkania. Dane są zapisywane per adres — wypełniasz raz, edytujesz w razie zmian.</span>
+                <span>{t('controlCards.startListHint')}</span>
             </div>
 
             <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Typ mieszkania</Label>
+                <Label className="text-xs font-medium">{t('controlCards.housingType')}</Label>
                 <div className="grid grid-cols-3 gap-2">
                     {HOUSING_TYPES.map(t => (
                         <button key={t} type="button" onClick={() => setForm(p => ({ ...p, housingType: t }))}
@@ -624,17 +636,17 @@ function StartListForm({
 
             <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                    <Label className="text-xs font-medium">Odległość do zakładu</Label>
+                    <Label className="text-xs font-medium">{t('controlCards.distanceToWork')}</Label>
                     <Input placeholder="np. 5 km lub 300 m" value={form.distanceToWork} onChange={(e) => setForm(p => ({ ...p, distanceToWork: e.target.value }))} className="h-9" />
                 </div>
                 <div className="space-y-1.5">
-                    <Label className="text-xs font-medium">Odległość do sklepu</Label>
+                    <Label className="text-xs font-medium">{t('controlCards.distanceToShop')}</Label>
                     <Input placeholder="np. 500 m" value={form.distanceToShop} onChange={(e) => setForm(p => ({ ...p, distanceToShop: e.target.value }))} className="h-9" />
                 </div>
             </div>
 
             <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Dojazd do zakładu</Label>
+                <Label className="text-xs font-medium">{t('controlCards.transport')}</Label>
                 <div className="space-y-1.5">
                     {TRANSPORT_OPTIONS.map(opt => (
                         <label key={opt} className="flex items-center gap-2 p-2 rounded-md border bg-background hover:bg-muted/40 cursor-pointer transition-colors">
@@ -647,27 +659,27 @@ function StartListForm({
 
             <div className="grid grid-cols-2 gap-3">
                 {form.housingType === 'Dom' && (
-                    <NumberField label="Ilość pięter (dom)" value={form.floorsCount} onChange={(n) => setForm(p => ({ ...p, floorsCount: n }))} min={1} />
+                    <NumberField label={t('controlCards.floorsCount')} value={form.floorsCount} onChange={(n) => setForm(p => ({ ...p, floorsCount: n }))} min={1} />
                 )}
                 {form.housingType === 'Kwatera' && (
-                    <NumberField label="Piętro (kwatera)" value={form.floorInBuilding} onChange={(n) => setForm(p => ({ ...p, floorInBuilding: n }))} min={0} />
+                    <NumberField label={t('controlCards.floorInBuilding')} value={form.floorInBuilding} onChange={(n) => setForm(p => ({ ...p, floorInBuilding: n }))} min={0} />
                 )}
                 {form.housingType === 'Hostel' && (
-                    <NumberField label="Piętro" value={form.floorInBuilding} onChange={(n) => setForm(p => ({ ...p, floorInBuilding: n }))} min={0} />
+                    <NumberField label={t('controlCards.floor')} value={form.floorInBuilding} onChange={(n) => setForm(p => ({ ...p, floorInBuilding: n }))} min={0} />
                 )}
-                <NumberField label="Ilość pokoi" value={form.roomsCount} onChange={(n) => setForm(p => ({ ...p, roomsCount: n }))} min={1} />
-                <NumberField label="Ilość kuchni" value={form.kitchensCount} onChange={(n) => setForm(p => ({ ...p, kitchensCount: n }))} min={1} />
-                <NumberField label="Ilość łazienek" value={form.bathroomsCount} onChange={(n) => setForm(p => ({ ...p, bathroomsCount: n }))} min={1} />
-                <NumberField label="Ilość miejsc" value={form.placesCount} onChange={(n) => setForm(p => ({ ...p, placesCount: n }))} min={1} />
+                <NumberField label={t('controlCards.roomsCount')} value={form.roomsCount} onChange={(n) => setForm(p => ({ ...p, roomsCount: n }))} min={1} />
+                <NumberField label={t('controlCards.kitchensCount')} value={form.kitchensCount} onChange={(n) => setForm(p => ({ ...p, kitchensCount: n }))} min={1} />
+                <NumberField label={t('controlCards.bathroomsCount')} value={form.bathroomsCount} onChange={(n) => setForm(p => ({ ...p, bathroomsCount: n }))} min={1} />
+                <NumberField label={t('controlCards.placesCount')} value={form.placesCount} onChange={(n) => setForm(p => ({ ...p, placesCount: n }))} min={1} />
             </div>
 
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border">
-                <Label className="font-medium text-sm">Czy jest balkon?</Label>
+                <Label className="font-medium text-sm">{t('controlCards.hasBalcony')}</Label>
                 <Switch checked={form.hasBalcony} onCheckedChange={(v) => setForm(p => ({ ...p, hasBalcony: v }))} />
             </div>
 
             <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Standard</Label>
+                <Label className="text-xs font-medium">{t('controlCards.standard')}</Label>
                 <div className="grid grid-cols-3 gap-2">
                     {STANDARD_OPTIONS.map(s => (
                         <button key={s} type="button" onClick={() => setForm(p => ({ ...p, standard: s }))}
@@ -679,7 +691,7 @@ function StartListForm({
             </div>
 
             <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Ogrzewanie</Label>
+                <Label className="text-xs font-medium">{t('controlCards.heating')}</Label>
                 <Select value={form.heating} onValueChange={(v) => setForm(p => ({ ...p, heating: v as StartListHeating }))}>
                     <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -687,18 +699,18 @@ function StartListForm({
                     </SelectContent>
                 </Select>
                 {form.heating === 'Inne' && (
-                    <Input placeholder="Opisz rodzaj ogrzewania..." value={form.heatingOther} onChange={(e) => setForm(p => ({ ...p, heatingOther: e.target.value }))} className="h-9 mt-2" />
+                    <Input placeholder={t('controlCards.heatingOtherPlaceholder')} value={form.heatingOther} onChange={(e) => setForm(p => ({ ...p, heatingOther: e.target.value }))} className="h-9 mt-2" />
                 )}
             </div>
 
             <section>
                 <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                    <span className="text-base">📷</span> Zdjęcia (wszystkie kategorie wymagane)
+                    <span className="text-base">📷</span> {t('controlCards.photos')}
                 </h3>
                 <div className="space-y-3">
                     <div className="p-3 rounded-lg border bg-muted/20">
                         <PhotoUploadWidget
-                            label="🍳 Kuchnia" photoUrls={form.kitchenPhotoUrls} isUploading={!!uploading.kitchenPhotoUrls} canEdit={true}
+                            label={`🍳 ${t('controlCards.kitchen')}`} photoUrls={form.kitchenPhotoUrls} isUploading={!!uploading.kitchenPhotoUrls} canEdit={true}
                             onAddPhotos={(e) => handleAddPhotos('kitchenPhotoUrls', e)}
                             onRemove={(idx) => handleRemovePhoto('kitchenPhotoUrls', idx)}
                             onLightbox={setLightboxImage}
@@ -706,7 +718,7 @@ function StartListForm({
                     </div>
                     <div className="p-3 rounded-lg border bg-muted/20">
                         <PhotoUploadWidget
-                            label="🚿 Łazienka" photoUrls={form.bathroomPhotoUrls} isUploading={!!uploading.bathroomPhotoUrls} canEdit={true}
+                            label={`🚿 ${t('controlCards.bathroom')}`} photoUrls={form.bathroomPhotoUrls} isUploading={!!uploading.bathroomPhotoUrls} canEdit={true}
                             onAddPhotos={(e) => handleAddPhotos('bathroomPhotoUrls', e)}
                             onRemove={(idx) => handleRemovePhoto('bathroomPhotoUrls', idx)}
                             onLightbox={setLightboxImage}
@@ -714,7 +726,7 @@ function StartListForm({
                     </div>
                     <div className="p-3 rounded-lg border bg-muted/20">
                         <PhotoUploadWidget
-                            label="🛏️ Pokoje" photoUrls={form.roomsPhotoUrls} isUploading={!!uploading.roomsPhotoUrls} canEdit={true}
+                            label={`🛏️ ${t('controlCards.rooms')}`} photoUrls={form.roomsPhotoUrls} isUploading={!!uploading.roomsPhotoUrls} canEdit={true}
                             onAddPhotos={(e) => handleAddPhotos('roomsPhotoUrls', e)}
                             onRemove={(idx) => handleRemovePhoto('roomsPhotoUrls', idx)}
                             onLightbox={setLightboxImage}
@@ -722,7 +734,7 @@ function StartListForm({
                     </div>
                     <div className="p-3 rounded-lg border bg-muted/20">
                         <PhotoUploadWidget
-                            label="🚪 Korytarze" photoUrls={form.hallwayPhotoUrls} isUploading={!!uploading.hallwayPhotoUrls} canEdit={true}
+                            label={`🚪 ${t('controlCards.hallways')}`} photoUrls={form.hallwayPhotoUrls} isUploading={!!uploading.hallwayPhotoUrls} canEdit={true}
                             onAddPhotos={(e) => handleAddPhotos('hallwayPhotoUrls', e)}
                             onRemove={(idx) => handleRemovePhoto('hallwayPhotoUrls', idx)}
                             onLightbox={setLightboxImage}
@@ -733,13 +745,13 @@ function StartListForm({
 
             {form.updatedAt && (
                 <p className="text-[10px] text-muted-foreground">
-                    Ostatnia aktualizacja: {format(new Date(form.updatedAt), 'yyyy-MM-dd HH:mm')} — {form.updatedBy}
+                    {t('controlCards.lastUpdated', { date: format(new Date(form.updatedAt), 'yyyy-MM-dd HH:mm'), user: form.updatedBy })}
                 </p>
             )}
 
             <div className="flex justify-end pt-2">
                 <Button onClick={handleSave} disabled={isSaving} className="shadow-lg shadow-primary/20">
-                    {isSaving ? 'Zapisuję...' : 'Zapisz Start-list'}
+                    {isSaving ? t('controlCards.savingStartList') : t('controlCards.saveStartList')}
                 </Button>
             </div>
 
@@ -765,6 +777,7 @@ function ControlCardDialog({
     onNoMetersToggled: (addressId: string, value: boolean) => void;
     onDeleted: (cardId: string) => void;
 }) {
+    const { t } = useLanguage();
     const { toast } = useToast();
     const [isPending, startTransition] = useTransition();
     const [form, setForm] = useState<FormState>(() =>
@@ -874,11 +887,11 @@ function ControlCardDialog({
                         r.roomId === roomId ? { ...r, photoUrls: [...(r.photoUrls || []), ...newPhotos] } : r
                     )
                 }));
-                toast({ title: 'Zdjęcia dodane ✅', description: `Wgrano ${newPhotos.length} zdjęć.` });
+                toast({ title: t('controlCards.photosAdded'), description: t('controlCards.uploadedCount', { count: newPhotos.length }) });
             }
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
-            toast({ title: 'Błąd wgrywania', description: err.message, variant: 'destructive' });
+            toast({ title: t('controlCards.uploadError'), description: err.message, variant: 'destructive' });
         } finally {
             setUploadingRooms(prev => ({ ...prev, [roomId]: false }));
             e.target.value = '';
@@ -919,11 +932,11 @@ function ControlCardDialog({
                 };
                 const field = fieldMapping[section];
                 setForm(prev => ({ ...prev, [field]: [...((prev[field] as string[]) || []), ...newPhotos] }));
-                toast({ title: 'Zdjęcia dodane ✅', description: `Wgrano ${newPhotos.length} zdjęć.` });
+                toast({ title: t('controlCards.photosAdded'), description: t('controlCards.uploadedCount', { count: newPhotos.length }) });
             }
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
-            toast({ title: 'Błąd wgrywania', description: err.message, variant: 'destructive' });
+            toast({ title: t('controlCards.uploadError'), description: err.message, variant: 'destructive' });
         } finally {
             setState(false);
             e.target.value = '';
@@ -955,7 +968,7 @@ function ControlCardDialog({
         setShowResetConfirm(false);
         deleteControlCardAction(cardId).then(result => {
             if (!result.success) {
-                toast({ title: 'Błąd resetowania', description: result.error, variant: 'destructive' });
+                toast({ title: t('controlCards.resetError'), description: result.error, variant: 'destructive' });
             }
         });
     };
@@ -965,8 +978,8 @@ function ControlCardDialog({
     const handleSave = async () => {
         if (!formComplete) {
             toast({
-                title: 'Uzupełnij wszystkie pola',
-                description: 'Każdy pokój, kuchnia, łazienka i liczniki wymagają co najmniej jednego zdjęcia.',
+                title: t('controlCards.fillAllFields'),
+                description: t('controlCards.fillAllFieldsDesc'),
                 variant: 'destructive',
             });
             return;
@@ -982,7 +995,7 @@ function ControlCardDialog({
         ].filter((u): u is string => typeof u === 'string' && u.startsWith('data:'));
 
         if (pendingUrls.length > 0) {
-            toast({ title: 'Wgrywanie zdjęć...', description: `Synchronizuję ${pendingUrls.length} zdjęcie(a) offline...` });
+            toast({ title: t('controlCards.uploadingPhotos'), description: t('controlCards.syncingPhotos', { count: pendingUrls.length }) });
             const results = await Promise.all(
                 pendingUrls.map(dataUrl =>
                     uploadControlCardPhotoAction(dataUrl, 'photo.jpg', 'image/jpeg')
@@ -992,7 +1005,7 @@ function ControlCardDialog({
             );
             const failed = results.filter(r => !r.serverUrl);
             if (failed.length > 0) {
-                toast({ title: 'Brak połączenia z siecią', description: `Nie udało się wgrać ${failed.length} zdjęcia(ń). Sprawdź internet i spróbuj zapisać ponownie.`, variant: 'destructive' });
+                toast({ title: t('controlCards.noNetwork'), description: t('controlCards.noNetworkDesc', { count: failed.length }), variant: 'destructive' });
                 return;
             }
             const urlMap = new Map(results.map(r => [r.dataUrl, r.serverUrl!]));
@@ -1014,14 +1027,14 @@ function ControlCardDialog({
             onClose();
             editControlCardAction(existingCard.id, currentForm).then(result => {
                 if (result.success) {
-                    toast({ title: 'Zaktualizowano ✅', description: `Karta dla "${address.name}" zapisana.` });
+                    toast({ title: t('controlCards.updatedSuccess'), description: t('controlCards.savedSuccessDesc', { name: address.name }) });
                 } else {
                     onSaved(existingCard); // revert
-                    toast({ title: 'Błąd', description: result.error, variant: 'destructive' });
+                    toast({ title: t('controlCards.saveError'), description: result.error, variant: 'destructive' });
                 }
             }).catch(() => {
                 onSaved(existingCard); // revert
-                toast({ title: 'Błąd zapisu', description: 'Nie udało się zapisać karty kontroli.', variant: 'destructive' });
+                toast({ title: t('controlCards.saveError'), description: t('controlCards.saveCardFailed'), variant: 'destructive' });
             });
         } else {
             startTransition(async () => {
@@ -1036,11 +1049,11 @@ function ControlCardDialog({
                 };
                 const result = await saveControlCardAction(cardData);
                 if (result.success && result.id) {
-                    toast({ title: 'Karta zapisana! ✅', description: `Kontrola "${address.name}" zakończona.` });
+                    toast({ title: t('controlCards.savedSuccess'), description: t('controlCards.savedSuccessDesc', { name: address.name }) });
                     onSaved({ id: result.id, ...cardData });
                     onClose();
                 } else {
-                    toast({ title: 'Błąd zapisu', description: result.error, variant: 'destructive' });
+                    toast({ title: t('controlCards.saveError'), description: result.error, variant: 'destructive' });
                 }
             });
         }
@@ -1052,13 +1065,13 @@ function ControlCardDialog({
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-base">
                         <ClipboardCheck className="w-4 h-4 text-primary shrink-0" />
-                        Karta kontroli: {address.name}
+                        {t('controlCards.cardDialogTitle', { name: address.name })}
                     </DialogTitle>
                     <DialogDescription className="sr-only">
-                        Szczegóły widoku karty kontroli czystości mieszkania.
+                        {t('controlCards.cardDialogDesc')}
                     </DialogDescription>
                     <p className="text-xs text-muted-foreground">
-                        Miesiąc: <span className="font-medium text-foreground">{selectedMonth}</span>
+                        {t('controlCards.cardDialogMonth', { month: selectedMonth })}
                         {' · '}{address.locality}
                     </p>
                 </DialogHeader>
@@ -1066,7 +1079,7 @@ function ControlCardDialog({
                 {!canEdit && (
                     <div className="flex items-center gap-2 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-700 dark:text-yellow-400 text-sm">
                         <AlertCircle className="w-4 h-4 shrink-0" />
-                        Edycja możliwa tylko w bieżącym miesiącu. Raport zarchiwizowany.
+                        {t('controlCards.archiveNote')}
                     </div>
                 )}
 
@@ -1074,14 +1087,14 @@ function ControlCardDialog({
                     <TabsList className="grid w-full grid-cols-2 h-auto">
                         <TabsTrigger value="startlist" className="gap-1.5">
                             <ListChecks className="w-3.5 h-3.5" />
-                            <span className="text-xs">Start-list</span>
+                            <span className="text-xs">{t('controlCards.startList')}</span>
                             {slComplete
                                 ? <CheckCircle2 className="w-3 h-3 text-green-500" />
                                 : <AlertCircle className="w-3 h-3 text-red-500" />}
                         </TabsTrigger>
                         <TabsTrigger value="control" className="gap-1.5">
                             <ClipboardCheck className="w-3.5 h-3.5" />
-                            <span className="text-xs">Kontrola</span>
+                            <span className="text-xs">{t('controlCards.control')}</span>
                             {formComplete
                                 ? <CheckCircle2 className="w-3 h-3 text-green-500" />
                                 : <AlertCircle className="w-3 h-3 text-orange-400" />}
@@ -1107,7 +1120,7 @@ function ControlCardDialog({
                         <section>
                             <div className="flex items-center gap-2 mb-3">
                                 <Bed className="w-4 h-4 text-primary" />
-                                <h3 className="font-semibold text-sm">Kontrola pokoi</h3>
+                                <h3 className="font-semibold text-sm">{t('controlCards.roomsControl')}</h3>
                             </div>
                             <div className="space-y-2 pl-1">
                                 {form.roomRatings.map(rr => (
@@ -1128,7 +1141,7 @@ function ControlCardDialog({
                                                 <p className={`text-xs font-bold uppercase tracking-wide ${
                                                     rr.photoUrls && rr.photoUrls.length > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                                                 }`}>
-                                                    Pokój {rr.roomName}
+                                                    {t('housing.room', { name: rr.roomName })}
                                                 </p>
                                                 {ratingBadge(rr.rating)}
                                             </div>
@@ -1146,17 +1159,17 @@ function ControlCardDialog({
                                                 >
                                                     <div className="p-3 pt-0 space-y-3 border-t border-border/40">
                                                         <RatingField
-                                                            label="Ocena czystości"
+                                                            label={t('controlCards.cleanlinessRating')}
                                                             field={`room-${rr.roomId}`}
                                                             value={rr.rating}
                                                             onChange={(v) => setRoomRating(rr.roomId, v)}
                                                             disabled={!canEdit}
                                                         />
                                                         <div className="space-y-1.5">
-                                                            <Label className="text-xs font-medium">Komentarz do pokoju</Label>
+                                                            <Label className="text-xs font-medium">{t('controlCards.roomComment')}</Label>
                                                             <Textarea
                                                                 disabled={!canEdit}
-                                                                placeholder="Dodaj komentarz do pokoju..."
+                                                                placeholder={t('controlCards.roomCommentPlaceholder')}
                                                                 value={rr.comment || ''}
                                                                 onChange={(e) => setRoomComment(rr.roomId, e.target.value)}
                                                                 className="min-h-[60px] text-xs resize-none"
@@ -1164,7 +1177,7 @@ function ControlCardDialog({
                                                         </div>
                                                         {canEdit && (
                                                             <PhotoUploadWidget
-                                                                label="Zdjęcia z pokoju"
+                                                                label={t('controlCards.roomPhotos')}
                                                                 photoUrls={rr.photoUrls || []}
                                                                 isUploading={!!uploadingRooms[rr.roomId]}
                                                                 canEdit={canEdit}
@@ -1175,7 +1188,7 @@ function ControlCardDialog({
                                                         )}
                                                         {!canEdit && rr.photoUrls && rr.photoUrls.length > 0 && (
                                                             <PhotoUploadWidget
-                                                                label="Zdjęcia z pokoju"
+                                                                label={t('controlCards.roomPhotos')}
                                                                 photoUrls={rr.photoUrls || []}
                                                                 isUploading={false}
                                                                 canEdit={false}
@@ -1197,19 +1210,19 @@ function ControlCardDialog({
                     {/* ── Części wspólne ── */}
                     <section>
                         <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                            <span className="text-base">🏠</span> Części wspólne
+                            <span className="text-base">🏠</span> {t('controlCards.commonParts')}
                         </h3>
                         <div className="space-y-3 pl-1">
                             <div className="p-3 rounded-lg border bg-muted/20 space-y-3">
                                 <RatingField
-                                    label="🍳 Czystość w kuchni"
+                                    label={`🍳 ${t('controlCards.kitchenCleanliness')}`}
                                     field="cleanKitchen"
                                     value={form.cleanKitchen}
                                     onChange={(v) => setForm(prev => ({ ...prev, cleanKitchen: v }))}
                                     disabled={!canEdit}
                                 />
                                 <PhotoUploadWidget
-                                    label="Zdjęcia kuchni"
+                                    label={t('controlCards.kitchenPhotos')}
                                     photoUrls={form.kitchenPhotoUrls || []}
                                     isUploading={isUploadingKitchen}
                                     canEdit={canEdit}
@@ -1220,14 +1233,14 @@ function ControlCardDialog({
                             </div>
                             <div className="p-3 rounded-lg border bg-muted/20 space-y-3">
                                 <RatingField
-                                    label="🚿 Czystość w łazience"
+                                    label={`🚿 ${t('controlCards.bathroomCleanliness')}`}
                                     field="cleanBathroom"
                                     value={form.cleanBathroom}
                                     onChange={(v) => setForm(prev => ({ ...prev, cleanBathroom: v }))}
                                     disabled={!canEdit}
                                 />
                                 <PhotoUploadWidget
-                                    label="Zdjęcia łazienki"
+                                    label={t('controlCards.bathroomPhotos')}
                                     photoUrls={form.bathroomPhotoUrls || []}
                                     isUploading={isUploadingBathroom}
                                     canEdit={canEdit}
@@ -1243,10 +1256,10 @@ function ControlCardDialog({
                     <section>
                         <div className="flex items-center justify-between mb-3">
                             <h3 className="font-semibold text-sm flex items-center gap-2">
-                                <span className="text-base">⚡</span> Liczniki
+                                <span className="text-base">⚡</span> {t('controlCards.meters')}
                             </h3>
                             <label className="flex items-center gap-2 cursor-pointer select-none">
-                                <span className="text-xs text-muted-foreground">Brak liczników</span>
+                                <span className="text-xs text-muted-foreground">{t('controlCards.noMetersLabel')}</span>
                                 <Switch
                                     checked={!!address.noMetersRequired}
                                     onCheckedChange={async (v) => {
@@ -1260,14 +1273,14 @@ function ControlCardDialog({
                         {address.noMetersRequired ? (
                             <div className="pl-1">
                                 <div className="p-3 rounded-lg border border-muted bg-muted/10 text-xs text-muted-foreground flex items-center gap-2">
-                                    <span>⚡</span> Liczniki nie dotyczą tej kwatery — oznaczone przez admina.
+                                    <span>⚡</span> {t('controlCards.noMetersNote')}
                                 </div>
                             </div>
                         ) : (
                             <div className="pl-1">
                                 <div className="p-3 rounded-lg border bg-muted/20 space-y-3">
                                     <PhotoUploadWidget
-                                        label="Zdjęcia liczników (prąd, woda, itp.)"
+                                        label={t('controlCards.meterPhotos')}
                                         photoUrls={form.meterPhotoUrls || []}
                                         isUploading={isUploadingMeter}
                                         canEdit={canEdit}
@@ -1284,7 +1297,7 @@ function ControlCardDialog({
                     <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border">
                         <div className="flex items-center gap-2">
                             <Wrench className="w-4 h-4 text-muted-foreground" />
-                            <Label className="font-medium cursor-pointer text-sm">Wszystkie sprzęty działają?</Label>
+                            <Label className="font-medium cursor-pointer text-sm">{t('controlCards.appliancesWorking')}</Label>
                         </div>
                         <Switch
                             disabled={!canEdit}
@@ -1296,7 +1309,7 @@ function ControlCardDialog({
                     {/* ── Komentarze ── */}
                     <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                            <Label className="font-medium text-sm">📝 Komentarze / Usterki</Label>
+                            <Label className="font-medium text-sm">📝 {t('controlCards.commentsDefects')}</Label>
                             {canEdit && (
                                 <Button
                                     type="button"
@@ -1308,13 +1321,13 @@ function ControlCardDialog({
                                         comments: [...prev.comments, { id: `new-${Date.now()}-${Math.random().toString(36).substring(2)}`, text: '', status: 'Nie przyjęte' }]
                                     }))}
                                 >
-                                    + Dodaj komentarz
+                                    {t('controlCards.addCommentBtn')}
                                 </Button>
                             )}
                         </div>
                         {form.comments.length === 0 ? (
                             <div className="text-center p-4 border border-dashed rounded-lg bg-muted/20 text-muted-foreground text-xs">
-                                {`Brak uwag. Kliknij "Dodaj komentarz", aby zgłosić usterkę.`}
+                                {t('controlCards.noCommentsCta')}
                             </div>
                         ) : (
                             <div className="space-y-3">
@@ -1334,7 +1347,7 @@ function ControlCardDialog({
                                         )}
                                         <Textarea
                                             disabled={!canEdit}
-                                            placeholder="Treść komentarza/usterki..."
+                                            placeholder={t('controlCards.commentTextareaPlaceholder')}
                                             value={comment.text}
                                             onChange={(e) => setForm(prev => ({
                                                 ...prev,
@@ -1343,26 +1356,33 @@ function ControlCardDialog({
                                             className="min-h-[60px] resize-none text-sm"
                                         />
                                         <div className="flex flex-wrap gap-2 pt-1">
-                                            {(['Nie przyjęte', 'W trakcie', 'Temat rozwiązany'] as ControlCardCommentStatus[]).map(status => (
-                                                <button
-                                                    key={status}
-                                                    type="button"
-                                                    disabled={!canEditStatus}
-                                                    onClick={() => setForm(prev => ({
-                                                        ...prev,
-                                                        comments: prev.comments.map(c => c.id === comment.id ? { ...c, status } : c)
-                                                    }))}
-                                                    className={`px-2.5 py-1 text-[10px] font-medium rounded-full border transition-all ${
-                                                        comment.status === status
-                                                            ? status === 'Nie przyjęte' ? 'bg-red-500/10 text-red-600 border-red-500/30 animate-pulse'
-                                                            : status === 'W trakcie' ? 'bg-yellow-500/10 text-yellow-600 border-yellow-500/30 animate-pulse'
-                                                            : 'bg-green-500/10 text-green-600 border-green-500/30 animate-pulse'
-                                                            : 'bg-background text-muted-foreground border-border hover:bg-muted'
-                                                    } ${!canEditStatus && 'opacity-70 cursor-not-allowed'}`}
-                                                >
-                                                    {status === 'Nie przyjęte' ? '🔴' : status === 'W trakcie' ? '🟡' : '🟢'} {status}
-                                                </button>
-                                            ))}
+                                            {(['Nie przyjęte', 'W trakcie', 'Temat rozwiązany'] as ControlCardCommentStatus[]).map((status) => {
+                                                const statusLabelMap: Record<string, string> = {
+                                                    'Nie przyjęte': t('controlCards.commentStatusNew'),
+                                                    'W trakcie': t('controlCards.commentStatusInProgress'),
+                                                    'Temat rozwiązany': t('controlCards.commentStatusResolved'),
+                                                };
+                                                return (
+                                                    <button
+                                                        key={status}
+                                                        type="button"
+                                                        disabled={!canEditStatus}
+                                                        onClick={() => setForm(prev => ({
+                                                            ...prev,
+                                                            comments: prev.comments.map(c => c.id === comment.id ? { ...c, status } : c)
+                                                        }))}
+                                                        className={`px-2.5 py-1 text-[10px] font-medium rounded-full border transition-all ${
+                                                            comment.status === status
+                                                                ? status === 'Nie przyjęte' ? 'bg-red-500/10 text-red-600 border-red-500/30 animate-pulse'
+                                                                : status === 'W trakcie' ? 'bg-yellow-500/10 text-yellow-600 border-yellow-500/30 animate-pulse'
+                                                                : 'bg-green-500/10 text-green-600 border-green-500/30 animate-pulse'
+                                                                : 'bg-background text-muted-foreground border-border hover:bg-muted'
+                                                        } ${!canEditStatus && 'opacity-70 cursor-not-allowed'}`}
+                                                    >
+                                                        {status === 'Nie przyjęte' ? '🔴' : status === 'W trakcie' ? '🟡' : '🟢'} {statusLabelMap[status]}
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 ))}
@@ -1375,30 +1395,30 @@ function ControlCardDialog({
                     <div className="pt-3">
                         {showResetConfirm ? (
                             <div className="flex items-center justify-between gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-sm">
-                                <span className="text-destructive font-medium text-xs">Wyczyścić całą kartę i zacząć od nowa?</span>
+                                <span className="text-destructive font-medium text-xs">{t('controlCards.resetConfirm')}</span>
                                 <div className="flex gap-2 shrink-0">
-                                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowResetConfirm(false)}>Nie</Button>
-                                    <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={handleReset}>Tak, resetuj</Button>
+                                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowResetConfirm(false)}>{t('common.no')}</Button>
+                                    <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={handleReset}>{t('controlCards.resetYes')}</Button>
                                 </div>
                             </div>
                         ) : (
                             <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setShowResetConfirm(true)}>
-                                Resetuj kartę
+                                {t('controlCards.resetCard')}
                             </Button>
                         )}
                     </div>
                 )}
 
                 <DialogFooter className="gap-2 pt-4">
-                    <Button variant="outline" onClick={onClose} disabled={isPending}>Anuluj</Button>
+                    <Button variant="outline" onClick={onClose} disabled={isPending}>{t('common.cancel')}</Button>
                     {canEdit && (
                         <Button
                             onClick={handleSave}
                             disabled={isPending || !formComplete}
-                            title={!formComplete ? 'Uzupełnij zdjęcia we wszystkich sekcjach' : undefined}
+                            title={!formComplete ? t('controlCards.fillRequired') : undefined}
                             className="shadow-lg shadow-primary/20"
                         >
-                            {isPending ? 'Zapisuję...' : existingCard ? 'Zaktualizuj' : 'Zapisz kontrolę'}
+                            {isPending ? t('controlCards.saving') : existingCard ? t('controlCards.update') : t('controlCards.save')}
                         </Button>
                     )}
                 </DialogFooter>
@@ -1417,6 +1437,7 @@ function ControlCardDialog({
 // ─── Address row ─────────────────────────────────────────────────────────────
 
 function AddressRow({ address, card, onClick }: { address: Address; card: ControlCard | null; onClick: () => void; }) {
+    const { t } = useLanguage();
     const avg = card ? calculateAverage(card) : 0;
     const hasIssue = card && (!card.appliancesWorking || card.roomRatings.some(r => r.rating < 4) || card.cleanKitchen < 4 || card.cleanBathroom < 4);
 
@@ -1439,18 +1460,18 @@ function AddressRow({ address, card, onClick }: { address: Address; card: Contro
                     )}
                     {hasIssue && (
                         <span className="flex items-center gap-0.5 text-[10px] text-red-500">
-                            <Wrench className="w-2.5 h-2.5" /> Usterka
+                            <Wrench className="w-2.5 h-2.5" /> {t('controlCards.defect')}
                         </span>
                     )}
                     {address.noMetersRequired && (
-                        <span className="text-[10px] text-muted-foreground">bez liczników</span>
+                        <span className="text-[10px] text-muted-foreground">{t('controlCards.noMeters')}</span>
                     )}
                 </div>
             </div>
 
             {card && (
                 <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[10px] text-muted-foreground">Średnia:</span>
+                    <span className="text-[10px] text-muted-foreground">{t('controlCards.rankingAvg')}</span>
                     {ratingBadge(Math.round(avg))}
                 </div>
             )}
@@ -1549,6 +1570,7 @@ function getRatingTextColor(score: number): string {
 const MEDALS = ['🥇', '🥈', '🥉'];
 
 function RankingChart({ cards }: { cards: ControlCard[] }) {
+    const { t } = useLanguage();
     const [collapsed, setCollapsed] = useState(true);
 
     const ranked = useMemo(() => {
@@ -1567,7 +1589,7 @@ function RankingChart({ cards }: { cards: ControlCard[] }) {
             >
                 <div className="flex items-center gap-2">
                     <Trophy className="w-4 h-4 text-amber-500" />
-                    <span className="font-semibold text-sm">Ranking mieszkań</span>
+                    <span className="font-semibold text-sm">{t('controlCards.rankingTitle')}</span>
                     <Badge variant="secondary" className="text-xs">{ranked.length}</Badge>
                 </div>
                 <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${collapsed ? '' : 'rotate-180'}`} />
@@ -1584,7 +1606,7 @@ function RankingChart({ cards }: { cards: ControlCard[] }) {
                     >
                         <div className="px-3 pb-3 space-y-2">
                             <p className="text-xs text-muted-foreground pb-1 border-b border-border/40">
-                                Średnia ocena ogólna (pokoje + kuchnia + łazienka) — od najlepszego
+                                {t('controlCards.rankingDesc')}
                             </p>
                             {ranked.map(({ card, avg }, idx) => (
                                 <div key={card.id} className="flex items-center gap-2 text-sm">
@@ -1623,9 +1645,10 @@ function RankingChart({ cards }: { cards: ControlCard[] }) {
 export default function ControlCardsView({ currentUser }: { currentUser: SessionData }) {
     const { rawSettings } = useMainLayout();
     const { toast } = useToast();
+    const { t, dateLocale } = useLanguage();
     const searchParams = useSearchParams();
 
-    const monthOptions = useMemo(() => getMonthOptions(), []);
+    const monthOptions = useMemo(() => getMonthOptions(dateLocale), [dateLocale]);
     const [selectedMonth, setSelectedMonth] = useState(monthOptions[0].value);
     const [search, setSearch] = useState('');
     const [activeFilter, setActiveFilter] = useState<'all' | 'pending' | 'done'>('all');
@@ -1648,7 +1671,7 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
                 setControlCards(Array.isArray(cards) ? cards : []);
                 setStartLists(Array.isArray(lists) ? lists : []);
             })
-            .catch(() => toast({ title: 'Błąd', description: 'Nie udało się załadować danych.', variant: 'destructive' }))
+            .catch(() => toast({ title: t('common.error'), description: t('controlCards.loadError'), variant: 'destructive' }))
             .finally(() => setIsLoadingCards(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isUnlocked]);
@@ -1782,11 +1805,11 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
                         <ClipboardCheck className="w-6 h-6 text-primary" />
-                        Karty kontroli mieszkań
+                        {t('controlCards.controlTitle')}
                     </h1>
                     <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
                         <ShieldCheck className="w-3.5 h-3.5" />
-                        Miesięczny raport stanu kwater i pokoi
+                        {t('controlCards.controlSubtitle')}
                     </p>
                 </div>
                 <Select value={selectedMonth} onValueChange={setSelectedMonth}>
@@ -1805,19 +1828,19 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
             <div className="grid grid-cols-3 gap-3">
                 <Card className="bg-gradient-to-br from-primary/5 to-transparent border-primary/20">
                     <CardContent className="p-3">
-                        <p className="text-xs text-muted-foreground">Adresy</p>
+                        <p className="text-xs text-muted-foreground">{t('controlCards.addressesCount')}</p>
                         <p className="text-2xl font-bold">{stats.total}</p>
                     </CardContent>
                 </Card>
                 <Card className="bg-gradient-to-br from-green-500/5 to-transparent border-green-500/20">
                     <CardContent className="p-3">
-                        <p className="text-xs text-muted-foreground">Skontrolowane</p>
+                        <p className="text-xs text-muted-foreground">{t('controlCards.controlled')}</p>
                         <p className="text-2xl font-bold text-green-600">{stats.done}</p>
                     </CardContent>
                 </Card>
                 <Card className="bg-gradient-to-br from-yellow-500/5 to-transparent border-yellow-500/20">
                     <CardContent className="p-3">
-                        <p className="text-xs text-muted-foreground">Oczekujące</p>
+                        <p className="text-xs text-muted-foreground">{t('controlCards.pending')}</p>
                         <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
                     </CardContent>
                 </Card>
@@ -1827,7 +1850,7 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
             {stats.total > 0 && (
                 <div className="space-y-1">
                     <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>Postęp – {selectedMonth}</span>
+                        <span>{t('controlCards.progress', { month: selectedMonth })}</span>
                         <span>{stats.done}/{stats.total} ({Math.round(stats.done / stats.total * 100)}%)</span>
                     </div>
                     <div className="h-2 rounded-full bg-muted overflow-hidden">
@@ -1851,7 +1874,7 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
                 <div className="relative flex-1">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
-                        placeholder="Szukaj adresu lub miejscowości..."
+                        placeholder={t('controlCards.searchAddress')}
                         value={search}
                         onChange={e => setSearch(e.target.value)}
                         className="pl-9"
@@ -1865,7 +1888,7 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
                             className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all
                 ${activeFilter === f ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                         >
-                            {f === 'all' ? 'Wszystkie' : f === 'pending' ? '⏳ Oczekujące' : '✅ Gotowe'}
+                            {f === 'all' ? t('controlCards.filterAll') : f === 'pending' ? t('controlCards.filterPending') : t('controlCards.filterDone')}
                         </button>
                     ))}
                 </div>
@@ -1879,7 +1902,7 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
             ) : grouped.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed border-border/40 rounded-2xl">
                     <Building2 className="w-10 h-10 text-muted-foreground/30 mb-3" />
-                    <p className="text-muted-foreground font-medium">Brak adresów spełniających kryteria</p>
+                    <p className="text-muted-foreground font-medium">{t('controlCards.noAddressesFound')}</p>
                 </div>
             ) : (
                 <div className="space-y-2">

@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/select';
 import { ChevronLeft, ChevronRight, Check, Loader2, User, MapPin, ClipboardList, CalendarDays } from 'lucide-react';
 import { format, isValid } from 'date-fns';
-import { pl } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { useMainLayout } from '@/components/main-layout';
 import type { NonEmployee, Settings, SessionData } from '@/types';
@@ -21,6 +20,7 @@ import {
     WizardAddressPicker, WizardGenderPicker, buildAddressItems, type WizardAddressItem,
 } from '@/components/wizard-utils';
 import { EditNonEmployeeForm } from '@/components/edit-non-employee-form';
+import { useLanguage } from '@/lib/i18n';
 
 type NonEmployeeFormData = Omit<NonEmployee, 'id' | 'status'>;
 
@@ -79,6 +79,8 @@ function AddNonEmployeeWizard({
         comments: string;
     };
 
+    const { t, dateLocale } = useLanguage();
+
     const DEFAULT: WizardData = {
         firstName: '', lastName: '',
         addressName: '', roomNumber: '', ownAddress: '',
@@ -88,7 +90,7 @@ function AddNonEmployeeWizard({
         departureReportDate: null, comments: '',
     };
 
-    const STEPS = ['Osoba', 'Lokalizacja', 'Szczegóły', 'Daty', 'Podsumowanie'];
+    const steps = [t('wizardStep.person'), t('wizardStep.location'), t('wizardStep.details'), t('wizardStep.dates'), t('wizardStep.summary')];
     const [step, setStep] = useState(0);
     const [data, setData] = useState<WizardData>({ ...DEFAULT });
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -163,29 +165,29 @@ function AddNonEmployeeWizard({
             onSave(formData);
             onOpenChange(false);
         } catch (e) {
-            toast({ variant: 'destructive', title: 'Błąd', description: e instanceof Error ? e.message : 'Nie udało się zapisać.' });
+            toast({ variant: 'destructive', title: t('common.error'), description: e instanceof Error ? e.message : t('form.submitError') });
         } finally {
             setIsSubmitting(false);
         }
     };
 
     const summaryRows = [
-        { label: 'Nazwisko', value: data.lastName, step: 0 },
-        { label: 'Imię', value: data.firstName, step: 0 },
-        { label: 'Narodowość', value: data.nationality || '—', step: 0 },
-        { label: 'Koordynator', value: settings.coordinators.find((c) => c.uid === data.coordinatorId)?.name || '—', step: 0 },
-        { label: 'Adres', value: isOwn ? `Własne: ${data.ownAddress || '—'}` : data.addressName || '—', step: 1 },
-        { label: 'Pokój', value: isOwn ? 'N/A' : data.roomNumber || '—', step: 1 },
-        { label: 'Płeć', value: data.gender || '—', step: 2 },
-        { label: 'Płatność', value: data.paymentType ? `${data.paymentType}${data.paymentAmount ? ' · ' + data.paymentAmount + ' zł' : ''}` : '—', step: 2 },
-        { label: 'Zameldowanie', value: data.checkInDate && isValid(data.checkInDate) ? format(data.checkInDate, 'd MMM yyyy', { locale: pl }) : '—', step: 3 },
-        { label: 'Wymeldowanie', value: data.checkOutDate && isValid(data.checkOutDate) ? format(data.checkOutDate, 'd MMM yyyy', { locale: pl }) : '—', step: 3 },
+        { label: t('form.lastName2'), value: data.lastName, step: 0 },
+        { label: t('form.firstName2'), value: data.firstName, step: 0 },
+        { label: t('form.nationality'), value: data.nationality || '—', step: 0 },
+        { label: t('form.coordinator'), value: settings.coordinators.find((c) => c.uid === data.coordinatorId)?.name || '—', step: 0 },
+        { label: t('form.address'), value: isOwn ? `${t('form.ownHousing')}: ${data.ownAddress || '—'}` : data.addressName || '—', step: 1 },
+        { label: t('form.room'), value: isOwn ? 'N/A' : data.roomNumber || '—', step: 1 },
+        { label: t('form.gender'), value: data.gender || '—', step: 2 },
+        { label: t('form.paymentType'), value: data.paymentType ? `${data.paymentType}${data.paymentAmount ? ' · ' + data.paymentAmount + ' zł' : ''}` : '—', step: 2 },
+        { label: t('form.checkIn'), value: data.checkInDate && isValid(data.checkInDate) ? format(data.checkInDate, 'd MMM yyyy', { locale: dateLocale }) : '—', step: 3 },
+        { label: t('form.checkOut'), value: data.checkOutDate && isValid(data.checkOutDate) ? format(data.checkOutDate, 'd MMM yyyy', { locale: dateLocale }) : '—', step: 3 },
     ];
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent data-testid="add-non-employee-dialog" className="max-w-[95vw] sm:max-w-lg h-[92vh] max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden">
-                <WizardStepIndicator steps={STEPS} current={step} />
+                <WizardStepIndicator steps={steps} current={step} />
 
                 <ScrollArea className="flex-1 overflow-y-auto">
                     {/* Step 0: Osoba */}
@@ -193,8 +195,8 @@ function AddNonEmployeeWizard({
                         <div className="flex flex-col gap-5 p-6 sm:p-8">
                             <div className="text-center space-y-1">
                                 <User className="w-9 h-9 mx-auto text-primary" />
-                                <h2 className="text-xl font-bold">Dane osoby</h2>
-                                <p className="text-sm text-muted-foreground">Wpisz ręcznie lub zeskanuj dokument</p>
+                                <h2 className="text-xl font-bold">{t('form.person')}</h2>
+                                <p className="text-sm text-muted-foreground">{t('form.enterManuallyOrScan')}</p>
                             </div>
                             <OcrCameraButton
                                 settings={settings}
@@ -206,21 +208,21 @@ function AddNonEmployeeWizard({
                             />
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-medium">Nazwisko <span className="text-destructive">*</span></label>
+                                    <label className="text-sm font-medium">{t('form.lastName2')} <span className="text-destructive">*</span></label>
                                     <Input placeholder="Kowalski" value={data.lastName} onChange={(e) => set({ lastName: e.target.value })} className="h-12 text-base" />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-medium">Imię <span className="text-destructive">*</span></label>
+                                    <label className="text-sm font-medium">{t('form.firstName2')} <span className="text-destructive">*</span></label>
                                     <Input placeholder="Jan" value={data.firstName} onChange={(e) => set({ firstName: e.target.value })} className="h-12 text-base" />
                                 </div>
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-sm font-medium">Koordynator <span className="text-destructive">*</span></label>
-                                <Combobox options={coordOptions} value={data.coordinatorId} onChange={(v) => set({ coordinatorId: v, addressName: '', roomNumber: '' })} placeholder="Wybierz koordynatora" searchPlaceholder="Szukaj..." />
+                                <label className="text-sm font-medium">{t('form.coordinator')} <span className="text-destructive">*</span></label>
+                                <Combobox options={coordOptions} value={data.coordinatorId} onChange={(v) => set({ coordinatorId: v, addressName: '', roomNumber: '' })} placeholder={t('form.selectCoord')} searchPlaceholder={t('common.search')} />
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-sm font-medium">Narodowość <span className="text-destructive">*</span></label>
-                                <Combobox options={nationalityOptions} value={data.nationality} onChange={(v) => set({ nationality: v })} placeholder="Wybierz narodowość" searchPlaceholder="Szukaj..." />
+                                <label className="text-sm font-medium">{t('form.nationality')} <span className="text-destructive">*</span></label>
+                                <Combobox options={nationalityOptions} value={data.nationality} onChange={(v) => set({ nationality: v })} placeholder={t('form.selectNat')} searchPlaceholder={t('common.search')} />
                             </div>
                         </div>
                     )}
@@ -230,8 +232,8 @@ function AddNonEmployeeWizard({
                         <div className="flex flex-col gap-4 p-4 sm:p-6">
                             <div className="text-center space-y-1">
                                 <MapPin className="w-9 h-9 mx-auto text-primary" />
-                                <h2 className="text-xl font-bold">Lokalizacja</h2>
-                                <p className="text-sm text-muted-foreground">Wybierz adres i pokój</p>
+                                <h2 className="text-xl font-bold">{t('form.location')}</h2>
+                                <p className="text-sm text-muted-foreground">{t('form.selectAddressRoom')}</p>
                             </div>
                             <WizardAddressPicker
                                 items={addressItems}
@@ -247,24 +249,24 @@ function AddNonEmployeeWizard({
                         <div className="flex flex-col gap-4 p-6 sm:p-8">
                             <div className="text-center space-y-1">
                                 <ClipboardList className="w-9 h-9 mx-auto text-primary" />
-                                <h2 className="text-xl font-bold">Szczegóły</h2>
+                                <h2 className="text-xl font-bold">{t('wizardStep.details')}</h2>
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-sm font-medium">Płeć <span className="text-destructive">*</span></label>
+                                <label className="text-sm font-medium">{t('form.gender')} <span className="text-destructive">*</span></label>
                                 <WizardGenderPicker genders={sortedGenders} value={data.gender} onChange={(g) => set({ gender: g })} />
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-medium">Rodzaj płatności</label>
+                                    <label className="text-sm font-medium">{t('form.paymentType')}</label>
                                     <Select value={data.paymentType || ''} onValueChange={(v) => set({ paymentType: v })}>
-                                        <SelectTrigger className="h-11"><SelectValue placeholder="Opcjonalnie" /></SelectTrigger>
+                                        <SelectTrigger className="h-11"><SelectValue placeholder={t('form.optionalSkip')} /></SelectTrigger>
                                         <SelectContent>
                                             {paymentTypeOptions.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-medium">Kwota (PLN)</label>
+                                    <label className="text-sm font-medium">{t('form.amount')} (PLN)</label>
                                     <Input type="number" placeholder="0.00" value={data.paymentAmount} onChange={(e) => set({ paymentAmount: e.target.value })} className="h-11" />
                                 </div>
                             </div>
@@ -276,23 +278,23 @@ function AddNonEmployeeWizard({
                         <div className="flex flex-col gap-4 p-6 sm:p-8">
                             <div className="text-center space-y-1">
                                 <CalendarDays className="w-9 h-9 mx-auto text-primary" />
-                                <h2 className="text-xl font-bold">Daty</h2>
+                                <h2 className="text-xl font-bold">{t('form.dates')}</h2>
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-sm font-medium">Data zameldowania <span className="text-destructive">*</span></label>
+                                <label className="text-sm font-medium">{t('form.checkInDate')} <span className="text-destructive">*</span></label>
                                 <WizardDateInput value={data.checkInDate} onChange={(d) => set({ checkInDate: d })} />
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-sm font-medium">Data wymeldowania</label>
-                                <WizardDateInput value={data.checkOutDate} onChange={(d) => set({ checkOutDate: d })} placeholder="Opcjonalnie" />
+                                <label className="text-sm font-medium">{t('form.checkOutDate')}</label>
+                                <WizardDateInput value={data.checkOutDate} onChange={(d) => set({ checkOutDate: d })} placeholder={t('form.optional')} />
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-sm font-medium">Data zgłoszenia wyjazdu</label>
-                                <WizardDateInput value={data.departureReportDate} onChange={(d) => set({ departureReportDate: d })} placeholder="Opcjonalnie" />
+                                <label className="text-sm font-medium">{t('form.departureDate')}</label>
+                                <WizardDateInput value={data.departureReportDate} onChange={(d) => set({ departureReportDate: d })} placeholder={t('form.optional')} />
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-sm font-medium">Komentarze</label>
-                                <Input placeholder="Dodatkowe informacje..." value={data.comments} onChange={(e) => set({ comments: e.target.value })} className="h-11" />
+                                <label className="text-sm font-medium">{t('form.comments')}</label>
+                                <Input placeholder={t('form.additionalInfo')} value={data.comments} onChange={(e) => set({ comments: e.target.value })} className="h-11" />
                             </div>
                         </div>
                     )}
@@ -302,8 +304,8 @@ function AddNonEmployeeWizard({
                         <div className="flex flex-col gap-4 p-6 sm:p-8">
                             <div className="text-center space-y-1">
                                 <Check className="w-9 h-9 mx-auto text-primary" />
-                                <h2 className="text-xl font-bold">Podsumowanie</h2>
-                                <p className="text-sm text-muted-foreground">Sprawdź dane przed zapisem</p>
+                                <h2 className="text-xl font-bold">{t('form.summary')}</h2>
+                                <p className="text-sm text-muted-foreground">{t('form.checkDataBeforeSave')}</p>
                             </div>
                             <div className="rounded-xl border divide-y">
                                 {summaryRows.map(({ label, value, step: s }) => (
@@ -316,23 +318,23 @@ function AddNonEmployeeWizard({
                                     </div>
                                 ))}
                             </div>
-                            <p className="text-xs text-center text-muted-foreground">Kliknij wiersz aby edytować.</p>
+                            <p className="text-xs text-center text-muted-foreground">{t('form.clickRowToEdit')}</p>
                         </div>
                     )}
                 </ScrollArea>
 
                 <div className="p-4 border-t bg-background flex items-center justify-between gap-3 flex-shrink-0">
                     <Button variant="ghost" onClick={step === 0 ? () => onOpenChange(false) : () => setStep((s) => s - 1)} disabled={isSubmitting} className="h-11 px-4 text-sm">
-                        <ChevronLeft className="w-4 h-4 mr-1" />{step === 0 ? 'Anuluj' : 'Wstecz'}
+                        <ChevronLeft className="w-4 h-4 mr-1" />{step === 0 ? t('common.cancel') : t('form.back')}
                     </Button>
-                    {step < STEPS.length - 1 ? (
+                    {step < steps.length - 1 ? (
                         <Button onClick={() => setStep((s) => s + 1)} disabled={!canProceed} className="h-11 px-6 text-sm font-semibold">
-                            Dalej <ChevronRight className="w-4 h-4 ml-1" />
+                            {t('form.next')} <ChevronRight className="w-4 h-4 ml-1" />
                         </Button>
                     ) : (
                         <Button onClick={handleSubmit} disabled={isSubmitting} className="h-11 px-6 text-sm font-semibold">
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            <Check className="w-4 h-4 mr-2" />Dodaj
+                            <Check className="w-4 h-4 mr-2" />{t('common.add')}
                         </Button>
                     )}
                 </div>

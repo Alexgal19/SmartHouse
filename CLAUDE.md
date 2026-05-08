@@ -93,7 +93,13 @@ These rules are **non-negotiable**. Full details in `AGENTS.md`.
 5. **Schema changes must be backward-compatible** or include a migration (Database Agent)
 6. **Never deploy without a passing build** — `npm run build` must be green (DevOps Agent)
 7. **Blocker > guessing** — if uncertain, raise a blocker instead of improvising
-8. **🚨 ABSOLUTE RULE — Google Sheets data is SACRED. NEVER write code that deletes data from Google Sheets.** This means:
+8. **🌐 ALL UI TEXT MUST GO THROUGH i18n** — Never hardcode visible strings in components. Always:
+   - Add the Polish value to `src/lib/translations/pl.ts`
+   - Add the English value to `src/lib/translations/en.ts`
+   - Use `const { t } = useLanguage()` in the component and call `t('key')`
+   - This applies to: labels, titles, buttons, placeholders, toasts, error messages, empty states, tab names — everything visible to the user
+   - Exception: user-entered data (names, addresses, comments) is never translated
+9. **🚨 ABSOLUTE RULE — Google Sheets data is SACRED. NEVER write code that deletes data from Google Sheets.** This means:
    - NEVER call `row.delete()`, `sheet.clearRows()`, or `sheet.deleteRows()` — ESLint will block builds that contain these
    - NEVER call `getSheet()` directly for write operations — use `getSafeSheet()` from `lib/safe-sheets.ts`
    - If a feature requires deletion, STOP and ask the owner for approval first

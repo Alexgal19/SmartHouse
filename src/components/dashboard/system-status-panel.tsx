@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw, ShieldCheck, ShieldAlert, Bell, BellOff, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import type { AlertDetailItem, AlertDetails } from '@/lib/alert-utils';
+import { useLanguage } from '@/lib/i18n';
+import type { TFunction } from '@/lib/i18n';
 
 interface SheetSnapshot {
   rowCount: number;
@@ -30,32 +32,38 @@ interface AlertsSummary {
   details?: AlertDetails;
 }
 
-const SHEET_LABELS: Record<string, string> = {
-  Employees: 'Pracownicy',
-  NonEmployees: 'NZ',
-  Addresses: 'Adresy',
-  Rooms: 'Pokoje',
-  AddressHistory: 'Historia adresów',
-  BokResidents: 'BOK',
-  ControlCards: 'Karty kontrolne',
-  Coordinators: 'Koordynatorzy',
-};
+function getSheetLabel(sheet: string, t: TFunction): string {
+  const map: Record<string, string> = {
+    Employees: t('sheet.employees'),
+    NonEmployees: t('sheet.nonEmployees'),
+    Addresses: t('sheet.addresses'),
+    Rooms: t('sheet.rooms'),
+    AddressHistory: t('sheet.addressHistory'),
+    BokResidents: t('sheet.bokResidents'),
+    ControlCards: t('sheet.controlCards'),
+    Coordinators: t('sheet.coordinators'),
+  };
+  return map[sheet] ?? sheet;
+}
 
-const ALERT_LABELS: Record<string, string> = {
-  contractExpiry: 'Wygasające umowy',
-  bokStatusInconsistency: 'Niespójny status BOK',
-  capacityExceeded: 'Przekroczona pojemność',
-  missingPaymentData: 'Brak danych płatności NZ',
-  duplicatePersons: 'Zdublowane osoby',
-};
+function getAlertLabel(key: string, t: TFunction): string {
+  const map: Record<string, string> = {
+    contractExpiry: t('alert.contractExpiry'),
+    bokStatusInconsistency: t('alert.bokStatusInconsistency'),
+    capacityExceeded: t('alert.capacityExceeded'),
+    missingPaymentData: t('alert.missingPaymentData'),
+    duplicatePersons: t('alert.duplicatePersons'),
+  };
+  return map[key] ?? key;
+}
 
-function timeAgo(isoDate: string): string {
+function timeAgo(isoDate: string, t: TFunction): string {
   const diff = Math.round((Date.now() - new Date(isoDate).getTime()) / 60000);
-  if (diff < 1) return 'przed chwilą';
-  if (diff < 60) return `${diff} min temu`;
+  if (diff < 1) return t('time.justNow');
+  if (diff < 60) return t('time.minutesAgo', { count: diff });
   const hours = Math.floor(diff / 60);
-  if (hours < 24) return `${hours}h temu`;
-  return `${Math.floor(hours / 24)}d temu`;
+  if (hours < 24) return t('time.hoursAgo', { count: hours });
+  return t('time.daysAgo', { count: Math.floor(hours / 24) });
 }
 
 function AlertDetailList({ items }: { items: AlertDetailItem[] }) {
@@ -113,6 +121,7 @@ function AlertRow({
 }
 
 export function SystemStatusPanel() {
+  const { t } = useLanguage();
   const [dataGuard, setDataGuard] = useState<DataGuardStatus | null>(null);
   const [alerts, setAlerts] = useState<AlertsSummary | null>(null);
   const [employeeStats, setEmployeeStats] = useState<EmployeeStats | null>(null);
@@ -133,7 +142,7 @@ export function SystemStatusPanel() {
       if (guardRes.ok) setDataGuard(await guardRes.json());
       if (statsRes.ok) setEmployeeStats(await statsRes.json());
     } catch {
-      setError('Błąd połączenia z API');
+      setError(t('dashboard.apiConnectionError'));
     } finally {
       setLoading(false);
     }
@@ -182,7 +191,7 @@ export function SystemStatusPanel() {
         className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors rounded-t-lg"
         onClick={() => setIsOpen(prev => !prev)}
       >
-        <span className="text-sm font-semibold">Status systemu</span>
+        <span className="text-sm font-semibold">{t('dashboard.systemStatus')}</span>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">
             {guardOk
@@ -190,7 +199,7 @@ export function SystemStatusPanel() {
               : <ShieldAlert className="h-4 w-4 text-yellow-500" />}
             <span className="text-xs text-muted-foreground">Data Guard</span>
             {lastChecked && (
-              <span className="text-xs text-muted-foreground hidden sm:inline">· {timeAgo(lastChecked)}</span>
+              <span className="text-xs text-muted-foreground hidden sm:inline">· {timeAgo(lastChecked, t)}</span>
             )}
           </div>
           <span className="text-muted-foreground/40 text-xs">|</span>
@@ -200,7 +209,7 @@ export function SystemStatusPanel() {
               : alertsActive
                 ? <><Bell className="h-4 w-4 text-red-500" /><Badge variant="destructive" className="text-xs h-5 px-1.5">{totalAlerts}</Badge></>
                 : <Bell className="h-4 w-4 text-muted-foreground" />}
-            <span className="text-xs text-muted-foreground">Alerty</span>
+            <span className="text-xs text-muted-foreground">{t('dashboard.coordinatorAlerts')}</span>
           </div>
           {isOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
         </div>
@@ -221,36 +230,36 @@ export function SystemStatusPanel() {
                 <Button size="sm" variant="outline" className="h-7 text-xs"
                   onClick={e => { e.stopPropagation(); runDataGuard(); }} disabled={runningGuard}>
                   <RefreshCw className={`h-3 w-3 mr-1 ${runningGuard ? 'animate-spin' : ''}`} />
-                  Sprawdź
+                  {t('common.check')}
                 </Button>
               </div>
               {error && <p className="text-xs text-destructive">{error}</p>}
-              {loading && <p className="text-xs text-muted-foreground">Ładowanie...</p>}
+              {loading && <p className="text-xs text-muted-foreground">{t('common.loading')}</p>}
               {snapshot ? (
                 <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
                   {Object.entries(snapshot).flatMap(([sheet, data]) => {
                     if (sheet === 'Employees' && employeeStats) {
                       return [
                         <div key="emp-active" className="flex items-center justify-between py-0.5">
-                          <span className="text-xs text-muted-foreground">Pracownicy aktywni</span>
+                          <span className="text-xs text-muted-foreground">{t('dashboard.employeesActive')}</span>
                           <Badge variant="secondary" className="text-xs font-mono h-5">{employeeStats.active}</Badge>
                         </div>,
                         <div key="emp-dismissed" className="flex items-center justify-between py-0.5">
-                          <span className="text-xs text-muted-foreground">Pracownicy zwolnieni</span>
+                          <span className="text-xs text-muted-foreground">{t('dashboard.employeesDismissed')}</span>
                           <Badge variant="outline" className="text-xs font-mono h-5">{employeeStats.dismissed}</Badge>
                         </div>,
                       ];
                     }
                     return [
                       <div key={sheet} className="flex items-center justify-between py-0.5">
-                        <span className="text-xs text-muted-foreground">{SHEET_LABELS[sheet] ?? sheet}</span>
+                        <span className="text-xs text-muted-foreground">{getSheetLabel(sheet, t)}</span>
                         <Badge variant="secondary" className="text-xs font-mono h-5">{data.rowCount}</Badge>
                       </div>,
                     ];
                   })}
                 </div>
               ) : (
-                !loading && <p className="text-xs text-muted-foreground">Brak snapshotu — kliknij &quot;Sprawdź&quot; aby zainicjować.</p>
+                !loading && <p className="text-xs text-muted-foreground">{t('dashboard.noSnapshot')}</p>
               )}
             </div>
 
@@ -263,17 +272,17 @@ export function SystemStatusPanel() {
                     : alertsActive
                       ? <Bell className="h-3.5 w-3.5 text-red-500" />
                       : <Bell className="h-3.5 w-3.5 text-muted-foreground" />}
-                  Alerty biznesowe
+                  {t('dashboard.businessAlerts')}
                 </span>
                 <Button size="sm" variant="outline" className="h-7 text-xs"
                   onClick={e => { e.stopPropagation(); runAlerts(); }} disabled={runningAlerts}>
                   <RefreshCw className={`h-3 w-3 mr-1 ${runningAlerts ? 'animate-spin' : ''}`} />
-                  Sprawdź
+                  {t('common.check')}
                 </Button>
               </div>
               {alerts ? (
                 totalAlerts === 0 ? (
-                  <p className="text-xs text-green-600 font-medium">✓ Brak alertów — wszystko OK</p>
+                  <p className="text-xs text-green-600 font-medium">{t('dashboard.noAlerts')}</p>
                 ) : (
                   <div className="space-y-0.5">
                     {Object.entries(alerts.summary)
@@ -281,7 +290,7 @@ export function SystemStatusPanel() {
                       .map(([key, count]) => (
                         <AlertRow
                           key={key}
-                          label={ALERT_LABELS[key] ?? key}
+                          label={getAlertLabel(key, t)}
                           count={count}
                           items={alerts.details?.[key as keyof AlertDetails]}
                         />
@@ -290,7 +299,7 @@ export function SystemStatusPanel() {
                 )
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  Kliknij &quot;Sprawdź&quot; aby uruchomić skanowanie alertów.
+                  {t('dashboard.clickToRunAlerts')}
                 </p>
               )}
             </div>

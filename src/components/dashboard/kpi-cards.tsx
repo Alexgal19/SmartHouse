@@ -3,6 +3,7 @@
 
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useLanguage } from '@/lib/i18n';
 import { Users, User, CalendarOff } from "lucide-react";
 import type { Employee, NonEmployee } from "@/types";
 import { differenceInDays, parseISO } from 'date-fns';
@@ -60,6 +61,7 @@ export function DashboardKPIs({
     onUpcomingCheckoutsClick: () => void,
     hasNewCheckouts: boolean
 }) {
+    const { t } = useLanguage();
     const { settings } = useMainLayout();
 
     const stats = useMemo(() => {
@@ -89,11 +91,11 @@ export function DashboardKPIs({
     }, [employees, nonEmployees, settings]);
 
     const kpiData = [
-        { title: 'Wszyscy pracownicy', value: stats.totalEmployees.toString(), icon: kpiIcons.housedEmployees },
-        { title: 'Mieszkańcy (NZ)', value: stats.nonEmployeesCount.toString(), icon: kpiIcons.nonEmployees },
-        { title: 'Używane mieszkania', value: stats.apartmentsInUse.toString(), icon: kpiIcons.apartmentsInUse },
+        { title: t('dashboard.allEmployeesKPI'), value: stats.totalEmployees.toString(), icon: kpiIcons.housedEmployees },
+        { title: t('dashboard.nonEmployeesKPI'), value: stats.nonEmployeesCount.toString(), icon: kpiIcons.nonEmployees },
+        { title: t('dashboard.apartmentsInUse'), value: stats.apartmentsInUse.toString(), icon: kpiIcons.apartmentsInUse },
         {
-            title: 'Wykwaterowania (30 dni)',
+            title: t('dashboard.upcomingCheckoutsKPI'),
             value: stats.upcomingCheckouts.toString(),
             icon: kpiIcons.upcomingCheckouts,
             onClick: onUpcomingCheckoutsClick,

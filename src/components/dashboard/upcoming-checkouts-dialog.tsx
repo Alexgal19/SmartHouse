@@ -14,6 +14,7 @@ import { Copy } from 'lucide-react';
 import { format } from 'date-fns'
 import { Combobox } from '../ui/combobox';
 import { Label } from '../ui/label';
+import { useLanguage } from '@/lib/i18n';
 
 type Occupant = Employee | NonEmployee;
 
@@ -43,6 +44,7 @@ export function UpcomingCheckoutsDialog({
     employees: Employee[];
     nonEmployees: NonEmployee[];
 }) {
+    const { t } = useLanguage();
     const { handleEditEmployeeClick, handleEditNonEmployeeClick } = useMainLayout();
     const { copyToClipboard } = useCopyToClipboard();
     const [selectedZaklad, setSelectedZaklad] = useState('all');
@@ -75,7 +77,7 @@ export function UpcomingCheckoutsDialog({
                 .filter(Boolean) as string[]
         );
         const options = Array.from(departments).map(d => ({ value: d, label: d }));
-        options.unshift({ value: 'all', label: 'Wszystkie zakłady' });
+        options.unshift({ value: 'all', label: t('entity.allDepartments') });
         return options;
     }, [upcomingCheckoutsUnfiltered]);
 
@@ -86,7 +88,7 @@ export function UpcomingCheckoutsDialog({
                 .filter(Boolean) as string[]
         );
         const options = Array.from(addresses).map(a => ({ value: a, label: a })).sort((a, b) => a.label.localeCompare(b.label));
-        options.unshift({ value: 'all', label: 'Wszystkie adresy' });
+        options.unshift({ value: 'all', label: t('housing.allAddresses') });
         return options;
     }, [upcomingCheckoutsUnfiltered]);
 
@@ -128,31 +130,31 @@ export function UpcomingCheckoutsDialog({
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="flex flex-col h-screen sm:h-[90vh] sm:max-w-3xl">
                 <DialogHeader>
-                    <DialogTitle>Nadchodzące wykwaterowania</DialogTitle>
-                    <DialogDescription>Osoby, które wykwaterują się w ciągu najbliższych 30 dni.</DialogDescription>
+                    <DialogTitle>{t('dashboard.upcomingCheckoutsTitle')}</DialogTitle>
+                    <DialogDescription>{t('dashboard.upcomingCheckoutsDesc')}</DialogDescription>
                 </DialogHeader>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="grid gap-2">
-                        <Label htmlFor="zaklad-filter">Filtruj po zakładu</Label>
+                        <Label htmlFor="zaklad-filter">{t('dialog.filterByDepartment')}</Label>
                         <Combobox
                             options={departmentOptions}
                             value={selectedZaklad}
                             onChange={setSelectedZaklad}
-                            placeholder="Wybierz zakład"
-                            searchPlaceholder="Szukaj zakładu..."
-                            notFoundMessage="Nie znaleziono zakładu."
+                            placeholder={t('dialog.selectDepartment')}
+                            searchPlaceholder={t('dialog.searchDepartment')}
+                            notFoundMessage={t('dialog.departmentNotFound')}
                             className="w-full"
                         />
                     </div>
                     <div className="grid gap-2">
-                        <Label htmlFor="address-filter">Filtruj po adresie</Label>
+                        <Label htmlFor="address-filter">{t('dialog.filterByAddress')}</Label>
                         <Combobox
                             options={addressOptions}
                             value={selectedAddress}
                             onChange={setSelectedAddress}
-                            placeholder="Wybierz adres"
-                            searchPlaceholder="Szukaj adresu..."
-                            notFoundMessage="Nie znaleziono adresu."
+                            placeholder={t('dialog.selectAddress')}
+                            searchPlaceholder={t('dialog.searchAddress')}
+                            notFoundMessage={t('dialog.addressNotFound')}
                             className="w-full"
                         />
                     </div>
@@ -172,7 +174,7 @@ export function UpcomingCheckoutsDialog({
                                         >
                                             <span className="font-semibold group-hover:text-primary">{`${occupant.firstName} ${occupant.lastName}`.trim()}</span>
                                             <div className="text-sm text-muted-foreground mt-1">
-                                                {isEmployee(occupant) ? <p>{occupant.zaklad}</p> : <p>Mieszkaniec (NZ)</p>}
+                                                {isEmployee(occupant) ? <p>{occupant.zaklad}</p> : <p>{t('dialog.residentNZ')}</p>}
                                                 <p>{occupant.address || ''} {occupant.roomNumber ? `, pokój ${occupant.roomNumber}` : ''}</p>
                                             </div>
                                         </div>
@@ -191,7 +193,7 @@ export function UpcomingCheckoutsDialog({
                                 </Card>
                             ))
                         ) : (
-                            <p className="text-center text-sm text-muted-foreground py-4">Brak nadchodzących wykwaterowań pasujących do filtra.</p>
+                            <p className="text-center text-sm text-muted-foreground py-4">{t('dashboard.noUpcomingCheckouts')}</p>
                         )}
                     </div>
                 </ScrollArea>

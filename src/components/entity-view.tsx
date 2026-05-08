@@ -1,6 +1,7 @@
 
 "use client"
 import React, { useState, useMemo, useTransition, useEffect, useRef, useCallback } from 'react';
+import { useLanguage } from '@/lib/i18n';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import type { Employee, Settings, NonEmployee, SessionData, AddressHistory, BokResident } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -68,19 +69,20 @@ const EntityActions = React.memo(({
     onPermanentDelete: (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => void;
     isDismissed: boolean;
 }) => {
+    const { t } = useLanguage();
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-8 w-8 p-0">
-                    <span className="sr-only">Otwórz menu</span>
+                    <span className="sr-only">{t('entity.openMenu')}</span>
                     <MoreHorizontal className="h-4 w-4" />
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()}>
-                <DropdownMenuItem onClick={() => onEdit(entity)}>Edytuj</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onEdit(entity)}>{t('common.edit')}</DropdownMenuItem>
                 {isDismissed
-                    ? <DropdownMenuItem onClick={() => onRestore?.(entity)}>Przywróć</DropdownMenuItem>
-                    : <DropdownMenuItem onClick={() => onEdit(entity)}>Zwolnij</DropdownMenuItem>
+                    ? <DropdownMenuItem onClick={() => onRestore?.(entity)}>{t('common.restore')}</DropdownMenuItem>
+                    : <DropdownMenuItem onClick={() => onEdit(entity)}>{t('entity.dismiss')}</DropdownMenuItem>
                 }
                 <DropdownMenuSeparator />
                 <AlertDialog>
@@ -90,23 +92,23 @@ const EntityActions = React.memo(({
                             onSelect={(e) => e.preventDefault()}
                         >
                             <Trash2 className="mr-2 h-4 w-4" />
-                            Usuń na zawsze
+                            {t('entity.deletePermanently')}
                         </DropdownMenuItem>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                         <AlertDialogHeader>
-                            <AlertDialogTitle>Czy na pewno chcesz trwale usunąć ten wpis?</AlertDialogTitle>
+                            <AlertDialogTitle>{t('entity.confirmDeleteTitle')}</AlertDialogTitle>
                             <AlertDialogDescription>
-                                Ta operacja jest nieodwracalna. Wszystkie dane powiązane z <span className="font-bold">{`${entity.firstName} ${entity.lastName}`}</span> zostaną usunięte na zawsze.
+                                {t('entity.confirmDeleteDesc', { name: `${entity.firstName} ${entity.lastName}` })}
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                            <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                             <AlertDialogAction
                                 className="bg-destructive hover:bg-destructive/90"
                                 onClick={() => onPermanentDelete(entity.id, isBokResident(entity) ? 'bok-resident' : (isEmployee(entity) ? 'employee' : 'non-employee'))}
                             >
-                                Potwierdź i usuń
+                                {t('entity.confirmDelete')}
                             </AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
@@ -129,6 +131,7 @@ const PaginationControls = React.memo(({
     onPageChange: (page: number) => void;
     isDisabled: boolean;
 }) => {
+    const { t } = useLanguage();
     if (totalPages <= 1) return null;
 
     return (
@@ -140,7 +143,7 @@ const PaginationControls = React.memo(({
                 <ChevronLeft className="h-4 w-4" />
             </Button>
             <span className="text-sm font-medium">
-                Strona {currentPage} z {totalPages}
+                {t('entity.page', { current: currentPage, total: totalPages })}
             </span>
             <Button variant="outline" size="icon" onClick={() => onPageChange(currentPage + 1)} disabled={isDisabled || currentPage === totalPages}>
                 <ChevronRight className="h-4 w-4" />
@@ -155,6 +158,7 @@ PaginationControls.displayName = 'PaginationControls';
 
 
 const EntityTable = React.memo(({ entities, onEdit, onRestore, isDismissed, settings, onPermanentDelete, onSort, sortBy, sortOrder, isBokTab, selectedIds, onSelect, onSelectAll, columnFilters, onColumnFilterChange, columnOptions }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onRestore?: (entity: Entity) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => void; onSort: (field: SortableField) => void; sortBy: SortableField | null; sortOrder: 'asc' | 'desc'; isBokTab?: boolean; selectedIds?: Set<string>; onSelect?: (id: string, checked: boolean) => void; onSelectAll?: (checked: boolean) => void; columnFilters?: Record<string, string[]>; onColumnFilterChange?: (field: string, values: string[]) => void; columnOptions?: Record<string, { label: string, value: string }[]>; }) => {
+    const { t } = useLanguage();
     const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
 
     const renderCheckboxHeader = () => {
@@ -167,7 +171,7 @@ const EntityTable = React.memo(({ entities, onEdit, onRestore, isDismissed, sett
                 <Checkbox
                     checked={allChecked ? true : someChecked ? "indeterminate" : false}
                     onCheckedChange={(checked) => onSelectAll(checked as boolean)}
-                    aria-label="Zaznacz wszystkie"
+                    aria-label={t('entity.selectAll')}
                 />
             </TableHead>
         );
@@ -179,21 +183,21 @@ const EntityTable = React.memo(({ entities, onEdit, onRestore, isDismissed, sett
                 <TableHeader>
                     <TableRow>
                         {renderCheckboxHeader()}
-                        <FilterableHeader label="Nazwisko" field="lastName" currentFilterValues={columnFilters?.lastName} onFilterChange={onColumnFilterChange} options={columnOptions?.lastName} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
-                        <FilterableHeader label="Imię" field="firstName" currentFilterValues={columnFilters?.firstName} onFilterChange={onColumnFilterChange} options={columnOptions?.firstName} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
-                        <FilterableHeader label="Koordynator" field="coordinatorId" currentFilterValues={columnFilters?.coordinatorId} onFilterChange={onColumnFilterChange} options={columnOptions?.coordinatorId} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
-                        {!isBokTab && <FilterableHeader label="Zakład" field="zaklad" currentFilterValues={columnFilters?.zaklad} onFilterChange={onColumnFilterChange} options={columnOptions?.zaklad} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
-                        <FilterableHeader label="Adres" field="address" currentFilterValues={columnFilters?.address} onFilterChange={onColumnFilterChange} options={columnOptions?.address} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
-                        <FilterableHeader label="Pokój" field="roomNumber" currentFilterValues={columnFilters?.roomNumber} onFilterChange={onColumnFilterChange} options={columnOptions?.roomNumber} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
-                        {isBokTab && <FilterableHeader label="Powrót" field="returnStatus" currentFilterValues={columnFilters?.returnStatus} onFilterChange={onColumnFilterChange} options={columnOptions?.returnStatus} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
-                        <FilterableHeader label="Data zameldowania" field="checkInDate" currentFilterValues={columnFilters?.checkInDate} onFilterChange={onColumnFilterChange} options={columnOptions?.checkInDate} isDateFilter onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
-                        {isBokTab && <FilterableHeader label="Status" field="status" currentFilterValues={columnFilters?.status} onFilterChange={onColumnFilterChange} options={columnOptions?.status} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
-                        {isBokTab && <FilterableHeader label="Data wysłania" field="sendDate" currentFilterValues={columnFilters?.sendDate} onFilterChange={onColumnFilterChange} options={columnOptions?.sendDate} isDateFilter onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
-                        {isBokTab && <FilterableHeader label="Zakład" field="zaklad" currentFilterValues={columnFilters?.zaklad} onFilterChange={onColumnFilterChange} options={columnOptions?.zaklad} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
-                        <FilterableHeader label="Data wymeldowania" field="checkOutDate" currentFilterValues={columnFilters?.checkOutDate} onFilterChange={onColumnFilterChange} options={columnOptions?.checkOutDate} isDateFilter onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
-                        {isBokTab && <FilterableHeader label="Nr paszportu" field="passportNumber" currentFilterValues={columnFilters?.passportNumber} onFilterChange={onColumnFilterChange} options={columnOptions?.passportNumber} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
-                        {isBokTab && <FilterableHeader label="Komentarze" field="comments" currentFilterValues={columnFilters?.comments} onFilterChange={onColumnFilterChange} options={columnOptions?.comments} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
-                        <TableHead><span className="sr-only">Akcje</span></TableHead>
+                        <FilterableHeader label={t('col.lastName')} field="lastName" currentFilterValues={columnFilters?.lastName} onFilterChange={onColumnFilterChange} options={columnOptions?.lastName} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        <FilterableHeader label={t('col.firstName')} field="firstName" currentFilterValues={columnFilters?.firstName} onFilterChange={onColumnFilterChange} options={columnOptions?.firstName} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        <FilterableHeader label={t('col.coordinator')} field="coordinatorId" currentFilterValues={columnFilters?.coordinatorId} onFilterChange={onColumnFilterChange} options={columnOptions?.coordinatorId} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        {!isBokTab && <FilterableHeader label={t('col.department')} field="zaklad" currentFilterValues={columnFilters?.zaklad} onFilterChange={onColumnFilterChange} options={columnOptions?.zaklad} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
+                        <FilterableHeader label={t('col.address')} field="address" currentFilterValues={columnFilters?.address} onFilterChange={onColumnFilterChange} options={columnOptions?.address} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        <FilterableHeader label={t('col.room')} field="roomNumber" currentFilterValues={columnFilters?.roomNumber} onFilterChange={onColumnFilterChange} options={columnOptions?.roomNumber} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        {isBokTab && <FilterableHeader label={t('col.return')} field="returnStatus" currentFilterValues={columnFilters?.returnStatus} onFilterChange={onColumnFilterChange} options={columnOptions?.returnStatus} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
+                        <FilterableHeader label={t('col.checkIn')} field="checkInDate" currentFilterValues={columnFilters?.checkInDate} onFilterChange={onColumnFilterChange} options={columnOptions?.checkInDate} isDateFilter onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        {isBokTab && <FilterableHeader label={t('col.status')} field="status" currentFilterValues={columnFilters?.status} onFilterChange={onColumnFilterChange} options={columnOptions?.status} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
+                        {isBokTab && <FilterableHeader label={t('col.sendDate')} field="sendDate" currentFilterValues={columnFilters?.sendDate} onFilterChange={onColumnFilterChange} options={columnOptions?.sendDate} isDateFilter onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
+                        {isBokTab && <FilterableHeader label={t('col.department')} field="zaklad" currentFilterValues={columnFilters?.zaklad} onFilterChange={onColumnFilterChange} options={columnOptions?.zaklad} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
+                        <FilterableHeader label={t('col.checkOut')} field="checkOutDate" currentFilterValues={columnFilters?.checkOutDate} onFilterChange={onColumnFilterChange} options={columnOptions?.checkOutDate} isDateFilter onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        {isBokTab && <FilterableHeader label={t('col.passport')} field="passportNumber" currentFilterValues={columnFilters?.passportNumber} onFilterChange={onColumnFilterChange} options={columnOptions?.passportNumber} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
+                        {isBokTab && <FilterableHeader label={t('col.comments')} field="comments" currentFilterValues={columnFilters?.comments} onFilterChange={onColumnFilterChange} options={columnOptions?.comments} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
+                        <TableHead><span className="sr-only">{t('col.actions')}</span></TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -214,7 +218,7 @@ const EntityTable = React.memo(({ entities, onEdit, onRestore, isDismissed, sett
                                             <Checkbox
                                                 checked={isSelected}
                                                 onCheckedChange={(checked) => onSelect(entity.id, checked as boolean)}
-                                                aria-label={`Zaznacz ${entity.firstName} ${entity.lastName}`}
+                                                aria-label={t('entity.selectRow', { name: `${entity.firstName} ${entity.lastName}` })}
                                             />
                                         </TableCell>
                                     )}
@@ -224,7 +228,7 @@ const EntityTable = React.memo(({ entities, onEdit, onRestore, isDismissed, sett
                                     {!isBokTab && <TableCell>{isEmployee(entity) ? entity.zaklad || '-' : '-'}</TableCell>}
                                     <TableCell>
                                         {isEmployee(entity) && entity.address?.toLowerCase().startsWith('własne mieszkanie')
-                                            ? `Własne (${entity.ownAddress || 'Brak danych'})`
+                                            ? (entity.ownAddress ? t('entity.ownHousing', { address: entity.ownAddress }) : t('entity.ownHousingNoData'))
                                             : entity.address
                                         }
                                     </TableCell>
@@ -245,7 +249,7 @@ const EntityTable = React.memo(({ entities, onEdit, onRestore, isDismissed, sett
                         })
                     ) : (
                         <TableRow>
-                            <TableCell colSpan={8} className="text-center">Brak danych do wyświetlenia.</TableCell>
+                            <TableCell colSpan={8} className="text-center">{t('common.noData')}</TableCell>
                         </TableRow>
                     )}
                 </TableBody>
@@ -256,19 +260,20 @@ const EntityTable = React.memo(({ entities, onEdit, onRestore, isDismissed, sett
 EntityTable.displayName = 'EntityTable';
 
 const HistoryTable = ({ history, onSort, sortBy, sortOrder, onDelete, columnFilters, onColumnFilterChange, columnOptions }: { history: AddressHistory[]; onSort: (field: SortableField) => void; sortBy: SortableField | null; sortOrder: 'asc' | 'desc'; onDelete?: (id: string) => void; columnFilters?: Record<string, string[]>; onColumnFilterChange?: (field: string, values: string[]) => void; columnOptions?: Record<string, { label: string, value: string }[]>; }) => {
+    const { t } = useLanguage();
     return (
         <div className="overflow-x-auto">
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <FilterableHeader label="Nazwisko" field="lastName" currentFilterValues={columnFilters?.lastName} onFilterChange={onColumnFilterChange} options={columnOptions?.lastName} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
-                        <FilterableHeader label="Imię" field="firstName" currentFilterValues={columnFilters?.firstName} onFilterChange={onColumnFilterChange} options={columnOptions?.firstName} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
-                        <FilterableHeader label="Koordynator" field="coordinatorName" currentFilterValues={columnFilters?.coordinatorName} onFilterChange={onColumnFilterChange} options={columnOptions?.coordinatorName} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
-                        <FilterableHeader label="Zakład" field="department" currentFilterValues={columnFilters?.department} onFilterChange={onColumnFilterChange} options={columnOptions?.department} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
-                        <FilterableHeader label="Adres" field="address" currentFilterValues={columnFilters?.address} onFilterChange={onColumnFilterChange} options={columnOptions?.address} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
-                        <FilterableHeader label="Data zameldowania" field="checkInDate" currentFilterValues={columnFilters?.checkInDate} onFilterChange={onColumnFilterChange} options={columnOptions?.checkInDate} isDateFilter onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
-                        <FilterableHeader label="Data wymeldowania" field="checkOutDate" currentFilterValues={columnFilters?.checkOutDate} onFilterChange={onColumnFilterChange} options={columnOptions?.checkOutDate} isDateFilter onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
-                        {onDelete && <TableHead><span className="sr-only">Akcje</span></TableHead>}
+                        <FilterableHeader label={t('col.lastName')} field="lastName" currentFilterValues={columnFilters?.lastName} onFilterChange={onColumnFilterChange} options={columnOptions?.lastName} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        <FilterableHeader label={t('col.firstName')} field="firstName" currentFilterValues={columnFilters?.firstName} onFilterChange={onColumnFilterChange} options={columnOptions?.firstName} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        <FilterableHeader label={t('col.coordinator')} field="coordinatorName" currentFilterValues={columnFilters?.coordinatorName} onFilterChange={onColumnFilterChange} options={columnOptions?.coordinatorName} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        <FilterableHeader label={t('col.department')} field="department" currentFilterValues={columnFilters?.department} onFilterChange={onColumnFilterChange} options={columnOptions?.department} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        <FilterableHeader label={t('col.address')} field="address" currentFilterValues={columnFilters?.address} onFilterChange={onColumnFilterChange} options={columnOptions?.address} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        <FilterableHeader label={t('col.checkIn')} field="checkInDate" currentFilterValues={columnFilters?.checkInDate} onFilterChange={onColumnFilterChange} options={columnOptions?.checkInDate} isDateFilter onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        <FilterableHeader label={t('col.checkOut')} field="checkOutDate" currentFilterValues={columnFilters?.checkOutDate} onFilterChange={onColumnFilterChange} options={columnOptions?.checkOutDate} isDateFilter onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        {onDelete && <TableHead><span className="sr-only">{t('col.actions')}</span></TableHead>}
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -292,18 +297,18 @@ const HistoryTable = ({ history, onSort, sortBy, sortOrder, onDelete, columnFilt
                                             </AlertDialogTrigger>
                                             <AlertDialogContent>
                                                 <AlertDialogHeader>
-                                                    <AlertDialogTitle>Czy na pewno chcesz usunąć ten wpis z historii?</AlertDialogTitle>
+                                                    <AlertDialogTitle>{t('history.confirmDeleteTitle')}</AlertDialogTitle>
                                                     <AlertDialogDescription>
-                                                        Ta operacja jest nieodwracalna i usunie wpis o pobycie <span className="font-bold">{`${entry.employeeFirstName} ${entry.employeeLastName}`.trim()}</span> pod adresem <span className="font-bold">{entry.address}</span>.
+                                                        {t('history.confirmDeleteDesc', { name: `${entry.employeeFirstName} ${entry.employeeLastName}`.trim(), address: entry.address })}
                                                     </AlertDialogDescription>
                                                 </AlertDialogHeader>
                                                 <AlertDialogFooter>
-                                                    <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                                                    <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                                                     <AlertDialogAction
                                                         className="bg-destructive hover:bg-destructive/90"
                                                         onClick={() => onDelete(entry.id)}
                                                     >
-                                                        Potwierdź i usuń
+                                                        {t('entity.confirmDelete')}
                                                     </AlertDialogAction>
                                                 </AlertDialogFooter>
                                             </AlertDialogContent>
@@ -314,7 +319,7 @@ const HistoryTable = ({ history, onSort, sortBy, sortOrder, onDelete, columnFilt
                         ))
                     ) : (
                         <TableRow>
-                            <TableCell colSpan={8} className="text-center">Brak danych do wyświetlenia.</TableCell>
+                            <TableCell colSpan={8} className="text-center">{t('common.noData')}</TableCell>
                         </TableRow>
                     )}
                 </TableBody>
@@ -324,6 +329,7 @@ const HistoryTable = ({ history, onSort, sortBy, sortOrder, onDelete, columnFilt
 };
 
 const EntityCardList = ({ entities, onEdit, onRestore, isDismissed, settings, onPermanentDelete }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onRestore?: (entity: Entity) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => void; }) => {
+    const { t } = useLanguage();
     const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
 
     return (
@@ -340,7 +346,7 @@ const EntityCardList = ({ entities, onEdit, onRestore, isDismissed, settings, on
                             <div>
                                 <CardTitle className="text-base">{`${entity.firstName} ${entity.lastName}`.trim()}</CardTitle>
                                 <CardDescription>
-                                    {isBokResident(entity) ? `BOK (${entity.role})` : (isEmployee(entity) ? getCoordinatorName(entity.coordinatorId) : "Mieszkaniec (NZ)")}
+                                    {isBokResident(entity) ? t('entity.bokResidentLabel', { role: entity.role }) : (isEmployee(entity) ? getCoordinatorName(entity.coordinatorId) : t('entity.nonEmployeeLabel'))}
                                 </CardDescription>
                             </div>
                             <div onClick={(e) => e.stopPropagation()}>
@@ -348,25 +354,26 @@ const EntityCardList = ({ entities, onEdit, onRestore, isDismissed, settings, on
                             </div>
                         </CardHeader>
                         <CardContent className="text-sm space-y-2">
-                            <p><span className="font-semibold text-muted-foreground">Adres:</span>
+                            <p><span className="font-semibold text-muted-foreground">{t('entity.addressLabel')}</span>
                                 {isEmployee(entity) && entity.address?.toLowerCase().startsWith('własne mieszkanie')
-                                    ? ` ${entity.ownAddress || 'Własne mieszkanie (brak danych)'}`
-                                    : ` ${entity.address}, pok. ${entity.roomNumber}`
+                                    ? ` ${entity.ownAddress || t('entity.ownHousingNoData')}`
+                                    : ` ${entity.address}, ${t('entity.room')} ${entity.roomNumber}`
                                 }
                             </p>
-                            {isEmployee(entity) && <p><span className="font-semibold text-muted-foreground">Narodowość:</span> {entity.nationality || 'Brak'}</p>}
-                            <p><span className="font-semibold text-muted-foreground">Zameldowanie:</span> {formatDate(entity.checkInDate)}</p>
+                            {isEmployee(entity) && <p><span className="font-semibold text-muted-foreground">{t('entity.nationalityLabel')}</span> {entity.nationality || t('common.none')}</p>}
+                            <p><span className="font-semibold text-muted-foreground">{t('entity.checkInLabel')}</span> {formatDate(entity.checkInDate)}</p>
                         </CardContent>
                     </Card>
                 ))
             ) : (
-                <div className="text-center text-muted-foreground py-8">Brak danych do wyświetlenia.</div>
+                <div className="text-center text-muted-foreground py-8">{t('common.noData')}</div>
             )}
         </div>
     )
 };
 
 const HistoryCardList = ({ history, onDelete }: { history: AddressHistory[]; onDelete?: (id: string) => void; }) => {
+    const { t } = useLanguage();
     return (
         <div className="space-y-4">
             {history.length > 0 ? (
@@ -393,18 +400,18 @@ const HistoryCardList = ({ history, onDelete }: { history: AddressHistory[]; onD
                                         </AlertDialogTrigger>
                                         <AlertDialogContent>
                                             <AlertDialogHeader>
-                                                <AlertDialogTitle>Czy na pewno chcesz usunąć ten wpis z historii?</AlertDialogTitle>
+                                                <AlertDialogTitle>{t('history.confirmDeleteTitle')}</AlertDialogTitle>
                                                 <AlertDialogDescription>
-                                                    Ta operacja jest nieodwracalna i usunie wpis o pobycie <span className="font-bold">{`${entry.employeeFirstName} ${entry.employeeLastName}`.trim()}</span> pod adresem <span className="font-bold">{entry.address}</span>.
+                                                    {t('history.confirmDeleteDesc', { name: `${entry.employeeFirstName} ${entry.employeeLastName}`.trim(), address: entry.address })}
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
-                                                <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                                                <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                                                 <AlertDialogAction
                                                     className="bg-destructive hover:bg-destructive/90"
                                                     onClick={() => onDelete(entry.id)}
                                                 >
-                                                    Potwierdź i usuń
+                                                    {t('entity.confirmDelete')}
                                                 </AlertDialogAction>
                                             </AlertDialogFooter>
                                         </AlertDialogContent>
@@ -413,13 +420,13 @@ const HistoryCardList = ({ history, onDelete }: { history: AddressHistory[]; onD
                             )}
                         </CardHeader>
                         <CardContent className="text-sm space-y-2">
-                            <p><span className="font-semibold text-muted-foreground">Adres:</span> {entry.address}</p>
-                            <p><span className="font-semibold text-muted-foreground">Okres:</span> {formatDate(entry.checkInDate)} - {formatDate(entry.checkOutDate)}</p>
+                            <p><span className="font-semibold text-muted-foreground">{t('entity.addressLabel')}</span> {entry.address}</p>
+                            <p><span className="font-semibold text-muted-foreground">{t('entity.periodLabel')}</span> {formatDate(entry.checkInDate)} - {formatDate(entry.checkOutDate)}</p>
                         </CardContent>
                     </Card>
                 ))
             ) : (
-                <div className="text-center text-muted-foreground py-8">Brak danych do wyświetlenia.</div>
+                <div className="text-center text-muted-foreground py-8">{t('common.noData')}</div>
             )}
         </div>
     );
@@ -453,6 +460,7 @@ const ControlPanel = ({
     selectedIdsSize?: number;
     onBulkDelete?: () => void;
 }) => {
+    const { t } = useLanguage();
     const { isMobile } = useIsMobile();
     const [localSearch, setLocalSearch] = useState(search);
     // Track the last value we committed to the URL ourselves,
@@ -480,10 +488,10 @@ const ControlPanel = ({
 
     return (
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <CardTitle>Zarządzanie mieszkańcami</CardTitle>
+            <CardTitle>{t('entity.title')}</CardTitle>
             <div className="flex w-full sm:w-auto items-center gap-2 flex-wrap">
                 <Input
-                    placeholder="Szukaj po nazwisku..."
+                    placeholder={t('entity.searchBySurname')}
                     value={localSearch}
                     onChange={(e) => setLocalSearch(e.target.value)}
                     className="w-full sm:w-auto flex-1"
@@ -492,7 +500,7 @@ const ControlPanel = ({
                     {isBokTab && selectedIdsSize !== undefined && selectedIdsSize > 0 && onBulkDelete && (
                         <Button type="button" variant="destructive" onClick={onBulkDelete} className="hidden sm:inline-flex">
                             <Trash2 className="mr-2 h-4 w-4" />
-                            Usuń zaznaczone ({selectedIdsSize})
+                            {t('entity.deleteSelected', { count: selectedIdsSize })}
                         </Button>
                     )}
                     {isBokTab && selectedIdsSize !== undefined && selectedIdsSize > 0 && onBulkDelete && isMobile && (
@@ -502,7 +510,7 @@ const ControlPanel = ({
                     )}
                     {isBokTab && onOpenReport && (
                         <Button variant="outline" className="hidden sm:inline-flex bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/50 dark:border-green-800" onClick={onOpenReport}>
-                            Raport wysłanych
+                            {t('entity.sentReport')}
                         </Button>
                     )}
                     {showAddButton && (
@@ -510,17 +518,17 @@ const ControlPanel = ({
                             <DropdownMenuTrigger asChild>
                                 <Button size={isMobile ? "icon" : "default"}>
                                     <PlusCircle className={isMobile ? "h-5 w-5" : "mr-2 h-4 w-4"} />
-                                    <span className="hidden sm:inline">Dodaj</span>
+                                    <span className="hidden sm:inline">{t('common.add')}</span>
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent onCloseAutoFocus={(e) => e.preventDefault()}>
                                 {(!isDriver || isAdmin) && (
                                     <>
-                                        <DropdownMenuItem onClick={() => onAdd('employee')}>Dodaj pracownika</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => onAdd('non-employee')}>Dodaj mieszkańca (NZ)</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => onAdd('employee')}>{t('entity.addEmployee')}</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => onAdd('non-employee')}>{t('entity.addResident')}</DropdownMenuItem>
                                     </>
                                 )}
-                                {(isAdmin || isDriver) && <DropdownMenuItem onClick={() => onAdd('bok-resident')}>Dodaj mieszkańca BOK</DropdownMenuItem>}
+                                {(isAdmin || isDriver) && <DropdownMenuItem onClick={() => onAdd('bok-resident')}>{t('entity.addBokResident')}</DropdownMenuItem>}
                             </DropdownMenuContent>
                         </DropdownMenu>
                     )}
@@ -541,6 +549,7 @@ const ControlPanel = ({
 }
 
 export default function EntityView({ currentUser }: { currentUser: SessionData }) {
+    const { t } = useLanguage();
     const { handleBulkDeleteBokResidents } = useMainLayout();
     const {
         allEmployees,
@@ -965,7 +974,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         <div className="flex justify-end mb-2">
             <Button variant="outline" size="sm" onClick={onClick} disabled={count === 0}>
                 <Download className="mr-2 h-4 w-4" />
-                Eksportuj Excel ({count})
+                {t('entity.exportExcel', { count })}
             </Button>
         </div>
     );
@@ -1053,28 +1062,28 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                 <>
                     <TabsTrigger value="active" disabled={isPending} className="flex-1 min-w-[120px] bg-muted data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-muted/80">
                         <Users className="mr-2 h-4 w-4 shrink-0" />
-                        <span className="truncate">Aktywni ({dataMap.active.length})</span>
+                        <span className="truncate">{t('tab.active')} ({dataMap.active.length})</span>
                     </TabsTrigger>
                     <TabsTrigger value="dismissed" disabled={isPending} className="flex-1 min-w-[120px] bg-muted data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-muted/80">
                         <UserX className="mr-2 h-4 w-4 shrink-0" />
-                        <span className="truncate">Zwolnieni ({dataMap.dismissed.length})</span>
+                        <span className="truncate">{t('tab.dismissed')} ({dataMap.dismissed.length})</span>
                     </TabsTrigger>
                     <TabsTrigger value="non-employees" disabled={isPending} className="flex-1 min-w-[120px] bg-muted data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-muted/80">
                         <UserX className="mr-2 h-4 w-4 shrink-0" />
-                        <span className="truncate">NZ ({dataMap['non-employees'].length})</span>
+                        <span className="truncate">{t('tab.nonEmployees')} ({dataMap['non-employees'].length})</span>
                     </TabsTrigger>
                 </>
             )}
             {(currentUser.isAdmin || isDriver) && (
                 <TabsTrigger value="bok-residents" disabled={isPending} className="flex-1 min-w-[120px] bg-muted data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-muted/80">
                     <Briefcase className="mr-2 h-4 w-4 shrink-0" />
-                    <span className="truncate">BOK ({bokTotalCount})</span>
+                    <span className="truncate">{t('tab.bok')} ({bokTotalCount})</span>
                 </TabsTrigger>
             )}
             {!isDriver && (
                 <TabsTrigger value="history" disabled={isPending} className="flex-1 min-w-[120px] bg-muted data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-muted/80">
                     <History className="mr-2 h-4 w-4 shrink-0" />
-                    <span className="truncate">Historia ({dataMap.history.length})</span>
+                    <span className="truncate">{t('tab.history')} ({dataMap.history.length})</span>
                 </TabsTrigger>
             )}
         </TabsList>
@@ -1096,7 +1105,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                     isDriver={isDriver}
                     selectedIdsSize={selectedIds.size}
                     onBulkDelete={() => {
-                        if (selectedIds.size > 0 && confirm(`Czy na pewno chcesz usunąć ${selectedIds.size} zaznaczonych mieszkańców BOK? Ta akcja jest nieodwracalna.`)) {
+                        if (selectedIds.size > 0 && confirm(t('entity.confirmBulkDelete', { count: selectedIds.size }))) {
                             handleBulkDeleteBokResidents(Array.from(selectedIds)).then(() => {
                                 setSelectedIds(new Set());
                             });
@@ -1120,10 +1129,10 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                                             onValueChange={(val) => handleColumnFilterChange('zaklad', val === '_all' ? [] : [val])}
                                         >
                                             <SelectTrigger className="w-full">
-                                                <SelectValue placeholder="Filtruj po zakładzie" />
+                                                <SelectValue placeholder={t('entity.filterByDepartment')} />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="_all">Wszystkie zakłady</SelectItem>
+                                                <SelectItem value="_all">{t('entity.allDepartments')}</SelectItem>
                                                 {columnOptions.zaklad.map(opt => (
                                                     <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                                                 ))}
@@ -1150,15 +1159,15 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                                 <TabsList className="h-auto bg-muted/50 p-1 rounded-md">
                                     <TabsTrigger value="active" className="rounded px-4 py-1.5 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
                                         <Users className="mr-2 h-3.5 w-3.5 shrink-0" />
-                                        Aktywni ({filteredAndSortedData.activeBokResidents?.length || 0})
+                                        {t('tab.bokActive')} ({filteredAndSortedData.activeBokResidents?.length || 0})
                                     </TabsTrigger>
                                     <TabsTrigger value="sent" className="rounded px-4 py-1.5 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
                                         <Briefcase className="mr-2 h-3.5 w-3.5 shrink-0" />
-                                        Wyslani ({filteredAndSortedData.sentBokResidents?.length || 0})
+                                        {t('tab.bokSent')} ({filteredAndSortedData.sentBokResidents?.length || 0})
                                     </TabsTrigger>
                                     <TabsTrigger value="dismissed" className="rounded px-4 py-1.5 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
                                         <UserX className="mr-2 h-3.5 w-3.5 shrink-0" />
-                                        Zwolnieni ({filteredAndSortedData.dismissedBokResidents?.length || 0})
+                                        {t('tab.bokDismissed')} ({filteredAndSortedData.dismissedBokResidents?.length || 0})
                                     </TabsTrigger>
                                 </TabsList>
                             </Tabs>

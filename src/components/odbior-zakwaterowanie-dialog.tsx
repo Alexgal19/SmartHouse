@@ -18,6 +18,7 @@ import { pl } from 'date-fns/locale';
 import Webcam from 'react-webcam';
 import { useToast } from '@/hooks/use-toast';
 import { useMainLayout } from '@/components/main-layout';
+import { useLanguage } from '@/lib/i18n';
 import { addOdbiorZakwaterowanieAction, updateOdbiorZakwaterowanieAction } from '@/lib/actions';
 import { extractPassportData } from '@/ai/flows/extract-passport-data-flow';
 import type { SessionData, Address, OdbiorEntry } from '@/types';
@@ -49,7 +50,6 @@ type WizardData = {
     date: Date;
 };
 
-const STEPS = ['Osoba', 'Lokalizacja', 'Szczegóły', 'Podsumowanie'] as const;
 type Step = 0 | 1 | 2 | 3;
 
 const isTempHousingLocality = (locality: string | undefined): boolean => {
@@ -62,10 +62,10 @@ const isTempHousingLocality = (locality: string | undefined): boolean => {
         .startsWith('mieszkania');
 };
 
-function StepIndicator({ current }: { current: Step }) {
+function StepIndicator({ current, steps }: { current: Step; steps: string[] }) {
     return (
         <div className="flex items-center justify-center gap-2 py-3 border-b bg-muted/30 flex-shrink-0">
-            {STEPS.map((label, i) => {
+            {steps.map((label, i) => {
                 const done = i < current;
                 const active = i === current;
                 return (
@@ -84,7 +84,7 @@ function StepIndicator({ current }: { current: Step }) {
                                 active ? 'text-primary font-medium' : 'text-muted-foreground',
                             )}>{label}</span>
                         </div>
-                        {i < STEPS.length - 1 && (
+                        {i < steps.length - 1 && (
                             <div className={cn(
                                 'h-0.5 w-8 sm:w-10 rounded transition-colors mb-3',
                                 i < current ? 'bg-primary' : 'bg-muted',
@@ -107,6 +107,7 @@ function StepOsoba({
     settings: ReturnType<typeof useMainLayout>['settings'];
 }) {
     const { toast } = useToast();
+    const { t } = useLanguage();
     const webcamRef = useRef<Webcam>(null);
     const [isCameraOpen, setIsCameraOpen] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
@@ -119,23 +120,23 @@ function StepOsoba({
             .then(({ firstName, lastName, nationality, passportNumber }) => {
                 const patch: Partial<WizardData> = {};
                 const warnings: string[] = [];
-                if (firstName) patch.firstName = firstName; else warnings.push('imię');
-                if (lastName) patch.lastName = lastName; else warnings.push('nazwisko');
+                if (firstName) patch.firstName = firstName; else warnings.push(t('form.firstName').toLowerCase());
+                if (lastName) patch.lastName = lastName; else warnings.push(t('form.lastName').toLowerCase());
                 if (nationality) {
                     const matched = settings?.nationalities.find(
                         (n) => n.toLowerCase() === nationality.toLowerCase()
                     );
                     patch.nationality = matched || nationality;
-                } else warnings.push('narodowość');
-                if (passportNumber) patch.passportNumber = passportNumber; else warnings.push('nr paszportu');
+                } else warnings.push(t('form.nationality').toLowerCase());
+                if (passportNumber) patch.passportNumber = passportNumber; else warnings.push(t('form.passportNumber').toLowerCase());
                 onChange(patch);
                 if (warnings.length === 0) {
-                    toast({ title: 'Sukces', description: 'Dane z dokumentu zostały wczytane.' });
+                    toast({ title: t('common.success'), description: t('form.passportDataLoaded') });
                 } else {
                     toast({
                         variant: 'destructive',
-                        title: 'Częściowy odczyt',
-                        description: `Nie udało się odczytać: ${warnings.join(', ')}. Uzupełnij ręcznie.`,
+                        title: t('odbiorZakwaterowanie.partialRead'),
+                        description: t('odbiorZakwaterowanie.partialReadDesc', { fields: warnings.join(', ') }),
                     });
                 }
                 setIsCameraOpen(false);
@@ -143,8 +144,8 @@ function StepOsoba({
             .catch((error) => {
                 toast({
                     variant: 'destructive',
-                    title: 'Błąd skanowania',
-                    description: error instanceof Error ? error.message : 'Spróbuj ponownie.',
+                    title: t('form.scanError'),
+                    description: error instanceof Error ? error.message : t('common.tryAgain'),
                 });
             })
             .finally(() => setIsScanning(false));
@@ -155,8 +156,8 @@ function StepOsoba({
             <div className="flex flex-col gap-6 p-6 sm:p-8">
                 <div className="text-center space-y-1">
                     <User className="w-10 h-10 mx-auto text-primary" />
-                    <h2 className="text-xl font-bold">Dane osoby</h2>
-                    <p className="text-sm text-muted-foreground">Wpisz ręcznie lub zeskanuj paszport</p>
+                    <h2 className="text-xl font-bold">{t('odbiorZakwaterowanie.personDataTitle')}</h2>
+                    <p className="text-sm text-muted-foreground">{t('odbiorZakwaterowanie.personDataDesc')}</p>
                 </div>
 
                 <button
@@ -168,12 +169,12 @@ function StepOsoba({
                     {isScanning
                         ? <Loader2 className="w-6 h-6 animate-spin" />
                         : <Camera className="w-6 h-6" />}
-                    {isScanning ? 'Przetwarzanie...' : 'Skanuj paszport / dowód'}
+                    {isScanning ? t('common.processing') : t('odbiorZakwaterowanie.scanPassportOrId')}
                 </button>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                        <label className="text-sm font-medium">Nazwisko</label>
+                        <label className="text-sm font-medium">{t('form.lastName')}</label>
                         <Input
                             placeholder="Kowalski"
                             value={data.lastName}
@@ -182,7 +183,7 @@ function StepOsoba({
                         />
                     </div>
                     <div className="space-y-1.5">
-                        <label className="text-sm font-medium">Imię</label>
+                        <label className="text-sm font-medium">{t('form.firstName')}</label>
                         <Input
                             placeholder="Jan"
                             value={data.firstName}
@@ -192,13 +193,13 @@ function StepOsoba({
                     </div>
                 </div>
                 <div className="space-y-1.5">
-                    <label className="text-sm font-medium">Narodowość</label>
+                    <label className="text-sm font-medium">{t('form.nationality')}</label>
                     <Combobox
                         options={settings?.nationalities?.slice().sort((a, b) => a.localeCompare(b)).map((n) => ({ value: n, label: n })) || []}
                         value={data.nationality}
                         onChange={(val) => onChange({ nationality: val })}
-                        placeholder="Wybierz narodowość"
-                        searchPlaceholder="Szukaj..."
+                        placeholder={t('form.selectNationality')}
+                        searchPlaceholder={t('common.search')}
                     />
                 </div>
             </div>
@@ -206,8 +207,8 @@ function StepOsoba({
             <Dialog open={isCameraOpen} onOpenChange={(open) => !open && setIsCameraOpen(false)}>
                 <DialogContent className="max-w-[95vw] sm:max-w-lg p-0 gap-0 overflow-hidden">
                     <div className="p-4 pb-2">
-                        <h3 className="font-semibold text-base">Skanuj paszport</h3>
-                        <p className="text-xs text-muted-foreground mt-0.5">Kod MRZ na dole dokumentu musi być widoczny.</p>
+                        <h3 className="font-semibold text-base">{t('form.scanPassport')}</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">{t('odbiorZakwaterowanie.mrzHint')}</p>
                     </div>
                     <div className="relative bg-black">
                         <Webcam
@@ -226,10 +227,10 @@ function StepOsoba({
                         </button>
                     </div>
                     <div className="p-4 flex gap-2 justify-end">
-                        <Button variant="outline" onClick={() => setIsCameraOpen(false)} disabled={isScanning}>Anuluj</Button>
+                        <Button variant="outline" onClick={() => setIsCameraOpen(false)} disabled={isScanning}>{t('common.cancel')}</Button>
                         <Button onClick={handleCapture} disabled={isScanning}>
                             {isScanning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Camera className="mr-2 h-4 w-4" />}
-                            Zrób zdjęcie
+                            {t('common.takePhoto')}
                         </Button>
                     </div>
                 </DialogContent>
@@ -247,6 +248,7 @@ function StepLokalizacja({
     onChange: (patch: Partial<WizardData>) => void;
     items: AddressPickerItem[];
 }) {
+    const { t } = useLanguage();
     const [expandedId, setExpandedId] = useState<string | null>(data.addressId || null);
     const [search, setSearch] = useState('');
 
@@ -267,12 +269,12 @@ function StepLokalizacja({
         <div className="flex flex-col gap-4 p-4 sm:p-6">
             <div className="text-center space-y-1 relative">
                 <MapPin className="w-10 h-10 mx-auto text-primary" />
-                <h2 className="text-xl font-bold">Lokalizacja</h2>
-                <p className="text-sm text-muted-foreground">Wybierz adres i pokój</p>
+                <h2 className="text-xl font-bold">{t('wizardStep.location')}</h2>
+                <p className="text-sm text-muted-foreground">{t('form.selectAddressRoom')}</p>
             </div>
 
             <Input
-                placeholder="Szukaj adresu lub miejscowości..."
+                placeholder={t('odbiorZakwaterowanie.searchAddressOrLocality')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="h-11"
@@ -280,7 +282,7 @@ function StepLokalizacja({
 
             {filtered.length === 0 ? (
                 <div className="text-center py-10 text-sm text-muted-foreground">
-                    Brak mieszkań tymczasowych z wolnymi miejscami.
+                    {t('odbiorZakwaterowanie.noTempHousing')}
                 </div>
             ) : (
                 <div className="space-y-2">
@@ -304,7 +306,7 @@ function StepLokalizacja({
                                         </div>
                                         <div className="flex items-center gap-2 flex-shrink-0">
                                             <Badge variant={it.totalAvailable > 0 ? 'default' : 'secondary'} className="text-xs">
-                                                {it.totalAvailable} wolnych
+                                                {it.totalAvailable} {t('common.freeShort')}
                                             </Badge>
                                             <ChevronRight className={cn('w-4 h-4 text-muted-foreground transition-transform', isExpanded && 'rotate-90')} />
                                         </div>
@@ -332,7 +334,7 @@ function StepLokalizacja({
                                                     <Bed className={cn('w-5 h-5', roomSelected ? 'text-primary-foreground' : 'text-muted-foreground')} />
                                                     <span className="text-sm font-semibold">{room.name}</span>
                                                     <span className={cn('text-[11px]', roomSelected ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
-                                                        {room.isLocked ? 'Zablok.' : !room.isActive ? 'Niedost.' : `${room.available}/${room.capacity}`}
+                                                        {room.isLocked ? t('common.lockedShort') : !room.isActive ? t('common.unavailableShort') : `${room.available}/${room.capacity}`}
                                                     </span>
                                                 </button>
                                             );
@@ -357,6 +359,7 @@ function StepSzczegoly({
     onChange: (patch: Partial<WizardData>) => void;
     settings: ReturnType<typeof useMainLayout>['settings'];
 }) {
+    const { t } = useLanguage();
     const sortedGenders = useMemo(
         () => [...(settings?.genders || [])].sort((a, b) => a.localeCompare(b)),
         [settings]
@@ -366,12 +369,12 @@ function StepSzczegoly({
         <div className="flex flex-col gap-5 p-6 sm:p-8">
             <div className="text-center space-y-1">
                 <ClipboardList className="w-10 h-10 mx-auto text-primary" />
-                <h2 className="text-xl font-bold">Szczegóły</h2>
-                <p className="text-sm text-muted-foreground">Uzupełnij pozostałe dane</p>
+                <h2 className="text-xl font-bold">{t('wizardStep.details')}</h2>
+                <p className="text-sm text-muted-foreground">{t('odbiorZakwaterowanie.fillRemainingData')}</p>
             </div>
 
             <div className="space-y-1.5">
-                <label className="text-sm font-medium">Płeć</label>
+                <label className="text-sm font-medium">{t('form.gender')}</label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {sortedGenders.filter(Boolean).map((g) => (
                         <button
@@ -392,7 +395,7 @@ function StepSzczegoly({
             </div>
 
             <div className="space-y-1.5">
-                <label className="text-sm font-medium">Numer paszportu</label>
+                <label className="text-sm font-medium">{t('form.passportNumber')}</label>
                 <Input
                     placeholder="np. EP1234567"
                     value={data.passportNumber}
@@ -402,7 +405,7 @@ function StepSzczegoly({
             </div>
 
             <div className="space-y-1.5">
-                <label className="text-sm font-medium">Data przyjęcia</label>
+                <label className="text-sm font-medium">{t('odbiorZakwaterowanie.acceptanceDate')}</label>
                 <WizardDateInput
                     value={data.date}
                     onChange={(d) => onChange({ date: d ?? new Date() })}
@@ -419,17 +422,18 @@ function StepPodsumowanie({
     data: WizardData;
     onEdit: (step: Step) => void;
 }) {
+    const { t, dateLocale } = useLanguage();
     const rows: { label: string; value: string; step: Step }[] = [
-        { label: 'Nazwisko', value: data.lastName || '—', step: 0 },
-        { label: 'Imię', value: data.firstName || '—', step: 0 },
-        { label: 'Adres', value: data.addressName || '—', step: 1 },
-        { label: 'Pokój', value: data.roomNumber || '—', step: 1 },
-        { label: 'Narodowość', value: data.nationality || '—', step: 2 },
-        { label: 'Płeć', value: data.gender || '—', step: 2 },
-        { label: 'Nr paszportu', value: data.passportNumber || '—', step: 2 },
+        { label: t('form.lastName'), value: data.lastName || '—', step: 0 },
+        { label: t('form.firstName'), value: data.firstName || '—', step: 0 },
+        { label: t('form.address'), value: data.addressName || '—', step: 1 },
+        { label: t('form.room'), value: data.roomNumber || '—', step: 1 },
+        { label: t('form.nationality'), value: data.nationality || '—', step: 2 },
+        { label: t('form.gender'), value: data.gender || '—', step: 2 },
+        { label: t('form.passportNumber'), value: data.passportNumber || '—', step: 2 },
         {
-            label: 'Data',
-            value: data.date && isValid(data.date) ? format(data.date, 'd MMMM yyyy', { locale: pl }) : '—',
+            label: t('odbiorZakwaterowanie.dateLabel'),
+            value: data.date && isValid(data.date) ? format(data.date, 'd MMMM yyyy', { locale: dateLocale }) : '—',
             step: 2,
         },
     ];
@@ -438,8 +442,8 @@ function StepPodsumowanie({
         <div className="flex flex-col gap-4 p-6 sm:p-8">
             <div className="text-center space-y-1">
                 <Check className="w-10 h-10 mx-auto text-primary" />
-                <h2 className="text-xl font-bold">Podsumowanie</h2>
-                <p className="text-sm text-muted-foreground">Sprawdź dane przed zapisem</p>
+                <h2 className="text-xl font-bold">{t('wizardStep.summary')}</h2>
+                <p className="text-sm text-muted-foreground">{t('form.checkDataBeforeSave')}</p>
             </div>
 
             <div className="rounded-xl border divide-y">
@@ -459,7 +463,7 @@ function StepPodsumowanie({
             </div>
 
             <p className="text-xs text-center text-muted-foreground">
-                Kliknij dowolny wiersz aby wrócić i edytować.
+                {t('odbiorZakwaterowanie.clickRowToEdit')}
             </p>
         </div>
     );
@@ -492,10 +496,13 @@ export function OdbiorZakwaterowanieDialog({
     prefillData?: { firstName?: string; lastName?: string; passportNumber?: string };
 }) {
     const { toast } = useToast();
+    const { t } = useLanguage();
     const { settings, allEmployees, allNonEmployees, allBokResidents, addRawOdbiorEntry, patchRawOdbiorEntry, addRawBokResident, patchRawBokResident } = useMainLayout();
     const [step, setStep] = useState<Step>(0);
     const [data, setData] = useState<WizardData>({ ...DEFAULT_DATA, date: new Date() });
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const steps = [t('wizardStep.person'), t('wizardStep.location'), t('wizardStep.details'), t('wizardStep.summary')];
 
     const isEditing = !!editEntry;
 
@@ -598,7 +605,7 @@ export function OdbiorZakwaterowanieDialog({
                     currentUser.uid,
                 );
                 if (!result.success) {
-                    toast({ variant: 'destructive', title: 'Błąd zapisu', description: result.error || 'Nie udało się zapisać.' });
+                    toast({ variant: 'destructive', title: t('common.saveError'), description: result.error || t('form.submitError') });
                     return;
                 }
                 // Optimistic update
@@ -616,7 +623,7 @@ export function OdbiorZakwaterowanieDialog({
                         checkInDate: patch.date,
                     });
                 }
-                toast({ title: 'Zaktualizowano', description: `Dane ${data.lastName} ${data.firstName} zaktualizowane.` });
+                toast({ title: t('common.updated'), description: t('odbiorZakwaterowanie.updatedDesc', { name: `${data.lastName} ${data.firstName}` }) });
             } else {
                 const result = await addOdbiorZakwaterowanieAction({
                     type: 'zakwaterowanie',
@@ -633,21 +640,21 @@ export function OdbiorZakwaterowanieDialog({
                     createdById: currentUser.uid,
                 });
                 if (!result.success) {
-                    toast({ variant: 'destructive', title: 'Błąd zapisu', description: result.error || 'Nie udało się zapisać.' });
+                    toast({ variant: 'destructive', title: t('common.saveError'), description: result.error || t('form.submitError') });
                     return;
                 }
                 // Optimistic update — add new entry and BOK resident immediately
                 if (result.entry) addRawOdbiorEntry(result.entry);
                 if (result.bokResident) addRawBokResident(result.bokResident);
-                toast({ title: 'Zapisano', description: `${data.lastName} ${data.firstName} dodany do BOK.` });
+                toast({ title: t('common.saved'), description: t('odbiorZakwaterowanie.savedDesc', { name: `${data.lastName} ${data.firstName}` }) });
             }
             onOpenChange(false);
             onSaved?.();
         } catch (error) {
             toast({
                 variant: 'destructive',
-                title: 'Błąd',
-                description: error instanceof Error ? error.message : 'Nie udało się zapisać.',
+                title: t('common.error'),
+                description: error instanceof Error ? error.message : t('form.submitError'),
             });
         } finally {
             setIsSubmitting(false);
@@ -657,7 +664,7 @@ export function OdbiorZakwaterowanieDialog({
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-[95vw] sm:max-w-lg h-[92vh] max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden">
-                <StepIndicator current={step} />
+                <StepIndicator current={step} steps={steps} />
 
                 <ScrollArea className="flex-1 overflow-y-auto">
                     {step === 0 && <StepOsoba data={data} onChange={onChange} settings={settings} />}
@@ -680,7 +687,7 @@ export function OdbiorZakwaterowanieDialog({
                         className="h-11 px-4 text-sm"
                     >
                         <ChevronLeft className="w-4 h-4 mr-1" />
-                        {step === 0 ? 'Anuluj' : 'Wstecz'}
+                        {step === 0 ? t('common.cancel') : t('form.back')}
                     </Button>
 
                     {step < 3 ? (
@@ -689,7 +696,7 @@ export function OdbiorZakwaterowanieDialog({
                             disabled={!canProceed}
                             className="h-11 px-6 text-sm font-semibold"
                         >
-                            Dalej
+                            {t('form.next')}
                             <ChevronRight className="w-4 h-4 ml-1" />
                         </Button>
                     ) : (
@@ -700,7 +707,7 @@ export function OdbiorZakwaterowanieDialog({
                         >
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             <Check className="w-4 h-4 mr-2" />
-                            {isEditing ? 'Zapisz zmiany' : 'Zatwierdź'}
+                            {isEditing ? t('settings.saveChanges') : t('common.confirm')}
                         </Button>
                     )}
                 </div>

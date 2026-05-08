@@ -10,7 +10,6 @@ import { Combobox } from '@/components/ui/combobox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChevronLeft, ChevronRight, Check, Loader2, User, MapPin, ClipboardList, CalendarDays } from 'lucide-react';
 import { format, isValid } from 'date-fns';
-import { pl } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { useMainLayout } from '@/components/main-layout';
 import type { BokResident, Settings, SessionData } from '@/types';
@@ -20,6 +19,7 @@ import {
     WizardAddressPicker, WizardGenderPicker, buildAddressItems, type WizardAddressItem,
 } from '@/components/wizard-utils';
 import { EditBokResidentForm } from '@/components/edit-bok-resident-form';
+import { useLanguage } from '@/lib/i18n';
 
 export const formSchema = z.object({
     role: z.string().min(1, 'Rola jest wymagana.'),
@@ -83,6 +83,7 @@ function AddBokResidentWizard({
     settings: Settings;
     currentUser: SessionData;
 }) {
+    const { t, dateLocale } = useLanguage();
     const { toast } = useToast();
     const { allEmployees, allNonEmployees, allBokResidents } = useMainLayout();
 
@@ -113,7 +114,7 @@ function AddBokResidentWizard({
         returnStatus: '', status: 'active', comments: '',
     };
 
-    const STEPS = ['Osoba', 'Lokalizacja', 'Szczegóły', 'Daty', 'Podsumowanie'];
+    const steps = [t('wizardStep.person'), t('wizardStep.location'), t('wizardStep.details'), t('wizardStep.dates'), t('wizardStep.summary')];
     const [step, setStep] = useState(0);
     const [data, setData] = useState<WizardData>({ ...DEFAULT });
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -191,29 +192,29 @@ function AddBokResidentWizard({
             onSave(buildFormData());
             onOpenChange(false);
         } catch (e) {
-            toast({ variant: 'destructive', title: 'Błąd', description: e instanceof Error ? e.message : 'Nie udało się zapisać.' });
+            toast({ variant: 'destructive', title: t('common.error'), description: e instanceof Error ? e.message : t('form.submitError') });
         } finally {
             setIsSubmitting(false);
         }
     };
 
     const summaryRows = [
-        { label: 'Rola', value: data.role || '—', step: 0 },
-        { label: 'Nazwisko', value: data.lastName || '—', step: 0 },
-        { label: 'Imię', value: data.firstName || '—', step: 0 },
-        { label: 'Koordynator', value: settings.coordinators.find((c) => c.uid === data.coordinatorId)?.name || '—', step: 0 },
-        { label: 'Narodowość', value: data.nationality || '—', step: 0 },
-        { label: 'Nr paszportu', value: data.passportNumber || '—', step: 0 },
-        { label: 'Adres', value: data.addressName || '—', step: 1 },
-        { label: 'Pokój', value: data.roomNumber || '—', step: 1 },
-        { label: 'Płeć', value: data.gender || '—', step: 2 },
-        { label: 'Zameldowanie', value: data.checkInDate && isValid(data.checkInDate) ? format(data.checkInDate, 'd MMM yyyy', { locale: pl }) : '—', step: 3 },
+        { label: t('form.role'), value: data.role || '—', step: 0 },
+        { label: t('form.lastName2'), value: data.lastName || '—', step: 0 },
+        { label: t('form.firstName2'), value: data.firstName || '—', step: 0 },
+        { label: t('form.coordinator'), value: settings.coordinators.find((c) => c.uid === data.coordinatorId)?.name || '—', step: 0 },
+        { label: t('form.nationality'), value: data.nationality || '—', step: 0 },
+        { label: t('form.passportNumber'), value: data.passportNumber || '—', step: 0 },
+        { label: t('form.address'), value: data.addressName || '—', step: 1 },
+        { label: t('form.room'), value: data.roomNumber || '—', step: 1 },
+        { label: t('form.gender'), value: data.gender || '—', step: 2 },
+        { label: t('form.checkIn'), value: data.checkInDate && isValid(data.checkInDate) ? format(data.checkInDate, 'd MMM yyyy', { locale: dateLocale }) : '—', step: 3 },
     ];
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-[95vw] sm:max-w-lg h-[92vh] max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden">
-                <WizardStepIndicator steps={STEPS} current={step} />
+                <WizardStepIndicator steps={steps} current={step} />
 
                 <ScrollArea className="flex-1 overflow-y-auto">
                     {/* Step 0: Osoba */}
@@ -221,7 +222,7 @@ function AddBokResidentWizard({
                         <div className="flex flex-col gap-5 p-6 sm:p-8">
                             <div className="text-center space-y-1">
                                 <User className="w-9 h-9 mx-auto text-primary" />
-                                <h2 className="text-xl font-bold">Dane osoby</h2>
+                                <h2 className="text-xl font-bold">{t('form.person')}</h2>
                             </div>
                             <OcrCameraButton
                                 settings={settings}
@@ -233,7 +234,7 @@ function AddBokResidentWizard({
                                 }}
                             />
                             <div className="space-y-1.5">
-                                <label className="text-sm font-medium">Rola <span className="text-destructive">*</span></label>
+                                <label className="text-sm font-medium">{t('form.role')} <span className="text-destructive">*</span></label>
                                 <div className="grid grid-cols-2 gap-2">
                                     {bokRoles.filter(Boolean).map((r) => (
                                         <button key={r} type="button" onClick={() => set({ role: r })}
@@ -246,24 +247,24 @@ function AddBokResidentWizard({
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-medium">Nazwisko <span className="text-destructive">*</span></label>
+                                    <label className="text-sm font-medium">{t('form.lastName2')} <span className="text-destructive">*</span></label>
                                     <Input placeholder="Kowalski" value={data.lastName} onChange={(e) => set({ lastName: e.target.value })} className="h-12 text-base" />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-medium">Imię <span className="text-destructive">*</span></label>
+                                    <label className="text-sm font-medium">{t('form.firstName2')} <span className="text-destructive">*</span></label>
                                     <Input placeholder="Jan" value={data.firstName} onChange={(e) => set({ firstName: e.target.value })} className="h-12 text-base" />
                                 </div>
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-sm font-medium">Koordynator <span className="text-destructive">*</span></label>
-                                <Combobox options={coordOptions} value={data.coordinatorId} onChange={(v) => set({ coordinatorId: v, addressName: '', roomNumber: '', zaklad: '' })} placeholder="Wybierz koordynatora" searchPlaceholder="Szukaj..." />
+                                <label className="text-sm font-medium">{t('form.coordinator')} <span className="text-destructive">*</span></label>
+                                <Combobox options={coordOptions} value={data.coordinatorId} onChange={(v) => set({ coordinatorId: v, addressName: '', roomNumber: '', zaklad: '' })} placeholder={t('form.selectCoord')} searchPlaceholder={t('common.search')} />
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-sm font-medium">Narodowość <span className="text-destructive">*</span></label>
-                                <Combobox options={nationalityOptions} value={data.nationality} onChange={(v) => set({ nationality: v })} placeholder="Wybierz narodowość" searchPlaceholder="Szukaj..." />
+                                <label className="text-sm font-medium">{t('form.nationality')} <span className="text-destructive">*</span></label>
+                                <Combobox options={nationalityOptions} value={data.nationality} onChange={(v) => set({ nationality: v })} placeholder={t('form.selectNat')} searchPlaceholder={t('common.search')} />
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-sm font-medium">Nr paszportu</label>
+                                <label className="text-sm font-medium">{t('form.passportNumber')}</label>
                                 <Input placeholder="np. EP1234567" value={data.passportNumber} onChange={(e) => set({ passportNumber: e.target.value.toUpperCase() })} className="h-11 font-mono" />
                             </div>
                         </div>
@@ -274,8 +275,8 @@ function AddBokResidentWizard({
                         <div className="flex flex-col gap-4 p-4 sm:p-6">
                             <div className="text-center space-y-1">
                                 <MapPin className="w-9 h-9 mx-auto text-primary" />
-                                <h2 className="text-xl font-bold">Lokalizacja</h2>
-                                <p className="text-sm text-muted-foreground">Opcjonalnie — możesz pominąć</p>
+                                <h2 className="text-xl font-bold">{t('form.location')}</h2>
+                                <p className="text-sm text-muted-foreground">{t('form.optionalSkip')}</p>
                             </div>
                             <WizardAddressPicker
                                 items={addressItems}
@@ -291,15 +292,15 @@ function AddBokResidentWizard({
                         <div className="flex flex-col gap-4 p-6 sm:p-8">
                             <div className="text-center space-y-1">
                                 <ClipboardList className="w-9 h-9 mx-auto text-primary" />
-                                <h2 className="text-xl font-bold">Szczegóły</h2>
+                                <h2 className="text-xl font-bold">{t('wizardStep.details')}</h2>
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-sm font-medium">Płeć <span className="text-destructive">*</span></label>
+                                <label className="text-sm font-medium">{t('form.gender')} <span className="text-destructive">*</span></label>
                                 <WizardGenderPicker genders={sortedGenders} value={data.gender} onChange={(g) => set({ gender: g })} />
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-sm font-medium">Zakład</label>
-                                <Combobox options={departmentOptions} value={data.zaklad} onChange={(v) => set({ zaklad: v })} placeholder={!data.coordinatorId ? 'Najpierw wybierz koordynatora' : 'Opcjonalnie'} searchPlaceholder="Szukaj..." />
+                                <label className="text-sm font-medium">{t('form.department')}</label>
+                                <Combobox options={departmentOptions} value={data.zaklad} onChange={(v) => set({ zaklad: v })} placeholder={!data.coordinatorId ? t('form.firstSelectCoord') : t('form.optionalSkip')} searchPlaceholder={t('common.search')} />
                             </div>
                         </div>
                     )}
@@ -309,35 +310,35 @@ function AddBokResidentWizard({
                         <div className="flex flex-col gap-4 p-6 sm:p-8">
                             <div className="text-center space-y-1">
                                 <CalendarDays className="w-9 h-9 mx-auto text-primary" />
-                                <h2 className="text-xl font-bold">Daty</h2>
+                                <h2 className="text-xl font-bold">{t('form.dates')}</h2>
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-sm font-medium">Data zameldowania <span className="text-destructive">*</span></label>
+                                <label className="text-sm font-medium">{t('form.checkInDate')} <span className="text-destructive">*</span></label>
                                 <WizardDateInput value={data.checkInDate} onChange={(d) => set({ checkInDate: d })} />
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-sm font-medium">Data wyjazdu</label>
-                                <WizardDateInput value={data.checkOutDate} onChange={(d) => set({ checkOutDate: d })} placeholder="Opcjonalnie" />
+                                <label className="text-sm font-medium">{t('form.checkOutDate')}</label>
+                                <WizardDateInput value={data.checkOutDate} onChange={(d) => set({ checkOutDate: d })} placeholder={t('form.optional')} />
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-medium">Powrót</label>
+                                    <label className="text-sm font-medium">{t('form.returnStatus')}</label>
                                     <Select value={data.returnStatus || ''} onValueChange={(v) => set({ returnStatus: v })}>
-                                        <SelectTrigger className="h-11"><SelectValue placeholder="Opcjonalnie" /></SelectTrigger>
+                                        <SelectTrigger className="h-11"><SelectValue placeholder={t('form.optional')} /></SelectTrigger>
                                         <SelectContent>{returnOptions.filter(Boolean).map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
                                     </Select>
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-medium">Status</label>
+                                    <label className="text-sm font-medium">{t('form.status')}</label>
                                     <Select value={data.status || ''} onValueChange={(v) => set({ status: v })}>
-                                        <SelectTrigger className="h-11"><SelectValue placeholder="Opcjonalnie" /></SelectTrigger>
+                                        <SelectTrigger className="h-11"><SelectValue placeholder={t('form.optional')} /></SelectTrigger>
                                         <SelectContent>{statusOptions.filter(Boolean).map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                                     </Select>
                                 </div>
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-sm font-medium">Komentarze</label>
-                                <Input placeholder="Dodatkowe informacje..." value={data.comments} onChange={(e) => set({ comments: e.target.value })} className="h-11" />
+                                <label className="text-sm font-medium">{t('form.comments')}</label>
+                                <Input placeholder={t('form.additionalInfo')} value={data.comments} onChange={(e) => set({ comments: e.target.value })} className="h-11" />
                             </div>
                         </div>
                     )}
@@ -347,7 +348,8 @@ function AddBokResidentWizard({
                         <div className="flex flex-col gap-4 p-6 sm:p-8">
                             <div className="text-center space-y-1">
                                 <Check className="w-9 h-9 mx-auto text-primary" />
-                                <h2 className="text-xl font-bold">Podsumowanie</h2>
+                                <h2 className="text-xl font-bold">{t('form.summary')}</h2>
+                                <p className="text-sm text-muted-foreground">{t('form.checkDataBeforeSave')}</p>
                             </div>
                             <div className="rounded-xl border divide-y">
                                 {summaryRows.map(({ label, value, step: s }) => (
@@ -360,23 +362,24 @@ function AddBokResidentWizard({
                                     </div>
                                 ))}
                             </div>
+                            <p className="text-xs text-center text-muted-foreground">{t('form.clickRowToEdit')}</p>
                         </div>
                     )}
                 </ScrollArea>
 
                 <div className="p-4 border-t bg-background flex items-center justify-between gap-3 flex-shrink-0">
                     <Button variant="ghost" onClick={step === 0 ? () => onOpenChange(false) : () => setStep((s) => s - 1)} disabled={isSubmitting} className="h-11 px-4 text-sm">
-                        <ChevronLeft className="w-4 h-4 mr-1" />{step === 0 ? 'Anuluj' : 'Wstecz'}
+                        <ChevronLeft className="w-4 h-4 mr-1" />{step === 0 ? t('common.cancel') : t('form.back')}
                     </Button>
                     <div className="flex gap-2">
-                        {step < STEPS.length - 1 ? (
+                        {step < steps.length - 1 ? (
                             <Button onClick={() => setStep((s) => s + 1)} disabled={!canProceed} className="h-11 px-6 text-sm font-semibold">
-                                Dalej <ChevronRight className="w-4 h-4 ml-1" />
+                                {t('form.next')} <ChevronRight className="w-4 h-4 ml-1" />
                             </Button>
                         ) : (
                             <Button onClick={handleSubmit} disabled={isSubmitting} className="h-11 px-6 text-sm font-semibold">
                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                <Check className="w-4 h-4 mr-2" />Dodaj
+                                <Check className="w-4 h-4 mr-2" />{t('common.add')}
                             </Button>
                         )}
                     </div>

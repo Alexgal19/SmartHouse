@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/lib/i18n';
 import {
     MapPin, Phone, Users, MessageSquare, User, Bed, Stethoscope,
     Pencil, Trash2, Plus, Check, PhoneCall, ImagePlus, X, ScanLine,
@@ -24,11 +25,14 @@ import {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const SKAD_LABELS: Record<string, string> = {
-    autobusowa: 'Stacja autobusowa',
-    pociagowa: 'Stacja pociągowa',
-    inne: 'Inne',
-};
+function useSkadLabels() {
+    const { t } = useLanguage();
+    return {
+        autobusowa: t('odbior.busStation'),
+        pociagowa: t('odbior.trainStation'),
+        inne: t('odbior.other'),
+    };
+}
 
 function parseOsoby(raw: string): OsobaWOdbiorze[] {
     try { return JSON.parse(raw || '[]'); } catch { return []; }
@@ -37,10 +41,11 @@ function parseOsoby(raw: string): OsobaWOdbiorze[] {
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
 function StatusBadge({ status, isNew }: { status: string; isNew?: boolean }) {
+    const { t } = useLanguage();
     if (isNew) {
         return (
             <span className="inline-flex items-center rounded-full bg-destructive text-white text-xs font-bold px-3 py-1">
-                NOWE
+                {t('odbior.statusNew')}
             </span>
         );
     }
@@ -50,9 +55,15 @@ function StatusBadge({ status, isNew }: { status: string; isNew?: boolean }) {
         'Zakończone':  'bg-success/20 text-success-foreground border border-green-200',
         'Dostarczone': 'bg-success/20 text-success-foreground border border-green-200',
     };
+    const labels: Record<string, string> = {
+        'Nieprzyjęte': t('odbior.statusUnaccepted'),
+        'W trakcie': t('odbior.statusInProgress'),
+        'Zakończone': t('odbior.statusCompleted'),
+        'Dostarczone': t('odbior.statusDelivered'),
+    };
     return (
         <span className={cn('inline-flex items-center rounded-full text-xs font-semibold px-3 py-1', styles[status] ?? 'bg-gray-100 text-gray-700')}>
-            {status}
+            {labels[status] ?? status}
         </span>
     );
 }
@@ -60,23 +71,24 @@ function StatusBadge({ status, isNew }: { status: string; isNew?: boolean }) {
 // ─── Popover wyboru połączenia ────────────────────────────────────────────────
 
 function PhonePopover({ number }: { number: string }) {
+    const { t } = useLanguage();
     const digits = number.replace(/\D/g, '');
     const e164 = digits.startsWith('0') ? `+48${digits.slice(1)}` : `+${digits}`;
     const e164encoded = encodeURIComponent(e164);
 
     const options: { label: string; icon: React.ElementType; action: () => void }[] = [
         {
-            label: 'Zadzwoń',
+            label: t('odbior.phoneCall'),
             icon: Phone,
             action: () => { window.location.href = `tel:${number}`; },
         },
         {
-            label: 'Zadzwoń na Viber',
+            label: t('odbior.callViber'),
             icon: PhoneCall,
             action: () => { window.location.href = `viber://chat?number=${e164encoded}`; },
         },
         {
-            label: 'Zadzwoń na WhatsApp',
+            label: t('odbior.callWhatsApp'),
             icon: PhoneCall,
             action: () => { window.open(`https://wa.me/${digits}`, '_blank'); },
         },
@@ -109,24 +121,26 @@ function PhonePopover({ number }: { number: string }) {
 // ─── Szczegóły zgłoszenia (wspólna część) ────────────────────────────────────
 
 function ZgloszenieInfo({ z }: { z: OdbiorZgloszenie }) {
+    const { t } = useLanguage();
+    const skadLabels = useSkadLabels();
     const shortId = z.id.slice(-4).toUpperCase();
     return (
         <div className="space-y-2 text-sm">
             <div className="flex items-center justify-between mb-1">
                 <StatusBadge status={z.status} isNew={z.status === 'Nieprzyjęte'} />
-                <span className="text-xs text-muted-foreground">Zgłoszenie #{shortId}</span>
+                <span className="text-xs text-muted-foreground">{t('odbior.requestId', { id: shortId })}</span>
             </div>
-            <div className="flex items-start gap-2"><MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" /><span><b>Skąd:</b> {SKAD_LABELS[z.skad] ?? z.skad}{z.komentarzSkad ? ` — ${z.komentarzSkad}` : ''}</span></div>
+            <div className="flex items-start gap-2"><MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" /><span><b>{t('odbior.fromShort')}:</b> {skadLabels[z.skad as keyof typeof skadLabels] ?? z.skad}{z.komentarzSkad ? ` — ${z.komentarzSkad}` : ''}</span></div>
             <div className="flex items-start gap-2">
                 <Phone className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                <span><b>Telefon:</b>{' '}
+                <span><b>{t('odbior.phoneShort')}:</b>{' '}
                     <PhonePopover number={z.numerTelefonu} />
                 </span>
             </div>
-            <div className="flex items-start gap-2"><Users className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" /><span><b>Ilość osób:</b> {z.iloscOsob}</span></div>
-            {z.komentarz && <div className="flex items-start gap-2"><MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" /><span><b>Komentarz:</b> {z.komentarz}</span></div>}
-            <div className="flex items-start gap-2"><User className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" /><span><b>Rekruter:</b> {z.rekruterNazwa}</span></div>
-            {z.kierowcaNazwa && <div className="flex items-start gap-2"><User className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" /><span><b>Kierowca:</b> {z.kierowcaNazwa}</span></div>}
+            <div className="flex items-start gap-2"><Users className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" /><span><b>{t('odbior.personsShort')}:</b> {z.iloscOsob}</span></div>
+            {z.komentarz && <div className="flex items-start gap-2"><MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" /><span><b>{t('odbior.commentShort')}:</b> {z.komentarz}</span></div>}
+            <div className="flex items-start gap-2"><User className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" /><span><b>{t('odbior.recruiterShort')}:</b> {z.rekruterNazwa}</span></div>
+            {z.kierowcaNazwa && <div className="flex items-start gap-2"><User className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" /><span><b>{t('odbior.driverShort')}:</b> {z.kierowcaNazwa}</span></div>}
             <p className="text-xs text-muted-foreground text-right pt-1">{z.dataZgloszenia}</p>
         </div>
     );
@@ -134,11 +148,14 @@ function ZgloszenieInfo({ z }: { z: OdbiorZgloszenie }) {
 
 // ─── Formularz edycji danych zgłoszenia ──────────────────────────────────────
 
-const SKAD_OPTIONS = [
-    { value: 'autobusowa', label: 'Stacja autobusowa' },
-    { value: 'pociagowa',  label: 'Stacja pociągowa' },
-    { value: 'inne',       label: 'Inne' },
-] as const;
+function useSkadOptions() {
+    const { t } = useLanguage();
+    return [
+        { value: 'autobusowa', label: t('odbior.busStation') },
+        { value: 'pociagowa',  label: t('odbior.trainStation') },
+        { value: 'inne',       label: t('odbior.other') },
+    ] as const;
+}
 
 function EditZgloszenieForm({
     z,
@@ -149,6 +166,8 @@ function EditZgloszenieForm({
     onSave: (updates: Partial<OdbiorZgloszenie>) => Promise<void>;
     onCancel: () => void;
 }) {
+    const { t } = useLanguage();
+    const skadOptions = useSkadOptions();
     const [fields, setFields] = useState({
         numerTelefonu: z.numerTelefonu,
         skad: z.skad,
@@ -178,7 +197,7 @@ function EditZgloszenieForm({
 
     const handleSave = async () => {
         if (!fields.numerTelefonu.trim()) {
-            toast({ variant: 'destructive', title: 'Błąd', description: 'Numer telefonu jest wymagany.' });
+            toast({ variant: 'destructive', title: t('common.error'), description: t('odbior.errorRequiredPhone') });
             return;
         }
         setSaving(true);
@@ -191,17 +210,17 @@ function EditZgloszenieForm({
                 const res = await fetch(`/api/odbior/zgloszenie/${z.id}/photos`, { method: 'POST', body: fd });
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({}));
-                    throw new Error(err.error ?? 'Błąd uploadu zdjęć');
+                    throw new Error(err.error ?? t('odbior.errorUploadPhotos'));
                 }
                 const data = await res.json();
                 zdjeciaUrls = data.zdjeciaUrls;
             }
 
             await onSave({ ...fields, zdjeciaUrls });
-            toast({ title: 'Zapisano zmiany' });
+            toast({ title: t('odbior.savedChanges') });
             onCancel();
         } catch (e) {
-            toast({ variant: 'destructive', title: 'Błąd', description: e instanceof Error ? e.message : 'Nieznany błąd.' });
+            toast({ variant: 'destructive', title: t('common.error'), description: e instanceof Error ? e.message : t('common.error') });
         } finally {
             setSaving(false);
         }
@@ -209,33 +228,33 @@ function EditZgloszenieForm({
 
     return (
         <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 space-y-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Edytuj dane zgłoszenia</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('odbior.editRequestTitle')}</p>
 
             <div>
-                <Label className="text-xs">Numer telefonu *</Label>
+                <Label className="text-xs">{t('odbior.phoneLabel')}</Label>
                 <Input className="h-8 text-sm mt-1" value={fields.numerTelefonu}
                     onChange={e => setFields(f => ({ ...f, numerTelefonu: e.target.value }))} />
             </div>
 
             <div>
-                <Label className="text-xs">Skąd</Label>
+                <Label className="text-xs">{t('odbior.fromSelect')}</Label>
                 <select
                     className="mt-1 w-full h-8 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                     value={fields.skad}
                     onChange={e => setFields(f => ({ ...f, skad: e.target.value as OdbiorZgloszenie['skad'] }))}
                 >
-                    {SKAD_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    {skadOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
             </div>
 
             <div>
-                <Label className="text-xs">Szczegóły miejsca</Label>
+                <Label className="text-xs">{t('odbior.fromCommentLabel')}</Label>
                 <Input className="h-8 text-sm mt-1" value={fields.komentarzSkad}
                     onChange={e => setFields(f => ({ ...f, komentarzSkad: e.target.value }))} />
             </div>
 
             <div>
-                <Label className="text-xs">Ilość osób</Label>
+                <Label className="text-xs">{t('odbior.personCount')}</Label>
                 <div className="flex items-center gap-2 mt-1">
                     <Button type="button" variant="outline" size="icon" className="h-7 w-7"
                         onClick={() => setFields(f => ({ ...f, iloscOsob: Math.max(1, f.iloscOsob - 1) }))}>
@@ -250,14 +269,14 @@ function EditZgloszenieForm({
             </div>
 
             <div>
-                <Label className="text-xs">Komentarz</Label>
+                <Label className="text-xs">{t('odbior.commentLabel')}</Label>
                 <Input className="h-8 text-sm mt-1" value={fields.komentarz}
                     onChange={e => setFields(f => ({ ...f, komentarz: e.target.value }))} />
             </div>
 
             {/* Zdjęcia */}
             <div className="space-y-2">
-                <Label className="text-xs">Zdjęcia</Label>
+                <Label className="text-xs">{t('odbior.photosShort')}</Label>
 
                 {/* Istniejące */}
                 {existingUrls.length > 0 && (
@@ -289,15 +308,15 @@ function EditZgloszenieForm({
 
                 <Button type="button" variant="outline" size="sm" className="w-full gap-1.5"
                     onClick={() => fileInputRef.current?.click()}>
-                    <ImagePlus className="h-4 w-4" /> Dodaj zdjęcia
+                    <ImagePlus className="h-4 w-4" /> {t('odbior.addPhotosBtn')}
                 </Button>
                 <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileAdd} />
             </div>
 
             <div className="flex gap-2 pt-1">
-                <Button variant="outline" size="sm" className="flex-1" disabled={saving} onClick={onCancel}>Anuluj</Button>
+                <Button variant="outline" size="sm" className="flex-1" disabled={saving} onClick={onCancel}>{t('common.cancel')}</Button>
                 <Button size="sm" className="flex-1" disabled={saving} onClick={handleSave}>
-                    {saving ? 'Zapisywanie...' : 'Zapisz'}
+                    {saving ? t('odbior.savingShort') : t('common.save')}
                 </Button>
             </div>
         </div>
@@ -314,6 +333,7 @@ function KartaNieprzyjete({
     onEdit: (updates: Partial<OdbiorZgloszenie>) => Promise<void>;
     canEdit: boolean;
 }) {
+    const { t } = useLanguage();
     const [loading, setLoading] = useState<'przyjmij' | 'odrzuc' | null>(null);
     const [editing, setEditing] = useState(false);
 
@@ -336,15 +356,15 @@ function KartaNieprzyjete({
                             disabled={!!loading}
                             onClick={() => setEditing(true)}
                         >
-                            Edytuj dane
+                            {t('odbior.editData')}
                         </Button>
                     )}
                     <div className="flex gap-3">
                         <Button variant="outline" className="flex-1" disabled={!!loading} onClick={() => handle('odrzuc')}>
-                            Odrzuć
+                            {t('odbior.reject')}
                         </Button>
                         <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" disabled={!!loading} onClick={() => handle('przyjmij')}>
-                            {loading === 'przyjmij' ? 'Przyjmowanie...' : 'Przyjmij'}
+                            {loading === 'przyjmij' ? t('odbior.accepting') : t('odbior.accept')}
                         </Button>
                     </div>
                 </div>
@@ -360,17 +380,18 @@ function EditPersonRow({ person, onSave, onCancel }: {
     onSave: (p: OsobaWOdbiorze) => void;
     onCancel: () => void;
 }) {
+    const { t } = useLanguage();
     const [p, setP] = useState(person);
     return (
         <div className="rounded-lg border bg-white p-3 space-y-2">
             <div className="grid grid-cols-2 gap-2">
-                <div><Label className="text-xs">Imię</Label><Input className="h-8 text-sm" value={p.imie} onChange={e => setP(x => ({ ...x, imie: e.target.value }))} /></div>
-                <div><Label className="text-xs">Nazwisko</Label><Input className="h-8 text-sm" value={p.nazwisko} onChange={e => setP(x => ({ ...x, nazwisko: e.target.value }))} /></div>
+                <div><Label className="text-xs">{t('odbior.firstName')}</Label><Input className="h-8 text-sm" value={p.imie} onChange={e => setP(x => ({ ...x, imie: e.target.value }))} /></div>
+                <div><Label className="text-xs">{t('odbior.lastName')}</Label><Input className="h-8 text-sm" value={p.nazwisko} onChange={e => setP(x => ({ ...x, nazwisko: e.target.value }))} /></div>
             </div>
-            <div><Label className="text-xs">Paszport</Label><Input className="h-8 text-sm" value={p.paszport} onChange={e => setP(x => ({ ...x, paszport: e.target.value }))} /></div>
+            <div><Label className="text-xs">{t('odbior.passportShort')}</Label><Input className="h-8 text-sm" value={p.paszport} onChange={e => setP(x => ({ ...x, paszport: e.target.value }))} /></div>
             <div className="flex gap-2 pt-1">
-                <Button variant="outline" size="sm" className="flex-1" onClick={onCancel}>Anuluj</Button>
-                <Button size="sm" className="flex-1" onClick={() => onSave(p)}>Zapisz</Button>
+                <Button variant="outline" size="sm" className="flex-1" onClick={onCancel}>{t('common.cancel')}</Button>
+                <Button size="sm" className="flex-1" onClick={() => onSave(p)}>{t('common.save')}</Button>
             </div>
         </div>
     );
@@ -385,6 +406,7 @@ function KartaWTrakcie({
     onAction: (action: 'odrzuc' | 'zakoncz' | 'update', payload: Partial<OdbiorZgloszenie>) => Promise<void>;
     onZakwaterowanieClick?: (osoba: OsobaWOdbiorze | null) => void;
 }) {
+    const { t } = useLanguage();
     const osoby = parseOsoby(z.osoby);
     const [localOsoby, setLocalOsoby] = useState<OsobaWOdbiorze[]>(osoby);
     const [newPerson, setNewPerson] = useState<OsobaWOdbiorze>({ imie: '', nazwisko: '', paszport: '' });
@@ -401,12 +423,12 @@ function KartaWTrakcie({
 
     const handleAddPerson = async () => {
         if (!newPerson.imie.trim() || !newPerson.nazwisko.trim()) {
-            toast({ variant: 'destructive', title: 'Błąd', description: 'Imię i nazwisko są wymagane.' });
+            toast({ variant: 'destructive', title: t('common.error'), description: t('odbior.errorNameSurname') });
             return;
         }
         const updated = [...localOsoby, newPerson];
         await saveOsoby(updated);
-        toast({ title: 'Dodano osobę', description: `${newPerson.imie} ${newPerson.nazwisko}` });
+        toast({ title: t('odbior.personAdded'), description: `${newPerson.imie} ${newPerson.nazwisko}` });
         setNewPerson({ imie: '', nazwisko: '', paszport: '' });
     };
 
@@ -419,16 +441,16 @@ function KartaWTrakcie({
             const fd = new FormData();
             fd.append('photo', file);
             const res = await fetch('/api/odbior/ocr', { method: 'POST', body: fd });
-            if (!res.ok) throw new Error((await res.json()).error ?? 'Błąd OCR');
+            if (!res.ok) throw new Error((await res.json()).error ?? t('odbior.ocrError'));
             const data = await res.json();
             setNewPerson(p => ({
                 imie:     data.imie     || p.imie,
                 nazwisko: data.nazwisko || p.nazwisko,
                 paszport: data.paszport || p.paszport,
             }));
-            toast({ title: 'Dane odczytane', description: `${data.imie} ${data.nazwisko} — ${data.paszport}` });
+            toast({ title: t('odbior.ocrRead'), description: `${data.imie} ${data.nazwisko} — ${data.paszport}` });
         } catch (err) {
-            toast({ variant: 'destructive', title: 'Błąd OCR', description: err instanceof Error ? err.message : 'Nie udało się odczytać dokumentu.' });
+            toast({ variant: 'destructive', title: t('odbior.ocrError'), description: err instanceof Error ? err.message : t('odbior.ocrFailed') });
         } finally {
             setOcrLoading(false);
         }
@@ -448,7 +470,7 @@ function KartaWTrakcie({
         const newKrok = activeKrok === krok ? '' : krok;
         await onAction('update', { nastepnyKrok: newKrok });
         if (newKrok) {
-            toast({ title: 'Zapisano', description: `Następny krok: ${newKrok}` });
+            toast({ title: t('odbior.savedStep'), description: `${t('odbior.nextStepLabel')} ${newKrok}` });
         }
     };
 
@@ -471,7 +493,7 @@ function KartaWTrakcie({
             {/* Lista osób */}
             <div className="space-y-2">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Lista osób ({localOsoby.length}/{z.iloscOsob})
+                    {t('odbior.personList')} ({localOsoby.length}/{z.iloscOsob})
                 </p>
                 {localOsoby.map((o, i) => (
                     <div key={i}>
@@ -485,10 +507,10 @@ function KartaWTrakcie({
                             <div className="flex items-center justify-between rounded-lg bg-white border px-3 py-2 text-sm">
                                 <div>
                                     <span className="font-medium">{i + 1}. {o.imie} {o.nazwisko}</span>
-                                    {o.paszport && <span className="text-muted-foreground ml-2 text-xs">Paszport: {o.paszport}</span>}
+                                    {o.paszport && <span className="text-muted-foreground ml-2 text-xs">{t('odbior.passportShort')}: {o.paszport}</span>}
                                 </div>
                                 <div className="flex gap-1">
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-600 hover:text-blue-700 hover:bg-blue-50" title="Zakwateruj" onClick={() => onZakwaterowanieClick?.(o)}>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-600 hover:text-blue-700 hover:bg-blue-50" title={t('odbior.housingPerson')} onClick={() => onZakwaterowanieClick?.(o)}>
                                         <Bed className="h-3.5 w-3.5" />
                                     </Button>
                                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditIdx(i)}>
@@ -506,7 +528,7 @@ function KartaWTrakcie({
                 {/* Formularz dodawania osoby — zawsze widoczny */}
                 <div className="rounded-lg border bg-white p-3 space-y-2">
                     <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold text-muted-foreground">Dodaj osobę</p>
+                        <p className="text-xs font-semibold text-muted-foreground">{t('odbior.addPerson')}</p>
                         <Button
                             type="button"
                             variant="outline"
@@ -516,29 +538,29 @@ function KartaWTrakcie({
                             onClick={() => ocrInputRef.current?.click()}
                         >
                             <ScanLine className="h-3.5 w-3.5" />
-                            {ocrLoading ? 'Skanowanie...' : 'Skanuj paszport'}
+                            {ocrLoading ? t('odbior.scanning') : t('odbior.scanPassport')}
                         </Button>
                         <input ref={ocrInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleOcr} />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                        <div><Label className="text-xs">Imię *</Label><Input className="h-8 text-sm" value={newPerson.imie} onChange={e => setNewPerson(p => ({ ...p, imie: e.target.value }))} /></div>
-                        <div><Label className="text-xs">Nazwisko *</Label><Input className="h-8 text-sm" value={newPerson.nazwisko} onChange={e => setNewPerson(p => ({ ...p, nazwisko: e.target.value }))} /></div>
+                        <div><Label className="text-xs">{t('odbior.firstName')} *</Label><Input className="h-8 text-sm" value={newPerson.imie} onChange={e => setNewPerson(p => ({ ...p, imie: e.target.value }))} /></div>
+                        <div><Label className="text-xs">{t('odbior.lastName')} *</Label><Input className="h-8 text-sm" value={newPerson.nazwisko} onChange={e => setNewPerson(p => ({ ...p, nazwisko: e.target.value }))} /></div>
                     </div>
-                    <div><Label className="text-xs">Numer paszportu</Label><Input className="h-8 text-sm" value={newPerson.paszport} onChange={e => setNewPerson(p => ({ ...p, paszport: e.target.value }))} /></div>
+                    <div><Label className="text-xs">{t('odbior.passportNumber')}</Label><Input className="h-8 text-sm" value={newPerson.paszport} onChange={e => setNewPerson(p => ({ ...p, paszport: e.target.value }))} /></div>
                     <Button size="sm" className="w-full gap-1" onClick={handleAddPerson}>
-                        <Plus className="h-3.5 w-3.5" /> Dodaj osobę
+                        <Plus className="h-3.5 w-3.5" /> {t('odbior.addPerson')}
                     </Button>
                 </div>
             </div>
 
             {/* Następny krok */}
             <div className="space-y-2">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Wybierz następny krok</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('odbior.nextStep')}</p>
                 <div className="flex gap-2 flex-wrap">
                     {[
-                        { value: 'zakwaterowanie', label: 'Zakwaterowanie', icon: Bed },
-                        { value: 'badania', label: 'Badania', icon: Stethoscope },
-                        { value: 'rozmowa', label: 'Rozmowa rekrutacyjna', icon: Users },
+                        { value: 'zakwaterowanie', label: t('odbior.accommodation'), icon: Bed },
+                        { value: 'badania', label: t('odbior.medicalExams'), icon: Stethoscope },
+                        { value: 'rozmowa', label: t('odbior.recruitmentInterview'), icon: Users },
                     ].map(({ value, label, icon: Icon }) => (
                         <Button
                             key={value}
@@ -566,7 +588,7 @@ function KartaWTrakcie({
                     disabled={loading}
                     onClick={handleOdrzuc}
                 >
-                    Odrzuć
+                    {t('odbior.reject')}
                 </Button>
                 <Button
                     className="flex-1 bg-green-600 hover:bg-green-700 text-white gap-2"
@@ -574,7 +596,7 @@ function KartaWTrakcie({
                     onClick={handleZakoncz}
                 >
                     <Check className="h-4 w-4" />
-                    {loading ? 'Kończenie...' : 'Zakończ odbiór'}
+                    {loading ? t('odbior.finishing') : t('odbior.finishReception')}
                 </Button>
             </div>
         </div>
@@ -584,23 +606,24 @@ function KartaWTrakcie({
 // ─── Karta — Zakończone ──────────────────────────────────────────────────────
 
 function KartaZakonczona({ z }: { z: OdbiorZgloszenie }) {
+    const { t } = useLanguage();
     const osoby = parseOsoby(z.osoby);
     return (
         <div className="rounded-xl border border-green-200 bg-green-50 p-4 space-y-3">
             <ZgloszenieInfo z={z} />
             {osoby.length > 0 && (
                 <div className="space-y-1">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Lista osób</p>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('odbior.personList')}</p>
                     {osoby.map((o, i) => (
                         <div key={i} className="flex items-center rounded-lg bg-white border px-3 py-2 text-sm gap-2">
                             <span className="font-medium">{i + 1}. {o.imie} {o.nazwisko}</span>
-                            {o.paszport && <span className="text-muted-foreground text-xs">Paszport: {o.paszport}</span>}
+                            {o.paszport && <span className="text-muted-foreground text-xs">{t('odbior.passportShort')}: {o.paszport}</span>}
                         </div>
                     ))}
                 </div>
             )}
             {z.dataZakonczenia && (
-                <p className="text-xs text-muted-foreground text-right">Zakończono: {z.dataZakonczenia}</p>
+                <p className="text-xs text-muted-foreground text-right">{t('odbior.completedOn')} {z.dataZakonczenia}</p>
             )}
         </div>
     );
@@ -621,6 +644,7 @@ export default function OdbiorDetailDialog({
     open, onOpenChange, zgloszenie, allZgloszenia, currentUser, onStatusChange,
 }: OdbiorDetailDialogProps) {
     const { toast } = useToast();
+    const { t } = useLanguage();
     const [localZ, setLocalZ] = useState(zgloszenie);
     const [zakwatOpen, setZakwatOpen] = useState(false);
     const [zakwatPrefill, setZakwatPrefill] = useState<{ firstName?: string; lastName?: string; passportNumber?: string } | undefined>();
@@ -644,6 +668,15 @@ export default function OdbiorDetailDialog({
 
     const tabValue = localZ.status === 'Dostarczone' ? 'Zakończone' : localZ.status;
 
+    const statusTabLabel = (status: string) => {
+        const map: Record<string, string> = {
+            'Nieprzyjęte': t('odbior.statusUnaccepted'),
+            'W trakcie': t('odbior.statusInProgress'),
+            'Zakończone': t('odbior.statusCompleted'),
+        };
+        return map[status] ?? status;
+    };
+
     const patch = (updates: Partial<OdbiorZgloszenie>) => {
         setLocalZ(prev => ({ ...prev, ...updates }));
         onStatusChange(localZ.id, updates);
@@ -657,7 +690,7 @@ export default function OdbiorDetailDialog({
         });
         if (!res.ok) {
             const err = await res.json().catch(() => ({}));
-            throw new Error(err.error ?? 'Błąd serwera');
+            throw new Error(err.error ?? t('common.error'));
         }
     };
 
@@ -681,9 +714,9 @@ export default function OdbiorDetailDialog({
         try {
             await callApi('przyjmij');
             patch({ status: 'W trakcie' });
-            toast({ title: 'Przyjęto zgłoszenie', description: 'Status zmieniony na "W trakcie".' });
+            toast({ title: t('odbior.receptionAccepted'), description: t('odbior.statusChangedToInProgress') });
         } catch (e) {
-            toast({ variant: 'destructive', title: 'Błąd', description: e instanceof Error ? e.message : 'Nieznany błąd.' });
+            toast({ variant: 'destructive', title: t('common.error'), description: e instanceof Error ? e.message : t('common.error') });
         }
     };
 
@@ -695,16 +728,16 @@ export default function OdbiorDetailDialog({
             );
             if (action === 'odrzuc') {
                 patch({ status: 'Nieprzyjęte', kierowcaId: '', kierowcaNazwa: '' });
-                toast({ title: 'Odrzucono', description: 'Status zmieniony na "Nieprzyjęte".' });
+                toast({ title: t('odbior.rejected'), description: t('odbior.statusChangedToUnaccepted') });
             } else if (action === 'zakoncz') {
                 const now = new Date().toLocaleString('pl-PL').replace(',', '').slice(0, 16);
                 patch({ status: 'Zakończone', dataZakonczenia: now, ...payload });
-                toast({ title: 'Odbiór zakończony', description: 'Status zmieniony na "Zakończone".' });
+                toast({ title: t('odbior.receptionFinished'), description: t('odbior.statusChangedToCompleted') });
             } else {
                 patch(payload);
             }
         } catch (e) {
-            toast({ variant: 'destructive', title: 'Błąd', description: e instanceof Error ? e.message : 'Nieznany błąd.' });
+            toast({ variant: 'destructive', title: t('common.error'), description: e instanceof Error ? e.message : t('common.error') });
         }
     };
 
@@ -713,9 +746,9 @@ export default function OdbiorDetailDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-lg w-full max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Odbiór</DialogTitle>
+                    <DialogTitle>{t('odbior.title')}</DialogTitle>
                     <DialogDescription className="sr-only">
-                        Szczegóły i akcje zgłoszenia odbioru
+                        {t('odbior.detailsAndActions')}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -723,7 +756,7 @@ export default function OdbiorDetailDialog({
                     <TabsList className="w-full">
                         {(['Nieprzyjęte', 'W trakcie', 'Zakończone'] as const).map(tab => (
                             <TabsTrigger key={tab} value={tab} className="flex-1 gap-1.5">
-                                {tab}
+                                {statusTabLabel(tab)}
                                 <span className="inline-flex items-center justify-center h-5 min-w-5 rounded-full bg-muted text-xs font-medium px-1.5">
                                     {counts[tab]}
                                 </span>

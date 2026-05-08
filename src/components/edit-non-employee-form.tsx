@@ -40,7 +40,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon, X, Loader2, Eye } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, isValid, parseISO } from 'date-fns';
-import { pl } from 'date-fns/locale';
+import { useLanguage } from '@/lib/i18n';
 import { Combobox } from './ui/combobox';
 import { useToast } from '@/hooks/use-toast';
 import { useMainLayout } from './main-layout';
@@ -104,6 +104,7 @@ const DateInput = ({
   disabled?: (date: Date) => boolean;
   id?: string;
 }) => {
+  const { t, dateLocale } = useLanguage();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [textMode, setTextMode] = useState(false);
   const [textValue, setTextValue] = useState('');
@@ -178,7 +179,7 @@ const DateInput = ({
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start" sideOffset={5}>
           <Calendar
-            locale={pl}
+            locale={dateLocale}
             mode="single"
             selected={value && isValid(value) ? value : undefined}
             onSelect={(d) => { onChange(d ?? null); setIsPopoverOpen(false); }}
@@ -196,7 +197,7 @@ const DateInput = ({
           e.stopPropagation();
           if (value) { onChange(null); } else { setIsPopoverOpen(true); }
         }}
-        aria-label={value ? "Wyczyść datę" : "Wybierz datę"}
+        aria-label={value ? t('form.clearField') : t('form.selectDate')}
       >
         {value ? (
           <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
@@ -223,6 +224,7 @@ export function EditNonEmployeeForm({
   nonEmployee: NonEmployee | null;
   currentUser: SessionData;
 }) {
+  const { t, dateLocale } = useLanguage();
   const { toast } = useToast();
   const { handleDismissNonEmployee, allEmployees, allNonEmployees, allBokResidents } = useMainLayout();
   const [isDismissing, setIsDismissing] = useState(false);
@@ -411,7 +413,7 @@ export function EditNonEmployeeForm({
     if (!checkOutDate || !(checkOutDate instanceof Date) || !isValid(checkOutDate)) {
       form.setError('checkOutDate', {
         type: 'manual',
-        message: 'Data wymeldowania jest wymagana i musi być poprawna, aby zwolnić mieszkańca.',
+        message: t('form.dismissCheckOutInvalidResident'),
       });
       return;
     }
@@ -451,9 +453,9 @@ export function EditNonEmployeeForm({
           <DialogHeader className="p-4 sm:p-6 pb-2 sm:pb-4 flex-shrink-0">
             <div className="flex justify-between items-start">
               <div>
-                <DialogTitle>{nonEmployee ? 'Edytuj dane mieszkańca (NZ)' : 'Dodaj nowego mieszkańca (NZ)'}</DialogTitle>
+                <DialogTitle>{nonEmployee ? t('form.editResidentNZ') : t('form.addResidentNZ')}</DialogTitle>
                 <DialogDescription>
-                  Wypełnij poniższe pola, aby {nonEmployee ? 'zaktualizować' : 'dodać'} mieszkańca.
+                  {nonEmployee ? t('form.fillFieldsToUpdateResidentNZ') : t('form.fillFieldsToAddResidentNZ')}
                 </DialogDescription>
               </div>
               <div className="flex gap-2">
@@ -464,7 +466,7 @@ export function EditNonEmployeeForm({
                   className="h-8 text-xs sm:text-sm px-3"
                 >
                   <Eye className="mr-2 h-3 w-3" />
-                  Podgląd miejsc
+                  {t('form.addressPreview')}
                 </Button>
               </div>
             </div>
@@ -479,7 +481,7 @@ export function EditNonEmployeeForm({
                       name="lastName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Nazwisko</FormLabel>
+                          <FormLabel>{t('form.lastName2')}</FormLabel>
                           <FormControl><Input placeholder="Nowak" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
@@ -490,7 +492,7 @@ export function EditNonEmployeeForm({
                       name="firstName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Imię</FormLabel>
+                          <FormLabel>{t('form.firstName2')}</FormLabel>
                           <FormControl><Input placeholder="Anna" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
@@ -503,14 +505,14 @@ export function EditNonEmployeeForm({
                     name="coordinatorId"
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
-                        <FormLabel>Koordynator</FormLabel>
+                        <FormLabel>{t('form.coordinator')}</FormLabel>
                         <FormControl>
                           <Combobox
                             options={coordinatorOptions}
                             value={field.value}
                             onChange={handleCoordinatorChange}
-                            placeholder="Wybierz koordynatora"
-                            searchPlaceholder="Szukaj koordynatora..."
+                            placeholder={t('form.selectCoordinator')}
+                            searchPlaceholder={t('form.searchCoordinator')}
                           />
                         </FormControl>
                         <FormMessage />
@@ -523,14 +525,14 @@ export function EditNonEmployeeForm({
                       name="nationality"
                       render={({ field }) => (
                         <FormItem className="flex flex-col">
-                          <FormLabel>Narodowość</FormLabel>
+                          <FormLabel>{t('form.nationality')}</FormLabel>
                           <FormControl>
                             <Combobox
                               options={nationalityOptions}
                               value={field.value || ''}
                               onChange={field.onChange}
-                              placeholder="Wybierz narodowość"
-                              searchPlaceholder="Szukaj narodowości..."
+                              placeholder={t('form.selectNationality')}
+                              searchPlaceholder={t('form.searchNationality')}
                             />
                           </FormControl>
                           <FormMessage />
@@ -542,9 +544,9 @@ export function EditNonEmployeeForm({
                       name="gender"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Płeć</FormLabel>
+                          <FormLabel>{t('form.gender')}</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value || ''}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz płeć" /></SelectTrigger></FormControl>
+                            <FormControl><SelectTrigger><SelectValue placeholder={t('form.selectGender')} /></SelectTrigger></FormControl>
                             <SelectContent>
                               {genderOptions.filter(Boolean).map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
                             </SelectContent>
@@ -562,9 +564,9 @@ export function EditNonEmployeeForm({
                       name="locality"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Miejscowość</FormLabel>
+                          <FormLabel>{t('form.locality')}</FormLabel>
                           <Select onValueChange={handleLocalityChange} value={field.value || ''}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz miejscowość" /></SelectTrigger></FormControl>
+                            <FormControl><SelectTrigger><SelectValue placeholder={t('form.selectLocality')} /></SelectTrigger></FormControl>
                             <SelectContent>
                               {availableLocalities.filter(Boolean).map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
                             </SelectContent>
@@ -578,13 +580,13 @@ export function EditNonEmployeeForm({
                       name="address"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Adres</FormLabel>
+                          <FormLabel>{t('form.address')}</FormLabel>
                           <Select onValueChange={handleAddressChange} value={field.value || ''} disabled={!selectedLocality}>
-                            <FormControl><SelectTrigger><SelectValue placeholder={!selectedLocality ? "Najpierw wybierz miejscowość" : "Wybierz adres"} /></SelectTrigger></FormControl>
+                            <FormControl><SelectTrigger><SelectValue placeholder={!selectedLocality ? t('form.firstSelectLocality') : t('form.selectAddress')} /></SelectTrigger></FormControl>
                             <SelectContent>
                               {availableAddresses.filter(a => a.name).map(a => (
                                 <SelectItem key={a.id} value={a.name} disabled={!a.isActive}>
-                                  {a.name} {!a.isActive ? '(Niedostępny)' : ''}
+                                  {a.name} {!a.isActive ? `(${t('common.unavailable')})` : ''}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -598,13 +600,13 @@ export function EditNonEmployeeForm({
                       name="roomNumber"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Pokój</FormLabel>
+                          <FormLabel>{t('form.room')}</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value || ''} disabled={!selectedAddress}>
-                            <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? "Najpierw wybierz adres" : "Wybierz pokój"} /></SelectTrigger></FormControl>
+                            <FormControl><SelectTrigger><SelectValue placeholder={!selectedAddress ? t('form.firstSelectAddress') : t('form.selectRoom')} /></SelectTrigger></FormControl>
                             <SelectContent>
                               {availableRoomsWithCapacity.filter(r => r.name).map(r => (
                                 <SelectItem key={r.id} value={r.name} disabled={!r.isActive || r.isLocked}>
-                                  {r.name} {r.isActive ? (r.isLocked ? '(Zablokowany)' : `(${r.available} wolnych z ${r.capacity})`) : '(Niedostępny)'}
+                                  {r.name} {r.isActive ? (r.isLocked ? `(${t('housing.locked')})` : `(${t('housing.roomCapacity', { available: r.available, capacity: r.capacity })})`) : `(${t('common.unavailable')})`}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -620,9 +622,9 @@ export function EditNonEmployeeForm({
                       name="paymentType"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Rodzaj płatności NZ</FormLabel>
+                          <FormLabel>{t('form.paymentTypeNZ')}</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value || ''}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Wybierz rodzaj płatności" /></SelectTrigger></FormControl>
+                            <FormControl><SelectTrigger><SelectValue placeholder={t('form.selectPaymentType')} /></SelectTrigger></FormControl>
                             <SelectContent>
                               {paymentTypesNZOptions.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
                             </SelectContent>
@@ -636,7 +638,7 @@ export function EditNonEmployeeForm({
                       name="paymentAmount"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Kwota</FormLabel>
+                          <FormLabel>{t('form.amount')}</FormLabel>
                           <FormControl><Input type="number" step="0.01" {...field} onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))} value={field.value ?? ''} placeholder="PLN" /></FormControl>
                           <FormMessage />
                         </FormItem>
@@ -649,7 +651,7 @@ export function EditNonEmployeeForm({
                       name="checkInDate"
                       render={({ field }) => (
                         <FormItem className="flex flex-col">
-                          <FormLabel>Data zameldowania</FormLabel>
+                          <FormLabel>{t('form.checkInDate')}</FormLabel>
                           <FormControl>
                             <DateInput
                               value={field.value}
@@ -665,7 +667,7 @@ export function EditNonEmployeeForm({
                       name="checkOutDate"
                       render={({ field }) => (
                         <FormItem className="flex flex-col">
-                          <FormLabel>Data wymeldowania</FormLabel>
+                          <FormLabel>{t('form.checkOutDate')}</FormLabel>
                           <FormControl>
                             <DateInput value={field.value} onChange={d => field.onChange(d)} />
                           </FormControl>
@@ -678,7 +680,7 @@ export function EditNonEmployeeForm({
                       name="departureReportDate"
                       render={({ field }) => (
                         <FormItem className="flex flex-col">
-                          <FormLabel>Data zgłoszenia wyjazdu</FormLabel>
+                          <FormLabel>{t('form.departureDate')}</FormLabel>
                           <FormControl>
                             <DateInput value={field.value} onChange={d => field.onChange(d)} />
                           </FormControl>
@@ -693,8 +695,8 @@ export function EditNonEmployeeForm({
                     name="comments"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Komentarze</FormLabel>
-                        <FormControl><Input placeholder="Dodatkowe informacje..." {...field} /></FormControl>
+                        <FormLabel>{t('form.comments')}</FormLabel>
+                        <FormControl><Input placeholder={t('form.additionalInfo')} {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -709,20 +711,20 @@ export function EditNonEmployeeForm({
                       variant="destructive"
                       onClick={handleDismissClick}
                       disabled={!canDismiss || isDismissing}
-                      title={!canDismiss ? 'Uzupełnij datę wymeldowania, aby zwolnić mieszkańca' : undefined}
+                      title={!canDismiss ? t('form.dismissCheckOutRequiredResident') : undefined}
                       className="h-8 text-xs sm:text-sm px-3 sm:px-4"
                     >
-                      Zwolnij
+                      {t('form.dismiss')}
                     </Button>
                   )}
                 </div>
                 <div className="flex flex-row gap-2">
                   <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="h-8 text-xs sm:text-sm px-3 sm:px-4">
-                    Anuluj
+                    {t('common.cancel')}
                   </Button>
                   <Button type="submit" disabled={form.formState.isSubmitting} className="h-8 text-xs sm:text-sm px-3 sm:px-4">
                     {form.formState.isSubmitting && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-                    Zapisz
+                    {t('common.save')}
                   </Button>
                 </div>
               </div>
@@ -743,8 +745,8 @@ export function EditNonEmployeeForm({
           form.setValue('address', address);
           form.setValue('roomNumber', roomNumber);
           toast({
-            title: "Wybór zastosowany",
-            description: `${address}, pokój ${roomNumber} został wybrany.`
+            title: t('form.addressPreviewApplied'),
+            description: t('form.addressPreviewAppliedDesc', { address, roomNumber })
           });
         }}
       />
