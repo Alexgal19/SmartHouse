@@ -1320,6 +1320,19 @@ export async function updateCandidate(id: string, updates: Partial<import('../ty
     }
 }
 
+export async function deleteCandidate(id: string): Promise<void> {
+    const sheet = await getSheet(SHEET_NAME_CANDIDATES, CANDIDATE_HEADERS);
+    const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Candidates)');
+    const row = rows.find(r => r.get('id') === id);
+    if (!row) throw new Error(`Candidate ${id} nie istnieje`);
+    // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: single candidate delete by ID, approved by owner
+    await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(Candidate)');
+    if (candidatesCache) {
+        candidatesCache.data = candidatesCache.data.filter(c => c.id !== id);
+        candidatesCache.timestamp = Date.now();
+    }
+}
+
 // ─── CandidateDemands ────────────────────────────────────────────────────────
 
 const CANDIDATE_DEMAND_HEADERS = [

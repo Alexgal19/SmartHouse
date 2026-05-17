@@ -7,6 +7,7 @@ export const en: Record<string, string> = {
     'nav.controlCards': 'Apartment Cards',
     'nav.recruitment': 'Recruitment',
     'nav.settings': 'Settings',
+    'nav.more': 'More',
 
     // Common
     'common.add': 'Add',
@@ -1016,4 +1017,6 @@ export const en: Record<string, string> = {
     'candidate.acknowledgedBy': 'Acknowledged',
     'candidate.demandExpired': 'Expired (no response)',
     'candidate.sentTo': 'Sent to',
+    'candidate.deleted': 'Candidate deleted',
+    'candidate.deleteError': 'Failed to delete candidate',
 };

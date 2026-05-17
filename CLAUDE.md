@@ -99,6 +99,8 @@ These rules are **non-negotiable**. Full details in `AGENTS.md`.
    - Use `const { t } = useLanguage()` in the component and call `t('key')`
    - This applies to: labels, titles, buttons, placeholders, toasts, error messages, empty states, tab names — everything visible to the user
    - Exception: user-entered data (names, addresses, comments) is never translated
+10. **Mobile navigation — never tabs on mobile** — The app runs as PWA/Android webview with a bottom navigation bar. When adding new views, tabs, or modals, always adapt mobile navigation. On mobile use `Sheet` (bottom drawer), `Dialog`, or group under a "More" button instead of tabs/accordion. Bottom bar = max 5 items (see `src/components/mobile-nav.tsx`). If a view has internal tabs, replace them with a dropdown select or bottom sheet on mobile.
+
 9. **🚨 ABSOLUTE RULE — Google Sheets data is SACRED. NEVER write code that deletes data from Google Sheets.** This means:
    - NEVER call `row.delete()`, `sheet.clearRows()`, or `sheet.deleteRows()` — ESLint will block builds that contain these
    - NEVER call `getSheet()` directly for write operations — use `getSafeSheet()` from `lib/safe-sheets.ts`

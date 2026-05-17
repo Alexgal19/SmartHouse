@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import RecruitmentView from '../recruitment-view';
 import type { SessionData, Candidate, CandidateDemand } from '@/types';
@@ -9,6 +9,7 @@ jest.mock('@/lib/actions', () => ({
     getCandidatesAction: jest.fn(),
     getCandidateDemandsAction: jest.fn(),
     sendCandidateDemandNotificationAction: jest.fn(),
+    deleteCandidateAction: jest.fn(),
 }));
 
 const mockToast = jest.fn();
@@ -20,11 +21,13 @@ import {
     getCandidatesAction,
     getCandidateDemandsAction,
     sendCandidateDemandNotificationAction,
+    deleteCandidateAction,
 } from '@/lib/actions';
 
 const mockGetCandidates = getCandidatesAction as jest.Mock;
 const mockGetDemands = getCandidateDemandsAction as jest.Mock;
 const mockSendDemand = sendCandidateDemandNotificationAction as jest.Mock;
+const mockDeleteCandidate = deleteCandidateAction as jest.Mock;
 
 const mockUser: SessionData = {
     isLoggedIn: true,
@@ -75,9 +78,10 @@ describe('RecruitmentView', () => {
         mockGetCandidates.mockResolvedValue([makeCandidate()]);
         render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
         await waitFor(() => {
-            expect(screen.getByText('Kowalski')).toBeInTheDocument();
-            expect(screen.getByText('Jan')).toBeInTheDocument();
-            expect(screen.getByText('AB123')).toBeInTheDocument();
+            const desktop = screen.getByTestId('recruitment-desktop');
+            expect(within(desktop).getByText('Kowalski')).toBeInTheDocument();
+            expect(within(desktop).getByText('Jan')).toBeInTheDocument();
+            expect(within(desktop).getByText('AB123')).toBeInTheDocument();
         });
     });
 
@@ -103,7 +107,8 @@ describe('RecruitmentView', () => {
         render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
 
         await waitFor(() => {
-            const demandBtn = screen.getByRole('button', { name: /Zapotrzebowanie na kandydata/i });
+            const desktop = screen.getByTestId('recruitment-desktop');
+            const demandBtn = within(desktop).getByRole('button', { name: /Zapotrzebowanie na kandydata/i });
             expect(demandBtn).toBeDisabled();
         });
     });
@@ -113,7 +118,8 @@ describe('RecruitmentView', () => {
         render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
 
         await waitFor(() => {
-            const demandBtn = screen.getByRole('button', { name: /Zapotrzebowanie na kandydata/i });
+            const desktop = screen.getByTestId('recruitment-desktop');
+            const demandBtn = within(desktop).getByRole('button', { name: /Zapotrzebowanie na kandydata/i });
             expect(demandBtn).not.toBeDisabled();
         });
     });
@@ -123,9 +129,13 @@ describe('RecruitmentView', () => {
         mockSendDemand.mockResolvedValue({ success: true, sentCount: 2 });
         render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
 
-        await waitFor(() => expect(screen.getByText('Kowalski')).toBeInTheDocument());
+        await waitFor(() => {
+            const desktop = screen.getByTestId('recruitment-desktop');
+            expect(within(desktop).getByText('Kowalski')).toBeInTheDocument();
+        });
 
-        fireEvent.click(screen.getByRole('button', { name: /Zapotrzebowanie na kandydata/i }));
+        const desktop = screen.getByTestId('recruitment-desktop');
+        fireEvent.click(within(desktop).getByRole('button', { name: /Zapotrzebowanie na kandydata/i }));
 
         await waitFor(() => {
             expect(mockSendDemand).toHaveBeenCalledWith(
@@ -142,7 +152,8 @@ describe('RecruitmentView', () => {
         render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
 
         await waitFor(() => {
-            expect(screen.getByText(/✅/)).toBeInTheDocument();
+            const desktop = screen.getByTestId('recruitment-desktop');
+            expect(within(desktop).getByText(/✅/)).toBeInTheDocument();
         });
     });
 
@@ -157,6 +168,46 @@ describe('RecruitmentView', () => {
 
         await waitFor(() => {
             expect(mockGetCandidates.mock.calls.length).toBeGreaterThan(initialCalls);
+        });
+    });
+
+    it('shows delete button for admin', async () => {
+        mockGetCandidates.mockResolvedValue([makeCandidate()]);
+        render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
+
+        await waitFor(() => {
+            const desktop = screen.getByTestId('recruitment-desktop');
+            expect(within(desktop).getByRole('button', { name: /Usuń/i })).toBeInTheDocument();
+        });
+    });
+
+    it('hides delete button for non-admin', async () => {
+        mockGetCandidates.mockResolvedValue([makeCandidate()]);
+        const nonAdminUser = { ...mockUser, isAdmin: false };
+        render(<RecruitmentView currentUser={nonAdminUser} activeView="recruitment" />);
+
+        await waitFor(() => {
+            const desktop = screen.getByTestId('recruitment-desktop');
+            expect(within(desktop).queryByRole('button', { name: /Usuń/i })).not.toBeInTheDocument();
+        });
+    });
+
+    it('clicking delete button removes candidate for admin', async () => {
+        mockGetCandidates.mockResolvedValue([makeCandidate()]);
+        mockDeleteCandidate.mockResolvedValue({ success: true });
+        render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
+
+        await waitFor(() => {
+            const desktop = screen.getByTestId('recruitment-desktop');
+            expect(within(desktop).getByText('Kowalski')).toBeInTheDocument();
+        });
+
+        const desktop = screen.getByTestId('recruitment-desktop');
+        fireEvent.click(within(desktop).getByRole('button', { name: /Usuń/i }));
+
+        await waitFor(() => {
+            expect(mockDeleteCandidate).toHaveBeenCalledWith('cand-1', 'user-1');
+            expect(screen.queryByText('Kowalski')).not.toBeInTheDocument();
         });
     });
 });

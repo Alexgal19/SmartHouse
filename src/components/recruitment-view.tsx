@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { getCandidatesAction, sendCandidateDemandNotificationAction, getCandidateDemandsAction } from "@/lib/actions";
+import { getCandidatesAction, sendCandidateDemandNotificationAction, getCandidateDemandsAction, deleteCandidateAction } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 
@@ -22,6 +22,26 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [sendingId, setSendingId] = useState<string | null>(null);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+
+    const handleDelete = async (candidate: Candidate) => {
+        if (!currentUser.isAdmin) return;
+        setDeletingId(candidate.id);
+        try {
+            const result = await deleteCandidateAction(candidate.id, currentUser.uid);
+            if (result.success) {
+                setCandidates(prev => prev.filter(c => c.id !== candidate.id));
+                toast({ title: t("common.success"), description: t("candidate.deleted") });
+            } else {
+                toast({ variant: "destructive", title: t("common.error"), description: result.error || t("candidate.deleteError") });
+            }
+        } catch (err) {
+            console.error(err);
+            toast({ variant: "destructive", title: t("common.error"), description: String(err) });
+        } finally {
+            setDeletingId(null);
+        }
+    };
 
     const handleDemand = async (candidate: Candidate) => {
         setSendingId(candidate.id);
@@ -161,57 +181,132 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                     </CardContent>
                 </Card>
             ) : (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>{t("candidate.title")}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        <ScrollArea className="h-[60vh]">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>{t("candidate.lastName")}</TableHead>
-                                        <TableHead>{t("candidate.firstName")}</TableHead>
-                                        <TableHead>{t("candidate.passportNumber")}</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>{t("candidate.dateAdded")}</TableHead>
-                                        <TableHead>{t("candidate.demandStatus")}</TableHead>
-                                        <TableHead className="w-[200px]">{t("col.actions")}</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredCandidates.map((c) => {
-                                        const demand = getCandidateDemand(c.id);
-                                        return (
-                                            <TableRow key={c.id}>
-                                                <TableCell className="font-medium">{c.lastName}</TableCell>
-                                                <TableCell>{c.firstName}</TableCell>
-                                                <TableCell>{c.passportNumber || "-"}</TableCell>
-                                                <TableCell>{statusBadge(c.status)}</TableCell>
-                                                <TableCell>
-                                                    {c.createdAt
-                                                        ? format(new Date(c.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })
-                                                        : "-"}
-                                                </TableCell>
-                                                <TableCell>{demandStatusBadge(demand)}</TableCell>
-                                                <TableCell>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        disabled={sendingId === c.id || demand?.status === 'pending'}
-                                                        onClick={() => handleDemand(c)}
-                                                    >
-                                                        {sendingId === c.id ? t("common.processing") : t("candidate.demandBtn")}
-                                                    </Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
-                                </TableBody>
-                            </Table>
-                        </ScrollArea>
-                    </CardContent>
-                </Card>
+                <>
+                    {/* Desktop table */}
+                    <Card className="hidden sm:block" data-testid="recruitment-desktop">
+                        <CardHeader>
+                            <CardTitle>{t("candidate.title")}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <ScrollArea className="h-[60vh]">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>{t("candidate.lastName")}</TableHead>
+                                            <TableHead>{t("candidate.firstName")}</TableHead>
+                                            <TableHead>{t("candidate.passportNumber")}</TableHead>
+                                            <TableHead>Status</TableHead>
+                                            <TableHead>{t("candidate.dateAdded")}</TableHead>
+                                            <TableHead>{t("candidate.demandStatus")}</TableHead>
+                                            <TableHead className="w-[200px]">{t("col.actions")}</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredCandidates.map((c) => {
+                                            const demand = getCandidateDemand(c.id);
+                                            return (
+                                                <TableRow key={c.id}>
+                                                    <TableCell className="font-medium">{c.lastName}</TableCell>
+                                                    <TableCell>{c.firstName}</TableCell>
+                                                    <TableCell>{c.passportNumber || "-"}</TableCell>
+                                                    <TableCell>{statusBadge(c.status)}</TableCell>
+                                                    <TableCell>
+                                                        {c.createdAt
+                                                            ? format(new Date(c.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })
+                                                            : "-"}
+                                                    </TableCell>
+                                                    <TableCell>{demandStatusBadge(demand)}</TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                disabled={sendingId === c.id || demand?.status === 'pending'}
+                                                                onClick={() => handleDemand(c)}
+                                                            >
+                                                                {sendingId === c.id ? t("common.processing") : t("candidate.demandBtn")}
+                                                            </Button>
+                                                            {currentUser.isAdmin && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                                    disabled={deletingId === c.id}
+                                                                    onClick={() => handleDelete(c)}
+                                                                >
+                                                                    {deletingId === c.id ? t("common.processing") : t("common.delete")}
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            </ScrollArea>
+                        </CardContent>
+                    </Card>
+
+                    {/* Mobile cards */}
+                    <div className="sm:hidden space-y-3">
+                        {filteredCandidates.map((c) => {
+                            const demand = getCandidateDemand(c.id);
+                            return (
+                                <Card key={c.id} className="overflow-hidden">
+                                    <CardContent className="p-4 space-y-3">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div>
+                                                <p className="font-semibold text-base">{c.lastName} {c.firstName}</p>
+                                                <p className="text-sm text-muted-foreground">
+                                                    {c.passportNumber || "-"}
+                                                </p>
+                                            </div>
+                                            {statusBadge(c.status)}
+                                        </div>
+
+                                        <div className="flex items-center justify-between text-sm">
+                                            <span className="text-muted-foreground">{t("candidate.dateAdded")}</span>
+                                            <span>
+                                                {c.createdAt
+                                                    ? format(new Date(c.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })
+                                                    : "-"}
+                                            </span>
+                                        </div>
+
+                                        <div className="border-t pt-3">
+                                            <p className="text-xs text-muted-foreground mb-1">{t("candidate.demandStatus")}</p>
+                                            {demandStatusBadge(demand)}
+                                        </div>
+
+                                        <div className="flex gap-2">
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="flex-1"
+                                                disabled={sendingId === c.id || demand?.status === 'pending'}
+                                                onClick={() => handleDemand(c)}
+                                            >
+                                                {sendingId === c.id ? t("common.processing") : t("candidate.demandBtn")}
+                                            </Button>
+                                            {currentUser.isAdmin && (
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
+                                                    disabled={deletingId === c.id}
+                                                    onClick={() => handleDelete(c)}
+                                                >
+                                                    {deletingId === c.id ? t("common.processing") : t("common.delete")}
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            );
+                        })}
+                    </div>
+                </>
             )}
         </div>
     );

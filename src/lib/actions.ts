@@ -30,6 +30,7 @@ import {
     getCandidates as getCandidatesFromSheet,
     addCandidate as addCandidateToSheet,
     updateCandidate as updateCandidateInSheet,
+    deleteCandidate as deleteCandidateFromSheet,
     invalidateCandidatesCache,
     addCandidateDemand as addCandidateDemandToSheet,
     getCandidateDemands as getCandidateDemandsFromSheet,
@@ -2795,6 +2796,25 @@ export async function updateCandidateAction(
         return { success: true };
     } catch (error) {
         console.error('Error updating candidate:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+export async function deleteCandidateAction(
+    id: string,
+    actorUid: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const session = await requireSession();
+        if (!session.isAdmin) {
+            return { success: false, error: 'Tylko administrator może usuwać kandydatów.' };
+        }
+        await deleteCandidateFromSheet(id);
+        invalidateCandidatesCache();
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error deleting candidate:', error);
         return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
     }
 }

@@ -362,8 +362,9 @@ Dopisz wpis do `LESSONS_LEARNED.md` w formacie:
 4. **Bloker > guessing** — jeśli agent nie ma pewności, zgłasza blokera zamiast zgadywać
 5. **Testy są obowiązkowe** — żaden kod nie trafia do integracji bez weryfikacji przez QA Agent
 6. **Security first** — każdy agent sprawdza implikacje bezpieczeństwa swoich zmian
-7. **Mobile first** — Frontend Agent zawsze projektuje zaczynając od ekranu mobilnego
-8. **🚨 ABSOLUTNY ZAKAZ — Ochrona danych Google Sheets** — Żaden agent nie może pisać kodu kasującego dane z Google Sheets. To jest reguła bezpieczeństwa egzekwowana przez ESLint — naruszenie złamie build.
+7. **Mobile first** — Frontend Agent zawsze projektuje zaczynając od ekranu mobilnego. Aplikacja działa jako PWA/Android webview z bottom navigation bar — nigdy nie zakładaj desktopowego layoutu jako domyślnego.
+8. **Mobilna nawigacja — nigdy tabs na pasku** — Gdy dodajesz nowe widoki, zakładki lub okna modalne, zawsze dostosowuj nawigację mobilną. Na mobile zamiast tabs/accordion używaj `Sheet` (bottom drawer), `Dialog` lub grupowania pod przyciskiem "Więcej". Bottom bar = max 5 pozycji (patrz `src/components/mobile-nav.tsx`). Jeśli widok zawiera wewnętrzne zakładki, na mobile zamień je na select/dropdown lub bottom sheet.
+9. **🚨 ABSOLUTNY ZAKAZ — Ochrona danych Google Sheets** — Żaden agent nie może pisać kodu kasującego dane z Google Sheets. To jest reguła bezpieczeństwa egzekwowana przez ESLint — naruszenie złamie build.
    - **ZAWSZE** używaj `getSafeSheet()` z `src/lib/safe-sheets.ts` do operacji zapisu
    - **NIGDY** nie wywołuj `row.delete()`, `sheet.clearRows()`, `sheet.deleteRows()` — ESLint zablokuje build
    - **NIGDY** nie kopiuj wzorca `// eslint-disable-next-line no-restricted-syntax` z istniejącego kodu bez pisemnej zgody właściciela
