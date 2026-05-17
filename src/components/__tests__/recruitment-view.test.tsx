@@ -256,7 +256,7 @@ describe('RecruitmentView', () => {
         fireEvent.click(screen.getByRole('button', { name: /Tak/i }));
 
         await waitFor(() => {
-            expect(mockAckDemand).toHaveBeenCalledWith('dem-1', 'user-1');
+            expect(mockAckDemand).toHaveBeenCalledWith('dem-1', 'Test User');
         });
     });
 

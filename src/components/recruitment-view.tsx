@@ -50,7 +50,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
     const handleAcceptDemand = async () => {
         if (!targetDemand) return;
         try {
-            const result = await acknowledgeCandidateDemandAction(targetDemand.id, currentUser.uid);
+            const result = await acknowledgeCandidateDemandAction(targetDemand.id, currentUser.name);
             if (result.success) {
                 setDialogStep('none');
                 clearDemandParam();
@@ -196,7 +196,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
             case 'acknowledged':
                 return (
                     <div className="text-xs text-muted-foreground">
-                        ✅ {t("candidate.acknowledgedBy")}
+                        ✅ {t("candidate.acknowledgedBy")}: <span className="font-medium">{demand.acknowledgedBy || '—'}</span>
                         <br />
                         {demand.acknowledgedAt ? format(new Date(demand.acknowledgedAt), "dd.MM.yyyy HH:mm", { locale: dateLocale }) : ''}
                         {recipients}
