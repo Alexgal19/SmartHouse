@@ -259,8 +259,8 @@ function PhotoUploadWidget({
 // ─── Lightbox Component ─────────────────────────────────────────────────────
 
 function Lightbox({ image, onClose }: { image: string | null; onClose: () => void }) {
-    if (!image) return null;
     const { t } = useLanguage();
+    if (!image) return null;
 
     return (
         <Dialog open={!!image} onOpenChange={(open) => !open && onClose()}>

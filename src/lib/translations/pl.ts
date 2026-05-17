@@ -5,6 +5,7 @@ export const pl: Record<string, string> = {
     'nav.employees': 'Mieszkańcy',
     'nav.housing': 'Zakwaterowanie',
     'nav.controlCards': 'Karty mieszkań',
+    'nav.recruitment': 'Rekrutacja',
     'nav.settings': 'Ustawienia',
 
     // Common
@@ -828,6 +829,7 @@ export const pl: Record<string, string> = {
     'odbior.statusChangedToCompleted': 'Status zmieniony na "Zakończone".',
     'odbior.detailsAndActions': 'Szczegóły i akcje zgłoszenia odbioru',
     'odbior.housingPerson': 'Zakwateruj',
+    'odbior.errorAtLeastOnePerson': 'Dodaj co najmniej jedną osobę przed zakończeniem odbioru.',
 
     // Odbior zakwaterowanie wizard
     'odbiorZakwaterowanie.personDataTitle': 'Dane osoby',
@@ -981,4 +983,36 @@ export const pl: Record<string, string> = {
     'controlCards.bathroom': 'Łazienka',
     'controlCards.uploadedCount': 'Wgrano {count} zdjęć',
     'controlCards.lastUpdated': 'Ostatnia aktualizacja: {date} — {user}',
+
+    // PWA Install
+    'pwa.installApp': 'Zainstaluj aplikację',
+    'pwa.iosTitle': 'Dodaj do ekranu głównego',
+    'pwa.iosStep1': '1. Otwórz tę stronę w przeglądarce Safari',
+    'pwa.iosStep2': '2. Naciśnij ikonę Udostępnij (kwadrat ze strzałką ↑)',
+    'pwa.iosStep3': '3. Wybierz „Dodaj do ekranu głównego"',
+    'pwa.iosClose': 'Rozumiem',
+
+    // Candidate / Recruitment
+    'candidate.title': 'Dodaj kandydata',
+    'candidate.firstName': 'Imię',
+    'candidate.lastName': 'Nazwisko',
+    'candidate.passportNumber': 'Numer paszportu',
+    'candidate.save': 'Zapisz',
+    'candidate.saved': 'Kandydat został zapisany',
+    'candidate.accommodationPrompt': 'Kwaterujemy osobę?',
+    'candidate.yes': 'Tak',
+    'candidate.no': 'Nie',
+    'candidate.statusNowy': 'Nowy',
+    'candidate.statusWTrakcie': 'W trakcie',
+    'candidate.statusZakonczony': 'Zakończony',
+    'candidate.dateAdded': 'Data dodania',
+    'candidate.searchBySurname': 'Szukaj po nazwisku...',
+    'candidate.demandBtn': 'Zapotrzebowanie na kandydata',
+    'candidate.demandSent': 'Wysłano zapotrzebowanie',
+    'candidate.demandSentDesc': 'Powiadomiono {count} koordynatorów.',
+    'candidate.demandError': 'Nie udało się wysłać powiadomień.',
+    'candidate.demandStatus': 'Status zapotrzebowania',
+    'candidate.pendingAck': 'Oczekuje na potwierdzenie...',
+    'candidate.acknowledgedBy': 'Potwierdzony',
+    'candidate.demandExpired': 'Wygasło (brak odpowiedzi)',
 };

@@ -5,6 +5,7 @@ export const en: Record<string, string> = {
     'nav.employees': 'Residents',
     'nav.housing': 'Housing',
     'nav.controlCards': 'Apartment Cards',
+    'nav.recruitment': 'Recruitment',
     'nav.settings': 'Settings',
 
     // Common
@@ -828,6 +829,7 @@ export const en: Record<string, string> = {
     'odbior.statusChangedToCompleted': 'Status changed to "Completed".',
     'odbior.detailsAndActions': 'Reception request details and actions',
     'odbior.housingPerson': 'Accommodate',
+    'odbior.errorAtLeastOnePerson': 'Add at least one person before finishing reception.',
 
     // Odbior zakwaterowanie wizard
     'odbiorZakwaterowanie.personDataTitle': 'Person data',
@@ -981,4 +983,36 @@ export const en: Record<string, string> = {
     'controlCards.bathroom': 'Bathroom',
     'controlCards.uploadedCount': 'Uploaded {count} photos',
     'controlCards.lastUpdated': 'Last updated: {date} — {user}',
+
+    // PWA Install
+    'pwa.installApp': 'Install app',
+    'pwa.iosTitle': 'Add to Home Screen',
+    'pwa.iosStep1': '1. Open this page in Safari',
+    'pwa.iosStep2': '2. Tap the Share icon (box with arrow ↑)',
+    'pwa.iosStep3': '3. Tap "Add to Home Screen"',
+    'pwa.iosClose': 'Got it',
+
+    // Candidate / Recruitment
+    'candidate.title': 'Add candidate',
+    'candidate.firstName': 'First name',
+    'candidate.lastName': 'Last name',
+    'candidate.passportNumber': 'Passport number',
+    'candidate.save': 'Save',
+    'candidate.saved': 'Candidate saved',
+    'candidate.accommodationPrompt': 'Provide accommodation?',
+    'candidate.yes': 'Yes',
+    'candidate.no': 'No',
+    'candidate.statusNowy': 'New',
+    'candidate.statusWTrakcie': 'In progress',
+    'candidate.statusZakonczony': 'Completed',
+    'candidate.dateAdded': 'Date added',
+    'candidate.searchBySurname': 'Search by surname...',
+    'candidate.demandBtn': 'Candidate demand',
+    'candidate.demandSent': 'Demand sent',
+    'candidate.demandSentDesc': 'Notified {count} coordinators.',
+    'candidate.demandError': 'Failed to send notifications.',
+    'candidate.demandStatus': 'Demand status',
+    'candidate.pendingAck': 'Awaiting confirmation...',
+    'candidate.acknowledgedBy': 'Acknowledged',
+    'candidate.demandExpired': 'Expired (no response)',
 };

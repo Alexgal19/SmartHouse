@@ -25,6 +25,8 @@ declare global {
 interface PWAInstallerContextType {
     installPrompt: BeforeInstallPromptEvent | null;
     handleInstallClick: () => void;
+    isIOS: boolean;
+    isStandalone: boolean;
 }
 
 const PWAInstallerContext = createContext<PWAInstallerContextType | null>(null);
@@ -39,9 +41,16 @@ export const usePWAInstaller = () => {
 
 export const PWAInstaller = ({ children }: { children: React.ReactNode }) => {
     const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+    const [isIOS, setIsIOS] = useState(false);
+    const [isStandalone, setIsStandalone] = useState(false);
 
     const updateInstallPrompt = useCallback(() => {
         setInstallPrompt(window.pwaInstallHandler?.event || null);
+    }, []);
+
+    useEffect(() => {
+        setIsIOS(/iPhone|iPad|iPod/.test(navigator.userAgent));
+        setIsStandalone(window.matchMedia('(display-mode: standalone)').matches || ('standalone' in window.navigator && (window.navigator as { standalone?: boolean }).standalone === true));
     }, []);
 
     useEffect(() => {
@@ -90,7 +99,7 @@ export const PWAInstaller = ({ children }: { children: React.ReactNode }) => {
     };
 
     return (
-        <PWAInstallerContext.Provider value={{ installPrompt, handleInstallClick }}>
+        <PWAInstallerContext.Provider value={{ installPrompt, handleInstallClick, isIOS, isStandalone }}>
             {children}
         </PWAInstallerContext.Provider>
     );

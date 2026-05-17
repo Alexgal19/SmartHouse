@@ -29,6 +29,8 @@ const SHEET_NAME_BOK_STATUSES = 'BokStatuses';
 const SHEET_NAME_CONTROL_CARDS = 'ControlCards';
 const SHEET_NAME_START_LISTS = 'StartLists';
 const SHEET_NAME_ODBIOR_ENTRIES = 'OdbiorEntries';
+const SHEET_NAME_CANDIDATES = 'Kandydaci';
+const SHEET_NAME_CANDIDATE_DEMANDS = 'CandidateDemands';
 
 const TIMEOUT_MS = 15000; // 15 seconds
 
@@ -68,6 +70,8 @@ const DATA_CACHE_TTL = 60 * 1000; // 1 minute
 let controlCardsCache: { data: ControlCard[], timestamp: number } | null = null;
 let startListsCache: { data: StartList[], timestamp: number } | null = null;
 let odbiorEntriesCache: { data: OdbiorEntry[], timestamp: number } | null = null;
+let candidatesCache: { data: import('../types').Candidate[], timestamp: number } | null = null;
+let candidateDemandsCache: { data: import('../types').CandidateDemand[], timestamp: number } | null = null;
 
 export async function invalidateEmployeesCache() { employeesCache = null; }
 export async function invalidateNonEmployeesCache() { nonEmployeesCache = null; }
@@ -77,6 +81,8 @@ export async function invalidateSettingsCache() { settingsCache = null; }
 export async function invalidateControlCardsCache() { controlCardsCache = null; }
 export async function invalidateOdbiorEntriesCache() { odbiorEntriesCache = null; }
 export async function invalidateStartListsCache() { startListsCache = null; }
+export async function invalidateCandidatesCache() { candidatesCache = null; }
+export async function invalidateCandidateDemandsCache() { candidateDemandsCache = null; }
 
 function getAuth(): JWT {
     const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
@@ -1053,26 +1059,26 @@ const ODBIOR_ENTRY_HEADERS = [
 ];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const deserializeOdbiorEntry = (row: any): OdbiorEntry | null => {
-    const id = row.get('id');
+const deserializeOdbiorEntry = (row: Record<string, unknown>): OdbiorEntry | null => {
+    const id = row.id;
     if (!id) return null;
     return {
         id: id as string,
-        type: ((row.get('type') as string) || 'zakwaterowanie') as import('../types').OdbiorType,
-        status: ((row.get('status') as string) || 'nowy') as import('../types').OdbiorStatus,
-        firstName: (row.get('firstName') as string) || '',
-        lastName: (row.get('lastName') as string) || '',
-        nationality: (row.get('nationality') as string) || '',
-        gender: (row.get('gender') as string) || '',
-        passportNumber: (row.get('passportNumber') as string) || '',
-        addressId: (row.get('addressId') as string) || '',
-        addressName: (row.get('addressName') as string) || '',
-        roomNumber: (row.get('roomNumber') as string) || '',
-        date: (row.get('date') as string) || '',
-        createdAt: (row.get('createdAt') as string) || '',
-        createdBy: (row.get('createdBy') as string) || '',
-        createdById: (row.get('createdById') as string) || '',
-        convertedToBokId: (row.get('convertedToBokId') as string) || null,
+        type: ((row.type as string) || 'zakwaterowanie') as import('../types').OdbiorType,
+        status: ((row.status as string) || 'nowy') as import('../types').OdbiorStatus,
+        firstName: (row.firstName as string) || '',
+        lastName: (row.lastName as string) || '',
+        nationality: (row.nationality as string) || '',
+        gender: (row.gender as string) || '',
+        passportNumber: (row.passportNumber as string) || '',
+        addressId: (row.addressId as string) || '',
+        addressName: (row.addressName as string) || '',
+        roomNumber: (row.roomNumber as string) || '',
+        date: (row.date as string) || '',
+        createdAt: (row.createdAt as string) || '',
+        createdBy: (row.createdBy as string) || '',
+        createdById: (row.createdById as string) || '',
+        convertedToBokId: (row.convertedToBokId as string) || null,
     };
 };
 
@@ -1238,6 +1244,161 @@ export async function deleteOdbiorZgloszenie(id: string): Promise<void> {
     // eslint-disable-next-line no-restricted-syntax -- approved by owner: admin/recruiter explicit deletion of pickup submissions
     await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(OdbiorZgloszenia)');
     odbiorCache = null;
+}
+
+// ─── Candidates ──────────────────────────────────────────────────────────────
+
+const CANDIDATE_HEADERS = [
+    'id', 'firstName', 'lastName', 'passportNumber', 'sourceOdbiorId', 'status', 'createdAt',
+];
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const deserializeCandidate = (row: Record<string, unknown>): import('../types').Candidate | null => {
+    const id = row.id;
+    if (!id) return null;
+    return {
+        id: id as string,
+        firstName: (row.firstName as string) || '',
+        lastName: (row.lastName as string) || '',
+        passportNumber: (row.passportNumber as string) || '',
+        sourceOdbiorId: (row.sourceOdbiorId as string) || null,
+        status: ((row.status as string) || 'nowy') as import('../types').Candidate['status'],
+        createdAt: (row.createdAt as string) || '',
+    };
+};
+
+function serializeCandidate(candidate: import('../types').Candidate): Record<string, string> {
+    return {
+        id: candidate.id,
+        firstName: candidate.firstName,
+        lastName: candidate.lastName,
+        passportNumber: candidate.passportNumber,
+        sourceOdbiorId: candidate.sourceOdbiorId || '',
+        status: candidate.status,
+        createdAt: candidate.createdAt,
+    };
+}
+
+export async function getCandidates(): Promise<import('../types').Candidate[]> {
+    if (candidatesCache && (Date.now() - candidatesCache.timestamp < DATA_CACHE_TTL)) {
+        return candidatesCache.data;
+    }
+    return singleflight('candidates', async () => {
+        const doc = await getDoc();
+        const rows = await getSheetData(doc, SHEET_NAME_CANDIDATES);
+        const data = rows.map(row => deserializeCandidate(row)).filter((c): c is import('../types').Candidate => c !== null);
+        candidatesCache = { data, timestamp: Date.now() };
+        return data;
+    });
+}
+
+export async function addCandidate(candidate: import('../types').Candidate): Promise<void> {
+    const sheet = await getSheet(SHEET_NAME_CANDIDATES, CANDIDATE_HEADERS);
+    await withTimeout(sheet.addRow(serializeCandidate(candidate), { raw: false, insert: true }), TIMEOUT_MS, 'sheet.addRow(Candidates)');
+    if (candidatesCache) {
+        candidatesCache.data.push(candidate);
+        candidatesCache.timestamp = Date.now();
+    }
+}
+
+export async function updateCandidate(id: string, updates: Partial<import('../types').Candidate>): Promise<void> {
+    const sheet = await getSheet(SHEET_NAME_CANDIDATES, CANDIDATE_HEADERS);
+    const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Candidates)');
+    const row = rows.find(r => r.get('id') === id);
+    if (!row) throw new Error(`Candidate ${id} nie istnieje`);
+    for (const [k, v] of Object.entries(updates)) {
+        if (v === undefined) continue;
+        row.set(k, (v === null ? '' : String(v)));
+    }
+    await withTimeout(row.save(), TIMEOUT_MS, 'row.save(Candidates)');
+    if (candidatesCache) {
+        const idx = candidatesCache.data.findIndex(c => c.id === id);
+        if (idx !== -1) {
+            candidatesCache.data[idx] = { ...candidatesCache.data[idx], ...updates };
+            candidatesCache.timestamp = Date.now();
+        }
+    }
+}
+
+// ─── CandidateDemands ────────────────────────────────────────────────────────
+
+const CANDIDATE_DEMAND_HEADERS = [
+    'id', 'candidateId', 'candidateFirstName', 'candidateLastName',
+    'requestedBy', 'requestedAt', 'acknowledgedBy', 'acknowledgedAt', 'status', 'retryCount',
+];
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const deserializeCandidateDemand = (row: any): import('../types').CandidateDemand | null => {
+    const id = row.id ?? row.get?.('id');
+    if (!id) return null;
+    return {
+        id: id as string,
+        candidateId: (row.candidateId ?? row.get?.('candidateId') as string) || '',
+        candidateFirstName: (row.candidateFirstName ?? row.get?.('candidateFirstName') as string) || '',
+        candidateLastName: (row.candidateLastName ?? row.get?.('candidateLastName') as string) || '',
+        requestedBy: (row.requestedBy ?? row.get?.('requestedBy') as string) || '',
+        requestedAt: (row.requestedAt ?? row.get?.('requestedAt') as string) || '',
+        acknowledgedBy: (row.acknowledgedBy ?? row.get?.('acknowledgedBy') as string) || undefined,
+        acknowledgedAt: (row.acknowledgedAt ?? row.get?.('acknowledgedAt') as string) || undefined,
+        status: ((row.status ?? row.get?.('status') as string) || 'pending') as import('../types').CandidateDemandStatus,
+        retryCount: parseInt((row.retryCount ?? row.get?.('retryCount') as string) || '0', 10),
+    };
+};
+
+function serializeCandidateDemand(demand: import('../types').CandidateDemand): Record<string, string> {
+    return {
+        id: demand.id,
+        candidateId: demand.candidateId,
+        candidateFirstName: demand.candidateFirstName,
+        candidateLastName: demand.candidateLastName,
+        requestedBy: demand.requestedBy,
+        requestedAt: demand.requestedAt,
+        acknowledgedBy: demand.acknowledgedBy || '',
+        acknowledgedAt: demand.acknowledgedAt || '',
+        status: demand.status,
+        retryCount: String(demand.retryCount),
+    };
+}
+
+export async function getCandidateDemands(): Promise<import('../types').CandidateDemand[]> {
+    if (candidateDemandsCache && (Date.now() - candidateDemandsCache.timestamp < DATA_CACHE_TTL)) {
+        return candidateDemandsCache.data;
+    }
+    return singleflight('candidateDemands', async () => {
+        const doc = await getDoc();
+        const rows = await getSheetData(doc, SHEET_NAME_CANDIDATE_DEMANDS);
+        const data = rows.map(row => deserializeCandidateDemand(row)).filter((d): d is import('../types').CandidateDemand => d !== null);
+        candidateDemandsCache = { data, timestamp: Date.now() };
+        return data;
+    });
+}
+
+export async function addCandidateDemand(demand: import('../types').CandidateDemand): Promise<void> {
+    const sheet = await getSheet(SHEET_NAME_CANDIDATE_DEMANDS, CANDIDATE_DEMAND_HEADERS);
+    await withTimeout(sheet.addRow(serializeCandidateDemand(demand)), TIMEOUT_MS, 'sheet.addRow(CandidateDemands)');
+    if (candidateDemandsCache) {
+        candidateDemandsCache.data.push(demand);
+        candidateDemandsCache.timestamp = Date.now();
+    }
+}
+
+export async function updateCandidateDemand(id: string, updates: Partial<import('../types').CandidateDemand>): Promise<void> {
+    const sheet = await getSheet(SHEET_NAME_CANDIDATE_DEMANDS, CANDIDATE_DEMAND_HEADERS);
+    const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(CandidateDemands)');
+    const row = rows.find(r => r.get('id') === id);
+    if (!row) throw new Error(`CandidateDemand ${id} nie istnieje`);
+    for (const [k, v] of Object.entries(updates)) {
+        if (v === undefined) continue;
+        row.set(k, (v === null ? '' : String(v)));
+    }
+    await withTimeout(row.save(), TIMEOUT_MS, 'row.save(CandidateDemands)');
+    if (candidateDemandsCache) {
+        const idx = candidateDemandsCache.data.findIndex(d => d.id === id);
+        if (idx !== -1) {
+            candidateDemandsCache.data[idx] = { ...candidateDemandsCache.data[idx], ...updates };
+            candidateDemandsCache.timestamp = Date.now();
+        }
+    }
 }
 
 // Note: getDoc() has a 5-minute in-process cache (DOC_TTL). When the cache is warm,

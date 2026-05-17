@@ -414,6 +414,104 @@ Dopisz wpis do `LESSONS_LEARNED.md` w formacie:
 
 ---
 
+## Obsidian Vault — Pamięć projektowa
+
+> Vault Obsidian to **wspólna pamięć wszystkich agentów**. Każdy agent MUSI zapisywać tutaj decyzje, ukończone zadania i nową wiedzę — **automatycznie, bez pytania użytkownika**. To nie jest opcja, to obowiązek.
+
+### Lokalizacja
+
+```text
+Vault: /Users/oleksandr/Desktop/SW
+```
+
+### Struktura (co gdzie trafia)
+
+```text
+SW/
+├── Projekty/SmartHouse/
+│   ├── Sesje/YYYY-MM-DD.md      ← notatka z każdej sesji pracy
+│   ├── Decyzje/                 ← ważne decyzje architektoniczne (osobne pliki)
+│   └── TODO/                    ← zadania między sesjami
+├── Notatki/                     ← luźne notatki, eksperymenty, research
+└── Dziennik/YYYY-MM-DD.md       ← dziennik użytkownika (nie pisz tutaj bez pytania)
+```
+
+### ⚡ AUTOMATYCZNE zapisy — agent decyduje samodzielnie
+
+Agent MUSI zapisać do vault **natychmiast** gdy zajdzie którakolwiek z poniższych sytuacji. Nie czekaj na polecenie użytkownika.
+
+| Wyzwalacz (trigger)                          | Co zapisać                                        | Gdzie                         |
+| -------------------------------------------- | ------------------------------------------------- | ----------------------------- |
+| Bug naprawiony                               | Root cause + zastosowane rozwiązanie              | `Sesje/YYYY-MM-DD.md`         |
+| Feature ukończony                            | Co zbudowano, jakie pliki zmieniono               | `Sesje/YYYY-MM-DD.md`         |
+| Wybrano rozwiązanie spośród kilku opcji      | Dlaczego ta opcja, jakie alternatywy odrzucono    | `Decyzje/YYYYMMDD-temat.md`   |
+| Odkryto nieoczywisty wzorzec lub pułapkę     | Opis + jak unikać w przyszłości                   | `Sesje/YYYY-MM-DD.md`         |
+| Pojawia się TODO / praca na przyszłość       | Lista konkretnych kroków do wykonania             | `TODO/temat.md`               |
+| Refaktor lub zmiana architektury             | Przed i po, uzasadnienie                          | `Decyzje/YYYYMMDD-temat.md`   |
+| Koniec sesji (przed zakończeniem rozmowy)    | Podsumowanie: co zrobiono, decyzje, TODO          | `Sesje/YYYY-MM-DD.md`         |
+
+**Zasada minimum:** jeśli coś zrobiłeś — zapisz to w `Sesje/`. Jeśli podjąłeś decyzję — zapisz ją w `Decyzje/`. Jeśli masz TODO — zapisz je w `TODO/`. Nie pytaj, po prostu zapisz.
+
+### Format notatki sesji
+
+```markdown
+# 📝 Sesja SmartHouse — YYYY-MM-DD
+
+## Co zrobiono
+- ...
+
+## Decyzje architektoniczne
+- ...
+
+## Problemy / bugfixes
+- ...
+
+## TODO na następną sesję
+- [ ] ...
+```
+
+### Format decyzji architektonicznej
+
+```markdown
+# ADR: [tytuł decyzji]
+
+**Data:** YYYY-MM-DD
+**Status:** przyjęta | odrzucona | zastąpiona przez [link]
+
+## Kontekst
+Dlaczego ta decyzja była potrzebna.
+
+## Decyzja
+Co zostało zdecydowane.
+
+## Konsekwencje
+Co to oznacza dla projektu (plusy i minusy).
+```
+
+### Jak zapisywać (dostęp do plików)
+
+Vault to zwykłe pliki Markdown na dysku. Każdy agent z dostępem do systemu plików może:
+
+```bash
+# Odczyt
+cat /Users/oleksandr/Desktop/SW/Projekty/SmartHouse/Sesje/2026-05-09.md
+
+# Dopisz do notatki sesji (utwórz jeśli nie istnieje)
+NOTE="/Users/oleksandr/Desktop/SW/Projekty/SmartHouse/Sesje/$(date +%Y-%m-%d).md"
+echo "## Bugfix — $(date +%H:%M)" >> "$NOTE"
+echo "- Root cause: ..." >> "$NOTE"
+```
+
+### Reguły
+
+- **Dopisuj** do istniejącego pliku sesji danego dnia, nie twórz nowego
+- **Nie nadpisuj** cudzych notatek — dopisuj na końcu odpowiedniej sekcji
+- **Nie pisz** do `Dziennik/` bez pytania — to prywatny dziennik użytkownika
+- **Nie twórz** nowych folderów głównych bez powodu — trzymaj się istniejącej struktury
+- Plik `Sesje/YYYY-MM-DD.md` twórz tylko jeśli nie istnieje, potem dopisuj
+
+---
+
 ## Stack technologiczny (kontekst dla agentów)
 
 | Warstwa     | Technologia                                                    |

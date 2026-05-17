@@ -19,14 +19,19 @@ const messaging = firebase.messaging();
 // Handle background messages
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
-  
+
   const data = payload.data || {};
   const notificationTitle = data.title || payload.notification?.title || 'Powiadomienie';
+  const hasDemandId = !!data.demandId;
   const notificationOptions = {
     body: data.body || payload.notification?.body,
     icon: data.icon || '/icon-192x192.png',
     badge: data.badge || '/icon-192x192.png',
-    data: data // Pass data payload to the notification
+    data: data,
+    requireInteraction: hasDemandId,
+    actions: hasDemandId
+      ? [{ action: 'ack', title: 'Potwierdzam odbiór' }]
+      : []
   };
 
   return self.registration.showNotification(notificationTitle, notificationOptions);
@@ -35,21 +40,63 @@ messaging.onBackgroundMessage((payload) => {
 // Handle notification click
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  
-  const rawUrl = event.notification.data?.url || event.notification.data?.click_action || '/';
-  // Only allow URLs on the same origin to prevent open-redirect via malicious push payloads
+  const data = event.notification.data || {};
+
+  if (event.action === 'ack' && data.demandId) {
+    event.waitUntil(
+      fetch('/api/candidate-demand/ack', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ demandId: data.demandId })
+      })
+      .then(() => {
+        return self.registration.showNotification('Potwierdzenie', {
+          body: 'Odebrałeś zapotrzebowanie na kandydata.',
+          icon: '/icon-192x192.png'
+        });
+      })
+      .catch((err) => {
+        console.error('[SW] Ack failed:', err);
+        return self.registration.showNotification('Błąd', {
+          body: 'Nie udało się potwierdzić odbioru. Spróbuj ponownie.',
+          icon: '/icon-192x192.png'
+        });
+      })
+      .then(() => {
+        // Open app after ack
+        const urlToOpen = data.url || '/';
+        return self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+          for (let i = 0; i < windowClients.length; i++) {
+            const client = windowClients[i];
+            if (client.url.includes(self.registration.scope) && 'focus' in client) {
+              return client.focus().then(focusedClient => {
+                if (focusedClient.url !== urlToOpen) {
+                  return focusedClient.navigate(urlToOpen);
+                }
+                return focusedClient;
+              });
+            }
+          }
+          if (self.clients.openWindow) {
+            return self.clients.openWindow(urlToOpen);
+          }
+        });
+      })
+    );
+    return;
+  }
+
+  const rawUrl = data.url || data.click_action || '/';
   const isSameOrigin = rawUrl.startsWith(self.registration.scope) || rawUrl.startsWith('/');
   const urlToOpen = isSameOrigin ? rawUrl : '/';
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // Check if there is already a window/tab open with the target URL
       for (let i = 0; i < windowClients.length; i++) {
         const client = windowClients[i];
-        // If we find a client that matches our scope and is focusable
         if (client.url.includes(self.registration.scope) && 'focus' in client) {
             return client.focus().then(focusedClient => {
-                // If the URL is different, navigate
                 if (focusedClient.url !== urlToOpen) {
                     return focusedClient.navigate(urlToOpen);
                 }
@@ -57,7 +104,6 @@ self.addEventListener('notificationclick', (event) => {
             });
         }
       }
-      // If no window is open, open a new one
       if (self.clients.openWindow) {
         return self.clients.openWindow(urlToOpen);
       }

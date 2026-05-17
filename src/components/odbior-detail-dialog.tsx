@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import type { OdbiorZgloszenie, OsobaWOdbiorze, SessionData } from '@/types';
+import type { OdbiorZgloszenie, OsobaWOdbiorze, SessionData, Candidate } from '@/types';
 import { OdbiorZakwaterowanieDialog } from '@/components/odbior-zakwaterowanie-dialog';
+import AddCandidateDialog from '@/components/add-candidate-dialog';
 import {
     Dialog,
     DialogContent,
@@ -10,6 +11,16 @@ import {
     DialogTitle,
     DialogDescription,
 } from '@/components/ui/dialog';
+import {
+    AlertDialog,
+    AlertDialogContent,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogAction,
+    AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -400,11 +411,12 @@ function EditPersonRow({ person, onSave, onCancel }: {
 // ─── Karta — W trakcie ───────────────────────────────────────────────────────
 
 function KartaWTrakcie({
-    z, onAction, onZakwaterowanieClick,
+    z, onAction, onZakwaterowanieClick, onRozmowaClick,
 }: {
     z: OdbiorZgloszenie;
     onAction: (action: 'odrzuc' | 'zakoncz' | 'update', payload: Partial<OdbiorZgloszenie>) => Promise<void>;
     onZakwaterowanieClick?: (osoba: OsobaWOdbiorze | null) => void;
+    onRozmowaClick?: (osoba: OsobaWOdbiorze | null) => void;
 }) {
     const { t } = useLanguage();
     const osoby = parseOsoby(z.osoby);
@@ -480,6 +492,10 @@ function KartaWTrakcie({
     };
 
     const handleZakoncz = async () => {
+        if (localOsoby.length === 0) {
+            toast({ variant: 'destructive', title: t('common.error'), description: t('odbior.errorAtLeastOnePerson') });
+            return;
+        }
         setLoading(true);
         try { await onAction('zakoncz', {}); } finally { setLoading(false); }
     };
@@ -573,6 +589,9 @@ function KartaWTrakcie({
                                 if (value === 'zakwaterowanie' && !isDeselect) {
                                     onZakwaterowanieClick?.(localOsoby[0] ?? null);
                                 }
+                                if (value === 'rozmowa' && !isDeselect) {
+                                    onRozmowaClick?.(localOsoby[0] ?? null);
+                                }
                             }}
                         >
                             <Icon className="h-3.5 w-3.5" /> {label}
@@ -648,6 +667,10 @@ export default function OdbiorDetailDialog({
     const [localZ, setLocalZ] = useState(zgloszenie);
     const [zakwatOpen, setZakwatOpen] = useState(false);
     const [zakwatPrefill, setZakwatPrefill] = useState<{ firstName?: string; lastName?: string; passportNumber?: string } | undefined>();
+    const [candidateDialogOpen, setCandidateDialogOpen] = useState(false);
+    const [candidateConfirmOpen, setCandidateConfirmOpen] = useState(false);
+    const [lastSavedCandidate, setLastSavedCandidate] = useState<Candidate | null>(null);
+    const [candidatePrefill, setCandidatePrefill] = useState<{ firstName?: string; lastName?: string; passportNumber?: string } | undefined>();
 
     React.useEffect(() => { setLocalZ(zgloszenie); }, [zgloszenie]);
 
@@ -658,6 +681,37 @@ export default function OdbiorDetailDialog({
             passportNumber: osoba.paszport,
         } : undefined);
         setZakwatOpen(true);
+    };
+
+    const handleRozmowaClick = (osoba: OsobaWOdbiorze | null) => {
+        setCandidatePrefill(osoba ? {
+            firstName: osoba.imie,
+            lastName: osoba.nazwisko,
+            passportNumber: osoba.paszport,
+        } : undefined);
+        setCandidateDialogOpen(true);
+    };
+
+    const handleCandidateSaved = (candidate: Candidate) => {
+        setLastSavedCandidate(candidate);
+        setCandidateConfirmOpen(true);
+    };
+
+    const handleConfirmAccommodationYes = () => {
+        setCandidateConfirmOpen(false);
+        if (lastSavedCandidate) {
+            setZakwatPrefill({
+                firstName: lastSavedCandidate.firstName,
+                lastName: lastSavedCandidate.lastName,
+                passportNumber: lastSavedCandidate.passportNumber,
+            });
+            setZakwatOpen(true);
+        }
+    };
+
+    const handleConfirmAccommodationNo = () => {
+        setCandidateConfirmOpen(false);
+        setLastSavedCandidate(null);
     };
 
     const counts = {
@@ -774,7 +828,7 @@ export default function OdbiorDetailDialog({
                     </TabsContent>
 
                     <TabsContent value="W trakcie" className="mt-4">
-                        <KartaWTrakcie z={localZ} onAction={handleWTrakcieAction} onZakwaterowanieClick={handleZakwaterowanieClick} />
+                        <KartaWTrakcie z={localZ} onAction={handleWTrakcieAction} onZakwaterowanieClick={handleZakwaterowanieClick} onRozmowaClick={handleRozmowaClick} />
                     </TabsContent>
 
                     <TabsContent value="Zakończone" className="mt-4">
@@ -790,6 +844,31 @@ export default function OdbiorDetailDialog({
             currentUser={currentUser}
             prefillData={zakwatPrefill}
         />
+
+        <AddCandidateDialog
+            open={candidateDialogOpen}
+            onOpenChange={setCandidateDialogOpen}
+            sourceOdbiorId={localZ.id}
+            onSaved={handleCandidateSaved}
+            prefillFirstName={candidatePrefill?.firstName}
+            prefillLastName={candidatePrefill?.lastName}
+            prefillPassportNumber={candidatePrefill?.passportNumber}
+        />
+
+        <AlertDialog open={candidateConfirmOpen} onOpenChange={setCandidateConfirmOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>{t('candidate.accommodationPrompt')}</AlertDialogTitle>
+                    <AlertDialogDescription className="sr-only">
+                        {t('candidate.accommodationPrompt')}
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={handleConfirmAccommodationNo}>{t('candidate.no')}</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleConfirmAccommodationYes}>{t('candidate.yes')}</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
         </>
     );
 }

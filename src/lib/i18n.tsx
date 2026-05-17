@@ -30,12 +30,12 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         try {
             const stored = localStorage.getItem(STORAGE_KEY) as Language | null;
             if (stored === 'pl' || stored === 'en') setLangState(stored);
-        } catch {}
+        } catch { /* localStorage unavailable (SSR / private mode) */ }
     }, []);
 
     const setLang = useCallback((newLang: Language) => {
         setLangState(newLang);
-        try { localStorage.setItem(STORAGE_KEY, newLang); } catch {}
+        try { localStorage.setItem(STORAGE_KEY, newLang); } catch { /* localStorage unavailable */ }
     }, []);
 
     const t = useCallback<TFunction>((key, params) => {

@@ -12,12 +12,14 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { login } from '@/lib/auth';
-import { Download, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Download, Loader2, Eye, EyeOff, Share } from 'lucide-react';
 import { usePWAInstaller } from '@/components/pwa-installer';
+import { useLanguage } from '@/lib/i18n';
 
 const ModernHouseIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg
@@ -38,11 +40,13 @@ const ModernHouseIcon = (props: React.SVGProps<SVGSVGElement>) => (
 function LoginForm() {
     const router = useRouter();
     const { toast } = useToast();
-    const { installPrompt, handleInstallClick } = usePWAInstaller();
+    const { t } = useLanguage();
+    const { installPrompt, handleInstallClick, isIOS, isStandalone } = usePWAInstaller();
     const [name, setName] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [showIOSDialog, setShowIOSDialog] = useState(false);
 
     const searchParams = useSearchParams();
 
@@ -83,56 +87,90 @@ function LoginForm() {
         }
     };
 
+    const showInstallButton = (installPrompt || (isIOS && !isStandalone));
+
     return (
-        <form onSubmit={handleLogin}>
-            <CardContent className="grid gap-4 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-                <div className="grid gap-2 text-left">
-                    <Label htmlFor="name">Imię i nazwisko / Login</Label>
-                    <Input
-                        id="name"
-                        type="text"
-                        placeholder="np. admin lub Jan Kowalski"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        required
-                        disabled={isLoading}
-                    />
-                </div>
-                <div className="grid gap-2 text-left">
-                    <Label htmlFor="password">Hasło</Label>
-                    <div className="relative">
+        <>
+            <form onSubmit={handleLogin}>
+                <CardContent className="grid gap-4 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+                    <div className="grid gap-2 text-left">
+                        <Label htmlFor="name">Imię i nazwisko / Login</Label>
                         <Input
-                            id="password"
-                            type={showPassword ? "text" : "password"}
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                            id="name"
+                            type="text"
+                            placeholder="np. admin lub Jan Kowalski"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
                             required
                             disabled={isLoading}
-                            className="pr-10"
                         />
-                        <button
-                            type="button"
-                            onClick={() => setShowPassword(v => !v)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                            tabIndex={-1}
-                        >
-                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
                     </div>
-                </div>
-            </CardContent>
-            <CardFooter className="flex-col gap-4 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
-                <Button className="w-full" type="submit" disabled={isLoading || password === ''}>
-                    {isLoading ? <Loader2 className="animate-spin" /> : "Zaloguj się"}
-                </Button>
-                {installPrompt && (
-                    <Button variant="outline" className="w-full" onClick={handleInstallClick}>
-                        <Download className="mr-2 h-4 w-4" />
-                        Zainstaluj aplikację
+                    <div className="grid gap-2 text-left">
+                        <Label htmlFor="password">Hasło</Label>
+                        <div className="relative">
+                            <Input
+                                id="password"
+                                type={showPassword ? "text" : "password"}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                                disabled={isLoading}
+                                className="pr-10"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(v => !v)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                tabIndex={-1}
+                            >
+                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                        </div>
+                    </div>
+                </CardContent>
+                <CardFooter className="flex-col gap-4 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+                    <Button className="w-full" type="submit" disabled={isLoading || password === ''}>
+                        {isLoading ? <Loader2 className="animate-spin" /> : "Zaloguj się"}
                     </Button>
-                )}
-            </CardFooter>
-        </form>
+                    {showInstallButton && (
+                        isIOS ? (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full"
+                                onClick={() => setShowIOSDialog(true)}
+                            >
+                                <Share className="mr-2 h-4 w-4" />
+                                {t('pwa.installApp')}
+                            </Button>
+                        ) : (
+                            <Button type="button" variant="outline" className="w-full" onClick={handleInstallClick}>
+                                <Download className="mr-2 h-4 w-4" />
+                                {t('pwa.installApp')}
+                            </Button>
+                        )
+                    )}
+                </CardFooter>
+            </form>
+
+            <Dialog open={showIOSDialog} onOpenChange={setShowIOSDialog}>
+                <DialogContent className="max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>{t('pwa.iosTitle')}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3 py-2 text-sm">
+                        <p>{t('pwa.iosStep1')}</p>
+                        <p>{t('pwa.iosStep2')}</p>
+                        <p>{t('pwa.iosStep3')}</p>
+                    </div>
+                    <DialogFooter>
+                        <Button className="w-full" onClick={() => setShowIOSDialog(false)}>
+                            {t('pwa.iosClose')}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }
 

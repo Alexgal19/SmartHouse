@@ -12,6 +12,7 @@ import EntityView from '@/components/entity-view';
 import HousingView from '@/components/housing-view';
 import ControlCardsView from '@/components/control-cards-view';
 import OdbiorView from '@/components/odbior-view';
+import RecruitmentView from '@/components/recruitment-view';
 import dynamic from 'next/dynamic';
 
 
@@ -49,6 +50,9 @@ function CurrentView({ activeView, currentUser }: { activeView: View; currentUse
             </div>
             <div className={activeView !== 'odbior' ? 'hidden' : ''}>
                 <OdbiorView currentUser={currentUser} />
+            </div>
+            <div className={activeView !== 'recruitment' ? 'hidden' : ''}>
+                <RecruitmentView currentUser={currentUser} activeView={activeView} />
             </div>
             <div className={activeView !== 'settings' ? 'hidden' : ''}>
                 <DynamicSettingsView currentUser={currentUser} />

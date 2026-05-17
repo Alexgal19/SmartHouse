@@ -111,20 +111,23 @@ jest.mock('@/components/main-layout', () => ({
   })),
 }));
 
-// Mock i18n — LanguageProvider is not available in jsdom; use real Polish translations
+// Mock i18n — LanguageProvider is not available in jsdom; use real Polish translations.
+// IMPORTANT: t must be a stable function reference — components use it in useCallback([t]),
+// so returning a new function each render causes infinite effect loops in tests.
 jest.mock('@/lib/i18n', () => {
   const { pl } = require('@/lib/translations/pl');
+  function stableT(key, params) {
+    let text = pl[key] ?? key;
+    if (params) {
+      text = Object.entries(params).reduce((s, [k, v]) => s.replaceAll(`{${k}}`, String(v)), text);
+    }
+    return text;
+  }
   return {
     useLanguage: () => ({
       lang: 'pl',
       setLang: jest.fn(),
-      t: (key, params) => {
-        let text = pl[key] ?? key;
-        if (params) {
-          text = Object.entries(params).reduce((s, [k, v]) => s.replaceAll(`{${k}}`, String(v)), text);
-        }
-        return text;
-      },
+      t: stableT,
       dateLocale: undefined,
     }),
     LanguageProvider: ({ children }) => children,

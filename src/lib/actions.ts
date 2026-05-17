@@ -1,6 +1,6 @@
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, NonEmployee, DeductionReason, NotificationType, Coordinator, BokResident, ControlCard, StartList, OdbiorEntry, OdbiorType } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, NonEmployee, DeductionReason, NotificationType, Coordinator, BokResident, ControlCard, StartList, OdbiorEntry, OdbiorType, Candidate } from '../types';
 import { revalidatePath } from 'next/cache';
 import {
     getSheet,
@@ -27,6 +27,14 @@ import {
     deleteOdbiorEntry as deleteOdbiorEntryFromSheet,
     deleteBokResidentById as deleteBokResidentByIdFromSheet,
     invalidateOdbiorEntriesCache,
+    getCandidates as getCandidatesFromSheet,
+    addCandidate as addCandidateToSheet,
+    updateCandidate as updateCandidateInSheet,
+    invalidateCandidatesCache,
+    addCandidateDemand as addCandidateDemandToSheet,
+    getCandidateDemands as getCandidateDemandsFromSheet,
+    updateCandidateDemand as updateCandidateDemandInSheet,
+    invalidateCandidateDemandsCache,
 } from './sheets';
 import { format, isValid, getDaysInMonth, parseISO, differenceInDays, max, min, parse as dateFnsParse, lastDayOfMonth } from 'date-fns';
 
@@ -2219,6 +2227,16 @@ export async function sendPushNotification(
     body: string,
     link?: string
 ): Promise<{ success: boolean; error?: string }> {
+    return sendPushNotificationWithData(coordinatorId, title, body, link);
+}
+
+export async function sendPushNotificationWithData(
+    coordinatorId: string,
+    title: string,
+    body: string,
+    link?: string,
+    extraData?: Record<string, string>
+): Promise<{ success: boolean; error?: string }> {
     try {
         const settings = await getSettings();
         const coordinator = settings.coordinators.find((c: { uid: string; pushSubscription?: string | null }) => c.uid === coordinatorId);
@@ -2239,16 +2257,13 @@ export async function sendPushNotification(
         if (adminMessaging) {
             const message = {
                 token: token,
-                // Brak pola `notification` — zapobiega podwójnym powiadomieniom.
-                // FCM z polem `notification` wyświetla powiadomienie automatycznie,
-                // a service worker onBackgroundMessage wyświetlałby je drugi raz.
-                // Używamy tylko `data` — service worker sam wyświetla powiadomienie.
                 data: {
                     title: title,
                     body: body,
                     url: link || '/dashboard',
                     icon: '/icon-192x192.png',
-                    badge: '/icon-192x192.png'
+                    badge: '/icon-192x192.png',
+                    ...(extraData || {}),
                 },
                 webpush: {
                     headers: {
@@ -2269,7 +2284,6 @@ export async function sendPushNotification(
 
         return { success: true };
     } catch (e: unknown) {
-        // Auto-cleanup expired/invalid FCM tokens (410 Gone, token-not-registered)
         const errorCode = (e as { code?: string })?.code;
         if (
             errorCode === 'messaging/registration-token-not-registered' ||
@@ -2722,6 +2736,207 @@ export async function deleteOdbiorEntryAction(
     } catch (error) {
         console.error('Error deleting odbior entry:', error);
         return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+// ─── Kandydaci (Rekrutacja) ─────────────────────────────────────────────────
+
+export async function getCandidatesAction(): Promise<Candidate[]> {
+    try {
+        await requireSession();
+        return await getCandidatesFromSheet();
+    } catch (error) {
+        console.error('Error getting candidates:', error);
+        return [];
+    }
+}
+
+type CandidateCreateInput = {
+    firstName: string;
+    lastName: string;
+    passportNumber: string;
+    sourceOdbiorId?: string | null;
+};
+
+export async function addCandidateAction(
+    input: CandidateCreateInput
+): Promise<{ success: boolean; error?: string; candidate?: Candidate }> {
+    try {
+        const session = await requireSession();
+        if (!input.firstName?.trim() || !input.lastName?.trim()) {
+            return { success: false, error: 'Imię i nazwisko są wymagane.' };
+        }
+        const candidate: Candidate = {
+            id: `cand-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            firstName: input.firstName.trim(),
+            lastName: input.lastName.trim(),
+            passportNumber: input.passportNumber?.trim() || '',
+            sourceOdbiorId: input.sourceOdbiorId || null,
+            status: 'nowy',
+            createdAt: new Date().toISOString(),
+        };
+        await addCandidateToSheet(candidate);
+        revalidatePath('/dashboard');
+        return { success: true, candidate };
+    } catch (error) {
+        console.error('Error adding candidate:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+export async function updateCandidateAction(
+    id: string,
+    updates: Partial<Candidate>
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        await requireSession();
+        await updateCandidateInSheet(id, updates);
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error updating candidate:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+export async function sendCandidateDemandNotificationAction(
+    candidate: Candidate
+): Promise<{ success: boolean; sentCount: number; error?: string; demandId?: string }> {
+    try {
+        const session = await requireSession();
+        const settings = await getSettings();
+        const actor: Coordinator = {
+            uid: session.uid || 'system',
+            name: session.name || 'Rekrutacja',
+            isAdmin: session.isAdmin,
+            departments: [],
+        };
+
+        const targetCoordinators = settings.coordinators.filter(
+            c => (c.isAdmin || c.isDriver) && c.pushSubscription
+        );
+
+        if (targetCoordinators.length === 0) {
+            return { success: false, sentCount: 0, error: 'Żaden admin/kierowca nie ma skonfigurowanych powiadomień PUSH.' };
+        }
+
+        const demandId = `demand-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+        const demand: import('../types').CandidateDemand = {
+            id: demandId,
+            candidateId: candidate.id,
+            candidateFirstName: candidate.firstName,
+            candidateLastName: candidate.lastName,
+            requestedBy: actor.uid,
+            requestedAt: new Date().toISOString(),
+            status: 'pending',
+            retryCount: 0,
+        };
+        await addCandidateDemandToSheet(demand);
+
+        const message = `Zapotrzebowanie na kandydata: ${candidate.firstName} ${candidate.lastName} (paszport: ${candidate.passportNumber || 'brak'})`;
+        const pushTitle = '🚨 Zapotrzebowanie na kandydata';
+        const pushLink = `/dashboard?view=recruitment&demandId=${demandId}`;
+
+        let sentCount = 0;
+        for (const coord of targetCoordinators) {
+            const notification: Notification = {
+                id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                message,
+                entityId: candidate.id,
+                entityFirstName: candidate.firstName,
+                entityLastName: candidate.lastName,
+                actorName: actor.name,
+                recipientId: coord.uid,
+                createdAt: new Date().toISOString(),
+                isRead: false,
+                type: 'warning',
+                changes: [],
+            };
+
+            const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
+            await withTimeout(sheet.addRow(serializeNotification(notification)), TIMEOUT_MS, 'sheet.addRow(Notification)');
+
+            const pushResult = await sendPushNotificationWithData(coord.uid, pushTitle, message, pushLink, { demandId });
+            if (pushResult.success) {
+                sentCount++;
+            } else {
+                console.warn(`Push notification to ${coord.name} failed:`, pushResult.error);
+            }
+        }
+
+        revalidatePath('/dashboard');
+        return { success: sentCount > 0, sentCount, demandId };
+    } catch (error) {
+        console.error('Error sending candidate demand notification:', error);
+        return { success: false, sentCount: 0, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+export async function acknowledgeCandidateDemandAction(
+    demandId: string,
+    ackBy?: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const acknowledgedBy = ackBy || (await getSession()).uid || 'unknown';
+        await updateCandidateDemandInSheet(demandId, {
+            status: 'acknowledged',
+            acknowledgedBy,
+            acknowledgedAt: new Date().toISOString(),
+        });
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error acknowledging candidate demand:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+export async function getCandidateDemandsAction(): Promise<import('../types').CandidateDemand[]> {
+    try {
+        await requireSession();
+        return await getCandidateDemandsFromSheet();
+    } catch (error) {
+        console.error('Error getting candidate demands:', error);
+        return [];
+    }
+}
+
+export async function retryCandidateDemandsAction(): Promise<{ success: boolean; retried: number; error?: string }> {
+    try {
+        const settings = await getSettings();
+        const demands = await getCandidateDemandsFromSheet();
+        const now = Date.now();
+        const pendingDemands = demands.filter(d =>
+            d.status === 'pending' &&
+            !d.acknowledgedAt &&
+            (now - new Date(d.requestedAt).getTime()) > 5 * 60 * 1000
+        );
+
+        const targetCoordinators = settings.coordinators.filter(
+            c => (c.isAdmin || c.isDriver) && c.pushSubscription
+        );
+
+        let retried = 0;
+        for (const demand of pendingDemands) {
+            if (demand.retryCount >= 3) {
+                await updateCandidateDemandInSheet(demand.id, { status: 'expired' });
+                continue;
+            }
+            const pushTitle = '🚨 [PRZYPOMNIENIE] Zapotrzebowanie na kandydata';
+            const pushLink = `/dashboard?view=recruitment&demandId=${demand.id}`;
+            const message = `Zapotrzebowanie na kandydata: ${demand.candidateFirstName} ${demand.candidateLastName}`;
+            for (const coord of targetCoordinators) {
+                await sendPushNotificationWithData(coord.uid, pushTitle, message, pushLink, { demandId: demand.id });
+            }
+            await updateCandidateDemandInSheet(demand.id, { retryCount: (demand.retryCount || 0) + 1 });
+            retried++;
+        }
+
+        revalidatePath('/dashboard');
+        return { success: true, retried };
+    } catch (error) {
+        console.error('Error retrying candidate demands:', error);
+        return { success: false, retried: 0, error: error instanceof Error ? error.message : 'Unexpected error' };
     }
 }
 

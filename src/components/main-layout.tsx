@@ -8,7 +8,7 @@ import { SidebarProvider } from './ui/sidebar';
 import Header from './header';
 import { MobileNav } from './mobile-nav';
 import type { View, Notification, Employee, Settings, Address, SessionData, NonEmployee, AddressHistory, BokResident, OdbiorEntry } from '@/types';
-import { Home, Settings as SettingsIcon, Users, Building, ClipboardCheck, Truck } from 'lucide-react';
+import { Home, Settings as SettingsIcon, Users, Building, ClipboardCheck, Truck, Briefcase } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -170,6 +170,7 @@ export default function MainLayout({
         { view: 'employees', icon: Users, label: t('nav.employees') },
         { view: 'housing', icon: Building, label: t('nav.housing') },
         { view: 'control-cards', icon: ClipboardCheck, label: t('nav.controlCards') },
+        { view: 'recruitment', icon: Briefcase, label: t('nav.recruitment') },
         { view: 'settings', icon: SettingsIcon, label: t('nav.settings') },
     ], [t]) as { view: View; icon: React.ElementType; label: string }[];
 

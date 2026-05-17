@@ -1,6 +1,6 @@
 // This file contains all the TypeScript type definitions for the application's data structures.
 
-export type View = 'dashboard' | 'employees' | 'settings' | 'housing' | 'control-cards' | 'odbior';
+export type View = 'dashboard' | 'employees' | 'settings' | 'housing' | 'control-cards' | 'odbior' | 'recruitment';
 
 export type Address = {
   id: string;
@@ -296,6 +296,31 @@ export type OdbiorZgloszenie = {
 };
 
 export type OdbiorStatus = 'nowy' | 'przekonwertowany';
+
+export type Candidate = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  passportNumber: string;
+  sourceOdbiorId?: string | null;
+  status: 'nowy' | 'w_trakcie' | 'zakonczony';
+  createdAt: string;
+}
+
+export type CandidateDemandStatus = 'pending' | 'acknowledged' | 'expired';
+
+export type CandidateDemand = {
+  id: string;
+  candidateId: string;
+  candidateFirstName: string;
+  candidateLastName: string;
+  requestedBy: string;
+  requestedAt: string;
+  acknowledgedBy?: string;
+  acknowledgedAt?: string;
+  status: CandidateDemandStatus;
+  retryCount: number;
+}
 
 export type OdbiorEntry = {
   id: string;
