@@ -79,21 +79,39 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
 
     const demandStatusBadge = (demand?: CandidateDemand) => {
         if (!demand) return <span className="text-muted-foreground text-sm">—</span>;
+
+        const recipients = demand.sentTo && demand.sentTo.length > 0 ? (
+            <div className="text-xs text-muted-foreground mt-1">
+                {t("candidate.sentTo")}: {demand.sentTo.join(', ')}
+            </div>
+        ) : null;
+
         switch (demand.status) {
             case 'pending':
-                return <Badge variant="secondary">{t("candidate.pendingAck")}</Badge>;
+                return (
+                    <div>
+                        <Badge variant="secondary">{t("candidate.pendingAck")}</Badge>
+                        {recipients}
+                    </div>
+                );
             case 'acknowledged':
                 return (
                     <div className="text-xs text-muted-foreground">
                         ✅ {t("candidate.acknowledgedBy")}
                         <br />
                         {demand.acknowledgedAt ? format(new Date(demand.acknowledgedAt), "dd.MM.yyyy HH:mm", { locale: dateLocale }) : ''}
+                        {recipients}
                     </div>
                 );
             case 'expired':
-                return <Badge variant="destructive">{t("candidate.demandExpired")}</Badge>;
+                return (
+                    <div>
+                        <Badge variant="destructive">{t("candidate.demandExpired")}</Badge>
+                        {recipients}
+                    </div>
+                );
             default:
-                return <Badge>{demand.status}</Badge>;
+                return <div><Badge>{demand.status}</Badge>{recipients}</div>;
         }
     };
 

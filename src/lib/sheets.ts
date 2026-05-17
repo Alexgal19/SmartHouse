@@ -1324,7 +1324,7 @@ export async function updateCandidate(id: string, updates: Partial<import('../ty
 
 const CANDIDATE_DEMAND_HEADERS = [
     'id', 'candidateId', 'candidateFirstName', 'candidateLastName',
-    'requestedBy', 'requestedAt', 'acknowledgedBy', 'acknowledgedAt', 'status', 'retryCount',
+    'requestedBy', 'requestedAt', 'acknowledgedBy', 'acknowledgedAt', 'status', 'retryCount', 'sentTo',
 ];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1342,6 +1342,7 @@ const deserializeCandidateDemand = (row: any): import('../types').CandidateDeman
         acknowledgedAt: (row.acknowledgedAt ?? row.get?.('acknowledgedAt') as string) || undefined,
         status: ((row.status ?? row.get?.('status') as string) || 'pending') as import('../types').CandidateDemandStatus,
         retryCount: parseInt((row.retryCount ?? row.get?.('retryCount') as string) || '0', 10),
+        sentTo: ((row.sentTo ?? row.get?.('sentTo') as string) || '').split(',').map((s: string) => s.trim()).filter(Boolean),
     };
 };
 
@@ -1357,6 +1358,7 @@ function serializeCandidateDemand(demand: import('../types').CandidateDemand): R
         acknowledgedAt: demand.acknowledgedAt || '',
         status: demand.status,
         retryCount: String(demand.retryCount),
+        sentTo: (demand.sentTo || []).join(','),
     };
 }
 

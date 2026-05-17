@@ -2821,23 +2821,12 @@ export async function sendCandidateDemandNotificationAction(
         }
 
         const demandId = `demand-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-        const demand: import('../types').CandidateDemand = {
-            id: demandId,
-            candidateId: candidate.id,
-            candidateFirstName: candidate.firstName,
-            candidateLastName: candidate.lastName,
-            requestedBy: actor.uid,
-            requestedAt: new Date().toISOString(),
-            status: 'pending',
-            retryCount: 0,
-        };
-        await addCandidateDemandToSheet(demand);
-
         const message = `Zapotrzebowanie na kandydata: ${candidate.firstName} ${candidate.lastName} (paszport: ${candidate.passportNumber || 'brak'})`;
         const pushTitle = '🚨 Zapotrzebowanie na kandydata';
         const pushLink = `/dashboard?view=recruitment&demandId=${demandId}`;
 
         let sentCount = 0;
+        const sentTo: string[] = [];
         for (const coord of targetCoordinators) {
             const notification: Notification = {
                 id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
@@ -2859,10 +2848,24 @@ export async function sendCandidateDemandNotificationAction(
             const pushResult = await sendPushNotificationWithData(coord.uid, pushTitle, message, pushLink, { demandId });
             if (pushResult.success) {
                 sentCount++;
+                sentTo.push(coord.name);
             } else {
                 console.warn(`Push notification to ${coord.name} failed:`, pushResult.error);
             }
         }
+
+        const demand: import('../types').CandidateDemand = {
+            id: demandId,
+            candidateId: candidate.id,
+            candidateFirstName: candidate.firstName,
+            candidateLastName: candidate.lastName,
+            requestedBy: actor.uid,
+            requestedAt: new Date().toISOString(),
+            status: 'pending',
+            retryCount: 0,
+            sentTo,
+        };
+        await addCandidateDemandToSheet(demand);
 
         revalidatePath('/dashboard');
         return { success: sentCount > 0, sentCount, demandId };

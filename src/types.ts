@@ -320,6 +320,7 @@ export type CandidateDemand = {
   acknowledgedAt?: string;
   status: CandidateDemandStatus;
   retryCount: number;
+  sentTo?: string[];
 }
 
 export type OdbiorEntry = {

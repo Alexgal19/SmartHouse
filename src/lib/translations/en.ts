@@ -1015,4 +1015,5 @@ export const en: Record<string, string> = {
     'candidate.pendingAck': 'Awaiting confirmation...',
     'candidate.acknowledgedBy': 'Acknowledged',
     'candidate.demandExpired': 'Expired (no response)',
+    'candidate.sentTo': 'Sent to',
 };

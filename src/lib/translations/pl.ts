@@ -1015,4 +1015,5 @@ export const pl: Record<string, string> = {
     'candidate.pendingAck': 'Oczekuje na potwierdzenie...',
     'candidate.acknowledgedBy': 'Potwierdzony',
     'candidate.demandExpired': 'Wygasło (brak odpowiedzi)',
+    'candidate.sentTo': 'Wysłano do',
 };
