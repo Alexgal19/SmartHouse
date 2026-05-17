@@ -403,6 +403,38 @@ Dopisz wpis do `LESSONS_LEARNED.md` w formacie:
 - Używaj `playwright` MCP do uruchamiania testów E2E i robienia screenshotów
 - Playwright MCP daje dostęp do `browser_navigate`, `browser_screenshot`, `browser_click`, `browser_fill`
 
+---
+
+## 🧪 Testowanie UI — Playwright dla AI agentów
+
+### Dev server
+
+Po każdym `npm run build` hook automatycznie restartuje dev server na `http://localhost:3000`.
+Log serwera: `/tmp/smarthouse-dev.log`
+
+Jeśli serwer nie działa, uruchom ręcznie:
+```bash
+lsof -ti:3000 | xargs kill -9 2>/dev/null; nohup npm run dev > /tmp/smarthouse-dev.log 2>&1 &
+```
+
+### Login helper
+
+```typescript
+import { loginAsAdmin, dashboardUrl } from '../tests/helpers/login';
+
+// Zaloguj jako admin i przejdź do widoku
+await loginAsAdmin(page);
+await page.goto(dashboardUrl('recruitment'));
+```
+
+Credentials są w `.env.local` (gitignored) jako:
+- `TEST_ADMIN_NAME=admin`
+- `TEST_ADMIN_PASSWORD=SWhouse\$21`
+- `TEST_BASE_URL=http://localhost:3000`
+
+**NIGDY nie wpisuj haseł w żadnym pliku który może trafić do Git.**
+Wszystko co idzie do repozytorium musi czytać z `process.env.TEST_*`.
+
 **ORCHESTRATOR:**
 
 - Używaj `sequential-thinking` przy dekompozycji złożonych zadań (> 3 agentów, zależności cykliczne)

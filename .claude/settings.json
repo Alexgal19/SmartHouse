@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(npm run build)",
+            "command": "lsof -ti:3000 2>/dev/null | xargs kill -9 2>/dev/null; sleep 1; nohup npm run dev > /tmp/smarthouse-dev.log 2>&1 & disown; echo '{\"systemMessage\": \"✅ Dev server restarted on http://localhost:3000 (log: /tmp/smarthouse-dev.log)\"}'",
+            "async": true,
+            "statusMessage": "Restarting dev server on :3000..."
+          }
+        ]
+      }
+    ]
+  }
+}
