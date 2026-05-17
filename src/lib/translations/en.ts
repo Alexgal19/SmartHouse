@@ -1014,9 +1014,12 @@ export const en: Record<string, string> = {
     'candidate.demandError': 'Failed to send notifications.',
     'candidate.demandStatus': 'Demand status',
     'candidate.pendingAck': 'Awaiting confirmation...',
-    'candidate.acknowledgedBy': 'Acknowledged',
+    'candidate.acknowledgedBy': 'Accepted',
     'candidate.demandExpired': 'Expired (no response)',
     'candidate.sentTo': 'Sent to',
     'candidate.deleted': 'Candidate deleted',
     'candidate.deleteError': 'Failed to delete candidate',
+    'candidate.acceptDemandTitle': 'Accept candidate demand?',
+    'candidate.areYouSure': 'Are you sure?',
+    'candidate.acceptedDesc': 'Demand has been accepted',
 };

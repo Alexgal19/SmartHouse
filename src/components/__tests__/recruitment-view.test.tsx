@@ -5,11 +5,27 @@ import '@testing-library/jest-dom';
 import RecruitmentView from '../recruitment-view';
 import type { SessionData, Candidate, CandidateDemand } from '@/types';
 
+let mockDemandId: string | null = null;
+const mockReplace = jest.fn();
+
+jest.mock('next/navigation', () => ({
+    useRouter: () => ({
+        push: jest.fn(),
+        replace: (...args: any[]) => mockReplace(...args),
+        prefetch: jest.fn(),
+    }),
+    useSearchParams: () => ({
+        get: (key: string) => (key === 'demandId' ? mockDemandId : null),
+    }),
+    usePathname: () => '',
+}));
+
 jest.mock('@/lib/actions', () => ({
     getCandidatesAction: jest.fn(),
     getCandidateDemandsAction: jest.fn(),
     sendCandidateDemandNotificationAction: jest.fn(),
     deleteCandidateAction: jest.fn(),
+    acknowledgeCandidateDemandAction: jest.fn(),
 }));
 
 const mockToast = jest.fn();
@@ -22,12 +38,14 @@ import {
     getCandidateDemandsAction,
     sendCandidateDemandNotificationAction,
     deleteCandidateAction,
+    acknowledgeCandidateDemandAction,
 } from '@/lib/actions';
 
 const mockGetCandidates = getCandidatesAction as jest.Mock;
 const mockGetDemands = getCandidateDemandsAction as jest.Mock;
 const mockSendDemand = sendCandidateDemandNotificationAction as jest.Mock;
 const mockDeleteCandidate = deleteCandidateAction as jest.Mock;
+const mockAckDemand = acknowledgeCandidateDemandAction as jest.Mock;
 
 const mockUser: SessionData = {
     isLoggedIn: true,
@@ -64,6 +82,8 @@ describe('RecruitmentView', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockGetDemands.mockResolvedValue([]);
+        mockDemandId = null;
+        mockReplace.mockClear();
     });
 
     it('shows empty state when there are no candidates', async () => {
@@ -209,5 +229,94 @@ describe('RecruitmentView', () => {
             expect(mockDeleteCandidate).toHaveBeenCalledWith('cand-1', 'user-1');
             expect(screen.queryByText('Kowalski')).not.toBeInTheDocument();
         });
+    });
+
+    it('shows confirmation dialog when demandId is in URL and demand is pending', async () => {
+        mockDemandId = 'dem-1';
+        mockGetCandidates.mockResolvedValue([makeCandidate()]);
+        mockGetDemands.mockResolvedValue([makeDemand({ status: 'pending' })]);
+        render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
+
+        await waitFor(() => {
+            expect(screen.getByText(/Przyjąć zapotrzebowanie na kandydata/i)).toBeInTheDocument();
+        });
+    });
+
+    it('accepting demand calls acknowledgeCandidateDemandAction and refreshes data', async () => {
+        mockDemandId = 'dem-1';
+        mockGetCandidates.mockResolvedValue([makeCandidate()]);
+        mockGetDemands.mockResolvedValue([makeDemand({ status: 'pending' })]);
+        mockAckDemand.mockResolvedValue({ success: true });
+        render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
+
+        await waitFor(() => {
+            expect(screen.getByText(/Przyjąć zapotrzebowanie na kandydata/i)).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: /Tak/i }));
+
+        await waitFor(() => {
+            expect(mockAckDemand).toHaveBeenCalledWith('dem-1', 'user-1');
+        });
+    });
+
+    it('rejecting demand opens "are you sure" dialog', async () => {
+        mockDemandId = 'dem-1';
+        mockGetCandidates.mockResolvedValue([makeCandidate()]);
+        mockGetDemands.mockResolvedValue([makeDemand({ status: 'pending' })]);
+        render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
+
+        await waitFor(() => {
+            expect(screen.getByText(/Przyjąć zapotrzebowanie na kandydata/i)).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: /Nie/i }));
+
+        await waitFor(() => {
+            expect(screen.getByText(/Jesteś pewny/i)).toBeInTheDocument();
+        }, { timeout: 3000 });
+    });
+
+    it('"are you sure" -> No returns to confirmation dialog', async () => {
+        mockDemandId = 'dem-1';
+        mockGetCandidates.mockResolvedValue([makeCandidate()]);
+        mockGetDemands.mockResolvedValue([makeDemand({ status: 'pending' })]);
+        render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
+
+        await waitFor(() => {
+            expect(screen.getByText(/Przyjąć zapotrzebowanie na kandydata/i)).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: /Nie/i }));
+        await waitFor(() => {
+            expect(screen.getByText(/Jesteś pewny/i)).toBeInTheDocument();
+        }, { timeout: 3000 });
+
+        fireEvent.click(screen.getByRole('button', { name: /Nie/i }));
+        await waitFor(() => {
+            expect(screen.getByText(/Przyjąć zapotrzebowanie na kandydata/i)).toBeInTheDocument();
+        }, { timeout: 3000 });
+    });
+
+    it('"are you sure" -> Yes closes dialogs and clears URL param', async () => {
+        mockDemandId = 'dem-1';
+        mockGetCandidates.mockResolvedValue([makeCandidate()]);
+        mockGetDemands.mockResolvedValue([makeDemand({ status: 'pending' })]);
+        render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
+
+        await waitFor(() => {
+            expect(screen.getByText(/Przyjąć zapotrzebowanie na kandydata/i)).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: /Nie/i }));
+        await waitFor(() => {
+            expect(screen.getByText(/Jesteś pewny/i)).toBeInTheDocument();
+        }, { timeout: 3000 });
+
+        fireEvent.click(screen.getByRole('button', { name: /Tak/i }));
+        await waitFor(() => {
+            expect(screen.queryByText(/Przyjąć zapotrzebowanie na kandydata/i)).not.toBeInTheDocument();
+            expect(screen.queryByText(/Jesteś pewny/i)).not.toBeInTheDocument();
+        }, { timeout: 3000 });
     });
 });

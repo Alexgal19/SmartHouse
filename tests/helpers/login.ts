@@ -27,7 +27,6 @@ export async function loginAsAdmin(page: Page): Promise<void> {
     await page.locator('#name').fill(ADMIN_NAME);
     await page.locator('#password').fill(ADMIN_PASSWORD);
 
-    await page.locator('button[type="submit"]').waitFor({ state: 'enabled' });
     await page.locator('button[type="submit"]').click();
 
     await page.waitForURL(`${BASE_URL}/dashboard**`);

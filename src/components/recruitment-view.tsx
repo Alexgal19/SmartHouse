@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { SessionData, Candidate, CandidateDemand } from "@/types";
 import { useLanguage } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
@@ -10,9 +10,20 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { getCandidatesAction, sendCandidateDemandNotificationAction, getCandidateDemandsAction, deleteCandidateAction } from "@/lib/actions";
+import { getCandidatesAction, sendCandidateDemandNotificationAction, getCandidateDemandsAction, deleteCandidateAction, acknowledgeCandidateDemandAction } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
+import { useSearchParams, useRouter } from "next/navigation";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function RecruitmentView({ currentUser, activeView }: { currentUser: SessionData; activeView: string }) {
     const { t, dateLocale } = useLanguage();
@@ -23,6 +34,74 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
     const [searchQuery, setSearchQuery] = useState("");
     const [sendingId, setSendingId] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [dialogStep, setDialogStep] = useState<'none' | 'confirm' | 'sure'>('none');
+    const [targetDemand, setTargetDemand] = useState<CandidateDemand | null>(null);
+
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const demandIdParam = searchParams.get('demandId');
+
+    const clearDemandParam = useCallback(() => {
+        const params = new URLSearchParams(window.location.search);
+        params.delete('demandId');
+        router.replace(`${window.location.pathname}?${params.toString()}`, { scroll: false });
+    }, [router]);
+
+    const handleAcceptDemand = async () => {
+        if (!targetDemand) return;
+        try {
+            const result = await acknowledgeCandidateDemandAction(targetDemand.id, currentUser.uid);
+            if (result.success) {
+                setDialogStep('none');
+                clearDemandParam();
+                await loadData();
+                toast({ title: t("common.success"), description: t("candidate.acceptedDesc") });
+            } else {
+                toast({ variant: "destructive", title: t("common.error"), description: result.error || t("candidate.demandError") });
+            }
+        } catch (err) {
+            console.error(err);
+            toast({ variant: "destructive", title: t("common.error"), description: String(err) });
+        }
+    };
+
+    const handleRejectDemand = () => {
+        setDialogStep('sure');
+    };
+
+    const handleSureYes = () => {
+        setDialogStep('none');
+        setTargetDemand(null);
+        clearDemandParam();
+    };
+
+    const handleSureNo = () => {
+        setDialogStep('confirm');
+    };
+
+    const handledDemandIdRef = useRef<string | null>(null);
+
+    // Open confirmation dialog when demandId is present in URL
+    useEffect(() => {
+        if (activeView !== 'recruitment' || !demandIdParam || demands.length === 0) return;
+        if (handledDemandIdRef.current === demandIdParam) return;
+        const demand = demands.find(d => d.id === demandIdParam);
+        if (demand && demand.status === 'pending') {
+            handledDemandIdRef.current = demandIdParam;
+            setTargetDemand(demand);
+            setDialogStep('confirm');
+        } else {
+            // Already acknowledged/expired or not found — clean URL
+            clearDemandParam();
+        }
+    }, [activeView, demandIdParam, demands, clearDemandParam]);
+
+    // Reset handled demand tracker when URL param is cleared
+    useEffect(() => {
+        if (!demandIdParam) {
+            handledDemandIdRef.current = null;
+        }
+    }, [demandIdParam]);
 
     const handleDelete = async (candidate: Candidate) => {
         if (!currentUser.isAdmin) return;
@@ -308,6 +387,48 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                     </div>
                 </>
             )}
+
+            {/* Dialog 1: Accept demand? */}
+            <AlertDialog open={dialogStep === 'confirm'}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{t("candidate.acceptDemandTitle")}</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {targetDemand && (
+                                <>
+                                    <span className="font-medium">{targetDemand.candidateLastName} {targetDemand.candidateFirstName}</span>
+                                    {(() => {
+                                        const cand = candidates.find(c => c.id === targetDemand.candidateId);
+                                        return cand?.passportNumber ? (
+                                            <span className="text-muted-foreground"> — {cand.passportNumber}</span>
+                                        ) : null;
+                                    })()}
+                                </>
+                            )}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <Button variant="outline" onClick={handleRejectDemand}>{t("candidate.no")}</Button>
+                        <Button onClick={handleAcceptDemand}>{t("candidate.yes")}</Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Dialog 2: Are you sure? */}
+            <AlertDialog open={dialogStep === 'sure'}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{t("candidate.areYouSure")}</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {t("candidate.pendingAck")}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <Button variant="outline" onClick={handleSureNo}>{t("candidate.no")}</Button>
+                        <Button onClick={handleSureYes}>{t("candidate.yes")}</Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

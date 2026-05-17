@@ -29,9 +29,6 @@ messaging.onBackgroundMessage((payload) => {
     badge: data.badge || '/icon-192x192.png',
     data: data,
     requireInteraction: hasDemandId,
-    actions: hasDemandId
-      ? [{ action: 'ack', title: 'Potwierdzam odbiór' }]
-      : []
   };
 
   return self.registration.showNotification(notificationTitle, notificationOptions);
@@ -41,51 +38,6 @@ messaging.onBackgroundMessage((payload) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const data = event.notification.data || {};
-
-  if (event.action === 'ack' && data.demandId) {
-    event.waitUntil(
-      fetch('/api/candidate-demand/ack', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ demandId: data.demandId })
-      })
-      .then(() => {
-        return self.registration.showNotification('Potwierdzenie', {
-          body: 'Odebrałeś zapotrzebowanie na kandydata.',
-          icon: '/icon-192x192.png'
-        });
-      })
-      .catch((err) => {
-        console.error('[SW] Ack failed:', err);
-        return self.registration.showNotification('Błąd', {
-          body: 'Nie udało się potwierdzić odbioru. Spróbuj ponownie.',
-          icon: '/icon-192x192.png'
-        });
-      })
-      .then(() => {
-        // Open app after ack
-        const urlToOpen = data.url || '/';
-        return self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-          for (let i = 0; i < windowClients.length; i++) {
-            const client = windowClients[i];
-            if (client.url.includes(self.registration.scope) && 'focus' in client) {
-              return client.focus().then(focusedClient => {
-                if (focusedClient.url !== urlToOpen) {
-                  return focusedClient.navigate(urlToOpen);
-                }
-                return focusedClient;
-              });
-            }
-          }
-          if (self.clients.openWindow) {
-            return self.clients.openWindow(urlToOpen);
-          }
-        });
-      })
-    );
-    return;
-  }
 
   const rawUrl = data.url || data.click_action || '/';
   const isSameOrigin = rawUrl.startsWith(self.registration.scope) || rawUrl.startsWith('/');

@@ -1014,9 +1014,12 @@ export const pl: Record<string, string> = {
     'candidate.demandError': 'Nie udało się wysłać powiadomień.',
     'candidate.demandStatus': 'Status zapotrzebowania',
     'candidate.pendingAck': 'Oczekuje na potwierdzenie...',
-    'candidate.acknowledgedBy': 'Potwierdzony',
+    'candidate.acknowledgedBy': 'Przyjęte',
     'candidate.demandExpired': 'Wygasło (brak odpowiedzi)',
     'candidate.sentTo': 'Wysłano do',
     'candidate.deleted': 'Kandydat został usunięty',
     'candidate.deleteError': 'Nie udało się usunąć kandydata',
+    'candidate.acceptDemandTitle': 'Przyjąć zapotrzebowanie na kandydata?',
+    'candidate.areYouSure': 'Jesteś pewny?',
+    'candidate.acceptedDesc': 'Zapotrzebowanie zostało przyjęte',
 };
