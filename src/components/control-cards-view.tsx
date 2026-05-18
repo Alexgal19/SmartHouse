@@ -403,12 +403,8 @@ const buildDefaultForm = (address: Address): FormState => ({
 
 const isControlFormComplete = (form: FormState, address: Address): boolean => {
     if (form.roomRatings.some(r => !r.rating || r.rating === 0)) return false;
-    if (form.roomRatings.some(r => !r.photoUrls || r.photoUrls.length === 0)) return false;
     if (!form.cleanKitchen || form.cleanKitchen === 0) return false;
-    if (!form.kitchenPhotoUrls || form.kitchenPhotoUrls.length === 0) return false;
     if (!form.cleanBathroom || form.cleanBathroom === 0) return false;
-    if (!form.bathroomPhotoUrls || form.bathroomPhotoUrls.length === 0) return false;
-    if (!address.noMetersRequired && (!form.meterPhotoUrls || form.meterPhotoUrls.length === 0)) return false;
     return true;
 };
 
@@ -976,15 +972,6 @@ function ControlCardDialog({
     const formComplete = isControlFormComplete(form, address);
 
     const handleSave = async () => {
-        if (!formComplete) {
-            toast({
-                title: t('controlCards.fillAllFields'),
-                description: t('controlCards.fillAllFieldsDesc'),
-                variant: 'destructive',
-            });
-            return;
-        }
-
         // Flush any photos still stored as data URLs (taken offline)
         let currentForm = form;
         const pendingUrls = [
@@ -1318,7 +1305,7 @@ function ControlCardDialog({
                                     className="h-7 text-xs"
                                     onClick={() => setForm(prev => ({
                                         ...prev,
-                                        comments: [...prev.comments, { id: `new-${Date.now()}-${Math.random().toString(36).substring(2)}`, text: '', status: 'Nie przyjęte' }]
+                                        comments: [...prev.comments, { id: `new-${Date.now()}-${Math.random().toString(36).substring(2)}`, text: '', status: 'Nie przyjęte', createdAt: new Date().toISOString() }]
                                     }))}
                                 >
                                     {t('controlCards.addCommentBtn')}
@@ -1355,6 +1342,11 @@ function ControlCardDialog({
                                             }))}
                                             className="min-h-[60px] resize-none text-sm"
                                         />
+                                        {comment.createdAt && (
+                                            <p className="text-[10px] text-muted-foreground">
+                                                {t('controlCards.commentDate', { date: format(new Date(comment.createdAt), 'dd.MM.yyyy HH:mm') })}
+                                            </p>
+                                        )}
                                         <div className="flex flex-wrap gap-2 pt-1">
                                             {(['Nie przyjęte', 'W trakcie', 'Temat rozwiązany'] as ControlCardCommentStatus[]).map((status) => {
                                                 const statusLabelMap: Record<string, string> = {
@@ -1391,6 +1383,33 @@ function ControlCardDialog({
                     </div>
                 </div>
 
+                {/* ── Historia zmian (tylko admin) ── */}
+                {currentUser.isAdmin && existingCard && existingCard.changeLog && existingCard.changeLog.length > 0 && (
+                    <div className="space-y-2">
+                        <h3 className="font-semibold text-sm flex items-center gap-2">
+                            <span className="text-base">📜</span> {t('controlCards.changeLogTitle')}
+                        </h3>
+                        <div className="space-y-2 pl-1 max-h-48 overflow-y-auto">
+                            {existingCard.changeLog.map((entry, idx) => (
+                                <div key={idx} className="p-2.5 rounded-lg border bg-muted/10 space-y-1">
+                                    <p className="text-[10px] text-muted-foreground">
+                                        {t('controlCards.changeLogEntry', {
+                                            date: format(new Date(entry.timestamp), 'dd.MM.yyyy HH:mm'),
+                                            user: entry.userName,
+                                            changes: entry.changes,
+                                        })}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+                {currentUser.isAdmin && existingCard && (!existingCard.changeLog || existingCard.changeLog.length === 0) && (
+                    <div className="text-center p-3 border border-dashed rounded-lg bg-muted/20 text-muted-foreground text-xs">
+                        {t('controlCards.noChangeLog')}
+                    </div>
+                )}
+
                 {canEdit && existingCard && (
                     <div className="pt-3">
                         {showResetConfirm ? (
@@ -1414,8 +1433,7 @@ function ControlCardDialog({
                     {canEdit && (
                         <Button
                             onClick={handleSave}
-                            disabled={isPending || !formComplete}
-                            title={!formComplete ? t('controlCards.fillRequired') : undefined}
+                            disabled={isPending}
                             className="shadow-lg shadow-primary/20"
                         >
                             {isPending ? t('controlCards.saving') : existingCard ? t('controlCards.update') : t('controlCards.save')}

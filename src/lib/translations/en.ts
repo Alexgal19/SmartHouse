@@ -984,6 +984,11 @@ export const en: Record<string, string> = {
     'controlCards.bathroom': 'Bathroom',
     'controlCards.uploadedCount': 'Uploaded {count} photos',
     'controlCards.lastUpdated': 'Last updated: {date} — {user}',
+    'controlCards.commentDate': 'Added: {date}',
+    'controlCards.changeLogTitle': 'Change history',
+    'controlCards.noChangeLog': 'No recorded changes',
+    'controlCards.changeLogEntry': '{date} — {user}: {changes}',
+    'controlCards.cardSavedPartial': 'Card saved (incomplete)',
 
     // PWA Install
     'pwa.installApp': 'Install app',

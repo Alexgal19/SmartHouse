@@ -211,6 +211,14 @@ export type ControlCardComment = {
   id: string;
   text: string;
   status: ControlCardCommentStatus;
+  createdAt?: string; // ISO date-time
+};
+
+export type ControlCardChangeLogEntry = {
+  timestamp: string; // ISO date-time
+  userId: string;
+  userName: string;
+  changes: string;
 };
 
 export type ControlCard = {
@@ -229,6 +237,7 @@ export type ControlCard = {
   meterPhotoUrls?: string[];
   appliancesWorking: boolean;
   comments: ControlCardComment[];
+  changeLog?: ControlCardChangeLogEntry[];
   deleted?: boolean;
 }
 

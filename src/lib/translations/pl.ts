@@ -984,6 +984,11 @@ export const pl: Record<string, string> = {
     'controlCards.bathroom': 'Łazienka',
     'controlCards.uploadedCount': 'Wgrano {count} zdjęć',
     'controlCards.lastUpdated': 'Ostatnia aktualizacja: {date} — {user}',
+    'controlCards.commentDate': 'Dodano: {date}',
+    'controlCards.changeLogTitle': 'Historia zmian',
+    'controlCards.noChangeLog': 'Brak zapisanych zmian',
+    'controlCards.changeLogEntry': '{date} — {user}: {changes}',
+    'controlCards.cardSavedPartial': 'Karta zapisana (niepełna)',
 
     // PWA Install
     'pwa.installApp': 'Zainstaluj aplikację',

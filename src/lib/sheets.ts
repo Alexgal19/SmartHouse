@@ -789,7 +789,7 @@ export async function deleteAddressHistoryEntry(historyId: string) {
 const CONTROL_CARD_HEADERS = [
     'id', 'addressId', 'addressName', 'coordinatorId', 'coordinatorName',
     'controlMonth', 'fillDate', 'roomRatings', 'cleanKitchen', 'cleanBathroom',
-    'kitchenPhotoUrls', 'bathroomPhotoUrls', 'meterPhotoUrls', 'appliancesWorking', 'comments', 'deleted'
+    'kitchenPhotoUrls', 'bathroomPhotoUrls', 'meterPhotoUrls', 'appliancesWorking', 'comments', 'changeLog', 'deleted'
 ];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -847,6 +847,15 @@ const deserializeControlCard = (row: any): ControlCard | null => {
         return [];
     };
 
+    const parseChangeLog = (val: unknown): import('../types').ControlCardChangeLogEntry[] => {
+        if (!val || typeof val !== 'string') return [];
+        try {
+            const parsed = JSON.parse(val);
+            if (Array.isArray(parsed)) return parsed as import('../types').ControlCardChangeLogEntry[];
+        } catch { /* ignore */ }
+        return [];
+    };
+
     return {
         id: id as string,
         addressId: addressId as string,
@@ -863,6 +872,7 @@ const deserializeControlCard = (row: any): ControlCard | null => {
         meterPhotoUrls: parseJsonArray(row.get('meterPhotoUrls')),
         appliancesWorking: row.get('appliancesWorking') === 'TRUE' || row.get('appliancesWorking') === true,
         comments: parseComments(row.get('comments')),
+        changeLog: parseChangeLog(row.get('changeLog')),
         deleted: row.get('deleted') === 'TRUE' || row.get('deleted') === true,
     };
 };
@@ -903,6 +913,7 @@ export async function addControlCard(card: Omit<ControlCard, 'id'>): Promise<str
         meterPhotoUrls: JSON.stringify(card.meterPhotoUrls || []),
         appliancesWorking: card.appliancesWorking ? 'TRUE' : 'FALSE',
         comments: JSON.stringify(card.comments || []),
+        changeLog: JSON.stringify(card.changeLog || []),
     }), TIMEOUT_MS, 'sheet.addRow(ControlCards)');
     controlCardsCache = null;
     return id;
@@ -919,7 +930,7 @@ export async function updateControlCard(cardId: string, updates: Partial<Omit<Co
         if (value === undefined) continue;
         if (key === 'appliancesWorking' || key === 'deleted') {
             row.set(key, (value as boolean) ? 'TRUE' : 'FALSE');
-        } else if (key === 'roomRatings' || key === 'kitchenPhotoUrls' || key === 'bathroomPhotoUrls' || key === 'meterPhotoUrls' || key === 'comments') {
+        } else if (key === 'roomRatings' || key === 'kitchenPhotoUrls' || key === 'bathroomPhotoUrls' || key === 'meterPhotoUrls' || key === 'comments' || key === 'changeLog') {
             row.set(key, JSON.stringify(value));
         } else {
             row.set(key, value as string);

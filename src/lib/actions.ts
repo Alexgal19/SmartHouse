@@ -1,6 +1,6 @@
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, NonEmployee, DeductionReason, NotificationType, Coordinator, BokResident, ControlCard, StartList, OdbiorEntry, OdbiorType, Candidate } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, NonEmployee, DeductionReason, NotificationType, Coordinator, BokResident, ControlCard, ControlCardChangeLogEntry, StartList, OdbiorEntry, OdbiorType, Candidate } from '../types';
 import { revalidatePath } from 'next/cache';
 import {
     getSheet,
@@ -2324,13 +2324,103 @@ export async function saveControlCardAction(
     }
 }
 
+function generateControlCardDiff(
+    oldCard: ControlCard,
+    updates: Partial<Omit<ControlCard, 'id' | 'addressId' | 'coordinatorId' | 'controlMonth'>>
+): string[] {
+    const changes: string[] = [];
+
+    if (updates.cleanKitchen !== undefined && updates.cleanKitchen !== oldCard.cleanKitchen) {
+        changes.push(`Ocena kuchni: ${oldCard.cleanKitchen} → ${updates.cleanKitchen}`);
+    }
+    if (updates.cleanBathroom !== undefined && updates.cleanBathroom !== oldCard.cleanBathroom) {
+        changes.push(`Ocena łazienki: ${oldCard.cleanBathroom} → ${updates.cleanBathroom}`);
+    }
+    if (updates.appliancesWorking !== undefined && updates.appliancesWorking !== oldCard.appliancesWorking) {
+        changes.push(`Sprzęty: ${oldCard.appliancesWorking ? 'działają' : 'nie działają'} → ${updates.appliancesWorking ? 'działają' : 'nie działają'}`);
+    }
+
+    if (updates.roomRatings !== undefined) {
+        const oldMap = new Map(oldCard.roomRatings.map(r => [r.roomId, r]));
+        const newMap = new Map((updates.roomRatings as typeof oldCard.roomRatings).map(r => [r.roomId, r]));
+        for (const [roomId, newR] of newMap) {
+            const oldR = oldMap.get(roomId);
+            if (!oldR) continue;
+            if (newR.rating !== oldR.rating) {
+                changes.push(`Pokój ${oldR.roomName}: ocena ${oldR.rating} → ${newR.rating}`);
+            }
+            if ((newR.comment || '') !== (oldR.comment || '')) {
+                changes.push(`Pokój ${oldR.roomName}: zmieniono komentarz`);
+            }
+        }
+    }
+
+    if (updates.comments !== undefined) {
+        const oldComments = oldCard.comments || [];
+        const newComments = updates.comments as typeof oldComments;
+        const oldIds = new Set(oldComments.map(c => c.id));
+        const newIds = new Set(newComments.map(c => c.id));
+        const added = newComments.filter(c => !oldIds.has(c.id));
+        const removed = oldComments.filter(c => !newIds.has(c.id));
+        for (const c of added) {
+            changes.push(`Dodano komentarz: "${c.text.slice(0, 40)}${c.text.length > 40 ? '...' : ''}"`);
+        }
+        for (const c of removed) {
+            changes.push(`Usunięto komentarz: "${c.text.slice(0, 40)}${c.text.length > 40 ? '...' : ''}"`);
+        }
+        for (const newC of newComments) {
+            const oldC = oldComments.find(c => c.id === newC.id);
+            if (!oldC) continue;
+            if (newC.text !== oldC.text) {
+                changes.push(`Zmieniono komentarz: "${oldC.text.slice(0, 30)}${oldC.text.length > 30 ? '...' : ''}" → "${newC.text.slice(0, 30)}${newC.text.length > 30 ? '...' : ''}"`);
+            }
+            if (newC.status !== oldC.status) {
+                changes.push(`Status komentarza: ${oldC.status} → ${newC.status}`);
+            }
+        }
+    }
+
+    if (updates.kitchenPhotoUrls !== undefined) {
+        const oldLen = (oldCard.kitchenPhotoUrls || []).length;
+        const newLen = (updates.kitchenPhotoUrls as string[] || []).length;
+        if (newLen !== oldLen) changes.push(`Zdjęcia kuchni: ${oldLen} → ${newLen}`);
+    }
+    if (updates.bathroomPhotoUrls !== undefined) {
+        const oldLen = (oldCard.bathroomPhotoUrls || []).length;
+        const newLen = (updates.bathroomPhotoUrls as string[] || []).length;
+        if (newLen !== oldLen) changes.push(`Zdjęcia łazienki: ${oldLen} → ${newLen}`);
+    }
+    if (updates.meterPhotoUrls !== undefined) {
+        const oldLen = (oldCard.meterPhotoUrls || []).length;
+        const newLen = (updates.meterPhotoUrls as string[] || []).length;
+        if (newLen !== oldLen) changes.push(`Zdjęcia liczników: ${oldLen} → ${newLen}`);
+    }
+
+    return changes;
+}
+
 export async function editControlCardAction(
     cardId: string,
     updates: Partial<Omit<ControlCard, 'id' | 'addressId' | 'coordinatorId' | 'controlMonth'>>
 ): Promise<{ success: boolean; error?: string }> {
     try {
-        await requireSession();
-        await updateControlCardInSheet(cardId, { ...updates, fillDate: new Date().toISOString().slice(0, 10) });
+        const session = await requireSession();
+        const cards = await getControlCardsFromSheet();
+        const oldCard = cards.find(c => c.id === cardId);
+        if (!oldCard) throw new Error('Control card not found');
+
+        const diff = generateControlCardDiff(oldCard, updates);
+        const newChangeLog: ControlCardChangeLogEntry[] = [...(oldCard.changeLog || [])];
+        if (diff.length > 0) {
+            newChangeLog.push({
+                timestamp: new Date().toISOString(),
+                userId: session.uid,
+                userName: session.name,
+                changes: diff.join('; '),
+            });
+        }
+
+        await updateControlCardInSheet(cardId, { ...updates, changeLog: newChangeLog, fillDate: new Date().toISOString().slice(0, 10) });
         revalidatePath('/dashboard');
         return { success: true };
     } catch (error) {
@@ -2345,18 +2435,29 @@ export async function updateControlCardCommentStatusAction(
     newStatus: import('@/types').ControlCardCommentStatus
 ): Promise<{ success: boolean; error?: string }> {
     try {
-        await requireSession();
+        const session = await requireSession();
         // Fetch existing card to get comments array
         const cards = await getControlCardsFromSheet();
         const card = cards.find((c) => c.id === cardId);
         if (!card) return { success: false, error: 'Control card not found' };
 
+        const oldComment = card.comments.find(c => c.id === commentId);
+        if (!oldComment) return { success: false, error: 'Comment not found' };
+
         // Update comment status
-        const updatedComments = card.comments.map((c) => 
+        const updatedComments = card.comments.map((c) =>
             c.id === commentId ? { ...c, status: newStatus } : c
         );
 
-        await updateControlCardInSheet(cardId, { comments: updatedComments });
+        const newChangeLog: ControlCardChangeLogEntry[] = [...(card.changeLog || [])];
+        newChangeLog.push({
+            timestamp: new Date().toISOString(),
+            userId: session.uid,
+            userName: session.name,
+            changes: `Status komentarza "${oldComment.text.slice(0, 30)}${oldComment.text.length > 30 ? '...' : ''}": ${oldComment.status} → ${newStatus}`,
+        });
+
+        await updateControlCardInSheet(cardId, { comments: updatedComments, changeLog: newChangeLog });
         revalidatePath('/dashboard');
         return { success: true };
     } catch (error) {
