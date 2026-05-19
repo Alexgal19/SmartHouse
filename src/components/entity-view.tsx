@@ -651,11 +651,20 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
 
         const filterAndSort = <T extends Entity | AddressHistory>(dataToProcess: T[], isHistory: boolean = false): T[] => {
             const filtered = dataToProcess.filter(entity => {
+                const q = search.toLowerCase();
+                const firstName = ('firstName' in entity && entity.firstName) ? entity.firstName.toLowerCase() : '';
+                const lastName = ('lastName' in entity && entity.lastName) ? entity.lastName.toLowerCase() : '';
+                const empFirst = (isHistory && 'employeeFirstName' in entity && entity.employeeFirstName) ? entity.employeeFirstName.toLowerCase() : '';
+                const empLast = (isHistory && 'employeeLastName' in entity && entity.employeeLastName) ? entity.employeeLastName.toLowerCase() : '';
                 const searchMatch = search === '' ||
-                    ('firstName' in entity && entity.firstName && entity.firstName.toLowerCase().includes(search.toLowerCase())) ||
-                    ('lastName' in entity && entity.lastName && entity.lastName.toLowerCase().includes(search.toLowerCase())) ||
-                    (isHistory && 'employeeFirstName' in entity && entity.employeeFirstName && entity.employeeFirstName.toLowerCase().includes(search.toLowerCase())) ||
-                    (isHistory && 'employeeLastName' in entity && entity.employeeLastName && entity.employeeLastName.toLowerCase().includes(search.toLowerCase()));
+                    firstName.includes(q) ||
+                    lastName.includes(q) ||
+                    `${firstName} ${lastName}`.includes(q) ||
+                    `${lastName} ${firstName}`.includes(q) ||
+                    empFirst.includes(q) ||
+                    empLast.includes(q) ||
+                    `${empFirst} ${empLast}`.includes(q) ||
+                    `${empLast} ${empFirst}`.includes(q);
 
                 if (!searchMatch) return false;
 
@@ -1155,7 +1164,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                     {(currentUser.isAdmin || isDriver) && (
                         <TabsContent forceMount value="bok-residents" className="mt-4 data-[state=inactive]:hidden">
                             {/* Inner sub-tabs: Aktywni / Wyslani / Zwolnieni */}
-                            <Tabs value={bokSubTab} onValueChange={(v) => setBokSubTab(v as 'active' | 'sent' | 'dismissed')} className="mb-4">
+                            <Tabs value={bokSubTab} onValueChange={(v) => { setBokSubTab(v as 'active' | 'sent' | 'dismissed'); updateSearchParams({ page: 1 }); }} className="mb-4">
                                 <TabsList className="h-auto bg-muted/50 p-1 rounded-md">
                                     <TabsTrigger value="active" className="rounded px-4 py-1.5 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
                                         <Users className="mr-2 h-3.5 w-3.5 shrink-0" />

@@ -59,7 +59,7 @@ export const pl: Record<string, string> = {
 
     // Entity view
     'entity.title': 'Zarządzanie mieszkańcami',
-    'entity.searchBySurname': 'Szukaj po nazwisku...',
+    'entity.searchBySurname': 'Szukaj po imieniu lub nazwisku...',
     'entity.deleteSelected': 'Usuń zaznaczone ({count})',
     'entity.sentReport': 'Raport wysłanych',
     'entity.addEmployee': 'Dodaj pracownika',

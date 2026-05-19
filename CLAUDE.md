@@ -109,31 +109,7 @@ These rules are **non-negotiable**. Full details in `AGENTS.md`.
 
 ---
 
-## 🧠 Obsidian — automatyczny zapis (OBOWIĄZKOWE)
 
-Vault Obsidian (`/Users/oleksandr/Desktop/SW`) to pamięć projektu. **Zapisuj do niego automatycznie — bez czekania na polecenie użytkownika** — gdy zajdzie któraś z poniższych sytuacji:
-
-- **Bug naprawiony** → dopisz root cause + rozwiązanie do `Sesje/YYYY-MM-DD.md`
-- **Feature ukończony** → dopisz co zbudowano i jakie pliki zmieniono do `Sesje/YYYY-MM-DD.md`
-- **Decyzja architektoniczna** → utwórz `Decyzje/YYYYMMDD-temat.md` z uzasadnieniem
-- **Nieoczywista pułapka/wzorzec** → dopisz do `Sesje/YYYY-MM-DD.md` sekcja Problemy
-- **Praca na przyszłość** → utwórz lub uzupełnij `TODO/temat.md`
-- **Koniec sesji** → zapisz podsumowanie do `Sesje/YYYY-MM-DD.md` (Stop hook robi to też)
-
-**Jak pisać:**
-
-```bash
-NOTE="/Users/oleksandr/Desktop/SW/Projekty/SmartHouse/Sesje/$(date +%Y-%m-%d).md"
-# Utwórz jeśli nie istnieje, potem dopisuj
-[ -f "$NOTE" ] || echo "# 📝 Sesja SmartHouse — $(date +%Y-%m-%d)" > "$NOTE"
-echo "" >> "$NOTE"
-echo "## Co zrobiono — $(date +%H:%M)" >> "$NOTE"
-echo "- ..." >> "$NOTE"
-```
-
-Pełne reguły i formaty: [`AGENTS.md` — sekcja Obsidian Vault](./AGENTS.md)
-
----
 
 ## 🔔 Push Notifications (special context)
 

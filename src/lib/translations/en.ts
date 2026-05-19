@@ -59,7 +59,7 @@ export const en: Record<string, string> = {
 
     // Entity view
     'entity.title': 'Resident Management',
-    'entity.searchBySurname': 'Search by surname...',
+    'entity.searchBySurname': 'Search by first or last name...',
     'entity.deleteSelected': 'Delete selected ({count})',
     'entity.sentReport': 'Sent report',
     'entity.addEmployee': 'Add employee',
