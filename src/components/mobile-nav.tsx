@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import type { View, SessionData } from "@/types";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,24 @@ export function MobileNav({
 }) {
     const { t } = useLanguage();
     const [isMoreOpen, setIsMoreOpen] = useState(false);
+    const [unacceptedCount, setUnacceptedCount] = useState(0);
+
+    useEffect(() => {
+        if (!currentUser) return;
+        const load = async () => {
+            try {
+                const res = await fetch('/api/odbior/zgloszenia');
+                if (!res.ok) return;
+                const data = await res.json();
+                setUnacceptedCount(data.filter((z: { status: string }) => z.status === 'Nieprzyjęte').length);
+            } catch {
+                // ignore
+            }
+        };
+        load();
+        const interval = setInterval(load, 30000);
+        return () => clearInterval(interval);
+    }, [currentUser]);
 
     const filteredItems = navItems.filter(item => {
         if ((item.view === 'settings' || item.view === 'recruitment') && !currentUser?.isAdmin) {
@@ -48,10 +66,15 @@ export function MobileNav({
             )}
         >
             <div className={cn(
-                "flex items-center justify-center p-2 rounded-lg",
+                "relative flex items-center justify-center p-2 rounded-lg",
                 activeView === item.view && "bg-primary/10"
             )}>
                 <item.icon className="h-5 w-5" />
+                {item.view === 'odbior' && unacceptedCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+                        {unacceptedCount > 9 ? '9+' : unacceptedCount}
+                    </span>
+                )}
             </div>
             <span className="truncate text-center w-full px-1">{item.label}</span>
         </Link>
@@ -99,7 +122,14 @@ export function MobileNav({
                                                     : "text-foreground hover:bg-muted"
                                             )}
                                         >
-                                            <item.icon className="h-5 w-5 shrink-0" />
+                                            <div className="relative">
+                                                <item.icon className="h-5 w-5 shrink-0" />
+                                                {item.view === 'odbior' && unacceptedCount > 0 && (
+                                                    <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+                                                        {unacceptedCount > 9 ? '9+' : unacceptedCount}
+                                                    </span>
+                                                )}
+                                            </div>
                                             <span>{item.label}</span>
                                         </Link>
                                     </SheetClose>

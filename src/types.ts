@@ -69,6 +69,7 @@ export type BokResident = {
   returnStatus: string;
   status: string;
   comments?: string | null;
+  sourceOdbiorId?: string | null;
 };
 
 export type ChartConfig = {
@@ -280,10 +281,17 @@ export type StartList = {
 export type OdbiorType = 'zakwaterowanie' | 'rozmowa_rekrutacyjna' | 'badania';
 // ─── OdbiorZgloszenia (moduł zgłoszeń odbioru) ───────────────────────────────
 
-export type OdbiorZgloszenieStatus = 'Nieprzyjęte' | 'W trakcie' | 'Zakończone' | 'Dostarczone';
+export type OdbiorZgloszenieStatus = 'Nieprzyjęte' | 'W trakcie' | 'Zakończone' | 'Dostarczone' | 'Usunięte';
 export type OdbiorZgloszenieSkad = 'autobusowa' | 'pociagowa' | 'inne';
 export type NastepnyKrok = 'zakwaterowanie' | 'badania' | 'rozmowa' | '';
 export type OsobaWOdbiorze = { imie: string; nazwisko: string; paszport: string };
+
+export type OdbiorChangeLogEntry = {
+    timestamp: string;
+    userId: string;
+    userName: string;
+    changes: string;
+};
 
 export type OdbiorZgloszenie = {
     id: string;
@@ -302,9 +310,20 @@ export type OdbiorZgloszenie = {
     osoby: string;
     nastepnyKrok: string;
     dataZakonczenia: string;
+    przyjeteAt: string;
+    zakonczoneAt: string;
+    deletedAt: string;
+    deletedBy: string;
+    changeLog: string;
 };
 
 export type OdbiorStatus = 'nowy' | 'przekonwertowany';
+
+export type InterviewResult = {
+  result: 'success' | 'failure';
+  recordedBy: string;
+  recordedAt: string;
+};
 
 export type Candidate = {
   id: string;
@@ -314,6 +333,7 @@ export type Candidate = {
   sourceOdbiorId?: string | null;
   status: 'nowy' | 'w_trakcie' | 'zakonczony';
   createdAt: string;
+  interviewHistory: InterviewResult[];
 }
 
 export type CandidateDemandStatus = 'pending' | 'acknowledged' | 'expired';
@@ -344,9 +364,10 @@ export type OdbiorEntry = {
   addressId: string;
   addressName: string;
   roomNumber: string;
-  date: string;               // YYYY-MM-DD
-  createdAt: string;          // ISO date-time
-  createdBy: string;          // coordinator name (kierowca/rekrutacja)
-  createdById: string;        // coordinator uid
+  date: string;
+  createdAt: string;
+  createdBy: string;
+  createdById: string;
   convertedToBokId?: string | null;
+  sourceOdbiorId?: string | null;
 }

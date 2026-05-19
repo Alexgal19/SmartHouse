@@ -487,6 +487,7 @@ export function OdbiorZakwaterowanieDialog({
     onSaved,
     editEntry,
     prefillData,
+    sourceOdbiorId,
 }: {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
@@ -494,6 +495,7 @@ export function OdbiorZakwaterowanieDialog({
     onSaved?: () => void;
     editEntry?: OdbiorEntry | null;
     prefillData?: { firstName?: string; lastName?: string; passportNumber?: string };
+    sourceOdbiorId?: string;
 }) {
     const { toast } = useToast();
     const { t } = useLanguage();
@@ -638,6 +640,7 @@ export function OdbiorZakwaterowanieDialog({
                     date: format(data.date, 'yyyy-MM-dd'),
                     createdBy: currentUser.name,
                     createdById: currentUser.uid,
+                    sourceOdbiorId,
                 });
                 if (!result.success) {
                     toast({ variant: 'destructive', title: t('common.saveError'), description: result.error || t('form.submitError') });

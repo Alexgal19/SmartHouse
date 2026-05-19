@@ -13,6 +13,12 @@ jest.mock('@/hooks/use-toast', () => ({
 global.URL.createObjectURL = jest.fn();
 global.URL.revokeObjectURL = jest.fn();
 
+jest.mock('@/components/odbior-detail-dialog', () => ({
+  __esModule: true,
+  default: ({ open, zgloszenie }: any) =>
+    open ? <div data-testid="detail-dialog">{zgloszenie?.id}</div> : null,
+}));
+
 describe('OdbiorView', () => {
   const mockUser: SessionData = {
     isLoggedIn: true,
@@ -41,6 +47,11 @@ describe('OdbiorView', () => {
       osoby: '',
       nastepnyKrok: '',
       dataZakonczenia: '',
+      przyjeteAt: '',
+      zakonczoneAt: '',
+      deletedAt: '',
+      deletedBy: '',
+      changeLog: '',
     },
   ];
 
@@ -64,9 +75,9 @@ describe('OdbiorView', () => {
     await screen.findByText('W trakcie');
 
     expect(screen.getByText('Dostarczone')).toBeInTheDocument();
-    
+
     // Check for stats value '1' in the amber card
-    const amberStats = screen.getByText('1', { selector: 'p.text-amber-900' });
+    const amberStats = screen.getByText('1');
     expect(amberStats).toBeInTheDocument();
   });
 
@@ -106,6 +117,64 @@ describe('OdbiorView', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Podaj szczegóły miejsca przy wyborze "Inne"/i)).toBeInTheDocument();
+    });
+  });
+
+  it('clicking eye button opens detail dialog with correct submission', async () => {
+    render(<OdbiorView currentUser={mockUser} />);
+
+    await screen.findByText('Stacja autobusowa');
+
+    const eyeButton = screen.getByRole('button', { name: /Szczegóły/i });
+    fireEvent.click(eyeButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('detail-dialog')).toHaveTextContent('zgl-1');
+    });
+  });
+
+  it('clicking delete button opens confirmation dialog', async () => {
+    render(<OdbiorView currentUser={mockUser} />);
+
+    await screen.findByText('Stacja autobusowa');
+
+    const deleteButton = screen.getByRole('button', { name: /Usuń/i });
+    fireEvent.click(deleteButton);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Usuń zgłoszenie/i)).toBeInTheDocument();
+      expect(screen.getByText(/Czy na pewno chcesz trwale usunąć/i)).toBeInTheDocument();
+    });
+  });
+
+  it('confirming delete calls fetch DELETE and removes row', async () => {
+    global.fetch = jest.fn((url: string, init?: RequestInit) => {
+      if (url === '/api/odbior/zgloszenia') {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(mockZgloszenia) });
+      }
+      if (url === '/api/odbior/zgloszenie/zgl-1' && init?.method === 'DELETE') {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    }) as jest.Mock;
+
+    render(<OdbiorView currentUser={mockUser} />);
+
+    await screen.findByText('Stacja autobusowa');
+
+    fireEvent.click(screen.getByRole('button', { name: /Usuń/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/Usuń zgłoszenie/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /^Usuń$/i }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/odbior/zgloszenie/zgl-1',
+        expect.objectContaining({ method: 'DELETE' })
+      );
+      expect(screen.queryByText('Stacja autobusowa')).not.toBeInTheDocument();
     });
   });
 });

@@ -441,6 +441,7 @@ const deserializeBokResident = (row: Record<string, unknown>): BokResident | nul
         returnStatus: (plainObject.returnStatus || '') as string,
         status: (plainObject.status || '') as string,
         comments: (plainObject.comments || '') as string,
+        sourceOdbiorId: (plainObject.sourceOdbiorId || '') as string || null,
     };
 };
 
@@ -1066,7 +1067,7 @@ export async function upsertStartList(data: StartList): Promise<void> {
 const ODBIOR_ENTRY_HEADERS = [
     'id', 'type', 'status', 'firstName', 'lastName', 'nationality', 'gender',
     'passportNumber', 'addressId', 'addressName', 'roomNumber', 'date',
-    'createdAt', 'createdBy', 'createdById', 'convertedToBokId',
+    'createdAt', 'createdBy', 'createdById', 'convertedToBokId', 'sourceOdbiorId',
 ];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1090,6 +1091,7 @@ const deserializeOdbiorEntry = (row: Record<string, unknown>): OdbiorEntry | nul
         createdBy: (row.createdBy as string) || '',
         createdById: (row.createdById as string) || '',
         convertedToBokId: (row.convertedToBokId as string) || null,
+        sourceOdbiorId: (row.sourceOdbiorId as string) || null,
     };
 };
 
@@ -1124,6 +1126,7 @@ function serializeOdbiorEntry(entry: OdbiorEntry): Record<string, string> {
         createdBy: entry.createdBy,
         createdById: entry.createdById,
         convertedToBokId: entry.convertedToBokId || '',
+        sourceOdbiorId: entry.sourceOdbiorId || '',
     };
 }
 
@@ -1193,6 +1196,7 @@ const ODBIOR_HEADERS = [
     'id', 'dataZgloszenia', 'numerTelefonu', 'skad', 'komentarzSkad',
     'iloscOsob', 'komentarz', 'zdjeciaUrls', 'rekruterId', 'rekruterNazwa',
     'status', 'kierowcaId', 'kierowcaNazwa', 'osoby', 'nastepnyKrok', 'dataZakonczenia',
+    'przyjeteAt', 'zakonczoneAt', 'deletedAt', 'deletedBy', 'changeLog',
 ];
 
 export async function getOdbiorZgloszenia(): Promise<OdbiorZgloszenie[]> {
@@ -1217,6 +1221,11 @@ export async function getOdbiorZgloszenia(): Promise<OdbiorZgloszenie[]> {
             osoby: row['osoby'] ?? '[]',
             nastepnyKrok: row['nastepnyKrok'] ?? '',
             dataZakonczenia: row['dataZakonczenia'] ?? '',
+            przyjeteAt: row['przyjeteAt'] ?? '',
+            zakonczoneAt: row['zakonczoneAt'] ?? '',
+            deletedAt: row['deletedAt'] ?? '',
+            deletedBy: row['deletedBy'] ?? '',
+            changeLog: row['changeLog'] ?? '',
         }));
         return odbiorCache!;
     });
@@ -1225,7 +1234,16 @@ export async function getOdbiorZgloszenia(): Promise<OdbiorZgloszenie[]> {
 export async function addOdbiorZgloszenieRow(data: Omit<OdbiorZgloszenie, 'id'>): Promise<OdbiorZgloszenie> {
     const sheet = await getSheet(SHEET_NAME_ODBIOR, ODBIOR_HEADERS);
     const id = `ODB-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-    const row = { id, ...data, iloscOsob: String(data.iloscOsob) };
+    const row = {
+        id,
+        ...data,
+        iloscOsob: String(data.iloscOsob),
+        przyjeteAt: data.przyjeteAt ?? '',
+        zakonczoneAt: data.zakonczoneAt ?? '',
+        deletedAt: data.deletedAt ?? '',
+        deletedBy: data.deletedBy ?? '',
+        changeLog: data.changeLog ?? '',
+    };
     await withTimeout(sheet.addRow(row), TIMEOUT_MS, 'sheet.addRow(OdbiorZgloszenia)');
     odbiorCache = null;
     return { id, ...data };
@@ -1247,6 +1265,18 @@ export async function updateOdbiorZgloszenie(
     odbiorCache = null;
 }
 
+export async function softDeleteOdbiorZgloszenie(id: string, deletedBy: string): Promise<void> {
+    const sheet = await getSheet(SHEET_NAME_ODBIOR, ODBIOR_HEADERS);
+    const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(OdbiorZgloszenia)');
+    const row = rows.find(r => r.get('id') === id);
+    if (!row) throw new Error(`OdbiorZgloszenie ${id} nie istnieje`);
+    row.set('status', 'Usunięte');
+    row.set('deletedAt', format(new Date(), 'yyyy-MM-dd HH:mm'));
+    row.set('deletedBy', deletedBy);
+    await withTimeout(row.save(), TIMEOUT_MS, 'row.save(OdbiorZgloszenia)');
+    odbiorCache = null;
+}
+
 export async function deleteOdbiorZgloszenie(id: string): Promise<void> {
     const sheet = await getSheet(SHEET_NAME_ODBIOR, ODBIOR_HEADERS);
     const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(OdbiorZgloszenia)');
@@ -1260,13 +1290,18 @@ export async function deleteOdbiorZgloszenie(id: string): Promise<void> {
 // ─── Candidates ──────────────────────────────────────────────────────────────
 
 const CANDIDATE_HEADERS = [
-    'id', 'firstName', 'lastName', 'passportNumber', 'sourceOdbiorId', 'status', 'createdAt',
+    'id', 'firstName', 'lastName', 'passportNumber', 'sourceOdbiorId', 'status', 'createdAt', 'interviewHistory',
 ];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const deserializeCandidate = (row: Record<string, unknown>): import('../types').Candidate | null => {
     const id = row.id;
     if (!id) return null;
+    let interviewHistory: import('../types').InterviewResult[] = [];
+    try {
+        const raw = (row.interviewHistory as string) || '';
+        if (raw) interviewHistory = JSON.parse(raw);
+    } catch { /* ignore malformed JSON */ }
     return {
         id: id as string,
         firstName: (row.firstName as string) || '',
@@ -1275,6 +1310,7 @@ const deserializeCandidate = (row: Record<string, unknown>): import('../types').
         sourceOdbiorId: (row.sourceOdbiorId as string) || null,
         status: ((row.status as string) || 'nowy') as import('../types').Candidate['status'],
         createdAt: (row.createdAt as string) || '',
+        interviewHistory,
     };
 };
 
@@ -1287,7 +1323,27 @@ function serializeCandidate(candidate: import('../types').Candidate): Record<str
         sourceOdbiorId: candidate.sourceOdbiorId || '',
         status: candidate.status,
         createdAt: candidate.createdAt,
+        interviewHistory: JSON.stringify(candidate.interviewHistory || []),
     };
+}
+
+export async function appendInterviewResult(candidateId: string, entry: import('../types').InterviewResult): Promise<void> {
+    const sheet = await getSheet(SHEET_NAME_CANDIDATES, CANDIDATE_HEADERS);
+    const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Kandydaci)');
+    const row = rows.find(r => r.get('id') === candidateId);
+    if (!row) throw new Error(`Kandydat ${candidateId} nie istnieje`);
+    let history: import('../types').InterviewResult[] = [];
+    try { history = JSON.parse(row.get('interviewHistory') || '[]'); } catch { /* ignore */ }
+    history.push(entry);
+    row.set('interviewHistory', JSON.stringify(history));
+    await withTimeout(row.save(), TIMEOUT_MS, 'row.save(Kandydaci interviewHistory)');
+    if (candidatesCache) {
+        const idx = candidatesCache.data.findIndex(c => c.id === candidateId);
+        if (idx !== -1) {
+            candidatesCache.data[idx] = { ...candidatesCache.data[idx], interviewHistory: history };
+            candidatesCache.timestamp = Date.now();
+        }
+    }
 }
 
 export async function getCandidates(): Promise<import('../types').Candidate[]> {

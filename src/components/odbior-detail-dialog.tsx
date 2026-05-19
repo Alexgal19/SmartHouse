@@ -188,11 +188,13 @@ function EditZgloszenieForm({
     });
     const [newFiles, setNewFiles] = useState<File[]>([]);
     const [newPreviews, setNewPreviews] = useState<string[]>([]);
+    const [removedExisting, setRemovedExisting] = useState<string[]>([]);
     const [saving, setSaving] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
 
     const existingUrls = z.zdjeciaUrls ? z.zdjeciaUrls.split(',').filter(Boolean) : [];
+    const visibleExisting = existingUrls.filter(u => !removedExisting.includes(u));
 
     useEffect(() => {
         const urls = newFiles.map(f => URL.createObjectURL(f));
@@ -213,7 +215,7 @@ function EditZgloszenieForm({
         }
         setSaving(true);
         try {
-            let zdjeciaUrls = z.zdjeciaUrls;
+            let mergedUrls = visibleExisting;
 
             if (newFiles.length > 0) {
                 const fd = new FormData();
@@ -224,10 +226,10 @@ function EditZgloszenieForm({
                     throw new Error(err.error ?? t('odbior.errorUploadPhotos'));
                 }
                 const data = await res.json();
-                zdjeciaUrls = data.zdjeciaUrls;
+                mergedUrls = data.zdjeciaUrls.split(',').filter(Boolean);
             }
 
-            await onSave({ ...fields, zdjeciaUrls });
+            await onSave({ ...fields, zdjeciaUrls: mergedUrls.join(',') });
             toast({ title: t('odbior.savedChanges') });
             onCancel();
         } catch (e) {
@@ -290,13 +292,19 @@ function EditZgloszenieForm({
                 <Label className="text-xs">{t('odbior.photosShort')}</Label>
 
                 {/* Istniejące */}
-                {existingUrls.length > 0 && (
+                {visibleExisting.length > 0 && (
                     <div className="grid grid-cols-3 gap-1.5">
-                        {existingUrls.map((url, i) => (
-                            <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-                                className="block rounded-md overflow-hidden aspect-square bg-muted border">
-                                <img src={url} alt="" className="object-cover w-full h-full" />
-                            </a>
+                        {visibleExisting.map((url, i) => (
+                            <div key={i} className="relative rounded-md overflow-hidden aspect-square bg-muted border">
+                                <a href={url} target="_blank" rel="noopener noreferrer">
+                                    <img src={url} alt="" className="object-cover w-full h-full" />
+                                </a>
+                                <button type="button"
+                                    className="absolute top-0.5 right-0.5 bg-black/60 rounded-full p-0.5 text-white"
+                                    onClick={() => setRemovedExisting(prev => [...prev, url])}>
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </div>
                         ))}
                     </div>
                 )}
@@ -340,15 +348,15 @@ function KartaNieprzyjete({
     z, onAction, onEdit, canEdit,
 }: {
     z: OdbiorZgloszenie;
-    onAction: (action: 'przyjmij' | 'odrzuc') => Promise<void>;
+    onAction: (action: 'przyjmij') => Promise<void>;
     onEdit: (updates: Partial<OdbiorZgloszenie>) => Promise<void>;
     canEdit: boolean;
 }) {
     const { t } = useLanguage();
-    const [loading, setLoading] = useState<'przyjmij' | 'odrzuc' | null>(null);
+    const [loading, setLoading] = useState<'przyjmij' | null>(null);
     const [editing, setEditing] = useState(false);
 
-    const handle = async (a: 'przyjmij' | 'odrzuc') => {
+    const handle = async (a: 'przyjmij') => {
         setLoading(a);
         try { await onAction(a); } finally { setLoading(null); }
     };
@@ -371,9 +379,6 @@ function KartaNieprzyjete({
                         </Button>
                     )}
                     <div className="flex gap-3">
-                        <Button variant="outline" className="flex-1" disabled={!!loading} onClick={() => handle('odrzuc')}>
-                            {t('odbior.reject')}
-                        </Button>
                         <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" disabled={!!loading} onClick={() => handle('przyjmij')}>
                             {loading === 'przyjmij' ? t('odbior.accepting') : t('odbior.accept')}
                         </Button>
@@ -408,40 +413,35 @@ function EditPersonRow({ person, onSave, onCancel }: {
     );
 }
 
-// ─── Karta — W trakcie ───────────────────────────────────────────────────────
+// ─── Dialog dodawania osoby (osobne okno) ────────────────────────────────────
 
-function KartaWTrakcie({
-    z, onAction, onZakwaterowanieClick, onRozmowaClick,
+function AddPersonDialog({
+    open, onOpenChange, onAdd, maxPersons, currentCount,
 }: {
-    z: OdbiorZgloszenie;
-    onAction: (action: 'odrzuc' | 'zakoncz' | 'update', payload: Partial<OdbiorZgloszenie>) => Promise<void>;
-    onZakwaterowanieClick?: (osoba: OsobaWOdbiorze | null) => void;
-    onRozmowaClick?: (osoba: OsobaWOdbiorze | null) => void;
+    open: boolean;
+    onOpenChange: (v: boolean) => void;
+    onAdd: (p: OsobaWOdbiorze) => void;
+    maxPersons: number;
+    currentCount: number;
 }) {
     const { t } = useLanguage();
-    const osoby = parseOsoby(z.osoby);
-    const [localOsoby, setLocalOsoby] = useState<OsobaWOdbiorze[]>(osoby);
-    const [newPerson, setNewPerson] = useState<OsobaWOdbiorze>({ imie: '', nazwisko: '', paszport: '' });
-    const [editIdx, setEditIdx] = useState<number | null>(null);
-    const [loading, setLoading] = useState(false);
+    const { toast } = useToast();
+    const [person, setPerson] = useState<OsobaWOdbiorze>({ imie: '', nazwisko: '', paszport: '' });
     const [ocrLoading, setOcrLoading] = useState(false);
     const ocrInputRef = useRef<HTMLInputElement>(null);
-    const { toast } = useToast();
 
-    const saveOsoby = async (updated: OsobaWOdbiorze[]) => {
-        setLocalOsoby(updated);
-        await onAction('update', { osoby: JSON.stringify(updated) });
-    };
-
-    const handleAddPerson = async () => {
-        if (!newPerson.imie.trim() || !newPerson.nazwisko.trim()) {
+    const handleAdd = () => {
+        if (!person.imie.trim() || !person.nazwisko.trim()) {
             toast({ variant: 'destructive', title: t('common.error'), description: t('odbior.errorNameSurname') });
             return;
         }
-        const updated = [...localOsoby, newPerson];
-        await saveOsoby(updated);
-        toast({ title: t('odbior.personAdded'), description: `${newPerson.imie} ${newPerson.nazwisko}` });
-        setNewPerson({ imie: '', nazwisko: '', paszport: '' });
+        if (currentCount >= maxPersons) {
+            toast({ variant: 'destructive', title: t('common.error'), description: t('odbior.errorMaxPersons') });
+            return;
+        }
+        onAdd(person);
+        setPerson({ imie: '', nazwisko: '', paszport: '' });
+        onOpenChange(false);
     };
 
     const handleOcr = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -455,7 +455,7 @@ function KartaWTrakcie({
             const res = await fetch('/api/odbior/ocr', { method: 'POST', body: fd });
             if (!res.ok) throw new Error((await res.json()).error ?? t('odbior.ocrError'));
             const data = await res.json();
-            setNewPerson(p => ({
+            setPerson(p => ({
                 imie:     data.imie     || p.imie,
                 nazwisko: data.nazwisko || p.nazwisko,
                 paszport: data.paszport || p.paszport,
@@ -466,6 +466,88 @@ function KartaWTrakcie({
         } finally {
             setOcrLoading(false);
         }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-md w-full">
+                <DialogHeader>
+                    <DialogTitle>{t('odbior.addPerson')}</DialogTitle>
+                    <DialogDescription className="sr-only">{t('odbior.addPerson')}</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <p className="text-xs text-muted-foreground">{t('odbior.personList')} ({currentCount}/{maxPersons})</p>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-7 gap-1.5 text-xs text-violet-700 border-violet-300 hover:bg-violet-50"
+                            disabled={ocrLoading}
+                            onClick={() => ocrInputRef.current?.click()}
+                        >
+                            <ScanLine className="h-3.5 w-3.5" />
+                            {ocrLoading ? t('odbior.scanning') : t('odbior.scanPassport')}
+                        </Button>
+                        <input ref={ocrInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleOcr} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                            <Label className="text-xs">{t('odbior.firstName')} *</Label>
+                            <Input className="h-8 text-sm" value={person.imie} onChange={e => setPerson(p => ({ ...p, imie: e.target.value }))} />
+                        </div>
+                        <div>
+                            <Label className="text-xs">{t('odbior.lastName')} *</Label>
+                            <Input className="h-8 text-sm" value={person.nazwisko} onChange={e => setPerson(p => ({ ...p, nazwisko: e.target.value }))} />
+                        </div>
+                    </div>
+                    <div>
+                        <Label className="text-xs">{t('odbior.passportNumber')}</Label>
+                        <Input className="h-8 text-sm" value={person.paszport} onChange={e => setPerson(p => ({ ...p, paszport: e.target.value }))} />
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                        <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Button>
+                        <Button className="flex-1 gap-1" onClick={handleAdd}>
+                            <Plus className="h-3.5 w-3.5" /> {t('odbior.addPerson')}
+                        </Button>
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+// ─── Karta — W trakcie ───────────────────────────────────────────────────────
+
+function KartaWTrakcie({
+    z, onAction, onZakwaterowanieClick, onRozmowaClick,
+}: {
+    z: OdbiorZgloszenie;
+    onAction: (action: 'odrzuc' | 'zakoncz' | 'update', payload: Partial<OdbiorZgloszenie>) => Promise<void>;
+    onZakwaterowanieClick?: (osoba: OsobaWOdbiorze | null) => void;
+    onRozmowaClick?: (osoba: OsobaWOdbiorze | null) => void;
+}) {
+    const { t } = useLanguage();
+    const osoby = parseOsoby(z.osoby);
+    const [localOsoby, setLocalOsoby] = useState<OsobaWOdbiorze[]>(osoby);
+    const [editIdx, setEditIdx] = useState<number | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [addPersonOpen, setAddPersonOpen] = useState(false);
+    const { toast } = useToast();
+
+    const saveOsoby = async (updated: OsobaWOdbiorze[]) => {
+        setLocalOsoby(updated);
+        await onAction('update', { osoby: JSON.stringify(updated) });
+    };
+
+    const handleAddPerson = async (person: OsobaWOdbiorze) => {
+        if (localOsoby.length >= z.iloscOsob) {
+            toast({ variant: 'destructive', title: t('common.error'), description: t('odbior.errorMaxPersons') });
+            return;
+        }
+        const updated = [...localOsoby, person];
+        await saveOsoby(updated);
+        toast({ title: t('odbior.personAdded'), description: `${person.imie} ${person.nazwisko}` });
     };
 
     const handleRemovePerson = async (idx: number) => {
@@ -526,6 +608,9 @@ function KartaWTrakcie({
                                     {o.paszport && <span className="text-muted-foreground ml-2 text-xs">{t('odbior.passportShort')}: {o.paszport}</span>}
                                 </div>
                                 <div className="flex gap-1">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-orange-600 hover:text-orange-700 hover:bg-orange-50" title={t('odbior.recruitmentInterview')} onClick={() => onRozmowaClick?.(o)}>
+                                        <Users className="h-3.5 w-3.5" />
+                                    </Button>
                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-600 hover:text-blue-700 hover:bg-blue-50" title={t('odbior.housingPerson')} onClick={() => onZakwaterowanieClick?.(o)}>
                                         <Bed className="h-3.5 w-3.5" />
                                     </Button>
@@ -541,33 +626,19 @@ function KartaWTrakcie({
                     </div>
                 ))}
 
-                {/* Formularz dodawania osoby — zawsze widoczny */}
-                <div className="rounded-lg border bg-white p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold text-muted-foreground">{t('odbior.addPerson')}</p>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-7 gap-1.5 text-xs text-violet-700 border-violet-300 hover:bg-violet-50"
-                            disabled={ocrLoading}
-                            onClick={() => ocrInputRef.current?.click()}
-                        >
-                            <ScanLine className="h-3.5 w-3.5" />
-                            {ocrLoading ? t('odbior.scanning') : t('odbior.scanPassport')}
-                        </Button>
-                        <input ref={ocrInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleOcr} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                        <div><Label className="text-xs">{t('odbior.firstName')} *</Label><Input className="h-8 text-sm" value={newPerson.imie} onChange={e => setNewPerson(p => ({ ...p, imie: e.target.value }))} /></div>
-                        <div><Label className="text-xs">{t('odbior.lastName')} *</Label><Input className="h-8 text-sm" value={newPerson.nazwisko} onChange={e => setNewPerson(p => ({ ...p, nazwisko: e.target.value }))} /></div>
-                    </div>
-                    <div><Label className="text-xs">{t('odbior.passportNumber')}</Label><Input className="h-8 text-sm" value={newPerson.paszport} onChange={e => setNewPerson(p => ({ ...p, paszport: e.target.value }))} /></div>
-                    <Button size="sm" className="w-full gap-1" onClick={handleAddPerson}>
-                        <Plus className="h-3.5 w-3.5" /> {t('odbior.addPerson')}
-                    </Button>
-                </div>
+                {/* Przycisk dodawania osoby — otwiera osobny dialog */}
+                <Button size="sm" className="w-full gap-1" onClick={() => setAddPersonOpen(true)}>
+                    <Plus className="h-3.5 w-3.5" /> {t('odbior.addPerson')}
+                </Button>
             </div>
+
+            <AddPersonDialog
+                open={addPersonOpen}
+                onOpenChange={setAddPersonOpen}
+                maxPersons={z.iloscOsob}
+                currentCount={localOsoby.length}
+                onAdd={handleAddPerson}
+            />
 
             {/* Następny krok */}
             <div className="space-y-2">
@@ -583,6 +654,7 @@ function KartaWTrakcie({
                             variant={activeKrok === value ? 'default' : 'outline'}
                             size="sm"
                             className="gap-1.5 text-xs"
+                            disabled={value === 'badania'}
                             onClick={() => {
                                 const isDeselect = activeKrok === value;
                                 handleKrok(value);
@@ -624,7 +696,30 @@ function KartaWTrakcie({
 
 // ─── Karta — Zakończone ──────────────────────────────────────────────────────
 
-function KartaZakonczona({ z }: { z: OdbiorZgloszenie }) {
+function ChangeLogSection({ z, isAdmin }: { z: OdbiorZgloszenie; isAdmin: boolean }) {
+    const { t } = useLanguage();
+    if (!isAdmin) return null;
+    const entries = (z.changeLog ? JSON.parse(z.changeLog) : []) as Array<{ timestamp: string; userName: string; changes: string }>;
+    if (entries.length === 0) return null;
+    return (
+        <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('odbior.changeLogTitle')}</p>
+            <div className="space-y-1 max-h-40 overflow-y-auto">
+                {entries.slice().reverse().map((entry, i) => (
+                    <div key={i} className="rounded bg-white border px-2 py-1.5 text-xs">
+                        <span className="text-muted-foreground">{new Date(entry.timestamp).toLocaleString('pl-PL')}</span>
+                        <span className="mx-1">—</span>
+                        <span className="font-medium">{entry.userName}</span>
+                        <span className="mx-1">—</span>
+                        <span>{entry.changes}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function KartaZakonczona({ z, isAdmin, onCancelFinish }: { z: OdbiorZgloszenie; isAdmin: boolean; onCancelFinish?: () => void }) {
     const { t } = useLanguage();
     const osoby = parseOsoby(z.osoby);
     return (
@@ -643,6 +738,12 @@ function KartaZakonczona({ z }: { z: OdbiorZgloszenie }) {
             )}
             {z.dataZakonczenia && (
                 <p className="text-xs text-muted-foreground text-right">{t('odbior.completedOn')} {z.dataZakonczenia}</p>
+            )}
+            <ChangeLogSection z={z} isAdmin={isAdmin} />
+            {isAdmin && onCancelFinish && (
+                <Button variant="outline" className="w-full" onClick={onCancelFinish}>
+                    {t('odbior.cancelFinish')}
+                </Button>
             )}
         </div>
     );
@@ -671,10 +772,33 @@ export default function OdbiorDetailDialog({
     const [candidateConfirmOpen, setCandidateConfirmOpen] = useState(false);
     const [lastSavedCandidate, setLastSavedCandidate] = useState<Candidate | null>(null);
     const [candidatePrefill, setCandidatePrefill] = useState<{ firstName?: string; lastName?: string; passportNumber?: string } | undefined>();
+    const [currentCandidateIndex, setCurrentCandidateIndex] = useState<number | null>(null);
+    const savedJustNowRef = useRef(false);
 
     React.useEffect(() => { setLocalZ(zgloszenie); }, [zgloszenie]);
 
+    const handleNextCandidate = () => {
+        if (currentCandidateIndex === null) return;
+        
+        const osoby = parseOsoby(localZ.osoby);
+        const nextIdx = currentCandidateIndex + 1;
+        
+        if (nextIdx < osoby.length) {
+            const nextOsoba = osoby[nextIdx];
+            setCurrentCandidateIndex(nextIdx);
+            setCandidatePrefill({
+                firstName: nextOsoba.imie,
+                lastName: nextOsoba.nazwisko,
+                passportNumber: nextOsoba.paszport,
+            });
+            setTimeout(() => setCandidateDialogOpen(true), 300);
+        } else {
+            setCurrentCandidateIndex(null);
+        }
+    };
+
     const handleZakwaterowanieClick = (osoba: OsobaWOdbiorze | null) => {
+        setCurrentCandidateIndex(null);
         setZakwatPrefill(osoba ? {
             firstName: osoba.imie,
             lastName: osoba.nazwisko,
@@ -683,7 +807,19 @@ export default function OdbiorDetailDialog({
         setZakwatOpen(true);
     };
 
+    const handleZakwatOpenChange = (v: boolean) => {
+        setZakwatOpen(v);
+        if (!v) handleNextCandidate();
+    };
+
     const handleRozmowaClick = (osoba: OsobaWOdbiorze | null) => {
+        let idx = 0;
+        if (osoba) {
+            const osoby = parseOsoby(localZ.osoby);
+            idx = osoby.findIndex(o => o.imie === osoba.imie && o.nazwisko === osoba.nazwisko && o.paszport === osoba.paszport);
+        }
+        setCurrentCandidateIndex(idx >= 0 ? idx : 0);
+
         setCandidatePrefill(osoba ? {
             firstName: osoba.imie,
             lastName: osoba.nazwisko,
@@ -692,7 +828,19 @@ export default function OdbiorDetailDialog({
         setCandidateDialogOpen(true);
     };
 
+    const handleCandidateDialogOpenChange = (v: boolean) => {
+        setCandidateDialogOpen(v);
+        if (!v) {
+            if (savedJustNowRef.current) {
+                savedJustNowRef.current = false;
+            } else {
+                setCurrentCandidateIndex(null);
+            }
+        }
+    };
+
     const handleCandidateSaved = (candidate: Candidate) => {
+        savedJustNowRef.current = true;
         setLastSavedCandidate(candidate);
         setCandidateConfirmOpen(true);
     };
@@ -712,6 +860,7 @@ export default function OdbiorDetailDialog({
     const handleConfirmAccommodationNo = () => {
         setCandidateConfirmOpen(false);
         setLastSavedCandidate(null);
+        handleNextCandidate();
     };
 
     const counts = {
@@ -760,11 +909,7 @@ export default function OdbiorDetailDialog({
         patch(updates);
     };
 
-    const handleNieprzyjeteAction = async (action: 'przyjmij' | 'odrzuc') => {
-        if (action === 'odrzuc') {
-            onOpenChange(false);
-            return;
-        }
+    const handleNieprzyjeteAction = async (action: 'przyjmij') => {
         try {
             await callApi('przyjmij');
             patch({ status: 'W trakcie' });
@@ -785,11 +930,21 @@ export default function OdbiorDetailDialog({
                 toast({ title: t('odbior.rejected'), description: t('odbior.statusChangedToUnaccepted') });
             } else if (action === 'zakoncz') {
                 const now = new Date().toLocaleString('pl-PL').replace(',', '').slice(0, 16);
-                patch({ status: 'Zakończone', dataZakonczenia: now, ...payload });
+                patch({ status: 'Zakończone', dataZakonczenia: now, zakonczoneAt: now, ...payload });
                 toast({ title: t('odbior.receptionFinished'), description: t('odbior.statusChangedToCompleted') });
             } else {
                 patch(payload);
             }
+        } catch (e) {
+            toast({ variant: 'destructive', title: t('common.error'), description: e instanceof Error ? e.message : t('common.error') });
+        }
+    };
+
+    const handleCancelFinish = async () => {
+        try {
+            await callApi('anuluj_zakonczenie');
+            patch({ status: 'W trakcie', dataZakonczenia: '', zakonczoneAt: '' });
+            toast({ title: t('odbior.finishCancelled'), description: t('odbior.statusChangedToInProgress') });
         } catch (e) {
             toast({ variant: 'destructive', title: t('common.error'), description: e instanceof Error ? e.message : t('common.error') });
         }
@@ -832,7 +987,7 @@ export default function OdbiorDetailDialog({
                     </TabsContent>
 
                     <TabsContent value="Zakończone" className="mt-4">
-                        <KartaZakonczona z={localZ} />
+                        <KartaZakonczona z={localZ} isAdmin={currentUser.isAdmin} onCancelFinish={handleCancelFinish} />
                     </TabsContent>
                 </Tabs>
             </DialogContent>
@@ -840,14 +995,15 @@ export default function OdbiorDetailDialog({
 
         <OdbiorZakwaterowanieDialog
             isOpen={zakwatOpen}
-            onOpenChange={setZakwatOpen}
+            onOpenChange={handleZakwatOpenChange}
             currentUser={currentUser}
             prefillData={zakwatPrefill}
+            sourceOdbiorId={localZ.id}
         />
 
         <AddCandidateDialog
             open={candidateDialogOpen}
-            onOpenChange={setCandidateDialogOpen}
+            onOpenChange={handleCandidateDialogOpenChange}
             sourceOdbiorId={localZ.id}
             onSaved={handleCandidateSaved}
             prefillFirstName={candidatePrefill?.firstName}

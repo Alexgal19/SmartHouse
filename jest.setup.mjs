@@ -135,4 +135,6 @@ jest.mock('@/lib/i18n', () => {
 });
 
 // Mock scrollIntoView for JSDOM
-window.HTMLElement.prototype.scrollIntoView = jest.fn();
+if (typeof window !== 'undefined') {
+  window.HTMLElement.prototype.scrollIntoView = jest.fn();
+}

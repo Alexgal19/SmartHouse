@@ -81,8 +81,8 @@ export default function AddCandidateDialog({
                 setFirstName('');
                 setLastName('');
                 setPassportNumber('');
-                onOpenChange(false);
                 onSaved?.(res.candidate!);
+                onOpenChange(false);
             } else {
                 toast({ variant: 'destructive', title: t('common.error'), description: res.error });
             }

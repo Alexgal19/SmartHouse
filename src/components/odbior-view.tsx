@@ -70,7 +70,7 @@ function ZglosOdbiorDialog({
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const formSchema = z.object({
-        phone:       z.string().min(1, t('odbior.errorRequiredPhone')),
+        phone:       z.string().min(1, t('odbior.errorRequiredPhone')).regex(/^\+?[\d\s()-]{7,}$/, t('odbior.errorInvalidPhone')),
         from:        z.enum(['autobusowa', 'pociagowa', 'inne'], { required_error: t('odbior.errorSelectFrom') }),
         fromComment: z.string().optional(),
         persons:     z.number().min(1, t('odbior.errorMinPersons')).max(99),
@@ -271,6 +271,8 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
     const [selectedZgloszenie, setSelectedZgloszenie] = useState<OdbiorZgloszenie | null>(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState<string>('all');
     const { toast } = useToast();
     const { t } = useLanguage();
 
@@ -293,7 +295,7 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
                 wTrakcie: data.filter(z => z.status === 'W trakcie').length,
             });
         } catch {
-            // ciche — brak danych nie blokuje widoku
+            toast({ variant: 'destructive', title: t('common.error'), description: t('odbior.loadError') });
         }
     }, [t]);
 
@@ -320,7 +322,7 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
             if (s.id !== id) return s;
             return { ...s, status: (updates.status ?? s.status) };
         }));
-        setStats(prev => {
+        setStats(() => {
             const updated = allZgloszenia.map(z => z.id === id ? { ...z, ...updates } : z);
             return {
                 dostarczone: updated.filter(z => z.status === 'Zakończone' || z.status === 'Dostarczone').length,
@@ -344,6 +346,14 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
         }, ...prev]);
         setStats(prev => ({ ...prev }));
     };
+
+    const filteredSubmissions = submissions.filter(row => {
+        const matchesSearch = !searchTerm.trim() ||
+            row.from.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            row.recruiter.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesStatus = statusFilter === 'all' || row.status === statusFilter;
+        return matchesSearch && matchesStatus;
+    });
 
     const handleDelete = async () => {
         if (!deleteConfirmId) return;
@@ -425,6 +435,24 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
             {/* Tabela zgłoszeń */}
             <div className="space-y-3">
                 <h2 className="text-base font-semibold">{t('odbior.recentRequests')}</h2>
+                <div className="flex flex-col sm:flex-row gap-2">
+                    <Input
+                        placeholder={t('odbior.searchPlaceholder')}
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        className="sm:w-72"
+                    />
+                    <select
+                        className="h-10 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring sm:w-48"
+                        value={statusFilter}
+                        onChange={e => setStatusFilter(e.target.value)}
+                    >
+                        <option value="all">{t('odbior.filterAll')}</option>
+                        <option value="Nieprzyjęte">{t('odbior.statusUnaccepted')}</option>
+                        <option value="W trakcie">{t('odbior.statusInProgress')}</option>
+                        <option value="Zakończone">{t('odbior.statusCompleted')}</option>
+                    </select>
+                </div>
                 <Card>
                     <CardContent className="p-0">
                         <div className="overflow-x-auto">
@@ -440,13 +468,13 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {submissions.length === 0 ? (
+                                    {filteredSubmissions.length === 0 ? (
                                         <tr>
                                             <td colSpan={6} className="px-4 py-10 text-center text-sm text-muted-foreground">
                                                 {t('odbior.noSubmissions')}
                                             </td>
                                         </tr>
-                                    ) : submissions.map((row, i) => (
+                                    ) : filteredSubmissions.map((row, i) => (
                                         <tr key={row.id} className={cn('border-b last:border-0', i % 2 === 0 ? '' : 'bg-muted/30')}>
                                             <td className="px-4 py-3">
                                                 <span className={cn(

@@ -10,7 +10,8 @@ export async function GET() {
 
     try {
         const zgloszenia = await getOdbiorZgloszenia();
-        const sorted = [...zgloszenia].sort((a, b) =>
+        const active = zgloszenia.filter(z => !z.deletedAt);
+        const sorted = [...active].sort((a, b) =>
             b.dataZgloszenia.localeCompare(a.dataZgloszenia)
         );
         return NextResponse.json(sorted);

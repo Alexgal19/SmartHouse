@@ -8,6 +8,15 @@ import { getToken, deleteToken, onMessage } from 'firebase/messaging';
 import { useToast } from '@/hooks/use-toast';
 import { ToastAction } from '@/components/ui/toast';
 
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+    return Promise.race([
+        promise,
+        new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error(`${label} — timeout po ${ms}ms`)), ms)
+        ),
+    ]);
+}
+
 export const usePushSubscription = () => {
     const { toast } = useToast();
     const router = useRouter();
@@ -64,15 +73,19 @@ export const usePushSubscription = () => {
         if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
             const checkToken = async () => {
                 try {
-                    const messagingInstance = await messagingPromise;
+                    const messagingInstance = await withTimeout(messagingPromise, 5000, 'FCM init');
                     if (!messagingInstance) return;
 
                     if ('serviceWorker' in navigator) {
-                        const registration = await navigator.serviceWorker.ready;
-                        const currentToken = await getToken(messagingInstance, {
-                            vapidKey: process.env.NEXT_PUBLIC_WEBPUSH_PUBLIC_KEY,
-                            serviceWorkerRegistration: registration
-                        });
+                        const registration = await withTimeout(navigator.serviceWorker.ready, 5000, 'Service Worker');
+                        const currentToken = await withTimeout(
+                            getToken(messagingInstance, {
+                                vapidKey: process.env.NEXT_PUBLIC_WEBPUSH_PUBLIC_KEY,
+                                serviceWorkerRegistration: registration
+                            }),
+                            5000,
+                            'FCM token'
+                        );
                         if (currentToken) {
                             setPushSubscription(currentToken);
 
@@ -104,7 +117,7 @@ export const usePushSubscription = () => {
 
         setIsSubscribing(true);
         try {
-            const messagingInstance = await messagingPromise;
+            const messagingInstance = await withTimeout(messagingPromise, 8000, 'FCM init');
             if (!messagingInstance) {
                 throw new Error("Firebase Messaging not supported");
             }
@@ -113,19 +126,23 @@ export const usePushSubscription = () => {
                 throw new Error("Notifications not supported");
             }
 
-            const permission = await Notification.requestPermission();
+            const permission = await withTimeout(Notification.requestPermission(), 5000, 'Notification permission');
             if (permission !== 'granted') {
                 throw new Error("Permission denied");
             }
 
-            const registration = await navigator.serviceWorker.ready;
-            const token = await getToken(messagingInstance, {
-                vapidKey: process.env.NEXT_PUBLIC_WEBPUSH_PUBLIC_KEY,
-                serviceWorkerRegistration: registration
-            });
+            const registration = await withTimeout(navigator.serviceWorker.ready, 8000, 'Service Worker');
+            const token = await withTimeout(
+                getToken(messagingInstance, {
+                    vapidKey: process.env.NEXT_PUBLIC_WEBPUSH_PUBLIC_KEY,
+                    serviceWorkerRegistration: registration
+                }),
+                8000,
+                'FCM token'
+            );
 
             if (token) {
-                await handleUpdateCoordinatorSubscription(token);
+                await withTimeout(handleUpdateCoordinatorSubscription(token), 5000, 'Subscription save');
                 setPushSubscription(token);
                 toast({
                     title: 'Sukces!',
@@ -150,6 +167,8 @@ export const usePushSubscription = () => {
                 } else if (firebaseError.code === 'messaging/permission-blocked') {
                     errorMessage = 'Powiadomienia są zablokowane w przeglądarce. Odblokuj je w ustawieniach strony.';
                 }
+            } else if (error instanceof Error && error.message.includes('timeout')) {
+                errorMessage = 'Przekroczono czas oczekiwania. Sprawdź połączenie internetowe lub odśwież stronę.';
             }
 
             toast({
@@ -165,11 +184,11 @@ export const usePushSubscription = () => {
     const unsubscribe = useCallback(async () => {
         setIsUnsubscribing(true);
         try {
-            const messagingInstance = await messagingPromise;
+            const messagingInstance = await withTimeout(messagingPromise, 5000, 'FCM init');
             if (messagingInstance) {
-                await deleteToken(messagingInstance);
+                await withTimeout(deleteToken(messagingInstance), 5000, 'Delete token');
             }
-            await handleUpdateCoordinatorSubscription(null);
+            await withTimeout(handleUpdateCoordinatorSubscription(null), 5000, 'Subscription save');
             setPushSubscription(null);
             toast({
                 title: 'Sukces!',

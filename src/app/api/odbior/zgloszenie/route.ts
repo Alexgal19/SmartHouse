@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { addOdbiorZgloszenieRow } from '@/lib/sheets';
 import { uploadFileToDrive } from '@/lib/drive';
+import { getSettings } from '@/lib/sheets';
+import { sendPushNotification } from '@/lib/actions';
 import { format } from 'date-fns';
 
 export async function POST(req: NextRequest) {
@@ -53,7 +55,25 @@ export async function POST(req: NextRequest) {
             osoby: '[]',
             nastepnyKrok: '',
             dataZakonczenia: '',
+            przyjeteAt: '',
+            zakonczoneAt: '',
+            deletedAt: '',
+            deletedBy: '',
+            changeLog: '',
         });
+
+        // Notify drivers with push subscriptions
+        try {
+            const settings = await getSettings();
+            const drivers = settings.coordinators.filter(c => c.isDriver && c.pushSubscription);
+            const title = 'Nowe zgłoszenie odbioru';
+            const body = `${skad === 'autobusowa' ? 'Stacja autobusowa' : skad === 'pociagowa' ? 'Stacja pociągowa' : 'Inne'} — ${iloscOsob} os., tel. ${numerTelefonu}`;
+            await Promise.allSettled(
+                drivers.map(d => sendPushNotification(d.uid, title, body, '/dashboard?view=odbior'))
+            );
+        } catch (e) {
+            console.warn('[Odbiór] Failed to send driver notifications:', e);
+        }
 
         return NextResponse.json({ success: true, zgloszenie });
     } catch (error) {

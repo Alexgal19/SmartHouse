@@ -25,6 +25,10 @@ import {
     deleteBokResident,
     deleteAddressHistoryEntry,
     sendPushNotification,
+    recordInterviewResultAction,
+    updateCandidateAction,
+    updateOdbiorEntryAction,
+    deleteOdbiorEntryAction,
 } from '@/lib/actions';
 import * as sheets from '@/lib/sheets';
 import XLSX from 'xlsx';
@@ -52,6 +56,14 @@ jest.mock('@/lib/sheets', () => ({
     addAddressHistoryEntry: jest.fn(),
     updateAddressHistoryEntry: jest.fn(),
     deleteAddressHistoryEntry: jest.fn(),
+    appendInterviewResult: jest.fn(),
+    updateCandidate: jest.fn(),
+    updateOdbiorEntry: jest.fn(),
+    deleteOdbiorEntry: jest.fn(),
+    deleteBokResidentById: jest.fn(),
+    invalidateCandidatesCache: jest.fn(),
+    invalidateOdbiorEntriesCache: jest.fn(),
+    invalidateBokResidentsCache: jest.fn(),
 }));
 
 const mockedGetSheet = sheets.getSheet as jest.Mock;
@@ -62,6 +74,14 @@ const mockedGetBokResidents = sheets.getBokResidents as jest.Mock;
 const mockedGetRawAddressHistory = sheets.getRawAddressHistory as jest.Mock;
 const mockedGetNotifications = sheets.getNotifications as jest.Mock;
 const mockedDeleteHistory = sheets.deleteAddressHistoryEntry as jest.Mock;
+const mockedAppendInterviewResult = sheets.appendInterviewResult as jest.Mock;
+const mockedUpdateCandidate = sheets.updateCandidate as jest.Mock;
+const mockedUpdateOdbiorEntry = sheets.updateOdbiorEntry as jest.Mock;
+const mockedDeleteOdbiorEntry = sheets.deleteOdbiorEntry as jest.Mock;
+const mockedDeleteBokResidentById = sheets.deleteBokResidentById as jest.Mock;
+const mockedInvalidateCandidatesCache = sheets.invalidateCandidatesCache as jest.Mock;
+const mockedInvalidateOdbiorEntriesCache = sheets.invalidateOdbiorEntriesCache as jest.Mock;
+const mockedInvalidateBokResidentsCache = sheets.invalidateBokResidentsCache as jest.Mock;
 
 // Helper function to create a mock Excel file in memory (as base64)
 function createMockExcel(data: Record<string, unknown>[]): string {
@@ -873,6 +893,126 @@ describe('Server Actions', () => {
             expect(result.error).toContain('Nie znaleziono koordynatora o ID coord-1');
 
             expect(adminMessaging!.send).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('recordInterviewResultAction', () => {
+        it('records success interview result and appends to history', async () => {
+            mockedAppendInterviewResult.mockResolvedValue(undefined);
+
+            const result = await recordInterviewResultAction('cand-1', 'success');
+
+            expect(result.success).toBe(true);
+            expect(result.entry).toEqual(expect.objectContaining({
+                result: 'success',
+                recordedBy: 'Jan Kowalski',
+            }));
+            expect(mockedAppendInterviewResult).toHaveBeenCalledWith(
+                'cand-1',
+                expect.objectContaining({ result: 'success', recordedBy: 'Jan Kowalski' })
+            );
+        });
+
+        it('records failure interview result', async () => {
+            mockedAppendInterviewResult.mockResolvedValue(undefined);
+
+            const result = await recordInterviewResultAction('cand-1', 'failure');
+
+            expect(result.success).toBe(true);
+            expect(result.entry).toEqual(expect.objectContaining({
+                result: 'failure',
+                recordedBy: 'Jan Kowalski',
+            }));
+        });
+
+        it('returns error when sheet append throws', async () => {
+            mockedAppendInterviewResult.mockRejectedValue(new Error('Sheet error'));
+
+            const result = await recordInterviewResultAction('cand-1', 'success');
+
+            expect(result.success).toBe(false);
+            expect(result.error).toBe('Sheet error');
+        });
+    });
+
+    describe('updateCandidateAction', () => {
+        it('updates candidate fields and returns success', async () => {
+            mockedUpdateCandidate.mockResolvedValue(undefined);
+
+            const result = await updateCandidateAction('cand-1', { firstName: 'Anna' });
+
+            expect(result.success).toBe(true);
+            expect(mockedUpdateCandidate).toHaveBeenCalledWith('cand-1', { firstName: 'Anna' });
+        });
+
+        it('returns error on sheet failure', async () => {
+            mockedUpdateCandidate.mockRejectedValue(new Error('Update failed'));
+
+            const result = await updateCandidateAction('cand-1', { firstName: 'Anna' });
+
+            expect(result.success).toBe(false);
+            expect(result.error).toBe('Update failed');
+        });
+    });
+
+    describe('updateOdbiorEntryAction', () => {
+        it('updates odbior entry and returns success', async () => {
+            mockedUpdateOdbiorEntry.mockResolvedValue(undefined);
+
+            const result = await updateOdbiorEntryAction('odb-1', { numerTelefonu: '987654321' });
+
+            expect(result.success).toBe(true);
+            expect(mockedUpdateOdbiorEntry).toHaveBeenCalledWith('odb-1', { numerTelefonu: '987654321' });
+        });
+
+        it('returns error on sheet failure', async () => {
+            mockedUpdateOdbiorEntry.mockRejectedValue(new Error('Update failed'));
+
+            const result = await updateOdbiorEntryAction('odb-1', { numerTelefonu: '987654321' });
+
+            expect(result.success).toBe(false);
+            expect(result.error).toBe('Update failed');
+        });
+    });
+
+    describe('deleteOdbiorEntryAction', () => {
+        it('deletes odbior entry without linked BOK resident', async () => {
+            mockedDeleteOdbiorEntry.mockResolvedValue(undefined);
+            mockedDeleteBokResidentById.mockResolvedValue(undefined);
+
+            const result = await deleteOdbiorEntryAction('odb-1', null);
+
+            expect(result.success).toBe(true);
+            expect(mockedDeleteOdbiorEntry).toHaveBeenCalledWith('odb-1');
+            expect(mockedDeleteBokResidentById).not.toHaveBeenCalled();
+            expect(mockedInvalidateOdbiorEntriesCache).toHaveBeenCalled();
+            expect(mockedInvalidateBokResidentsCache).not.toHaveBeenCalled();
+        });
+
+        it('deletes odbior entry and cascades BOK resident deletion when bokId provided', async () => {
+            mockedDeleteOdbiorEntry.mockResolvedValue(undefined);
+            mockedDeleteBokResidentById.mockResolvedValue(undefined);
+
+            const result = await deleteOdbiorEntryAction('odb-1', 'bok-1');
+
+            expect(result.success).toBe(true);
+            expect(mockedDeleteOdbiorEntry).toHaveBeenCalledWith('odb-1');
+            expect(mockedDeleteBokResidentById).toHaveBeenCalledWith('bok-1');
+            expect(mockedInvalidateOdbiorEntriesCache).toHaveBeenCalled();
+            expect(mockedInvalidateBokResidentsCache).toHaveBeenCalled();
+        });
+
+        it('succeeds even when linked BOK resident already deleted', async () => {
+            mockedDeleteOdbiorEntry.mockResolvedValue(undefined);
+            mockedDeleteBokResidentById.mockRejectedValue(new Error('Already deleted'));
+            const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+            const result = await deleteOdbiorEntryAction('odb-1', 'bok-1');
+
+            expect(result.success).toBe(true);
+            expect(mockedDeleteOdbiorEntry).toHaveBeenCalledWith('odb-1');
+            expect(mockedDeleteBokResidentById).toHaveBeenCalledWith('bok-1');
+            consoleWarnSpy.mockRestore();
         });
     });
 });

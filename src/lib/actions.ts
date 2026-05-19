@@ -1,6 +1,6 @@
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, NonEmployee, DeductionReason, NotificationType, Coordinator, BokResident, ControlCard, ControlCardChangeLogEntry, StartList, OdbiorEntry, OdbiorType, Candidate } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, NonEmployee, DeductionReason, NotificationType, Coordinator, BokResident, ControlCard, ControlCardChangeLogEntry, StartList, OdbiorEntry, OdbiorType, Candidate, InterviewResult } from '../types';
 import { revalidatePath } from 'next/cache';
 import {
     getSheet,
@@ -36,6 +36,7 @@ import {
     getCandidateDemands as getCandidateDemandsFromSheet,
     updateCandidateDemand as updateCandidateDemandInSheet,
     invalidateCandidateDemandsCache,
+    appendInterviewResult as appendInterviewResultToSheet,
 } from './sheets';
 import { format, isValid, getDaysInMonth, parseISO, differenceInDays, max, min, parse as dateFnsParse, lastDayOfMonth } from 'date-fns';
 
@@ -75,7 +76,7 @@ const NON_EMPLOYEE_HEADERS = [
 
 const BOK_RESIDENT_HEADERS = [
     'id', 'role', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'address', 'roomNumber',
-    'zaklad', 'gender', 'passportNumber', 'checkInDate', 'checkOutDate', 'returnStatus', 'status', 'comments', 'sendDate', 'sendTime', 'sendReason', 'dismissDate'
+    'zaklad', 'gender', 'passportNumber', 'checkInDate', 'checkOutDate', 'returnStatus', 'status', 'comments', 'sendDate', 'sendTime', 'sendReason', 'dismissDate', 'sourceOdbiorId'
 ];
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
@@ -2594,6 +2595,7 @@ type OdbiorEntryCreateInput = {
     date: string;
     createdBy: string;
     createdById: string;
+    sourceOdbiorId?: string;
 };
 
 export async function addOdbiorEntryAction(
@@ -2782,6 +2784,7 @@ export async function addOdbiorZakwaterowanieAction(
             returnStatus: '',
             status: 'active',
             comments: '',
+            sourceOdbiorId: input.sourceOdbiorId || null,
         }, input.createdById);
 
         const entry: OdbiorEntry = {
@@ -2801,6 +2804,7 @@ export async function addOdbiorZakwaterowanieAction(
             createdBy: input.createdBy,
             createdById: input.createdById,
             convertedToBokId: bok.id,
+            sourceOdbiorId: input.sourceOdbiorId || null,
         };
         await addOdbiorEntryToSheet(entry);
         await invalidateOdbiorEntriesCache();
@@ -2876,6 +2880,7 @@ export async function addCandidateAction(
             sourceOdbiorId: input.sourceOdbiorId || null,
             status: 'nowy',
             createdAt: new Date().toISOString(),
+            interviewHistory: [],
         };
         await addCandidateToSheet(candidate);
         revalidatePath('/dashboard');
@@ -2946,9 +2951,19 @@ export async function sendCandidateDemandNotificationAction(
         const pushTitle = '🚨 Zapotrzebowanie na kandydata';
         const pushLink = `/dashboard?view=recruitment&demandId=${demandId}`;
 
+        // Send all pushes in parallel — don't block each coordinator on the previous one
+        const pushResults = await Promise.all(
+            targetCoordinators.map(coord =>
+                sendPushNotificationWithData(coord.uid, pushTitle, message, pushLink, { demandId })
+            )
+        );
+
         let sentCount = 0;
         const sentTo: string[] = [];
-        for (const coord of targetCoordinators) {
+        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
+        for (let i = 0; i < targetCoordinators.length; i++) {
+            const coord = targetCoordinators[i];
+            const pushResult = pushResults[i];
             const notification: Notification = {
                 id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
                 message,
@@ -2962,11 +2977,7 @@ export async function sendCandidateDemandNotificationAction(
                 type: 'warning',
                 changes: [],
             };
-
-            const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
             await withTimeout(sheet.addRow(serializeNotification(notification)), TIMEOUT_MS, 'sheet.addRow(Notification)');
-
-            const pushResult = await sendPushNotificationWithData(coord.uid, pushTitle, message, pushLink, { demandId });
             if (pushResult.success) {
                 sentCount++;
                 sentTo.push(coord.name);
@@ -3107,6 +3118,26 @@ export async function updateSendDateAction(
         return { success: true };
     } catch (error) {
         console.error('Error updating sendDate:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+export async function recordInterviewResultAction(
+    candidateId: string,
+    result: 'success' | 'failure'
+): Promise<{ success: boolean; entry?: InterviewResult; error?: string }> {
+    try {
+        const session = await requireSession();
+        const entry: InterviewResult = {
+            result,
+            recordedBy: session.name || session.uid || 'unknown',
+            recordedAt: new Date().toISOString(),
+        };
+        await appendInterviewResultToSheet(candidateId, entry);
+        revalidatePath('/dashboard');
+        return { success: true, entry };
+    } catch (error) {
+        console.error('Error recording interview result:', error);
         return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
     }
 }
