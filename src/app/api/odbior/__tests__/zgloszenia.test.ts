@@ -26,7 +26,7 @@ describe('GET /api/odbior/zgloszenia', () => {
     });
 
     it('returns active submissions sorted descending and excludes deleted', async () => {
-        (getSession as jest.Mock).mockResolvedValue({ isLoggedIn: true });
+        (getSession as jest.Mock).mockResolvedValue({ isLoggedIn: true, isAdmin: true });
         mockedGetOdbiorZgloszenia.mockResolvedValue([
             { id: 'z-1', dataZgloszenia: '2024-04-28 10:00', deletedAt: '', status: 'Nieprzyjęte' },
             { id: 'z-2', dataZgloszenia: '2024-04-29 10:00', deletedAt: '', status: 'W trakcie' },
@@ -42,7 +42,7 @@ describe('GET /api/odbior/zgloszenia', () => {
     });
 
     it('returns empty array when no active submissions', async () => {
-        (getSession as jest.Mock).mockResolvedValue({ isLoggedIn: true });
+        (getSession as jest.Mock).mockResolvedValue({ isLoggedIn: true, isAdmin: true });
         mockedGetOdbiorZgloszenia.mockResolvedValue([]);
 
         const res = await GET();

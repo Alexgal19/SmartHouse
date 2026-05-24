@@ -66,6 +66,8 @@ jest.mock('@/components/main-layout', () => ({
     allEmployees: [],
     allNonEmployees: [],
     allBokResidents: [],
+    allCandidates: null,
+    allDemands: null,
     settings: {
       coordinators: [],
       nationalities: [],

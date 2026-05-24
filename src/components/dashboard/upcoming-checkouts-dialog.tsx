@@ -79,7 +79,7 @@ export function UpcomingCheckoutsDialog({
         const options = Array.from(departments).map(d => ({ value: d, label: d }));
         options.unshift({ value: 'all', label: t('entity.allDepartments') });
         return options;
-    }, [upcomingCheckoutsUnfiltered]);
+    }, [upcomingCheckoutsUnfiltered, t]);
 
     const addressOptions = useMemo(() => {
         const addresses = new Set(
@@ -90,7 +90,7 @@ export function UpcomingCheckoutsDialog({
         const options = Array.from(addresses).map(a => ({ value: a, label: a })).sort((a, b) => a.label.localeCompare(b.label));
         options.unshift({ value: 'all', label: t('housing.allAddresses') });
         return options;
-    }, [upcomingCheckoutsUnfiltered]);
+    }, [upcomingCheckoutsUnfiltered, t]);
 
 
     // Step 3: Apply the selected filters to the raw list

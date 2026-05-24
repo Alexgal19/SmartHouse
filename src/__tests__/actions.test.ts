@@ -79,7 +79,6 @@ const mockedUpdateCandidate = sheets.updateCandidate as jest.Mock;
 const mockedUpdateOdbiorEntry = sheets.updateOdbiorEntry as jest.Mock;
 const mockedDeleteOdbiorEntry = sheets.deleteOdbiorEntry as jest.Mock;
 const mockedDeleteBokResidentById = sheets.deleteBokResidentById as jest.Mock;
-const mockedInvalidateCandidatesCache = sheets.invalidateCandidatesCache as jest.Mock;
 const mockedInvalidateOdbiorEntriesCache = sheets.invalidateOdbiorEntriesCache as jest.Mock;
 const mockedInvalidateBokResidentsCache = sheets.invalidateBokResidentsCache as jest.Mock;
 
@@ -766,7 +765,7 @@ describe('Server Actions', () => {
             const mockAuditSheet = { addRow: jest.fn().mockResolvedValue(undefined) };
 
             mockedGetSheet.mockImplementation((title) => {
-                if (title === 'BokResidents') return Promise.resolve({ addRow: mockAddRow, getRows: jest.fn().mockResolvedValue([]) });
+                if (title === 'BOK') return Promise.resolve({ addRow: mockAddRow, getRows: jest.fn().mockResolvedValue([]) });
                 if (title === 'Powiadomienia') return Promise.resolve(mockNotificationSheet);
                 if (title === 'AuditLog') return Promise.resolve(mockAuditSheet);
                 return Promise.resolve({ getRows: jest.fn().mockResolvedValue([]), addRow: jest.fn() });
@@ -776,25 +775,18 @@ describe('Server Actions', () => {
                 firstName: 'Bok',
                 lastName: 'Resident',
                 fullName: 'Resident Bok',
-                role: 'Kierowca',
-                coordinatorId: 'coord-1',
                 nationality: 'Polska',
                 address: 'Testowa 1',
                 roomNumber: '1',
-                zaklad: 'Transport',
                 gender: 'Mężczyzna',
+                passportNumber: 'AB123456',
                 checkInDate: '2024-01-01',
-                checkOutDate: null,
-                sendDate: null,
-                dismissDate: null,
-                returnStatus: '',
-                status: 'active',
                 comments: ''
             };
 
             await addBokResident(residentData, 'coord-1');
 
-            expect(mockedGetSheet).toHaveBeenCalledWith('BokResidents', expect.any(Array));
+            expect(mockedGetSheet).toHaveBeenCalledWith('BOK', expect.any(Array));
             expect(mockAddRow).toHaveBeenCalledTimes(1);
             expect(mockAddRow.mock.calls[0][0].firstName).toBe('Bok');
         });
@@ -811,7 +803,7 @@ describe('Server Actions', () => {
             const mockAuditSheet = { addRow: jest.fn().mockResolvedValue(undefined) };
 
             mockedGetSheet.mockImplementation((title) => {
-                if (title === 'BokResidents') return Promise.resolve(mockSheet);
+                if (title === 'BOK') return Promise.resolve(mockSheet);
                 if (title === 'Powiadomienia') return Promise.resolve(mockNotificationSheet);
                 if (title === 'AuditLog') return Promise.resolve(mockAuditSheet);
                 return Promise.resolve({ getRows: jest.fn().mockResolvedValue([]), addRow: jest.fn() });
@@ -959,16 +951,16 @@ describe('Server Actions', () => {
         it('updates odbior entry and returns success', async () => {
             mockedUpdateOdbiorEntry.mockResolvedValue(undefined);
 
-            const result = await updateOdbiorEntryAction('odb-1', { numerTelefonu: '987654321' });
+            const result = await updateOdbiorEntryAction('odb-1', { status: 'przekonwertowany' });
 
             expect(result.success).toBe(true);
-            expect(mockedUpdateOdbiorEntry).toHaveBeenCalledWith('odb-1', { numerTelefonu: '987654321' });
+            expect(mockedUpdateOdbiorEntry).toHaveBeenCalledWith('odb-1', { status: 'przekonwertowany' });
         });
 
         it('returns error on sheet failure', async () => {
             mockedUpdateOdbiorEntry.mockRejectedValue(new Error('Update failed'));
 
-            const result = await updateOdbiorEntryAction('odb-1', { numerTelefonu: '987654321' });
+            const result = await updateOdbiorEntryAction('odb-1', { status: 'przekonwertowany' });
 
             expect(result.success).toBe(false);
             expect(result.error).toBe('Update failed');
@@ -1071,7 +1063,7 @@ describe('importBokResidentsFromExcel (new feature tests)', () => {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         const mockedGetSheet2 = require('@/lib/sheets').getSheet as jest.Mock;
         mockedGetSheet2.mockImplementation((title: string) => {
-            if (title === 'BokResidents') return Promise.resolve({ addRows: mockAddRowsBok });
+            if (title === 'BOK') return Promise.resolve({ addRows: mockAddRowsBok });
             if (title === 'Powiadomienia') return Promise.resolve({ addRows: mockAddRowsNotification });
             return Promise.resolve({ addRows: jest.fn(), getRows: jest.fn().mockResolvedValue([]) });
         });
@@ -1083,28 +1075,24 @@ describe('importBokResidentsFromExcel (new feature tests)', () => {
         expect(result.importedCount).toBe(1);
         expect(result.errors).toHaveLength(0);
         const addedRecords = mockAddRowsBok.mock.calls[0][0];
-        expect(addedRecords[0]).toMatchObject({ firstName: 'Jan', lastName: 'Kierowca', status: 'active' });
+        expect(addedRecords[0]).toMatchObject({ firstName: 'Jan', lastName: 'Kierowca' });
     });
 
-    it('should return error when coordinator not found in BOK import', async () => {
+    it('should return error when BOK check-in date is invalid', async () => {
         const bokData = [{
-            'Imię': 'X', 'Nazwisko': 'Y', 'Rola': 'Kierowca',
-            'Koordynator': 'Brak Koordynatora', 'Data zameldowania': '01.01.2024',
+            'Imię': 'X', 'Nazwisko': 'Y',
+            'Data zameldowania': 'nieprawidłowa-data',
             'Miejscowość': 'Warszawa', 'Adres': 'Testowa', 'Pokój': '1',
-            'Narodowość': 'Polska', 'Zakład': 'IT',
+            'Narodowość': 'Polska',
         }];
         const base64Content = createMockExcel2(bokData);
-
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const mockedGetSheet2 = require('@/lib/sheets').getSheet as jest.Mock;
-        mockedGetSheet2.mockResolvedValue({ addRows: jest.fn(), getRows: jest.fn().mockResolvedValue([]) });
 
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         const { importBokResidentsFromExcel: importBok } = require('@/lib/actions');
         const result = await importBok(base64Content, 'coord-1', mockSettings2);
 
         expect(result.importedCount).toBe(0);
-        expect(result.errors[0]).toContain('Nie znaleziono koordynatora');
+        expect(result.errors[0]).toContain('Nieprawidłowy format daty zameldowania');
     });
 
     it('should return error when required BOK fields are missing', async () => {

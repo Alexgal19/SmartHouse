@@ -22,7 +22,7 @@ const SHEET_NAME_LOCALITIES = 'Localities';
 const SHEET_NAME_PAYMENT_TYPES_NZ = 'PaymentTypesNZ';
 const SHEET_NAME_STATUSES = 'Statuses';
 const SHEET_NAME_ADDRESS_HISTORY = 'AddressHistory';
-const SHEET_NAME_BOK_RESIDENTS = 'BokResidents';
+const SHEET_NAME_BOK_RESIDENTS = 'BOK';
 const SHEET_NAME_BOK_ROLES = 'BokRoles';
 const SHEET_NAME_BOK_RETURN_OPTIONS = 'BokReturnOptions';
 const SHEET_NAME_BOK_STATUSES = 'BokStatuses';
@@ -421,27 +421,19 @@ const deserializeBokResident = (row: Record<string, unknown>): BokResident | nul
 
     return {
         id: id as string,
-        role: (plainObject.role || '') as string,
         firstName,
         lastName,
         fullName: `${lastName} ${firstName}`.trim(),
-        coordinatorId: (plainObject.coordinatorId || '') as string,
         nationality: (plainObject.nationality || '') as string,
+        locality: (plainObject.locality || '') as string,
         address: (plainObject.address || '') as string,
         roomNumber: (plainObject.roomNumber || '') as string,
-        zaklad: (plainObject.zaklad || '') as string,
         gender: (plainObject.gender || '') as string,
         passportNumber: (plainObject.passportNumber || '') as string,
         checkInDate: checkInDate,
-        checkOutDate: safeFormat(plainObject.checkOutDate),
-        sendDate: safeFormat(plainObject['data wysłania']) || safeFormat(plainObject.sendDate),
-        sendTime: (plainObject.sendTime || '') as string,
-        sendReason: (plainObject.sendReason || '') as string,
-        dismissDate: safeFormat(plainObject.dismissDate),
-        returnStatus: (plainObject.returnStatus || '') as string,
-        status: (plainObject.status || '') as string,
+        checkOutDate: safeFormat(plainObject.checkOutDate) || null,
         comments: (plainObject.comments || '') as string,
-        sourceOdbiorId: (plainObject.sourceOdbiorId || '') as string || null,
+        status: ((plainObject.status as string) === 'dismissed' ? 'dismissed' : 'active') as 'active' | 'dismissed',
     };
 };
 
@@ -1067,7 +1059,7 @@ export async function upsertStartList(data: StartList): Promise<void> {
 const ODBIOR_ENTRY_HEADERS = [
     'id', 'type', 'status', 'firstName', 'lastName', 'nationality', 'gender',
     'passportNumber', 'addressId', 'addressName', 'roomNumber', 'date',
-    'createdAt', 'createdBy', 'createdById', 'convertedToBokId', 'sourceOdbiorId',
+    'createdAt', 'createdBy', 'createdById', 'convertedToBokId', 'sourceOdbiorId', 'sourceDemandId',
 ];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1092,6 +1084,7 @@ const deserializeOdbiorEntry = (row: Record<string, unknown>): OdbiorEntry | nul
         createdById: (row.createdById as string) || '',
         convertedToBokId: (row.convertedToBokId as string) || null,
         sourceOdbiorId: (row.sourceOdbiorId as string) || null,
+        sourceDemandId: (row.sourceDemandId as string) || null,
     };
 };
 
@@ -1127,6 +1120,7 @@ function serializeOdbiorEntry(entry: OdbiorEntry): Record<string, string> {
         createdById: entry.createdById,
         convertedToBokId: entry.convertedToBokId || '',
         sourceOdbiorId: entry.sourceOdbiorId || '',
+        sourceDemandId: entry.sourceDemandId || '',
     };
 }
 
@@ -1173,14 +1167,14 @@ export async function deleteOdbiorEntry(id: string): Promise<void> {
 
 export async function deleteBokResidentById(bokId: string): Promise<void> {
     const sheet = await getSheet(SHEET_NAME_BOK_RESIDENTS, [
-        'id', 'role', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'address', 'roomNumber',
-        'zaklad', 'gender', 'passportNumber', 'checkInDate', 'checkOutDate', 'returnStatus', 'status', 'comments', 'sendDate', 'dismissDate'
+        'id', 'firstName', 'lastName', 'fullName', 'nationality', 'address', 'roomNumber',
+        'gender', 'passportNumber', 'checkInDate', 'comments'
     ]);
-    const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(BokResidents)');
+    const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(BOK)');
     const row = rows.find(r => r.get('id') === bokId);
     if (!row) throw new Error(`BokResident ${bokId} nie istnieje`);
     // eslint-disable-next-line no-restricted-syntax -- approved: bok resident deletion triggered explicitly by admin action
-    await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(BokResidents)');
+    await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(BOK)');
     bokResidentsCache = null;
 }
 
@@ -1290,7 +1284,7 @@ export async function deleteOdbiorZgloszenie(id: string): Promise<void> {
 // ─── Candidates ──────────────────────────────────────────────────────────────
 
 const CANDIDATE_HEADERS = [
-    'id', 'firstName', 'lastName', 'passportNumber', 'sourceOdbiorId', 'status', 'createdAt', 'interviewHistory',
+    'id', 'firstName', 'lastName', 'passportNumber', 'passportPhotoUrl', 'sourceOdbiorId', 'status', 'createdAt', 'interviewHistory',
 ];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1307,6 +1301,7 @@ const deserializeCandidate = (row: Record<string, unknown>): import('../types').
         firstName: (row.firstName as string) || '',
         lastName: (row.lastName as string) || '',
         passportNumber: (row.passportNumber as string) || '',
+        passportPhotoUrl: (row.passportPhotoUrl as string) || undefined,
         sourceOdbiorId: (row.sourceOdbiorId as string) || null,
         status: ((row.status as string) || 'nowy') as import('../types').Candidate['status'],
         createdAt: (row.createdAt as string) || '',
@@ -1320,6 +1315,7 @@ function serializeCandidate(candidate: import('../types').Candidate): Record<str
         firstName: candidate.firstName,
         lastName: candidate.lastName,
         passportNumber: candidate.passportNumber,
+        passportPhotoUrl: candidate.passportPhotoUrl || '',
         sourceOdbiorId: candidate.sourceOdbiorId || '',
         status: candidate.status,
         createdAt: candidate.createdAt,
@@ -1404,7 +1400,7 @@ export async function deleteCandidate(id: string): Promise<void> {
 
 const CANDIDATE_DEMAND_HEADERS = [
     'id', 'candidateId', 'candidateFirstName', 'candidateLastName',
-    'requestedBy', 'requestedAt', 'acknowledgedBy', 'acknowledgedAt', 'status', 'retryCount', 'sentTo',
+    'requestedBy', 'requestedAt', 'acknowledgedBy', 'acknowledgedAt', 'status', 'retryCount', 'sentTo', 'estimatedDeliveryTime', 'pickupAddress', 'roomNumber',
 ];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1423,6 +1419,9 @@ const deserializeCandidateDemand = (row: any): import('../types').CandidateDeman
         status: ((row.status ?? row.get?.('status') as string) || 'pending') as import('../types').CandidateDemandStatus,
         retryCount: parseInt((row.retryCount ?? row.get?.('retryCount') as string) || '0', 10),
         sentTo: ((row.sentTo ?? row.get?.('sentTo') as string) || '').split(',').map((s: string) => s.trim()).filter(Boolean),
+        estimatedDeliveryTime: (row.estimatedDeliveryTime ?? row.get?.('estimatedDeliveryTime') as string) || undefined,
+        pickupAddress: (row.pickupAddress ?? row.get?.('pickupAddress') as string) || undefined,
+        roomNumber: (row.roomNumber ?? row.get?.('roomNumber') as string) || undefined,
     };
 };
 
@@ -1439,6 +1438,9 @@ function serializeCandidateDemand(demand: import('../types').CandidateDemand): R
         status: demand.status,
         retryCount: String(demand.retryCount),
         sentTo: (demand.sentTo || []).join(','),
+        estimatedDeliveryTime: demand.estimatedDeliveryTime || '',
+        pickupAddress: demand.pickupAddress || '',
+        roomNumber: demand.roomNumber || '',
     };
 }
 
@@ -1480,6 +1482,19 @@ export async function updateCandidateDemand(id: string, updates: Partial<import(
             candidateDemandsCache.data[idx] = { ...candidateDemandsCache.data[idx], ...updates };
             candidateDemandsCache.timestamp = Date.now();
         }
+    }
+}
+
+export async function deleteCandidateDemand(id: string): Promise<void> {
+    const sheet = await getSheet(SHEET_NAME_CANDIDATE_DEMANDS, CANDIDATE_DEMAND_HEADERS);
+    const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(CandidateDemands)');
+    const row = rows.find(r => r.get('id') === id);
+    if (!row) throw new Error(`CandidateDemand ${id} nie istnieje`);
+    // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: single demand delete by ID, approved by owner
+    await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(CandidateDemand)');
+    if (candidateDemandsCache) {
+        candidateDemandsCache.data = candidateDemandsCache.data.filter(d => d.id !== id);
+        candidateDemandsCache.timestamp = Date.now();
     }
 }
 

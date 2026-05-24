@@ -35,7 +35,7 @@ import {
     addCandidateDemand as addCandidateDemandToSheet,
     getCandidateDemands as getCandidateDemandsFromSheet,
     updateCandidateDemand as updateCandidateDemandInSheet,
-    invalidateCandidateDemandsCache,
+    deleteCandidateDemand as deleteCandidateDemandFromSheet,
     appendInterviewResult as appendInterviewResultToSheet,
 } from './sheets';
 import { format, isValid, getDaysInMonth, parseISO, differenceInDays, max, min, parse as dateFnsParse, lastDayOfMonth } from 'date-fns';
@@ -75,13 +75,13 @@ const NON_EMPLOYEE_HEADERS = [
 ];
 
 const BOK_RESIDENT_HEADERS = [
-    'id', 'role', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'address', 'roomNumber',
-    'zaklad', 'gender', 'passportNumber', 'checkInDate', 'checkOutDate', 'returnStatus', 'status', 'comments', 'sendDate', 'sendTime', 'sendReason', 'dismissDate', 'sourceOdbiorId'
+    'id', 'firstName', 'lastName', 'fullName', 'nationality', 'locality', 'address', 'roomNumber',
+    'gender', 'passportNumber', 'checkInDate', 'checkOutDate', 'comments', 'status'
 ];
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
 const SHEET_NAME_NON_EMPLOYEES = 'NonEmployees';
-const SHEET_NAME_BOK_RESIDENTS = 'BokResidents';
+const SHEET_NAME_BOK_RESIDENTS = 'BOK';
 const SHEET_NAME_NOTIFICATIONS = 'Powiadomienia';
 const SHEET_NAME_AUDIT_LOG = 'AuditLog';
 const SHEET_NAME_ADDRESSES = 'Addresses';
@@ -493,13 +493,13 @@ const createNotification = async (
             field: FIELD_LABELS[c.field] || c.field
         }));
 
-        let recipientId: string;
+        let recipientId: string | undefined;
         const notificationAction = action;
 
         if (recipientIdOverride) {
             recipientId = recipientIdOverride;
         } else {
-            recipientId = entity.coordinatorId;
+            recipientId = 'coordinatorId' in entity ? entity.coordinatorId : undefined;
         }
 
         const recipient = settings.coordinators.find(c => c.uid === recipientId);
@@ -524,11 +524,11 @@ const createNotification = async (
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
         await withTimeout(sheet.addRow(serializeNotification(notification)), TIMEOUT_MS, 'sheet.addRow(Notification)');
 
-        const entityType = 'role' in entity ? 'bok-resident' : ('zaklad' in entity && entity.zaklad ? 'pracownika' : 'mieszkańca');
+        const entityType = !('coordinatorId' in entity) ? 'bok-resident' : ('zaklad' in entity && entity.zaklad ? 'pracownika' : 'mieszkańca');
         await writeToAuditLog(actor.uid, actor.name, action, entityType, entity.id, changes);
 
         // Send Push Notification (only if explicitly enabled)
-        if (sendPush) {
+        if (sendPush && recipientId) {
             const pushTitle = 'Powiadomienie SmartHouse';
             const pushLink = `/dashboard?view=employees&edit=${entity.id}`;
             const pushResult = await sendPushNotification(recipientId, pushTitle, message, pushLink);
@@ -912,6 +912,7 @@ export async function addBokResident(residentData: Omit<BokResident, 'id'>, _act
             id: `bok-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
             ...residentData,
             fullName: `${residentData.lastName} ${residentData.firstName}`.trim(),
+            status: 'active',
         };
 
         const serialized = serializeBokResident(newResident);
@@ -1228,43 +1229,8 @@ export async function checkAndUpdateStatuses(_actorUid?: string): Promise<{ upda
             }
         }
 
-        // Process BOK residents
-        const bokSheet = await getSheet(SHEET_NAME_BOK_RESIDENTS, BOK_RESIDENT_HEADERS);
-        const bokRows = await bokSheet.getRows();
-        for (const row of bokRows) {
-            const status = String(row.get('status') || '');
-            const dismissDateString = String(row.get('dismissDate') || '');
-
-            if ((status === 'active' || status === '' || !status) && dismissDateString) {
-                // Support multiple date formats stored in Google Sheets
-                let dismissDate = parseISO(dismissDateString);
-                if (!isValid(dismissDate)) {
-                    dismissDate = dateFnsParse(dismissDateString, 'dd-MM-yyyy HH:mm', new Date());
-                }
-                if (!isValid(dismissDate)) {
-                    dismissDate = dateFnsParse(dismissDateString, 'dd-MM-yyyy', new Date());
-                }
-                if (!isValid(dismissDate)) {
-                    dismissDate = dateFnsParse(dismissDateString, 'dd.MM.yyyy', new Date());
-                }
-                if (!isValid(dismissDate)) {
-                    dismissDate = new Date(dismissDateString);
-                }
-
-                if (isValid(dismissDate) && dismissDate < today) {
-                    row.set('status', 'dismissed');
-                    await withTimeout(row.save(), TIMEOUT_MS, 'row.save(BokResident)');
-                    updatedCount++;
-                    const originalResident = { ...row.toObject(), ...splitFullName(row.get('fullName')) } as BokResident;
-                    await createNotification(actor, 'automatycznie zwolnił', originalResident, settings, undefined, [
-                        { field: 'status', oldValue: status || 'active', newValue: 'dismissed' }
-                    ], false);
-                }
-            }
-        }
-
         if (updatedCount > 0) {
-            await Promise.all([Promise.all([invalidateEmployeesCache(), invalidateNonEmployeesCache()]), invalidateBokResidentsCache()]);
+            await Promise.all([invalidateEmployeesCache(), invalidateNonEmployeesCache()]);
             revalidatePath('/dashboard');
         }
 
@@ -1954,7 +1920,7 @@ const processImport = async (
 
                 const employeeRequiredFields = ['imię', 'nazwisko', 'koordynator', 'data zameldowania', 'zakład', 'miejscowość', 'adres', 'pokój', 'narodowość'];
                 const nonEmployeeRequiredFields = ['imię', 'nazwisko', 'koordynator', 'data zameldowania', 'miejscowość', 'adres', 'pokój', 'narodowość'];
-                const bokRequiredFields = ['imię', 'nazwisko', 'koordynator', 'data zameldowania', 'miejscowość', 'adres', 'pokój', 'narodowość', 'rola', 'zakład'];
+                const bokRequiredFields = ['imię', 'nazwisko', 'data zameldowania', 'miejscowość', 'adres', 'pokój', 'narodowość'];
 
                 const requiredFields = type === 'employee' ? employeeRequiredFields : (type === 'bok-resident' ? bokRequiredFields : nonEmployeeRequiredFields);
 
@@ -1971,11 +1937,14 @@ const processImport = async (
                 const firstName = (normalizedRow['imię'] as string)?.trim();
                 const lastName = (normalizedRow['nazwisko'] as string)?.trim();
 
-                const coordinatorName = (normalizedRow['koordynator'] as string)?.toLowerCase().trim();
-                const coordinatorId = coordinatorName ? coordinatorMap.get(coordinatorName) : '';
-                if (!coordinatorId) {
-                    errors.push(`Wiersz ${rowNum} (${lastName}): Nie znaleziono koordynatora '${normalizedRow['koordynator']}'.`);
-                    continue;
+                let coordinatorId = '';
+                if (type !== 'bok-resident') {
+                    const coordinatorName = (normalizedRow['koordynator'] as string)?.toLowerCase().trim();
+                    coordinatorId = coordinatorName ? coordinatorMap.get(coordinatorName) || '' : '';
+                    if (!coordinatorId) {
+                        errors.push(`Wiersz ${rowNum} (${lastName}): Nie znaleziono koordynatora '${normalizedRow['koordynator']}'.`);
+                        continue;
+                    }
                 }
 
                 const checkInDate = safeFormat(normalizedRow['data zameldowania']);
@@ -2006,6 +1975,18 @@ const processImport = async (
                     status: 'active' as const,
                 };
 
+                // BOK residents have a simpler schema
+                if (type === 'bok-resident') {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    delete (baseRecord as any).coordinatorId;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    delete (baseRecord as any).checkOutDate;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    delete (baseRecord as any).departureReportDate;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    delete (baseRecord as any).status;
+                }
+
                 let newRecord: Employee | NonEmployee | BokResident;
 
                 if (type === 'employee') {
@@ -2026,15 +2007,8 @@ const processImport = async (
                 } else if (type === 'bok-resident') {
                     newRecord = {
                         ...baseRecord,
-                        role: (normalizedRow['rola'] as string)?.trim() || 'Kierowca',
-                        zaklad: (normalizedRow['zakład'] as string)?.trim() || '',
-                        returnStatus: (normalizedRow['opcja powrotu'] as string)?.trim() || 'Brak',
-                        sendDate: null,
-                        dismissDate: null,
+                        passportNumber: (normalizedRow['nr paszportu'] as string)?.trim() || '',
                     } as BokResident;
-                    // remove non-bok fields to satisfy type if needed
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    if ('departureReportDate' in newRecord) delete (newRecord as any).departureReportDate;
                 } else {
                     newRecord = {
                         ...baseRecord,
@@ -2053,7 +2027,7 @@ const processImport = async (
                     entityFirstName: newRecord.firstName,
                     entityLastName: newRecord.lastName,
                     actorName: actor.name,
-                    recipientId: newRecord.coordinatorId,
+                    recipientId: 'coordinatorId' in newRecord ? newRecord.coordinatorId : actor.uid,
                     createdAt: new Date().toISOString(),
                     isRead: false,
                     type: notificationType,
@@ -2071,9 +2045,9 @@ const processImport = async (
                 const serializedRecords = (recordsToAdd as Employee[]).map(rec => serializeEmployee(rec));
                 await withTimeout(sheet.addRows(serializedRecords), TIMEOUT_MS, 'sheet.addRows(Employees)');
             } else if (type === 'bok-resident') {
-                const sheet = await getSheet('BokResidents', BOK_RESIDENT_HEADERS);
+                const sheet = await getSheet('BOK', BOK_RESIDENT_HEADERS);
                 const serializedRecords = (recordsToAdd as BokResident[]).map(rec => serializeBokResident(rec));
-                await withTimeout(sheet.addRows(serializedRecords), TIMEOUT_MS, 'sheet.addRows(BokResidents)');
+                await withTimeout(sheet.addRows(serializedRecords), TIMEOUT_MS, 'sheet.addRows(BOK)');
             } else {
                 const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
                 const serializedRecords = (recordsToAdd as NonEmployee[]).map(rec => serializeNonEmployee(rec));
@@ -2443,24 +2417,49 @@ export async function updateControlCardCommentStatusAction(
         if (!card) return { success: false, error: 'Control card not found' };
 
         const oldComment = card.comments.find(c => c.id === commentId);
-        if (!oldComment) return { success: false, error: 'Comment not found' };
+        
+        if (oldComment) {
+            // Update general comment status
+            const updatedComments = card.comments.map((c) =>
+                c.id === commentId ? { ...c, status: newStatus } : c
+            );
 
-        // Update comment status
-        const updatedComments = card.comments.map((c) =>
-            c.id === commentId ? { ...c, status: newStatus } : c
-        );
+            const newChangeLog: ControlCardChangeLogEntry[] = [...(card.changeLog || [])];
+            newChangeLog.push({
+                timestamp: new Date().toISOString(),
+                userId: session.uid,
+                userName: session.name,
+                changes: `Status komentarza "${oldComment.text.slice(0, 30)}${oldComment.text.length > 30 ? '...' : ''}": ${oldComment.status} → ${newStatus}`,
+            });
 
-        const newChangeLog: ControlCardChangeLogEntry[] = [...(card.changeLog || [])];
-        newChangeLog.push({
-            timestamp: new Date().toISOString(),
-            userId: session.uid,
-            userName: session.name,
-            changes: `Status komentarza "${oldComment.text.slice(0, 30)}${oldComment.text.length > 30 ? '...' : ''}": ${oldComment.status} → ${newStatus}`,
-        });
+            await updateControlCardInSheet(cardId, { comments: updatedComments, changeLog: newChangeLog });
+            revalidatePath('/dashboard');
+            return { success: true };
+        } else {
+            // Check if it's a room comment
+            const oldRoomRating = card.roomRatings?.find(r => r.roomId === commentId);
+            if (oldRoomRating) {
+                const updatedRoomRatings = card.roomRatings.map(r => 
+                    r.roomId === commentId ? { ...r, status: newStatus } : r
+                );
 
-        await updateControlCardInSheet(cardId, { comments: updatedComments, changeLog: newChangeLog });
-        revalidatePath('/dashboard');
-        return { success: true };
+                const newChangeLog: ControlCardChangeLogEntry[] = [...(card.changeLog || [])];
+                const oldStatusStr = oldRoomRating.status || 'Nie przyjęte';
+                const commentText = oldRoomRating.comment || '';
+                newChangeLog.push({
+                    timestamp: new Date().toISOString(),
+                    userId: session.uid,
+                    userName: session.name,
+                    changes: `Status komentarza w pokoju "${oldRoomRating.roomName}" ("${commentText.slice(0, 30)}${commentText.length > 30 ? '...' : ''}"): ${oldStatusStr} → ${newStatus}`,
+                });
+
+                await updateControlCardInSheet(cardId, { roomRatings: updatedRoomRatings, changeLog: newChangeLog });
+                revalidatePath('/dashboard');
+                return { success: true };
+            }
+
+            return { success: false, error: 'Comment not found' };
+        }
     } catch (error) {
         console.error('Error updating comment status:', error);
         return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
@@ -2596,6 +2595,7 @@ type OdbiorEntryCreateInput = {
     createdBy: string;
     createdById: string;
     sourceOdbiorId?: string;
+    passportPhotoUrl?: string;
 };
 
 export async function addOdbiorEntryAction(
@@ -2652,7 +2652,6 @@ export async function updateOdbiorEntryAction(
 
 export async function convertOdbiorToBokAction(
     id: string,
-    extra: { role: string; coordinatorId: string; zaklad: string; status: string; returnStatus: string },
     _actorUid: string
 ): Promise<{ success: boolean; error?: string; bokId?: string }> {
     try {
@@ -2666,25 +2665,31 @@ export async function convertOdbiorToBokAction(
         }
 
         const bok = await addBokResident({
-            role: extra.role,
             firstName: entry.firstName,
             lastName: entry.lastName,
             fullName: `${entry.lastName} ${entry.firstName}`.trim(),
-            coordinatorId: extra.coordinatorId,
             nationality: entry.nationality,
             address: entry.addressName,
             roomNumber: entry.roomNumber,
-            zaklad: extra.zaklad,
             gender: entry.gender,
             passportNumber: entry.passportNumber,
             checkInDate: entry.date,
-            checkOutDate: null,
-            sendDate: null,
-            dismissDate: null,
-            returnStatus: extra.returnStatus,
-            status: extra.status,
             comments: '',
         }, actorUid);
+
+        const candidate: Candidate = {
+            id: `cand-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            firstName: entry.firstName,
+            lastName: entry.lastName,
+            passportNumber: entry.passportNumber,
+            sourceOdbiorId: entry.sourceOdbiorId || null,
+            status: 'zakwaterowana',
+            createdAt: new Date().toISOString(),
+            interviewHistory: [],
+        };
+        await addCandidateToSheet(candidate);
+        invalidateCandidatesCache();
+        await invalidateCandidatesCache();
 
         await updateOdbiorEntryInSheet(id, { status: 'przekonwertowany', convertedToBokId: bok.id });
         await invalidateOdbiorEntriesCache();
@@ -2766,25 +2771,16 @@ export async function addOdbiorZakwaterowanieAction(
         }
 
         const bok = await addBokResident({
-            role: '',
             firstName: input.firstName.trim(),
             lastName: input.lastName.trim(),
             fullName: `${input.lastName.trim()} ${input.firstName.trim()}`.trim(),
-            coordinatorId: input.createdById,
             nationality: input.nationality.trim(),
             address: input.addressName,
             roomNumber: input.roomNumber,
-            zaklad: '',
             gender: input.gender.trim(),
             passportNumber: input.passportNumber.trim(),
             checkInDate: input.date,
-            checkOutDate: null,
-            sendDate: null,
-            dismissDate: null,
-            returnStatus: '',
-            status: 'active',
             comments: '',
-            sourceOdbiorId: input.sourceOdbiorId || null,
         }, input.createdById);
 
         const entry: OdbiorEntry = {
@@ -2808,6 +2804,23 @@ export async function addOdbiorZakwaterowanieAction(
         };
         await addOdbiorEntryToSheet(entry);
         await invalidateOdbiorEntriesCache();
+
+        // Also add as a candidate in Recruitment
+        const candidate: Candidate = {
+            id: `cand-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            firstName: input.firstName.trim(),
+            lastName: input.lastName.trim(),
+            passportNumber: input.passportNumber.trim(),
+            passportPhotoUrl: input.passportPhotoUrl || undefined,
+            sourceOdbiorId: input.sourceOdbiorId || null,
+            status: 'zakwaterowana',
+            createdAt: new Date().toISOString(),
+            interviewHistory: [],
+        };
+        await addCandidateToSheet(candidate);
+        invalidateCandidatesCache();
+        await invalidateCandidatesCache();
+
         revalidatePath('/dashboard');
         return { success: true, bokId: bok.id, entry, bokResident: bok };
     } catch (error) {
@@ -2861,6 +2874,7 @@ type CandidateCreateInput = {
     firstName: string;
     lastName: string;
     passportNumber: string;
+    passportPhotoUrl?: string;
     sourceOdbiorId?: string | null;
 };
 
@@ -2868,7 +2882,7 @@ export async function addCandidateAction(
     input: CandidateCreateInput
 ): Promise<{ success: boolean; error?: string; candidate?: Candidate }> {
     try {
-        const session = await requireSession();
+        await requireSession();
         if (!input.firstName?.trim() || !input.lastName?.trim()) {
             return { success: false, error: 'Imię i nazwisko są wymagane.' };
         }
@@ -2877,12 +2891,14 @@ export async function addCandidateAction(
             firstName: input.firstName.trim(),
             lastName: input.lastName.trim(),
             passportNumber: input.passportNumber?.trim() || '',
+            passportPhotoUrl: input.passportPhotoUrl || undefined,
             sourceOdbiorId: input.sourceOdbiorId || null,
-            status: 'nowy',
+            status: input.sourceOdbiorId ? 'wdrodze' : 'nowy',
             createdAt: new Date().toISOString(),
             interviewHistory: [],
         };
         await addCandidateToSheet(candidate);
+        invalidateCandidatesCache();
         revalidatePath('/dashboard');
         return { success: true, candidate };
     } catch (error) {
@@ -2898,6 +2914,7 @@ export async function updateCandidateAction(
     try {
         await requireSession();
         await updateCandidateInSheet(id, updates);
+        invalidateCandidatesCache();
         revalidatePath('/dashboard');
         return { success: true };
     } catch (error) {
@@ -2908,7 +2925,7 @@ export async function updateCandidateAction(
 
 export async function deleteCandidateAction(
     id: string,
-    actorUid: string
+    _actorUid: string
 ): Promise<{ success: boolean; error?: string }> {
     try {
         const session = await requireSession();
@@ -2926,7 +2943,10 @@ export async function deleteCandidateAction(
 }
 
 export async function sendCandidateDemandNotificationAction(
-    candidate: Candidate
+    candidate: Candidate,
+    estimatedDeliveryTime: string,
+    pickupAddress: string,
+    roomNumber?: string
 ): Promise<{ success: boolean; sentCount: number; error?: string; demandId?: string }> {
     try {
         const session = await requireSession();
@@ -2939,7 +2959,7 @@ export async function sendCandidateDemandNotificationAction(
         };
 
         const targetCoordinators = settings.coordinators.filter(
-            c => (c.isAdmin || c.isDriver) && c.pushSubscription
+            c => (c.isAdmin || c.isDriver || c.isBok) && c.pushSubscription
         );
 
         if (targetCoordinators.length === 0) {
@@ -2947,9 +2967,9 @@ export async function sendCandidateDemandNotificationAction(
         }
 
         const demandId = `demand-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-        const message = `Zapotrzebowanie na kandydata: ${candidate.firstName} ${candidate.lastName} (paszport: ${candidate.passportNumber || 'brak'})`;
+        const message = `Zapotrzebowanie na kandydata: ${candidate.firstName} ${candidate.lastName}. Skąd: ${pickupAddress}. Czas dostarczenia: ${estimatedDeliveryTime}`;
         const pushTitle = '🚨 Zapotrzebowanie na kandydata';
-        const pushLink = `/dashboard?view=recruitment&demandId=${demandId}`;
+        const pushLink = `/dashboard?view=zapotrzebowania`;
 
         // Send all pushes in parallel — don't block each coordinator on the previous one
         const pushResults = await Promise.all(
@@ -2991,11 +3011,14 @@ export async function sendCandidateDemandNotificationAction(
             candidateId: candidate.id,
             candidateFirstName: candidate.firstName,
             candidateLastName: candidate.lastName,
-            requestedBy: actor.uid,
+            requestedBy: actor.name,
             requestedAt: new Date().toISOString(),
             status: 'pending',
             retryCount: 0,
             sentTo,
+            estimatedDeliveryTime,
+            pickupAddress,
+            roomNumber,
         };
         await addCandidateDemandToSheet(demand);
 
@@ -3022,6 +3045,43 @@ export async function acknowledgeCandidateDemandAction(
         return { success: true };
     } catch (error) {
         console.error('Error acknowledging candidate demand:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+export async function deliverCandidateDemandAction(
+    demandId: string,
+    deliveredBy?: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const deliveredByName = deliveredBy || (await getSession()).name || 'unknown';
+        await updateCandidateDemandInSheet(demandId, {
+            status: 'delivered',
+            acknowledgedBy: deliveredByName,
+            acknowledgedAt: new Date().toISOString(),
+        });
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error delivering candidate demand:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+export async function deleteCandidateDemandAction(
+    id: string,
+    _actorUid: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const session = await requireSession();
+        if (!session.isAdmin) {
+            return { success: false, error: 'Tylko administrator może usuwać zapotrzebowania.' };
+        }
+        await deleteCandidateDemandFromSheet(id);
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error deleting candidate demand:', error);
         return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
     }
 }
@@ -3075,53 +3135,6 @@ export async function retryCandidateDemandsAction(): Promise<{ success: boolean;
     }
 }
 
-// ─── Wysyłka BOK ──────────────────────────────────────────────────────────────
-
-export async function bulkSetSendDateAction(
-    entries: { id: string; sendDate: string; sendTime: string; sendReason: string }[],
-    _actorUid: string,
-): Promise<{ success: boolean; updatedCount: number; error?: string }> {
-    if (entries.length === 0) return { success: true, updatedCount: 0 };
-    try {
-        await requireSession();
-        const sheet = await getSheet(SHEET_NAME_BOK_RESIDENTS, BOK_RESIDENT_HEADERS);
-        const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(BokResidents)');
-        let updatedCount = 0;
-        for (const entry of entries) {
-            const row = rows.find(r => r.get('id') === entry.id);
-            if (row) {
-                row.set('sendDate', entry.sendDate);
-                row.set('sendTime', entry.sendTime);
-                row.set('sendReason', entry.sendReason);
-                await withTimeout(row.save(), TIMEOUT_MS, 'row.save(BokResident.sendDate)');
-                updatedCount++;
-            }
-        }
-        await invalidateBokResidentsCache();
-        revalidatePath('/dashboard');
-        return { success: true, updatedCount };
-    } catch (error) {
-        console.error('Error bulk setting sendDate:', error);
-        return { success: false, updatedCount: 0, error: error instanceof Error ? error.message : 'Unexpected error' };
-    }
-}
-
-export async function updateSendDateAction(
-    bokId: string,
-    sendDate: string | null,
-    _actorUid: string,
-): Promise<{ success: boolean; error?: string }> {
-    try {
-        // actorUid is taken from session inside updateBokResident
-        await updateBokResident(bokId, { sendDate }, '');
-        revalidatePath('/dashboard');
-        return { success: true };
-    } catch (error) {
-        console.error('Error updating sendDate:', error);
-        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
-    }
-}
-
 export async function recordInterviewResultAction(
     candidateId: string,
     result: 'success' | 'failure'
@@ -3142,19 +3155,3 @@ export async function recordInterviewResultAction(
     }
 }
 
-export async function dismissBokResidentAction(
-    bokId: string,
-    _actorUid: string,
-    dismissDate?: string,
-): Promise<{ success: boolean; error?: string }> {
-    try {
-        const date = dismissDate || format(new Date(), 'yyyy-MM-dd');
-        // actorUid taken from session inside updateBokResident
-        await updateBokResident(bokId, { dismissDate: date, status: 'dismissed' }, '');
-        revalidatePath('/dashboard');
-        return { success: true };
-    } catch (error) {
-        console.error('Error dismissing BOK resident:', error);
-        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
-    }
-}

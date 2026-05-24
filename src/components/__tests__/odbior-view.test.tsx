@@ -15,7 +15,7 @@ global.URL.revokeObjectURL = jest.fn();
 
 jest.mock('@/components/odbior-detail-dialog', () => ({
   __esModule: true,
-  default: ({ open, zgloszenie }: any) =>
+  default: ({ open, zgloszenie }: { open: boolean; zgloszenie?: { id?: string } }) =>
     open ? <div data-testid="detail-dialog">{zgloszenie?.id}</div> : null,
 }));
 
@@ -27,6 +27,7 @@ describe('OdbiorView', () => {
     isAdmin: true,
     isDriver: false,
     isRekrutacja: true,
+    isBok: false,
   };
 
   const mockZgloszenia: OdbiorZgloszenie[] = [
@@ -72,7 +73,7 @@ describe('OdbiorView', () => {
     render(<OdbiorView currentUser={mockUser} />);
 
     // Wait for the data to load
-    await screen.findByText('W trakcie');
+    await screen.findByText('Stacja autobusowa');
 
     expect(screen.getByText('Dostarczone')).toBeInTheDocument();
 
@@ -84,7 +85,7 @@ describe('OdbiorView', () => {
   it('renders the list of submissions', async () => {
     render(<OdbiorView currentUser={mockUser} />);
 
-    await screen.findByText('W trakcie');
+    await screen.findByText('Stacja autobusowa');
 
     expect(screen.getByText('Stacja autobusowa')).toBeInTheDocument();
     expect(screen.getByText('2', { selector: 'td' })).toBeInTheDocument(); // persons

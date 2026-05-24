@@ -5,9 +5,7 @@ import '@testing-library/jest-dom';
 import { FilterControls } from '../housing-view';
 
 // Mock actions to avoid firebase-admin initialization in tests
-jest.mock('@/lib/actions', () => ({
-    bulkSetSendDateAction: jest.fn(),
-}));
+jest.mock('@/lib/actions', () => ({}));
 
 // Mock UI components that might cause issues in JSDOM or are complex
 jest.mock('@/components/ui/select', () => ({

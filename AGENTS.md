@@ -322,8 +322,8 @@ SEKWENCYJNIE (zależności):
 
 ### Krok 1 — Przed rozpoczęciem pracy (ZAWSZE)
 
-Przeczytaj [`LESSONS_LEARNED.md`](./LESSONS_LEARNED.md) w całości.
-Sprawdź, czy zadanie które masz wykonać nie dotyka obszarów opisanych jako podatne na błędy.
+Przeczytaj **sekcję TL;DR** w [`LESSONS_LEARNED.md`](./LESSONS_LEARNED.md) — to 14 zasad w tabeli na górze pliku (~400 tokenów).
+Jeśli zadanie dotyczy konkretnego obszaru z indeksu (np. Google Sheets, testy, DateInput) — przeczytaj **tylko tę pełną sekcję**. Nie czytaj całego pliku.
 
 ### Krok 2 — W trakcie pracy
 
@@ -374,6 +374,8 @@ Dopisz wpis do `LESSONS_LEARNED.md` w formacie:
    - Dozwolone operacje: `addRow()`, `updateRowById()`, `addColumnsSafely()`, `getRows()`, `getHeaders()`
    - Jeśli funkcjonalność wymaga usunięcia danych → STOP → zapytaj właściciela przed implementacją
 9. **Token first** — każdy agent musi minimalizować zużycie tokenów poprzez precyzyjne zapytania, celowe przeszukiwania i zwięzłe odpowiedzi bez zbędnego wstępu lub zakładowania.
+   - `LESSONS_LEARNED.md` — czytaj tylko TL;DR na starcie. Pełne sekcje tylko gdy zadanie dotyka danego obszaru.
+   - `AI_CONTEXT.md` — używaj **na żądanie** (gdy pytasz o strukturę projektu lub zależności), nie automatycznie na starcie sesji. Plik może być nieaktualny — weryfikuj narzędziami (`grep`, `ls`).
 
 ---
 

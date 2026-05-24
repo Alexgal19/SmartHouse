@@ -71,6 +71,7 @@ describe('OdbiorZakwaterowanieDialog', () => {
     isAdmin: true,
     isDriver: false,
     isRekrutacja: false,
+    isBok: false,
   };
 
   const baseProps = {

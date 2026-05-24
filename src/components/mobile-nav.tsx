@@ -1,12 +1,12 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import type { View, SessionData } from "@/types";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
-import { MoreHorizontal, X } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
 const MAX_BAR_ITEMS = 5;
@@ -14,35 +14,29 @@ const MAX_BAR_ITEMS = 5;
 export function MobileNav({
     activeView,
     navItems,
-    currentUser
+    currentUser,
+    unacceptedCount = 0,
+    wdrodzeCount = 0,
+    pendingDemandsCount = 0
 }: {
     activeView: View;
     navItems: { view: View; icon: React.ElementType; label: string }[];
     currentUser: SessionData;
+    unacceptedCount?: number;
+    wdrodzeCount?: number;
+    pendingDemandsCount?: number;
 }) {
     const { t } = useLanguage();
     const [isMoreOpen, setIsMoreOpen] = useState(false);
-    const [unacceptedCount, setUnacceptedCount] = useState(0);
-
-    useEffect(() => {
-        if (!currentUser) return;
-        const load = async () => {
-            try {
-                const res = await fetch('/api/odbior/zgloszenia');
-                if (!res.ok) return;
-                const data = await res.json();
-                setUnacceptedCount(data.filter((z: { status: string }) => z.status === 'Nieprzyjęte').length);
-            } catch {
-                // ignore
-            }
-        };
-        load();
-        const interval = setInterval(load, 30000);
-        return () => clearInterval(interval);
-    }, [currentUser]);
 
     const filteredItems = navItems.filter(item => {
-        if ((item.view === 'settings' || item.view === 'recruitment') && !currentUser?.isAdmin) {
+        if (item.view === 'settings' && !currentUser?.isAdmin) {
+            return false;
+        }
+        if (item.view === 'recruitment' && !(currentUser?.isAdmin || currentUser?.isRekrutacja)) {
+            return false;
+        }
+        if (item.view === 'zapotrzebowania' && !(currentUser?.isAdmin || currentUser?.isDriver || currentUser?.isBok || currentUser?.isRekrutacja)) {
             return false;
         }
         return true;
@@ -66,13 +60,29 @@ export function MobileNav({
             )}
         >
             <div className={cn(
-                "relative flex items-center justify-center p-2 rounded-lg",
-                activeView === item.view && "bg-primary/10"
+                "relative flex items-center justify-center p-2 rounded-lg transition-all duration-200",
+                item.view === 'odbior' && unacceptedCount > 0
+                    ? "animate-blink-red"
+                    : item.view === 'recruitment' && (wdrodzeCount ?? 0) > 0
+                        ? "animate-blink-red"
+                        : item.view === 'zapotrzebowania' && pendingDemandsCount > 0
+                            ? "animate-blink-red"
+                            : activeView === item.view && "bg-primary/10"
             )}>
                 <item.icon className="h-5 w-5" />
                 {item.view === 'odbior' && unacceptedCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 shadow-sm">
                         {unacceptedCount > 9 ? '9+' : unacceptedCount}
+                    </span>
+                )}
+                {item.view === 'recruitment' && (wdrodzeCount ?? 0) > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 shadow-sm">
+                        {(wdrodzeCount ?? 0) > 9 ? '9+' : wdrodzeCount}
+                    </span>
+                )}
+                {item.view === 'zapotrzebowania' && pendingDemandsCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 shadow-sm">
+                        {pendingDemandsCount > 9 ? '9+' : pendingDemandsCount}
                     </span>
                 )}
             </div>
@@ -122,11 +132,20 @@ export function MobileNav({
                                                     : "text-foreground hover:bg-muted"
                                             )}
                                         >
-                                            <div className="relative">
+                                            <div className={cn(
+                                                "relative p-1.5 rounded-lg transition-all duration-200",
+                                                (item.view === 'odbior' && unacceptedCount > 0) && "animate-blink-red",
+                                                (item.view === 'zapotrzebowania' && pendingDemandsCount > 0) && "animate-blink-red"
+                                            )}>
                                                 <item.icon className="h-5 w-5 shrink-0" />
                                                 {item.view === 'odbior' && unacceptedCount > 0 && (
-                                                    <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+                                                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 shadow-sm">
                                                         {unacceptedCount > 9 ? '9+' : unacceptedCount}
+                                                    </span>
+                                                )}
+                                                {item.view === 'zapotrzebowania' && pendingDemandsCount > 0 && (
+                                                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 shadow-sm">
+                                                        {pendingDemandsCount > 9 ? '9+' : pendingDemandsCount}
                                                     </span>
                                                 )}
                                             </div>

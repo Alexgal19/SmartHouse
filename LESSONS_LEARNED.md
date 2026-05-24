@@ -2,7 +2,27 @@
 
 > Plik prowadzony przez agentów zgodnie z protokołem z `AGENTS.md`.
 > **Nie usuwaj wpisów.** Dopisuj UPDATE: jeśli coś się zmieniło.
-> Czytaj przed każdą sesją.
+
+---
+
+## ⚡ TL;DR — Czytaj to. Pełne sekcje tylko gdy zadanie dotyka danego obszaru.
+
+| # | Obszar | Kluczowa zasada |
+|---|--------|----------------|
+| 1 | React / UI | `useEffect` synchronizujący stan lokalny ↔ URL + debounce = konflikt. Użyj `committedRef` do odróżnienia własnych zmian od zewnętrznych. |
+| 2 | Filtry kolumn | Wartość opcji filtra musi być **identyczna** z wartością pola — nie transformuj dla wyświetlania bez transformacji w logice. |
+| 3 | Struktura projektu | Pliki **muszą** być pod `src/`. Root-level `lib/` i `components/` są usuniętym legacy — nie twórz tam nowych plików. |
+| 4 | TypeScript | `array.reduce((acc, item) => ..., {})` — zawsze dodaj explicit generic `reduce<Record<string, T>>`. Podwójny export tego samego typu = błąd TS2484. |
+| 5 | ESLint / ochrona Sheets | `ignorePatterns` dla plików z logiką biznesową jest ZABRONIONE. `no-restricted-syntax` musi obejmować cały aktywny kod. |
+| 6 | Google Sheets — zapis | `getSafeSheet()` to JEDYNA dozwolona ścieżka zapisu. `getSheet()` tylko do odczytu. Nigdy `row.delete()`, `clearRows()`, `deleteRows()`. |
+| 7 | Google Sheets — dane | `row.get('...')` zwraca `""` nie `null` dla pustych komórek. Zawsze: `value ? new Date(value) : null` + sprawdzenie `isNaN`. |
+| 8 | Google Sheets API | Batch + throttling dla ustawień. Nie twórz nowych bezpośrednich wywołań API dla każdego modułu z osobna. |
+| 9 | Auth / Firestore | Rate limiter musi być fail-open — błąd Firestore nie może blokować logowania. Wszystkie operacje Firestore w try/catch z fallbackiem. |
+| 10 | Bezpieczeństwo | CSP + HSTS w `next.config.mjs`. Przy nowej integracji zewnętrznej — sprawdź czy CSP wymaga aktualizacji. |
+| 11 | Testy | Mocki `@/lib/auth` i `@/lib/firebase-admin` są w `jest.setup.mjs` — sprawdź tam przed dodawaniem nowych. |
+| 12 | Zdjęcia / upload | Wzorzec offline-first: najpierw data URL (natychmiastowe UI), potem upload na serwer. Kompresuj przed konwersją (canvas resize). |
+| 13 | DateInput | Double-click przełącza w tryb tekstowy. Ten wzorzec jest w 4+ komponentach — zmiana w jednym = sprawdź pozostałe. |
+| 14 | TypeScript — `.d.ts` | `declare module '...'` nadpisuje typy biblioteki. Gdy dziwne błędy typów z zewnętrznych lib — sprawdź `src/types/` najpierw. |
 
 ---
 

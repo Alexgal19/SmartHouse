@@ -29,7 +29,6 @@ export interface AlertDetailItem {
 
 export interface AlertDetails {
   contractExpiry: AlertDetailItem[];
-  bokStatusInconsistency: AlertDetailItem[];
   capacityExceeded: AlertDetailItem[];
   missingPaymentData: AlertDetailItem[];
   duplicatePersons: AlertDetailItem[];
@@ -89,31 +88,16 @@ export function extractAlertDetails(
 
   const contractExpiry = [...expired, ...expiring];
 
-  // BOK inconsistency
-  const bokStatusInconsistency: AlertDetailItem[] = bokResidents
-    .filter(res => {
-      if (res.status === 'dismissed') return false;
-      const dismiss = parseAlertDate(res.dismissDate);
-      return !!dismiss && dismiss <= t;
-    })
-    .map(res => ({
-      id: res.id,
-      name: res.fullName,
-      link: `/dashboard?view=employees&tab=bok-residents&edit=${res.id}`,
-      extra: `data zwolnienia: ${res.dismissDate}`,
-      coordinatorId: res.coordinatorId ?? null,
-    }));
-
   // Capacity exceeded
   const occupancy = new Map<string, number>();
-  const countPerson = (p: { status: string; address: string; roomNumber: string }) => {
-    if (p.status !== 'active') return;
+  const countPerson = (p: { address: string; roomNumber: string }, isActive: boolean) => {
+    if (!isActive) return;
     const key = `${p.address}|${p.roomNumber}`;
     occupancy.set(key, (occupancy.get(key) ?? 0) + 1);
   };
-  employees.forEach(countPerson);
-  nonEmployees.forEach(countPerson);
-  bokResidents.forEach(countPerson);
+  employees.forEach(e => countPerson(e, e.status === 'active'));
+  nonEmployees.forEach(ne => countPerson(ne, ne.status === 'active'));
+  bokResidents.forEach(bok => countPerson(bok, true));
 
   const capacityExceeded: AlertDetailItem[] = [];
   for (const addr of addresses) {
@@ -203,5 +187,5 @@ export function extractAlertDetails(
     }
   }
 
-  return { contractExpiry, bokStatusInconsistency, capacityExceeded, missingPaymentData, duplicatePersons };
+  return { contractExpiry, capacityExceeded, missingPaymentData, duplicatePersons };
 }

@@ -68,6 +68,7 @@ const mockUserAdmin: SessionData = {
   isAdmin: true,
   isDriver: false,
   isRekrutacja: true,
+  isBok: false,
 };
 
 const mockUserDriver: SessionData = {
@@ -77,6 +78,7 @@ const mockUserDriver: SessionData = {
   isAdmin: false,
   isDriver: true,
   isRekrutacja: false,
+  isBok: false,
 };
 
 const makeZgloszenie = (overrides: Partial<OdbiorZgloszenie> = {}): OdbiorZgloszenie => ({
@@ -137,7 +139,7 @@ describe('OdbiorDetailDialog', () => {
 
   describe('Nieprzyjęte', () => {
     it('shows Przyjmij button and transitions to W trakcie on click', async () => {
-      const { onStatusChange } = renderDialog();
+      renderDialog();
 
       fireEvent.click(screen.getByRole('button', { name: /Przyjmij/i }));
 
@@ -252,6 +254,12 @@ describe('OdbiorDetailDialog', () => {
       fireEvent.click(screen.getByRole('button', { name: /Odrzuć/i }));
 
       await waitFor(() => {
+          expect(screen.getByText(/Jesteś pewny/i)).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /Tak/i }));
+
+      await waitFor(() => {
         expect(global.fetch).toHaveBeenCalledWith(
           '/api/odbior/zgloszenie/zgl-1',
           expect.objectContaining({
@@ -262,27 +270,31 @@ describe('OdbiorDetailDialog', () => {
       });
     });
 
-    it('Zakończ odbiór shows toast error when no persons', async () => {
+    it('Zakończ odbiór is disabled when no persons', async () => {
       const z = makeZgloszenie({ status: 'W trakcie', osoby: '' });
       renderDialog({ zgloszenie: z });
 
-      fireEvent.click(screen.getByRole('button', { name: /Zakończ odbiór/i }));
-
-      await waitFor(() => {
-        expect(mockToast).toHaveBeenCalledWith(
-          expect.objectContaining({ description: expect.stringContaining('Dodaj co najmniej jedną osobę') })
-        );
-      });
+      const finishBtn = screen.getByRole('button', { name: /Zakończ odbiór/i });
+      expect(finishBtn).toBeDisabled();
     });
 
     it('Zakończ odbiór succeeds when persons present', async () => {
       const z = makeZgloszenie({
         status: 'W trakcie',
-        osoby: JSON.stringify([{ imie: 'Jan', nazwisko: 'Kowalski', paszport: 'AB123' }]),
+        iloscOsob: 1,
+        osoby: JSON.stringify([{ imie: 'Jan', nazwisko: 'Kowalski', paszport: 'AB123', statusKrok: 'completed' }]),
       });
       renderDialog({ zgloszenie: z });
 
-      fireEvent.click(screen.getByRole('button', { name: /Zakończ odbiór/i }));
+      const finishBtn = screen.getByRole('button', { name: /Zakończ odbiór/i });
+      expect(finishBtn).not.toBeDisabled();
+      fireEvent.click(finishBtn);
+
+      await waitFor(() => {
+          expect(screen.getByText(/Jesteś pewny/i)).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /Tak/i }));
 
       await waitFor(() => {
         expect(global.fetch).toHaveBeenCalledWith(
@@ -309,7 +321,14 @@ describe('OdbiorDetailDialog', () => {
           '/api/odbior/zgloszenie/zgl-1',
           expect.objectContaining({
             method: 'PATCH',
-            body: expect.stringContaining('"nastepnyKrok":"zakwaterowanie"'),
+            body: expect.stringContaining('wybranyKrok'),
+          })
+        );
+        expect(global.fetch).toHaveBeenCalledWith(
+          '/api/odbior/zgloszenie/zgl-1',
+          expect.objectContaining({
+            method: 'PATCH',
+            body: expect.stringContaining('zakwaterowanie'),
           })
         );
       });

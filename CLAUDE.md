@@ -74,11 +74,13 @@ SmartHouse/
 
 ## 🏗️ Live Project Context
 
-For a real-time snapshot of dependencies, git status, and the full file tree, refer to:
+For a snapshot of dependencies, git status, and the file tree, refer to:
 
 **➡️ [`AI_CONTEXT.md`](./AI_CONTEXT.md)**
 
-This file is automatically updated on every `git commit`. Use it to understand the current state of the codebase without manual exploration.
+> ⚠️ Use **on demand only** — when you need to understand project structure or dependencies.
+> Do NOT read automatically at session start. This file is auto-generated on git commit and **may be stale**.
+> For current file structure use `ls`/`grep` tools instead.
 
 ---
 

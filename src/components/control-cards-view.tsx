@@ -401,7 +401,7 @@ const buildDefaultForm = (address: Address): FormState => ({
     comments: [],
 });
 
-const isControlFormComplete = (form: FormState, address: Address): boolean => {
+const isControlFormComplete = (form: FormState, _address: Address): boolean => {
     if (form.roomRatings.some(r => !r.rating || r.rating === 0)) return false;
     if (!form.cleanKitchen || form.cleanKitchen === 0) return false;
     if (!form.cleanBathroom || form.cleanBathroom === 0) return false;
@@ -429,7 +429,7 @@ const buildFormFromCard = (card: ControlCard, address: Address): FormState => {
         bathroomPhotoUrls: card.bathroomPhotoUrls || [],
         meterPhotoUrls: card.meterPhotoUrls || [],
         appliancesWorking: card.appliancesWorking,
-        comments: Array.isArray(card.comments) ? card.comments : [],
+        comments: Array.isArray(card.comments) ? card.comments.map(c => ({ ...c, photoUrls: c.photoUrls || [] })) : [],
     };
 };
 
@@ -819,6 +819,7 @@ function ControlCardDialog({
 
     const [uploadingRooms, setUploadingRooms] = useState<Record<string, boolean>>({});
     const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+    const [uploadingCommentId, setUploadingCommentId] = useState<string | null>(null);
 
     const compressImage = (file: File): Promise<string> => {
         return new Promise((resolve, reject) => {
@@ -900,6 +901,62 @@ function ControlCardDialog({
             roomRatings: prev.roomRatings.map(r =>
                 r.roomId === roomId ? { ...r, photoUrls: (r.photoUrls || []).filter((_, idx) => idx !== indexToRemove) } : r
             )
+        }));
+    };
+
+    const replaceCommentPhotoUrl = React.useCallback((commentId: string, from: string, to: string) => {
+        setForm(prev => ({
+            ...prev,
+            comments: prev.comments.map(c =>
+                c.id === commentId
+                    ? { ...c, photoUrls: (c.photoUrls || []).map(u => u === from ? to : u) }
+                    : c
+            ),
+        }));
+    }, []);
+
+    const handleAddCommentPhotos = async (commentId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files?.length) return;
+        setUploadingCommentId(commentId);
+        try {
+            const dataUrls: string[] = [];
+            for (let i = 0; i < e.target.files.length; i++) {
+                const file = e.target.files[i];
+                if (!file.type.startsWith('image/') && !/\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(file.name)) continue;
+                const dataUrl = await compressImage(file);
+                dataUrls.push(dataUrl);
+                uploadControlCardPhotoAction(dataUrl, file.name || 'photo.jpg', 'image/jpeg')
+                    .then(res => { if (res.url) replaceCommentPhotoUrl(commentId, dataUrl, res.url); })
+                    .catch(() => {});
+            }
+            if (dataUrls.length) {
+                setForm(prev => ({
+                    ...prev,
+                    comments: prev.comments.map(c =>
+                        c.id === commentId
+                            ? { ...c, photoUrls: [...(c.photoUrls || []), ...dataUrls] }
+                            : c
+                    ),
+                }));
+                toast({ title: t('controlCards.photosAdded'), description: t('controlCards.uploadedCount', { count: dataUrls.length }) });
+            }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } catch (err: any) {
+            toast({ title: t('controlCards.uploadError'), description: err.message, variant: 'destructive' });
+        } finally {
+            setUploadingCommentId(null);
+            e.target.value = '';
+        }
+    };
+
+    const handleRemoveCommentPhoto = (commentId: string, idx: number) => {
+        setForm(prev => ({
+            ...prev,
+            comments: prev.comments.map(c =>
+                c.id === commentId
+                    ? { ...c, photoUrls: (c.photoUrls || []).filter((_, i) => i !== idx) }
+                    : c
+            ),
         }));
     };
 
@@ -1305,7 +1362,7 @@ function ControlCardDialog({
                                     className="h-7 text-xs"
                                     onClick={() => setForm(prev => ({
                                         ...prev,
-                                        comments: [...prev.comments, { id: `new-${Date.now()}-${Math.random().toString(36).substring(2)}`, text: '', status: 'Nie przyjęte', createdAt: new Date().toISOString() }]
+                                        comments: [...prev.comments, { id: `new-${Date.now()}-${Math.random().toString(36).substring(2)}`, text: '', status: 'Nie przyjęte', createdAt: new Date().toISOString(), photoUrls: [] }]
                                     }))}
                                 >
                                     {t('controlCards.addCommentBtn')}
@@ -1376,6 +1433,15 @@ function ControlCardDialog({
                                                 );
                                             })}
                                         </div>
+                                        <PhotoUploadWidget
+                                            label={t("controlCards.photosLabel")}
+                                            photoUrls={comment.photoUrls || []}
+                                            isUploading={uploadingCommentId === comment.id}
+                                            canEdit={canEdit}
+                                            onAddPhotos={(e) => handleAddCommentPhotos(comment.id, e)}
+                                            onRemove={(idx) => handleRemoveCommentPhoto(comment.id, idx)}
+                                            onLightbox={setLightboxImage}
+                                        />
                                     </div>
                                 ))}
                             </div>

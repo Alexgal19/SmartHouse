@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { updateOdbiorZgloszenie, getOdbiorZgloszenia } from '@/lib/sheets';
-import { uploadFileToDrive } from '@/lib/drive';
+import admin from 'firebase-admin';
+import '@/lib/firebase-admin';
 
 export async function POST(
     req: NextRequest,
@@ -10,6 +11,9 @@ export async function POST(
     const session = await getSession();
     if (!session.isLoggedIn) {
         return NextResponse.json({ error: 'Nieautoryzowany dostęp.' }, { status: 401 });
+    }
+    if (!session.isAdmin && !session.isDriver) {
+        return NextResponse.json({ error: 'Brak uprawnień.' }, { status: 403 });
     }
 
     const { id } = params;
@@ -22,12 +26,31 @@ export async function POST(
         const photoFiles = formData.getAll('zdjecia') as File[];
 
         const uploadedUrls: string[] = [];
+        const bucket = admin.storage().bucket();
+
         for (const file of photoFiles) {
             if (!(file instanceof File) || file.size === 0) continue;
+            
             const buffer = Buffer.from(await file.arrayBuffer());
-            const safeName = `odbior_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-            const result = await uploadFileToDrive(safeName, file.type || 'image/jpeg', buffer);
-            if (result.url) uploadedUrls.push(result.url);
+            
+            // Limit 5MB
+            if (buffer.length > 5 * 1024 * 1024) continue;
+
+            const safeName = `odbior_zdjecia/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+            const storageFile = bucket.file(safeName);
+
+            await storageFile.save(buffer, {
+                metadata: {
+                    contentType: file.type || 'image/jpeg',
+                },
+            });
+
+            const [publicUrl] = await storageFile.getSignedUrl({
+                action: 'read',
+                expires: '01-01-2099',
+            });
+
+            uploadedUrls.push(publicUrl);
         }
 
         if (uploadedUrls.length === 0) {

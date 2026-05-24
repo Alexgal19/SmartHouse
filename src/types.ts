@@ -1,6 +1,6 @@
 // This file contains all the TypeScript type definitions for the application's data structures.
 
-export type View = 'dashboard' | 'employees' | 'settings' | 'housing' | 'control-cards' | 'odbior' | 'recruitment';
+export type View = 'dashboard' | 'employees' | 'settings' | 'housing' | 'control-cards' | 'odbior' | 'recruitment' | 'zapotrzebowania';
 
 export type Address = {
   id: string;
@@ -26,6 +26,7 @@ export type Coordinator = {
   isAdmin: boolean;
   isDriver?: boolean;
   isRekrutacja?: boolean;
+  isBok?: boolean;
   departments: string[];
   password?: string;
   visibilityMode?: 'department' | 'strict';
@@ -49,27 +50,19 @@ export type Settings = {
 
 export type BokResident = {
   id: string;
-  role: string;
   firstName: string;
   lastName: string;
   fullName: string;
-  coordinatorId: string;
   nationality: string;
+  locality?: string;
   address: string;
   roomNumber: string;
-  zaklad: string;
   gender: string;
   passportNumber?: string;
   checkInDate: string | null;
-  checkOutDate: string | null;
-  sendDate: string | null;
-  sendTime?: string | null;
-  sendReason?: string | null;
-  dismissDate: string | null;
-  returnStatus: string;
-  status: string;
+  checkOutDate?: string | null;
   comments?: string | null;
-  sourceOdbiorId?: string | null;
+  status?: "active" | "dismissed";
 };
 
 export type ChartConfig = {
@@ -194,6 +187,7 @@ export type SessionData = {
   isAdmin: boolean;
   isDriver: boolean;
   isRekrutacja: boolean;
+  isBok: boolean;
 }
 
 export type CleanlinessRating = number; // 1-10 scale
@@ -204,6 +198,7 @@ export type RoomRating = {
   rating: CleanlinessRating;
   comment?: string;
   photoUrls?: string[];
+  status?: ControlCardCommentStatus;
 }
 
 export type ControlCardCommentStatus = 'Nie przyjęte' | 'W trakcie' | 'Temat rozwiązany';
@@ -213,6 +208,7 @@ export type ControlCardComment = {
   text: string;
   status: ControlCardCommentStatus;
   createdAt?: string; // ISO date-time
+  photoUrls?: string[];
 };
 
 export type ControlCardChangeLogEntry = {
@@ -284,7 +280,14 @@ export type OdbiorType = 'zakwaterowanie' | 'rozmowa_rekrutacyjna' | 'badania';
 export type OdbiorZgloszenieStatus = 'Nieprzyjęte' | 'W trakcie' | 'Zakończone' | 'Dostarczone' | 'Usunięte';
 export type OdbiorZgloszenieSkad = 'autobusowa' | 'pociagowa' | 'inne';
 export type NastepnyKrok = 'zakwaterowanie' | 'badania' | 'rozmowa' | '';
-export type OsobaWOdbiorze = { imie: string; nazwisko: string; paszport: string };
+export type OsobaWOdbiorze = {
+    imie: string;
+    nazwisko: string;
+    paszport: string;
+    paszportFotoUrl?: string;
+    wybranyKrok?: 'zakwaterowanie' | 'rozmowa' | '';
+    statusKrok?: 'pending' | 'completed' | '';
+};
 
 export type OdbiorChangeLogEntry = {
     timestamp: string;
@@ -330,13 +333,14 @@ export type Candidate = {
   firstName: string;
   lastName: string;
   passportNumber: string;
+  passportPhotoUrl?: string;
   sourceOdbiorId?: string | null;
-  status: 'nowy' | 'w_trakcie' | 'zakonczony';
+  status: 'nowy' | 'wdrodze' | 'w_trakcie' | 'zakonczony' | 'zakwaterowana';
   createdAt: string;
   interviewHistory: InterviewResult[];
 }
 
-export type CandidateDemandStatus = 'pending' | 'acknowledged' | 'expired';
+export type CandidateDemandStatus = 'pending' | 'acknowledged' | 'expired' | 'delivered';
 
 export type CandidateDemand = {
   id: string;
@@ -350,6 +354,9 @@ export type CandidateDemand = {
   status: CandidateDemandStatus;
   retryCount: number;
   sentTo?: string[];
+  estimatedDeliveryTime?: string;
+  pickupAddress?: string;
+  roomNumber?: string;
 }
 
 export type OdbiorEntry = {
@@ -370,4 +377,5 @@ export type OdbiorEntry = {
   createdById: string;
   convertedToBokId?: string | null;
   sourceOdbiorId?: string | null;
+  sourceDemandId?: string | null;
 }

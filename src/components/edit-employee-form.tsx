@@ -296,7 +296,7 @@ export function EditEmployeeForm({
   initialData?: Partial<EmployeeFormData>;
   currentUser: SessionData;
 }) {
-  const { t, dateLocale } = useLanguage();
+  const { t } = useLanguage();
   const { toast } = useToast();
   const { handleDismissEmployee, allEmployees, allNonEmployees, allBokResidents } = useMainLayout();
   const [isDismissing, setIsDismissing] = useState(false);
@@ -398,7 +398,7 @@ export function EditEmployeeForm({
         occupied += allNonEmployees.filter(e => e.status === 'active' && e.address === selectedAddress && e.roomNumber === room.name).length;
       }
       if (allBokResidents) {
-        occupied += allBokResidents.filter(e => (e.status === 'active' || !e.status || e.status === '') && e.address === selectedAddress && e.roomNumber === room.name).length;
+        occupied += allBokResidents.filter(e => e.address === selectedAddress && e.roomNumber === room.name).length;
       }
 
       return {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { AddEmployeeForm } from '../add-employee-form';
 import type { Settings, SessionData } from '@/types';
 
@@ -75,6 +75,7 @@ const mockCurrentUser: SessionData = {
   isAdmin: true,
   isDriver: false,
   isRekrutacja: false,
+  isBok: false,
 };
 
 const defaultProps = {

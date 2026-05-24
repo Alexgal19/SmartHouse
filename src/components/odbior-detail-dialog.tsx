@@ -18,7 +18,6 @@ import {
     AlertDialogTitle,
     AlertDialogDescription,
     AlertDialogFooter,
-    AlertDialogAction,
     AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -26,11 +25,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/lib/i18n';
 import {
-    MapPin, Phone, Users, MessageSquare, User, Bed, Stethoscope,
+    MapPin, Phone, Users, MessageSquare, User, Bed,
     Pencil, Trash2, Plus, Check, PhoneCall, ImagePlus, X, ScanLine,
 } from 'lucide-react';
 
@@ -83,24 +83,33 @@ function StatusBadge({ status, isNew }: { status: string; isNew?: boolean }) {
 
 function PhonePopover({ number }: { number: string }) {
     const { t } = useLanguage();
-    const digits = number.replace(/\D/g, '');
-    const e164 = digits.startsWith('0') ? `+48${digits.slice(1)}` : `+${digits}`;
-    const e164encoded = encodeURIComponent(e164);
+    
+    let digits = number.replace(/\D/g, '');
+    
+    // Jeśli użytkownik wpisał np. 9 cyfr bez kierunkowego (typowy polski), dodaj 48
+    if (digits.length === 9) {
+        digits = `48${digits}`;
+    } else if (digits.length === 10 && digits.startsWith('0')) {
+        // Jeśli wpisał np. 0 123 456 789
+        digits = `48${digits.slice(1)}`;
+    }
 
     const options: { label: string; icon: React.ElementType; action: () => void }[] = [
         {
             label: t('odbior.phoneCall'),
             icon: Phone,
-            action: () => { window.location.href = `tel:${number}`; },
+            action: () => { window.location.href = `tel:+${digits}`; },
         },
         {
             label: t('odbior.callViber'),
             icon: PhoneCall,
-            action: () => { window.location.href = `viber://chat?number=${e164encoded}`; },
+            // Wymagany format Vibera to same cyfry bez znaku +
+            action: () => { window.location.href = `viber://chat?number=${digits}`; },
         },
         {
             label: t('odbior.callWhatsApp'),
             icon: PhoneCall,
+            // Wymagany format WhatsAppa to same cyfry bez znaku +
             action: () => { window.open(`https://wa.me/${digits}`, '_blank'); },
         },
     ];
@@ -152,6 +161,21 @@ function ZgloszenieInfo({ z }: { z: OdbiorZgloszenie }) {
             {z.komentarz && <div className="flex items-start gap-2"><MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" /><span><b>{t('odbior.commentShort')}:</b> {z.komentarz}</span></div>}
             <div className="flex items-start gap-2"><User className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" /><span><b>{t('odbior.recruiterShort')}:</b> {z.rekruterNazwa}</span></div>
             {z.kierowcaNazwa && <div className="flex items-start gap-2"><User className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" /><span><b>{t('odbior.driverShort')}:</b> {z.kierowcaNazwa}</span></div>}
+            
+            {z.zdjeciaUrls && z.zdjeciaUrls.trim() !== '' && (
+                <div className="mt-3">
+                    <span className="text-xs font-bold mb-1.5 block">{t('odbior.photosShort')}:</span>
+                    <div className="grid grid-cols-4 gap-2">
+                        {z.zdjeciaUrls.split(',').filter(Boolean).map((url, i) => (
+                            <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block relative rounded-md overflow-hidden aspect-square bg-muted border hover:opacity-80 transition-opacity">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={url} alt={`Załącznik ${i + 1}`} className="object-cover w-full h-full" />
+                            </a>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             <p className="text-xs text-muted-foreground text-right pt-1">{z.dataZgloszenia}</p>
         </div>
     );
@@ -240,7 +264,7 @@ function EditZgloszenieForm({
     };
 
     return (
-        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 space-y-3">
+        <div className="rounded-xl border border-border bg-card shadow-sm p-4 space-y-3">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('odbior.editRequestTitle')}</p>
 
             <div>
@@ -250,8 +274,10 @@ function EditZgloszenieForm({
             </div>
 
             <div>
-                <Label className="text-xs">{t('odbior.fromSelect')}</Label>
+                <Label className="text-xs" htmlFor="skad-select">{t('odbior.fromSelect')}</Label>
                 <select
+                    id="skad-select"
+                    title={t('odbior.fromSelect')}
                     className="mt-1 w-full h-8 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                     value={fields.skad}
                     onChange={e => setFields(f => ({ ...f, skad: e.target.value as OdbiorZgloszenie['skad'] }))}
@@ -297,9 +323,11 @@ function EditZgloszenieForm({
                         {visibleExisting.map((url, i) => (
                             <div key={i} className="relative rounded-md overflow-hidden aspect-square bg-muted border">
                                 <a href={url} target="_blank" rel="noopener noreferrer">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img src={url} alt="" className="object-cover w-full h-full" />
                                 </a>
                                 <button type="button"
+                                    title="Usuń zdjęcie"
                                     className="absolute top-0.5 right-0.5 bg-black/60 rounded-full p-0.5 text-white"
                                     onClick={() => setRemovedExisting(prev => [...prev, url])}>
                                     <X className="h-3 w-3" />
@@ -314,8 +342,10 @@ function EditZgloszenieForm({
                     <div className="grid grid-cols-3 gap-1.5">
                         {newPreviews.map((url, i) => (
                             <div key={i} className="relative rounded-md overflow-hidden aspect-square bg-muted border">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img src={url} alt="" className="object-cover w-full h-full" />
                                 <button type="button"
+                                    title="Usuń zdjęcie"
                                     className="absolute top-0.5 right-0.5 bg-black/60 rounded-full p-0.5 text-white"
                                     onClick={() => setNewFiles(prev => prev.filter((_, j) => j !== i))}>
                                     <X className="h-3 w-3" />
@@ -329,7 +359,7 @@ function EditZgloszenieForm({
                     onClick={() => fileInputRef.current?.click()}>
                     <ImagePlus className="h-4 w-4" /> {t('odbior.addPhotosBtn')}
                 </Button>
-                <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileAdd} />
+                <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileAdd} title="Dodaj zdjęcia" />
             </div>
 
             <div className="flex gap-2 pt-1">
@@ -365,7 +395,7 @@ function KartaNieprzyjete({
             {editing ? (
                 <EditZgloszenieForm z={z} onSave={onEdit} onCancel={() => setEditing(false)} />
             ) : (
-                <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-4">
+                <div className="rounded-xl border border-border bg-card shadow-sm p-4 space-y-4">
                     <ZgloszenieInfo z={z} />
                     {canEdit && (
                         <Button
@@ -426,8 +456,9 @@ function AddPersonDialog({
 }) {
     const { t } = useLanguage();
     const { toast } = useToast();
-    const [person, setPerson] = useState<OsobaWOdbiorze>({ imie: '', nazwisko: '', paszport: '' });
+    const [person, setPerson] = useState<OsobaWOdbiorze>({ imie: '', nazwisko: '', paszport: '', paszportFotoUrl: '' });
     const [ocrLoading, setOcrLoading] = useState(false);
+    const [passportPreview, setPassportPreview] = useState<string | null>(null);
     const ocrInputRef = useRef<HTMLInputElement>(null);
 
     const handleAdd = () => {
@@ -440,7 +471,8 @@ function AddPersonDialog({
             return;
         }
         onAdd(person);
-        setPerson({ imie: '', nazwisko: '', paszport: '' });
+        setPerson({ imie: '', nazwisko: '', paszport: '', paszportFotoUrl: '' });
+        setPassportPreview(null);
         onOpenChange(false);
     };
 
@@ -449,18 +481,36 @@ function AddPersonDialog({
         if (!file) return;
         if (ocrInputRef.current) ocrInputRef.current.value = '';
         setOcrLoading(true);
+
+        // Show local preview immediately
+        const previewUrl = URL.createObjectURL(file);
+        setPassportPreview(previewUrl);
+
         try {
-            const fd = new FormData();
-            fd.append('photo', file);
-            const res = await fetch('/api/odbior/ocr', { method: 'POST', body: fd });
-            if (!res.ok) throw new Error((await res.json()).error ?? t('odbior.ocrError'));
-            const data = await res.json();
+            // Upload to Drive and OCR in parallel
+            const ocrFd = new FormData();
+            ocrFd.append('photo', file);
+            const photoFd = new FormData();
+            photoFd.append('photo', file);
+
+            const [ocrRes, photoRes] = await Promise.all([
+                fetch('/api/odbior/ocr', { method: 'POST', body: ocrFd }),
+                fetch('/api/odbior/passport-photo', { method: 'POST', body: photoFd }),
+            ]);
+
+            const ocrData = ocrRes.ok ? await ocrRes.json() : {};
+            const photoData = photoRes.ok ? await photoRes.json() : {};
+
             setPerson(p => ({
-                imie:     data.imie     || p.imie,
-                nazwisko: data.nazwisko || p.nazwisko,
-                paszport: data.paszport || p.paszport,
+                imie:            ocrData.imie     || p.imie,
+                nazwisko:        ocrData.nazwisko || p.nazwisko,
+                paszport:        ocrData.paszport || p.paszport,
+                paszportFotoUrl: photoData.url    || p.paszportFotoUrl,
             }));
-            toast({ title: t('odbior.ocrRead'), description: `${data.imie} ${data.nazwisko} — ${data.paszport}` });
+
+            if (ocrData.imie || ocrData.nazwisko || ocrData.paszport) {
+                toast({ title: t('odbior.ocrRead'), description: `${ocrData.imie} ${ocrData.nazwisko} — ${ocrData.paszport}` });
+            }
         } catch (err) {
             toast({ variant: 'destructive', title: t('odbior.ocrError'), description: err instanceof Error ? err.message : t('odbior.ocrFailed') });
         } finally {
@@ -489,8 +539,22 @@ function AddPersonDialog({
                             <ScanLine className="h-3.5 w-3.5" />
                             {ocrLoading ? t('odbior.scanning') : t('odbior.scanPassport')}
                         </Button>
-                        <input ref={ocrInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleOcr} />
+                        <input ref={ocrInputRef} type="file" accept="image/*" {...{ capture: "environment" }} className="hidden" onChange={handleOcr} title="Zeskanuj paszport" />
                     </div>
+                    {passportPreview && (
+                        <div className="relative rounded-lg overflow-hidden border border-border">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={passportPreview} alt="Paszport" className="w-full object-contain max-h-40" />
+                            {ocrLoading && (
+                                <div className="absolute inset-0 bg-background/70 flex items-center justify-center">
+                                    <span className="text-xs text-muted-foreground animate-pulse">{t('odbior.scanning')}</span>
+                                </div>
+                            )}
+                            {person.paszportFotoUrl && (
+                                <div className="absolute bottom-1 right-1 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full">✓ zapisano</div>
+                            )}
+                        </div>
+                    )}
                     <div className="grid grid-cols-2 gap-2">
                         <div>
                             <Label className="text-xs">{t('odbior.firstName')} *</Label>
@@ -524,15 +588,35 @@ function KartaWTrakcie({
 }: {
     z: OdbiorZgloszenie;
     onAction: (action: 'odrzuc' | 'zakoncz' | 'update', payload: Partial<OdbiorZgloszenie>) => Promise<void>;
-    onZakwaterowanieClick?: (osoba: OsobaWOdbiorze | null) => void;
-    onRozmowaClick?: (osoba: OsobaWOdbiorze | null) => void;
+    onZakwaterowanieClick?: (osoba: OsobaWOdbiorze | null, idx: number | null) => void;
+    onRozmowaClick?: (osoba: OsobaWOdbiorze | null, idx: number | null) => void;
 }) {
     const { t } = useLanguage();
-    const osoby = parseOsoby(z.osoby);
-    const [localOsoby, setLocalOsoby] = useState<OsobaWOdbiorze[]>(osoby);
+    const [localOsoby, setLocalOsoby] = useState<OsobaWOdbiorze[]>(() => parseOsoby(z.osoby));
+    
+    useEffect(() => {
+        setLocalOsoby(parseOsoby(z.osoby));
+    }, [z.osoby]);
+
     const [editIdx, setEditIdx] = useState<number | null>(null);
     const [loading, setLoading] = useState(false);
     const [addPersonOpen, setAddPersonOpen] = useState(false);
+    const lastCompletedCountRef = useRef<number>(0);
+    const [rejectAlertOpen, setRejectAlertOpen] = useState(false);
+    const [finishAlertOpen, setFinishAlertOpen] = useState(false);
+
+    useEffect(() => {
+        if (localOsoby.length > 0 && localOsoby.length < z.iloscOsob) {
+            const isAllCompleted = localOsoby.every(o => o.statusKrok === 'completed');
+            if (isAllCompleted && localOsoby.length > lastCompletedCountRef.current) {
+                lastCompletedCountRef.current = localOsoby.length;
+                setTimeout(() => setAddPersonOpen(true), 300); // 300ms delay to allow previous animations to finish
+            }
+        }
+    }, [localOsoby, z.iloscOsob]);
+    
+    const [nextStepPromptPerson, setNextStepPromptPerson] = useState<{ person: OsobaWOdbiorze; index: number } | null>(null);
+    const [partialArrivalAlertOpen, setPartialArrivalAlertOpen] = useState(false);
     const { toast } = useToast();
 
     const saveOsoby = async (updated: OsobaWOdbiorze[]) => {
@@ -545,9 +629,37 @@ function KartaWTrakcie({
             toast({ variant: 'destructive', title: t('common.error'), description: t('odbior.errorMaxPersons') });
             return;
         }
-        const updated = [...localOsoby, person];
-        await saveOsoby(updated);
+        const personWithSteps: OsobaWOdbiorze = {
+            ...person,
+            wybranyKrok: '',
+            statusKrok: '',
+        };
+        const updated = [...localOsoby, personWithSteps];
+        setLocalOsoby(updated);
+        setNextStepPromptPerson({ person: personWithSteps, index: updated.length - 1 });
         toast({ title: t('odbior.personAdded'), description: `${person.imie} ${person.nazwisko}` });
+        onAction('update', { osoby: JSON.stringify(updated) }).catch(() => {
+            toast({ variant: 'destructive', title: t('common.error'), description: 'Błąd zapisu' });
+        });
+    };
+
+    const handleSelectNextStep = async (krok: 'zakwaterowanie' | 'rozmowa') => {
+        if (!nextStepPromptPerson) return;
+        const { index } = nextStepPromptPerson;
+        const updated = [...localOsoby];
+        updated[index] = { ...updated[index], wybranyKrok: krok, statusKrok: 'pending' };
+        setLocalOsoby(updated);
+        setNextStepPromptPerson(null);
+        
+        if (krok === 'zakwaterowanie') {
+            onZakwaterowanieClick?.(updated[index], index);
+        } else {
+            onRozmowaClick?.(updated[index], index);
+        }
+        
+        onAction('update', { osoby: JSON.stringify(updated) }).catch(() => {
+            toast({ variant: 'destructive', title: t('common.error'), description: 'Błąd zapisu' });
+        });
     };
 
     const handleRemovePerson = async (idx: number) => {
@@ -555,17 +667,9 @@ function KartaWTrakcie({
     };
 
     const handleEditSave = async (idx: number, updated: OsobaWOdbiorze) => {
-        const arr = localOsoby.map((o, i) => i === idx ? updated : o);
+        const arr = localOsoby.map((o, i) => i === idx ? { ...updated, wybranyKrok: o.wybranyKrok, statusKrok: o.statusKrok } : o);
         await saveOsoby(arr);
         setEditIdx(null);
-    };
-
-    const handleKrok = async (krok: string) => {
-        const newKrok = activeKrok === krok ? '' : krok;
-        await onAction('update', { nastepnyKrok: newKrok });
-        if (newKrok) {
-            toast({ title: t('odbior.savedStep'), description: `${t('odbior.nextStepLabel')} ${newKrok}` });
-        }
     };
 
     const handleOdrzuc = async () => {
@@ -573,61 +677,133 @@ function KartaWTrakcie({
         try { await onAction('odrzuc', {}); } finally { setLoading(false); }
     };
 
-    const handleZakoncz = async () => {
+    const isAllCompleted = localOsoby.length > 0 && localOsoby.every(o => o.statusKrok === 'completed');
+
+    const handleTryZakoncz = () => {
+        if (!isAllCompleted) return;
         if (localOsoby.length === 0) {
             toast({ variant: 'destructive', title: t('common.error'), description: t('odbior.errorAtLeastOnePerson') });
             return;
         }
+        if (localOsoby.length < z.iloscOsob) {
+            setPartialArrivalAlertOpen(true);
+            return;
+        }
+        setFinishAlertOpen(true);
+    };
+
+    const handleZakoncz = async () => {
         setLoading(true);
         try { await onAction('zakoncz', {}); } finally { setLoading(false); }
     };
 
-    const activeKrok = z.nastepnyKrok;
+    const handlePartialArrivalZakoncz = async () => {
+        setPartialArrivalAlertOpen(false);
+        setLoading(true);
+        try {
+            const newComment = (z.komentarz ? z.komentarz + ' | ' : '') + `Nie wszyscy dotarli (dotarło tylko ${localOsoby.length} z ${z.iloscOsob})`;
+            await onAction('update', { komentarz: newComment });
+            await onAction('zakoncz', {});
+        } catch(e) {
+            toast({ variant: 'destructive', title: t('common.error'), description: e instanceof Error ? e.message : 'Error' });
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-4">
+        <div className="rounded-xl border border-border bg-card shadow-sm p-4 space-y-4">
             <ZgloszenieInfo z={z} />
 
             {/* Lista osób */}
-            <div className="space-y-2">
+            <div className="space-y-3">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                     {t('odbior.personList')} ({localOsoby.length}/{z.iloscOsob})
                 </p>
+                <div className="space-y-2">
                 {localOsoby.map((o, i) => (
                     <div key={i}>
                         {editIdx === i ? (
-                            <EditPersonRow
-                                person={o}
-                                onSave={upd => handleEditSave(i, upd)}
-                                onCancel={() => setEditIdx(null)}
-                            />
+                            <EditPersonRow person={o} onSave={upd => handleEditSave(i, upd)} onCancel={() => setEditIdx(null)} />
                         ) : (
-                            <div className="flex items-center justify-between rounded-lg bg-white border px-3 py-2 text-sm">
-                                <div>
-                                    <span className="font-medium">{i + 1}. {o.imie} {o.nazwisko}</span>
-                                    {o.paszport && <span className="text-muted-foreground ml-2 text-xs">{t('odbior.passportShort')}: {o.paszport}</span>}
+                            <div className="flex flex-col gap-2 rounded-lg bg-white border px-3 py-2 text-sm shadow-sm">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex flex-col">
+                                        <span className="font-semibold text-gray-900">{i + 1}. {o.imie} {o.nazwisko}</span>
+                                        {o.paszport && <span className="text-muted-foreground text-xs">{t('odbior.passportShort')}: {o.paszport}</span>}
+                                    </div>
+                                    <div className="flex gap-1 items-center">
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-500 hover:text-blue-600" onClick={() => setEditIdx(i)}>
+                                            <Pencil className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-red-600" onClick={() => handleRemovePerson(i)}>
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </div>
                                 </div>
-                                <div className="flex gap-1">
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-orange-600 hover:text-orange-700 hover:bg-orange-50" title={t('odbior.recruitmentInterview')} onClick={() => onRozmowaClick?.(o)}>
-                                        <Users className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-600 hover:text-blue-700 hover:bg-blue-50" title={t('odbior.housingPerson')} onClick={() => onZakwaterowanieClick?.(o)}>
-                                        <Bed className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditIdx(i)}>
-                                        <Pencil className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleRemovePerson(i)}>
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
+                                <div className="border-t pt-2">
+                                    {o.statusKrok === 'completed' ? (
+                                        <div className="flex items-center gap-2">
+                                            <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100">
+                                                <Check className="w-3 h-3 mr-1" />
+                                                {o.wybranyKrok === 'zakwaterowanie' ? 'Zakwaterowano' : 'Rozmowa ukończona'}
+                                            </Badge>
+                                        </div>
+                                    ) : o.statusKrok === 'pending' ? (
+                                        <div className="flex items-center justify-between flex-wrap gap-2">
+                                            <Badge variant="outline" className={cn("animate-pulse", o.wybranyKrok === 'zakwaterowanie' ? "text-blue-600 border-blue-200 bg-blue-50" : "text-purple-600 border-purple-200 bg-purple-50")}>
+                                                {o.wybranyKrok === 'zakwaterowanie' ? 'Oczekuje na zakwaterowanie' : 'Oczekuje na rozmowę'}
+                                            </Badge>
+                                            <Button 
+                                                size="sm" 
+                                                className={cn("h-7 text-xs shadow-none text-white", o.wybranyKrok === 'zakwaterowanie' ? "bg-blue-600 hover:bg-blue-700" : "bg-purple-600 hover:bg-purple-700")}
+                                                onClick={() => o.wybranyKrok === 'zakwaterowanie' ? onZakwaterowanieClick?.(o, i) : onRozmowaClick?.(o, i)}
+                                            >
+                                                {o.wybranyKrok === 'zakwaterowanie' ? <Bed className="w-3.5 h-3.5 mr-1" /> : <Users className="w-3.5 h-3.5 mr-1" />}
+                                                {o.wybranyKrok === 'zakwaterowanie' ? 'Rozpocznij zakwaterowanie' : 'Rozpocznij rozmowę'}
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col gap-2">
+                                            <Badge variant="outline" className="w-fit text-amber-600 border-amber-200 bg-amber-50">Wybierz krok</Badge>
+                                            <div className="flex gap-2">
+                                                <Button size="sm" variant="outline" className="flex-1 h-7 text-xs text-blue-700 border-blue-200 hover:bg-blue-50" onClick={() => {
+                                                    const updated = [...localOsoby];
+                                                    updated[i] = { ...updated[i], wybranyKrok: 'zakwaterowanie', statusKrok: 'pending' };
+                                                    saveOsoby(updated);
+                                                    onZakwaterowanieClick?.(updated[i], i);
+                                                }}>
+                                                    <Bed className="w-3.5 h-3.5 mr-1" /> Zakwaterowanie
+                                                </Button>
+                                                <Button size="sm" variant="outline" className="flex-1 h-7 text-xs text-purple-700 border-purple-200 hover:bg-purple-50" onClick={() => {
+                                                    const updated = [...localOsoby];
+                                                    updated[i] = { ...updated[i], wybranyKrok: 'rozmowa', statusKrok: 'pending' };
+                                                    saveOsoby(updated);
+                                                    onRozmowaClick?.(updated[i], i);
+                                                }}>
+                                                    <Users className="w-3.5 h-3.5 mr-1" /> Rozmowa
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
                     </div>
                 ))}
+                </div>
 
-                {/* Przycisk dodawania osoby — otwiera osobny dialog */}
-                <Button size="sm" className="w-full gap-1" onClick={() => setAddPersonOpen(true)}>
+                <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className={cn(
+                        "w-full gap-1 border-dashed mt-2 transition-all", 
+                        localOsoby.length === 0 
+                            ? "animate-pulse border-red-300 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 shadow-sm font-medium" 
+                            : ""
+                    )} 
+                    onClick={() => setAddPersonOpen(true)}
+                >
                     <Plus className="h-3.5 w-3.5" /> {t('odbior.addPerson')}
                 </Button>
             </div>
@@ -640,51 +816,82 @@ function KartaWTrakcie({
                 onAdd={handleAddPerson}
             />
 
-            {/* Następny krok */}
-            <div className="space-y-2">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('odbior.nextStep')}</p>
-                <div className="flex gap-2 flex-wrap">
-                    {[
-                        { value: 'zakwaterowanie', label: t('odbior.accommodation'), icon: Bed },
-                        { value: 'badania', label: t('odbior.medicalExams'), icon: Stethoscope },
-                        { value: 'rozmowa', label: t('odbior.recruitmentInterview'), icon: Users },
-                    ].map(({ value, label, icon: Icon }) => (
-                        <Button
-                            key={value}
-                            variant={activeKrok === value ? 'default' : 'outline'}
-                            size="sm"
-                            className="gap-1.5 text-xs"
-                            disabled={value === 'badania'}
-                            onClick={() => {
-                                const isDeselect = activeKrok === value;
-                                handleKrok(value);
-                                if (value === 'zakwaterowanie' && !isDeselect) {
-                                    onZakwaterowanieClick?.(localOsoby[0] ?? null);
-                                }
-                                if (value === 'rozmowa' && !isDeselect) {
-                                    onRozmowaClick?.(localOsoby[0] ?? null);
-                                }
-                            }}
-                        >
-                            <Icon className="h-3.5 w-3.5" /> {label}
+            <Dialog open={!!nextStepPromptPerson} onOpenChange={(open) => !open && setNextStepPromptPerson(null)}>
+                <DialogContent className="max-w-sm text-center p-6 rounded-2xl">
+                    <DialogHeader className="mb-2">
+                        <DialogTitle className="text-xl font-bold">Wybierz następny krok</DialogTitle>
+                        <DialogDescription className="text-sm">
+                            Dla pasażera: <strong className="text-gray-900">{nextStepPromptPerson?.person.imie} {nextStepPromptPerson?.person.nazwisko}</strong>
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex flex-col gap-3 mt-4">
+                        <Button className="h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-base shadow-sm" onClick={() => handleSelectNextStep('zakwaterowanie')}>
+                            <Bed className="mr-2 h-5 w-5" /> Zakwaterowanie
                         </Button>
-                    ))}
-                </div>
-            </div>
+                        <Button className="h-14 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-base shadow-sm" onClick={() => handleSelectNextStep('rozmowa')}>
+                            <Users className="mr-2 h-5 w-5" /> Rozmowa rekrutacyjna
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
 
-            <div className="flex gap-3">
+            <AlertDialog open={partialArrivalAlertOpen} onOpenChange={setPartialArrivalAlertOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Nie dodałeś wszystkich osób ze zgłoszenia!</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Zgłoszenie obejmuje <strong className="text-gray-900">{z.iloscOsob}</strong> osób, a dodałeś tylko <strong className="text-gray-900">{localOsoby.length}</strong>. 
+                            Czy na pewno chcesz zakończyć odbiór dla mniejszej liczby osób, ponieważ nie wszyscy pasażerowie dotarli?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="mt-4 gap-2">
+                        <AlertDialogCancel className="w-full sm:w-auto mt-0">Wróć i dodaj</AlertDialogCancel>
+                        <Button className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white" onClick={handlePartialArrivalZakoncz}>
+                            Potwierdzam — nie wszyscy dotarli
+                        </Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={rejectAlertOpen} onOpenChange={setRejectAlertOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Jesteś pewny?</AlertDialogTitle>
+                        <AlertDialogDescription>Czy na pewno chcesz odrzucić ten odbiór? Zgłoszenie wróci do puli nieprzyjętych.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="mt-4 gap-2">
+                        <AlertDialogCancel className="w-full sm:w-auto mt-0">Nie</AlertDialogCancel>
+                        <Button className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white" onClick={() => { setRejectAlertOpen(false); handleOdrzuc(); }}>Tak</Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={finishAlertOpen} onOpenChange={setFinishAlertOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Jesteś pewny?</AlertDialogTitle>
+                        <AlertDialogDescription>Czy na pewno chcesz zakończyć odbiór? Sprawdź, czy wszyscy pasażerowie zostali poprawnie obsłużeni.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="mt-4 gap-2">
+                        <AlertDialogCancel className="w-full sm:w-auto mt-0">Nie</AlertDialogCancel>
+                        <Button className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white" onClick={() => { setFinishAlertOpen(false); handleZakoncz(); }}>Tak</Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <div className="flex gap-3 pt-2">
                 <Button
                     variant="outline"
                     className="flex-1"
                     disabled={loading}
-                    onClick={handleOdrzuc}
+                    onClick={() => setRejectAlertOpen(true)}
                 >
                     {t('odbior.reject')}
                 </Button>
                 <Button
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white gap-2"
-                    disabled={loading}
-                    onClick={handleZakoncz}
+                    className={cn("flex-1 text-white gap-2 transition-all", isAllCompleted ? "bg-green-600 hover:bg-green-700" : "bg-gray-300 hover:bg-gray-300")}
+                    disabled={loading || !isAllCompleted}
+                    onClick={handleTryZakoncz}
                 >
                     <Check className="h-4 w-4" />
                     {loading ? t('odbior.finishing') : t('odbior.finishReception')}
@@ -723,7 +930,7 @@ function KartaZakonczona({ z, isAdmin, onCancelFinish }: { z: OdbiorZgloszenie; 
     const { t } = useLanguage();
     const osoby = parseOsoby(z.osoby);
     return (
-        <div className="rounded-xl border border-green-200 bg-green-50 p-4 space-y-3">
+        <div className="rounded-xl border border-border bg-card shadow-sm p-4 space-y-3">
             <ZgloszenieInfo z={z} />
             {osoby.length > 0 && (
                 <div className="space-y-1">
@@ -767,42 +974,47 @@ export default function OdbiorDetailDialog({
     const { t } = useLanguage();
     const [localZ, setLocalZ] = useState(zgloszenie);
     const [zakwatOpen, setZakwatOpen] = useState(false);
-    const [zakwatPrefill, setZakwatPrefill] = useState<{ firstName?: string; lastName?: string; passportNumber?: string } | undefined>();
+    const [zakwatPrefill, setZakwatPrefill] = useState<{ firstName?: string; lastName?: string; passportNumber?: string; passportPhotoUrl?: string } | undefined>();
     const [candidateDialogOpen, setCandidateDialogOpen] = useState(false);
-    const [candidateConfirmOpen, setCandidateConfirmOpen] = useState(false);
-    const [lastSavedCandidate, setLastSavedCandidate] = useState<Candidate | null>(null);
-    const [candidatePrefill, setCandidatePrefill] = useState<{ firstName?: string; lastName?: string; passportNumber?: string } | undefined>();
-    const [currentCandidateIndex, setCurrentCandidateIndex] = useState<number | null>(null);
+    const [candidatePrefill, setCandidatePrefill] = useState<{ firstName?: string; lastName?: string; passportNumber?: string; passportPhotoUrl?: string } | undefined>();
+    const [activePersonIndex, setActivePersonIndex] = useState<number | null>(null);
     const savedJustNowRef = useRef(false);
 
     React.useEffect(() => { setLocalZ(zgloszenie); }, [zgloszenie]);
 
-    const handleNextCandidate = () => {
-        if (currentCandidateIndex === null) return;
-        
+    const completeStepForActivePerson = async () => {
+        if (activePersonIndex === null) return;
         const osoby = parseOsoby(localZ.osoby);
-        const nextIdx = currentCandidateIndex + 1;
-        
-        if (nextIdx < osoby.length) {
-            const nextOsoba = osoby[nextIdx];
-            setCurrentCandidateIndex(nextIdx);
-            setCandidatePrefill({
-                firstName: nextOsoba.imie,
-                lastName: nextOsoba.nazwisko,
-                passportNumber: nextOsoba.paszport,
-            });
-            setTimeout(() => setCandidateDialogOpen(true), 300);
-        } else {
-            setCurrentCandidateIndex(null);
+        if (osoby[activePersonIndex]) {
+            osoby[activePersonIndex].statusKrok = 'completed';
+            const updatedJson = JSON.stringify(osoby);
+            setLocalZ(prev => ({ ...prev, osoby: updatedJson }));
+            onStatusChange(localZ.id, { osoby: updatedJson });
+            try {
+                await fetch(`/api/odbior/zgloszenie/${localZ.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'update', osoby: updatedJson }),
+                });
+            } catch (e) {
+                console.error("Failed to update statusKrok", e);
+            }
         }
+        setActivePersonIndex(null);
+        window.dispatchEvent(new Event('candidates-updated'));
     };
 
-    const handleZakwaterowanieClick = (osoba: OsobaWOdbiorze | null) => {
-        setCurrentCandidateIndex(null);
+    const handleNextCandidate = () => {
+        setActivePersonIndex(null);
+    };
+
+    const handleZakwaterowanieClick = (osoba: OsobaWOdbiorze | null, idx: number | null = null) => {
+        setActivePersonIndex(idx);
         setZakwatPrefill(osoba ? {
             firstName: osoba.imie,
             lastName: osoba.nazwisko,
             passportNumber: osoba.paszport,
+            passportPhotoUrl: osoba.paszportFotoUrl,
         } : undefined);
         setZakwatOpen(true);
     };
@@ -812,18 +1024,13 @@ export default function OdbiorDetailDialog({
         if (!v) handleNextCandidate();
     };
 
-    const handleRozmowaClick = (osoba: OsobaWOdbiorze | null) => {
-        let idx = 0;
-        if (osoba) {
-            const osoby = parseOsoby(localZ.osoby);
-            idx = osoby.findIndex(o => o.imie === osoba.imie && o.nazwisko === osoba.nazwisko && o.paszport === osoba.paszport);
-        }
-        setCurrentCandidateIndex(idx >= 0 ? idx : 0);
-
+    const handleRozmowaClick = (osoba: OsobaWOdbiorze | null, idx: number | null = null) => {
+        setActivePersonIndex(idx);
         setCandidatePrefill(osoba ? {
             firstName: osoba.imie,
             lastName: osoba.nazwisko,
             passportNumber: osoba.paszport,
+            passportPhotoUrl: osoba.paszportFotoUrl,
         } : undefined);
         setCandidateDialogOpen(true);
     };
@@ -834,33 +1041,15 @@ export default function OdbiorDetailDialog({
             if (savedJustNowRef.current) {
                 savedJustNowRef.current = false;
             } else {
-                setCurrentCandidateIndex(null);
+                setActivePersonIndex(null);
             }
         }
     };
 
-    const handleCandidateSaved = (candidate: Candidate) => {
+    const handleCandidateSaved = (_candidate: Candidate) => {
         savedJustNowRef.current = true;
-        setLastSavedCandidate(candidate);
-        setCandidateConfirmOpen(true);
-    };
-
-    const handleConfirmAccommodationYes = () => {
-        setCandidateConfirmOpen(false);
-        if (lastSavedCandidate) {
-            setZakwatPrefill({
-                firstName: lastSavedCandidate.firstName,
-                lastName: lastSavedCandidate.lastName,
-                passportNumber: lastSavedCandidate.passportNumber,
-            });
-            setZakwatOpen(true);
-        }
-    };
-
-    const handleConfirmAccommodationNo = () => {
-        setCandidateConfirmOpen(false);
-        setLastSavedCandidate(null);
-        handleNextCandidate();
+        completeStepForActivePerson();
+        window.dispatchEvent(new Event('candidates-updated'));
     };
 
     const counts = {
@@ -909,7 +1098,7 @@ export default function OdbiorDetailDialog({
         patch(updates);
     };
 
-    const handleNieprzyjeteAction = async (action: 'przyjmij') => {
+    const handleNieprzyjeteAction = async (_action: 'przyjmij') => {
         try {
             await callApi('przyjmij');
             patch({ status: 'W trakcie' });
@@ -932,6 +1121,7 @@ export default function OdbiorDetailDialog({
                 const now = new Date().toLocaleString('pl-PL').replace(',', '').slice(0, 16);
                 patch({ status: 'Zakończone', dataZakonczenia: now, zakonczoneAt: now, ...payload });
                 toast({ title: t('odbior.receptionFinished'), description: t('odbior.statusChangedToCompleted') });
+                onOpenChange(false);
             } else {
                 patch(payload);
             }
@@ -953,7 +1143,7 @@ export default function OdbiorDetailDialog({
     return (
         <>
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>{t('odbior.title')}</DialogTitle>
                     <DialogDescription className="sr-only">
@@ -978,7 +1168,7 @@ export default function OdbiorDetailDialog({
                             z={localZ}
                             onAction={handleNieprzyjeteAction}
                             onEdit={handleEditDane}
-                            canEdit={!currentUser.isDriver}
+                            canEdit={currentUser.isAdmin || currentUser.isRekrutacja}
                         />
                     </TabsContent>
 
@@ -999,6 +1189,7 @@ export default function OdbiorDetailDialog({
             currentUser={currentUser}
             prefillData={zakwatPrefill}
             sourceOdbiorId={localZ.id}
+            onSaved={completeStepForActivePerson}
         />
 
         <AddCandidateDialog
@@ -1009,22 +1200,8 @@ export default function OdbiorDetailDialog({
             prefillFirstName={candidatePrefill?.firstName}
             prefillLastName={candidatePrefill?.lastName}
             prefillPassportNumber={candidatePrefill?.passportNumber}
+            prefillPassportPhotoUrl={candidatePrefill?.passportPhotoUrl}
         />
-
-        <AlertDialog open={candidateConfirmOpen} onOpenChange={setCandidateConfirmOpen}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>{t('candidate.accommodationPrompt')}</AlertDialogTitle>
-                    <AlertDialogDescription className="sr-only">
-                        {t('candidate.accommodationPrompt')}
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel onClick={handleConfirmAccommodationNo}>{t('candidate.no')}</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleConfirmAccommodationYes}>{t('candidate.yes')}</AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
         </>
     );
 }

@@ -14,7 +14,6 @@ import { format, isValid } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useMainLayout } from '@/components/main-layout';
 import type { NonEmployee, Settings, SessionData } from '@/types';
-import { cn } from '@/lib/utils';
 import {
     WizardStepIndicator, WizardDateInput, OcrCameraButton,
     WizardAddressPicker, WizardGenderPicker, buildAddressItems, type WizardAddressItem,
@@ -116,7 +115,7 @@ function AddNonEmployeeWizard({
             filtered,
             (allEmployees || []).filter((e) => e.status === 'active'),
             (allNonEmployees || []).filter((e) => e.status === 'active'),
-            (allBokResidents || []).filter((b) => b.status !== 'dismissed' && !b.dismissDate && !b.sendDate),
+            (allBokResidents || []),
         );
     }, [settings.addresses, allEmployees, allNonEmployees, allBokResidents, data.coordinatorId]);
 

@@ -27,6 +27,7 @@ interface AddCandidateDialogProps {
     prefillFirstName?: string;
     prefillLastName?: string;
     prefillPassportNumber?: string;
+    prefillPassportPhotoUrl?: string;
 }
 
 export default function AddCandidateDialog({
@@ -37,6 +38,7 @@ export default function AddCandidateDialog({
     prefillFirstName,
     prefillLastName,
     prefillPassportNumber,
+    prefillPassportPhotoUrl,
 }: AddCandidateDialogProps) {
     const { t } = useLanguage();
     const { toast } = useToast();
@@ -45,13 +47,15 @@ export default function AddCandidateDialog({
     const [firstName, setFirstName] = useState(prefillFirstName || '');
     const [lastName, setLastName] = useState(prefillLastName || '');
     const [passportNumber, setPassportNumber] = useState(prefillPassportNumber || '');
+    const [passportPhotoUrl, setPassportPhotoUrl] = useState(prefillPassportPhotoUrl || '');
     const [saving, setSaving] = useState(false);
 
     React.useEffect(() => {
         setFirstName(prefillFirstName || '');
         setLastName(prefillLastName || '');
         setPassportNumber(prefillPassportNumber || '');
-    }, [prefillFirstName, prefillLastName, prefillPassportNumber]);
+        setPassportPhotoUrl(prefillPassportPhotoUrl || '');
+    }, [prefillFirstName, prefillLastName, prefillPassportNumber, prefillPassportPhotoUrl]);
 
     const handleOcrResult = (result: OcrResult) => {
         if (result.firstName) setFirstName(result.firstName);
@@ -74,6 +78,7 @@ export default function AddCandidateDialog({
                 firstName: firstName.trim(),
                 lastName: lastName.trim(),
                 passportNumber: passportNumber.trim(),
+                passportPhotoUrl: passportPhotoUrl || undefined,
                 sourceOdbiorId: sourceOdbiorId || null,
             });
             if (res.success) {
@@ -81,6 +86,7 @@ export default function AddCandidateDialog({
                 setFirstName('');
                 setLastName('');
                 setPassportNumber('');
+                setPassportPhotoUrl('');
                 onSaved?.(res.candidate!);
                 onOpenChange(false);
             } else {

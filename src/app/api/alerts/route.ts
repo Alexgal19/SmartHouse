@@ -97,24 +97,7 @@ function checkContractExpiry(employees: Employee[]): Alert[] {
   return alerts;
 }
 
-// ─── Alert 4: Niespójny status BOK ────────────────────────────────────────
-function checkBokStatusInconsistency(bokResidents: BokResident[]): Alert[] {
-  const t = alertToday();
-  return bokResidents
-    .filter(res => {
-      if (res.status === 'dismissed') return false;
-      const dismiss = parseAlertDate(res.dismissDate);
-      return !!dismiss && dismiss <= t;
-    })
-    .map(res => ({
-      coordinatorIds: res.coordinatorId ? [res.coordinatorId] : [],
-      title: `⚠️ Niespójny status BOK`,
-      body: `${res.fullName} — data zwolnienia minęła (${res.dismissDate}), ale status to "${res.status}". Proszę zaktualizować.`,
-      link: `/dashboard?view=employees&tab=bok-residents&edit=${res.id}`,
-    }));
-}
-
-// ─── Alert 5: Przekroczona pojemność ──────────────────────────────────────
+// ─── Alert 4: Przekroczona pojemność ──────────────────────────────────────
 type AddressForAlert = {
   id: string; name: string; coordinatorIds: string[];
   rooms: { id: string; name: string; capacity: number; isActive: boolean }[];
@@ -124,14 +107,14 @@ function checkCapacity(
   employees: Employee[], nonEmployees: NonEmployee[], bokResidents: BokResident[], addresses: AddressForAlert[]
 ): Alert[] {
   const occupancy = new Map<string, number>();
-  const countPerson = (p: { status: string; address: string; roomNumber: string }) => {
-    if (p.status !== 'active') return;
+  const countPerson = (p: { address: string; roomNumber: string }, isActive: boolean) => {
+    if (!isActive) return;
     const key = `${p.address}|${p.roomNumber}`;
     occupancy.set(key, (occupancy.get(key) ?? 0) + 1);
   };
-  employees.forEach(countPerson);
-  nonEmployees.forEach(countPerson);
-  bokResidents.forEach(countPerson);
+  employees.forEach(e => countPerson(e, e.status === 'active'));
+  nonEmployees.forEach(ne => countPerson(ne, ne.status === 'active'));
+  bokResidents.forEach(bok => countPerson(bok, true));
 
   const alerts: Alert[] = [];
   for (const addr of addresses) {
@@ -232,7 +215,6 @@ export async function POST(req: NextRequest) {
 
     const allAlerts: Alert[] = [
       ...checkContractExpiry(employees),
-      ...checkBokStatusInconsistency(bokResidents),
       ...checkCapacity(employees, nonEmployees, bokResidents, settings.addresses),
       ...checkMissingPaymentData(nonEmployees),
       ...checkDuplicatePersons(employees),
@@ -243,7 +225,6 @@ export async function POST(req: NextRequest) {
     const details = extractAlertDetails(employees, nonEmployees, bokResidents, settings.addresses, settings.coordinators);
     const summary = {
       contractExpiry:        details.contractExpiry.length,
-      bokStatusInconsistency: details.bokStatusInconsistency.length,
       capacityExceeded:      details.capacityExceeded.length,
       missingPaymentData:    details.missingPaymentData.length,
       duplicatePersons:      details.duplicatePersons.length,

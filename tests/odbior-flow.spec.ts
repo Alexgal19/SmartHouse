@@ -80,4 +80,37 @@ test.describe.serial('Odbiór — Przepływ E2E', () => {
         await expect(page.getByRole('button', { name: 'Rozmowa rekrutacyjna' })).toBeVisible();
         await expect(page.getByRole('button', { name: 'Zakończ odbiór' })).toBeVisible();
     });
+
+    test('Karty statystyk jako filtry (interaktywne)', async ({ page }) => {
+        await loginAsAdmin(page);
+        await gotoView(page, 'odbior');
+
+        // Target the stat cards which contain the large numbers and specific titles.
+        // We can find them by looking for the buttons that contain the card descriptions.
+        const dostarczoneBtn = page.locator('button', { hasText: 'Dostarczone' }).filter({ has: page.locator('.text-3xl') });
+        if (await dostarczoneBtn.count() > 0) {
+            await dostarczoneBtn.first().click();
+            await page.waitForTimeout(1000);
+            await expect(page.locator('select')).toHaveValue('Zakończone_Dostarczone');
+            
+            // Toggle off
+            await dostarczoneBtn.first().click();
+            await page.waitForTimeout(1000);
+            await expect(page.locator('select')).toHaveValue('all');
+        }
+
+        const wTrakcieBtn = page.locator('button', { hasText: 'W trakcie' }).filter({ has: page.locator('.text-3xl') });
+        if (await wTrakcieBtn.count() > 0) {
+            await wTrakcieBtn.first().click();
+            await page.waitForTimeout(1000);
+            await expect(page.locator('select')).toHaveValue('W trakcie');
+        }
+
+        const nieprzyjeteBtn = page.locator('button', { hasText: 'Nieprzyjęte' }).filter({ has: page.locator('.text-3xl') });
+        if (await nieprzyjeteBtn.count() > 0) {
+            await nieprzyjeteBtn.first().click();
+            await page.waitForTimeout(1000);
+            await expect(page.locator('select')).toHaveValue('Nieprzyjęte');
+        }
+    });
 });

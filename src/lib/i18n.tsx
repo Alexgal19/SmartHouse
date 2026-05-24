@@ -8,11 +8,12 @@ import { pl } from './translations/pl';
 import { en } from './translations/en';
 
 export type Language = 'pl' | 'en';
+export type TranslationKey = keyof typeof pl | keyof typeof en;
 type TranslationRecord = Record<string, string>;
 const TRANSLATIONS: Record<Language, TranslationRecord> = { pl, en };
 const STORAGE_KEY = 'smarthouse_lang';
 
-export type TFunction = (key: string, params?: Record<string, string | number>) => string;
+export type TFunction = (key: TranslationKey, params?: Record<string, string | number>) => string;
 
 type LanguageContextType = {
     lang: Language;

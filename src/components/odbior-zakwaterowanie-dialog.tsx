@@ -14,7 +14,6 @@ import {
     ChevronLeft, Check, Bed, MapPin, User, ClipboardList,
 } from 'lucide-react';
 import { format, isValid } from 'date-fns';
-import { pl } from 'date-fns/locale';
 import Webcam from 'react-webcam';
 import { useToast } from '@/hooks/use-toast';
 import { useMainLayout } from '@/components/main-layout';
@@ -48,6 +47,7 @@ type WizardData = {
     gender: string;
     passportNumber: string;
     date: Date;
+    passportPhotoUrl?: string;
 };
 
 type Step = 0 | 1 | 2 | 3;
@@ -60,6 +60,18 @@ const isTempHousingLocality = (locality: string | undefined): boolean => {
         .replace(/[\u0300-\u036f]/g, '')
         .replace(/\u0142/g, 'l')
         .startsWith('mieszkania');
+};
+
+const DEFAULT_DATA: Omit<WizardData, 'date'> = {
+    firstName: '',
+    lastName: '',
+    addressId: '',
+    addressName: '',
+    roomNumber: '',
+    nationality: '',
+    gender: '',
+    passportNumber: '',
+    passportPhotoUrl: '',
 };
 
 function StepIndicator({ current, steps }: { current: Step; steps: string[] }) {
@@ -222,6 +234,8 @@ function StepOsoba({
                             type="button"
                             onClick={() => setIsCameraOpen(false)}
                             className="absolute top-2 right-2 rounded-full bg-black/60 p-2 text-white hover:bg-black/80"
+                            title={t('common.cancel')}
+                            aria-label={t('common.cancel')}
                         >
                             <X className="h-4 w-4" />
                         </button>
@@ -469,16 +483,6 @@ function StepPodsumowanie({
     );
 }
 
-const DEFAULT_DATA: Omit<WizardData, 'date'> = {
-    firstName: '',
-    lastName: '',
-    addressId: '',
-    addressName: '',
-    roomNumber: '',
-    nationality: '',
-    gender: '',
-    passportNumber: '',
-};
 
 export function OdbiorZakwaterowanieDialog({
     isOpen,
@@ -494,7 +498,7 @@ export function OdbiorZakwaterowanieDialog({
     currentUser: SessionData;
     onSaved?: () => void;
     editEntry?: OdbiorEntry | null;
-    prefillData?: { firstName?: string; lastName?: string; passportNumber?: string };
+    prefillData?: { firstName?: string; lastName?: string; passportNumber?: string; passportPhotoUrl?: string };
     sourceOdbiorId?: string;
 }) {
     const { toast } = useToast();
@@ -523,6 +527,7 @@ export function OdbiorZakwaterowanieDialog({
                     gender: editEntry.gender || '',
                     passportNumber: editEntry.passportNumber || '',
                     date: isValid(parsed) ? parsed : new Date(),
+                    passportPhotoUrl: '',
                 });
             } else {
                 setData({
@@ -531,6 +536,7 @@ export function OdbiorZakwaterowanieDialog({
                     firstName: prefillData?.firstName ?? '',
                     lastName: prefillData?.lastName ?? '',
                     passportNumber: prefillData?.passportNumber ?? '',
+                    passportPhotoUrl: prefillData?.passportPhotoUrl ?? '',
                 });
             }
         }
@@ -545,7 +551,7 @@ export function OdbiorZakwaterowanieDialog({
         const tempAddresses = settings.addresses.filter((a) => a.isActive && isTempHousingLocality(a.locality));
         const activeEmps = (allEmployees || []).filter((e) => e.status === 'active');
         const activeNE = (allNonEmployees || []).filter((ne) => ne.status === 'active');
-        const activeBok = (allBokResidents || []).filter((b) => b.status !== 'dismissed' && !b.dismissDate && !b.sendDate);
+        const activeBok = (allBokResidents || []);
 
         return tempAddresses
             .map((address) => {
@@ -641,6 +647,7 @@ export function OdbiorZakwaterowanieDialog({
                     createdBy: currentUser.name,
                     createdById: currentUser.uid,
                     sourceOdbiorId,
+                    passportPhotoUrl: data.passportPhotoUrl,
                 });
                 if (!result.success) {
                     toast({ variant: 'destructive', title: t('common.saveError'), description: result.error || t('form.submitError') });

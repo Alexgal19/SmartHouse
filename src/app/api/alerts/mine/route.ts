@@ -26,7 +26,6 @@ export async function GET() {
     // Filter to this coordinator's people only
     const details = {
       contractExpiry:        all.contractExpiry.filter(d => d.coordinatorId === uid),
-      bokStatusInconsistency: all.bokStatusInconsistency.filter(d => d.coordinatorId === uid),
       capacityExceeded:      all.capacityExceeded.filter(d => d.coordinatorIds?.includes(uid)),
       missingPaymentData:    all.missingPaymentData.filter(d => d.coordinatorId === uid),
       duplicatePersons:      all.duplicatePersons.filter(d =>

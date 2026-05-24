@@ -21,6 +21,28 @@ jest.mock('@/lib/actions', () => ({
     sendPushNotification: jest.fn(),
 }));
 
+jest.mock('firebase-admin', () => {
+    const mockFile = {
+        save: jest.fn().mockResolvedValue(undefined),
+        getSignedUrl: jest.fn().mockResolvedValue(['https://drive.google.com/photo1.jpg']),
+    };
+    const mockBucket = {
+        file: jest.fn().mockReturnValue(mockFile),
+    };
+    const mockStorage = jest.fn().mockReturnValue({
+        bucket: jest.fn().mockReturnValue(mockBucket),
+    });
+    return {
+        __esModule: true,
+        default: {
+            storage: mockStorage,
+            apps: [],
+            initializeApp: jest.fn(),
+            credential: { cert: jest.fn() },
+        },
+    };
+});
+
 const mockedAddOdbiorZgloszenieRow = addOdbiorZgloszenieRow as jest.Mock;
 const mockedGetSettings = getSettings as jest.Mock;
 const mockedUploadFileToDrive = uploadFileToDrive as jest.Mock;
@@ -34,7 +56,7 @@ describe('POST /api/odbior/zgloszenie', () => {
     const makeRequest = (formData: FormData) => {
         return new NextRequest('http://localhost/api/odbior/zgloszenie', {
             method: 'POST',
-            body: formData as any,
+            body: formData as unknown as BodyInit,
         });
     };
 
@@ -51,7 +73,7 @@ describe('POST /api/odbior/zgloszenie', () => {
     });
 
     it('returns 400 when required fields missing', async () => {
-        (getSession as jest.Mock).mockResolvedValue({ isLoggedIn: true, uid: 'user-1', name: 'Test' });
+        (getSession as jest.Mock).mockResolvedValue({ isLoggedIn: true, uid: 'user-1', name: 'Test', isAdmin: true });
 
         const formData = new FormData();
         formData.append('skad', 'autobusowa');
@@ -65,7 +87,7 @@ describe('POST /api/odbior/zgloszenie', () => {
     });
 
     it('returns 400 when iloscOsob is not a number', async () => {
-        (getSession as jest.Mock).mockResolvedValue({ isLoggedIn: true, uid: 'user-1', name: 'Test' });
+        (getSession as jest.Mock).mockResolvedValue({ isLoggedIn: true, uid: 'user-1', name: 'Test', isAdmin: true });
 
         const formData = new FormData();
         formData.append('numerTelefonu', '123456789');
@@ -80,7 +102,7 @@ describe('POST /api/odbior/zgloszenie', () => {
     });
 
     it('creates submission with photos and notifies drivers', async () => {
-        (getSession as jest.Mock).mockResolvedValue({ isLoggedIn: true, uid: 'user-1', name: 'Test' });
+        (getSession as jest.Mock).mockResolvedValue({ isLoggedIn: true, uid: 'user-1', name: 'Test', isAdmin: true });
         mockedAddOdbiorZgloszenieRow.mockResolvedValue({ id: 'zgl-new' });
         mockedGetSettings.mockResolvedValue({
             coordinators: [
@@ -89,7 +111,7 @@ describe('POST /api/odbior/zgloszenie', () => {
                 { uid: 'rec-1', isAdmin: false, isDriver: false, pushSubscription: 'sub-2' },
             ],
         });
-        mockedUploadFileToDrive.mockResolvedValue({ url: 'https://drive.google.com/photo1.jpg' });
+        // Firebase storage mock returns 'https://drive.google.com/photo1.jpg'
         mockedSendPushNotification.mockResolvedValue(undefined);
 
         const formData = new FormData();
@@ -130,7 +152,7 @@ describe('POST /api/odbior/zgloszenie', () => {
     });
 
     it('creates submission without photos', async () => {
-        (getSession as jest.Mock).mockResolvedValue({ isLoggedIn: true, uid: 'user-1', name: 'Test' });
+        (getSession as jest.Mock).mockResolvedValue({ isLoggedIn: true, uid: 'user-1', name: 'Test', isAdmin: true });
         mockedAddOdbiorZgloszenieRow.mockResolvedValue({ id: 'zgl-new' });
         mockedGetSettings.mockResolvedValue({ coordinators: [] });
 
@@ -149,7 +171,7 @@ describe('POST /api/odbior/zgloszenie', () => {
     });
 
     it('returns 500 when addOdbiorZgloszenieRow throws', async () => {
-        (getSession as jest.Mock).mockResolvedValue({ isLoggedIn: true, uid: 'user-1', name: 'Test' });
+        (getSession as jest.Mock).mockResolvedValue({ isLoggedIn: true, uid: 'user-1', name: 'Test', isAdmin: true });
         mockedAddOdbiorZgloszenieRow.mockRejectedValue(new Error('Sheet write failed'));
         mockedGetSettings.mockResolvedValue({ coordinators: [] });
 
@@ -164,5 +186,21 @@ describe('POST /api/odbior/zgloszenie', () => {
         expect(res.status).toBe(500);
         const body = await res.json();
         expect(body.error).toBe('Sheet write failed');
+    });
+
+    it('returns 403 when user is neither admin nor driver', async () => {
+        (getSession as jest.Mock).mockResolvedValue({ isLoggedIn: true, uid: 'user-1', name: 'Test', isAdmin: false, isDriver: false });
+
+        const formData = new FormData();
+        formData.append('numerTelefonu', '123456789');
+        formData.append('skad', 'autobusowa');
+        formData.append('iloscOsob', '2');
+
+        const req = makeRequest(formData);
+        const res = await POST(req);
+
+        expect(res.status).toBe(403);
+        const body = await res.json();
+        expect(body.error).toBe('Brak uprawnień.');
     });
 });

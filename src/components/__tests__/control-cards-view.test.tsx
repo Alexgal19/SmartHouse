@@ -94,8 +94,8 @@ global.fetch = mockFetch as typeof fetch;
 // ─── Access Tests ────────────────────────────────────────────────────────────
 
 describe('ControlCardsView Access', () => {
-  const adminUser: SessionData = { uid: 'uid1', name: 'Admin', isAdmin: true, isLoggedIn: true, isDriver: false, isRekrutacja: false };
-  const coordinatorUser: SessionData = { uid: 'uid2', name: 'User', isAdmin: false, isLoggedIn: true, isDriver: false, isRekrutacja: false };
+  const adminUser: SessionData = { uid: 'uid1', name: 'Admin', isAdmin: true, isLoggedIn: true, isDriver: false, isRekrutacja: false, isBok: false };
+  const coordinatorUser: SessionData = { uid: 'uid2', name: 'User', isAdmin: false, isLoggedIn: true, isDriver: false, isRekrutacja: false, isBok: false };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -117,7 +117,7 @@ describe('ControlCardsView Access', () => {
 // ─── Meter Photo Upload Tests ────────────────────────────────────────────────
 
 describe('ControlCardDialog - Meter Photo Upload', () => {
-  const adminUser: SessionData = { uid: 'uid1', name: 'Admin', isAdmin: true, isLoggedIn: true, isDriver: false, isRekrutacja: false };
+  const adminUser: SessionData = { uid: 'uid1', name: 'Admin', isAdmin: true, isLoggedIn: true, isDriver: false, isRekrutacja: false, isBok: false };
 
   beforeAll(() => {
     // Mock canvas API used by compressImage

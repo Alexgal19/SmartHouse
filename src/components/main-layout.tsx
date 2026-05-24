@@ -7,8 +7,8 @@ import Link from 'next/link';
 import { SidebarProvider } from './ui/sidebar';
 import Header from './header';
 import { MobileNav } from './mobile-nav';
-import type { View, Notification, Employee, Settings, Address, SessionData, NonEmployee, AddressHistory, BokResident, OdbiorEntry } from '@/types';
-import { Home, Settings as SettingsIcon, Users, Building, ClipboardCheck, Truck, Briefcase } from 'lucide-react';
+import type { View, Notification, Employee, Settings, Address, SessionData, NonEmployee, AddressHistory, BokResident, OdbiorEntry, Candidate, CandidateDemand } from '@/types';
+import { Home, Settings as SettingsIcon, Users, Building, ClipboardCheck, Truck, Briefcase, ClipboardList } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -35,13 +35,16 @@ import {
     bulkDeleteEmployeesByDepartment,
     sendPushNotification,
     updateCoordinatorSubscription,
+    getCandidatesAction,
+    getCandidateDemandsAction,
 } from '@/lib/actions';
 import { getSettings, getEmployees, getNonEmployees, getBokResidents, getNotifications, getRawAddressHistory, getOdbiorEntries } from '@/lib/sheets';
 import { logout } from '../lib/auth';
 import { useToast } from '../hooks/use-toast';
 import { AddEmployeeForm, type EmployeeFormData } from './add-employee-form';
 import { AddNonEmployeeForm } from './add-non-employee-form';
-import { AddBokResidentForm, type BokResidentFormData } from './add-bok-resident-form';
+import { AddBokResidentForm } from './add-bok-resident-form';
+import { type BokResidentFormData } from './edit-bok-resident-form';
 import { cn } from '../lib/utils';
 import { AddressForm } from './address-form';
 import { ModernHouseIcon } from './icons/modern-house-icon';
@@ -83,6 +86,8 @@ type MainLayoutContextType = {
     allEmployees: Employee[] | null;
     allNonEmployees: NonEmployee[] | null;
     allBokResidents: BokResident[] | null;
+    allCandidates: Candidate[] | null;
+    allDemands: CandidateDemand[] | null;
     odbiorEntries: OdbiorEntry[] | null;
     addressHistory: AddressHistory[] | null;
     rawEmployees: Employee[] | null;
@@ -109,11 +114,11 @@ type MainLayoutContextType = {
     handleEditBokResidentClick: (resident: BokResident) => void;
     handleDeleteBokResident: (id: string, actorUid: string) => Promise<void>;
     handleBulkDeleteBokResidents: (ids: string[]) => Promise<void>;
-    handleDismissBokResident: (id: string, checkOutDate: Date) => Promise<void>;
     handleRefreshStatuses: (showNoChangesToast?: boolean) => Promise<void>;
     handleAddressFormOpen: (address: Address | null) => void;
     handleDismissEmployee: (employeeId: string, checkOutDate: Date) => Promise<void>;
     handleDismissNonEmployee: (nonEmployeeId: string, checkOutDate: Date) => Promise<void>;
+    handleDismissBokResident: (bokResidentId: string, checkOutDate: Date) => Promise<void>;
     handleRestoreEmployee: (employee: Employee) => Promise<void>;
     handleDeleteEmployee: (employeeId: string, actorUid: string) => Promise<void>;
     handleRestoreNonEmployee: (nonEmployee: NonEmployee) => Promise<void>;
@@ -167,6 +172,7 @@ export default function MainLayout({
     const navItems = useMemo(() => [
         { view: 'dashboard', icon: Home, label: t('nav.dashboard') },
         { view: 'odbior', icon: Truck, label: t('nav.odbior') },
+        { view: 'zapotrzebowania', icon: ClipboardList, label: 'Zapotrzebowania' },
         { view: 'employees', icon: Users, label: t('nav.employees') },
         { view: 'housing', icon: Building, label: t('nav.housing') },
         { view: 'control-cards', icon: ClipboardCheck, label: t('nav.controlCards') },
@@ -175,11 +181,14 @@ export default function MainLayout({
     ], [t]) as { view: View; icon: React.ElementType; label: string }[];
 
     const activeView = useMemo(() => {
-        const view = searchParams.get('view') as View;
+        let view = searchParams.get('view') as View;
+        if (view === 'odbior' && !(initialSession.isDriver || initialSession.isAdmin)) {
+            view = 'dashboard';
+        }
         if (view) return view;
-        if (initialSession.isDriver || initialSession.isRekrutacja) return 'odbior';
+        if (initialSession.isDriver) return 'odbior';
         return 'dashboard';
-    }, [searchParams, initialSession.isDriver, initialSession.isRekrutacja]);
+    }, [searchParams, initialSession.isDriver, initialSession.isAdmin]);
 
     const editEntityId = searchParams.get('edit');
 
@@ -192,10 +201,15 @@ export default function MainLayout({
     const [rawSettings, setRawSettings] = useState<Settings | null>(null);
     const [addressHistory, setAddressHistory] = useState<AddressHistory[] | null>(null);
     const [odbiorEntries, setOdbiorEntries] = useState<OdbiorEntry[] | null>(null);
+    const [rawCandidates, setRawCandidates] = useState<Candidate[] | null>(null);
+    const [rawDemands, setRawDemands] = useState<CandidateDemand[] | null>(null);
 
     const [pushSubscription, setPushSubscription] = useState<string | null>(null);
 
     const [hasNewCheckouts, setHasNewCheckouts] = useState(false);
+    const [unacceptedCount, setUnacceptedCount] = useState(0);
+    const [wdrodzeCount, setWdrodzeCount] = useState(0);
+    const [pendingDemandsCount, setPendingDemandsCount] = useState(0);
 
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isNonEmployeeFormOpen, setIsNonEmployeeFormOpen] = useState(false);
@@ -237,8 +251,8 @@ export default function MainLayout({
         if (isStrict) {
             employees = rawEmployees.filter(e => e.coordinatorId === selectedCoordinatorId);
             nonEmployees = rawNonEmployees.filter(ne => ne.coordinatorId === selectedCoordinatorId);
-            // Kierowca widzi cały BOK, pozostali - tylko swój
-            bokResidents = currentUser.isDriver ? rawBokResidents : rawBokResidents.filter(b => b.coordinatorId === selectedCoordinatorId);
+            // BOK has no coordinator — everyone sees all BOK residents
+            bokResidents = rawBokResidents;
             filteredAddresses = rawSettings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
         } else { // department mode
             const coordinatorAddresses = new Set(rawSettings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId)).map(a => a.name));
@@ -251,8 +265,8 @@ export default function MainLayout({
             });
 
             nonEmployees = rawNonEmployees.filter(ne => ne.address && coordinatorAddresses.has(ne.address));
-            // Kierowca widzi cały BOK, pozostali - w zależności od konfiguracji "department mode"
-            bokResidents = currentUser.isDriver ? rawBokResidents : rawBokResidents.filter(b => b.coordinatorId === selectedCoordinatorId);
+            // BOK has no coordinator — everyone sees all BOK residents
+            bokResidents = rawBokResidents;
             filteredAddresses = rawSettings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
         }
 
@@ -276,13 +290,16 @@ export default function MainLayout({
     }, []);
 
     const visibleNavItems = useMemo(() => {
-        if (currentUser?.isDriver || currentUser?.isRekrutacja) {
-            return navItems.filter(item => item.view === 'odbior' || item.view === 'employees' || item.view === 'housing' || item.view === 'control-cards');
+        if (currentUser?.isDriver || currentUser?.isBok) {
+            return navItems.filter(item => item.view === 'odbior' || item.view === 'zapotrzebowania' || item.view === 'employees' || item.view === 'housing' || item.view === 'control-cards');
         }
         if (currentUser?.isAdmin) {
             return navItems;
         }
-        return navItems.filter(item => item.view !== 'settings' && item.view !== 'odbior');
+        if (currentUser?.isRekrutacja) {
+            return navItems.filter(item => item.view === 'recruitment' || item.view === 'zapotrzebowania');
+        }
+        return navItems.filter(item => item.view !== 'settings' && item.view !== 'odbior' && item.view !== 'zapotrzebowania' && item.view !== 'recruitment');
     }, [currentUser, navItems]);
 
     const handleLogout = useCallback(async () => {
@@ -352,13 +369,15 @@ export default function MainLayout({
             // Fetch largest datasets first individually
 
             // Fetch all datasets in parallel — no artificial delays needed
-            const [employeesResult, nonEmployeesResult, bokResidentsResult, notificationsResult, addressHistoryResult, odbiorEntriesResult] = await Promise.all([
+            const [employeesResult, nonEmployeesResult, bokResidentsResult, notificationsResult, addressHistoryResult, odbiorEntriesResult, candidatesResult, demandsResult] = await Promise.all([
                 getEmployees().catch(e => { console.error("Failed to fetch employees:", e); return [] as Employee[]; }),
                 getNonEmployees().catch(e => { console.error("Failed to fetch non-employees:", e); return [] as NonEmployee[]; }),
                 getBokResidents().catch(e => { console.error("Failed to fetch BOK:", e); return [] as BokResident[]; }),
                 getNotifications(currentUser.uid, currentUser.isAdmin).catch(e => { console.error("Failed to fetch notifications:", e); return [] as Notification[]; }),
                 getRawAddressHistory().catch(e => { console.error("Failed to fetch history:", e); return [] as AddressHistory[]; }),
                 getOdbiorEntries().catch(e => { console.error("Failed to fetch odbior entries:", e); return [] as OdbiorEntry[]; }),
+                getCandidatesAction().catch(e => { console.error("Failed to fetch candidates:", e); return [] as Candidate[]; }),
+                getCandidateDemandsAction().catch(e => { console.error("Failed to fetch demands:", e); return [] as CandidateDemand[]; }),
             ]);
 
             const employees = employeesResult;
@@ -388,6 +407,8 @@ export default function MainLayout({
             setRawEmployees(employees);
             setAddressHistory(enrichedAddressHistory);
             setOdbiorEntries(odbiorEntriesData);
+            setRawCandidates(candidatesResult);
+            setRawDemands(demandsResult);
 
             if (currentUser.isAdmin) {
                 const allActive = [...(employees || []).filter(e => e.status === 'active'), ...(nonEmployees || [])];
@@ -420,7 +441,9 @@ export default function MainLayout({
                 nonEmployees,
                 notifications,
                 addressHistory: enrichedAddressHistory,
-                bokResidents
+                bokResidents,
+                candidates: candidatesResult,
+                demands: demandsResult
             };
         } catch (error) {
             console.error(error);
@@ -479,6 +502,51 @@ export default function MainLayout({
             return () => clearInterval(intervalId);
         }
     }, [currentUser, refreshData, handleRefreshStatuses]);
+
+    useEffect(() => {
+        if (!currentUser) return;
+        const load = async () => {
+            try {
+                const res = await fetch('/api/odbior/zgloszenia');
+                if (!res.ok) return;
+                const data = await res.json();
+                setUnacceptedCount(data.filter((z: { status: string }) => z.status === 'Nieprzyjęte').length);
+            } catch {
+                // ignore
+            }
+            if (currentUser.isAdmin || currentUser.isRekrutacja) {
+                try {
+                    const candidates = await getCandidatesAction();
+                    setWdrodzeCount(candidates.filter(c => c.status === 'wdrodze').length);
+                } catch {
+                    // ignore
+                }
+            }
+            if (currentUser.isAdmin || currentUser.isDriver || currentUser.isBok) {
+                try {
+                    const { getCandidateDemandsAction } = await import('@/lib/actions');
+                    const demands = await getCandidateDemandsAction();
+                    setPendingDemandsCount(demands.filter(d => d.status === 'pending').length);
+                } catch {
+                    // ignore
+                }
+            }
+        };
+        load();
+        const interval = setInterval(load, 30000);
+
+        const handleUpdate = () => {
+            load();
+        };
+        window.addEventListener('odbior-status-updated', handleUpdate);
+        window.addEventListener('candidates-updated', handleUpdate);
+
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('odbior-status-updated', handleUpdate);
+            window.removeEventListener('candidates-updated', handleUpdate);
+        };
+    }, [currentUser]);
 
     useEffect(() => {
         const pathname = window.location.pathname;
@@ -606,18 +674,9 @@ export default function MainLayout({
         if (editingBokResident) {
             const originalBokResidents = rawBokResidents;
             setRawBokResidents(prev => prev ? prev.map(r => r.id === editingBokResident.id ? { ...r, ...data, fullName: `${data.lastName} ${data.firstName}`.trim() } : r) : null);
-            // fire-and-forget — dialog zamknie się natychmiast po optimistic update
             updateBokResident(editingBokResident.id, data, currentUser.uid)
                 .then(updatedResident => {
-                    setRawBokResidents(prev => prev ? prev.map(r => {
-                        if (r.id !== updatedResident.id) return r;
-                        // Preserve dismissDate if handleDismissBokResident already set it
-                        // (race condition: server response arrives before dismiss write completes)
-                        if (r.dismissDate && !updatedResident.dismissDate) {
-                            return { ...updatedResident, dismissDate: r.dismissDate };
-                        }
-                        return updatedResident;
-                    }) : null);
+                    setRawBokResidents(prev => prev ? prev.map(r => r.id === updatedResident.id ? updatedResident : r) : null);
                     toast({ title: t('common.success'), description: t('toast.bokResidentUpdated') });
                     refreshNotificationsOnly();
                 })
@@ -631,12 +690,6 @@ export default function MainLayout({
                     ...data,
                     address: data.address ?? '',
                     roomNumber: data.roomNumber ?? '',
-                    checkOutDate: data.checkOutDate ?? null,
-                    dismissDate: data.dismissDate ?? null,
-                    returnStatus: data.returnStatus ?? '',
-                    zaklad: data.zaklad ?? '',
-                    status: data.status ?? '',
-                    sendDate: null,
                     fullName: `${data.lastName} ${data.firstName}`.trim(),
                 };
                 const newResident = await addBokResident(newResidentData, currentUser.uid);
@@ -647,60 +700,6 @@ export default function MainLayout({
             }
         }
     }, [editingBokResident, currentUser, rawBokResidents, toast, refreshNotificationsOnly, t]);
-
-    const handleSendBokResidentPush = useCallback(async (data: BokResidentFormData) => {
-        if (!editingBokResident || !currentUser) return;
-        try {
-            const link = `/dashboard?view=employees&action=add&firstName=${encodeURIComponent(data.firstName)}&lastName=${encodeURIComponent(data.lastName)}&nationality=${encodeURIComponent(data.nationality)}&zaklad=${encodeURIComponent(data.zaklad || '')}`;
-
-            let pushError: string | null = null;
-            try {
-                const pushResult = await sendPushNotification(
-                    data.coordinatorId,
-                    'Nowe zadanie: Dodaj pracownika',
-                    `Mieszkaniec BOK: ${data.lastName} ${data.firstName} - kliknij, aby dodać.`,
-                    link
-                );
-                if (!pushResult.success) {
-                    pushError = pushResult.error || 'Nie udało się wysłać powiadomienia';
-                }
-            } catch (err) {
-                pushError = err instanceof Error ? err.message : 'Nie udało się wysłać powiadomienia (RPC błąd)';
-            }
-
-            if (pushError) {
-                toast({ variant: 'destructive', title: t('common.error'), description: pushError });
-                return;
-            }
-
-            // Mark the resident as sent by recording today's date and updating server state
-            const todayDateStr = format(new Date(), 'yyyy-MM-dd HH:mm');
-            const dataToUpdate = {
-                ...data,
-                address: data.address ?? '',
-                roomNumber: data.roomNumber ?? '',
-                checkOutDate: data.checkOutDate ?? null,
-                dismissDate: data.dismissDate ?? null,
-                returnStatus: data.returnStatus ?? '',
-                zaklad: data.zaklad ?? '',
-                status: data.status ?? '',
-                sendDate: todayDateStr,
-                fullName: `${data.lastName} ${data.firstName}`.trim(),
-            };
-
-            const updatedResident = await updateBokResident(
-                editingBokResident.id,
-                dataToUpdate,
-                currentUser.uid
-            );
-
-            setRawBokResidents(prev => prev ? prev.map(r => r.id === updatedResident.id ? updatedResident : r) : null);
-            toast({ title: t('common.success'), description: t('toast.pushSent') });
-
-        } catch (e) {
-            toast({ variant: 'destructive', title: t('common.error'), description: e instanceof Error ? e.message : t('toast.bokResidentUpdateError') });
-        }
-    }, [editingBokResident, currentUser, toast, t]);
 
     const handleDeleteNonEmployee = useCallback(async (id: string, actorUid: string) => {
         if (!currentUser) return;
@@ -740,20 +739,6 @@ export default function MainLayout({
         } catch (e) {
             setRawBokResidents(originalBokResidents);
             toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.bokBulkDeleteError') });
-        }
-    }, [currentUser, rawBokResidents, toast, t]);
-
-    const handleDismissBokResident = useCallback(async (id: string, dismissDate: Date) => {
-        if (!currentUser) return;
-        const originalBokResidents = rawBokResidents;
-        const formattedDate = format(dismissDate, 'yyyy-MM-dd');
-        setRawBokResidents(prev => prev ? prev.map(r => r.id === id ? { ...r, dismissDate: formattedDate } : r) : null);
-        try {
-            await updateBokResident(id, { dismissDate: formattedDate }, currentUser.uid);
-            toast({ title: t('common.success'), description: t('toast.bokResidentDismissed') });
-        } catch (e: unknown) {
-            setRawBokResidents(originalBokResidents);
-            toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.bokResidentDismissError') });
         }
     }, [currentUser, rawBokResidents, toast, t]);
 
@@ -815,11 +800,6 @@ export default function MainLayout({
         setIsNonEmployeeFormOpen(true);
     }, []);
 
-    const handleAddBokResidentClick = useCallback(() => {
-        setEditingBokResident(null);
-        setIsBokResidentFormOpen(true);
-    }, []);
-
     const handleEditEmployeeClick = useCallback((employee: Employee) => {
         setEditingEmployee(employee);
         setIsFormOpen(true);
@@ -828,6 +808,11 @@ export default function MainLayout({
     const handleEditNonEmployeeClick = useCallback((nonEmployee: NonEmployee) => {
         setEditingNonEmployee(nonEmployee);
         setIsNonEmployeeFormOpen(true);
+    }, []);
+
+    const handleAddBokResidentClick = useCallback(() => {
+        setEditingBokResident(null);
+        setIsBokResidentFormOpen(true);
     }, []);
 
     const handleEditBokResidentClick = useCallback((resident: BokResident) => {
@@ -919,6 +904,21 @@ export default function MainLayout({
         }
     }, [currentUser, rawEmployees, toast, refreshNotificationsOnly, t]);
 
+    const handleDismissBokResident = useCallback(async (bokResidentId: string, checkOutDate: Date) => {
+        if (!currentUser) return;
+        const originalBokResidents = rawBokResidents;
+        const formattedDate = format(checkOutDate, 'yyyy-MM-dd');
+        setRawBokResidents(prev => prev ? prev.map(r => r.id === bokResidentId ? { ...r, checkOutDate: formattedDate, status: 'dismissed' as const } : r) : null);
+        try {
+            await updateBokResident(bokResidentId, { checkOutDate: formattedDate, status: 'dismissed' }, currentUser.uid);
+            toast({ title: t('common.success'), description: t('toast.bokResidentDismissed') });
+            refreshNotificationsOnly();
+        } catch (e: unknown) {
+            setRawBokResidents(originalBokResidents);
+            toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.bokResidentDismissError') });
+        }
+    }, [currentUser, rawBokResidents, toast, refreshNotificationsOnly, t]);
+
     const handleDismissNonEmployee = useCallback(async (nonEmployeeId: string, checkOutDate: Date) => {
         if (!currentUser) return;
         const originalNonEmployees = rawNonEmployees;
@@ -964,9 +964,9 @@ export default function MainLayout({
     const handleRestoreBokResident = useCallback(async (bokResident: BokResident) => {
         if (!currentUser) return;
         const originalBokResidents = rawBokResidents;
-        setRawBokResidents(prev => prev ? prev.map(r => r.id === bokResident.id ? { ...r, dismissDate: null, checkOutDate: null } : r) : null);
+        setRawBokResidents(prev => prev ? prev.map(r => r.id === bokResident.id ? { ...r, checkOutDate: null, status: 'active' as const } : r) : null);
         try {
-            await updateBokResident(bokResident.id, { dismissDate: null, checkOutDate: null }, currentUser.uid);
+            await updateBokResident(bokResident.id, { checkOutDate: null, status: 'active' }, currentUser.uid);
             toast({ title: t('common.success'), description: t('toast.bokResidentRestored') });
         } catch (e: unknown) {
             setRawBokResidents(originalBokResidents);
@@ -1095,6 +1095,8 @@ export default function MainLayout({
         allEmployees,
         allNonEmployees,
         allBokResidents,
+        allCandidates: rawCandidates,
+        allDemands: rawDemands,
         odbiorEntries,
         addressHistory: filteredData.addressHistory,
         rawEmployees,
@@ -1121,11 +1123,11 @@ export default function MainLayout({
         handleEditBokResidentClick,
         handleDeleteBokResident,
         handleBulkDeleteBokResidents,
-        handleDismissBokResident,
         handleRefreshStatuses,
         handleAddressFormOpen,
         handleDismissEmployee,
         handleDismissNonEmployee,
+        handleDismissBokResident,
         handleRestoreEmployee,
         handleDeleteEmployee,
         handleRestoreNonEmployee,
@@ -1147,6 +1149,8 @@ export default function MainLayout({
         allEmployees,
         allNonEmployees,
         allBokResidents,
+        rawCandidates,
+        rawDemands,
         odbiorEntries,
         filteredData.addressHistory,
         rawEmployees,
@@ -1172,11 +1176,11 @@ export default function MainLayout({
         handleEditBokResidentClick,
         handleDeleteBokResident,
         handleBulkDeleteBokResidents,
-        handleDismissBokResident,
         handleRefreshStatuses,
         handleAddressFormOpen,
         handleDismissEmployee,
         handleDismissNonEmployee,
+        handleDismissBokResident,
         handleRestoreEmployee,
         handleDeleteEmployee,
         handleRestoreNonEmployee,
@@ -1224,17 +1228,34 @@ export default function MainLayout({
                                     href={`/dashboard?view=${item.view}`}
                                     aria-label={item.label}
                                     className={cn(
-                                        'flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200',
+                                        'flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 relative',
                                         'hover:bg-primary/10',
                                         item.view === 'settings' && !currentUser?.isAdmin
                                             ? 'opacity-40 pointer-events-none'
                                             : '',
-                                        activeView === item.view
-                                            ? 'bg-primary text-primary-foreground shadow-md hover:bg-primary'
-                                            : 'text-muted-foreground'
+                                        (item.view === 'odbior' && unacceptedCount > 0) || (item.view === 'recruitment' && wdrodzeCount > 0) || (item.view === 'zapotrzebowania' && pendingDemandsCount > 0)
+                                            ? 'animate-blink-red'
+                                            : activeView === item.view
+                                                ? 'bg-primary text-primary-foreground shadow-md hover:bg-primary'
+                                                : 'text-muted-foreground'
                                     )}
                                 >
                                     <item.icon className="h-5 w-5" />
+                                    {item.view === 'odbior' && unacceptedCount > 0 && (
+                                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 shadow-sm">
+                                            {unacceptedCount > 9 ? '9+' : unacceptedCount}
+                                        </span>
+                                    )}
+                                    {item.view === 'recruitment' && wdrodzeCount > 0 && (
+                                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 shadow-sm">
+                                            {wdrodzeCount > 9 ? '9+' : wdrodzeCount}
+                                        </span>
+                                    )}
+                                    {item.view === 'zapotrzebowania' && pendingDemandsCount > 0 && (
+                                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 shadow-sm">
+                                            {pendingDemandsCount > 9 ? '9+' : pendingDemandsCount}
+                                        </span>
+                                    )}
                                 </Link>
 
                                 {/* Elegant tooltip */}
@@ -1272,7 +1293,16 @@ export default function MainLayout({
                         </main>
                     </div>
 
-                    {currentUser && <MobileNav activeView={activeView} navItems={visibleNavItems} currentUser={currentUser} />}
+                    {currentUser && (
+                        <MobileNav
+                            activeView={activeView}
+                            navItems={navItems}
+                            currentUser={currentUser}
+                            unacceptedCount={unacceptedCount}
+                            wdrodzeCount={wdrodzeCount}
+                            pendingDemandsCount={pendingDemandsCount}
+                        />
+                    )}
                 </div>
 
                 {rawSettings && currentUser && (
@@ -1301,10 +1331,13 @@ export default function MainLayout({
                         isOpen={isBokResidentFormOpen}
                         onOpenChange={setIsBokResidentFormOpen}
                         onSave={handleSaveBokResident}
+                        onDismiss={handleDismissBokResident}
+                        onDelete={async (id) => {
+                            await handleDeleteBokResident(id, currentUser.uid);
+                        }}
                         settings={currentUser.isAdmin ? rawSettings : settings}
                         resident={editingBokResident}
                         currentUser={currentUser}
-                        onSendPush={editingBokResident ? handleSendBokResidentPush : undefined}
                     />
                 )}
                 {rawSettings && currentUser && (

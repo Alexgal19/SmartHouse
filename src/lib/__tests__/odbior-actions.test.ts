@@ -100,17 +100,9 @@ describe('Odbiór Actions', () => {
         date: '2024-04-28',
       };
 
-      const extra = {
-        role: 'Mieszkaniec',
-        coordinatorId: 'coord-1',
-        zaklad: 'BOK',
-        status: 'Aktywny',
-        returnStatus: 'Brak',
-      };
-
       (sheets.getOdbiorEntries as jest.Mock).mockResolvedValue([mockEntry]);
-      
-      const result = await actions.convertOdbiorToBokAction('odb-1', extra, 'user-1');
+
+      const result = await actions.convertOdbiorToBokAction('odb-1', 'user-1');
 
       if (!result.success) {
         console.error('convertOdbiorToBokAction failed with:', result.error);

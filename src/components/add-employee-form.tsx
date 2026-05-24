@@ -7,13 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Combobox } from '@/components/ui/combobox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChevronLeft, ChevronRight, Check, Loader2, User, MapPin, Briefcase, CalendarDays } from 'lucide-react';
 import { format, isValid } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useMainLayout } from '@/components/main-layout';
 import type { Employee, Settings, SessionData, DeductionReason } from '@/types';
-import { cn } from '@/lib/utils';
 import {
     WizardStepIndicator, WizardDateInput, OcrCameraButton,
     WizardAddressPicker, WizardGenderPicker, buildAddressItems, type WizardAddressItem,
@@ -107,7 +105,7 @@ function AddEmployeeWizard({
     currentUser: SessionData;
     initialData?: Partial<EmployeeFormData>;
 }) {
-    const { t, dateLocale } = useLanguage();
+    const { t } = useLanguage();
     const { toast } = useToast();
     const { allEmployees, allNonEmployees, allBokResidents } = useMainLayout();
 
@@ -185,7 +183,7 @@ function AddEmployeeWizard({
             filtered,
             (allEmployees || []).filter((e) => e.status === 'active'),
             (allNonEmployees || []).filter((e) => e.status === 'active'),
-            (allBokResidents || []).filter((b) => b.status !== 'dismissed' && !b.dismissDate && !b.sendDate),
+            (allBokResidents || []),
         );
     }, [settings.addresses, allEmployees, allNonEmployees, allBokResidents, data.coordinatorId]);
 

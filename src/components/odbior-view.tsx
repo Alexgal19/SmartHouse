@@ -33,7 +33,7 @@ import { Eye, ImagePlus, Minus, Plus, FileText, X, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/lib/i18n';
 
-const INITIAL_STATS = { dostarczone: 0, wTrakcie: 0 };
+const INITIAL_STATS = { dostarczone: 0, wTrakcie: 0, nieprzyjete: 0 };
 const INITIAL_SUBMISSIONS: { id: string; status: string; date: string; from: string; persons: number; recruiter: string }[] = [];
 
 const STATUS_STYLES: Record<string, string> = {
@@ -42,6 +42,76 @@ const STATUS_STYLES: Record<string, string> = {
     'Nieprzyjęte': 'text-destructive bg-red-50 border border-red-200',
     'Zakończone':  'text-success bg-green-50 border border-green-200',
 };
+
+const compressImage = async (file: File): Promise<File> => {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 1200;
+                const MAX_HEIGHT = 1200;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_WIDTH) {
+                        height = Math.round(height * (MAX_WIDTH / width));
+                        width = MAX_WIDTH;
+                    }
+                } else {
+                    if (height > MAX_HEIGHT) {
+                        width = Math.round(width * (MAX_HEIGHT / height));
+                        height = MAX_HEIGHT;
+                    }
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return resolve(file);
+                ctx.drawImage(img, 0, 0, width, height);
+                canvas.toBlob((blob) => {
+                    if (blob) {
+                        resolve(new File([blob], file.name, { type: file.type || 'image/jpeg', lastModified: Date.now() }));
+                    } else {
+                        resolve(file);
+                    }
+                }, file.type || 'image/jpeg', 0.7);
+            };
+            img.onerror = () => resolve(file);
+        };
+        reader.onerror = () => resolve(file);
+    });
+};
+
+const COUNTRY_CODES = [
+    { code: '+48', flag: '🇵🇱', label: 'PL' },
+    { code: '+380', flag: '🇺🇦', label: 'UA' },
+    { code: '+7', flag: '🇷🇺', label: 'RU' },
+    { code: '+49', flag: '🇩🇪', label: 'DE' },
+    { code: '+44', flag: '🇬🇧', label: 'GB' },
+    { code: '+33', flag: '🇫🇷', label: 'FR' },
+    { code: '+39', flag: '🇮🇹', label: 'IT' },
+    { code: '+34', flag: '🇪🇸', label: 'ES' },
+    { code: '+40', flag: '🇷🇴', label: 'RO' },
+    { code: '+420', flag: '🇨🇿', label: 'CZ' },
+    { code: '+421', flag: '🇸🇰', label: 'SK' },
+    { code: '+36', flag: '🇭🇺', label: 'HU' },
+    { code: '+370', flag: '🇱🇹', label: 'LT' },
+    { code: '+371', flag: '🇱🇻', label: 'LV' },
+    { code: '+372', flag: '🇪🇪', label: 'EE' },
+    { code: '+375', flag: '🇧🇾', label: 'BY' },
+    { code: '+373', flag: '🇲🇩', label: 'MD' },
+    { code: '+374', flag: '🇦🇲', label: 'AM' },
+    { code: '+995', flag: '🇬🇪', label: 'GE' },
+    { code: '+998', flag: '🇺🇿', label: 'UZ' },
+    { code: '+992', flag: '🇹🇯', label: 'TJ' },
+    { code: '+966', flag: '🇸🇦', label: 'SA' },
+    { code: '+1', flag: '🇺🇸', label: 'US' },
+];
 
 type FormValues = {
     phone: string;
@@ -65,12 +135,13 @@ function ZglosOdbiorDialog({
     const { toast } = useToast();
     const { t } = useLanguage();
     const [loading, setLoading] = useState(false);
+    const [phonePrefix, setPhonePrefix] = useState('+48');
     const [photoFiles, setPhotoFiles] = useState<File[]>([]);
     const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const formSchema = z.object({
-        phone:       z.string().min(1, t('odbior.errorRequiredPhone')).regex(/^\+?[\d\s()-]{7,}$/, t('odbior.errorInvalidPhone')),
+        phone:       z.string().min(1, t('odbior.errorRequiredPhone')).regex(/^[\d\s()-]{6,}$/, t('odbior.errorInvalidPhone')),
         from:        z.enum(['autobusowa', 'pociagowa', 'inne'], { required_error: t('odbior.errorSelectFrom') }),
         fromComment: z.string().optional(),
         persons:     z.number().min(1, t('odbior.errorMinPersons')).max(99),
@@ -110,12 +181,14 @@ function ZglosOdbiorDialog({
         setLoading(true);
         try {
             const fd = new FormData();
-            fd.append('numerTelefonu', values.phone);
+            fd.append('numerTelefonu', `${phonePrefix}${values.phone.replace(/^0+/, '')}`);
             fd.append('skad', values.from);
             fd.append('komentarzSkad', values.fromComment ?? '');
             fd.append('iloscOsob', String(values.persons));
             fd.append('komentarz', values.comment ?? '');
-            photoFiles.forEach(f => fd.append('zdjecia', f));
+            
+            const compressedPhotos = await Promise.all(photoFiles.map(compressImage));
+            compressedPhotos.forEach(f => fd.append('zdjecia', f));
 
             const res = await fetch('/api/odbior/zgloszenie', { method: 'POST', body: fd });
             const data = await res.json();
@@ -146,7 +219,30 @@ function ZglosOdbiorDialog({
                         <FormField control={form.control} name="phone" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>{t('odbior.phoneLabel')}</FormLabel>
-                                <FormControl><Input placeholder="+48 000 000 000" {...field} /></FormControl>
+                                <div className="flex items-center min-h-[44px] w-full rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 overflow-hidden">
+                                    <select
+                                        title="Kod kraju"
+                                        value={phonePrefix}
+                                        onChange={e => setPhonePrefix(e.target.value)}
+                                        className="h-[44px] rounded-l-md rounded-r-none border-none bg-muted px-3 text-sm focus:outline-none focus:ring-0 flex-shrink-0 cursor-pointer"
+                                    >
+                                        {COUNTRY_CODES.map(c => (
+                                            <option key={c.code} value={c.code}>
+                                                {c.flag} {c.code} ({c.label})
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <FormControl>
+                                        <Input
+                                            placeholder="000 000 000"
+                                            {...field}
+                                            className="border-none shadow-none rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 flex-1 min-h-[44px] h-full"
+                                            type="tel"
+                                            inputMode="numeric"
+                                        />
+                                    </FormControl>
+                                </div>
+                                <p className="text-xs text-muted-foreground">Numer zostanie zapisany jako: <span className="font-mono font-medium">{phonePrefix}{field.value || '000000000'}</span></p>
                                 <FormMessage />
                             </FormItem>
                         )} />
@@ -227,8 +323,10 @@ function ZglosOdbiorDialog({
                                 <div className="grid grid-cols-3 gap-2">
                                     {photoPreviews.map((url, i) => (
                                         <div key={i} className="relative rounded-md overflow-hidden aspect-square bg-muted">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
                                             <img src={url} alt="" className="object-cover w-full h-full" />
                                             <button type="button"
+                                                title="Usuń zdjęcie"
                                                 className="absolute top-1 right-1 bg-black/60 rounded-full p-0.5 text-white hover:bg-black"
                                                 onClick={() => handlePhotoRemove(i)}>
                                                 <X className="h-3 w-3" />
@@ -241,7 +339,7 @@ function ZglosOdbiorDialog({
                                 onClick={() => fileInputRef.current?.click()}>
                                 <ImagePlus className="h-4 w-4" /> {t('odbior.addPhotosBtn')}
                             </Button>
-                            <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoAdd} />
+                            <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoAdd} title="Dodaj zdjęcia" />
                         </div>
 
                         <DialogFooter>
@@ -293,11 +391,12 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
             setStats({
                 dostarczone: data.filter(z => z.status === 'Zakończone' || z.status === 'Dostarczone').length,
                 wTrakcie: data.filter(z => z.status === 'W trakcie').length,
+                nieprzyjete: data.filter(z => z.status === 'Nieprzyjęte').length,
             });
         } catch {
             toast({ variant: 'destructive', title: t('common.error'), description: t('odbior.loadError') });
         }
-    }, [t]);
+    }, [t, toast]);
 
     useEffect(() => { loadZgloszenia(); }, [loadZgloszenia]);
 
@@ -317,21 +416,23 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
     };
 
     const handleStatusChange = (id: string, updates: Partial<OdbiorZgloszenie>) => {
-        setAllZgloszenia(prev => prev.map(z => z.id === id ? { ...z, ...updates } : z));
+        setAllZgloszenia(prev => {
+            const updated = prev.map(z => z.id === id ? { ...z, ...updates } : z);
+            setStats({
+                dostarczone: updated.filter(z => z.status === 'Zakończone' || z.status === 'Dostarczone').length,
+                wTrakcie: updated.filter(z => z.status === 'W trakcie').length,
+                nieprzyjete: updated.filter(z => z.status === 'Nieprzyjęte').length,
+            });
+            return updated;
+        });
         setSubmissions(prev => prev.map(s => {
             if (s.id !== id) return s;
             return { ...s, status: (updates.status ?? s.status) };
         }));
-        setStats(() => {
-            const updated = allZgloszenia.map(z => z.id === id ? { ...z, ...updates } : z);
-            return {
-                dostarczone: updated.filter(z => z.status === 'Zakończone' || z.status === 'Dostarczone').length,
-                wTrakcie: updated.filter(z => z.status === 'W trakcie').length,
-            };
-        });
         if (selectedZgloszenie?.id === id) {
             setSelectedZgloszenie(prev => prev ? { ...prev, ...updates } : prev);
         }
+        window.dispatchEvent(new CustomEvent('odbior-status-updated'));
     };
 
     const handleNewSubmission = (z: OdbiorZgloszenie) => {
@@ -344,14 +445,28 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
             persons: z.iloscOsob,
             recruiter: z.rekruterNazwa,
         }, ...prev]);
-        setStats(prev => ({ ...prev }));
+        setStats(prev => ({
+            dostarczone: z.status === 'Zakończone' || z.status === 'Dostarczone' ? prev.dostarczone + 1 : prev.dostarczone,
+            wTrakcie: z.status === 'W trakcie' ? prev.wTrakcie + 1 : prev.wTrakcie,
+            nieprzyjete: z.status === 'Nieprzyjęte' ? prev.nieprzyjete + 1 : prev.nieprzyjete,
+        }));
+        window.dispatchEvent(new CustomEvent('odbior-status-updated'));
     };
 
     const filteredSubmissions = submissions.filter(row => {
         const matchesSearch = !searchTerm.trim() ||
             row.from.toLowerCase().includes(searchTerm.toLowerCase()) ||
             row.recruiter.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = statusFilter === 'all' || row.status === statusFilter;
+        
+        let matchesStatus = false;
+        if (statusFilter === 'all') {
+            matchesStatus = true;
+        } else if (statusFilter === 'Zakończone_Dostarczone') {
+            matchesStatus = row.status === 'Zakończone' || row.status === 'Dostarczone';
+        } else {
+            matchesStatus = row.status === statusFilter;
+        }
+        
         return matchesSearch && matchesStatus;
     });
 
@@ -370,8 +485,10 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
             setStats({
                 dostarczone: remaining.filter(z => z.status === 'Zakończone' || z.status === 'Dostarczone').length,
                 wTrakcie: remaining.filter(z => z.status === 'W trakcie').length,
+                nieprzyjete: remaining.filter(z => z.status === 'Nieprzyjęte').length,
             });
             toast({ title: t('odbior.deleted') });
+            window.dispatchEvent(new CustomEvent('odbior-status-updated'));
         } catch (e) {
             toast({ variant: 'destructive', title: t('common.error'), description: e instanceof Error ? e.message : t('common.error') });
         } finally {
@@ -388,30 +505,72 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
             </div>
 
             {/* Bloki statystyk */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Dostarczone */}
-                <Card className="border-2 border-green-300 bg-green-50">
-                    <CardContent className="p-4 space-y-1">
-                        <div className="flex items-center gap-2">
-                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-success text-white text-xs font-bold shrink-0">1</span>
-                            <span className="text-sm font-semibold text-green-800">{t('odbior.delivered2')}</span>
-                        </div>
-                        <p className="text-3xl font-bold text-green-900 pl-8">{stats.dostarczone}</p>
-                        <p className="text-xs text-success-foreground pl-8">{t('odbior.allCompleted')}</p>
-                    </CardContent>
-                </Card>
+                <button 
+                    type="button" 
+                    onClick={() => setStatusFilter(prev => prev === 'Zakończone_Dostarczone' ? 'all' : 'Zakończone_Dostarczone')}
+                    className="text-left focus:outline-none group"
+                >
+                    <Card className={cn(
+                        "border-2 h-full transition-all group-hover:shadow-md group-active:scale-[0.98]",
+                        statusFilter === 'Zakończone_Dostarczone' 
+                            ? "border-green-500 bg-green-100 shadow-sm ring-2 ring-green-200 ring-offset-1" 
+                            : "border-green-300 bg-green-50"
+                    )}>
+                        <CardContent className="p-4 space-y-1">
+                            <div className="flex items-center">
+                                <span className="text-sm font-semibold text-green-800">{t('odbior.delivered2')}</span>
+                            </div>
+                            <p className="text-3xl font-bold text-green-900">{stats.dostarczone}</p>
+                            <p className="text-xs text-success-foreground">{t('odbior.allCompleted')}</p>
+                        </CardContent>
+                    </Card>
+                </button>
 
                 {/* W trakcie */}
-                <Card className="border-2 border-amber-300 bg-amber-50">
-                    <CardContent className="p-4 space-y-1">
-                        <div className="flex items-center gap-2">
-                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-400 text-white text-xs font-bold shrink-0">2</span>
-                            <span className="text-sm font-semibold text-amber-800">{t('odbior.inProgress2')}</span>
-                        </div>
-                        <p className="text-3xl font-bold text-amber-900 pl-8">{stats.wTrakcie}</p>
-                        <p className="text-xs text-amber-700 pl-8">{t('odbior.awaitingAction')}</p>
-                    </CardContent>
-                </Card>
+                <button 
+                    type="button" 
+                    onClick={() => setStatusFilter(prev => prev === 'W trakcie' ? 'all' : 'W trakcie')}
+                    className="text-left focus:outline-none group"
+                >
+                    <Card className={cn(
+                        "border-2 h-full transition-all group-hover:shadow-md group-active:scale-[0.98]",
+                        statusFilter === 'W trakcie' 
+                            ? "border-amber-500 bg-amber-100 shadow-sm ring-2 ring-amber-200 ring-offset-1" 
+                            : "border-amber-300 bg-amber-50"
+                    )}>
+                        <CardContent className="p-4 space-y-1">
+                            <div className="flex items-center">
+                                <span className="text-sm font-semibold text-amber-800">{t('odbior.inProgress2')}</span>
+                            </div>
+                            <p className="text-3xl font-bold text-amber-900">{stats.wTrakcie}</p>
+                            <p className="text-xs text-amber-700">{t('odbior.awaitingAction')}</p>
+                        </CardContent>
+                    </Card>
+                </button>
+
+                {/* Nieprzyjęte */}
+                <button 
+                    type="button" 
+                    onClick={() => setStatusFilter(prev => prev === 'Nieprzyjęte' ? 'all' : 'Nieprzyjęte')}
+                    className="text-left focus:outline-none group"
+                >
+                    <Card className={cn(
+                        "border-2 h-full transition-all group-hover:shadow-md group-active:scale-[0.98]",
+                        statusFilter === 'Nieprzyjęte' 
+                            ? "border-red-500 bg-red-100 shadow-sm ring-2 ring-red-200 ring-offset-1" 
+                            : "border-red-300 bg-red-50"
+                    )}>
+                        <CardContent className="p-4 space-y-1">
+                            <div className="flex items-center">
+                                <span className="text-sm font-semibold text-red-800">{t('odbior.statusUnaccepted')}</span>
+                            </div>
+                            <p className="text-3xl font-bold text-red-900">{stats.nieprzyjete}</p>
+                            <p className="text-xs text-red-700">{t('odbior.unacceptedDesc')}</p>
+                        </CardContent>
+                    </Card>
+                </button>
 
                 {/* Nowe zgłoszenie CTA */}
                 <button
@@ -419,10 +578,9 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
                     onClick={() => setDialogOpen(true)}
                     className="text-left focus:outline-none group"
                 >
-                    <Card className="border-2 border-violet-400 bg-violet-50 h-full transition-shadow group-hover:shadow-md group-active:scale-[0.98]">
+                    <Card className="border-2 border-violet-400 bg-violet-50 h-full transition-all group-hover:shadow-md group-active:scale-[0.98]">
                         <CardContent className="p-4 flex flex-col items-center justify-center gap-2 h-full min-h-[100px]">
-                            <div className="flex items-center gap-2 self-start">
-                                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-violet-500 text-white text-xs font-bold shrink-0">3</span>
+                            <div className="flex items-center self-start">
                                 <span className="text-sm font-semibold text-violet-800">{t('odbior.newSubmission')}</span>
                             </div>
                             <FileText className="h-8 w-8 text-violet-400 mt-1" />
@@ -443,6 +601,7 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
                         className="sm:w-72"
                     />
                     <select
+                        title="Status"
                         className="h-10 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring sm:w-48"
                         value={statusFilter}
                         onChange={e => setStatusFilter(e.target.value)}
@@ -450,7 +609,7 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
                         <option value="all">{t('odbior.filterAll')}</option>
                         <option value="Nieprzyjęte">{t('odbior.statusUnaccepted')}</option>
                         <option value="W trakcie">{t('odbior.statusInProgress')}</option>
-                        <option value="Zakończone">{t('odbior.statusCompleted')}</option>
+                        <option value="Zakończone_Dostarczone">{t('odbior.statusCompleted')}</option>
                     </select>
                 </div>
                 <Card>

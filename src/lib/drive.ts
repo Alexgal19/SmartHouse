@@ -37,6 +37,7 @@ export async function uploadFileToDrive(
                 body: stream,
             },
             fields: 'id, webViewLink, webContentLink',
+            supportsAllDrives: true,
         });
 
         // Try to generate a direct thumbnail link if possible, or use webViewLink
@@ -57,6 +58,7 @@ export async function uploadFileToDrive(
                 role: 'reader',
                 type: 'anyone',
             },
+            supportsAllDrives: true,
         });
 
         // eslint-disable-next-line @typescript-eslint/no-unused-vars

@@ -94,15 +94,36 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', sans-serif;
-     -webkit-overflow-scrolling: touch;
   }
 }
 
 @layer utilities {
   .hide-scrollbar {
-    scrollbar-width: none; /* For Firefox */
+    -ms-overflow-style: none; /* For Internet Explorer and Edge */
+  }
+  @supports (scrollbar-width: none) {
+    .hide-scrollbar {
+      scrollbar-width: none; /* For Firefox */
+    }
   }
   .hide-scrollbar::-webkit-scrollbar {
       display: none; /* For Chrome, Safari, and Opera */
   }
+}
+
+@keyframes blink-red {
+  0%, 100% {
+    background-color: rgba(239, 68, 68, 0.2);
+    color: rgb(239, 68, 68);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    background-color: rgb(239, 68, 68);
+    color: white;
+    box-shadow: 0 0 12px 4px rgba(239, 68, 68, 0.6);
+  }
+}
+
+.animate-blink-red {
+  animation: blink-red 1s infinite ease-in-out !important;
 }

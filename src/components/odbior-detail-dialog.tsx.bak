@@ -1,0 +1,1200 @@
+'use client';
+
+import React, { useState, useRef, useEffect } from 'react';
+import type { OdbiorZgloszenie, OsobaWOdbiorze, SessionData, Candidate } from '@/types';
+import { OdbiorZakwaterowanieDialog } from '@/components/odbior-zakwaterowanie-dialog';
+import AddCandidateDialog from '@/components/add-candidate-dialog';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from '@/components/ui/dialog';
+import {
+    AlertDialog,
+    AlertDialogContent,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+import { useLanguage } from '@/lib/i18n';
+import {
+    MapPin, Phone, Users, MessageSquare, User, Bed,
+    Pencil, Trash2, Plus, Check, PhoneCall, ImagePlus, X, ScanLine,
+} from 'lucide-react';
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function useSkadLabels() {
+    const { t } = useLanguage();
+    return {
+        autobusowa: t('odbior.busStation'),
+        pociagowa: t('odbior.trainStation'),
+        inne: t('odbior.other'),
+    };
+}
+
+function parseOsoby(raw: string): OsobaWOdbiorze[] {
+    try { return JSON.parse(raw || '[]'); } catch { return []; }
+}
+
+// ─── Status badge ─────────────────────────────────────────────────────────────
+
+function StatusBadge({ status, isNew }: { status: string; isNew?: boolean }) {
+    const { t } = useLanguage();
+    if (isNew) {
+        return (
+            <span className="inline-flex items-center rounded-full bg-destructive text-white text-xs font-bold px-3 py-1">
+                {t('odbior.statusNew')}
+            </span>
+        );
+    }
+    const styles: Record<string, string> = {
+        'Nieprzyjęte': 'bg-red-100 text-red-700 border border-red-200',
+        'W trakcie':   'bg-amber-100 text-amber-700 border border-amber-200',
+        'Zakończone':  'bg-success/20 text-success-foreground border border-green-200',
+        'Dostarczone': 'bg-success/20 text-success-foreground border border-green-200',
+    };
+    const labels: Record<string, string> = {
+        'Nieprzyjęte': t('odbior.statusUnaccepted'),
+        'W trakcie': t('odbior.statusInProgress'),
+        'Zakończone': t('odbior.statusCompleted'),
+        'Dostarczone': t('odbior.statusDelivered'),
+    };
+    return (
+        <span className={cn('inline-flex items-center rounded-full text-xs font-semibold px-3 py-1', styles[status] ?? 'bg-gray-100 text-gray-700')}>
+            {labels[status] ?? status}
+        </span>
+    );
+}
+
+// ─── Popover wyboru połączenia ────────────────────────────────────────────────
+
+function PhonePopover({ number }: { number: string }) {
+    const { t } = useLanguage();
+    
+    let digits = number.replace(/\D/g, '');
+    
+    // Jeśli użytkownik wpisał np. 9 cyfr bez kierunkowego (typowy polski), dodaj 48
+    if (digits.length === 9) {
+        digits = `48${digits}`;
+    } else if (digits.length === 10 && digits.startsWith('0')) {
+        // Jeśli wpisał np. 0 123 456 789
+        digits = `48${digits.slice(1)}`;
+    }
+
+    const options: { label: string; icon: React.ElementType; action: () => void }[] = [
+        {
+            label: t('odbior.phoneCall'),
+            icon: Phone,
+            action: () => { window.location.href = `tel:+${digits}`; },
+        },
+        {
+            label: t('odbior.callViber'),
+            icon: PhoneCall,
+            // Wymagany format Vibera to same cyfry bez znaku +
+            action: () => { window.location.href = `viber://chat?number=${digits}`; },
+        },
+        {
+            label: t('odbior.callWhatsApp'),
+            icon: PhoneCall,
+            // Wymagany format WhatsAppa to same cyfry bez znaku +
+            action: () => { window.open(`https://wa.me/${digits}`, '_blank'); },
+        },
+    ];
+
+    return (
+        <Popover>
+            <PopoverTrigger asChild>
+                <button className="underline decoration-dotted text-blue-700 hover:text-blue-900 cursor-pointer font-medium focus:outline-none">
+                    {number}
+                </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-52 p-1" align="start">
+                {options.map(({ label, icon: Icon, action }) => (
+                    <button
+                        key={label}
+                        type="button"
+                        className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm hover:bg-muted transition-colors text-left"
+                        onClick={action}
+                    >
+                        <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                        {label}
+                    </button>
+                ))}
+            </PopoverContent>
+        </Popover>
+    );
+}
+
+// ─── Szczegóły zgłoszenia (wspólna część) ────────────────────────────────────
+
+function ZgloszenieInfo({ z }: { z: OdbiorZgloszenie }) {
+    const { t } = useLanguage();
+    const skadLabels = useSkadLabels();
+    const shortId = z.id.slice(-4).toUpperCase();
+    return (
+        <div className="space-y-2 text-sm">
+            <div className="flex items-center justify-between mb-1">
+                <StatusBadge status={z.status} isNew={z.status === 'Nieprzyjęte'} />
+                <span className="text-xs text-muted-foreground">{t('odbior.requestId', { id: shortId })}</span>
+            </div>
+            <div className="flex items-start gap-2"><MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" /><span><b>{t('odbior.fromShort')}:</b> {skadLabels[z.skad as keyof typeof skadLabels] ?? z.skad}{z.komentarzSkad ? ` — ${z.komentarzSkad}` : ''}</span></div>
+            <div className="flex items-start gap-2">
+                <Phone className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <span><b>{t('odbior.phoneShort')}:</b>{' '}
+                    <PhonePopover number={z.numerTelefonu} />
+                </span>
+            </div>
+            <div className="flex items-start gap-2"><Users className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" /><span><b>{t('odbior.personsShort')}:</b> {z.iloscOsob}</span></div>
+            {z.komentarz && <div className="flex items-start gap-2"><MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" /><span><b>{t('odbior.commentShort')}:</b> {z.komentarz}</span></div>}
+            <div className="flex items-start gap-2"><User className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" /><span><b>{t('odbior.recruiterShort')}:</b> {z.rekruterNazwa}</span></div>
+            {z.kierowcaNazwa && <div className="flex items-start gap-2"><User className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" /><span><b>{t('odbior.driverShort')}:</b> {z.kierowcaNazwa}</span></div>}
+            
+            {z.zdjeciaUrls && z.zdjeciaUrls.trim() !== '' && (
+                <div className="mt-3">
+                    <span className="text-xs font-bold mb-1.5 block">{t('odbior.photosShort')}:</span>
+                    <div className="grid grid-cols-4 gap-2">
+                        {z.zdjeciaUrls.split(',').filter(Boolean).map((url, i) => (
+                            <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block relative rounded-md overflow-hidden aspect-square bg-muted border hover:opacity-80 transition-opacity">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={url} alt={`Załącznik ${i + 1}`} className="object-cover w-full h-full" />
+                            </a>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <p className="text-xs text-muted-foreground text-right pt-1">{z.dataZgloszenia}</p>
+        </div>
+    );
+}
+
+// ─── Formularz edycji danych zgłoszenia ──────────────────────────────────────
+
+function useSkadOptions() {
+    const { t } = useLanguage();
+    return [
+        { value: 'autobusowa', label: t('odbior.busStation') },
+        { value: 'pociagowa',  label: t('odbior.trainStation') },
+        { value: 'inne',       label: t('odbior.other') },
+    ] as const;
+}
+
+function EditZgloszenieForm({
+    z,
+    onSave,
+    onCancel,
+}: {
+    z: OdbiorZgloszenie;
+    onSave: (updates: Partial<OdbiorZgloszenie>) => Promise<void>;
+    onCancel: () => void;
+}) {
+    const { t } = useLanguage();
+    const skadOptions = useSkadOptions();
+    const [fields, setFields] = useState({
+        numerTelefonu: z.numerTelefonu,
+        skad: z.skad,
+        komentarzSkad: z.komentarzSkad,
+        iloscOsob: z.iloscOsob,
+        komentarz: z.komentarz,
+    });
+    const [newFiles, setNewFiles] = useState<File[]>([]);
+    const [newPreviews, setNewPreviews] = useState<string[]>([]);
+    const [removedExisting, setRemovedExisting] = useState<string[]>([]);
+    const [saving, setSaving] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const { toast } = useToast();
+
+    const existingUrls = z.zdjeciaUrls ? z.zdjeciaUrls.split(',').filter(Boolean) : [];
+    const visibleExisting = existingUrls.filter(u => !removedExisting.includes(u));
+
+    useEffect(() => {
+        const urls = newFiles.map(f => URL.createObjectURL(f));
+        setNewPreviews(urls);
+        return () => { urls.forEach(u => URL.revokeObjectURL(u)); };
+    }, [newFiles]);
+
+    const handleFileAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files ?? []);
+        if (files.length > 0) setNewFiles(prev => [...prev, ...files]);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const handleSave = async () => {
+        if (!fields.numerTelefonu.trim()) {
+            toast({ variant: 'destructive', title: t('common.error'), description: t('odbior.errorRequiredPhone') });
+            return;
+        }
+        setSaving(true);
+        try {
+            let mergedUrls = visibleExisting;
+
+            if (newFiles.length > 0) {
+                const fd = new FormData();
+                newFiles.forEach(f => fd.append('zdjecia', f));
+                const res = await fetch(`/api/odbior/zgloszenie/${z.id}/photos`, { method: 'POST', body: fd });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.error ?? t('odbior.errorUploadPhotos'));
+                }
+                const data = await res.json();
+                mergedUrls = data.zdjeciaUrls.split(',').filter(Boolean);
+            }
+
+            await onSave({ ...fields, zdjeciaUrls: mergedUrls.join(',') });
+            toast({ title: t('odbior.savedChanges') });
+            onCancel();
+        } catch (e) {
+            toast({ variant: 'destructive', title: t('common.error'), description: e instanceof Error ? e.message : t('common.error') });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="rounded-xl border border-border bg-card shadow-sm p-4 space-y-3">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('odbior.editRequestTitle')}</p>
+
+            <div>
+                <Label className="text-xs">{t('odbior.phoneLabel')}</Label>
+                <Input className="h-8 text-sm mt-1" value={fields.numerTelefonu}
+                    onChange={e => setFields(f => ({ ...f, numerTelefonu: e.target.value }))} />
+            </div>
+
+            <div>
+                <Label className="text-xs" htmlFor="skad-select">{t('odbior.fromSelect')}</Label>
+                <select
+                    id="skad-select"
+                    title={t('odbior.fromSelect')}
+                    className="mt-1 w-full h-8 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    value={fields.skad}
+                    onChange={e => setFields(f => ({ ...f, skad: e.target.value as OdbiorZgloszenie['skad'] }))}
+                >
+                    {skadOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+            </div>
+
+            <div>
+                <Label className="text-xs">{t('odbior.fromCommentLabel')}</Label>
+                <Input className="h-8 text-sm mt-1" value={fields.komentarzSkad}
+                    onChange={e => setFields(f => ({ ...f, komentarzSkad: e.target.value }))} />
+            </div>
+
+            <div>
+                <Label className="text-xs">{t('odbior.personCount')}</Label>
+                <div className="flex items-center gap-2 mt-1">
+                    <Button type="button" variant="outline" size="icon" className="h-7 w-7"
+                        onClick={() => setFields(f => ({ ...f, iloscOsob: Math.max(1, f.iloscOsob - 1) }))}>
+                        <span className="text-base leading-none">−</span>
+                    </Button>
+                    <span className="w-8 text-center font-semibold text-sm">{fields.iloscOsob}</span>
+                    <Button type="button" variant="outline" size="icon" className="h-7 w-7"
+                        onClick={() => setFields(f => ({ ...f, iloscOsob: Math.min(99, f.iloscOsob + 1) }))}>
+                        <span className="text-base leading-none">+</span>
+                    </Button>
+                </div>
+            </div>
+
+            <div>
+                <Label className="text-xs">{t('odbior.commentLabel')}</Label>
+                <Input className="h-8 text-sm mt-1" value={fields.komentarz}
+                    onChange={e => setFields(f => ({ ...f, komentarz: e.target.value }))} />
+            </div>
+
+            {/* Zdjęcia */}
+            <div className="space-y-2">
+                <Label className="text-xs">{t('odbior.photosShort')}</Label>
+
+                {/* Istniejące */}
+                {visibleExisting.length > 0 && (
+                    <div className="grid grid-cols-3 gap-1.5">
+                        {visibleExisting.map((url, i) => (
+                            <div key={i} className="relative rounded-md overflow-hidden aspect-square bg-muted border">
+                                <a href={url} target="_blank" rel="noopener noreferrer">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={url} alt="" className="object-cover w-full h-full" />
+                                </a>
+                                <button type="button"
+                                    title="Usuń zdjęcie"
+                                    className="absolute top-0.5 right-0.5 bg-black/60 rounded-full p-0.5 text-white"
+                                    onClick={() => setRemovedExisting(prev => [...prev, url])}>
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* Nowe (lokalne preview) */}
+                {newPreviews.length > 0 && (
+                    <div className="grid grid-cols-3 gap-1.5">
+                        {newPreviews.map((url, i) => (
+                            <div key={i} className="relative rounded-md overflow-hidden aspect-square bg-muted border">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={url} alt="" className="object-cover w-full h-full" />
+                                <button type="button"
+                                    title="Usuń zdjęcie"
+                                    className="absolute top-0.5 right-0.5 bg-black/60 rounded-full p-0.5 text-white"
+                                    onClick={() => setNewFiles(prev => prev.filter((_, j) => j !== i))}>
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <Button type="button" variant="outline" size="sm" className="w-full gap-1.5"
+                    onClick={() => fileInputRef.current?.click()}>
+                    <ImagePlus className="h-4 w-4" /> {t('odbior.addPhotosBtn')}
+                </Button>
+                <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileAdd} title="Dodaj zdjęcia" />
+            </div>
+
+            <div className="flex gap-2 pt-1">
+                <Button variant="outline" size="sm" className="flex-1" disabled={saving} onClick={onCancel}>{t('common.cancel')}</Button>
+                <Button size="sm" className="flex-1" disabled={saving} onClick={handleSave}>
+                    {saving ? t('odbior.savingShort') : t('common.save')}
+                </Button>
+            </div>
+        </div>
+    );
+}
+
+// ─── Karta — Nieprzyjęte ─────────────────────────────────────────────────────
+
+function KartaNieprzyjete({
+    z, onAction, onEdit, canEdit,
+}: {
+    z: OdbiorZgloszenie;
+    onAction: (action: 'przyjmij') => Promise<void>;
+    onEdit: (updates: Partial<OdbiorZgloszenie>) => Promise<void>;
+    canEdit: boolean;
+}) {
+    const { t } = useLanguage();
+    const [loading, setLoading] = useState<'przyjmij' | null>(null);
+    const [editing, setEditing] = useState(false);
+
+    const handle = async (a: 'przyjmij') => {
+        setLoading(a);
+        try { await onAction(a); } finally { setLoading(null); }
+    };
+    return (
+        <div className="space-y-3">
+            {editing ? (
+                <EditZgloszenieForm z={z} onSave={onEdit} onCancel={() => setEditing(false)} />
+            ) : (
+                <div className="rounded-xl border border-border bg-card shadow-sm p-4 space-y-4">
+                    <ZgloszenieInfo z={z} />
+                    {canEdit && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            disabled={!!loading}
+                            onClick={() => setEditing(true)}
+                        >
+                            {t('odbior.editData')}
+                        </Button>
+                    )}
+                    <div className="flex gap-3">
+                        <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" disabled={!!loading} onClick={() => handle('przyjmij')}>
+                            {loading === 'przyjmij' ? t('odbior.accepting') : t('odbior.accept')}
+                        </Button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ─── Edycja osoby (inline) ───────────────────────────────────────────────────
+
+function EditPersonRow({ person, onSave, onCancel }: {
+    person: OsobaWOdbiorze;
+    onSave: (p: OsobaWOdbiorze) => void;
+    onCancel: () => void;
+}) {
+    const { t } = useLanguage();
+    const [p, setP] = useState(person);
+    return (
+        <div className="rounded-lg border bg-white p-3 space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+                <div><Label className="text-xs">{t('odbior.firstName')}</Label><Input className="h-8 text-sm" value={p.imie} onChange={e => setP(x => ({ ...x, imie: e.target.value }))} /></div>
+                <div><Label className="text-xs">{t('odbior.lastName')}</Label><Input className="h-8 text-sm" value={p.nazwisko} onChange={e => setP(x => ({ ...x, nazwisko: e.target.value }))} /></div>
+            </div>
+            <div><Label className="text-xs">{t('odbior.passportShort')}</Label><Input className="h-8 text-sm" value={p.paszport} onChange={e => setP(x => ({ ...x, paszport: e.target.value }))} /></div>
+            <div className="flex gap-2 pt-1">
+                <Button variant="outline" size="sm" className="flex-1" onClick={onCancel}>{t('common.cancel')}</Button>
+                <Button size="sm" className="flex-1" onClick={() => onSave(p)}>{t('common.save')}</Button>
+            </div>
+        </div>
+    );
+}
+
+// ─── Dialog dodawania osoby (osobne okno) ────────────────────────────────────
+
+function AddPersonDialog({
+    open, onOpenChange, onAdd, maxPersons, currentCount,
+}: {
+    open: boolean;
+    onOpenChange: (v: boolean) => void;
+    onAdd: (p: OsobaWOdbiorze) => void;
+    maxPersons: number;
+    currentCount: number;
+}) {
+    const { t } = useLanguage();
+    const { toast } = useToast();
+    const [person, setPerson] = useState<OsobaWOdbiorze>({ imie: '', nazwisko: '', paszport: '', paszportFotoUrl: '' });
+    const [ocrLoading, setOcrLoading] = useState(false);
+    const [passportPreview, setPassportPreview] = useState<string | null>(null);
+    const ocrInputRef = useRef<HTMLInputElement>(null);
+
+    const handleAdd = () => {
+        if (!person.imie.trim() || !person.nazwisko.trim()) {
+            toast({ variant: 'destructive', title: t('common.error'), description: t('odbior.errorNameSurname') });
+            return;
+        }
+        if (currentCount >= maxPersons) {
+            toast({ variant: 'destructive', title: t('common.error'), description: t('odbior.errorMaxPersons') });
+            return;
+        }
+        onAdd(person);
+        setPerson({ imie: '', nazwisko: '', paszport: '', paszportFotoUrl: '' });
+        setPassportPreview(null);
+        onOpenChange(false);
+    };
+
+    const handleOcr = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (ocrInputRef.current) ocrInputRef.current.value = '';
+        setOcrLoading(true);
+
+        // Show local preview immediately
+        const previewUrl = URL.createObjectURL(file);
+        setPassportPreview(previewUrl);
+
+        try {
+            // Upload to Drive and OCR in parallel
+            const ocrFd = new FormData();
+            ocrFd.append('photo', file);
+            const photoFd = new FormData();
+            photoFd.append('photo', file);
+
+            const [ocrRes, photoRes] = await Promise.all([
+                fetch('/api/odbior/ocr', { method: 'POST', body: ocrFd }),
+                fetch('/api/odbior/passport-photo', { method: 'POST', body: photoFd }),
+            ]);
+
+            const ocrData = ocrRes.ok ? await ocrRes.json() : {};
+            const photoData = photoRes.ok ? await photoRes.json() : {};
+
+            setPerson(p => ({
+                imie:            ocrData.imie     || p.imie,
+                nazwisko:        ocrData.nazwisko || p.nazwisko,
+                paszport:        ocrData.paszport || p.paszport,
+                paszportFotoUrl: photoData.url    || p.paszportFotoUrl,
+            }));
+
+            if (ocrData.imie || ocrData.nazwisko || ocrData.paszport) {
+                toast({ title: t('odbior.ocrRead'), description: `${ocrData.imie} ${ocrData.nazwisko} — ${ocrData.paszport}` });
+            }
+        } catch (err) {
+            toast({ variant: 'destructive', title: t('odbior.ocrError'), description: err instanceof Error ? err.message : t('odbior.ocrFailed') });
+        } finally {
+            setOcrLoading(false);
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-md w-full">
+                <DialogHeader>
+                    <DialogTitle>{t('odbior.addPerson')}</DialogTitle>
+                    <DialogDescription className="sr-only">{t('odbior.addPerson')}</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <p className="text-xs text-muted-foreground">{t('odbior.personList')} ({currentCount}/{maxPersons})</p>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-7 gap-1.5 text-xs text-violet-700 border-violet-300 hover:bg-violet-50"
+                            disabled={ocrLoading}
+                            onClick={() => ocrInputRef.current?.click()}
+                        >
+                            <ScanLine className="h-3.5 w-3.5" />
+                            {ocrLoading ? t('odbior.scanning') : t('odbior.scanPassport')}
+                        </Button>
+                        <input ref={ocrInputRef} type="file" accept="image/*" {...{ capture: "environment" }} className="hidden" onChange={handleOcr} title="Zeskanuj paszport" />
+                    </div>
+                    {passportPreview && (
+                        <div className="relative rounded-lg overflow-hidden border border-border">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={passportPreview} alt="Paszport" className="w-full object-contain max-h-40" />
+                            {ocrLoading && (
+                                <div className="absolute inset-0 bg-background/70 flex items-center justify-center">
+                                    <span className="text-xs text-muted-foreground animate-pulse">{t('odbior.scanning')}</span>
+                                </div>
+                            )}
+                            {person.paszportFotoUrl && (
+                                <div className="absolute bottom-1 right-1 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full">✓ zapisano</div>
+                            )}
+                        </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                            <Label className="text-xs">{t('odbior.firstName')} *</Label>
+                            <Input className="h-8 text-sm" value={person.imie} onChange={e => setPerson(p => ({ ...p, imie: e.target.value }))} />
+                        </div>
+                        <div>
+                            <Label className="text-xs">{t('odbior.lastName')} *</Label>
+                            <Input className="h-8 text-sm" value={person.nazwisko} onChange={e => setPerson(p => ({ ...p, nazwisko: e.target.value }))} />
+                        </div>
+                    </div>
+                    <div>
+                        <Label className="text-xs">{t('odbior.passportNumber')}</Label>
+                        <Input className="h-8 text-sm" value={person.paszport} onChange={e => setPerson(p => ({ ...p, paszport: e.target.value }))} />
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                        <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Button>
+                        <Button className="flex-1 gap-1" onClick={handleAdd}>
+                            <Plus className="h-3.5 w-3.5" /> {t('odbior.addPerson')}
+                        </Button>
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+// ─── Karta — W trakcie ───────────────────────────────────────────────────────
+
+function KartaWTrakcie({
+    z, onAction, onZakwaterowanieClick, onRozmowaClick,
+}: {
+    z: OdbiorZgloszenie;
+    onAction: (action: 'odrzuc' | 'zakoncz' | 'update', payload: Partial<OdbiorZgloszenie>) => Promise<void>;
+    onZakwaterowanieClick?: (osoba: OsobaWOdbiorze | null, idx: number | null) => void;
+    onRozmowaClick?: (osoba: OsobaWOdbiorze | null, idx: number | null) => void;
+}) {
+    const { t } = useLanguage();
+    const [localOsoby, setLocalOsoby] = useState<OsobaWOdbiorze[]>(() => parseOsoby(z.osoby));
+    
+    useEffect(() => {
+        setLocalOsoby(parseOsoby(z.osoby));
+    }, [z.osoby]);
+
+    const [editIdx, setEditIdx] = useState<number | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [addPersonOpen, setAddPersonOpen] = useState(false);
+    const lastCompletedCountRef = useRef<number>(0);
+    const [rejectAlertOpen, setRejectAlertOpen] = useState(false);
+    const [finishAlertOpen, setFinishAlertOpen] = useState(false);
+
+    useEffect(() => {
+        if (localOsoby.length > 0 && localOsoby.length < z.iloscOsob) {
+            const isAllCompleted = localOsoby.every(o => o.statusKrok === 'completed');
+            if (isAllCompleted && localOsoby.length > lastCompletedCountRef.current) {
+                lastCompletedCountRef.current = localOsoby.length;
+                setTimeout(() => setAddPersonOpen(true), 300); // 300ms delay to allow previous animations to finish
+            }
+        }
+    }, [localOsoby, z.iloscOsob]);
+    
+    const [nextStepPromptPerson, setNextStepPromptPerson] = useState<{ person: OsobaWOdbiorze; index: number } | null>(null);
+    const [partialArrivalAlertOpen, setPartialArrivalAlertOpen] = useState(false);
+    const { toast } = useToast();
+
+    const saveOsoby = async (updated: OsobaWOdbiorze[]) => {
+        setLocalOsoby(updated);
+        await onAction('update', { osoby: JSON.stringify(updated) });
+    };
+
+    const handleAddPerson = async (person: OsobaWOdbiorze) => {
+        if (localOsoby.length >= z.iloscOsob) {
+            toast({ variant: 'destructive', title: t('common.error'), description: t('odbior.errorMaxPersons') });
+            return;
+        }
+        const personWithSteps: OsobaWOdbiorze = {
+            ...person,
+            wybranyKrok: '',
+            statusKrok: '',
+        };
+        const updated = [...localOsoby, personWithSteps];
+        await saveOsoby(updated);
+        toast({ title: t('odbior.personAdded'), description: `${person.imie} ${person.nazwisko}` });
+        setNextStepPromptPerson({ person: personWithSteps, index: updated.length - 1 });
+    };
+
+    const handleSelectNextStep = async (krok: 'zakwaterowanie' | 'rozmowa') => {
+        if (!nextStepPromptPerson) return;
+        const { index } = nextStepPromptPerson;
+        const updated = [...localOsoby];
+        updated[index] = { ...updated[index], wybranyKrok: krok, statusKrok: 'pending' };
+        await saveOsoby(updated);
+        setNextStepPromptPerson(null);
+        
+        if (krok === 'zakwaterowanie') {
+            onZakwaterowanieClick?.(updated[index], index);
+        } else {
+            onRozmowaClick?.(updated[index], index);
+        }
+    };
+
+    const handleRemovePerson = async (idx: number) => {
+        await saveOsoby(localOsoby.filter((_, i) => i !== idx));
+    };
+
+    const handleEditSave = async (idx: number, updated: OsobaWOdbiorze) => {
+        const arr = localOsoby.map((o, i) => i === idx ? { ...updated, wybranyKrok: o.wybranyKrok, statusKrok: o.statusKrok } : o);
+        await saveOsoby(arr);
+        setEditIdx(null);
+    };
+
+    const handleOdrzuc = async () => {
+        setLoading(true);
+        try { await onAction('odrzuc', {}); } finally { setLoading(false); }
+    };
+
+    const isAllCompleted = localOsoby.length > 0 && localOsoby.every(o => o.statusKrok === 'completed');
+
+    const handleTryZakoncz = () => {
+        if (!isAllCompleted) return;
+        if (localOsoby.length === 0) {
+            toast({ variant: 'destructive', title: t('common.error'), description: t('odbior.errorAtLeastOnePerson') });
+            return;
+        }
+        if (localOsoby.length < z.iloscOsob) {
+            setPartialArrivalAlertOpen(true);
+            return;
+        }
+        setFinishAlertOpen(true);
+    };
+
+    const handleZakoncz = async () => {
+        setLoading(true);
+        try { await onAction('zakoncz', {}); } finally { setLoading(false); }
+    };
+
+    const handlePartialArrivalZakoncz = async () => {
+        setPartialArrivalAlertOpen(false);
+        setLoading(true);
+        try {
+            const newComment = (z.komentarz ? z.komentarz + ' | ' : '') + `Nie wszyscy dotarli (dotarło tylko ${localOsoby.length} z ${z.iloscOsob})`;
+            await onAction('update', { komentarz: newComment });
+            await onAction('zakoncz', {});
+        } catch(e) {
+            toast({ variant: 'destructive', title: t('common.error'), description: e instanceof Error ? e.message : 'Error' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="rounded-xl border border-border bg-card shadow-sm p-4 space-y-4">
+            <ZgloszenieInfo z={z} />
+
+            {/* Lista osób */}
+            <div className="space-y-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    {t('odbior.personList')} ({localOsoby.length}/{z.iloscOsob})
+                </p>
+                <div className="space-y-2">
+                {localOsoby.map((o, i) => (
+                    <div key={i}>
+                        {editIdx === i ? (
+                            <EditPersonRow person={o} onSave={upd => handleEditSave(i, upd)} onCancel={() => setEditIdx(null)} />
+                        ) : (
+                            <div className="flex flex-col gap-2 rounded-lg bg-white border px-3 py-2 text-sm shadow-sm">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex flex-col">
+                                        <span className="font-semibold text-gray-900">{i + 1}. {o.imie} {o.nazwisko}</span>
+                                        {o.paszport && <span className="text-muted-foreground text-xs">{t('odbior.passportShort')}: {o.paszport}</span>}
+                                    </div>
+                                    <div className="flex gap-1 items-center">
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-500 hover:text-blue-600" onClick={() => setEditIdx(i)}>
+                                            <Pencil className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-red-600" onClick={() => handleRemovePerson(i)}>
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </div>
+                                </div>
+                                <div className="border-t pt-2">
+                                    {o.statusKrok === 'completed' ? (
+                                        <div className="flex items-center gap-2">
+                                            <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100">
+                                                <Check className="w-3 h-3 mr-1" />
+                                                {o.wybranyKrok === 'zakwaterowanie' ? 'Zakwaterowano' : 'Rozmowa ukończona'}
+                                            </Badge>
+                                        </div>
+                                    ) : o.statusKrok === 'pending' ? (
+                                        <div className="flex items-center justify-between flex-wrap gap-2">
+                                            <Badge variant="outline" className={cn("animate-pulse", o.wybranyKrok === 'zakwaterowanie' ? "text-blue-600 border-blue-200 bg-blue-50" : "text-purple-600 border-purple-200 bg-purple-50")}>
+                                                {o.wybranyKrok === 'zakwaterowanie' ? 'Oczekuje na zakwaterowanie' : 'Oczekuje na rozmowę'}
+                                            </Badge>
+                                            <Button 
+                                                size="sm" 
+                                                className={cn("h-7 text-xs shadow-none text-white", o.wybranyKrok === 'zakwaterowanie' ? "bg-blue-600 hover:bg-blue-700" : "bg-purple-600 hover:bg-purple-700")}
+                                                onClick={() => o.wybranyKrok === 'zakwaterowanie' ? onZakwaterowanieClick?.(o, i) : onRozmowaClick?.(o, i)}
+                                            >
+                                                {o.wybranyKrok === 'zakwaterowanie' ? <Bed className="w-3.5 h-3.5 mr-1" /> : <Users className="w-3.5 h-3.5 mr-1" />}
+                                                {o.wybranyKrok === 'zakwaterowanie' ? 'Rozpocznij zakwaterowanie' : 'Rozpocznij rozmowę'}
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col gap-2">
+                                            <Badge variant="outline" className="w-fit text-amber-600 border-amber-200 bg-amber-50">Wybierz krok</Badge>
+                                            <div className="flex gap-2">
+                                                <Button size="sm" variant="outline" className="flex-1 h-7 text-xs text-blue-700 border-blue-200 hover:bg-blue-50" onClick={() => {
+                                                    const updated = [...localOsoby];
+                                                    updated[i] = { ...updated[i], wybranyKrok: 'zakwaterowanie', statusKrok: 'pending' };
+                                                    saveOsoby(updated);
+                                                    onZakwaterowanieClick?.(updated[i], i);
+                                                }}>
+                                                    <Bed className="w-3.5 h-3.5 mr-1" /> Zakwaterowanie
+                                                </Button>
+                                                <Button size="sm" variant="outline" className="flex-1 h-7 text-xs text-purple-700 border-purple-200 hover:bg-purple-50" onClick={() => {
+                                                    const updated = [...localOsoby];
+                                                    updated[i] = { ...updated[i], wybranyKrok: 'rozmowa', statusKrok: 'pending' };
+                                                    saveOsoby(updated);
+                                                    onRozmowaClick?.(updated[i], i);
+                                                }}>
+                                                    <Users className="w-3.5 h-3.5 mr-1" /> Rozmowa
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                ))}
+                </div>
+
+                <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className={cn(
+                        "w-full gap-1 border-dashed mt-2 transition-all", 
+                        localOsoby.length === 0 
+                            ? "animate-pulse border-red-300 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 shadow-sm font-medium" 
+                            : ""
+                    )} 
+                    onClick={() => setAddPersonOpen(true)}
+                >
+                    <Plus className="h-3.5 w-3.5" /> {t('odbior.addPerson')}
+                </Button>
+            </div>
+
+            <AddPersonDialog
+                open={addPersonOpen}
+                onOpenChange={setAddPersonOpen}
+                maxPersons={z.iloscOsob}
+                currentCount={localOsoby.length}
+                onAdd={handleAddPerson}
+            />
+
+            <Dialog open={!!nextStepPromptPerson} onOpenChange={(open) => !open && setNextStepPromptPerson(null)}>
+                <DialogContent className="max-w-sm text-center p-6 rounded-2xl">
+                    <DialogHeader className="mb-2">
+                        <DialogTitle className="text-xl font-bold">Wybierz następny krok</DialogTitle>
+                        <DialogDescription className="text-sm">
+                            Dla pasażera: <strong className="text-gray-900">{nextStepPromptPerson?.person.imie} {nextStepPromptPerson?.person.nazwisko}</strong>
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex flex-col gap-3 mt-4">
+                        <Button className="h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-base shadow-sm" onClick={() => handleSelectNextStep('zakwaterowanie')}>
+                            <Bed className="mr-2 h-5 w-5" /> Zakwaterowanie
+                        </Button>
+                        <Button className="h-14 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-base shadow-sm" onClick={() => handleSelectNextStep('rozmowa')}>
+                            <Users className="mr-2 h-5 w-5" /> Rozmowa rekrutacyjna
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            <AlertDialog open={partialArrivalAlertOpen} onOpenChange={setPartialArrivalAlertOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Nie dodałeś wszystkich osób ze zgłoszenia!</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Zgłoszenie obejmuje <strong className="text-gray-900">{z.iloscOsob}</strong> osób, a dodałeś tylko <strong className="text-gray-900">{localOsoby.length}</strong>. 
+                            Czy na pewno chcesz zakończyć odbiór dla mniejszej liczby osób, ponieważ nie wszyscy pasażerowie dotarli?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="mt-4 gap-2">
+                        <AlertDialogCancel className="w-full sm:w-auto mt-0">Wróć i dodaj</AlertDialogCancel>
+                        <Button className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white" onClick={handlePartialArrivalZakoncz}>
+                            Potwierdzam — nie wszyscy dotarli
+                        </Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={rejectAlertOpen} onOpenChange={setRejectAlertOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Jesteś pewny?</AlertDialogTitle>
+                        <AlertDialogDescription>Czy na pewno chcesz odrzucić ten odbiór? Zgłoszenie wróci do puli nieprzyjętych.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="mt-4 gap-2">
+                        <AlertDialogCancel className="w-full sm:w-auto mt-0">Nie</AlertDialogCancel>
+                        <Button className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white" onClick={() => { setRejectAlertOpen(false); handleOdrzuc(); }}>Tak</Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={finishAlertOpen} onOpenChange={setFinishAlertOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Jesteś pewny?</AlertDialogTitle>
+                        <AlertDialogDescription>Czy na pewno chcesz zakończyć odbiór? Sprawdź, czy wszyscy pasażerowie zostali poprawnie obsłużeni.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="mt-4 gap-2">
+                        <AlertDialogCancel className="w-full sm:w-auto mt-0">Nie</AlertDialogCancel>
+                        <Button className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white" onClick={() => { setFinishAlertOpen(false); handleZakoncz(); }}>Tak</Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <div className="flex gap-3 pt-2">
+                <Button
+                    variant="outline"
+                    className="flex-1"
+                    disabled={loading}
+                    onClick={() => setRejectAlertOpen(true)}
+                >
+                    {t('odbior.reject')}
+                </Button>
+                <Button
+                    className={cn("flex-1 text-white gap-2 transition-all", isAllCompleted ? "bg-green-600 hover:bg-green-700" : "bg-gray-300 hover:bg-gray-300")}
+                    disabled={loading || !isAllCompleted}
+                    onClick={handleTryZakoncz}
+                >
+                    <Check className="h-4 w-4" />
+                    {loading ? t('odbior.finishing') : t('odbior.finishReception')}
+                </Button>
+            </div>
+        </div>
+    );
+}
+
+// ─── Karta — Zakończone ──────────────────────────────────────────────────────
+
+function ChangeLogSection({ z, isAdmin }: { z: OdbiorZgloszenie; isAdmin: boolean }) {
+    const { t } = useLanguage();
+    if (!isAdmin) return null;
+    const entries = (z.changeLog ? JSON.parse(z.changeLog) : []) as Array<{ timestamp: string; userName: string; changes: string }>;
+    if (entries.length === 0) return null;
+    return (
+        <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('odbior.changeLogTitle')}</p>
+            <div className="space-y-1 max-h-40 overflow-y-auto">
+                {entries.slice().reverse().map((entry, i) => (
+                    <div key={i} className="rounded bg-white border px-2 py-1.5 text-xs">
+                        <span className="text-muted-foreground">{new Date(entry.timestamp).toLocaleString('pl-PL')}</span>
+                        <span className="mx-1">—</span>
+                        <span className="font-medium">{entry.userName}</span>
+                        <span className="mx-1">—</span>
+                        <span>{entry.changes}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function KartaZakonczona({ z, isAdmin, onCancelFinish }: { z: OdbiorZgloszenie; isAdmin: boolean; onCancelFinish?: () => void }) {
+    const { t } = useLanguage();
+    const osoby = parseOsoby(z.osoby);
+    return (
+        <div className="rounded-xl border border-border bg-card shadow-sm p-4 space-y-3">
+            <ZgloszenieInfo z={z} />
+            {osoby.length > 0 && (
+                <div className="space-y-1">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('odbior.personList')}</p>
+                    {osoby.map((o, i) => (
+                        <div key={i} className="flex items-center rounded-lg bg-white border px-3 py-2 text-sm gap-2">
+                            <span className="font-medium">{i + 1}. {o.imie} {o.nazwisko}</span>
+                            {o.paszport && <span className="text-muted-foreground text-xs">{t('odbior.passportShort')}: {o.paszport}</span>}
+                        </div>
+                    ))}
+                </div>
+            )}
+            {z.dataZakonczenia && (
+                <p className="text-xs text-muted-foreground text-right">{t('odbior.completedOn')} {z.dataZakonczenia}</p>
+            )}
+            <ChangeLogSection z={z} isAdmin={isAdmin} />
+            {isAdmin && onCancelFinish && (
+                <Button variant="outline" className="w-full" onClick={onCancelFinish}>
+                    {t('odbior.cancelFinish')}
+                </Button>
+            )}
+        </div>
+    );
+}
+
+// ─── Główny dialog ───────────────────────────────────────────────────────────
+
+interface OdbiorDetailDialogProps {
+    open: boolean;
+    onOpenChange: (v: boolean) => void;
+    zgloszenie: OdbiorZgloszenie;
+    allZgloszenia: OdbiorZgloszenie[];
+    currentUser: SessionData;
+    onStatusChange: (id: string, updates: Partial<OdbiorZgloszenie>) => void;
+}
+
+export default function OdbiorDetailDialog({
+    open, onOpenChange, zgloszenie, allZgloszenia, currentUser, onStatusChange,
+}: OdbiorDetailDialogProps) {
+    const { toast } = useToast();
+    const { t } = useLanguage();
+    const [localZ, setLocalZ] = useState(zgloszenie);
+    const [zakwatOpen, setZakwatOpen] = useState(false);
+    const [zakwatPrefill, setZakwatPrefill] = useState<{ firstName?: string; lastName?: string; passportNumber?: string; passportPhotoUrl?: string } | undefined>();
+    const [candidateDialogOpen, setCandidateDialogOpen] = useState(false);
+    const [candidatePrefill, setCandidatePrefill] = useState<{ firstName?: string; lastName?: string; passportNumber?: string; passportPhotoUrl?: string } | undefined>();
+    const [activePersonIndex, setActivePersonIndex] = useState<number | null>(null);
+    const savedJustNowRef = useRef(false);
+
+    React.useEffect(() => { setLocalZ(zgloszenie); }, [zgloszenie]);
+
+    const completeStepForActivePerson = async () => {
+        if (activePersonIndex === null) return;
+        const osoby = parseOsoby(localZ.osoby);
+        if (osoby[activePersonIndex]) {
+            osoby[activePersonIndex].statusKrok = 'completed';
+            const updatedJson = JSON.stringify(osoby);
+            setLocalZ(prev => ({ ...prev, osoby: updatedJson }));
+            onStatusChange(localZ.id, { osoby: updatedJson });
+            try {
+                await fetch(`/api/odbior/zgloszenie/${localZ.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'update', osoby: updatedJson }),
+                });
+            } catch (e) {
+                console.error("Failed to update statusKrok", e);
+            }
+        }
+        setActivePersonIndex(null);
+        window.dispatchEvent(new Event('candidates-updated'));
+    };
+
+    const handleNextCandidate = () => {
+        setActivePersonIndex(null);
+    };
+
+    const handleZakwaterowanieClick = (osoba: OsobaWOdbiorze | null, idx: number | null = null) => {
+        setActivePersonIndex(idx);
+        setZakwatPrefill(osoba ? {
+            firstName: osoba.imie,
+            lastName: osoba.nazwisko,
+            passportNumber: osoba.paszport,
+            passportPhotoUrl: osoba.paszportFotoUrl,
+        } : undefined);
+        setZakwatOpen(true);
+    };
+
+    const handleZakwatOpenChange = (v: boolean) => {
+        setZakwatOpen(v);
+        if (!v) handleNextCandidate();
+    };
+
+    const handleRozmowaClick = (osoba: OsobaWOdbiorze | null, idx: number | null = null) => {
+        setActivePersonIndex(idx);
+        setCandidatePrefill(osoba ? {
+            firstName: osoba.imie,
+            lastName: osoba.nazwisko,
+            passportNumber: osoba.paszport,
+            passportPhotoUrl: osoba.paszportFotoUrl,
+        } : undefined);
+        setCandidateDialogOpen(true);
+    };
+
+    const handleCandidateDialogOpenChange = (v: boolean) => {
+        setCandidateDialogOpen(v);
+        if (!v) {
+            if (savedJustNowRef.current) {
+                savedJustNowRef.current = false;
+            } else {
+                setActivePersonIndex(null);
+            }
+        }
+    };
+
+    const handleCandidateSaved = (_candidate: Candidate) => {
+        savedJustNowRef.current = true;
+        completeStepForActivePerson();
+        window.dispatchEvent(new Event('candidates-updated'));
+    };
+
+    const counts = {
+        'Nieprzyjęte': allZgloszenia.filter(z => z.status === 'Nieprzyjęte').length,
+        'W trakcie':   allZgloszenia.filter(z => z.status === 'W trakcie').length,
+        'Zakończone':  allZgloszenia.filter(z => z.status === 'Zakończone' || z.status === 'Dostarczone').length,
+    };
+
+    const tabValue = localZ.status === 'Dostarczone' ? 'Zakończone' : localZ.status;
+
+    const statusTabLabel = (status: string) => {
+        const map: Record<string, string> = {
+            'Nieprzyjęte': t('odbior.statusUnaccepted'),
+            'W trakcie': t('odbior.statusInProgress'),
+            'Zakończone': t('odbior.statusCompleted'),
+        };
+        return map[status] ?? status;
+    };
+
+    const patch = (updates: Partial<OdbiorZgloszenie>) => {
+        setLocalZ(prev => ({ ...prev, ...updates }));
+        onStatusChange(localZ.id, updates);
+    };
+
+    const callApi = async (action: string, payload?: object) => {
+        const res = await fetch(`/api/odbior/zgloszenie/${localZ.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action, ...payload }),
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error ?? t('common.error'));
+        }
+    };
+
+    const handleEditDane = async (updates: Partial<OdbiorZgloszenie>) => {
+        await callApi('update', {
+            numerTelefonu: updates.numerTelefonu,
+            skad: updates.skad,
+            komentarzSkad: updates.komentarzSkad,
+            iloscOsob: updates.iloscOsob !== undefined ? String(updates.iloscOsob) : undefined,
+            komentarz: updates.komentarz,
+            zdjeciaUrls: updates.zdjeciaUrls,
+        });
+        patch(updates);
+    };
+
+    const handleNieprzyjeteAction = async (_action: 'przyjmij') => {
+        try {
+            await callApi('przyjmij');
+            patch({ status: 'W trakcie' });
+            toast({ title: t('odbior.receptionAccepted'), description: t('odbior.statusChangedToInProgress') });
+        } catch (e) {
+            toast({ variant: 'destructive', title: t('common.error'), description: e instanceof Error ? e.message : t('common.error') });
+        }
+    };
+
+    const handleWTrakcieAction = async (action: 'odrzuc' | 'zakoncz' | 'update', payload: Partial<OdbiorZgloszenie>) => {
+        try {
+            await callApi(action, action === 'update'
+                ? { nastepnyKrok: payload.nastepnyKrok, osoby: payload.osoby }
+                : {}
+            );
+            if (action === 'odrzuc') {
+                patch({ status: 'Nieprzyjęte', kierowcaId: '', kierowcaNazwa: '' });
+                toast({ title: t('odbior.rejected'), description: t('odbior.statusChangedToUnaccepted') });
+            } else if (action === 'zakoncz') {
+                const now = new Date().toLocaleString('pl-PL').replace(',', '').slice(0, 16);
+                patch({ status: 'Zakończone', dataZakonczenia: now, zakonczoneAt: now, ...payload });
+                toast({ title: t('odbior.receptionFinished'), description: t('odbior.statusChangedToCompleted') });
+                onOpenChange(false);
+            } else {
+                patch(payload);
+            }
+        } catch (e) {
+            toast({ variant: 'destructive', title: t('common.error'), description: e instanceof Error ? e.message : t('common.error') });
+        }
+    };
+
+    const handleCancelFinish = async () => {
+        try {
+            await callApi('anuluj_zakonczenie');
+            patch({ status: 'W trakcie', dataZakonczenia: '', zakonczoneAt: '' });
+            toast({ title: t('odbior.finishCancelled'), description: t('odbior.statusChangedToInProgress') });
+        } catch (e) {
+            toast({ variant: 'destructive', title: t('common.error'), description: e instanceof Error ? e.message : t('common.error') });
+        }
+    };
+
+    return (
+        <>
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle>{t('odbior.title')}</DialogTitle>
+                    <DialogDescription className="sr-only">
+                        {t('odbior.detailsAndActions')}
+                    </DialogDescription>
+                </DialogHeader>
+
+                <Tabs value={tabValue}>
+                    <TabsList className="w-full">
+                        {(['Nieprzyjęte', 'W trakcie', 'Zakończone'] as const).map(tab => (
+                            <TabsTrigger key={tab} value={tab} className="flex-1 gap-1.5">
+                                {statusTabLabel(tab)}
+                                <span className="inline-flex items-center justify-center h-5 min-w-5 rounded-full bg-muted text-xs font-medium px-1.5">
+                                    {counts[tab]}
+                                </span>
+                            </TabsTrigger>
+                        ))}
+                    </TabsList>
+
+                    <TabsContent value="Nieprzyjęte" className="mt-4">
+                        <KartaNieprzyjete
+                            z={localZ}
+                            onAction={handleNieprzyjeteAction}
+                            onEdit={handleEditDane}
+                            canEdit={currentUser.isAdmin || currentUser.isRekrutacja}
+                        />
+                    </TabsContent>
+
+                    <TabsContent value="W trakcie" className="mt-4">
+                        <KartaWTrakcie z={localZ} onAction={handleWTrakcieAction} onZakwaterowanieClick={handleZakwaterowanieClick} onRozmowaClick={handleRozmowaClick} />
+                    </TabsContent>
+
+                    <TabsContent value="Zakończone" className="mt-4">
+                        <KartaZakonczona z={localZ} isAdmin={currentUser.isAdmin} onCancelFinish={handleCancelFinish} />
+                    </TabsContent>
+                </Tabs>
+            </DialogContent>
+        </Dialog>
+
+        <OdbiorZakwaterowanieDialog
+            isOpen={zakwatOpen}
+            onOpenChange={handleZakwatOpenChange}
+            currentUser={currentUser}
+            prefillData={zakwatPrefill}
+            sourceOdbiorId={localZ.id}
+            onSaved={completeStepForActivePerson}
+        />
+
+        <AddCandidateDialog
+            open={candidateDialogOpen}
+            onOpenChange={handleCandidateDialogOpenChange}
+            sourceOdbiorId={localZ.id}
+            onSaved={handleCandidateSaved}
+            prefillFirstName={candidatePrefill?.firstName}
+            prefillLastName={candidatePrefill?.lastName}
+            prefillPassportNumber={candidatePrefill?.passportNumber}
+            prefillPassportPhotoUrl={candidatePrefill?.passportPhotoUrl}
+        />
+        </>
+    );
+}

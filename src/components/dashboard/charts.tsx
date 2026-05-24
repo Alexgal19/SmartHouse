@@ -373,7 +373,7 @@ export function DashboardCharts({
             deductionsByDate: deductionsChartData,
             nzOccupancyByLocation: nzOccupancyByLocationChartData,
         }
-    }, [employees, nonEmployees, settings, departureYear, departureMonth, deductionYear, deductionMonth, departmentChartFilter, departmentChartSort, nationalityChartFilter, nationalityChartSort, coordinatorChartFilter, coordinatorChartSort, nzOccupancyView, deductionsView]);
+    }, [employees, nonEmployees, settings, departureYear, departureMonth, deductionYear, deductionMonth, departmentChartFilter, departmentChartSort, nationalityChartFilter, nationalityChartSort, coordinatorChartFilter, coordinatorChartSort, nzOccupancyView, deductionsView, dateLocale, t]);
 
     const showCoordinatorChart = currentUser?.isAdmin && selectedCoordinatorId === 'all';
     

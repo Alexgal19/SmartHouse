@@ -1,0 +1,29 @@
+--- tests/odbior-flow.spec.ts
++++ tests/odbior-flow.spec.ts
+@@ -79,4 +79,25 @@
+         await expect(page.getByRole('button', { name: 'Rozmowa rekrutacyjna' })).toBeVisible();
+         await expect(page.getByRole('button', { name: 'Zakończ odbiór' })).toBeVisible();
+     });
++
++    test('Karty statystyk jako filtry (interaktywne)', async ({ page }) => {
++        await loginAsAdmin(page);
++        await gotoView(page, 'odbior');
++
++        // The stats cards are now buttons
++        const dostarczoneBtn = page.locator('button').filter({ hasText: 'Dostarczone' });
++        const wTrakcieBtn = page.locator('button').filter({ hasText: 'W trakcie' });
++        const nieprzyjeteBtn = page.locator('button').filter({ hasText: 'Nieprzyjęte' }).or(page.locator('button').filter({ hasText: 'Odrzucone zgłoszenia' }));
++
++        // Click "Dostarczone"
++        await dostarczoneBtn.click();
++        await page.waitForTimeout(1000);
++
++        // Click "W trakcie"
++        await wTrakcieBtn.click();
++        await page.waitForTimeout(1000);
++
++        // Click "Nieprzyjęte" (if there is any matching text, checking the label)
++        await page.locator('button').filter({ hasText: 'Nieprzyjęte' }).first().click();
++        await page.waitForTimeout(1000);
++    });
+ });

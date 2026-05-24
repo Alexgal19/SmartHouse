@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, PlusCircle, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, Users, UserX, LayoutGrid, List, Trash2, History, Briefcase, Download } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, Users, UserX, LayoutGrid, List, Trash2, History, Download, Briefcase } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -20,7 +20,6 @@ import { useMainLayout } from '@/components/main-layout';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
-import { BokDispatchReportDialog } from '@/components/bok-dispatch-report';
 import { FilterableHeader } from '@/components/ui/filterable-header';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -53,8 +52,8 @@ type Entity = Employee | NonEmployee | BokResident;
 type SortableField = 'lastName' | 'firstName' | 'coordinatorId' | 'address' | 'roomNumber' | 'checkInDate' | 'checkOutDate' | 'coordinatorName' | 'department' | 'sendDate' | 'zaklad' | 'returnStatus' | 'status' | 'comments' | 'passportNumber';
 
 
-const isBokResident = (entity: Entity): entity is BokResident => 'role' in entity;
-const isEmployee = (entity: Entity): entity is Employee => 'zaklad' in entity && !('role' in entity);
+const isBokResident = (entity: Entity): entity is BokResident => !('coordinatorId' in entity);
+const isEmployee = (entity: Entity): entity is Employee => ('coordinatorId' in entity) && ('zaklad' in entity);
 
 const EntityActions = React.memo(({
     entity,
@@ -157,74 +156,36 @@ const PaginationControls = React.memo(({
 PaginationControls.displayName = 'PaginationControls';
 
 
-const EntityTable = React.memo(({ entities, onEdit, onRestore, isDismissed, settings, onPermanentDelete, onSort, sortBy, sortOrder, isBokTab, selectedIds, onSelect, onSelectAll, columnFilters, onColumnFilterChange, columnOptions }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onRestore?: (entity: Entity) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => void; onSort: (field: SortableField) => void; sortBy: SortableField | null; sortOrder: 'asc' | 'desc'; isBokTab?: boolean; selectedIds?: Set<string>; onSelect?: (id: string, checked: boolean) => void; onSelectAll?: (checked: boolean) => void; columnFilters?: Record<string, string[]>; onColumnFilterChange?: (field: string, values: string[]) => void; columnOptions?: Record<string, { label: string, value: string }[]>; }) => {
+const EntityTable = React.memo(({ entities, onEdit, onRestore, isDismissed, settings, onPermanentDelete, onSort, sortBy, sortOrder, isBokTab, columnFilters, onColumnFilterChange, columnOptions }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onRestore?: (entity: Entity) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => void; onSort: (field: SortableField) => void; sortBy: SortableField | null; sortOrder: 'asc' | 'desc'; isBokTab?: boolean; columnFilters?: Record<string, string[]>; onColumnFilterChange?: (field: string, values: string[]) => void; columnOptions?: Record<string, { label: string, value: string }[]>; }) => {
     const { t } = useLanguage();
     const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
-
-    const renderCheckboxHeader = () => {
-        if (!isBokTab || !onSelectAll || !selectedIds) return null;
-        const allChecked = entities.length > 0 && selectedIds.size === entities.length;
-        const someChecked = selectedIds.size > 0 && selectedIds.size < entities.length;
-
-        return (
-            <TableHead className="w-12">
-                <Checkbox
-                    checked={allChecked ? true : someChecked ? "indeterminate" : false}
-                    onCheckedChange={(checked) => onSelectAll(checked as boolean)}
-                    aria-label={t('entity.selectAll')}
-                />
-            </TableHead>
-        );
-    };
 
     return (
         <div className="overflow-x-auto">
             <Table>
                 <TableHeader>
                     <TableRow>
-                        {renderCheckboxHeader()}
                         <FilterableHeader label={t('col.lastName')} field="lastName" currentFilterValues={columnFilters?.lastName} onFilterChange={onColumnFilterChange} options={columnOptions?.lastName} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
                         <FilterableHeader label={t('col.firstName')} field="firstName" currentFilterValues={columnFilters?.firstName} onFilterChange={onColumnFilterChange} options={columnOptions?.firstName} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
-                        <FilterableHeader label={t('col.coordinator')} field="coordinatorId" currentFilterValues={columnFilters?.coordinatorId} onFilterChange={onColumnFilterChange} options={columnOptions?.coordinatorId} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
+                        {!isBokTab && <FilterableHeader label={t('col.coordinator')} field="coordinatorId" currentFilterValues={columnFilters?.coordinatorId} onFilterChange={onColumnFilterChange} options={columnOptions?.coordinatorId} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
                         {!isBokTab && <FilterableHeader label={t('col.department')} field="zaklad" currentFilterValues={columnFilters?.zaklad} onFilterChange={onColumnFilterChange} options={columnOptions?.zaklad} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
                         <FilterableHeader label={t('col.address')} field="address" currentFilterValues={columnFilters?.address} onFilterChange={onColumnFilterChange} options={columnOptions?.address} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
                         <FilterableHeader label={t('col.room')} field="roomNumber" currentFilterValues={columnFilters?.roomNumber} onFilterChange={onColumnFilterChange} options={columnOptions?.roomNumber} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
-                        {isBokTab && <FilterableHeader label={t('col.return')} field="returnStatus" currentFilterValues={columnFilters?.returnStatus} onFilterChange={onColumnFilterChange} options={columnOptions?.returnStatus} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
                         <FilterableHeader label={t('col.checkIn')} field="checkInDate" currentFilterValues={columnFilters?.checkInDate} onFilterChange={onColumnFilterChange} options={columnOptions?.checkInDate} isDateFilter onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
-                        {isBokTab && <FilterableHeader label={t('col.status')} field="status" currentFilterValues={columnFilters?.status} onFilterChange={onColumnFilterChange} options={columnOptions?.status} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
-                        {isBokTab && <FilterableHeader label={t('col.sendDate')} field="sendDate" currentFilterValues={columnFilters?.sendDate} onFilterChange={onColumnFilterChange} options={columnOptions?.sendDate} isDateFilter onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
-                        {isBokTab && <FilterableHeader label={t('col.department')} field="zaklad" currentFilterValues={columnFilters?.zaklad} onFilterChange={onColumnFilterChange} options={columnOptions?.zaklad} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
-                        <FilterableHeader label={t('col.checkOut')} field="checkOutDate" currentFilterValues={columnFilters?.checkOutDate} onFilterChange={onColumnFilterChange} options={columnOptions?.checkOutDate} isDateFilter onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
                         {isBokTab && <FilterableHeader label={t('col.passport')} field="passportNumber" currentFilterValues={columnFilters?.passportNumber} onFilterChange={onColumnFilterChange} options={columnOptions?.passportNumber} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
                         {isBokTab && <FilterableHeader label={t('col.comments')} field="comments" currentFilterValues={columnFilters?.comments} onFilterChange={onColumnFilterChange} options={columnOptions?.comments} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
+                        <FilterableHeader label={t('col.checkOut')} field="checkOutDate" currentFilterValues={columnFilters?.checkOutDate} onFilterChange={onColumnFilterChange} options={columnOptions?.checkOutDate} isDateFilter onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
                         <TableHead><span className="sr-only">{t('col.actions')}</span></TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {entities.length > 0 ? (
                         entities.map((entity) => {
-                            const isDispatched = isBokResident(entity) && entity.sendDate;
-                            const isSelected = selectedIds?.has(entity.id);
-
                             return (
-                                <TableRow key={entity.id} onClick={(e) => {
-                                    // Default row click shouldn't trigger if clicking checkbox
-                                    const target = e.target as HTMLElement;
-                                    if (target.closest('button[role="checkbox"]')) return;
-                                    onEdit(entity);
-                                }} className={cn("cursor-pointer", isDispatched && "bg-green-100 hover:bg-green-200 dark:bg-green-900/40 dark:hover:bg-green-900/60", isSelected && "bg-muted/50")}>
-                                    {isBokTab && onSelect && selectedIds && (
-                                        <TableCell onClick={(e) => e.stopPropagation()}>
-                                            <Checkbox
-                                                checked={isSelected}
-                                                onCheckedChange={(checked) => onSelect(entity.id, checked as boolean)}
-                                                aria-label={t('entity.selectRow', { name: `${entity.firstName} ${entity.lastName}` })}
-                                            />
-                                        </TableCell>
-                                    )}
+                                <TableRow key={entity.id} onClick={() => onEdit(entity)} className="cursor-pointer">
                                     <TableCell className="font-medium">{entity.lastName}</TableCell>
                                     <TableCell className="font-medium">{entity.firstName}</TableCell>
-                                    <TableCell>{getCoordinatorName(entity.coordinatorId)}</TableCell>
+                                    {!isBokTab && <TableCell>{'coordinatorId' in entity ? getCoordinatorName(entity.coordinatorId) : '-'}</TableCell>}
                                     {!isBokTab && <TableCell>{isEmployee(entity) ? entity.zaklad || '-' : '-'}</TableCell>}
                                     <TableCell>
                                         {isEmployee(entity) && entity.address?.toLowerCase().startsWith('własne mieszkanie')
@@ -233,14 +194,10 @@ const EntityTable = React.memo(({ entities, onEdit, onRestore, isDismissed, sett
                                         }
                                     </TableCell>
                                     <TableCell>{isEmployee(entity) && entity.address?.toLowerCase().startsWith('własne mieszkanie') ? 'N/A' : entity.roomNumber}</TableCell>
-                                    {isBokTab && <TableCell>{isBokResident(entity) ? entity.returnStatus || '-' : '-'}</TableCell>}
                                     <TableCell>{formatDate(entity.checkInDate)}</TableCell>
-                                    {isBokTab && <TableCell>{isBokResident(entity) ? entity.status || '-' : '-'}</TableCell>}
-                                    {isBokTab && <TableCell>{isBokResident(entity) ? formatDate(entity.sendDate) || '-' : '-'}</TableCell>}
-                                    {isBokTab && <TableCell>{isBokResident(entity) ? entity.zaklad || '-' : '-'}</TableCell>}
-                                    <TableCell>{formatDate(entity.checkOutDate)}</TableCell>
                                     {isBokTab && <TableCell>{isBokResident(entity) ? entity.passportNumber || '-' : '-'}</TableCell>}
                                     {isBokTab && <TableCell className="max-w-[150px] truncate" title={isBokResident(entity) ? entity.comments || '' : undefined}>{isBokResident(entity) ? entity.comments || '-' : '-'}</TableCell>}
+                                    <TableCell>{'checkOutDate' in entity ? formatDate(entity.checkOutDate) : '-'}</TableCell>
                                     <TableCell onClick={(e) => e.stopPropagation()}>
                                         <EntityActions {...{ entity, onEdit, onRestore, onPermanentDelete, isDismissed }} />
                                     </TableCell>
@@ -249,7 +206,7 @@ const EntityTable = React.memo(({ entities, onEdit, onRestore, isDismissed, sett
                         })
                     ) : (
                         <TableRow>
-                            <TableCell colSpan={8} className="text-center">{t('common.noData')}</TableCell>
+                            <TableCell colSpan={12} className="text-center">{t('common.noData')}</TableCell>
                         </TableRow>
                     )}
                 </TableBody>
@@ -346,7 +303,7 @@ const EntityCardList = ({ entities, onEdit, onRestore, isDismissed, settings, on
                             <div>
                                 <CardTitle className="text-base">{`${entity.firstName} ${entity.lastName}`.trim()}</CardTitle>
                                 <CardDescription>
-                                    {isBokResident(entity) ? t('entity.bokResidentLabel', { role: entity.role }) : (isEmployee(entity) ? getCoordinatorName(entity.coordinatorId) : t('entity.nonEmployeeLabel'))}
+                                    {isBokResident(entity) ? t('entity.bokResidentLabel') : (isEmployee(entity) ? getCoordinatorName(entity.coordinatorId) : t('entity.nonEmployeeLabel'))}
                                 </CardDescription>
                             </div>
                             <div onClick={(e) => e.stopPropagation()}>
@@ -440,12 +397,7 @@ const ControlPanel = ({
     onViewChange,
     viewMode,
     showAddButton,
-    isAdmin,
-    isBokTab,
-    onOpenReport,
-    isDriver,
-    selectedIdsSize,
-    onBulkDelete,
+    currentUser,
 }: {
     search: string;
     onSearch: (value: string) => void;
@@ -453,15 +405,13 @@ const ControlPanel = ({
     onViewChange: (mode: 'list' | 'grid') => void;
     viewMode: 'list' | 'grid';
     showAddButton: boolean;
-    isAdmin: boolean;
-    isBokTab?: boolean;
-    onOpenReport?: () => void;
-    isDriver?: boolean;
-    selectedIdsSize?: number;
-    onBulkDelete?: () => void;
+    currentUser: SessionData;
 }) => {
     const { t } = useLanguage();
     const { isMobile } = useIsMobile();
+    const canAddEmployee = currentUser.isAdmin;
+    const canAddNonEmployee = currentUser.isAdmin;
+    const canAddBokResident = currentUser.isAdmin || currentUser.isDriver || currentUser.isBok;
     const [localSearch, setLocalSearch] = useState(search);
     // Track the last value we committed to the URL ourselves,
     // so we can distinguish our own URL updates from external ones.
@@ -497,22 +447,6 @@ const ControlPanel = ({
                     className="w-full sm:w-auto flex-1"
                 />
                 <div className="flex gap-2">
-                    {isBokTab && selectedIdsSize !== undefined && selectedIdsSize > 0 && onBulkDelete && (
-                        <Button type="button" variant="destructive" onClick={onBulkDelete} className="hidden sm:inline-flex">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            {t('entity.deleteSelected', { count: selectedIdsSize })}
-                        </Button>
-                    )}
-                    {isBokTab && selectedIdsSize !== undefined && selectedIdsSize > 0 && onBulkDelete && isMobile && (
-                        <Button type="button" variant="destructive" size="icon" onClick={onBulkDelete}>
-                            <Trash2 className="h-5 w-5" />
-                        </Button>
-                    )}
-                    {isBokTab && onOpenReport && (
-                        <Button variant="outline" className="hidden sm:inline-flex bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/50 dark:border-green-800" onClick={onOpenReport}>
-                            {t('entity.sentReport')}
-                        </Button>
-                    )}
                     {showAddButton && (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -522,13 +456,9 @@ const ControlPanel = ({
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent onCloseAutoFocus={(e) => e.preventDefault()}>
-                                {(!isDriver || isAdmin) && (
-                                    <>
-                                        <DropdownMenuItem onClick={() => onAdd('employee')}>{t('entity.addEmployee')}</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => onAdd('non-employee')}>{t('entity.addResident')}</DropdownMenuItem>
-                                    </>
-                                )}
-                                {(isAdmin || isDriver) && <DropdownMenuItem onClick={() => onAdd('bok-resident')}>{t('entity.addBokResident')}</DropdownMenuItem>}
+                                {canAddEmployee && <DropdownMenuItem onClick={() => onAdd('employee')}>{t('entity.addEmployee')}</DropdownMenuItem>}
+                                {canAddNonEmployee && <DropdownMenuItem onClick={() => onAdd('non-employee')}>{t('entity.addResident')}</DropdownMenuItem>}
+                                {canAddBokResident && <DropdownMenuItem onClick={() => onAdd('bok-resident')}>{t('entity.addBokResident')}</DropdownMenuItem>}
                             </DropdownMenuContent>
                         </DropdownMenu>
                     )}
@@ -550,7 +480,6 @@ const ControlPanel = ({
 
 export default function EntityView({ currentUser }: { currentUser: SessionData }) {
     const { t } = useLanguage();
-    const { handleBulkDeleteBokResidents } = useMainLayout();
     const {
         allEmployees,
         allNonEmployees,
@@ -561,13 +490,14 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         handleRestoreNonEmployee,
         handleRestoreBokResident,
         handleDeleteEmployee,
+        handleDismissBokResident,
         handleEditEmployeeClick,
         handleEditNonEmployeeClick,
+        handleEditBokResidentClick,
         handleAddEmployeeClick,
         handleAddNonEmployeeClick,
-        handleDeleteNonEmployee,
         handleAddBokResidentClick,
-        handleEditBokResidentClick,
+        handleDeleteNonEmployee,
         handleDeleteBokResident,
         handleDeleteAddressHistory,
     } = useMainLayout();
@@ -576,28 +506,19 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const [isPending, startTransition] = useTransition();
-    const [isReportOpen, setIsReportOpen] = useState(false);
     const { isMobile, isMounted } = useIsMobile();
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-
-    const defaultTab = currentUser.isDriver ? 'bok-residents' : 'active';
+    const showBokTab = currentUser.isAdmin || currentUser.isBok;
+    const defaultTab = currentUser.isBok ? 'bok-residents' : 'active';
     const tabFromUrl = searchParams.get('tab') as 'active' | 'dismissed' | 'non-employees' | 'bok-residents' | 'history' | null;
     const lastTabRef = useRef<'active' | 'dismissed' | 'non-employees' | 'bok-residents' | 'history'>(tabFromUrl || defaultTab);
     if (tabFromUrl) lastTabRef.current = tabFromUrl;
     const tab = tabFromUrl || lastTabRef.current;
 
-    const [bokSubTab, setBokSubTab] = useState<'active' | 'sent' | 'dismissed'>('active');
-
-    // Clear selections when tab or subtab changes
-    useEffect(() => {
-        setSelectedIds(new Set());
-    }, [tab, bokSubTab]);
-
+    const bokSubTab = (searchParams.get('bokSubTab') as 'active' | 'dismissed') || 'active';
+    
     const page = Number(searchParams.get('page') || '1');
     const search = searchParams.get('search') || '';
     const viewMode = (searchParams.get('viewMode') as 'list' | 'grid') || (isMobile ? 'grid' : 'list');
-
-    const isDriver = currentUser.isDriver;
 
     const defaultSortField = useMemo(() => {
         switch (tab) {
@@ -606,8 +527,9 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
             case 'dismissed':
             case 'history':
             case 'non-employees':
-            case 'bok-residents':
                 return 'checkOutDate';
+            case 'bok-residents':
+                return 'checkInDate';
             default:
                 return 'lastName';
         }
@@ -644,8 +566,9 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         updateSearchParams({ sortBy: field, sortOrder: newSortOrder });
     }
 
+
     const filteredAndSortedData = useMemo(() => {
-        if (!allEmployees || !allNonEmployees || !allBokResidents || !addressHistory || !settings) return {};
+        if (!allEmployees || !allNonEmployees || !addressHistory || !settings) return {};
 
         const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
 
@@ -737,7 +660,10 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
 
         const filteredEmployees = filterAndSort(allEmployees);
         const filteredNonEmployees = filterAndSort(allNonEmployees);
-        const filteredBokResidents = filterAndSort(allBokResidents);
+        
+        const bokResidentsToProcess = allBokResidents || [];
+        const filteredBokResidents = filterAndSort(bokResidentsToProcess);
+        
         const filteredHistory = filterAndSort(addressHistory, true);
 
         return {
@@ -745,45 +671,22 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
             dismissedEmployees: filteredEmployees.filter(e => e.status === 'dismissed'),
             activeNonEmployees: filteredNonEmployees.filter(ne => ne.status !== 'dismissed'),
             dismissedNonEmployees: filteredNonEmployees.filter(ne => ne.status === 'dismissed'),
-            // Aktywni: brak dismissDate i (brak sendDate LUB badania — wracają z badań)
-            activeBokResidents: filteredBokResidents.filter(b =>
-                !b.dismissDate && (!b.sendDate || b.sendReason === 'Badania wstępne' || b.sendReason === 'Badania okresowe')
-            ),
-            // Wyslani: ma sendDate i powód NIE jest badaniami
-            sentBokResidents: filteredBokResidents.filter(b =>
-                !b.dismissDate && !!b.sendDate && b.sendReason !== 'Badania wstępne' && b.sendReason !== 'Badania okresowe'
-            ),
-            // Zwolnieni: ma dismissDate (status nie jest używany do tej logiki)
-            dismissedBokResidents: filteredBokResidents.filter(b =>
-                !!b.dismissDate
-            ),
+            activeBokResidents: filteredBokResidents.filter(r => r.status !== "dismissed"),
+            dismissedBokResidents: filteredBokResidents.filter(r => r.status === "dismissed"),
             history: filteredHistory,
         }
 
     }, [allEmployees, allNonEmployees, allBokResidents, addressHistory, settings, search, sortBy, sortOrder, columnFilters]);
 
-
     const dataMap = useMemo(() => ({
         active: filteredAndSortedData.activeEmployees || [],
         dismissed: [...(filteredAndSortedData.dismissedEmployees || []), ...(filteredAndSortedData.dismissedNonEmployees || [])],
         'non-employees': filteredAndSortedData.activeNonEmployees || [],
-        'bok-residents': filteredAndSortedData.activeBokResidents || [],
         history: filteredAndSortedData.history || [],
+        'bok-residents': [...(filteredAndSortedData.activeBokResidents || []), ...(filteredAndSortedData.dismissedBokResidents || [])],
     }), [filteredAndSortedData]);
 
-    const bokData = useMemo(() => {
-        return bokSubTab === 'active'
-            ? (filteredAndSortedData.activeBokResidents || [])
-            : bokSubTab === 'sent'
-                ? (filteredAndSortedData.sentBokResidents || [])
-                : (filteredAndSortedData.dismissedBokResidents || []);
-    }, [bokSubTab, filteredAndSortedData]);
-
-    const bokTotalCount = (filteredAndSortedData.activeBokResidents?.length || 0)
-        + (filteredAndSortedData.sentBokResidents?.length || 0)
-        + (filteredAndSortedData.dismissedBokResidents?.length || 0);
-
-    const currentData = dataMap[tab];
+    const currentData = dataMap[tab as keyof typeof dataMap];
     const totalPages = Math.ceil((currentData?.length || 0) / ITEMS_PER_PAGE);
 
     const paginatedData = useMemo(() => {
@@ -795,7 +698,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
 
     const columnOptions = useMemo(() => {
         const options: Record<string, { label: string, value: string }[]> = {};
-        const dataToAnalyze = tab === 'bok-residents' ? bokData : tab === 'history' ? dataMap.history : currentData;
+        const dataToAnalyze = tab === 'history' ? dataMap.history : currentData;
 
         if (!dataToAnalyze || dataToAnalyze.length === 0) return options;
 
@@ -835,16 +738,10 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
             addOptions('checkInDate', item => formatDate((item as Record<string, unknown>).checkInDate as string));
             addOptions('checkOutDate', item => formatDate((item as Record<string, unknown>).checkOutDate as string));
             addOptions('zaklad', item => ('zaklad' in item) ? (item as Record<string, unknown>).zaklad as string : undefined);
-            if (tab === 'bok-residents') {
-                 addOptions('sendDate', item => ('sendDate' in item && (item as Record<string, unknown>).sendDate) ? formatDate((item as Record<string, unknown>).sendDate as string) : undefined);
-                 addOptions('returnStatus', item => ('returnStatus' in item) ? (item as Record<string, unknown>).returnStatus as string : undefined);
-                 addOptions('status', item => ('status' in item) ? (item as Record<string, unknown>).status as string : undefined);
-                 addOptions('comments', item => ('comments' in item) ? (item as Record<string, unknown>).comments as string : undefined);
-            }
         }
 
         return options;
-    }, [tab, bokData, dataMap.history, currentData, settings]);
+    }, [tab, dataMap.history, currentData, settings]);
 
     // ─── Excel export ───────────────────────────────────────────────────────
     const getCoordName = useCallback((id: string) =>
@@ -866,15 +763,13 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                 return {
                     'Nazwisko': e.lastName,
                     'Imię': e.firstName,
-                    'Koordynator': getCoordName(e.coordinatorId),
+                    'Narodowość': (e as BokResident).nationality || '',
+                    'Płeć': (e as BokResident).gender || '',
                     'Adres': e.address || '',
                     'Pokój': e.roomNumber || '',
-                    'Powrót': e.returnStatus || '',
+                    'Nr paszportu': (e as BokResident).passportNumber || '',
                     'Data zameldowania': formatDate(e.checkInDate),
-                    'Status': e.status || '',
-                    'Data wysłania': formatDate(e.sendDate),
-                    'Zakład': e.zaklad || '',
-                    'Data wymeldowania': formatDate(e.checkOutDate),
+                    'Data wyjazdu': formatDate((e as BokResident).checkOutDate),
                     'Komentarze': e.comments || '',
                 };
             }
@@ -920,7 +815,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         XLSX.writeFile(wb, `${label}_${today}.xlsx`);
     }, []);
 
-    if (!settings || !allEmployees || !allNonEmployees || !allBokResidents || !addressHistory) {
+    if (!settings || !allEmployees || !allNonEmployees || !addressHistory) {
         return (
             <Card>
                 <CardHeader>
@@ -939,7 +834,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
 
     const handleRestore = async (entity: Entity) => {
         if (isBokResident(entity)) {
-            await handleRestoreBokResident(entity);
+            await handleRestoreBokResident(entity as BokResident);
         } else if (isEmployee(entity)) {
             await handleRestoreEmployee(entity);
         } else {
@@ -948,10 +843,10 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     };
 
     const handlePermanentDelete = async (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => {
-        if (type === 'employee') {
-            await handleDeleteEmployee(id, currentUser.uid);
-        } else if (type === 'bok-resident') {
+        if (type === 'bok-resident') {
             await handleDeleteBokResident(id, currentUser.uid);
+        } else if (type === 'employee') {
+            await handleDeleteEmployee(id, currentUser.uid);
         } else {
             await handleDeleteNonEmployee(id, currentUser.uid);
         }
@@ -959,7 +854,10 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
 
     const handleEdit = (entity: Entity) => {
         if (isBokResident(entity)) {
-            handleEditBokResidentClick(entity);
+            if (currentUser.isAdmin || currentUser.isBok) {
+                handleEditBokResidentClick(entity);
+            }
+            return;
         } else if (isEmployee(entity)) {
             handleEditEmployeeClick(entity);
         } else {
@@ -968,10 +866,10 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     }
 
     const handleAdd = (type: 'employee' | 'non-employee' | 'bok-resident') => {
-        if (type === 'non-employee') {
-            handleAddNonEmployeeClick();
-        } else if (type === 'bok-resident') {
+        if (type === 'bok-resident') {
             handleAddBokResidentClick();
+        } else if (type === 'non-employee') {
+            handleAddNonEmployeeClick();
         } else {
             handleAddEmployeeClick();
         }
@@ -988,7 +886,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         </div>
     );
 
-    const renderContent = (data: Entity[]) => (
+    const renderContent = (data: Entity[], isBokTab: boolean = false, isDismissed: boolean = false, customTotalPages?: number) => (
         <>
             <ScrollArea className="h-[55vh] overflow-x-auto" style={{ opacity: isPending ? 0.6 : 1 }}>
                 {isMounted ?
@@ -999,18 +897,11 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                             onEdit={handleEdit}
                             onRestore={handleRestore}
                             onPermanentDelete={handlePermanentDelete}
-                            isDismissed={tab === 'dismissed'}
+                            isDismissed={isDismissed}
+                            isBokTab={isBokTab}
                             onSort={handleSort}
                             sortBy={sortBy}
                             sortOrder={sortOrder}
-                            isBokTab={tab === 'bok-residents'}
-                            selectedIds={selectedIds}
-                            onSelect={(id, checked) => {
-                                const newSet = new Set(Array.from(selectedIds));
-                                if (checked) newSet.add(id); else newSet.delete(id);
-                                setSelectedIds(newSet);
-                            }}
-                            onSelectAll={(checked) => setSelectedIds(checked ? new Set(data.map(e => e.id)) : new Set())}
                             columnFilters={columnFilters}
                             onColumnFilterChange={handleColumnFilterChange}
                             columnOptions={columnOptions}
@@ -1021,13 +912,13 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                             onEdit={handleEdit}
                             onRestore={handleRestore}
                             onPermanentDelete={handlePermanentDelete}
-                            isDismissed={tab === 'dismissed'}
+                            isDismissed={isDismissed}
                         />
                     )
                     : <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
                 <ScrollBar orientation="horizontal" />
             </ScrollArea>
-            <PaginationControls currentPage={page} totalPages={totalPages} onPageChange={(p) => updateSearchParams({ page: p })} isDisabled={isPending} />
+            <PaginationControls currentPage={page} totalPages={customTotalPages ?? totalPages} onPageChange={(p) => updateSearchParams({ page: p })} isDisabled={isPending} />
         </>
     );
 
@@ -1067,34 +958,28 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
 
     const tabsListContent = (
         <TabsList className="flex flex-wrap h-auto w-full justify-start gap-2 bg-transparent p-0">
-            {!isDriver && (
-                <>
-                    <TabsTrigger value="active" disabled={isPending} className="flex-1 min-w-[120px] bg-muted data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-muted/80">
-                        <Users className="mr-2 h-4 w-4 shrink-0" />
-                        <span className="truncate">{t('tab.active')} ({dataMap.active.length})</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="dismissed" disabled={isPending} className="flex-1 min-w-[120px] bg-muted data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-muted/80">
-                        <UserX className="mr-2 h-4 w-4 shrink-0" />
-                        <span className="truncate">{t('tab.dismissed')} ({dataMap.dismissed.length})</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="non-employees" disabled={isPending} className="flex-1 min-w-[120px] bg-muted data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-muted/80">
-                        <UserX className="mr-2 h-4 w-4 shrink-0" />
-                        <span className="truncate">{t('tab.nonEmployees')} ({dataMap['non-employees'].length})</span>
-                    </TabsTrigger>
-                </>
-            )}
-            {(currentUser.isAdmin || isDriver) && (
+            {showBokTab && (
                 <TabsTrigger value="bok-residents" disabled={isPending} className="flex-1 min-w-[120px] bg-muted data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-muted/80">
                     <Briefcase className="mr-2 h-4 w-4 shrink-0" />
-                    <span className="truncate">{t('tab.bok')} ({bokTotalCount})</span>
+                    <span className="truncate">{t('tab.bok')} ({(filteredAndSortedData.activeBokResidents || []).length})</span>
                 </TabsTrigger>
             )}
-            {!isDriver && (
-                <TabsTrigger value="history" disabled={isPending} className="flex-1 min-w-[120px] bg-muted data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-muted/80">
-                    <History className="mr-2 h-4 w-4 shrink-0" />
-                    <span className="truncate">{t('tab.history')} ({dataMap.history.length})</span>
-                </TabsTrigger>
-            )}
+            <TabsTrigger value="active" disabled={isPending} className="flex-1 min-w-[120px] bg-muted data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-muted/80">
+                <Users className="mr-2 h-4 w-4 shrink-0" />
+                <span className="truncate">{t('tab.active')} ({dataMap.active.length})</span>
+            </TabsTrigger>
+            <TabsTrigger value="dismissed" disabled={isPending} className="flex-1 min-w-[120px] bg-muted data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-muted/80">
+                <UserX className="mr-2 h-4 w-4 shrink-0" />
+                <span className="truncate">{t('tab.dismissed')} ({dataMap.dismissed.length})</span>
+            </TabsTrigger>
+            <TabsTrigger value="non-employees" disabled={isPending} className="flex-1 min-w-[120px] bg-muted data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-muted/80">
+                <UserX className="mr-2 h-4 w-4 shrink-0" />
+                <span className="truncate">{t('tab.nonEmployees')} ({dataMap['non-employees'].length})</span>
+            </TabsTrigger>
+            <TabsTrigger value="history" disabled={isPending} className="flex-1 min-w-[120px] bg-muted data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-muted/80">
+                <History className="mr-2 h-4 w-4 shrink-0" />
+                <span className="truncate">{t('tab.history')} ({dataMap.history.length})</span>
+            </TabsTrigger>
         </TabsList>
     );
 
@@ -1108,18 +993,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                     viewMode={viewMode}
                     onViewChange={(mode) => updateSearchParams({ viewMode: mode })}
                     showAddButton={tab !== 'history'}
-                    isAdmin={currentUser.isAdmin}
-                    isBokTab={tab === 'bok-residents'}
-                    onOpenReport={() => setIsReportOpen(true)}
-                    isDriver={isDriver}
-                    selectedIdsSize={selectedIds.size}
-                    onBulkDelete={() => {
-                        if (selectedIds.size > 0 && confirm(t('entity.confirmBulkDelete', { count: selectedIds.size }))) {
-                            handleBulkDeleteBokResidents(Array.from(selectedIds)).then(() => {
-                                setSelectedIds(new Set());
-                            });
-                        }
-                    }}
+                    currentUser={currentUser}
                 />
             </CardHeader>
             <CardContent>
@@ -1127,136 +1001,75 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                     <div className="w-full mb-6 relative">
                         {tabsListContent}
                     </div>
-                    {!isDriver && (
-                        <>
-                            <TabsContent forceMount value="active" className="mt-4 data-[state=inactive]:hidden">
-                                <ExportButton count={dataMap.active.length} onClick={() => exportEntities(dataMap.active, 'Pracownicy_Aktywni')} />
-                                {viewMode === 'grid' && columnOptions?.zaklad && columnOptions.zaklad.length > 0 && (
-                                    <div className="mb-3">
-                                        <Select
-                                            value={columnFilters.zaklad?.[0] || '_all'}
-                                            onValueChange={(val) => handleColumnFilterChange('zaklad', val === '_all' ? [] : [val])}
-                                        >
-                                            <SelectTrigger className="w-full">
-                                                <SelectValue placeholder={t('entity.filterByDepartment')} />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="_all">{t('entity.allDepartments')}</SelectItem>
-                                                {columnOptions.zaklad.map(opt => (
-                                                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                    <TabsContent forceMount value="active" className="mt-4 data-[state=inactive]:hidden">
+                        <ExportButton count={dataMap.active.length} onClick={() => exportEntities(dataMap.active, 'Pracownicy_Aktywni')} />
+                        {viewMode === 'grid' && columnOptions?.zaklad && columnOptions.zaklad.length > 0 && (
+                            <div className="mb-3">
+                                <Select
+                                    value={columnFilters.zaklad?.[0] || '_all'}
+                                    onValueChange={(val) => handleColumnFilterChange('zaklad', val === '_all' ? [] : [val])}
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder={t('entity.filterByDepartment')} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="_all">{t('entity.allDepartments')}</SelectItem>
+                                        {columnOptions.zaklad.map(opt => (
+                                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+                        {renderContent(paginatedData as Entity[], false, false)}
+                    </TabsContent>
+                    <TabsContent forceMount value="dismissed" className="mt-4 data-[state=inactive]:hidden">
+                        <ExportButton count={dataMap.dismissed.length} onClick={() => exportEntities(dataMap.dismissed, 'Pracownicy_Zwolnieni')} />
+                        {renderContent(paginatedData as Entity[], false, true)}
+                    </TabsContent>
+                    <TabsContent forceMount value="non-employees" className="mt-4 data-[state=inactive]:hidden">
+                        <ExportButton count={dataMap['non-employees'].length} onClick={() => exportEntities(dataMap['non-employees'], 'Mieszkancy_NZ')} />
+                        {renderContent(paginatedData as Entity[], false, false)}
+                    </TabsContent>
+                    <TabsContent forceMount value="history" className="mt-4 data-[state=inactive]:hidden">
+                        <ExportButton count={dataMap.history.length} onClick={() => exportHistory(dataMap.history as AddressHistory[], 'Historia_Adresow')} />
+                        {renderHistoryContent()}
+                    </TabsContent>
+                    {showBokTab && (
+                        <TabsContent forceMount value="bok-residents" className="mt-4 data-[state=inactive]:hidden">
+                            <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mb-4">
+                                {isMobile ? (
+                                    <Select value={bokSubTab} onValueChange={(v) => updateSearchParams({ bokSubTab: v, page: 1 })}>
+                                        <SelectTrigger className="w-full sm:w-auto">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="active">{t('tab.bokActive')} ({(filteredAndSortedData.activeBokResidents || []).length})</SelectItem>
+                                            <SelectItem value="dismissed">{t('tab.bokDismissed')} ({(filteredAndSortedData.dismissedBokResidents || []).length})</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                ) : (
+                                    <div className="flex gap-2">
+                                        <Button variant={bokSubTab === 'active' ? 'secondary' : 'ghost'} size="sm" onClick={() => updateSearchParams({ bokSubTab: 'active', page: 1 })}>
+                                            {t('tab.bokActive')} ({(filteredAndSortedData.activeBokResidents || []).length})
+                                        </Button>
+                                        <Button variant={bokSubTab === 'dismissed' ? 'secondary' : 'ghost'} size="sm" onClick={() => updateSearchParams({ bokSubTab: 'dismissed', page: 1 })}>
+                                            {t('tab.bokDismissed')} ({(filteredAndSortedData.dismissedBokResidents || []).length})
+                                        </Button>
                                     </div>
                                 )}
-                                {renderContent(paginatedData as Entity[])}
-                            </TabsContent>
-                            <TabsContent forceMount value="dismissed" className="mt-4 data-[state=inactive]:hidden">
-                                <ExportButton count={dataMap.dismissed.length} onClick={() => exportEntities(dataMap.dismissed, 'Pracownicy_Zwolnieni')} />
-                                {renderContent(paginatedData as Entity[])}
-                            </TabsContent>
-                            <TabsContent forceMount value="non-employees" className="mt-4 data-[state=inactive]:hidden">
-                                <ExportButton count={dataMap['non-employees'].length} onClick={() => exportEntities(dataMap['non-employees'], 'Mieszkancy_NZ')} />
-                                {renderContent(paginatedData as Entity[])}
-                            </TabsContent>
-                        </>
-                    )}
-                    {(currentUser.isAdmin || isDriver) && (
-                        <TabsContent forceMount value="bok-residents" className="mt-4 data-[state=inactive]:hidden">
-                            {/* Inner sub-tabs: Aktywni / Wyslani / Zwolnieni */}
-                            <Tabs value={bokSubTab} onValueChange={(v) => { setBokSubTab(v as 'active' | 'sent' | 'dismissed'); updateSearchParams({ page: 1 }); }} className="mb-4">
-                                <TabsList className="h-auto bg-muted/50 p-1 rounded-md">
-                                    <TabsTrigger value="active" className="rounded px-4 py-1.5 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                                        <Users className="mr-2 h-3.5 w-3.5 shrink-0" />
-                                        {t('tab.bokActive')} ({filteredAndSortedData.activeBokResidents?.length || 0})
-                                    </TabsTrigger>
-                                    <TabsTrigger value="sent" className="rounded px-4 py-1.5 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                                        <Briefcase className="mr-2 h-3.5 w-3.5 shrink-0" />
-                                        {t('tab.bokSent')} ({filteredAndSortedData.sentBokResidents?.length || 0})
-                                    </TabsTrigger>
-                                    <TabsTrigger value="dismissed" className="rounded px-4 py-1.5 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                                        <UserX className="mr-2 h-3.5 w-3.5 shrink-0" />
-                                        {t('tab.bokDismissed')} ({filteredAndSortedData.dismissedBokResidents?.length || 0})
-                                    </TabsTrigger>
-                                </TabsList>
-                            </Tabs>
-                            <ExportButton count={bokData.length} onClick={() => exportEntities(bokData as Entity[], `BOK_${bokSubTab === 'active' ? 'Aktywni' : bokSubTab === 'sent' ? 'Wyslani' : 'Zwolnieni'}`)} />
-                            <ScrollArea className="h-[55vh] overflow-x-auto" style={{ opacity: isPending ? 0.6 : 1 }}>
-                                {isMounted ? (
-                                    viewMode === 'list' ? (
-                                        <EntityTable
-                                            entities={bokData.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)}
-                                            settings={settings}
-                                            onEdit={handleEdit}
-                                            onRestore={bokSubTab === 'dismissed' ? handleRestore : undefined}
-                                            onPermanentDelete={handlePermanentDelete}
-                                            isDismissed={bokSubTab === 'dismissed'}
-                                            onSort={handleSort}
-                                            sortBy={sortBy}
-                                            sortOrder={sortOrder}
-                                            isBokTab
-                                            selectedIds={selectedIds}
-                                            onSelect={(id, checked) => {
-                                                const newSet = new Set(selectedIds);
-                                                if (checked) newSet.add(id);
-                                                else newSet.delete(id);
-                                                setSelectedIds(newSet);
-                                            }}
-                                            onSelectAll={(checked) => {
-                                                if (checked) {
-                                                    const pageData = bokData.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
-                                                    setSelectedIds(new Set(pageData.map(e => e.id)));
-                                                } else {
-                                                    setSelectedIds(new Set());
-                                                }
-                                            }}
-                                            columnFilters={columnFilters}
-                                            onColumnFilterChange={handleColumnFilterChange}
-                                            columnOptions={columnOptions}
-                                        />
-                                    ) : (
-                                        <EntityCardList
-                                            entities={bokData.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)}
-                                            settings={settings}
-                                            onEdit={handleEdit}
-                                            onRestore={bokSubTab === 'dismissed' ? handleRestore : undefined}
-                                            onPermanentDelete={handlePermanentDelete}
-                                            isDismissed={bokSubTab === 'dismissed'}
-                                        />
-                                    )
-                                ) : (
-                                    <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>
-                                )}
-                                <ScrollBar orientation="horizontal" />
-                            </ScrollArea>
-                            <PaginationControls
-                                currentPage={page}
-                                totalPages={Math.ceil(bokData.length / ITEMS_PER_PAGE)}
-                                onPageChange={(p) => updateSearchParams({ page: p })}
-                                isDisabled={isPending}
-                            />
-                        </TabsContent>
-                    )}
-                    {!isDriver && (
-                        <TabsContent forceMount value="history" className="mt-4 data-[state=inactive]:hidden">
-                            <ExportButton count={dataMap.history.length} onClick={() => exportHistory(dataMap.history as AddressHistory[], 'Historia_Adresow')} />
-                            {renderHistoryContent()}
+                                <ExportButton count={(bokSubTab === 'active' ? (filteredAndSortedData.activeBokResidents || []).length : (filteredAndSortedData.dismissedBokResidents || []).length)} onClick={() => exportEntities(bokSubTab === 'active' ? (filteredAndSortedData.activeBokResidents || []) : (filteredAndSortedData.dismissedBokResidents || []), bokSubTab === 'active' ? 'BOK_Aktywni' : 'BOK_Zwolnieni')} />
+                            </div>
+                            {(() => {
+                                const bokData = bokSubTab === 'active' ? (filteredAndSortedData.activeBokResidents || []) : (filteredAndSortedData.dismissedBokResidents || []);
+                                const bokTotalPages = Math.ceil(bokData.length / ITEMS_PER_PAGE);
+                                const bokPaginated = bokData.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+                                return renderContent(bokPaginated, true, bokSubTab === 'dismissed', bokTotalPages);
+                            })()}
                         </TabsContent>
                     )}
                 </Tabs>
             </CardContent>
-
-            {allEmployees && allNonEmployees && allBokResidents && settings && (
-                <BokDispatchReportDialog
-                    isOpen={isReportOpen}
-                    onOpenChange={setIsReportOpen}
-                    bokResidents={allBokResidents}
-                    employees={allEmployees}
-                    nonEmployees={allNonEmployees}
-                    settings={settings}
-                    onPermanentDelete={(id) => handlePermanentDelete(id, 'bok-resident')}
-                />
-            )}
         </Card>
     )
 }

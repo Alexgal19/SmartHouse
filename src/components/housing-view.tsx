@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import type { Employee, NonEmployee, SessionData, Room, Settings, BokResident } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Bed, Building, BarChart2, Copy, Lock, Bus } from 'lucide-react';
+import { Bed, Building, BarChart2, Copy, Lock } from 'lucide-react';
 import { useMainLayout } from '@/components/main-layout';
 import { cn } from '@/lib/utils';
 import { Skeleton } from './ui/skeleton';
@@ -30,26 +30,14 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 import { Badge } from './ui/badge';
 import { getActiveAddressCapacity } from '@/lib/address-filters';
-import { bulkSetSendDateAction } from '@/lib/actions';
 import { useLanguage } from '@/lib/i18n';
-
-const SEND_REASONS = ['Badania wstępne', 'Badania okresowe', 'Na PKP'] as const;
-type SendReason = (typeof SEND_REASONS)[number];
-
-type PersonSendData = { date: Date | undefined; time: string; reason: SendReason | '' };
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Loader2, Check } from 'lucide-react';
-import { format } from 'date-fns';
-import { pl } from 'date-fns/locale';
-import { useToast } from '@/hooks/use-toast';
 
 type Occupant = Employee | NonEmployee | BokResident;
 type RoomWithOccupants = Room & { occupants: Occupant[]; occupantCount: number; available: number };
 type HousingData = ReturnType<typeof useHousingData>[0];
 
-const isBokResident = (occupant: Occupant): occupant is BokResident => 'returnStatus' in occupant;
-const isEmployee = (occupant: Occupant): occupant is Employee => 'zaklad' in occupant && !isBokResident(occupant);
+const isBokResident = (occupant: Occupant): occupant is BokResident => !('coordinatorId' in occupant);
+const isEmployee = (occupant: Occupant): occupant is Employee => ('coordinatorId' in occupant) && ('zaklad' in occupant);
 
 const calculateStats = (occupants: Occupant[]) => {
   const stats = {
@@ -61,7 +49,7 @@ const calculateStats = (occupants: Occupant[]) => {
     stats.nationalities.set(occ.nationality || 'Brak', (stats.nationalities.get(occ.nationality || 'Brak') || 0) + 1);
     stats.genders.set(occ.gender || 'Brak', (stats.genders.get(occ.gender || 'Brak') || 0) + 1);
 
-    if (isEmployee(occ) || isBokResident(occ)) {
+    if (isEmployee(occ)) {
       stats.departments.set(occ.zaklad || 'Brak', (stats.departments.get(occ.zaklad || 'Brak') || 0) + 1);
     }
   });
@@ -164,61 +152,6 @@ const StatsCharts = ({ occupants, chartConfig }: { occupants: Occupant[]; chartC
   );
 };
 
-const PersonSendRow = ({
-  id, name, data, onUpdate, onRemove,
-}: {
-  id: string;
-  name: string;
-  data: PersonSendData;
-  onUpdate: (id: string, patch: Partial<PersonSendData>) => void;
-  onRemove: (id: string) => void;
-}) => {
-  const [dateOpen, setDateOpen] = useState(false);
-  const { t } = useLanguage();
-  return (
-    <div className="rounded border bg-white dark:bg-amber-950/60 p-2 space-y-1.5">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold truncate mr-2">{name}</span>
-        <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => onRemove(id)}>
-          <span className="text-xs">✕</span>
-        </Button>
-      </div>
-      <div className="flex flex-wrap gap-1.5">
-        {/* Data */}
-        <Popover open={dateOpen} onOpenChange={setDateOpen}>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className={cn('h-7 text-xs px-2', !data.date && 'border-dashed border-amber-400')}>
-              <CalendarIcon className="h-3 w-3 mr-1" />
-              {data.date ? format(data.date, 'd MMM yyyy', { locale: pl }) : t('common.date')}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar mode="single" selected={data.date} onSelect={(d) => { onUpdate(id, { date: d }); setDateOpen(false); }} locale={pl} initialFocus />
-          </PopoverContent>
-        </Popover>
-        {/* Godzina */}
-        <Input
-          type="time"
-          value={data.time}
-          onChange={(e) => onUpdate(id, { time: e.target.value })}
-          className={cn('h-7 text-xs w-24 px-2', !data.time && 'border-dashed border-amber-400')}
-        />
-        {/* Powód */}
-        <Select value={data.reason} onValueChange={(v) => onUpdate(id, { reason: v as SendReason })}>
-          <SelectTrigger className={cn('h-7 text-xs w-36', !data.reason && 'border-dashed border-amber-400')}>
-            <SelectValue placeholder={t('housing.sendReasonShort')} />
-          </SelectTrigger>
-          <SelectContent>
-            {SEND_REASONS.map((r) => (
-              <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-    </div>
-  );
-};
-
 const AddressDetailView = ({
   addresses,
   onOccupantClick,
@@ -228,12 +161,6 @@ const AddressDetailView = ({
   currentUser,
   settings,
   handleUpdateSettings,
-  isSelectionMode,
-  selectedBokData,
-  selectedBokNames,
-  onToggleBokSelection,
-  onUpdatePersonSendData,
-  onSaveSelection,
 }: {
   addresses: HousingData[];
   onOccupantClick: (occupant: Occupant) => void;
@@ -243,14 +170,7 @@ const AddressDetailView = ({
   currentUser: SessionData | null;
   settings: Settings | null;
   handleUpdateSettings: (updates: Partial<Settings>) => Promise<void>;
-  isSelectionMode: boolean;
-  selectedBokData: Map<string, PersonSendData>;
-  selectedBokNames: Map<string, string>;
-  onToggleBokSelection: (id: string, name: string) => void;
-  onUpdatePersonSendData: (id: string, patch: Partial<PersonSendData>) => void;
-  onSaveSelection: () => Promise<void>;
 }) => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const { t } = useLanguage();
 
   const isSingleSelectedBlocked = useMemo(() => {
@@ -299,7 +219,7 @@ const AddressDetailView = ({
       available: totalCapacity - totalOccupantCount,
       rooms: [],
     };
-  }, [selectedAddressesData]);
+  }, [selectedAddressesData, t]);
 
   const selectedRoomsData = useMemo(() => {
     if (!aggregatedAddressesData || aggregatedAddressesData.isMultiple || selectedRoomIds.length === 0) return null;
@@ -320,7 +240,7 @@ const AddressDetailView = ({
       available: totalCapacity - totalOccupantCount,
       rooms: rooms,
     };
-  }, [aggregatedAddressesData, selectedRoomIds]);
+  }, [aggregatedAddressesData, selectedRoomIds, t]);
 
   const chartConfig: ChartConfig = {
     count: { label: 'Ilość' },
@@ -404,8 +324,8 @@ const AddressDetailView = ({
           </span>
         </CardDescription>
       </CardHeader>
-      <CardContent className={cn('flex flex-col', isSelectionMode && 'pb-0')}>
-        <ScrollArea className={cn(isSelectionMode ? 'h-[calc(100vh-20rem)]' : 'h-[calc(100vh-16rem)]')}>
+      <CardContent className="flex flex-col">
+        <ScrollArea className="h-[calc(100vh-16rem)]">
           {aggregatedAddressesData.isMultiple ? (
             <div className="space-y-6">
               <div>
@@ -464,35 +384,20 @@ const AddressDetailView = ({
                               <span
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (isSelectionMode) {
-                                    if (isBokResident(o)) onToggleBokSelection(o.id, `${o.lastName} ${o.firstName}`.trim());
-                                  } else {
-                                    onOccupantClick(o);
-                                  }
+                                  onOccupantClick(o);
                                 }}
-                                className={cn(
-                                  'flex-1 cursor-pointer transition-colors',
-                                  isSelectionMode && !isBokResident(o) ? 'opacity-40 cursor-not-allowed' : 'hover:text-primary',
-                                  isSelectionMode && isBokResident(o) && selectedBokData.has(o.id) && 'text-primary font-bold'
-                                )}
+                                className="flex-1 cursor-pointer transition-colors hover:text-primary"
                               >
-                                {isSelectionMode && isBokResident(o) && (
-                                  <span className="mr-2 inline-flex items-center justify-center w-4 h-4 border rounded bg-white dark:bg-black">
-                                    {selectedBokData.has(o.id) && <Check className="w-3 h-3 text-primary" />}
-                                  </span>
-                                )}
                                 {fullName}
                               </span>
-                              {!isSelectionMode && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                                  onClick={(e) => { e.stopPropagation(); copyToClipboard(fullName, `Skopiowano: ${fullName}`); }}
-                                >
-                                  <Copy className="h-3 w-3" />
-                                </Button>
-                              )}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                                onClick={(e) => { e.stopPropagation(); copyToClipboard(fullName, `Skopiowano: ${fullName}`); }}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
                             </div>
                           );
                         })}
@@ -579,29 +484,16 @@ const AddressDetailView = ({
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         if (isBlocked) return;
-                                        if (isSelectionMode) {
-                                          if (isBokResident(o)) onToggleBokSelection(o.id, `${o.lastName} ${o.firstName}`.trim());
-                                        } else {
-                                          onOccupantClick(o);
-                                        }
+                                        onOccupantClick(o);
                                       }}
                                       className={cn(
                                         'flex-1 transition-colors',
-                                        isBlocked ? 'cursor-not-allowed opacity-40' :
-                                          isSelectionMode && isBokResident(o) ? 'cursor-pointer hover:text-primary' :
-                                          isSelectionMode ? 'text-muted-foreground' :
-                                          'cursor-pointer hover:text-primary',
-                                        isSelectionMode && isBokResident(o) && selectedBokData.has(o.id) && 'text-primary font-bold'
+                                        isBlocked ? 'cursor-not-allowed opacity-40' : 'cursor-pointer hover:text-primary'
                                       )}
                                     >
-                                      {isSelectionMode && !isBlocked && isBokResident(o) && (
-                                        <span className="mr-2 inline-flex items-center justify-center w-4 h-4 border rounded bg-white dark:bg-black">
-                                          {selectedBokData.has(o.id) && <Check className="w-3 h-3 text-primary" />}
-                                        </span>
-                                      )}
                                       {fullName}
                                     </span>
-                                    {!isBlocked && !isSelectionMode && (
+                                    {!isBlocked && (
                                       <Button
                                         variant="ghost"
                                         size="icon"
@@ -638,26 +530,12 @@ const AddressDetailView = ({
                                 <span
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    if (isSelectionMode) {
-                                      if (isBokResident(o)) onToggleBokSelection(o.id, `${o.lastName} ${o.firstName}`.trim());
-                                    } else {
-                                      onOccupantClick(o);
-                                    }
+                                    onOccupantClick(o);
                                   }}
-                                  className={cn(
-                                    'flex-1 transition-colors',
-                                    (isSelectionMode && !isBokResident(o)) ? 'cursor-not-allowed opacity-40' : 'cursor-pointer hover:text-primary',
-                                    isSelectionMode && isBokResident(o) && selectedBokData.has(o.id) && 'text-primary font-bold'
-                                  )}
+                                  className="flex-1 cursor-pointer transition-colors hover:text-primary"
                                 >
-                                  {isSelectionMode && isBokResident(o) && (
-                                    <span className="mr-2 inline-flex items-center justify-center w-4 h-4 border rounded bg-white dark:bg-black">
-                                      {selectedBokData.has(o.id) && <Check className="w-3 h-3 text-primary" />}
-                                    </span>
-                                  )}
                                   {fullName}
                                 </span>
-                                {!isSelectionMode && (
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -666,7 +544,6 @@ const AddressDetailView = ({
                                 >
                                   <Copy className="h-3 w-3" />
                                 </Button>
-                                )}
                               </div>
                             );
                           })}
@@ -740,48 +617,6 @@ const AddressDetailView = ({
             </div>
           )}
         </ScrollArea>
-        {/* Selection bar shown below the scroll area */}
-        {isSelectionMode && (
-          <div className="mt-2 border rounded-md bg-amber-50 dark:bg-amber-950/40">
-            <div className="px-3 py-2 flex items-center justify-between border-b border-amber-200 dark:border-amber-800">
-              <span className="text-sm font-semibold">{t('housing.selectedForSending', { count: String(selectedBokData.size) })}</span>
-              {selectedBokData.size > 0 && (
-                <Button
-                  size="sm"
-                  className="h-7 text-xs bg-amber-600 hover:bg-amber-700 text-white"
-                  disabled={isSubmitting || Array.from(selectedBokData.values()).some(d => !d.date || !d.time || !d.reason)}
-                  onClick={async () => {
-                    setIsSubmitting(true);
-                    await onSaveSelection();
-                    setIsSubmitting(false);
-                  }}
-                >
-                  {isSubmitting ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Check className="w-3.5 h-3.5 mr-1" />}
-                  {t('housing.confirmAllSelected')}
-                </Button>
-              )}
-            </div>
-            {selectedBokData.size > 0 && (
-              <ScrollArea className="max-h-56">
-                <div className="p-2 space-y-2">
-                  {Array.from(selectedBokData.entries()).map(([id, data]) => {
-                    const nameEntry = selectedBokNames.get(id) ?? id;
-                    return (
-                      <PersonSendRow
-                        key={id}
-                        id={id}
-                        name={nameEntry}
-                        data={data}
-                        onUpdate={onUpdatePersonSendData}
-                        onRemove={(removeId) => onToggleBokSelection(removeId, '')}
-                      />
-                    );
-                  })}
-                </div>
-              </ScrollArea>
-            )}
-          </div>
-        )}
       </CardContent>
     </Card>
   );
@@ -805,11 +640,7 @@ const useHousingData = () => {
     const allActiveOccupants: Occupant[] = [
       ...allEmployees.filter((e) => e.status === 'active'),
       ...allNonEmployees.filter((ne) => ne.status === 'active'),
-      ...allBokResidents.filter((bok) => {
-        if (bok.status === 'dismissed' || bok.dismissDate) return false;
-        if (!bok.sendDate) return true;
-        return bok.sendReason === 'Badania wstępne' || bok.sendReason === 'Badania okresowe';
-      }),
+      ...allBokResidents,
     ];
 
     return addressesToDisplay.map((address) => {
@@ -1199,8 +1030,6 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
     handleEditNonEmployeeClick,
     handleEditBokResidentClick,
     handleUpdateSettings,
-    refreshData,
-    patchRawBokResident,
   } = useMainLayout();
   const { isMobile } = useIsMobile();
   const searchParams = useSearchParams();
@@ -1208,10 +1037,6 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
   const [selectedRoomIds, setSelectedRoomIds] = useState<string[]>([]);
   const [mobileOpenItems, setMobileOpenItems] = useState<string[]>([]);
   const [deepLinkedAddressId, setDeepLinkedAddressId] = useState<string | null>(null);
-  const [isSelectionMode, setIsSelectionMode] = useState(false);
-  const [selectedBokData, setSelectedBokData] = useState<Map<string, PersonSendData>>(new Map());
-  const [selectedBokNames, setSelectedBokNames] = useState<Map<string, string>>(new Map());
-  const { toast } = useToast();
   const { t } = useLanguage();
   const deepLinkApplied = useRef(false);
 
@@ -1343,57 +1168,6 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
     });
   };
 
-  const handleToggleBokSelection = (id: string, name: string) => {
-    setSelectedBokData(prev => {
-      const next = new Map(prev);
-      if (next.has(id)) next.delete(id);
-      else next.set(id, { date: undefined, time: '', reason: '' });
-      return next;
-    });
-    setSelectedBokNames(prev => {
-      const next = new Map(prev);
-      if (next.has(id)) next.delete(id);
-      else next.set(id, name);
-      return next;
-    });
-  };
-
-  const handleUpdatePersonSendData = (id: string, patch: Partial<PersonSendData>) => {
-    setSelectedBokData(prev => {
-      const next = new Map(prev);
-      const current = next.get(id);
-      if (current) next.set(id, { ...current, ...patch });
-      return next;
-    });
-  };
-
-  const handleSaveSelection = async () => {
-    if (selectedBokData.size === 0) return;
-    try {
-      const entries = Array.from(selectedBokData.entries()).map(([id, d]) => ({
-        id,
-        sendDate: format(d.date!, 'yyyy-MM-dd'),
-        sendTime: d.time,
-        sendReason: d.reason,
-      }));
-      const result = await bulkSetSendDateAction(entries, currentUser!.uid);
-      if (result.success) {
-        // Optimistic update — immediately reflect in UI without waiting for Sheets
-        for (const entry of entries) {
-          patchRawBokResident(entry.id, { sendDate: entry.sendDate, sendTime: entry.sendTime, sendReason: entry.sendReason });
-        }
-        toast({ title: t('housing.bulkSendDateSuccess'), description: `Data wysyłki ustawiona dla ${result.updatedCount} osób.` });
-        setSelectedBokData(new Map());
-        setSelectedBokNames(new Map());
-        setIsSelectionMode(false);
-        refreshData(false, true); // fire-and-forget background sync
-      } else {
-        toast({ variant: 'destructive', title: t('common.error'), description: result.error });
-      }
-    } catch (e) {
-      toast({ variant: 'destructive', title: t('common.error'), description: t('housing.bulkSendDateError') });
-    }
-  };
 
   if (!rawHousingData || !settings) {
     return (
@@ -1417,20 +1191,6 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
               <CardTitle>{t('housing.housing')}</CardTitle>
               <CardDescription>{t('housing.housingDesc')}</CardDescription>
             </div>
-            {(currentUser.isAdmin || currentUser.isDriver) && (
-              <Button
-                variant={isSelectionMode ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => {
-                  setIsSelectionMode(!isSelectionMode);
-                  if (isSelectionMode) { setSelectedBokData(new Map()); setSelectedBokNames(new Map()); }
-                }}
-                className={cn('h-8 text-xs gap-1', isSelectionMode && 'bg-amber-500 hover:bg-amber-600 text-white border-0')}
-              >
-                <Bus className="h-4 w-4" />
-                {isSelectionMode ? t('housing.exitSendMode') : t('housing.sendMode')}
-              </Button>
-            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -1515,20 +1275,6 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
               <CardTitle>{t('housing.addresses')}</CardTitle>
               <CardDescription>{t('housing.selectAddressDetails')}</CardDescription>
             </div>
-            {(currentUser.isAdmin || currentUser.isDriver) && (
-              <Button
-                variant={isSelectionMode ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => {
-                  setIsSelectionMode(!isSelectionMode);
-                  if (isSelectionMode) { setSelectedBokData(new Map()); setSelectedBokNames(new Map()); }
-                }}
-                className={cn('h-8 text-xs gap-1', isSelectionMode && 'bg-amber-500 hover:bg-amber-600 text-white border-0')}
-              >
-                <Bus className="h-4 w-4" />
-                {isSelectionMode ? t('housing.exitSendMode') : t('housing.sendMode')}
-              </Button>
-            )}
           </div>
         </CardHeader>
         <CardContent className="p-4 pt-0">
@@ -1672,12 +1418,6 @@ export default function HousingView({ currentUser }: { currentUser: SessionData 
         currentUser={currentUser}
         settings={rawSettings ?? settings}
         handleUpdateSettings={handleUpdateSettings}
-        isSelectionMode={isSelectionMode}
-        selectedBokData={selectedBokData}
-        selectedBokNames={selectedBokNames}
-        onToggleBokSelection={handleToggleBokSelection}
-        onUpdatePersonSendData={handleUpdatePersonSendData}
-        onSaveSelection={handleSaveSelection}
       />
     </div>
   );

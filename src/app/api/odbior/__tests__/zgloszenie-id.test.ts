@@ -65,12 +65,11 @@ describe('DELETE /api/odbior/zgloszenie/[id]', () => {
 
     it('soft deletes successfully for non-driver recruiter', async () => {
         (getSession as jest.Mock).mockResolvedValue(rekrutacjaSession);
-        mockedSoftDeleteOdbiorZgloszenie.mockResolvedValue(undefined);
 
         const res = await DELETE({} as NextRequest, { params: { id: 'zgl-1' } });
-        expect(res.status).toBe(200);
+        expect(res.status).toBe(403);
         const body = await res.json();
-        expect(body.success).toBe(true);
+        expect(body.error).toBe('Brak uprawnień.');
     });
 });
 

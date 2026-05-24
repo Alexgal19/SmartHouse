@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import {
@@ -10,8 +10,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -35,7 +33,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { BokResident, Settings, SessionData } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, X, Loader2, Send, Camera } from 'lucide-react';
+import { CalendarIcon, X, Loader2, Camera } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, isValid, parseISO } from 'date-fns';
 import { useLanguage } from '@/lib/i18n';
@@ -45,29 +43,23 @@ import { extractPassportData } from '@/ai/flows/extract-passport-data-flow';
 import { useToast } from '@/hooks/use-toast';
 
 export const formSchema = z.object({
-  role: z.string().min(1, "Rola (Kierowca/Recepcja) jest wymagana."),
   firstName: z.string().min(1, "Imię jest wymagane."),
   lastName: z.string().min(1, "Nazwisko jest wymagane."),
-  coordinatorId: z.string().min(1, "Koordynator jest wymagany."),
   nationality: z.string().min(1, "Narodowość jest wymagana."),
   locality: z.string().optional(),
   address: z.string().optional(),
   roomNumber: z.string().optional(),
-  zaklad: z.string().optional(),
   gender: z.string().min(1, "Płeć jest wymagana."),
+  passportNumber: z.string().optional(),
   checkInDate: z.date({ required_error: "Data zameldowania jest wymagana." }),
   checkOutDate: z.date().nullable().optional(),
-  dismissDate: z.date().nullable().optional(),
-  returnStatus: z.string().optional(),
-  status: z.string().optional(),
   comments: z.string().optional(),
 });
 
-export type BokResidentFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate' | 'dismissDate' | 'coordinatorId'> & {
+export type BokResidentFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate'> & {
   checkInDate: string | null;
   checkOutDate?: string | null;
-  dismissDate?: string | null;
-  coordinatorId: string;
+  status?: 'active' | 'dismissed';
 };
 
 const parseDate = (dateString: string | null | undefined): Date | undefined => {
@@ -146,7 +138,7 @@ const DateInput = ({
       <div className="relative">
         <input
           ref={inputRef}
-          id={id}
+          id={textMode ? id : undefined}
           type="text"
           value={textValue}
           onChange={(e) => setTextValue(e.target.value)}
@@ -168,7 +160,7 @@ const DateInput = ({
         <PopoverTrigger asChild>
           <button
             type="button"
-            id={id}
+            id={!textMode ? id : undefined}
             onPointerDown={handlePointerDown}
             className="flex w-full min-h-[44px] items-center rounded-md border border-input bg-background px-3 pr-10 text-sm text-left hover:bg-muted/30"
           >
@@ -214,28 +206,28 @@ export function EditBokResidentForm({
   isOpen,
   onOpenChange,
   onSave,
+  onDismiss,
+  onDelete,
   settings,
   resident,
   currentUser,
-  onSendPush,
 }: {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onSave: (data: BokResidentFormData) => void;
+  onDismiss?: (id: string, checkOutDate: Date) => Promise<void>;
+  onDelete?: (id: string) => Promise<void>;
   settings: Settings;
   resident: BokResident | null;
   currentUser: SessionData;
-  onSendPush?: (data: BokResidentFormData) => Promise<void>;
 }) {
-  const { t, dateLocale } = useLanguage();
+  const { t } = useLanguage();
   const { toast } = useToast();
-  const [isSendingPush, setIsSendingPush] = React.useState(false);
   const webcamRef = React.useRef<Webcam>(null);
   const streamRef = React.useRef<MediaStream | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
-  const [isDismissing, setIsDismissing] = useState(false);
-  const { handleDismissBokResident, allEmployees, allNonEmployees, allBokResidents } = useMainLayout();
+  const { allEmployees, allNonEmployees, allBokResidents } = useMainLayout();
 
   // Cleanup webcam stream on unmount
   useEffect(() => {
@@ -286,102 +278,49 @@ export function EditBokResidentForm({
     setIsCameraOpen(false);
   };
 
-  const handleSendPush = async () => {
-    if (!onSendPush) return;
-
-    // Validate form before sending
-    const isValid = await form.trigger();
-    if (!isValid) return;
-
-    setIsSendingPush(true);
-    try {
-      const values = form.getValues();
-      const dataToPass = {
-        ...values,
-        checkInDate: values.checkInDate ? format(values.checkInDate, 'yyyy-MM-dd') : null,
-        checkOutDate: values.checkOutDate ? format(values.checkOutDate, 'yyyy-MM-dd') : null,
-        dismissDate: values.dismissDate ? format(values.dismissDate, 'yyyy-MM-dd') : null,
-      } as unknown as BokResidentFormData;
-
-      await onSendPush(dataToPass);
-      onOpenChange(false);
-    } catch (error) {
-      console.error("Error in onSendPush:", error);
-      toast({ variant: 'destructive', title: t('common.functionError'), description: t('form.pushSendErrorDesc') });
-    } finally {
-      setIsSendingPush(false);
-    }
-  };
-
-  const handleDismissClick = async () => {
-    const dismissDate = form.getValues('dismissDate');
-    if (!resident || !dismissDate) {
-      toast({ variant: "destructive", title: t('common.error'), description: t('form.dismissDateRequiredBok') });
-      return;
-    }
-
-    setIsDismissing(true);
-    try {
-      await handleDismissBokResident(resident.id, dismissDate);
-      onOpenChange(false);
-    } catch (e) {
-      console.error('Dismiss failed:', e);
-    } finally {
-      setIsDismissing(false);
-    }
-  };
-
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      role: '',
       firstName: '',
       lastName: '',
-      coordinatorId: '',
       nationality: '',
-      locality: '',
+      locality: 'MIESZKANIA TYMCZASOWE',
       address: '',
       roomNumber: '',
-      zaklad: '',
       gender: '',
+      passportNumber: '',
       checkInDate: new Date(),
       checkOutDate: null,
-      dismissDate: null,
-      returnStatus: '',
-      status: 'active',
       comments: '',
     },
   });
 
-  const selectedCoordinatorId = form.watch('coordinatorId');
   const selectedLocality = form.watch('locality');
   const selectedAddress = form.watch('address');
 
+  const watchedCheckOutDate = useWatch({ control: form.control, name: 'checkOutDate' });
+  const canDismiss = !!(watchedCheckOutDate instanceof Date && isValid(watchedCheckOutDate));
+  const [isDismissing, setIsDismissing] = useState(false);
+
   const availableLocalities = useMemo(() => {
-    const addresses = !selectedCoordinatorId
-      ? settings.addresses
-      : settings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
-    const locs = Array.from(new Set(addresses.map(a => a.locality).filter(Boolean)));
+    const locs = Array.from(new Set(settings.addresses.filter(a => a.locality === 'MIESZKANIA TYMCZASOWE').map(a => a.locality).filter(Boolean)));
     return locs.sort((a, b) => a.localeCompare(b));
-  }, [settings.addresses, selectedCoordinatorId]);
+  }, [settings.addresses]);
 
   const localityOptions = useMemo(() => availableLocalities.map(l => ({ value: l, label: l })), [availableLocalities]);
 
   const availableAddresses = useMemo(() => {
-    let addresses = !selectedCoordinatorId
-      ? settings.addresses
-      : settings.addresses.filter(a => a.coordinatorIds.includes(selectedCoordinatorId));
+    let addresses = settings.addresses.filter(a => a.locality === 'MIESZKANIA TYMCZASOWE');
     if (selectedLocality) {
       addresses = addresses.filter(a => a.locality === selectedLocality);
     }
     return [...addresses].sort((a, b) => a.name.localeCompare(b.name));
-  }, [settings.addresses, selectedCoordinatorId, selectedLocality]);
+  }, [settings.addresses, selectedLocality]);
 
   const availableRoomsWithCapacity = useMemo(() => {
     const rooms = settings.addresses.find(a => a.name === selectedAddress)?.rooms || [];
     return [...rooms].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(room => {
       let occupied = 0;
-      
       if (allEmployees) {
         occupied += allEmployees.filter(e => e.status === 'active' && e.address === selectedAddress && String(e.roomNumber) === room.name).length;
       }
@@ -389,9 +328,8 @@ export function EditBokResidentForm({
         occupied += allNonEmployees.filter(e => e.status === 'active' && e.address === selectedAddress && String(e.roomNumber) === room.name).length;
       }
       if (allBokResidents) {
-        occupied += allBokResidents.filter(e => e.status !== 'dismissed' && !e.dismissDate && !e.sendDate && e.address === selectedAddress && String(e.roomNumber) === room.name).length;
+        occupied += allBokResidents.filter(e => e.address === selectedAddress && String(e.roomNumber) === room.name).length;
       }
-
       return {
         ...room,
         occupied,
@@ -400,53 +338,34 @@ export function EditBokResidentForm({
     });
   }, [settings.addresses, selectedAddress, allEmployees, allNonEmployees, allBokResidents]);
 
-  const availableDepartments = useMemo(() => {
-    // Departments are global usually, but if we want to filter by coordinator's departments:
-    if (!selectedCoordinatorId) return settings.departments;
-    const coordinator = settings.coordinators.find(c => c.uid === selectedCoordinatorId);
-    // If coordinator has specific departments assigned, use them? Or use global list?
-    // Existing logic suggests using coordinator's departments if available.
-    return coordinator ? [...coordinator.departments].sort((a, b) => a.localeCompare(b)) : settings.departments;
-  }, [settings.coordinators, settings.departments, selectedCoordinatorId]);
-
   useEffect(() => {
     if (resident) {
       const residentAddress = settings.addresses.find(a => a.name === resident.address);
       form.reset({
-        role: resident.role || '',
         firstName: resident.firstName || '',
         lastName: resident.lastName || '',
-        coordinatorId: resident.coordinatorId || currentUser.uid,
         nationality: resident.nationality || '',
-        locality: residentAddress?.locality || '',
+        locality: resident.locality || residentAddress?.locality || '',
         address: resident.address || '',
         roomNumber: resident.roomNumber || '',
-        zaklad: resident.zaklad || '',
         gender: resident.gender || '',
+        passportNumber: resident.passportNumber || '',
         checkInDate: parseDate(resident.checkInDate) ?? new Date(),
         checkOutDate: parseDate(resident.checkOutDate) ?? null,
-        dismissDate: parseDate(resident.dismissDate) ?? null,
-        returnStatus: resident.returnStatus || '',
-        status: resident.status || '',
         comments: resident.comments || '',
       });
     } else {
       form.reset({
-        role: '',
         firstName: '',
         lastName: '',
-        coordinatorId: currentUser.uid || '',
         nationality: '',
-        locality: '',
+        locality: 'MIESZKANIA TYMCZASOWE',
         address: '',
         roomNumber: '',
-        zaklad: '',
         gender: '',
+        passportNumber: '',
         checkInDate: new Date(),
         checkOutDate: null,
-        dismissDate: null,
-        returnStatus: '',
-        status: 'active',
         comments: '',
       });
     }
@@ -461,10 +380,8 @@ export function EditBokResidentForm({
 
     const formData: BokResidentFormData = {
       ...values,
-      coordinatorId: values.coordinatorId || '',
       checkInDate: formatDate(values.checkInDate),
       checkOutDate: formatDate(values.checkOutDate),
-      dismissDate: formatDate(values.dismissDate),
     };
 
     try {
@@ -475,19 +392,36 @@ export function EditBokResidentForm({
     }
   };
 
-  const sortedCoordinators = useMemo(() => {
-    return [...settings.coordinators].sort((a, b) => a.name.localeCompare(b.name));
-  }, [settings.coordinators]);
+  const handleDismissClick = async () => {
+    if (!resident || isDismissing || !onDismiss) return;
+
+    const checkOutDate = form.getValues('checkOutDate');
+
+    // Validate type and existence
+    if (!checkOutDate || !(checkOutDate instanceof Date) || !isValid(checkOutDate)) {
+      form.setError('checkOutDate', {
+        type: 'manual',
+        message: t('form.dismissCheckOutInvalidResident'),
+      });
+      return;
+    }
+
+    setIsDismissing(true);
+    try {
+      await onDismiss(resident.id, checkOutDate);
+      onOpenChange(false);
+    } catch (e) {
+      console.error('Dismiss BOK resident failed:', e);
+      toast({ variant: 'destructive', title: t('common.error'), description: t('toast.bokResidentDismissError') });
+    } finally {
+      setIsDismissing(false);
+    }
+  };
 
   const sortedNationalities = useMemo(() => [...settings.nationalities].sort((a, b) => a.localeCompare(b)), [settings.nationalities]);
   const sortedGenders = useMemo(() => [...settings.genders].sort((a, b) => a.localeCompare(b)), [settings.genders]);
-  const sortedBokRoles = useMemo(() => [...(settings.bokRoles || [])].sort((a, b) => a.localeCompare(b)), [settings.bokRoles]);
-  const sortedBokReturnOptions = useMemo(() => [...(settings.bokReturnOptions || [])].sort((a, b) => a.localeCompare(b)), [settings.bokReturnOptions]);
-  const sortedStatuses = useMemo(() => [...(settings.statuses || [])].sort((a, b) => a.localeCompare(b)), [settings.statuses]);
 
-  const coordinatorOptions = useMemo(() => sortedCoordinators.map(c => ({ value: c.uid, label: c.name })), [sortedCoordinators]);
   const nationalityOptions = useMemo(() => sortedNationalities.map(n => ({ value: n, label: n })), [sortedNationalities]);
-  const departmentOptions = useMemo(() => availableDepartments.map(d => ({ value: d, label: d })), [availableDepartments]);
 
   return (
     <>
@@ -525,23 +459,6 @@ export function EditBokResidentForm({
               <ScrollArea className="flex-1 px-4 sm:px-6">
                 <div className="space-y-4 pb-4 mt-2">
 
-                  <FormField
-                    control={form.control}
-                    name="role"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('form.driverReception')}</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ''}>
-                          <FormControl><SelectTrigger><SelectValue placeholder={t('form.selectRole')} /></SelectTrigger></FormControl>
-                          <SelectContent>
-                            {sortedBokRoles.filter(Boolean).map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                     <FormField
                       control={form.control}
@@ -566,30 +483,6 @@ export function EditBokResidentForm({
                       )}
                     />
                   </div>
-
-                  <FormField
-                    control={form.control}
-                    name="coordinatorId"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>{t('form.coordinator')}</FormLabel>
-                        <FormControl>
-                          <Combobox
-                            options={coordinatorOptions}
-                            value={field.value || ''}
-                            onChange={(val) => {
-                              field.onChange(val);
-                              form.setValue('address', '');
-                              form.setValue('roomNumber', '');
-                            }}
-                            placeholder={t('form.selectCoordinator')}
-                            searchPlaceholder={t('form.searchCoordinator')}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                     <FormField
@@ -629,6 +522,18 @@ export function EditBokResidentForm({
                     />
                   </div>
 
+                  <FormField
+                    control={form.control}
+                    name="passportNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('form.passportNumber')}</FormLabel>
+                        <FormControl><Input placeholder={t('form.passportNumberPlaceholder')} {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                     <FormField
                       control={form.control}
@@ -645,7 +550,7 @@ export function EditBokResidentForm({
                                 form.setValue('address', '');
                                 form.setValue('roomNumber', '');
                               }}
-                              placeholder={!selectedCoordinatorId ? t('form.firstSelectCoord') : t('form.selectLocality')}
+                              placeholder={t('form.selectLocality')}
                               searchPlaceholder={t('form.searchLocality')}
                             />
                           </FormControl>
@@ -698,41 +603,6 @@ export function EditBokResidentForm({
                     />
                   </div>
 
-                  <FormField
-                    control={form.control}
-                    name="zaklad"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <div className="flex justify-between items-center">
-                          <FormLabel>{t('form.department')}</FormLabel>
-                          {field.value && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 min-h-[44px] min-w-[44px] sm:h-6 sm:w-6 sm:min-h-0 sm:min-w-0 p-0 hover:bg-muted flex items-center justify-center"
-                              onClick={() => field.onChange('')}
-                              aria-label={t('form.clearField')}
-                            >
-                              <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                              <span className="sr-only">{t('common.clear')}</span>
-                            </Button>
-                          )}
-                        </div>
-                        <FormControl>
-                          <Combobox
-                            options={departmentOptions}
-                            value={field.value || ''}
-                            onChange={field.onChange}
-                            placeholder={t('form.selectDept')}
-                            searchPlaceholder={t('form.searchDepartment')}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                     <FormField
                       control={form.control}
@@ -755,91 +625,13 @@ export function EditBokResidentForm({
                       name="checkOutDate"
                       render={({ field }) => (
                         <FormItem className="flex flex-col">
-                          <FormLabel>{t('form.checkOutDate')} <span className="text-xs text-muted-foreground font-normal">({t('form.informational')})</span></FormLabel>
+                          <FormLabel>{t('form.checkOutDate')}</FormLabel>
                           <FormControl>
-                            <DateInput value={field.value ?? undefined} onChange={field.onChange} />
+                            <DateInput
+                              value={field.value ?? undefined}
+                              onChange={field.onChange}
+                            />
                           </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  {resident && (
-                    <FormField
-                      control={form.control}
-                      name="dismissDate"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>{t('form.dismissDate')}</FormLabel>
-                          <FormControl>
-                            <DateInput value={field.value ?? undefined} onChange={field.onChange} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
-
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                    <FormField
-                      control={form.control}
-                      name="returnStatus"
-                      render={({ field }) => (
-                        <FormItem>
-                          <div className="flex justify-between items-center">
-                            <FormLabel>{t('form.returnStatus')}</FormLabel>
-                            {field.value && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 min-h-[44px] min-w-[44px] sm:h-6 sm:w-6 sm:min-h-0 sm:min-w-0 p-0 hover:bg-muted flex items-center justify-center"
-                                onClick={() => field.onChange('')}
-                                aria-label={t('form.clearField')}
-                              >
-                                <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                                <span className="sr-only">{t('common.clear')}</span>
-                              </Button>
-                            )}
-                          </div>
-                          <Select onValueChange={field.onChange} value={field.value || ''}>
-                            <FormControl><SelectTrigger><SelectValue placeholder={t('form.selectOption')} /></SelectTrigger></FormControl>
-                            <SelectContent>
-                              {sortedBokReturnOptions.filter(Boolean).map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="status"
-                      render={({ field }) => (
-                        <FormItem>
-                          <div className="flex justify-between items-center">
-                            <FormLabel>{t('form.status')}</FormLabel>
-                            {field.value && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 min-h-[44px] min-w-[44px] sm:h-6 sm:w-6 sm:min-h-0 sm:min-w-0 p-0 hover:bg-muted flex items-center justify-center"
-                                onClick={() => field.onChange('')}
-                                aria-label={t('form.clearField')}
-                              >
-                                <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                                <span className="sr-only">{t('common.clear')}</span>
-                              </Button>
-                            )}
-                          </div>
-                          <Select onValueChange={field.onChange} value={field.value || ''}>
-                            <FormControl><SelectTrigger><SelectValue placeholder={t('form.selectStatus')} /></SelectTrigger></FormControl>
-                            <SelectContent>
-                              {sortedStatuses.filter(Boolean).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -862,12 +654,13 @@ export function EditBokResidentForm({
               </ScrollArea>
               <div className="p-4 sm:p-6 pt-4 flex-shrink-0 flex flex-row items-center justify-between gap-3 bg-background border-t mt-auto">
                 <div className="flex justify-start">
-                  {resident && (
+                  {resident && onDismiss && (
                     <Button
                       type="button"
                       variant="destructive"
                       onClick={handleDismissClick}
-                      disabled={isDismissing}
+                      disabled={!canDismiss || isDismissing}
+                      title={!canDismiss ? t('form.dismissCheckOutRequiredResident') : undefined}
                       className="h-8 text-xs sm:text-sm px-3 sm:px-4"
                     >
                       {isDismissing && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
@@ -884,20 +677,6 @@ export function EditBokResidentForm({
                   >
                     {t('common.cancel')}
                   </Button>
-                  {resident && onSendPush && (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={handleSendPush}
-                      disabled={isSendingPush || form.formState.isSubmitting}
-                      className="h-8 text-xs sm:text-sm px-3 sm:px-4"
-                    >
-                      {isSendingPush
-                        ? <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                        : <Send className="mr-2 h-3 w-3" />}
-                      {t('common.send')}
-                    </Button>
-                  )}
                   <Button
                     type="submit"
                     disabled={form.formState.isSubmitting}

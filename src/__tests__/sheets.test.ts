@@ -1,4 +1,4 @@
-import { getAllSheetsData, getNotifications } from '@/lib/sheets';
+import { getAllSheetsData } from '@/lib/sheets';
 
 // Mock environment variables
 process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL = 'test@example.com';
@@ -36,7 +36,7 @@ jest.mock('google-spreadsheet', () => {
         'PaymentTypesNZ': mockSheet([]),
         'Statuses': mockSheet([]),
         'AddressHistory': mockSheet([]),
-        'BokResidents': mockSheet([]),
+        'BOK': mockSheet([]),
         'BokRoles': mockSheet([]),
         'BokReturnOptions': mockSheet([]),
         'BokStatuses': mockSheet([]),

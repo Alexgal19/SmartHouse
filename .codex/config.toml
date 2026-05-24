@@ -1,0 +1,6 @@
+[mcp_servers.obsidian]
+command = "obsidian-local-rest-mcp"
+
+[mcp_servers.obsidian.env]
+OBSIDIAN_API_KEY = "cc60848764d1cf05262acbf3f78cac90881bdc91dbbbafeb710554758a7005b2"
+OBSIDIAN_BASE_URL = "https://localhost:27124"

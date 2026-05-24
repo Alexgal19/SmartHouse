@@ -17,7 +17,7 @@ const CRITICAL_SHEETS = [
   'Addresses',
   'Rooms',
   'AddressHistory',
-  'BokResidents',
+  'BOK',
   'ControlCards',
   'Coordinators',
 ];

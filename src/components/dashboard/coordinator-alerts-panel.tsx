@@ -18,7 +18,6 @@ interface MyAlerts {
 function getAlertConfig(t: TFunction): { key: keyof AlertDetails; label: string; icon: string }[] {
   return [
     { key: 'contractExpiry',        label: t('alert.contractExpiry'),         icon: '📋' },
-    { key: 'bokStatusInconsistency', label: t('alert.bokStatusInconsistency'), icon: '⚠️' },
     { key: 'capacityExceeded',      label: t('alert.capacityExceeded'),        icon: '🏠' },
     { key: 'missingPaymentData',    label: t('alert.missingPaymentData'),      icon: '💳' },
     { key: 'duplicatePersons',      label: t('alert.duplicatePersons'),        icon: '👥' },

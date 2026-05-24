@@ -7,6 +7,9 @@ export async function POST(req: NextRequest) {
     if (!session.isLoggedIn) {
         return NextResponse.json({ error: 'Nieautoryzowany dostęp.' }, { status: 401 });
     }
+    if (!session.isAdmin && !session.isDriver) {
+        return NextResponse.json({ error: 'Brak uprawnień.' }, { status: 403 });
+    }
 
     try {
         const formData = await req.formData();

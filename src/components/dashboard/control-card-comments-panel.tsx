@@ -84,7 +84,7 @@ function extractComments(
           text: room.comment.trim(),
           fillDate: card.fillDate,
           controlMonth: card.controlMonth,
-          status: null,
+          status: room.status || 'Nie przyjęte',
         });
       }
     }

@@ -39,7 +39,7 @@ function getSheetLabel(sheet: string, t: TFunction): string {
     Addresses: t('sheet.addresses'),
     Rooms: t('sheet.rooms'),
     AddressHistory: t('sheet.addressHistory'),
-    BokResidents: t('sheet.bokResidents'),
+    BOK: t('sheet.bokResidents'),
     ControlCards: t('sheet.controlCards'),
     Coordinators: t('sheet.coordinators'),
   };
@@ -175,6 +175,7 @@ export function SystemStatusPanel() {
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchStatus(); }, []);
 
   const snapshot = dataGuard?.snapshot;

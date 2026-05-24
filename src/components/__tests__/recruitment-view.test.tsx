@@ -27,6 +27,7 @@ jest.mock('@/lib/actions', () => ({
     deleteCandidateAction: jest.fn(),
     acknowledgeCandidateDemandAction: jest.fn(),
     recordInterviewResultAction: jest.fn(),
+    getOdbiorEntriesAction: jest.fn(),
 }));
 
 const mockToast = jest.fn();
@@ -40,7 +41,7 @@ import {
     sendCandidateDemandNotificationAction,
     deleteCandidateAction,
     acknowledgeCandidateDemandAction,
-    recordInterviewResultAction,
+    getOdbiorEntriesAction,
 } from '@/lib/actions';
 
 const mockGetCandidates = getCandidatesAction as jest.Mock;
@@ -48,7 +49,7 @@ const mockGetDemands = getCandidateDemandsAction as jest.Mock;
 const mockSendDemand = sendCandidateDemandNotificationAction as jest.Mock;
 const mockDeleteCandidate = deleteCandidateAction as jest.Mock;
 const mockAckDemand = acknowledgeCandidateDemandAction as jest.Mock;
-const mockRecordInterview = recordInterviewResultAction as jest.Mock;
+const mockGetOdbiorEntries = getOdbiorEntriesAction as jest.Mock;
 
 const mockUser: SessionData = {
     isLoggedIn: true,
@@ -57,6 +58,7 @@ const mockUser: SessionData = {
     isAdmin: true,
     isDriver: false,
     isRekrutacja: true,
+    isBok: false,
 };
 
 const makeCandidate = (overrides: Partial<Candidate> = {}): Candidate => ({
@@ -64,7 +66,7 @@ const makeCandidate = (overrides: Partial<Candidate> = {}): Candidate => ({
     firstName: 'Jan',
     lastName: 'Kowalski',
     passportNumber: 'AB123',
-    status: 'nowy',
+    status: 'wdrodze',
     createdAt: '2026-05-01T10:00:00.000Z',
     interviewHistory: [],
     ...overrides,
@@ -86,6 +88,7 @@ describe('RecruitmentView', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockGetDemands.mockResolvedValue([]);
+        mockGetOdbiorEntries.mockResolvedValue([]);
         mockDemandId = null;
         mockReplace.mockClear();
     });
@@ -105,7 +108,6 @@ describe('RecruitmentView', () => {
             const desktop = screen.getByTestId('recruitment-desktop');
             expect(within(desktop).getByText('Kowalski')).toBeInTheDocument();
             expect(within(desktop).getByText('Jan')).toBeInTheDocument();
-            expect(within(desktop).getByText('AB123')).toBeInTheDocument();
         });
     });
 
@@ -123,62 +125,6 @@ describe('RecruitmentView', () => {
 
         expect(screen.queryByText('Kowalski')).not.toBeInTheDocument();
         expect(screen.getByText('Nowak')).toBeInTheDocument();
-    });
-
-    it('demand button is disabled when demand status is pending', async () => {
-        mockGetCandidates.mockResolvedValue([makeCandidate()]);
-        mockGetDemands.mockResolvedValue([makeDemand({ status: 'pending' })]);
-        render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
-
-        await waitFor(() => {
-            const desktop = screen.getByTestId('recruitment-desktop');
-            const demandBtn = within(desktop).getByRole('button', { name: /Zapotrzebowanie na kandydata/i });
-            expect(demandBtn).toBeDisabled();
-        });
-    });
-
-    it('demand button is enabled when no demand exists', async () => {
-        mockGetCandidates.mockResolvedValue([makeCandidate()]);
-        render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
-
-        await waitFor(() => {
-            const desktop = screen.getByTestId('recruitment-desktop');
-            const demandBtn = within(desktop).getByRole('button', { name: /Zapotrzebowanie na kandydata/i });
-            expect(demandBtn).not.toBeDisabled();
-        });
-    });
-
-    it('clicking demand button calls sendCandidateDemandNotificationAction', async () => {
-        mockGetCandidates.mockResolvedValue([makeCandidate()]);
-        mockSendDemand.mockResolvedValue({ success: true, sentCount: 2 });
-        render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
-
-        await waitFor(() => {
-            const desktop = screen.getByTestId('recruitment-desktop');
-            expect(within(desktop).getByText('Kowalski')).toBeInTheDocument();
-        });
-
-        const desktop = screen.getByTestId('recruitment-desktop');
-        fireEvent.click(within(desktop).getByRole('button', { name: /Zapotrzebowanie na kandydata/i }));
-
-        await waitFor(() => {
-            expect(mockSendDemand).toHaveBeenCalledWith(
-                expect.objectContaining({ id: 'cand-1', lastName: 'Kowalski' })
-            );
-        });
-    });
-
-    it('shows acknowledged demand status correctly', async () => {
-        mockGetCandidates.mockResolvedValue([makeCandidate()]);
-        mockGetDemands.mockResolvedValue([
-            makeDemand({ status: 'acknowledged', acknowledgedAt: '2026-05-02T09:00:00.000Z' }),
-        ]);
-        render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
-
-        await waitFor(() => {
-            const desktop = screen.getByTestId('recruitment-desktop');
-            expect(within(desktop).getByText(/✅/)).toBeInTheDocument();
-        });
     });
 
     it('reloads data when activeView changes to recruitment', async () => {
@@ -324,8 +270,8 @@ describe('RecruitmentView', () => {
         }, { timeout: 3000 });
     });
 
-    it('opens interview dialog on candidate row click', async () => {
-        mockGetCandidates.mockResolvedValue([makeCandidate()]);
+    it('opens candidate detail dialog on candidate row click showing no passport photo when URL is absent', async () => {
+        mockGetCandidates.mockResolvedValue([makeCandidate({ passportPhotoUrl: undefined })]);
         render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
 
         await waitFor(() => {
@@ -337,12 +283,14 @@ describe('RecruitmentView', () => {
         fireEvent.click(within(desktop).getByText('Kowalski'));
 
         await waitFor(() => {
-            expect(screen.getByRole('button', { name: /Tak — udana/i })).toBeInTheDocument();
+            expect(screen.getByText('Brak zdjęcia paszportu')).toBeInTheDocument();
+            expect(screen.getByText('Numer paszportu:')).toBeInTheDocument();
+            expect(screen.getAllByText('AB123').length).toBeGreaterThanOrEqual(1);
         });
     });
 
-    it('interview dialog shows success and failure buttons', async () => {
-        mockGetCandidates.mockResolvedValue([makeCandidate()]);
+    it('opens candidate detail dialog on candidate row click showing passport photo when URL is present', async () => {
+        mockGetCandidates.mockResolvedValue([makeCandidate({ passportPhotoUrl: 'https://example.com/photo.jpg' })]);
         render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
 
         await waitFor(() => {
@@ -353,112 +301,26 @@ describe('RecruitmentView', () => {
         const desktop = screen.getByTestId('recruitment-desktop');
         fireEvent.click(within(desktop).getByText('Kowalski'));
 
+        // Photo is hidden behind password wall initially
         await waitFor(() => {
-            expect(screen.getByRole('button', { name: /Tak — udana/i })).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: /Nie — nieudana/i })).toBeInTheDocument();
+            expect(screen.getByText('Kliknij aby zobaczyć zdjęcie paszportu')).toBeInTheDocument();
         });
-    });
 
-    it('clicking success records interview result and updates table', async () => {
-        const candidate = makeCandidate();
-        mockGetCandidates.mockResolvedValue([candidate]);
-        mockRecordInterview.mockResolvedValue({
-            success: true,
-            entry: { result: 'success', recordedBy: 'Test User', recordedAt: '2026-05-01T12:00:00.000Z' },
-        });
-        render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
+        // Click the eye area to open password dialog
+        fireEvent.click(screen.getByText('Kliknij aby zobaczyć zdjęcie paszportu'));
 
         await waitFor(() => {
-            const desktop = screen.getByTestId('recruitment-desktop');
-            expect(within(desktop).getByText('Kowalski')).toBeInTheDocument();
+            expect(screen.getByText('Wprowadź hasło')).toBeInTheDocument();
         });
 
-        const desktop = screen.getByTestId('recruitment-desktop');
-        fireEvent.click(within(desktop).getByText('Kowalski'));
+        const passwordInput = screen.getByPlaceholderText('Hasło');
+        fireEvent.change(passwordInput, { target: { value: '2121' } });
+        fireEvent.click(screen.getByRole('button', { name: /Potwierdź/i }));
 
         await waitFor(() => {
-            expect(screen.getByRole('button', { name: /Tak — udana/i })).toBeInTheDocument();
-        });
-
-        fireEvent.click(screen.getByRole('button', { name: /Tak — udana/i }));
-
-        await waitFor(() => {
-            expect(mockRecordInterview).toHaveBeenCalledWith('cand-1', 'success');
-            const desktop2 = screen.getByTestId('recruitment-desktop');
-            expect(within(desktop2).getByText(/Udana/)).toBeInTheDocument();
-        });
-    });
-
-    it('clicking failure records interview result', async () => {
-        const candidate = makeCandidate();
-        mockGetCandidates.mockResolvedValue([candidate]);
-        mockRecordInterview.mockResolvedValue({
-            success: true,
-            entry: { result: 'failure', recordedBy: 'Test User', recordedAt: '2026-05-01T12:00:00.000Z' },
-        });
-        render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
-
-        await waitFor(() => {
-            const desktop = screen.getByTestId('recruitment-desktop');
-            expect(within(desktop).getByText('Kowalski')).toBeInTheDocument();
-        });
-
-        const desktop = screen.getByTestId('recruitment-desktop');
-        fireEvent.click(within(desktop).getByText('Kowalski'));
-
-        await waitFor(() => {
-            expect(screen.getByRole('button', { name: /Nie — nieudana/i })).toBeInTheDocument();
-        });
-
-        fireEvent.click(screen.getByRole('button', { name: /Nie — nieudana/i }));
-
-        await waitFor(() => {
-            expect(mockRecordInterview).toHaveBeenCalledWith('cand-1', 'failure');
-            const desktop2 = screen.getByTestId('recruitment-desktop');
-            expect(within(desktop2).getByText(/Nieudana/)).toBeInTheDocument();
-        });
-    });
-
-    it('displays interview history in reverse chronological order', async () => {
-        const candidate = makeCandidate({
-            firstName: 'Piotr',
-            interviewHistory: [
-                { result: 'success', recordedBy: 'Anna', recordedAt: '2026-05-02T10:00:00.000Z' },
-                { result: 'failure', recordedBy: 'Jan', recordedAt: '2026-05-01T10:00:00.000Z' },
-            ],
-        });
-        mockGetCandidates.mockResolvedValue([candidate]);
-        render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
-
-        await waitFor(() => {
-            const desktop = screen.getByTestId('recruitment-desktop');
-            expect(within(desktop).getByText('Kowalski')).toBeInTheDocument();
-        });
-
-        const desktop = screen.getByTestId('recruitment-desktop');
-        fireEvent.click(within(desktop).getByText('Kowalski'));
-
-        await waitFor(() => {
-            expect(screen.getByText(/Historia rozmów/i)).toBeInTheDocument();
-        });
-
-        // Both history entries should be visible
-        expect(screen.getByText('Anna')).toBeInTheDocument();
-        expect(screen.getByText('Jan')).toBeInTheDocument();
-    });
-
-    it('latest interview result shown in table cell', async () => {
-        const candidate = makeCandidate({
-            interviewHistory: [
-                { result: 'success', recordedBy: 'Anna', recordedAt: '2026-05-02T10:00:00.000Z' },
-            ],
-        });
-        mockGetCandidates.mockResolvedValue([candidate]);
-        render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
-
-        await waitFor(() => {
-            const desktop = screen.getByTestId('recruitment-desktop');
-            expect(within(desktop).getByText(/Udana/)).toBeInTheDocument();
+            const img = screen.getByAltText('Paszport') as HTMLImageElement;
+            expect(img).toBeInTheDocument();
+            expect(img.src).toBe('https://example.com/photo.jpg');
         });
     });
 });

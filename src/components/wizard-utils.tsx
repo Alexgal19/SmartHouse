@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
     Camera, Loader2, X, CalendarIcon, ChevronRight, Check, Bed,
 } from 'lucide-react';
@@ -324,9 +323,9 @@ export type WizardAddressItem = {
 
 export function buildAddressItems(
     addresses: Address[],
-    activeEmployees: { address: string; roomNumber: string; status: string }[],
-    activeNonEmployees: { address: string; roomNumber: string; status: string }[],
-    activeBokResidents: { address: string; roomNumber: string; status: string; dismissDate: string | null; sendDate: string | null }[],
+    activeEmployees: { address: string; roomNumber: string }[],
+    activeNonEmployees: { address: string; roomNumber: string }[],
+    activeBokResidents: { address: string; roomNumber: string }[],
 ): WizardAddressItem[] {
     return addresses
         .filter((a) => a.isActive)

@@ -11,6 +11,9 @@ export async function DELETE(
     if (!session.isLoggedIn) {
         return NextResponse.json({ error: 'Nieautoryzowany dostęp.' }, { status: 401 });
     }
+    if (!session.isAdmin && !session.isDriver) {
+        return NextResponse.json({ error: 'Brak uprawnień.' }, { status: 403 });
+    }
     // allow admin or non-driver (recruiter); pure drivers cannot delete
     if (!session.isAdmin && session.isDriver) {
         return NextResponse.json({ error: 'Brak uprawnień.' }, { status: 403 });
@@ -40,6 +43,9 @@ export async function PATCH(
     const session = await getSession();
     if (!session.isLoggedIn) {
         return NextResponse.json({ error: 'Nieautoryzowany dostęp.' }, { status: 401 });
+    }
+    if (!session.isAdmin && !session.isDriver) {
+        return NextResponse.json({ error: 'Brak uprawnień.' }, { status: 403 });
     }
 
     const { id } = params;

@@ -1,6 +1,6 @@
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, NonEmployee, DeductionReason, NotificationType, Coordinator, BokResident, ControlCard } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, NonEmployee, DeductionReason, NotificationType, Coordinator, BokResident, ControlCard, ControlCardChangeLogEntry, StartList, OdbiorEntry, OdbiorType, Candidate, InterviewResult } from '../types';
 import { revalidatePath } from 'next/cache';
 import {
     getSheet,
@@ -18,6 +18,24 @@ import {
     withTimeout,
     addControlCard as addControlCardToSheet,
     updateControlCard as updateControlCardInSheet,
+    getStartLists as getStartListsFromSheet,
+    getControlCards as getControlCardsFromSheet,
+    upsertStartList as upsertStartListInSheet,
+    getOdbiorEntries as getOdbiorEntriesFromSheet,
+    addOdbiorEntry as addOdbiorEntryToSheet,
+    updateOdbiorEntry as updateOdbiorEntryInSheet,
+    deleteOdbiorEntry as deleteOdbiorEntryFromSheet,
+    deleteBokResidentById as deleteBokResidentByIdFromSheet,
+    invalidateOdbiorEntriesCache,
+    getCandidates as getCandidatesFromSheet,
+    addCandidate as addCandidateToSheet,
+    updateCandidate as updateCandidateInSheet,
+    deleteCandidate as deleteCandidateFromSheet,
+    invalidateCandidatesCache,
+    addCandidateDemand as addCandidateDemandToSheet,
+    getCandidateDemands as getCandidateDemandsFromSheet,
+    updateCandidateDemand as updateCandidateDemandInSheet,
+    appendInterviewResult as appendInterviewResultToSheet,
 } from './sheets';
 import { format, isValid, getDaysInMonth, parseISO, differenceInDays, max, min, parse as dateFnsParse, lastDayOfMonth } from 'date-fns';
 
@@ -26,6 +44,21 @@ import * as XLSX from 'xlsx';
 import { adminMessaging } from './firebase-admin';
 import { batchPromises } from './utils';
 import admin from 'firebase-admin';
+import { getSession } from './auth';
+
+/** Wymaga aktywnej sesji — rzuca jeśli niezalogowany. */
+async function requireSession() {
+    const session = await getSession();
+    if (!session.isLoggedIn) throw new Error('Nieautoryzowany dostęp.');
+    return session;
+}
+
+/** Wymaga sesji admina — rzuca jeśli brak uprawnień. */
+async function requireAdmin() {
+    const session = await requireSession();
+    if (!session.isAdmin) throw new Error('Brak uprawnień administratora.');
+    return session;
+}
 
 const EMPLOYEE_HEADERS = [
     'id', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'gender', 'address', 'ownAddress', 'roomNumber',
@@ -41,13 +74,13 @@ const NON_EMPLOYEE_HEADERS = [
 ];
 
 const BOK_RESIDENT_HEADERS = [
-    'id', 'role', 'firstName', 'lastName', 'fullName', 'coordinatorId', 'nationality', 'address', 'roomNumber',
-    'zaklad', 'gender', 'checkInDate', 'checkOutDate', 'returnStatus', 'status', 'comments', 'sendDate', 'dismissDate'
+    'id', 'firstName', 'lastName', 'fullName', 'nationality', 'locality', 'address', 'roomNumber',
+    'gender', 'passportNumber', 'checkInDate', 'checkOutDate', 'comments'
 ];
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
 const SHEET_NAME_NON_EMPLOYEES = 'NonEmployees';
-const SHEET_NAME_BOK_RESIDENTS = 'BokResidents';
+const SHEET_NAME_BOK_RESIDENTS = 'BOK';
 const SHEET_NAME_NOTIFICATIONS = 'Powiadomienia';
 const SHEET_NAME_AUDIT_LOG = 'AuditLog';
 const SHEET_NAME_ADDRESSES = 'Addresses';
@@ -179,8 +212,8 @@ const serializeNotification = (notification: Notification): Record<string, strin
     };
 };
 
-const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'isDriver', 'departments', 'password', 'visibilityMode', 'pushSubscription'];
-const ADDRESS_HEADERS = ['id', 'locality', 'name', 'coordinatorIds', 'isActive'];
+const COORDINATOR_HEADERS = ['uid', 'name', 'isAdmin', 'isDriver', 'isRekrutacja', 'departments', 'password', 'visibilityMode', 'pushSubscription'];
+const ADDRESS_HEADERS = ['id', 'locality', 'name', 'coordinatorIds', 'isActive', 'noMetersRequired'];
 const AUDIT_LOG_HEADERS = ['timestamp', 'actorId', 'actorName', 'action', 'targetType', 'targetId', 'details'];
 
 
@@ -297,7 +330,7 @@ const deserializeEmployee = (row: Record<string, unknown>): Employee | null => {
         contractEndDate: safeFormat(plainObject.contractEndDate),
         departureReportDate: safeFormat(plainObject.departureReportDate),
         comments: (plainObject.comments || '') as string,
-        status: plainObject.status as 'active' | 'dismissed' || 'active',
+        status: plainObject.status === 'dismissed' ? 'dismissed' : 'active',
         depositReturned: depositReturned,
         depositReturnAmount: plainObject.depositReturnAmount ? parseFloat(plainObject.depositReturnAmount as string) : null,
         deductionRegulation: plainObject.deductionRegulation ? parseFloat(plainObject.deductionRegulation as string) : null,
@@ -328,6 +361,7 @@ const writeToAuditLog = async (actorId: string, actorName: string, action: strin
 };
 
 const FIELD_LABELS: Record<string, string> = {
+    // Wspólne
     firstName: "Imię",
     lastName: "Nazwisko",
     coordinatorId: "Koordynator",
@@ -339,8 +373,48 @@ const FIELD_LABELS: Record<string, string> = {
     zaklad: "Zakład",
     checkInDate: "Data zameldowania",
     checkOutDate: "Data wymeldowania",
+    comments: "Komentarz",
     status: "Status",
+    // Pracownik
+    contractStartDate: "Data rozpoczęcia umowy",
+    contractEndDate: "Data zakończenia umowy",
+    departureReportDate: "Data raportu wyjazdu",
+    // Mieszkaniec NZ
+    paymentType: "Typ płatności",
+    paymentAmount: "Kwota płatności",
+    // Mieszkaniec BOK
+    role: "Rola",
+    sendDate: "Data wysyłki",
+    dismissDate: "Data zwolnienia",
+    returnStatus: "Status powrotu",
 };
+
+const VALUE_LABELS: Record<string, string> = {
+    active: "Aktywny",
+    dismissed: "Zwolniony",
+    male: "Mężczyzna",
+    female: "Kobieta",
+};
+
+const toNotificationDisplayStr = (key: string, value: unknown, coordinators: { uid: string; name: string }[]): string | null => {
+    if (value === null || value === undefined || value === '') return null;
+    const areDates = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate',
+        'departureReportDate', 'sendDate', 'dismissDate', 'deductionEntryDate'].includes(key);
+    if (key === 'coordinatorId') {
+        return coordinators.find(c => c.uid === value)?.name || (value as string);
+    }
+    if (areDates && isValid(new Date(value as string))) {
+        return format(new Date(value as string), 'dd-MM-yyyy');
+    }
+    const strVal = String(value);
+    return VALUE_LABELS[strVal] ?? strVal;
+};
+
+// Pola pomijane w powiadomieniach (zbyt techniczne lub finansowe)
+const NOTIFICATION_SKIP_FIELDS = new Set([
+    'id', 'fullName', 'deductionReason', 'depositReturned', 'depositReturnAmount',
+    'deductionRegulation', 'deductionNo4Months', 'deductionNo30Days', 'deductionEntryDate',
+]);
 
 const generateSmartNotificationMessage = (
     actorName: string,
@@ -349,7 +423,7 @@ const generateSmartNotificationMessage = (
     changes: NotificationChange[] = []
 ): { message: string, type: NotificationType } => {
     const entityType = 'role' in entity ? 'mieszkańca BOK' : ('zaklad' in entity && entity.zaklad ? 'pracownika' : 'mieszkańca');
-    const entityFullName = `${entity.firstName} ${entity.lastName}`.trim();
+    const entityFullName = entity.fullName || `${entity.firstName} ${entity.lastName}`.trim();
     let message = '';
     let type: NotificationType = 'info';
 
@@ -363,7 +437,7 @@ const generateSmartNotificationMessage = (
             type = 'destructive';
             break;
         case 'automatycznie zwolnił':
-            message = `Automatycznie zwolnił ${entityType} ${entityFullName} z powodu upływu daty wymeldowania.`;
+            message = `automatycznie zwolnił ${entityType} ${entityFullName} z powodu upływu daty wymeldowania.`;
             type = 'warning';
             break;
         case 'wysłał do Ciebie':
@@ -418,13 +492,13 @@ const createNotification = async (
             field: FIELD_LABELS[c.field] || c.field
         }));
 
-        let recipientId: string;
+        let recipientId: string | undefined;
         const notificationAction = action;
 
         if (recipientIdOverride) {
             recipientId = recipientIdOverride;
         } else {
-            recipientId = entity.coordinatorId;
+            recipientId = 'coordinatorId' in entity ? entity.coordinatorId : undefined;
         }
 
         const recipient = settings.coordinators.find(c => c.uid === recipientId);
@@ -449,11 +523,11 @@ const createNotification = async (
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
         await withTimeout(sheet.addRow(serializeNotification(notification)), TIMEOUT_MS, 'sheet.addRow(Notification)');
 
-        const entityType = 'role' in entity ? 'bok-resident' : ('zaklad' in entity && entity.zaklad ? 'pracownika' : 'mieszkańca');
+        const entityType = !('coordinatorId' in entity) ? 'bok-resident' : ('zaklad' in entity && entity.zaklad ? 'pracownika' : 'mieszkańca');
         await writeToAuditLog(actor.uid, actor.name, action, entityType, entity.id, changes);
 
         // Send Push Notification (only if explicitly enabled)
-        if (sendPush) {
+        if (sendPush && recipientId) {
             const pushTitle = 'Powiadomienie SmartHouse';
             const pushLink = `/dashboard?view=employees&edit=${entity.id}`;
             const pushResult = await sendPushNotification(recipientId, pushTitle, message, pushLink);
@@ -495,12 +569,17 @@ const validateRoomAvailability = (settings: Settings, addressName: string | unde
             if (room && room.isActive === false) {
                 throw new Error(`Pokój "${room.name}" w adresie "${address.name}" jest wyłączony z użytku.`);
             }
+            if (room && room.isLocked === true) {
+                throw new Error(`Pokój "${room.name}" w adresie "${address.name}" jest zablokowany i nie można do niego przypisywać mieszkańców.`);
+            }
         }
     }
 }
 
-export async function addEmployee(employeeData: Partial<Employee>, actorUid: string): Promise<Employee> {
+export async function addEmployee(employeeData: Partial<Employee>, _actorUid: string): Promise<Employee> {
     try {
+        const session = await requireSession();
+        const actorUid = session.uid;
         const settings = await getSettings();
         const actor = findActor(actorUid, settings);
 
@@ -549,8 +628,10 @@ export async function addEmployee(employeeData: Partial<Employee>, actorUid: str
 }
 
 
-export async function updateEmployee(employeeId: string, updates: Partial<Employee>, actorUid: string): Promise<Employee> {
+export async function updateEmployee(employeeId: string, updates: Partial<Employee>, _actorUid: string): Promise<Employee> {
     try {
+        const session = await requireSession();
+        const actorUid = session.uid;
         if (updates.status === 'dismissed' && !updates.checkOutDate) {
             throw new Error('Data wymeldowania jest wymagana przy zwalnianiu pracownika.');
         }
@@ -603,42 +684,16 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
         const { ...dbUpdates } = updates;
 
         for (const key in dbUpdates) {
+            if (NOTIFICATION_SKIP_FIELDS.has(key)) continue;
+
             const typedKey = key as keyof Employee;
-            const oldValue = originalEmployee[typedKey];
-            const newValue = dbUpdates[typedKey];
+            const oldValStr = toNotificationDisplayStr(key, originalEmployee[typedKey], settings.coordinators);
+            const newValStr = toNotificationDisplayStr(key, dbUpdates[typedKey], settings.coordinators);
 
-            const areDates = ['checkInDate', 'checkOutDate', 'contractStartDate', 'contractEndDate', 'departureReportDate', 'deductionEntryDate'].includes(key);
+            // Pomiń jeśli faktycznie nic się nie zmieniło (uwzględnia null/undefined/"")
+            if (oldValStr === newValStr) continue;
 
-            let oldValStr: string | null = null;
-            if (oldValue !== null && oldValue !== undefined) {
-                if (key === 'deductionReason' && Array.isArray(oldValue)) {
-                    oldValStr = JSON.stringify(oldValue);
-                } else if (key === 'coordinatorId') {
-                    oldValStr = settings.coordinators.find(c => c.uid === oldValue)?.name || (oldValue as string);
-                } else if (areDates && isValid(new Date(oldValue as string))) {
-                    oldValStr = format(new Date(oldValue as string), 'dd-MM-yyyy');
-                } else {
-                    oldValStr = String(oldValue);
-                }
-            }
-
-            let newValStr: string | null = null;
-            if (newValue !== null && newValue !== undefined) {
-                if (key === 'deductionReason' && Array.isArray(newValue)) {
-                    newValStr = JSON.stringify(newValue);
-                } else if (key === 'coordinatorId') {
-                    newValStr = settings.coordinators.find(c => c.uid === newValue)?.name || (newValue as string);
-                } else if (areDates && isValid(new Date(newValue as string))) {
-                    newValStr = format(new Date(newValue as string), 'dd-MM-yyyy');
-                }
-                else {
-                    newValStr = String(newValue);
-                }
-            }
-
-            if (oldValStr !== newValStr) {
-                changes.push({ field: typedKey, oldValue: oldValStr || 'Brak', newValue: newValStr || 'Brak' });
-            }
+            changes.push({ field: typedKey, oldValue: oldValStr ?? 'Brak', newValue: newValStr ?? 'Brak' });
         }
 
         const serialized = serializeEmployee(updatedEmployeeData);
@@ -663,6 +718,7 @@ export async function updateEmployee(employeeId: string, updates: Partial<Employ
 
 export async function deleteEmployee(employeeId: string, _actorUid: string): Promise<string> {
     try {
+        await requireSession();
         const addressHistory = await getRawAddressHistory();
 
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
@@ -673,6 +729,7 @@ export async function deleteEmployee(employeeId: string, _actorUid: string): Pro
             throw new Error('Employee not found for deletion.');
         }
 
+        // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: single employee delete by ID, approved by owner
         await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(Employee)');
 
         const historyToDelete = (addressHistory || []).filter(h => h.employeeId === employeeId);
@@ -689,8 +746,10 @@ export async function deleteEmployee(employeeId: string, _actorUid: string): Pro
     }
 }
 
-export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id' | 'status'>, actorUid: string): Promise<NonEmployee> {
+export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id' | 'status'>, _actorUid: string): Promise<NonEmployee> {
     try {
+        const session = await requireSession();
+        const actorUid = session.uid;
         const settings = await getSettings();
         const actor = findActor(actorUid, settings);
 
@@ -730,8 +789,10 @@ export async function addNonEmployee(nonEmployeeData: Omit<NonEmployee, 'id' | '
     }
 }
 
-export async function updateNonEmployee(id: string, updates: Partial<NonEmployee>, actorUid: string): Promise<NonEmployee> {
+export async function updateNonEmployee(id: string, updates: Partial<NonEmployee>, _actorUid: string): Promise<NonEmployee> {
     try {
+        const session = await requireSession();
+        const actorUid = session.uid;
         if (updates.status === 'dismissed' && !updates.checkOutDate) {
             throw new Error('Data wymeldowania jest wymagana przy zwalnianiu osoby niebędącej pracownikiem.');
         }
@@ -778,23 +839,15 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
         const changes: NotificationChange[] = [];
 
         for (const key in updates) {
+            if (NOTIFICATION_SKIP_FIELDS.has(key)) continue;
+
             const typedKey = key as keyof NonEmployee;
-            const oldValue = originalNonEmployee[typedKey];
-            const newValue = updates[typedKey];
+            const oldValStr = toNotificationDisplayStr(key, originalNonEmployee[typedKey], settings.coordinators);
+            const newValStr = toNotificationDisplayStr(key, updates[typedKey], settings.coordinators);
 
-            let oldValStr: string | null = null;
-            if (oldValue !== null && oldValue !== undefined) {
-                oldValStr = String(oldValue);
-            }
+            if (oldValStr === newValStr) continue;
 
-            let newValStr: string | null = null;
-            if (newValue !== null && newValue !== undefined) {
-                newValStr = String(newValue);
-            }
-
-            if (oldValStr !== newValStr) {
-                changes.push({ field: typedKey, oldValue: oldValStr || 'Brak', newValue: newValStr || 'Brak' });
-            }
+            changes.push({ field: typedKey, oldValue: oldValStr ?? 'Brak', newValue: newValStr ?? 'Brak' });
         }
 
         const serializedData = serializeNonEmployee(updatedNonEmployeeData);
@@ -819,12 +872,14 @@ export async function updateNonEmployee(id: string, updates: Partial<NonEmployee
 
 export async function deleteNonEmployee(id: string, _actorUid: string): Promise<string> {
     try {
+        await requireSession();
         const addressHistory = await getRawAddressHistory();
 
         const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
         const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(NonEmployee)');
         const row = rows.find((row) => row.get('id') === id);
         if (row) {
+            // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: single non-employee delete by ID, approved by owner
             await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(NonEmployee)');
 
             const historyToDelete = (addressHistory || []).filter(h => h.employeeId === id);
@@ -842,8 +897,10 @@ export async function deleteNonEmployee(id: string, _actorUid: string): Promise<
     }
 }
 
-export async function addBokResident(residentData: Omit<BokResident, 'id'>, actorUid: string): Promise<BokResident> {
+export async function addBokResident(residentData: Omit<BokResident, 'id'>, _actorUid: string): Promise<BokResident> {
     try {
+        const session = await requireSession();
+        const actorUid = session.uid;
         const settings = await getSettings();
         const actor = findActor(actorUid, settings);
 
@@ -870,8 +927,10 @@ export async function addBokResident(residentData: Omit<BokResident, 'id'>, acto
     }
 }
 
-export async function updateBokResident(id: string, updates: Partial<BokResident>, actorUid: string): Promise<BokResident> {
+export async function updateBokResident(id: string, updates: Partial<BokResident>, _actorUid: string): Promise<BokResident> {
     try {
+        const session = await requireSession();
+        const actorUid = session.uid;
         const settings = await getSettings();
         const actor = findActor(actorUid, settings);
 
@@ -893,13 +952,15 @@ export async function updateBokResident(id: string, updates: Partial<BokResident
         const changes: NotificationChange[] = [];
 
         for (const key in updates) {
-            const typedKey = key as keyof BokResident;
-            const oldValue = originalResident[typedKey];
-            const newValue = updates[typedKey];
+            if (NOTIFICATION_SKIP_FIELDS.has(key)) continue;
 
-            if (String(oldValue) !== String(newValue)) {
-                changes.push({ field: typedKey, oldValue: String(oldValue || 'Brak'), newValue: String(newValue || 'Brak') });
-            }
+            const typedKey = key as keyof BokResident;
+            const oldValStr = toNotificationDisplayStr(key, originalResident[typedKey], settings.coordinators);
+            const newValStr = toNotificationDisplayStr(key, updates[typedKey], settings.coordinators);
+
+            if (oldValStr === newValStr) continue;
+
+            changes.push({ field: typedKey, oldValue: oldValStr ?? 'Brak', newValue: newValStr ?? 'Brak' });
         }
 
         const serialized = serializeBokResident(updatedResident);
@@ -923,6 +984,7 @@ export async function updateBokResident(id: string, updates: Partial<BokResident
 
 export async function deleteBokResident(id: string, _actorUid: string): Promise<string> {
     try {
+        await requireSession();
         // Clean up associated address history entries (same as deleteEmployee/deleteNonEmployee)
         const addressHistory = await getRawAddressHistory();
 
@@ -931,6 +993,7 @@ export async function deleteBokResident(id: string, _actorUid: string): Promise<
         const row = rows.find(r => r.get('id') === id);
 
         if (row) {
+            // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: single BOK resident delete by ID, approved by owner
             await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(BokResident)');
 
             const historyToDelete = (addressHistory || []).filter(h => h.employeeId === id);
@@ -953,6 +1016,7 @@ export async function deleteBokResident(id: string, _actorUid: string): Promise<
 export async function bulkDeleteBokResidents(ids: string[], _actorUid: string): Promise<void> {
     if (ids.length === 0) return;
     try {
+        await requireAdmin();
         const addressHistory = await getRawAddressHistory();
         const sheet = await getSheet(SHEET_NAME_BOK_RESIDENTS, BOK_RESIDENT_HEADERS);
         const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(BokResident)');
@@ -964,6 +1028,7 @@ export async function bulkDeleteBokResidents(ids: string[], _actorUid: string): 
         for (let i = rowsToDelete.length - 1; i >= 0; i--) {
             const row = rowsToDelete[i];
             const rowId = row.get('id') as string;
+            // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: bulk BOK resident delete by IDs list, approved by owner
             await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(BokResident)');
             const historyToDelete = (addressHistory || []).filter(h => h.employeeId === rowId);
             for (const historyEntry of historyToDelete) {
@@ -981,6 +1046,7 @@ export async function bulkDeleteBokResidents(ids: string[], _actorUid: string): 
 
 export async function bulkDeleteEmployees(status: 'active' | 'dismissed', _actorUid: string): Promise<void> {
     try {
+        await requireAdmin();
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows();
         const rowsToDelete = rows.filter((row) => row.get('status') === status);
@@ -991,6 +1057,7 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', _actor
 
         // Deleting rows in reverse order to avoid index shifting issues
         for (let i = rowsToDelete.length - 1; i >= 0; i--) {
+            // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: bulk employee delete by status, approved by owner
             await withTimeout(rowsToDelete[i].delete(), TIMEOUT_MS, 'row.delete(Employee)');
         }
 
@@ -1003,8 +1070,10 @@ export async function bulkDeleteEmployees(status: 'active' | 'dismissed', _actor
     }
 }
 
-export async function bulkDeleteEmployeesByCoordinator(coordinatorId: string, actorUid: string): Promise<void> {
+export async function bulkDeleteEmployeesByCoordinator(coordinatorId: string, _actorUid: string): Promise<void> {
     try {
+        const session = await requireAdmin();
+        const actorUid = session.uid;
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows();
         const rowsToDelete = rows.filter((row) => row.get('coordinatorId') === coordinatorId);
@@ -1014,6 +1083,7 @@ export async function bulkDeleteEmployeesByCoordinator(coordinatorId: string, ac
         }
 
         for (let i = rowsToDelete.length - 1; i >= 0; i--) {
+            // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: bulk employee delete by coordinator, approved by owner
             await withTimeout(rowsToDelete[i].delete(), TIMEOUT_MS, 'row.delete(Employee)');
         }
 
@@ -1037,8 +1107,10 @@ export async function bulkDeleteEmployeesByCoordinator(coordinatorId: string, ac
     }
 }
 
-export async function bulkDeleteEmployeesByDepartment(department: string, actorUid: string): Promise<void> {
+export async function bulkDeleteEmployeesByDepartment(department: string, _actorUid: string): Promise<void> {
     try {
+        const session = await requireAdmin();
+        const actorUid = session.uid;
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows();
         const rowsToDelete = rows.filter((row) => row.get('zaklad') === department);
@@ -1048,6 +1120,7 @@ export async function bulkDeleteEmployeesByDepartment(department: string, actorU
         }
 
         for (let i = rowsToDelete.length - 1; i >= 0; i--) {
+            // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: bulk employee delete by department, approved by owner
             await withTimeout(rowsToDelete[i].delete(), TIMEOUT_MS, 'row.delete(Employee)');
         }
 
@@ -1072,6 +1145,7 @@ export async function bulkDeleteEmployeesByDepartment(department: string, actorU
 
 export async function transferEmployees(fromCoordinatorId: string, toCoordinatorId: string): Promise<void> {
     try {
+        await requireAdmin();
         const sheet = await getSheet(SHEET_NAME_EMPLOYEES, EMPLOYEE_HEADERS);
         const rows = await sheet.getRows();
         const rowsToTransfer = rows.filter((row) => row.get('coordinatorId') === fromCoordinatorId);
@@ -1100,10 +1174,10 @@ export async function transferEmployees(fromCoordinatorId: string, toCoordinator
     }
 }
 
-export async function checkAndUpdateStatuses(actorUid?: string): Promise<{ updated: number }> {
+export async function checkAndUpdateStatuses(_actorUid?: string): Promise<{ updated: number }> {
     try {
         const settings = await getSettings();
-        const actor = findActor(actorUid || 'system', settings);
+        const actor = findActor('system', settings);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         let updatedCount = 0;
@@ -1153,43 +1227,8 @@ export async function checkAndUpdateStatuses(actorUid?: string): Promise<{ updat
             }
         }
 
-        // Process BOK residents
-        const bokSheet = await getSheet(SHEET_NAME_BOK_RESIDENTS, BOK_RESIDENT_HEADERS);
-        const bokRows = await bokSheet.getRows();
-        for (const row of bokRows) {
-            const status = String(row.get('status') || '');
-            const dismissDateString = String(row.get('dismissDate') || '');
-
-            if ((status === 'active' || status === '' || !status) && dismissDateString) {
-                // Support multiple date formats stored in Google Sheets
-                let dismissDate = parseISO(dismissDateString);
-                if (!isValid(dismissDate)) {
-                    dismissDate = dateFnsParse(dismissDateString, 'dd-MM-yyyy HH:mm', new Date());
-                }
-                if (!isValid(dismissDate)) {
-                    dismissDate = dateFnsParse(dismissDateString, 'dd-MM-yyyy', new Date());
-                }
-                if (!isValid(dismissDate)) {
-                    dismissDate = dateFnsParse(dismissDateString, 'dd.MM.yyyy', new Date());
-                }
-                if (!isValid(dismissDate)) {
-                    dismissDate = new Date(dismissDateString);
-                }
-
-                if (isValid(dismissDate) && dismissDate < today) {
-                    row.set('status', 'dismissed');
-                    await withTimeout(row.save(), TIMEOUT_MS, 'row.save(BokResident)');
-                    updatedCount++;
-                    const originalResident = { ...row.toObject(), ...splitFullName(row.get('fullName')) } as BokResident;
-                    await createNotification(actor, 'automatycznie zwolnił', originalResident, settings, undefined, [
-                        { field: 'status', oldValue: status || 'active', newValue: 'dismissed' }
-                    ], false);
-                }
-            }
-        }
-
         if (updatedCount > 0) {
-            await Promise.all([Promise.all([invalidateEmployeesCache(), invalidateNonEmployeesCache()]), invalidateBokResidentsCache()]);
+            await Promise.all([invalidateEmployeesCache(), invalidateNonEmployeesCache()]);
             revalidatePath('/dashboard');
         }
 
@@ -1213,6 +1252,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
         // Batch deletion
         // Use a separate function for deletion to avoid 'then' on undefined in tests if delete returns void/undefined
         await batchPromises(toDeleteRows.reverse(), 5, async (row) => {
+            // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: batch settings cleanup (orphaned rows), approved by owner
             await withTimeout(row.delete(), TIMEOUT_MS, `row.delete(${sheetName})`);
         }, 100);
 
@@ -1223,6 +1263,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
     };
 
     try {
+        await requireAdmin();
         // Parallelize simple lists update with concurrency control (max 3 concurrent)
         const simpleListTasks: (() => Promise<void>)[] = [];
         if (newSettings.nationalities) simpleListTasks.push(() => updateSimpleList(SHEET_NAME_NATIONALITIES, newSettings.nationalities!));
@@ -1239,7 +1280,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
         if (newSettings.addresses) {
             await (async () => {
                 const addressesSheet = await getSheet(SHEET_NAME_ADDRESSES, ADDRESS_HEADERS);
-                const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity', 'isActive']);
+                const roomsSheet = await getSheet(SHEET_NAME_ROOMS, ['id', 'addressId', 'name', 'capacity', 'isActive', 'isLocked']);
 
                 const currentAddressRows = await withTimeout(addressesSheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Addresses)');
                 const toAddAddr = newSettings.addresses!.filter(a => !currentAddressRows.some(r => r.get('id') === a.id));
@@ -1264,11 +1305,18 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
 
                         const newIsActive = addr.isActive !== false;
 
+                        const noMetersRaw = row.get('noMetersRequired');
+                        const currentNoMeters = (noMetersRaw === undefined || noMetersRaw === null || String(noMetersRaw).trim() === '')
+                            ? false
+                            : String(noMetersRaw).toUpperCase() === 'TRUE';
+                        const newNoMeters = addr.noMetersRequired === true;
+
                         return (
                             currentName !== addr.name ||
                             currentLocality !== addr.locality ||
                             currentCoordinatorIds !== newCoordinatorIds ||
-                            currentIsActive !== newIsActive
+                            currentIsActive !== newIsActive ||
+                            currentNoMeters !== newNoMeters
                         );
                     });
 
@@ -1279,6 +1327,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                 const safeBatchToDeleteAddr = sortedToDeleteAddr.slice(0, 20);
 
                 await batchPromises(safeBatchToDeleteAddr, 1, async (row) => {
+                    // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: address cleanup during settings update, approved by owner
                     await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(Addresses)');
                 }, 100);
 
@@ -1292,6 +1341,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                     row.set('locality', addr.locality);
                     row.set('coordinatorIds', newCoordinatorIds);
                     row.set('isActive', newIsActive);
+                    row.set('noMetersRequired', addr.noMetersRequired === true ? 'TRUE' : 'FALSE');
                     await withTimeout(row.save(), TIMEOUT_MS, 'row.save(Addresses)');
                 }, 100);
 
@@ -1302,6 +1352,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                         locality: addr.locality,
                         coordinatorIds: (addr.coordinatorIds || []).join(','),
                         isActive: addr.isActive !== false ? 'TRUE' : 'FALSE',
+                        noMetersRequired: addr.noMetersRequired === true ? 'TRUE' : 'FALSE',
                     })), { raw: false, insert: true }), TIMEOUT_MS, 'sheet.addRows(Addresses)');
                 }
 
@@ -1318,13 +1369,20 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                     .filter(room => {
                         const row = currentRoomRows.find(r => r.get('id') === room.id)!;
                         const newIsActive = room.isActive !== false ? 'TRUE' : 'FALSE';
+                        const newIsLocked = room.isLocked === true ? 'TRUE' : 'FALSE';
                         const newCapacity = String(room.capacity);
+
+                        const currentIsLockedRaw = row.get('isLocked');
+                        const currentIsLocked = (currentIsLockedRaw === undefined || currentIsLockedRaw === null || String(currentIsLockedRaw).trim() === '')
+                            ? 'FALSE'
+                            : String(currentIsLockedRaw).toUpperCase();
 
                         return (
                             row.get('addressId') !== room.addressId ||
                             row.get('name') !== room.name ||
                             String(row.get('capacity')) !== newCapacity ||
-                            String(row.get('isActive')).toUpperCase() !== newIsActive
+                            String(row.get('isActive')).toUpperCase() !== newIsActive ||
+                            currentIsLocked !== newIsLocked
                         );
                     });
 
@@ -1335,6 +1393,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                 const safeBatchToDeleteRooms = sortedToDeleteRooms.slice(0, 50);
 
                 await batchPromises(safeBatchToDeleteRooms, 1, async (row) => {
+                    // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: room cleanup during settings update, approved by owner
                     await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(Rooms)');
                 }, 100);
 
@@ -1348,6 +1407,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                     row.set('name', room.name);
                     row.set('capacity', newCapacity);
                     row.set('isActive', newIsActive);
+                    row.set('isLocked', room.isLocked === true ? 'TRUE' : 'FALSE');
                     await withTimeout(row.save(), TIMEOUT_MS, 'row.save(Rooms)');
                 }, 100);
 
@@ -1362,6 +1422,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                             name: room.name,
                             capacity: String(room.capacity),
                             isActive: room.isActive !== false ? 'TRUE' : 'FALSE',
+                            isLocked: room.isLocked === true ? 'TRUE' : 'FALSE',
                         })), { raw: false, insert: true }), TIMEOUT_MS, 'sheet.addRows(Rooms)');
                         if (i + chunkSize < toAddRooms.length) await new Promise(r => setTimeout(r, 200));
                     }
@@ -1379,6 +1440,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
 
                 // Throttled Coordinator Deletions
                 await batchPromises(toDeleteRows.reverse(), 1, async (row) => {
+                    // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: coordinator cleanup during settings update, approved by owner
                     await withTimeout(row.delete(), TIMEOUT_MS, 'row.delete(Coordinators)');
                 }, 1000);
 
@@ -1388,6 +1450,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                     if (row) {
                         const newIsAdmin = String(coord.isAdmin).toUpperCase();
                         const newIsDriver = String(coord.isDriver || false).toUpperCase();
+                        const newIsRekrutacja = String(coord.isRekrutacja || false).toUpperCase();
                         const newDepartments = coord.departments.join(',');
                         const newVisibilityMode = coord.visibilityMode || 'department';
 
@@ -1395,6 +1458,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                         if (row.get('name') !== coord.name) hasChanges = true;
                         if (String(row.get('isAdmin')).toUpperCase() !== newIsAdmin) hasChanges = true;
                         if (String(row.get('isDriver') || 'FALSE').toUpperCase() !== newIsDriver) hasChanges = true;
+                        if (String(row.get('isRekrutacja') || 'FALSE').toUpperCase() !== newIsRekrutacja) hasChanges = true;
                         if (row.get('departments') !== newDepartments) hasChanges = true;
                         if (row.get('visibilityMode') !== newVisibilityMode) hasChanges = true;
                         if (coord.password && row.get('password') !== coord.password) hasChanges = true;
@@ -1403,6 +1467,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                             row.set('name', coord.name);
                             row.set('isAdmin', newIsAdmin);
                             row.set('isDriver', newIsDriver);
+                            row.set('isRekrutacja', newIsRekrutacja);
                             row.set('departments', newDepartments);
                             row.set('visibilityMode', newVisibilityMode);
                             if (coord.password) {
@@ -1419,6 +1484,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
                         departments: c.departments.join(','),
                         isAdmin: String(c.isAdmin).toUpperCase(),
                         isDriver: String(c.isDriver || false).toUpperCase(),
+                        isRekrutacja: String(c.isRekrutacja || false).toUpperCase(),
                         visibilityMode: c.visibilityMode || 'department',
                         pushSubscription: c.pushSubscription || '',
                     })), { raw: false, insert: true }), TIMEOUT_MS, 'sheet.addRows(Coordinators)');
@@ -1442,6 +1508,7 @@ export async function updateSettings(newSettings: Partial<Settings>): Promise<Pa
 
 export async function updateNotificationReadStatus(notificationId: string, isRead: boolean): Promise<void> {
     try {
+        await requireSession();
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
         const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Notifications)');
         const row = rows.find((r) => r.get('id') === notificationId);
@@ -1460,7 +1527,9 @@ export async function updateNotificationReadStatus(notificationId: string, isRea
 
 export async function clearAllNotifications(): Promise<void> {
     try {
+        await requireSession();
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
+        // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: clear all notifications (user-triggered bulk action), approved by owner
         await withTimeout(sheet.clearRows(), TIMEOUT_MS, 'sheet.clearRows(Notifications)');
         revalidatePath('/dashboard');
     } catch (e: unknown) {
@@ -1471,10 +1540,12 @@ export async function clearAllNotifications(): Promise<void> {
 
 export async function deleteNotification(notificationId: string): Promise<void> {
     try {
+        await requireSession();
         const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
         const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Notifications)');
         const rowToDelete = rows.find(row => row.get('id') === notificationId);
         if (rowToDelete) {
+            // eslint-disable-next-line no-restricted-syntax -- INTENTIONAL: single notification delete by ID, approved by owner
             await withTimeout(rowToDelete.delete(), TIMEOUT_MS, 'row.delete(Notifications)');
             revalidatePath('/dashboard');
         } else {
@@ -1489,6 +1560,7 @@ export async function deleteNotification(notificationId: string): Promise<void> 
 
 export async function generateAccommodationReport(year: number, month: number, coordinatorId: string, includeAddressHistory: boolean): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
     try {
+        await requireSession();
         const [employees, settings, addressHistory] = await Promise.all([
             getEmployees(),
             getSettings(),
@@ -1604,6 +1676,7 @@ export async function generateAccommodationReport(year: number, month: number, c
 
 export async function generateNzCostsReport(year: number, month: number, coordinatorId: string): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
     try {
+        await requireSession();
         const [nonEmployees, settings] = await Promise.all([getNonEmployees(), getSettings()]);
         const coordinatorMap = new Map(settings.coordinators.map((c: { uid: string; name: string; }) => [c.uid, c.name]));
 
@@ -1685,6 +1758,7 @@ export async function generateNzCostsReport(year: number, month: number, coordin
 
 export async function generateDeductionsReport(year: number, month: number, coordinatorId: string): Promise<{ success: boolean; fileContent?: string; fileName?: string; message?: string; }> {
     try {
+        await requireSession();
         const [employees, settings] = await Promise.all([getEmployees(), getSettings()]);
         const coordinatorMap = new Map(settings.coordinators.map((c: { uid: string; name: string; }) => [c.uid, c.name]));
 
@@ -1844,7 +1918,7 @@ const processImport = async (
 
                 const employeeRequiredFields = ['imię', 'nazwisko', 'koordynator', 'data zameldowania', 'zakład', 'miejscowość', 'adres', 'pokój', 'narodowość'];
                 const nonEmployeeRequiredFields = ['imię', 'nazwisko', 'koordynator', 'data zameldowania', 'miejscowość', 'adres', 'pokój', 'narodowość'];
-                const bokRequiredFields = ['imię', 'nazwisko', 'koordynator', 'data zameldowania', 'miejscowość', 'adres', 'pokój', 'narodowość', 'rola', 'zakład'];
+                const bokRequiredFields = ['imię', 'nazwisko', 'data zameldowania', 'miejscowość', 'adres', 'pokój', 'narodowość'];
 
                 const requiredFields = type === 'employee' ? employeeRequiredFields : (type === 'bok-resident' ? bokRequiredFields : nonEmployeeRequiredFields);
 
@@ -1861,11 +1935,14 @@ const processImport = async (
                 const firstName = (normalizedRow['imię'] as string)?.trim();
                 const lastName = (normalizedRow['nazwisko'] as string)?.trim();
 
-                const coordinatorName = (normalizedRow['koordynator'] as string)?.toLowerCase().trim();
-                const coordinatorId = coordinatorName ? coordinatorMap.get(coordinatorName) : '';
-                if (!coordinatorId) {
-                    errors.push(`Wiersz ${rowNum} (${lastName}): Nie znaleziono koordynatora '${normalizedRow['koordynator']}'.`);
-                    continue;
+                let coordinatorId = '';
+                if (type !== 'bok-resident') {
+                    const coordinatorName = (normalizedRow['koordynator'] as string)?.toLowerCase().trim();
+                    coordinatorId = coordinatorName ? coordinatorMap.get(coordinatorName) || '' : '';
+                    if (!coordinatorId) {
+                        errors.push(`Wiersz ${rowNum} (${lastName}): Nie znaleziono koordynatora '${normalizedRow['koordynator']}'.`);
+                        continue;
+                    }
                 }
 
                 const checkInDate = safeFormat(normalizedRow['data zameldowania']);
@@ -1896,6 +1973,18 @@ const processImport = async (
                     status: 'active' as const,
                 };
 
+                // BOK residents have a simpler schema
+                if (type === 'bok-resident') {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    delete (baseRecord as any).coordinatorId;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    delete (baseRecord as any).checkOutDate;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    delete (baseRecord as any).departureReportDate;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    delete (baseRecord as any).status;
+                }
+
                 let newRecord: Employee | NonEmployee | BokResident;
 
                 if (type === 'employee') {
@@ -1916,14 +2005,8 @@ const processImport = async (
                 } else if (type === 'bok-resident') {
                     newRecord = {
                         ...baseRecord,
-                        role: (normalizedRow['rola'] as string)?.trim() || 'Kierowca',
-                        zaklad: (normalizedRow['zakład'] as string)?.trim() || '',
-                        returnStatus: (normalizedRow['opcja powrotu'] as string)?.trim() || 'Brak',
-                        sendDate: null,
-                        dismissDate: null,
+                        passportNumber: (normalizedRow['nr paszportu'] as string)?.trim() || '',
                     } as BokResident;
-                    // remove non-bok fields to satisfy type if needed
-                    if ('departureReportDate' in newRecord) delete (newRecord as any).departureReportDate;
                 } else {
                     newRecord = {
                         ...baseRecord,
@@ -1942,7 +2025,7 @@ const processImport = async (
                     entityFirstName: newRecord.firstName,
                     entityLastName: newRecord.lastName,
                     actorName: actor.name,
-                    recipientId: newRecord.coordinatorId,
+                    recipientId: 'coordinatorId' in newRecord ? newRecord.coordinatorId : actor.uid,
                     createdAt: new Date().toISOString(),
                     isRead: false,
                     type: notificationType,
@@ -1960,9 +2043,9 @@ const processImport = async (
                 const serializedRecords = (recordsToAdd as Employee[]).map(rec => serializeEmployee(rec));
                 await withTimeout(sheet.addRows(serializedRecords), TIMEOUT_MS, 'sheet.addRows(Employees)');
             } else if (type === 'bok-resident') {
-                const sheet = await getSheet('BokResidents', BOK_RESIDENT_HEADERS);
+                const sheet = await getSheet('BOK', BOK_RESIDENT_HEADERS);
                 const serializedRecords = (recordsToAdd as BokResident[]).map(rec => serializeBokResident(rec));
-                await withTimeout(sheet.addRows(serializedRecords), TIMEOUT_MS, 'sheet.addRows(BokResidents)');
+                await withTimeout(sheet.addRows(serializedRecords), TIMEOUT_MS, 'sheet.addRows(BOK)');
             } else {
                 const sheet = await getSheet(SHEET_NAME_NON_EMPLOYEES, NON_EMPLOYEE_HEADERS);
                 const serializedRecords = (recordsToAdd as NonEmployee[]).map(rec => serializeNonEmployee(rec));
@@ -2004,20 +2087,25 @@ const processImport = async (
     }
 }
 
-export async function importEmployeesFromExcel(fileContent: string, actorUid: string, settings: Settings): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
-    return processImport(fileContent, actorUid, 'employee', settings);
+export async function importEmployeesFromExcel(fileContent: string, _actorUid: string, settings: Settings): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
+    const session = await requireSession();
+    return processImport(fileContent, session.uid, 'employee', settings);
 }
 
-export async function importNonEmployeesFromExcel(fileContent: string, actorUid: string, settings: Settings): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
-    return processImport(fileContent, actorUid, 'non-employee', settings);
+export async function importNonEmployeesFromExcel(fileContent: string, _actorUid: string, settings: Settings): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
+    const session = await requireSession();
+    return processImport(fileContent, session.uid, 'non-employee', settings);
 }
 
-export async function importBokResidentsFromExcel(fileContent: string, actorUid: string, settings: Settings): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
-    return processImport(fileContent, actorUid, 'bok-resident', settings);
+export async function importBokResidentsFromExcel(fileContent: string, _actorUid: string, settings: Settings): Promise<{ importedCount: number; totalRows: number; errors: string[] }> {
+    const session = await requireSession();
+    return processImport(fileContent, session.uid, 'bok-resident', settings);
 }
 
-export async function deleteAddressHistoryEntry(historyId: string, actorUid: string): Promise<void> {
+export async function deleteAddressHistoryEntry(historyId: string, _actorUid: string): Promise<void> {
     try {
+        const session = await requireSession();
+        const actorUid = session.uid;
         const settings = await getSettings();
         const actor = findActor(actorUid, settings);
 
@@ -2034,7 +2122,9 @@ export async function deleteAddressHistoryEntry(historyId: string, actorUid: str
 }
 
 
-export async function migrateFullNames(actorUid: string): Promise<{ migratedEmployees: number; migratedNonEmployees: number }> {
+export async function migrateFullNames(_actorUid: string): Promise<{ migratedEmployees: number; migratedNonEmployees: number }> {
+    const session = await requireAdmin();
+    const actorUid = session.uid;
     const settings = await getSettings();
     const actor = findActor(actorUid, settings);
 
@@ -2086,6 +2176,7 @@ export async function migrateFullNames(actorUid: string): Promise<{ migratedEmpl
 
 export async function updateCoordinatorSubscription(coordinatorId: string, subscription: string | null): Promise<void> {
     try {
+        await requireSession();
         const sheet = await getSheet(SHEET_NAME_COORDINATORS, COORDINATOR_HEADERS);
         const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Coordinators)');
         const coordinatorRow = rows.find(row => row.get('uid') === coordinatorId);
@@ -2110,6 +2201,16 @@ export async function sendPushNotification(
     body: string,
     link?: string
 ): Promise<{ success: boolean; error?: string }> {
+    return sendPushNotificationWithData(coordinatorId, title, body, link);
+}
+
+export async function sendPushNotificationWithData(
+    coordinatorId: string,
+    title: string,
+    body: string,
+    link?: string,
+    extraData?: Record<string, string>
+): Promise<{ success: boolean; error?: string }> {
     try {
         const settings = await getSettings();
         const coordinator = settings.coordinators.find((c: { uid: string; pushSubscription?: string | null }) => c.uid === coordinatorId);
@@ -2130,16 +2231,13 @@ export async function sendPushNotification(
         if (adminMessaging) {
             const message = {
                 token: token,
-                // Brak pola `notification` — zapobiega podwójnym powiadomieniom.
-                // FCM z polem `notification` wyświetla powiadomienie automatycznie,
-                // a service worker onBackgroundMessage wyświetlałby je drugi raz.
-                // Używamy tylko `data` — service worker sam wyświetla powiadomienie.
                 data: {
                     title: title,
                     body: body,
                     url: link || '/dashboard',
                     icon: '/icon-192x192.png',
-                    badge: '/icon-192x192.png'
+                    badge: '/icon-192x192.png',
+                    ...(extraData || {}),
                 },
                 webpush: {
                     headers: {
@@ -2160,7 +2258,6 @@ export async function sendPushNotification(
 
         return { success: true };
     } catch (e: unknown) {
-        // Auto-cleanup expired/invalid FCM tokens (410 Gone, token-not-registered)
         const errorCode = (e as { code?: string })?.code;
         if (
             errorCode === 'messaging/registration-token-not-registered' ||
@@ -2190,6 +2287,7 @@ export async function saveControlCardAction(
     cardData: Omit<ControlCard, 'id'>
 ): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
+        await requireSession();
         const id = await addControlCardToSheet(cardData);
         revalidatePath('/dashboard');
         return { success: true, id };
@@ -2199,12 +2297,103 @@ export async function saveControlCardAction(
     }
 }
 
+function generateControlCardDiff(
+    oldCard: ControlCard,
+    updates: Partial<Omit<ControlCard, 'id' | 'addressId' | 'coordinatorId' | 'controlMonth'>>
+): string[] {
+    const changes: string[] = [];
+
+    if (updates.cleanKitchen !== undefined && updates.cleanKitchen !== oldCard.cleanKitchen) {
+        changes.push(`Ocena kuchni: ${oldCard.cleanKitchen} → ${updates.cleanKitchen}`);
+    }
+    if (updates.cleanBathroom !== undefined && updates.cleanBathroom !== oldCard.cleanBathroom) {
+        changes.push(`Ocena łazienki: ${oldCard.cleanBathroom} → ${updates.cleanBathroom}`);
+    }
+    if (updates.appliancesWorking !== undefined && updates.appliancesWorking !== oldCard.appliancesWorking) {
+        changes.push(`Sprzęty: ${oldCard.appliancesWorking ? 'działają' : 'nie działają'} → ${updates.appliancesWorking ? 'działają' : 'nie działają'}`);
+    }
+
+    if (updates.roomRatings !== undefined) {
+        const oldMap = new Map(oldCard.roomRatings.map(r => [r.roomId, r]));
+        const newMap = new Map((updates.roomRatings as typeof oldCard.roomRatings).map(r => [r.roomId, r]));
+        for (const [roomId, newR] of newMap) {
+            const oldR = oldMap.get(roomId);
+            if (!oldR) continue;
+            if (newR.rating !== oldR.rating) {
+                changes.push(`Pokój ${oldR.roomName}: ocena ${oldR.rating} → ${newR.rating}`);
+            }
+            if ((newR.comment || '') !== (oldR.comment || '')) {
+                changes.push(`Pokój ${oldR.roomName}: zmieniono komentarz`);
+            }
+        }
+    }
+
+    if (updates.comments !== undefined) {
+        const oldComments = oldCard.comments || [];
+        const newComments = updates.comments as typeof oldComments;
+        const oldIds = new Set(oldComments.map(c => c.id));
+        const newIds = new Set(newComments.map(c => c.id));
+        const added = newComments.filter(c => !oldIds.has(c.id));
+        const removed = oldComments.filter(c => !newIds.has(c.id));
+        for (const c of added) {
+            changes.push(`Dodano komentarz: "${c.text.slice(0, 40)}${c.text.length > 40 ? '...' : ''}"`);
+        }
+        for (const c of removed) {
+            changes.push(`Usunięto komentarz: "${c.text.slice(0, 40)}${c.text.length > 40 ? '...' : ''}"`);
+        }
+        for (const newC of newComments) {
+            const oldC = oldComments.find(c => c.id === newC.id);
+            if (!oldC) continue;
+            if (newC.text !== oldC.text) {
+                changes.push(`Zmieniono komentarz: "${oldC.text.slice(0, 30)}${oldC.text.length > 30 ? '...' : ''}" → "${newC.text.slice(0, 30)}${newC.text.length > 30 ? '...' : ''}"`);
+            }
+            if (newC.status !== oldC.status) {
+                changes.push(`Status komentarza: ${oldC.status} → ${newC.status}`);
+            }
+        }
+    }
+
+    if (updates.kitchenPhotoUrls !== undefined) {
+        const oldLen = (oldCard.kitchenPhotoUrls || []).length;
+        const newLen = (updates.kitchenPhotoUrls as string[] || []).length;
+        if (newLen !== oldLen) changes.push(`Zdjęcia kuchni: ${oldLen} → ${newLen}`);
+    }
+    if (updates.bathroomPhotoUrls !== undefined) {
+        const oldLen = (oldCard.bathroomPhotoUrls || []).length;
+        const newLen = (updates.bathroomPhotoUrls as string[] || []).length;
+        if (newLen !== oldLen) changes.push(`Zdjęcia łazienki: ${oldLen} → ${newLen}`);
+    }
+    if (updates.meterPhotoUrls !== undefined) {
+        const oldLen = (oldCard.meterPhotoUrls || []).length;
+        const newLen = (updates.meterPhotoUrls as string[] || []).length;
+        if (newLen !== oldLen) changes.push(`Zdjęcia liczników: ${oldLen} → ${newLen}`);
+    }
+
+    return changes;
+}
+
 export async function editControlCardAction(
     cardId: string,
     updates: Partial<Omit<ControlCard, 'id' | 'addressId' | 'coordinatorId' | 'controlMonth'>>
 ): Promise<{ success: boolean; error?: string }> {
     try {
-        await updateControlCardInSheet(cardId, { ...updates, fillDate: new Date().toISOString().slice(0, 10) });
+        const session = await requireSession();
+        const cards = await getControlCardsFromSheet();
+        const oldCard = cards.find(c => c.id === cardId);
+        if (!oldCard) throw new Error('Control card not found');
+
+        const diff = generateControlCardDiff(oldCard, updates);
+        const newChangeLog: ControlCardChangeLogEntry[] = [...(oldCard.changeLog || [])];
+        if (diff.length > 0) {
+            newChangeLog.push({
+                timestamp: new Date().toISOString(),
+                userId: session.uid,
+                userName: session.name,
+                changes: diff.join('; '),
+            });
+        }
+
+        await updateControlCardInSheet(cardId, { ...updates, changeLog: newChangeLog, fillDate: new Date().toISOString().slice(0, 10) });
         revalidatePath('/dashboard');
         return { success: true };
     } catch (error) {
@@ -2213,9 +2402,86 @@ export async function editControlCardAction(
     }
 }
 
+export async function updateControlCardCommentStatusAction(
+    cardId: string,
+    commentId: string,
+    newStatus: import('@/types').ControlCardCommentStatus
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const session = await requireSession();
+        // Fetch existing card to get comments array
+        const cards = await getControlCardsFromSheet();
+        const card = cards.find((c) => c.id === cardId);
+        if (!card) return { success: false, error: 'Control card not found' };
+
+        const oldComment = card.comments.find(c => c.id === commentId);
+        
+        if (oldComment) {
+            // Update general comment status
+            const updatedComments = card.comments.map((c) =>
+                c.id === commentId ? { ...c, status: newStatus } : c
+            );
+
+            const newChangeLog: ControlCardChangeLogEntry[] = [...(card.changeLog || [])];
+            newChangeLog.push({
+                timestamp: new Date().toISOString(),
+                userId: session.uid,
+                userName: session.name,
+                changes: `Status komentarza "${oldComment.text.slice(0, 30)}${oldComment.text.length > 30 ? '...' : ''}": ${oldComment.status} → ${newStatus}`,
+            });
+
+            await updateControlCardInSheet(cardId, { comments: updatedComments, changeLog: newChangeLog });
+            revalidatePath('/dashboard');
+            return { success: true };
+        } else {
+            // Check if it's a room comment
+            const oldRoomRating = card.roomRatings?.find(r => r.roomId === commentId);
+            if (oldRoomRating) {
+                const updatedRoomRatings = card.roomRatings.map(r => 
+                    r.roomId === commentId ? { ...r, status: newStatus } : r
+                );
+
+                const newChangeLog: ControlCardChangeLogEntry[] = [...(card.changeLog || [])];
+                const oldStatusStr = oldRoomRating.status || 'Nie przyjęte';
+                const commentText = oldRoomRating.comment || '';
+                newChangeLog.push({
+                    timestamp: new Date().toISOString(),
+                    userId: session.uid,
+                    userName: session.name,
+                    changes: `Status komentarza w pokoju "${oldRoomRating.roomName}" ("${commentText.slice(0, 30)}${commentText.length > 30 ? '...' : ''}"): ${oldStatusStr} → ${newStatus}`,
+                });
+
+                await updateControlCardInSheet(cardId, { roomRatings: updatedRoomRatings, changeLog: newChangeLog });
+                revalidatePath('/dashboard');
+                return { success: true };
+            }
+
+            return { success: false, error: 'Comment not found' };
+        }
+    } catch (error) {
+        console.error('Error updating comment status:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+export async function deleteControlCardAction(
+    cardId: string,
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        await requireSession();
+        await updateControlCardInSheet(cardId, { deleted: true });
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error deleting control card:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
 // --- Image processing ---
 export async function uploadControlCardPhotoAction(base64Image: string, fileName: string, mimeType: string): Promise<{ url: string; error?: string }> {
     try {
+        await requireSession();
         if (!base64Image || !base64Image.includes('base64,')) {
             return { url: '', error: 'Nieprawidłowy format zdjęcia' };
         }
@@ -2247,8 +2513,587 @@ export async function uploadControlCardPhotoAction(base64Image: string, fileName
         });
         
         return { url: publicUrl };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
         console.error('Error during image upload to Firebase Storage:', error);
         return { url: '', error: error.message || 'Błąd serwera przy próbie odebrania zdjęcia' };
     }
 }
+
+// --- Start-list (per-address property characteristics) ---
+
+export async function getStartListsAction(): Promise<StartList[]> {
+    try {
+        await requireSession();
+        return await getStartListsFromSheet();
+    } catch (error) {
+        console.error('Error getting start lists:', error);
+        return [];
+    }
+}
+
+export async function setAddressNoMetersRequiredAction(
+    addressId: string,
+    value: boolean
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        await requireAdmin();
+        const sheet = await getSheet(SHEET_NAME_ADDRESSES, ADDRESS_HEADERS);
+        const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, 'sheet.getRows(Addresses/noMeters)');
+        const row = rows.find(r => r.get('id') === addressId);
+        if (!row) return { success: false, error: 'Nie znaleziono adresu' };
+
+        row.set('noMetersRequired', value ? 'TRUE' : 'FALSE');
+        await withTimeout(row.save(), TIMEOUT_MS, 'row.save(Addresses/noMeters)');
+        invalidateSettingsCache();
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (err) {
+        return { success: false, error: err instanceof Error ? err.message : 'Nieznany błąd' };
+    }
+}
+
+export async function saveStartListAction(
+    data: Omit<StartList, 'updatedAt'>
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        await requireSession();
+        await upsertStartListInSheet({ ...data, updatedAt: new Date().toISOString() });
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error saving start list:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+// --- Odbior entries (kierowca/rekrutacja form-first BOK intake) ---
+
+export async function getOdbiorEntriesAction(): Promise<OdbiorEntry[]> {
+    try {
+        await requireSession();
+        return await getOdbiorEntriesFromSheet();
+    } catch (error) {
+        console.error('Error getting odbior entries:', error);
+        return [];
+    }
+}
+
+type OdbiorEntryCreateInput = {
+    type: OdbiorType;
+    firstName: string;
+    lastName: string;
+    nationality: string;
+    gender: string;
+    passportNumber: string;
+    addressId: string;
+    addressName: string;
+    roomNumber: string;
+    date: string;
+    createdBy: string;
+    createdById: string;
+    sourceOdbiorId?: string;
+    passportPhotoUrl?: string;
+};
+
+export async function addOdbiorEntryAction(
+    input: OdbiorEntryCreateInput
+): Promise<{ success: boolean; error?: string; entry?: OdbiorEntry }> {
+    try {
+        const session = await requireSession();
+        // Override createdById from session to prevent client spoofing
+        input = { ...input, createdById: session.uid };
+        if (!input.firstName || !input.lastName) {
+            return { success: false, error: 'Imię i nazwisko są wymagane.' };
+        }
+        const entry: OdbiorEntry = {
+            id: `odb-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            type: input.type,
+            status: 'nowy',
+            firstName: input.firstName.trim(),
+            lastName: input.lastName.trim(),
+            nationality: input.nationality.trim(),
+            gender: input.gender.trim(),
+            passportNumber: input.passportNumber.trim(),
+            addressId: input.addressId,
+            addressName: input.addressName,
+            roomNumber: input.roomNumber,
+            date: input.date,
+            createdAt: new Date().toISOString(),
+            createdBy: input.createdBy,
+            createdById: input.createdById,
+            convertedToBokId: null,
+        };
+        await addOdbiorEntryToSheet(entry);
+        revalidatePath('/dashboard');
+        return { success: true, entry };
+    } catch (error) {
+        console.error('Error adding odbior entry:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+export async function updateOdbiorEntryAction(
+    id: string,
+    updates: Partial<OdbiorEntry>
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        await requireSession();
+        await updateOdbiorEntryInSheet(id, updates);
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error updating odbior entry:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+export async function convertOdbiorToBokAction(
+    id: string,
+    _actorUid: string
+): Promise<{ success: boolean; error?: string; bokId?: string }> {
+    try {
+        const session = await requireSession();
+        const actorUid = session.uid;
+        const entries = await getOdbiorEntriesFromSheet();
+        const entry = entries.find(e => e.id === id);
+        if (!entry) return { success: false, error: 'Wpis Odbiór nie istnieje.' };
+        if (entry.status === 'przekonwertowany') {
+            return { success: false, error: 'Ten wpis został już przekonwertowany.' };
+        }
+
+        const bok = await addBokResident({
+            firstName: entry.firstName,
+            lastName: entry.lastName,
+            fullName: `${entry.lastName} ${entry.firstName}`.trim(),
+            nationality: entry.nationality,
+            address: entry.addressName,
+            roomNumber: entry.roomNumber,
+            gender: entry.gender,
+            passportNumber: entry.passportNumber,
+            checkInDate: entry.date,
+            comments: '',
+        }, actorUid);
+
+        await updateOdbiorEntryInSheet(id, { status: 'przekonwertowany', convertedToBokId: bok.id });
+        await invalidateOdbiorEntriesCache();
+        revalidatePath('/dashboard');
+        return { success: true, bokId: bok.id };
+    } catch (error) {
+        console.error('Error converting odbior entry to BOK:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+// Single action for the Odbiór "Zakwaterowanie" tile:
+// creates a BOK resident immediately AND logs an OdbiorEntry as history.
+export async function updateOdbiorZakwaterowanieAction(
+    odbiorId: string,
+    bokId: string | null,
+    updates: {
+        firstName: string;
+        lastName: string;
+        nationality: string;
+        gender: string;
+        passportNumber: string;
+        addressId: string;
+        addressName: string;
+        roomNumber: string;
+        date: string;
+    },
+    _actorUid: string,
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const session = await requireSession();
+        const actorUid = session.uid;
+        // Update OdbiorEntry
+        await updateOdbiorEntryInSheet(odbiorId, {
+            firstName: updates.firstName.trim(),
+            lastName: updates.lastName.trim(),
+            nationality: updates.nationality.trim(),
+            gender: updates.gender.trim(),
+            passportNumber: updates.passportNumber.trim(),
+            addressId: updates.addressId,
+            addressName: updates.addressName,
+            roomNumber: updates.roomNumber,
+            date: updates.date,
+        });
+        await invalidateOdbiorEntriesCache();
+
+        // Update linked BokResident
+        if (bokId) {
+            await updateBokResident(bokId, {
+                firstName: updates.firstName.trim(),
+                lastName: updates.lastName.trim(),
+                fullName: `${updates.lastName.trim()} ${updates.firstName.trim()}`.trim(),
+                nationality: updates.nationality.trim(),
+                gender: updates.gender.trim(),
+                passportNumber: updates.passportNumber.trim(),
+                address: updates.addressName,
+                roomNumber: updates.roomNumber,
+                checkInDate: updates.date,
+            }, actorUid);
+        }
+
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error updating odbior entry:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+export async function addOdbiorZakwaterowanieAction(
+    input: OdbiorEntryCreateInput,
+): Promise<{ success: boolean; error?: string; bokId?: string; entry?: OdbiorEntry; bokResident?: BokResident }> {
+    try {
+        const session = await requireSession();
+        // Override createdById from session to prevent client spoofing
+        input = { ...input, createdById: session.uid };
+        if (!input.firstName || !input.lastName) {
+            return { success: false, error: 'Imię i nazwisko są wymagane.' };
+        }
+
+        const bok = await addBokResident({
+            firstName: input.firstName.trim(),
+            lastName: input.lastName.trim(),
+            fullName: `${input.lastName.trim()} ${input.firstName.trim()}`.trim(),
+            nationality: input.nationality.trim(),
+            address: input.addressName,
+            roomNumber: input.roomNumber,
+            gender: input.gender.trim(),
+            passportNumber: input.passportNumber.trim(),
+            checkInDate: input.date,
+            comments: '',
+        }, input.createdById);
+
+        const entry: OdbiorEntry = {
+            id: `odb-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            type: input.type,
+            status: 'przekonwertowany',
+            firstName: input.firstName.trim(),
+            lastName: input.lastName.trim(),
+            nationality: input.nationality.trim(),
+            gender: input.gender.trim(),
+            passportNumber: input.passportNumber.trim(),
+            addressId: input.addressId,
+            addressName: input.addressName,
+            roomNumber: input.roomNumber,
+            date: input.date,
+            createdAt: new Date().toISOString(),
+            createdBy: input.createdBy,
+            createdById: input.createdById,
+            convertedToBokId: bok.id,
+            sourceOdbiorId: input.sourceOdbiorId || null,
+        };
+        await addOdbiorEntryToSheet(entry);
+        await invalidateOdbiorEntriesCache();
+
+        // Also add as a candidate in Recruitment
+        const candidate: Candidate = {
+            id: `cand-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            firstName: input.firstName.trim(),
+            lastName: input.lastName.trim(),
+            passportNumber: input.passportNumber.trim(),
+            passportPhotoUrl: input.passportPhotoUrl || undefined,
+            sourceOdbiorId: input.sourceOdbiorId || null,
+            status: 'zakwaterowana',
+            createdAt: new Date().toISOString(),
+            interviewHistory: [],
+        };
+        await addCandidateToSheet(candidate);
+        await invalidateCandidatesCache();
+
+        revalidatePath('/dashboard');
+        return { success: true, bokId: bok.id, entry, bokResident: bok };
+    } catch (error) {
+        console.error('Error adding odbior zakwaterowanie:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+export async function deleteOdbiorEntryAction(
+    odbiorId: string,
+    bokId: string | null,
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        await requireSession();
+        // Delete the OdbiorEntry row
+        await deleteOdbiorEntryFromSheet(odbiorId);
+
+        // If this entry has a linked BOK resident, delete that too
+        if (bokId) {
+            try {
+                await deleteBokResidentByIdFromSheet(bokId);
+                await invalidateBokResidentsCache();
+            } catch (bokErr) {
+                // BOK may have already been deleted — log but don't fail
+                console.warn(`[deleteOdbiorEntryAction] BOK resident ${bokId} not found or already deleted:`, bokErr);
+            }
+        }
+
+        await invalidateOdbiorEntriesCache();
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error deleting odbior entry:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+// ─── Kandydaci (Rekrutacja) ─────────────────────────────────────────────────
+
+export async function getCandidatesAction(): Promise<Candidate[]> {
+    try {
+        await requireSession();
+        return await getCandidatesFromSheet();
+    } catch (error) {
+        console.error('Error getting candidates:', error);
+        return [];
+    }
+}
+
+type CandidateCreateInput = {
+    firstName: string;
+    lastName: string;
+    passportNumber: string;
+    passportPhotoUrl?: string;
+    sourceOdbiorId?: string | null;
+};
+
+export async function addCandidateAction(
+    input: CandidateCreateInput
+): Promise<{ success: boolean; error?: string; candidate?: Candidate }> {
+    try {
+        await requireSession();
+        if (!input.firstName?.trim() || !input.lastName?.trim()) {
+            return { success: false, error: 'Imię i nazwisko są wymagane.' };
+        }
+        const candidate: Candidate = {
+            id: `cand-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            firstName: input.firstName.trim(),
+            lastName: input.lastName.trim(),
+            passportNumber: input.passportNumber?.trim() || '',
+            passportPhotoUrl: input.passportPhotoUrl || undefined,
+            sourceOdbiorId: input.sourceOdbiorId || null,
+            status: input.sourceOdbiorId ? 'wdrodze' : 'nowy',
+            createdAt: new Date().toISOString(),
+            interviewHistory: [],
+        };
+        await addCandidateToSheet(candidate);
+        revalidatePath('/dashboard');
+        return { success: true, candidate };
+    } catch (error) {
+        console.error('Error adding candidate:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+export async function updateCandidateAction(
+    id: string,
+    updates: Partial<Candidate>
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        await requireSession();
+        await updateCandidateInSheet(id, updates);
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error updating candidate:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+export async function deleteCandidateAction(
+    id: string,
+    _actorUid: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const session = await requireSession();
+        if (!session.isAdmin) {
+            return { success: false, error: 'Tylko administrator może usuwać kandydatów.' };
+        }
+        await deleteCandidateFromSheet(id);
+        invalidateCandidatesCache();
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error deleting candidate:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+export async function sendCandidateDemandNotificationAction(
+    candidate: Candidate,
+    estimatedDeliveryTime: string,
+    pickupAddress: string
+): Promise<{ success: boolean; sentCount: number; error?: string; demandId?: string }> {
+    try {
+        const session = await requireSession();
+        const settings = await getSettings();
+        const actor: Coordinator = {
+            uid: session.uid || 'system',
+            name: session.name || 'Rekrutacja',
+            isAdmin: session.isAdmin,
+            departments: [],
+        };
+
+        const targetCoordinators = settings.coordinators.filter(
+            c => (c.isAdmin || c.isDriver || c.isBok) && c.pushSubscription
+        );
+
+        if (targetCoordinators.length === 0) {
+            return { success: false, sentCount: 0, error: 'Żaden admin/kierowca nie ma skonfigurowanych powiadomień PUSH.' };
+        }
+
+        const demandId = `demand-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+        const message = `Zapotrzebowanie na kandydata: ${candidate.firstName} ${candidate.lastName}. Skąd: ${pickupAddress}. Czas dostarczenia: ${estimatedDeliveryTime}`;
+        const pushTitle = '🚨 Zapotrzebowanie na kandydata';
+        const pushLink = `/dashboard?view=recruitment&demandId=${demandId}`;
+
+        // Send all pushes in parallel — don't block each coordinator on the previous one
+        const pushResults = await Promise.all(
+            targetCoordinators.map(coord =>
+                sendPushNotificationWithData(coord.uid, pushTitle, message, pushLink, { demandId })
+            )
+        );
+
+        let sentCount = 0;
+        const sentTo: string[] = [];
+        const sheet = await getSheet(SHEET_NAME_NOTIFICATIONS, NOTIFICATION_HEADERS);
+        for (let i = 0; i < targetCoordinators.length; i++) {
+            const coord = targetCoordinators[i];
+            const pushResult = pushResults[i];
+            const notification: Notification = {
+                id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                message,
+                entityId: candidate.id,
+                entityFirstName: candidate.firstName,
+                entityLastName: candidate.lastName,
+                actorName: actor.name,
+                recipientId: coord.uid,
+                createdAt: new Date().toISOString(),
+                isRead: false,
+                type: 'warning',
+                changes: [],
+            };
+            await withTimeout(sheet.addRow(serializeNotification(notification)), TIMEOUT_MS, 'sheet.addRow(Notification)');
+            if (pushResult.success) {
+                sentCount++;
+                sentTo.push(coord.name);
+            } else {
+                console.warn(`Push notification to ${coord.name} failed:`, pushResult.error);
+            }
+        }
+
+        const demand: import('../types').CandidateDemand = {
+            id: demandId,
+            candidateId: candidate.id,
+            candidateFirstName: candidate.firstName,
+            candidateLastName: candidate.lastName,
+            requestedBy: actor.uid,
+            requestedAt: new Date().toISOString(),
+            status: 'pending',
+            retryCount: 0,
+            sentTo,
+            estimatedDeliveryTime,
+            pickupAddress,
+        };
+        await addCandidateDemandToSheet(demand);
+
+        revalidatePath('/dashboard');
+        return { success: sentCount > 0, sentCount, demandId };
+    } catch (error) {
+        console.error('Error sending candidate demand notification:', error);
+        return { success: false, sentCount: 0, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+export async function acknowledgeCandidateDemandAction(
+    demandId: string,
+    ackBy?: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const acknowledgedBy = ackBy || (await getSession()).uid || 'unknown';
+        await updateCandidateDemandInSheet(demandId, {
+            status: 'acknowledged',
+            acknowledgedBy,
+            acknowledgedAt: new Date().toISOString(),
+        });
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error acknowledging candidate demand:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+export async function getCandidateDemandsAction(): Promise<import('../types').CandidateDemand[]> {
+    try {
+        await requireSession();
+        return await getCandidateDemandsFromSheet();
+    } catch (error) {
+        console.error('Error getting candidate demands:', error);
+        return [];
+    }
+}
+
+export async function retryCandidateDemandsAction(): Promise<{ success: boolean; retried: number; error?: string }> {
+    try {
+        const settings = await getSettings();
+        const demands = await getCandidateDemandsFromSheet();
+        const now = Date.now();
+        const pendingDemands = demands.filter(d =>
+            d.status === 'pending' &&
+            !d.acknowledgedAt &&
+            (now - new Date(d.requestedAt).getTime()) > 5 * 60 * 1000
+        );
+
+        const targetCoordinators = settings.coordinators.filter(
+            c => (c.isAdmin || c.isDriver) && c.pushSubscription
+        );
+
+        let retried = 0;
+        for (const demand of pendingDemands) {
+            if (demand.retryCount >= 3) {
+                await updateCandidateDemandInSheet(demand.id, { status: 'expired' });
+                continue;
+            }
+            const pushTitle = '🚨 [PRZYPOMNIENIE] Zapotrzebowanie na kandydata';
+            const pushLink = `/dashboard?view=recruitment&demandId=${demand.id}`;
+            const message = `Zapotrzebowanie na kandydata: ${demand.candidateFirstName} ${demand.candidateLastName}`;
+            for (const coord of targetCoordinators) {
+                await sendPushNotificationWithData(coord.uid, pushTitle, message, pushLink, { demandId: demand.id });
+            }
+            await updateCandidateDemandInSheet(demand.id, { retryCount: (demand.retryCount || 0) + 1 });
+            retried++;
+        }
+
+        revalidatePath('/dashboard');
+        return { success: true, retried };
+    } catch (error) {
+        console.error('Error retrying candidate demands:', error);
+        return { success: false, retried: 0, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+
+export async function recordInterviewResultAction(
+    candidateId: string,
+    result: 'success' | 'failure'
+): Promise<{ success: boolean; entry?: InterviewResult; error?: string }> {
+    try {
+        const session = await requireSession();
+        const entry: InterviewResult = {
+            result,
+            recordedBy: session.name || session.uid || 'unknown',
+            recordedAt: new Date().toISOString(),
+        };
+        await appendInterviewResultToSheet(candidateId, entry);
+        revalidatePath('/dashboard');
+        return { success: true, entry };
+    } catch (error) {
+        console.error('Error recording interview result:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+    }
+}
+

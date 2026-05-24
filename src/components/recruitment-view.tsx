@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import type { SessionData, Candidate, CandidateDemand, InterviewResult } from "@/types";
+import type { SessionData, Candidate, CandidateDemand, OdbiorEntry, BokResident } from "@/types";
 import { useLanguage } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,10 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { getCandidatesAction, sendCandidateDemandNotificationAction, getCandidateDemandsAction, deleteCandidateAction, acknowledgeCandidateDemandAction, recordInterviewResultAction } from "@/lib/actions";
+import { getCandidatesAction, sendCandidateDemandNotificationAction, getCandidateDemandsAction, deleteCandidateAction, acknowledgeCandidateDemandAction, getOdbiorEntriesAction, addCandidateAction } from "@/lib/actions";
+import { useMainLayout } from "@/components/main-layout";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { useSearchParams, useRouter } from "next/navigation";
+import { Eye } from 'lucide-react';
 import {
     AlertDialog,
     AlertDialogContent,
@@ -32,19 +34,32 @@ import {
 export default function RecruitmentView({ currentUser, activeView }: { currentUser: SessionData; activeView: string }) {
     const { t, dateLocale } = useLanguage();
     const { toast } = useToast();
-    const [candidates, setCandidates] = useState<Candidate[]>([]);
-    const [demands, setDemands] = useState<CandidateDemand[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { allBokResidents, allCandidates, allDemands } = useMainLayout();
+    const [candidates, setCandidates] = useState<Candidate[]>(allCandidates || []);
+    const [demands, setDemands] = useState<CandidateDemand[]>(allDemands || []);
+    const [loading, setLoading] = useState(!(allCandidates && allCandidates.length > 0));
     const isFetchingRef = useRef(false);
+    const candidatesRef = useRef<Candidate[]>(allCandidates || []);
     const [searchQuery, setSearchQuery] = useState("");
     const [sendingId, setSendingId] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [dialogStep, setDialogStep] = useState<'none' | 'confirm' | 'sure'>('none');
     const [targetDemand, setTargetDemand] = useState<CandidateDemand | null>(null);
 
-    // Interview dialog state
-    const [interviewCandidate, setInterviewCandidate] = useState<Candidate | null>(null);
-    const [savingInterview, setSavingInterview] = useState(false);
+    // Candidate detail dialog state
+    const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+
+    const [odbiorEntries, setOdbiorEntries] = useState<OdbiorEntry[]>([]);
+    const [bokSearchQuery, setBokSearchQuery] = useState("");
+    const [bokPassportVisible, setBokPassportVisible] = useState(false);
+    const [passportDialogOpen, setPassportDialogOpen] = useState(false);
+    const [passportInput, setPassportInput] = useState("");
+    const [demandDialogOpen, setDemandDialogOpen] = useState(false);
+    const [demandCandidate, setDemandCandidate] = useState<Candidate | null>(null);
+    const [estimatedTime, setEstimatedTime] = useState("");
+    const [pickupAddress, setPickupAddress] = useState("Brak adresu");
+    const [demandRoomNumber, setDemandRoomNumber] = useState("");
+    const [bokDemandLoading, setBokDemandLoading] = useState(false);
 
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -135,15 +150,26 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
         }
     };
 
-    const handleDemand = async (candidate: Candidate, e: React.MouseEvent) => {
+    const handleDemand = (candidate: Candidate, e: React.MouseEvent) => {
         e.stopPropagation();
-        setSendingId(candidate.id);
+        setDemandCandidate(candidate);
+        setEstimatedTime("");
+        setDemandRoomNumber("");
+        const sourceOdbior = odbiorEntries.find(o => o.id === candidate.sourceOdbiorId);
+        setPickupAddress(sourceOdbior?.addressName || "Brak adresu");
+        setDemandDialogOpen(true);
+    };
+
+    const submitDemand = async () => {
+        if (!demandCandidate) return;
+        setSendingId(demandCandidate.id);
         try {
-            const result = await sendCandidateDemandNotificationAction(candidate);
+            const result = await sendCandidateDemandNotificationAction(demandCandidate, estimatedTime, pickupAddress, demandRoomNumber || undefined);
             if (result.success) {
                 toast({ title: t("candidate.demandSent"), description: t("candidate.demandSentDesc", { count: result.sentCount }) });
                 const updatedDemands = await getCandidateDemandsAction();
                 setDemands(updatedDemands);
+                setDemandDialogOpen(false);
             } else {
                 toast({ variant: "destructive", title: t("candidate.demandError"), description: result.error || "" });
             }
@@ -155,25 +181,58 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
         }
     };
 
-    const loadData = useCallback(async () => {
-        if (isFetchingRef.current) return;
-        isFetchingRef.current = true;
-        setLoading(true);
+    const handleBokDemand = async (bokResident: BokResident) => {
+        setBokDemandLoading(true);
         try {
-            const [candData, demandData] = await Promise.all([
-                getCandidatesAction(),
-                getCandidateDemandsAction(),
-            ]);
-            setCandidates(candData);
-            setDemands(demandData);
+            // Create candidate from BOK resident
+            const result = await addCandidateAction({
+                firstName: bokResident.firstName,
+                lastName: bokResident.lastName,
+                passportNumber: bokResident.passportNumber || '',
+            });
+            if (result.success && result.candidate) {
+                setDemandCandidate(result.candidate);
+                setEstimatedTime("");
+                setDemandRoomNumber(bokResident.roomNumber || "");
+                setPickupAddress(bokResident.address || "Brak adresu");
+                setDemandDialogOpen(true);
+            } else {
+                toast({ variant: "destructive", title: t("common.error"), description: result.error || "Błąd tworzenia kandydata" });
+            }
         } catch (err) {
             console.error(err);
             toast({ variant: "destructive", title: t("common.error"), description: String(err) });
         } finally {
-            isFetchingRef.current = false;
-            setLoading(false);
+            setBokDemandLoading(false);
         }
-    }, [toast, t]);
+    };
+
+    const loadData = useCallback(async () => {
+        if (isFetchingRef.current) return;
+        isFetchingRef.current = true;
+        try {
+            // If context has no data yet, fetch immediately
+            if (!allCandidates || !allDemands) {
+                if (candidates.length === 0) setLoading(true);
+                const [candData, demandData, odbiorData] = await Promise.all([
+                    Promise.resolve(getCandidatesAction()).catch(() => [] as Candidate[]),
+                    Promise.resolve(getCandidateDemandsAction()).catch(() => [] as CandidateDemand[]),
+                    Promise.resolve(getOdbiorEntriesAction()).catch(() => [] as OdbiorEntry[]),
+                ]);
+                setCandidates(candData);
+                candidatesRef.current = candData;
+                setDemands(demandData);
+                setOdbiorEntries(odbiorData);
+                setLoading(false);
+            }
+        } catch (err) {
+            console.error(err);
+            toast({ variant: "destructive", title: t("common.error"), description: String(err) });
+            setLoading(false);
+        } finally {
+            isFetchingRef.current = false;
+        }
+    }, [toast, t, candidates.length, allCandidates, allDemands]);
 
     useEffect(() => {
         if (activeView === 'recruitment') {
@@ -181,10 +240,29 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
         }
     }, [activeView, loadData]);
 
+    // Sync with context data when it arrives
+    useEffect(() => {
+        if (allCandidates && allCandidates.length > 0) {
+            setCandidates(allCandidates);
+            candidatesRef.current = allCandidates;
+            setLoading(false);
+        }
+    }, [allCandidates]);
+
+    useEffect(() => {
+        if (allDemands && allDemands.length > 0) {
+            setDemands(allDemands);
+        }
+    }, [allDemands]);
+
     // Poll demands every 30s so status updates without page refresh
     useEffect(() => {
         if (activeView !== 'recruitment') return;
         const interval = setInterval(async () => {
+            try {
+                const updatedCandidates = await getCandidatesAction();
+                setCandidates(updatedCandidates);
+            } catch { /* ignore */ }
             try {
                 const updated = await getCandidateDemandsAction();
                 setDemands(updated);
@@ -193,41 +271,13 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
         return () => clearInterval(interval);
     }, [activeView]);
 
-    // Interview result handlers
     const handleRowClick = (candidate: Candidate) => {
-        setInterviewCandidate(candidate);
+        setSelectedCandidate(candidate);
     };
 
-    const handleInterviewResult = async (result: 'success' | 'failure') => {
-        if (!interviewCandidate) return;
-        setSavingInterview(true);
-        try {
-            const res = await recordInterviewResultAction(interviewCandidate.id, result);
-            if (res.success && res.entry) {
-                setCandidates(prev => prev.map(c =>
-                    c.id === interviewCandidate.id
-                        ? { ...c, interviewHistory: [...(c.interviewHistory || []), res.entry!] }
-                        : c
-                ));
-                setInterviewCandidate(prev => prev
-                    ? { ...prev, interviewHistory: [...(prev.interviewHistory || []), res.entry!] }
-                    : prev
-                );
-                toast({ title: t("candidate.interviewSaved") });
-            } else {
-                toast({ variant: "destructive", title: t("common.error"), description: res.error || t("candidate.interviewSaveError") });
-            }
-        } catch (err) {
-            console.error(err);
-            toast({ variant: "destructive", title: t("common.error"), description: String(err) });
-        } finally {
-            setSavingInterview(false);
-        }
-    };
-
-    const filteredCandidates = candidates.filter((c) =>
-        c.lastName.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredCandidates = candidates
+        .filter((c) => c.status === 'wdrodze')
+        .filter((c) => c.lastName.toLowerCase().includes(searchQuery.toLowerCase()));
 
     // O(1) demand lookup
     const demandMap = useMemo(() => {
@@ -295,20 +345,16 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                 return <Badge variant="default">{t("candidate.statusWTrakcie")}</Badge>;
             case "zakonczony":
                 return <Badge variant="outline">{t("candidate.statusZakonczony")}</Badge>;
+            case "zakwaterowana":
+                return <Badge variant="default" className="bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100">{t("candidate.statusZakwaterowana")}</Badge>;
+            case "wdrodze":
+                return <Badge variant="secondary">{t("candidate.statusWdrodze")}</Badge>;
             default:
                 return <Badge>{status}</Badge>;
         }
     };
 
-    const interviewBadge = (history: InterviewResult[]) => {
-        if (!history || history.length === 0) return <span className="text-muted-foreground text-sm">—</span>;
-        const last = history[history.length - 1];
-        return last.result === 'success'
-            ? <span className="text-green-600 font-medium text-sm">✅ {t("candidate.interviewResultSuccess")}</span>
-            : <span className="text-destructive font-medium text-sm">❌ {t("candidate.interviewResultFailure")}</span>;
-    };
 
-    const interviewHistoryForCandidate: InterviewResult[] = interviewCandidate?.interviewHistory || [];
 
     return (
         <div className="space-y-6">
@@ -323,7 +369,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                 </div>
             </div>
 
-            {loading ? (
+            {(loading && candidates.length === 0) ? (
                 <Card>
                     <CardHeader>
                         <Skeleton className="h-6 w-1/3" />
@@ -359,9 +405,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                             <TableHead>{t("candidate.passportNumber")}</TableHead>
                                             <TableHead>Status</TableHead>
                                             <TableHead>{t("candidate.dateAdded")}</TableHead>
-                                            <TableHead>{t("candidate.demandStatus")}</TableHead>
-                                            <TableHead>{t("candidate.interviewDialogTitle")}</TableHead>
-                                            <TableHead className="w-[200px]">{t("col.actions")}</TableHead>
+                                            <TableHead className="w-[100px]">{t("col.actions")}</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -375,37 +419,38 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                                 >
                                                     <TableCell className="font-medium">{c.lastName}</TableCell>
                                                     <TableCell>{c.firstName}</TableCell>
-                                                    <TableCell>{c.passportNumber || "-"}</TableCell>
+                                                    <TableCell>
+                                                        {(() => {
+                                                            if (!c.passportNumber) return '-';
+                                                            if (bokPassportVisible) return c.passportNumber;
+                                                            return (
+                                                                <button
+                                                                    className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                                                                    onClick={() => setPassportDialogOpen(true)}
+                                                                >
+                                                                    <Eye className="w-4 h-4" />
+                                                                </button>
+                                                            );
+                                                        })()}
+                                                    </TableCell>
                                                     <TableCell>{statusBadge(c.status)}</TableCell>
                                                     <TableCell>
                                                         {c.createdAt
                                                             ? format(new Date(c.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })
                                                             : "-"}
                                                     </TableCell>
-                                                    <TableCell>{demandStatusBadge(demand)}</TableCell>
-                                                    <TableCell>{interviewBadge(c.interviewHistory)}</TableCell>
                                                     <TableCell>
-                                                        <div className="flex items-center gap-2">
+                                                        {currentUser.isAdmin && (
                                                             <Button
                                                                 size="sm"
-                                                                variant="outline"
-                                                                disabled={sendingId === c.id || demand?.status === 'pending'}
-                                                                onClick={(e) => handleDemand(c, e)}
+                                                                variant="ghost"
+                                                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                                disabled={deletingId === c.id}
+                                                                onClick={(e) => { e.stopPropagation(); handleDelete(c); }}
                                                             >
-                                                                {sendingId === c.id ? t("common.processing") : t("candidate.demandBtn")}
+                                                                {deletingId === c.id ? t("common.processing") : t("common.delete")}
                                                             </Button>
-                                                            {currentUser.isAdmin && (
-                                                                <Button
-                                                                    size="sm"
-                                                                    variant="ghost"
-                                                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                                    disabled={deletingId === c.id}
-                                                                    onClick={(e) => { e.stopPropagation(); handleDelete(c); }}
-                                                                >
-                                                                    {deletingId === c.id ? t("common.processing") : t("common.delete")}
-                                                                </Button>
-                                                            )}
-                                                        </div>
+                                                        )}
                                                     </TableCell>
                                                 </TableRow>
                                             );
@@ -431,7 +476,18 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                             <div>
                                                 <p className="font-semibold text-base">{c.lastName} {c.firstName}</p>
                                                 <p className="text-sm text-muted-foreground">
-                                                    {c.passportNumber || "-"}
+                                                    {(() => {
+                                                        if (!c.passportNumber) return '-';
+                                                        if (bokPassportVisible) return c.passportNumber;
+                                                        return (
+                                                            <button
+                                                                className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                                                                onClick={() => setPassportDialogOpen(true)}
+                                                            >
+                                                                <Eye className="w-4 h-4" />
+                                                            </button>
+                                                        );
+                                                    })()}
                                                 </p>
                                             </div>
                                             {statusBadge(c.status)}
@@ -446,38 +502,19 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                             </span>
                                         </div>
 
-                                        <div className="border-t pt-3">
-                                            <p className="text-xs text-muted-foreground mb-1">{t("candidate.demandStatus")}</p>
-                                            {demandStatusBadge(demand)}
-                                        </div>
-
-                                        <div className="border-t pt-3 flex items-center justify-between">
-                                            <p className="text-xs text-muted-foreground">{t("candidate.interviewDialogTitle")}</p>
-                                            {interviewBadge(c.interviewHistory)}
-                                        </div>
-
-                                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                className="flex-1"
-                                                disabled={sendingId === c.id || demand?.status === 'pending'}
-                                                onClick={(e) => handleDemand(c, e)}
-                                            >
-                                                {sendingId === c.id ? t("common.processing") : t("candidate.demandBtn")}
-                                            </Button>
-                                            {currentUser.isAdmin && (
+                                        {currentUser.isAdmin && (
+                                            <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                                                 <Button
                                                     size="sm"
                                                     variant="ghost"
-                                                    className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
+                                                    className="text-destructive hover:text-destructive hover:bg-destructive/10 flex-1"
                                                     disabled={deletingId === c.id}
                                                     onClick={() => handleDelete(c)}
                                                 >
                                                     {deletingId === c.id ? t("common.processing") : t("common.delete")}
                                                 </Button>
-                                            )}
-                                        </div>
+                                            </div>
+                                        )}
                                     </CardContent>
                                 </Card>
                             );
@@ -486,59 +523,143 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                 </>
             )}
 
-            {/* Interview result dialog */}
-            <Dialog open={!!interviewCandidate} onOpenChange={(open) => { if (!open) setInterviewCandidate(null); }}>
-                <DialogContent className="max-w-md">
+            {/* BOK Residents Search (read-only) */}
+            {allBokResidents && allBokResidents.length > 0 && (
+                <Card className="mt-6" data-testid="bok-search-section">
+                    <CardHeader>
+                        <CardTitle>Wyszukiwanie kandydatow w BOK</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <Input
+                            placeholder="Szukaj po nazwisku lub imieniu..."
+                            value={bokSearchQuery}
+                            onChange={(e) => setBokSearchQuery(e.target.value)}
+                        />
+                        <ScrollArea className="h-[40vh]">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Nazwisko</TableHead>
+                                        <TableHead>Imię</TableHead>
+                                        <TableHead>Data zameldowania</TableHead>
+                                        <TableHead>Nr paszportu</TableHead>
+                                        <TableHead className="w-[160px]">Akcje</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {(() => {
+                                        const query = bokSearchQuery.toLowerCase();
+                                        const activeBokResidents = allBokResidents.filter(r => r.status !== "dismissed");
+                                        const filtered = query
+                                            ? activeBokResidents.filter(r =>
+                                                (r.lastName?.toLowerCase() || '').includes(query) ||
+                                                (r.firstName?.toLowerCase() || '').includes(query) ||
+                                                `${r.lastName} ${r.firstName}`.toLowerCase().includes(query)
+                                              )
+                                            : activeBokResidents.slice(0, 20);
+                                        return filtered.map(r => (
+                                            <TableRow key={r.id}>
+                                                <TableCell className="font-medium">{r.lastName}</TableCell>
+                                                <TableCell>{r.firstName}</TableCell>
+                                                <TableCell>{r.checkInDate ? format(new Date(r.checkInDate), 'dd.MM.yyyy') : '-'}</TableCell>
+                                                <TableCell>
+                                                    {(() => {
+                                                        if (!r.passportNumber) return '-';
+                                                        if (bokPassportVisible) return r.passportNumber;
+                                                        return (
+                                                            <button
+                                                                className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                                                                onClick={() => setPassportDialogOpen(true)}
+                                                            >
+                                                                <Eye className="w-4 h-4" />
+                                                            </button>
+                                                        );
+                                                    })()}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        disabled={bokDemandLoading}
+                                                        onClick={() => handleBokDemand(r)}
+                                                    >
+                                                        {bokDemandLoading ? t("common.loading") : "Zapotrzebowanie"}
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ));
+                                    })()}
+                                </TableBody>
+                            </Table>
+                        </ScrollArea>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Candidate detail dialog */}
+            <Dialog open={!!selectedCandidate} onOpenChange={(open) => { if (!open) setSelectedCandidate(null); }}>
+                <DialogContent className="max-w-sm">
                     <DialogHeader>
                         <DialogTitle>
-                            {interviewCandidate?.lastName} {interviewCandidate?.firstName}
+                            {selectedCandidate?.lastName} {selectedCandidate?.firstName}
                         </DialogTitle>
                     </DialogHeader>
-
-                    <div className="space-y-4">
-                        <p className="text-sm font-medium text-center">{t("candidate.interviewQuestion")}</p>
-                        <div className="flex gap-3">
-                            <Button
-                                className="flex-1 h-14 text-base"
-                                variant="default"
-                                disabled={savingInterview}
-                                onClick={() => handleInterviewResult('success')}
-                            >
-                                ✅ {t("candidate.interviewSuccess")}
-                            </Button>
-                            <Button
-                                className="flex-1 h-14 text-base"
-                                variant="destructive"
-                                disabled={savingInterview}
-                                onClick={() => handleInterviewResult('failure')}
-                            >
-                                ❌ {t("candidate.interviewFailure")}
-                            </Button>
-                        </div>
-
-                        {/* History */}
-                        <div className="border-t pt-3">
-                            <p className="text-xs font-medium text-muted-foreground mb-2">{t("candidate.interviewHistory")}</p>
-                            {interviewHistoryForCandidate.length === 0 ? (
-                                <p className="text-xs text-muted-foreground">{t("candidate.interviewNoHistory")}</p>
-                            ) : (
-                                <div className="space-y-1 max-h-48 overflow-y-auto">
-                                    {[...interviewHistoryForCandidate].reverse().map((entry, i) => (
-                                        <div key={i} className="flex items-center justify-between text-xs py-1 border-b last:border-0">
-                                            <div className="flex items-center gap-2">
-                                                <span>{entry.result === 'success' ? '✅' : '❌'}</span>
-                                                <span className={entry.result === 'success' ? 'text-green-600 font-medium' : 'text-destructive font-medium'}>
-                                                    {t(entry.result === 'success' ? 'candidate.interviewResultSuccess' : 'candidate.interviewResultFailure')}
-                                                </span>
-                                            </div>
-                                            <div className="text-right text-muted-foreground">
-                                                <div>{entry.recordedBy}</div>
-                                                <div>{format(new Date(entry.recordedAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })}</div>
-                                            </div>
-                                        </div>
-                                    ))}
+                    <div className="space-y-3">
+                        {selectedCandidate?.passportPhotoUrl ? (
+                            bokPassportVisible ? (
+                                <div className="rounded-lg overflow-hidden border">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={selectedCandidate.passportPhotoUrl} alt="Paszport" className="w-full object-contain max-h-64" />
                                 </div>
+                            ) : (
+                                <div
+                                    className="rounded-lg border border-dashed flex flex-col items-center justify-center h-32 text-muted-foreground text-sm gap-2 cursor-pointer hover:bg-muted/50 transition-colors"
+                                    onClick={() => setPassportDialogOpen(true)}
+                                >
+                                    <Eye className="w-6 h-6" />
+                                    <span>Kliknij aby zobaczyć zdjęcie paszportu</span>
+                                </div>
+                            )
+                        ) : (
+                            <div className="rounded-lg border border-dashed flex items-center justify-center h-32 text-muted-foreground text-sm">
+                                {t('candidate.noPassportPhoto')}
+                            </div>
+                        )}
+                        <div className="text-sm space-y-1">
+                            {selectedCandidate?.passportNumber && (
+                                <p><span className="text-muted-foreground">{t('candidate.passportNumber')}:</span> <span className="font-mono font-medium">{selectedCandidate.passportNumber}</span></p>
                             )}
+                            <p><span className="text-muted-foreground">{t('candidate.dateAdded')}:</span> {selectedCandidate?.createdAt ? format(new Date(selectedCandidate.createdAt), 'dd.MM.yyyy HH:mm', { locale: dateLocale }) : '—'}</p>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Demand Dialog */}
+            <Dialog open={demandDialogOpen} onOpenChange={setDemandDialogOpen}>
+                <DialogContent className="max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>Zapotrzebowanie na kandydata</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <div className="text-sm">
+                            Wybierz przewidywany czas dostarczenia osoby: <strong>{demandCandidate?.firstName} {demandCandidate?.lastName}</strong>
+                        </div>
+                        <Input
+                            type="time"
+                            value={estimatedTime}
+                            onChange={(e) => setEstimatedTime(e.target.value)}
+                        />
+                        <div className="flex justify-end gap-2 pt-4">
+                            <Button variant="outline" onClick={() => setDemandDialogOpen(false)}>
+                                {t("common.cancel")}
+                            </Button>
+                            <Button 
+                                onClick={submitDemand} 
+                                disabled={!estimatedTime || sendingId === demandCandidate?.id}
+                            >
+                                {sendingId === demandCandidate?.id ? t("common.loading") : t("common.send")}
+                            </Button>
                         </div>
                     </div>
                 </DialogContent>
@@ -582,6 +703,52 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                     <AlertDialogFooter>
                         <Button variant="outline" onClick={handleSureNo}>{t("candidate.no")}</Button>
                         <Button onClick={handleSureYes}>{t("candidate.yes")}</Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+            {/* Passport password dialog */}
+            <AlertDialog open={passportDialogOpen} onOpenChange={setPassportDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Wprowadź hasło</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Aby zobaczyć numer paszportu, wpisz hasło:
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <Input
+                        type="password"
+                        placeholder="Hasło"
+                        value={passportInput}
+                        onChange={(e) => setPassportInput(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                if (passportInput === '2121') {
+                                    setBokPassportVisible(true);
+                                    setPassportDialogOpen(false);
+                                    setPassportInput('');
+                                    setTimeout(() => setBokPassportVisible(false), 5000);
+                                } else {
+                                    toast({ variant: 'destructive', title: 'Błędne hasło' });
+                                }
+                            }
+                        }}
+                    />
+                    <AlertDialogFooter>
+                        <Button variant="outline" onClick={() => { setPassportDialogOpen(false); setPassportInput(''); }}>
+                            Anuluj
+                        </Button>
+                        <Button onClick={() => {
+                            if (passportInput === '2121') {
+                                setBokPassportVisible(true);
+                                setPassportDialogOpen(false);
+                                setPassportInput('');
+                                setTimeout(() => setBokPassportVisible(false), 5000);
+                            } else {
+                                toast({ variant: 'destructive', title: 'Błędne hasło' });
+                            }
+                        }}>
+                            Potwierdź
+                        </Button>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
