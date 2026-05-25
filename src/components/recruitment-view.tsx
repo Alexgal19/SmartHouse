@@ -275,9 +275,22 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
         setSelectedCandidate(candidate);
     };
 
-    const filteredCandidates = candidates
-        .filter((c) => c.status === 'wdrodze' || c.status === 'zakwaterowana')
-        .filter((c) => c.lastName.toLowerCase().includes(searchQuery.toLowerCase()));
+    const filteredCandidates = useMemo(() => {
+        const dismissedBokIds = new Set(
+            (allBokResidents || [])
+                .filter(r => r.status === 'dismissed')
+                .map(r => r.id)
+        );
+        const dismissedSourceIds = new Set(
+            odbiorEntries
+                .filter(e => e.convertedToBokId && dismissedBokIds.has(e.convertedToBokId))
+                .map(e => e.id)
+        );
+        return candidates
+            .filter(c => c.status === 'wdrodze' || c.status === 'zakwaterowana')
+            .filter(c => !c.sourceOdbiorId || !dismissedSourceIds.has(c.sourceOdbiorId))
+            .filter(c => c.lastName.toLowerCase().includes(searchQuery.toLowerCase()));
+    }, [candidates, allBokResidents, odbiorEntries, searchQuery]);
 
     // O(1) demand lookup
     const demandMap = useMemo(() => {
