@@ -189,6 +189,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                 firstName: bokResident.firstName,
                 lastName: bokResident.lastName,
                 passportNumber: bokResident.passportNumber || '',
+                bokId: bokResident.id,
             });
             if (result.success && result.candidate) {
                 setDemandCandidate(result.candidate);
@@ -286,9 +287,24 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                 .filter(e => e.convertedToBokId && dismissedBokIds.has(e.convertedToBokId))
                 .map(e => e.id)
         );
+        // Zestaw nazwisk+imion zwolnionych mieszkańców BOK – fallback dla kandydatów bez bokId
+        const dismissedBokNames = new Set(
+            (allBokResidents || [])
+                .filter(r => r.status === 'dismissed')
+                .map(r => `${r.firstName.trim().toLowerCase()}|${r.lastName.trim().toLowerCase()}`)
+        );
         return candidates
             .filter(c => c.status === 'wdrodze' || c.status === 'zakwaterowana')
-            .filter(c => !c.sourceOdbiorId || !dismissedSourceIds.has(c.sourceOdbiorId))
+            .filter(c => {
+                // Sprawdź przez bezpośrednie bokId (najpewniejsza ścieżka)
+                if (c.bokId && dismissedBokIds.has(c.bokId)) return false;
+                // Sprawdź przez łańcuch sourceOdbiorId → OdbiorEntry → BOK
+                if (c.sourceOdbiorId && dismissedSourceIds.has(c.sourceOdbiorId)) return false;
+                // Fallback: dopasowanie imienia i nazwiska (dla starych kandydatów bez bokId)
+                const nameKey = `${c.firstName.trim().toLowerCase()}|${c.lastName.trim().toLowerCase()}`;
+                if (dismissedBokNames.has(nameKey)) return false;
+                return true;
+            })
             .filter(c => c.lastName.toLowerCase().includes(searchQuery.toLowerCase()));
     }, [candidates, allBokResidents, odbiorEntries, searchQuery]);
 

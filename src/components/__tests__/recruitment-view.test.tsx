@@ -43,6 +43,7 @@ import {
     acknowledgeCandidateDemandAction,
     getOdbiorEntriesAction,
 } from '@/lib/actions';
+import { useMainLayout } from '@/components/main-layout';
 
 const mockGetCandidates = getCandidatesAction as jest.Mock;
 const mockGetDemands = getCandidateDemandsAction as jest.Mock;
@@ -323,4 +324,144 @@ describe('RecruitmentView', () => {
             expect(img.src).toBe('https://example.com/photo.jpg');
         });
     });
+
+    it('hides candidates whose bokId matches a dismissed BOK resident', async () => {
+        const dismissedBokResident = {
+            id: 'bok-dismissed-1',
+            firstName: 'Anna',
+            lastName: 'Dismissed',
+            nationality: '',
+            address: '',
+            roomNumber: '',
+            gender: '',
+            checkInDate: '2026-01-01',
+            status: 'dismissed' as const,
+        };
+        const candidate = makeCandidate({
+            id: 'cand-bok-match',
+            firstName: 'Anna',
+            lastName: 'Dismissed',
+            status: 'zakwaterowana',
+            sourceOdbiorId: null,
+            bokId: 'bok-dismissed-1',
+        });
+
+        (useMainLayout as jest.Mock).mockReturnValue({
+            allEmployees: [],
+            allNonEmployees: [],
+            allBokResidents: [dismissedBokResident],
+            allCandidates: null,
+            allDemands: null,
+            settings: {
+                coordinators: [], nationalities: [], departments: [],
+                genders: [], localities: [], addresses: [], statuses: [],
+            },
+            currentUser: mockUser,
+        });
+
+        mockGetCandidates.mockResolvedValue([candidate]);
+        mockGetOdbiorEntries.mockResolvedValue([]);
+
+        render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
+
+        // Candidate filtered out by direct bokId match
+        await waitFor(() => {
+            expect(screen.getByText('Szukaj po nazwisku...')).toBeInTheDocument();
+        });
+        expect(screen.queryByText('Dismissed')).toBeNull();
+    });
+
+    it('hides candidates by name fallback when bokId is null and sourceOdbiorId is unlinked', async () => {
+        const dismissedBokResident = {
+            id: 'bok-dismissed-2',
+            firstName: 'Jan',
+            lastName: 'Zwolniony',
+            nationality: '',
+            address: '',
+            roomNumber: '',
+            gender: '',
+            checkInDate: '2026-01-01',
+            status: 'dismissed' as const,
+        };
+        // Old candidate without bokId, with broken sourceOdbiorId link
+        const candidate = makeCandidate({
+            id: 'cand-legacy',
+            firstName: 'Jan',
+            lastName: 'Zwolniony',
+            status: 'zakwaterowana',
+            sourceOdbiorId: 'odbior-unlinked',
+            bokId: null,
+        });
+
+        (useMainLayout as jest.Mock).mockReturnValue({
+            allEmployees: [],
+            allNonEmployees: [],
+            allBokResidents: [dismissedBokResident],
+            allCandidates: null,
+            allDemands: null,
+            settings: {
+                coordinators: [], nationalities: [], departments: [],
+                genders: [], localities: [], addresses: [], statuses: [],
+            },
+            currentUser: mockUser,
+        });
+
+        mockGetCandidates.mockResolvedValue([candidate]);
+        mockGetOdbiorEntries.mockResolvedValue([
+            { id: 'odbior-unlinked', convertedToBokId: null } as any,
+        ]);
+
+        render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
+
+        // Name-based fallback catches it
+        await waitFor(() => {
+            expect(screen.getByText('Szukaj po nazwisku...')).toBeInTheDocument();
+        });
+        expect(screen.queryByText('Zwolniony')).toBeNull();
+    });
+
+    it('shows candidate when BOK resident is NOT dismissed (name match but active)', async () => {
+        const activeBokResident = {
+            id: 'bok-active-1',
+            firstName: 'Ewa',
+            lastName: 'Active',
+            nationality: '',
+            address: '',
+            roomNumber: '',
+            gender: '',
+            checkInDate: '2026-01-01',
+            status: 'active' as const,
+        };
+        const candidate = makeCandidate({
+            id: 'cand-bok-active-match',
+            firstName: 'Ewa',
+            lastName: 'Active',
+            status: 'zakwaterowana',
+            sourceOdbiorId: null,
+        });
+
+        (useMainLayout as jest.Mock).mockReturnValue({
+            allEmployees: [],
+            allNonEmployees: [],
+            allBokResidents: [activeBokResident],
+            allCandidates: null,
+            allDemands: null,
+            settings: {
+                coordinators: [], nationalities: [], departments: [],
+                genders: [], localities: [], addresses: [], statuses: [],
+            },
+            currentUser: mockUser,
+        });
+
+        mockGetCandidates.mockResolvedValue([candidate]);
+        mockGetOdbiorEntries.mockResolvedValue([]);
+
+        render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
+
+        // Candidate should be VISIBLE because BOK resident is active
+        await waitFor(() => {
+            expect(screen.getByText('Active')).toBeInTheDocument();
+        });
+    });
+
 });

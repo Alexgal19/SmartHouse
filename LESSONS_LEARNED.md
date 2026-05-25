@@ -23,6 +23,22 @@
 | 12 | Zdjęcia / upload | Wzorzec offline-first: najpierw data URL (natychmiastowe UI), potem upload na serwer. Kompresuj przed konwersją (canvas resize). |
 | 13 | DateInput | Double-click przełącza w tryb tekstowy. Ten wzorzec jest w 4+ komponentach — zmiana w jednym = sprawdź pozostałe. |
 | 14 | TypeScript — `.d.ts` | `declare module '...'` nadpisuje typy biblioteki. Gdy dziwne błędy typów z zewnętrznych lib — sprawdź `src/types/` najpierw. |
+| 15 | UI / Dane — filtrowanie | Dane łączone z dwóch źródeł z różnymi ścieżkami ID: zawsze dodawaj fallback przez name matching. `sourceOdbiorId` może być null — nie polegaj wyłącznie na ID-linku. |
+
+
+### [UI / Dane] Filtrowanie kandydatów po dwóch ścieżkach danych – sourceOdbiorId i name matching
+
+**Symptom:** Osoba z BOK o statusie "Zwolnieni" (dismissed) nadal wyświetlała się w tabeli "Dodaj kandydata" w widoku rekrutacji.
+
+**Root cause:** Filtr w `filteredCandidates` sprawdzał tylko kandydatów z `sourceOdbiorId` — jeśli kandydat był powiązany przez odbiór → BOK i BOK miał status `dismissed`, był ukrywany. Kandydaci utworzeni bezpośrednio z BOK (`handleBokDemand`) nie mają `sourceOdbiorId`, więc przechodzili przez filtr. Brakowało fallbacku przez dopasowanie imienia i nazwiska.
+
+**Rozwiązanie:** Dodano drugą ścieżkę filtrowania: zestaw `dismissedBokNames` (imię+nazwisko zwolnionych mieszkańców BOK). Każdy kandydat jest sprawdzany dwutorowo:
+1. Jeśli ma `sourceOdbiorId` → sprawdź czy jest w `dismissedSourceIds`
+2. Niezależnie od `sourceOdbiorId` → sprawdź czy `imię+nazwisko` pasuje do `dismissedBokNames`
+
+**Obszar ryzyka:** Każde filtrowanie łączące dane z dwóch źródeł (kandydaci + BOK) gdzie istnieje więcej niż jedna ścieżka utworzenia rekordu. Również: `entity-view.tsx` przy filtrowaniu mieszkańców — zawsze dodawaj fallback przez name matching jeśli ID-link może być null.
+
+**Pliki:** `src/components/recruitment-view.tsx`, `src/components/__tests__/recruitment-view.test.tsx`
 
 ---
 

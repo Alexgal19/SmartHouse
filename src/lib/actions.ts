@@ -2876,6 +2876,7 @@ type CandidateCreateInput = {
     passportNumber: string;
     passportPhotoUrl?: string;
     sourceOdbiorId?: string | null;
+    bokId?: string | null;
 };
 
 export async function addCandidateAction(
@@ -2893,6 +2894,7 @@ export async function addCandidateAction(
             passportNumber: input.passportNumber?.trim() || '',
             passportPhotoUrl: input.passportPhotoUrl || undefined,
             sourceOdbiorId: input.sourceOdbiorId || null,
+            bokId: input.bokId || null,
             status: input.sourceOdbiorId ? 'wdrodze' : 'nowy',
             createdAt: new Date().toISOString(),
             interviewHistory: [],
