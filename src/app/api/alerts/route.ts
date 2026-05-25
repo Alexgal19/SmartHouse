@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getEmployees, getNonEmployees, getBokResidents, getSettings } from '@/lib/sheets';
-import { sendPushNotification } from '@/lib/actions';
+import { sendPushNotification, checkAndUpdateStatuses } from '@/lib/actions';
 import { alertToday, parseAlertDate, daysDiff, extractAlertDetails } from '@/lib/alert-utils';
 import type { Employee, NonEmployee, BokResident, Coordinator } from '@/types';
 
@@ -207,6 +207,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // Automatyczne zwalnianie pracowników z minioną datą wymeldowania
+    const { updated: autoDismissedCount } = await checkAndUpdateStatuses('system');
+
     const [employees, nonEmployees, bokResidents, settings] = await Promise.all([
       getEmployees(), getNonEmployees(), getBokResidents(), getSettings(),
     ]);
@@ -233,6 +236,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       checkedAt: new Date().toISOString(),
+      autoDismissed: autoDismissedCount,
       totalAlerts: Object.values(summary).reduce((s, n) => s + n, 0),
       summary,
       details,
