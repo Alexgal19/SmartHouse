@@ -73,7 +73,7 @@ describe('OdbiorView', () => {
     render(<OdbiorView currentUser={mockUser} />);
 
     // Wait for the data to load
-    await screen.findByText('Stacja autobusowa');
+    await screen.findAllByText('Stacja autobusowa');
 
     expect(screen.getByText('Dostarczone')).toBeInTheDocument();
 
@@ -85,9 +85,9 @@ describe('OdbiorView', () => {
   it('renders the list of submissions', async () => {
     render(<OdbiorView currentUser={mockUser} />);
 
-    await screen.findByText('Stacja autobusowa');
+    await screen.findAllByText('Stacja autobusowa');
 
-    expect(screen.getByText('Stacja autobusowa')).toBeInTheDocument();
+    expect(screen.getAllByText('Stacja autobusowa')[0]).toBeInTheDocument();
     expect(screen.getByText('2', { selector: 'td' })).toBeInTheDocument(); // persons
     expect(screen.getByText('Test User', { selector: 'td' })).toBeInTheDocument(); // recruiter
   });
@@ -124,9 +124,9 @@ describe('OdbiorView', () => {
   it('clicking eye button opens detail dialog with correct submission', async () => {
     render(<OdbiorView currentUser={mockUser} />);
 
-    await screen.findByText('Stacja autobusowa');
+    await screen.findAllByText('Stacja autobusowa');
 
-    const eyeButton = screen.getByRole('button', { name: /Szczegóły/i });
+    const eyeButton = screen.getAllByRole('button', { name: /Szczegóły/i })[0];
     fireEvent.click(eyeButton);
 
     await waitFor(() => {
@@ -137,9 +137,9 @@ describe('OdbiorView', () => {
   it('clicking delete button opens confirmation dialog', async () => {
     render(<OdbiorView currentUser={mockUser} />);
 
-    await screen.findByText('Stacja autobusowa');
+    await screen.findAllByText('Stacja autobusowa');
 
-    const deleteButton = screen.getByRole('button', { name: /Usuń/i });
+    const deleteButton = screen.getAllByRole('button', { name: /Usuń/i })[0];
     fireEvent.click(deleteButton);
 
     await waitFor(() => {
@@ -161,9 +161,9 @@ describe('OdbiorView', () => {
 
     render(<OdbiorView currentUser={mockUser} />);
 
-    await screen.findByText('Stacja autobusowa');
+    await screen.findAllByText('Stacja autobusowa');
 
-    fireEvent.click(screen.getByRole('button', { name: /Usuń/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: /Usuń/i })[0]);
     await waitFor(() => {
       expect(screen.getByText(/Usuń zgłoszenie/i)).toBeInTheDocument();
     });

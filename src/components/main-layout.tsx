@@ -293,8 +293,11 @@ export default function MainLayout({
         if (currentUser?.isAdmin) {
             return navItems;
         }
-        if (currentUser?.isDriver || currentUser?.isBok) {
+        if (currentUser?.isDriver) {
             return navItems.filter(item => item.view === 'odbior' || item.view === 'zapotrzebowania' || item.view === 'employees' || item.view === 'housing' || item.view === 'control-cards');
+        }
+        if (currentUser?.isBok) {
+            return navItems.filter(item => item.view === 'zapotrzebowania' || item.view === 'employees' || item.view === 'housing' || item.view === 'control-cards');
         }
         if (currentUser?.isRekrutacja) {
             return navItems.filter(item => item.view === 'recruitment' || item.view === 'zapotrzebowania');
@@ -1296,7 +1299,7 @@ export default function MainLayout({
                     {currentUser && (
                         <MobileNav
                             activeView={activeView}
-                            navItems={navItems}
+                            navItems={visibleNavItems}
                             currentUser={currentUser}
                             unacceptedCount={unacceptedCount}
                             wdrodzeCount={wdrodzeCount}

@@ -139,4 +139,18 @@ jest.mock('@/lib/i18n', () => {
 // Mock scrollIntoView for JSDOM
 if (typeof window !== 'undefined') {
   window.HTMLElement.prototype.scrollIntoView = jest.fn();
+  // Mock matchMedia for responsive Tailwind classes in jsdom
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: jest.fn().mockImplementation((query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+      dispatchEvent: jest.fn(),
+    })),
+  });
 }

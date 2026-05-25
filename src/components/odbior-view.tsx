@@ -612,72 +612,135 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
                         <option value="Zakończone_Dostarczone">{t('odbior.statusCompleted')}</option>
                     </select>
                 </div>
-                <Card>
-                    <CardContent className="p-0">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead className="border-b bg-muted/40">
-                                    <tr>
-                                        <th className="text-left px-4 py-3 font-medium text-muted-foreground">{t('odbior.statusHeader')}</th>
-                                        <th className="text-left px-4 py-3 font-medium text-muted-foreground">{t('odbior.dateHeader')}</th>
-                                        <th className="text-left px-4 py-3 font-medium text-muted-foreground">{t('odbior.fromHeader')}</th>
-                                        <th className="text-left px-4 py-3 font-medium text-muted-foreground">{t('odbior.personsHeader')}</th>
-                                        <th className="text-left px-4 py-3 font-medium text-muted-foreground">{t('odbior.recruiterHeader')}</th>
-                                        <th className="text-left px-4 py-3 font-medium text-muted-foreground">{t('odbior.actionsHeader')}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredSubmissions.length === 0 ? (
+                {/* Mobile cards */}
+                <div className="sm:hidden space-y-3">
+                    {filteredSubmissions.length === 0 ? (
+                        <div className="text-center py-10 text-sm text-muted-foreground">
+                            {t('odbior.noSubmissions')}
+                        </div>
+                    ) : filteredSubmissions.map((row) => (
+                        <Card key={row.id} className="overflow-hidden">
+                            <CardContent className="p-4 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <span className={cn(
+                                        'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium',
+                                        STATUS_STYLES[row.status] ?? 'text-gray-600 bg-gray-50 border border-gray-200'
+                                    )}>
+                                        {statusLabel(row.status)}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">{row.date}</span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">{t('odbior.fromHeader')}</p>
+                                        <p className="font-medium">{row.from}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">{t('odbior.personsHeader')}</p>
+                                        <p className="font-medium">{row.persons}</p>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <p className="text-xs text-muted-foreground">{t('odbior.recruiterHeader')}</p>
+                                        <p className="font-medium">{row.recruiter}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 pt-2 border-t">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="flex-1 h-9"
+                                        aria-label={t('odbior.details')}
+                                        onClick={() => handleEyeClick(row.id)}
+                                    >
+                                        <Eye className="h-4 w-4 mr-2" />
+                                        {t('odbior.details')}
+                                    </Button>
+                                    {(_currentUser.isAdmin || !_currentUser.isDriver) && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-9 px-3 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                                            aria-label={t('common.delete')}
+                                            onClick={() => setDeleteConfirmId(row.id)}
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+
+                {/* Desktop table */}
+                <div className="hidden sm:block">
+                    <Card>
+                        <CardContent className="p-0">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead className="border-b bg-muted/40">
                                         <tr>
-                                            <td colSpan={6} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                                                {t('odbior.noSubmissions')}
-                                            </td>
+                                            <th className="text-left px-4 py-3 font-medium text-muted-foreground">{t('odbior.statusHeader')}</th>
+                                            <th className="text-left px-4 py-3 font-medium text-muted-foreground">{t('odbior.dateHeader')}</th>
+                                            <th className="text-left px-4 py-3 font-medium text-muted-foreground">{t('odbior.fromHeader')}</th>
+                                            <th className="text-left px-4 py-3 font-medium text-muted-foreground">{t('odbior.personsHeader')}</th>
+                                            <th className="text-left px-4 py-3 font-medium text-muted-foreground">{t('odbior.recruiterHeader')}</th>
+                                            <th className="text-left px-4 py-3 font-medium text-muted-foreground">{t('odbior.actionsHeader')}</th>
                                         </tr>
-                                    ) : filteredSubmissions.map((row, i) => (
-                                        <tr key={row.id} className={cn('border-b last:border-0', i % 2 === 0 ? '' : 'bg-muted/30')}>
-                                            <td className="px-4 py-3">
-                                                <span className={cn(
-                                                    'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium',
-                                                    STATUS_STYLES[row.status] ?? 'text-gray-600 bg-gray-50 border border-gray-200'
-                                                )}>
-                                                    {statusLabel(row.status)}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 text-muted-foreground">{row.date}</td>
-                                            <td className="px-4 py-3">{row.from}</td>
-                                            <td className="px-4 py-3">{row.persons}</td>
-                                            <td className="px-4 py-3">{row.recruiter}</td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex items-center gap-8">
-                                                    <Button
-                                                        variant="outline"
-                                                        size="icon"
-                                                        className="h-8 w-8"
-                                                        aria-label={t('odbior.details')}
-                                                        onClick={() => handleEyeClick(row.id)}
-                                                    >
-                                                        <Eye className="h-4 w-4" />
-                                                    </Button>
-                                                    {(_currentUser.isAdmin || !_currentUser.isDriver) && (
+                                    </thead>
+                                    <tbody>
+                                        {filteredSubmissions.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={6} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                                                    {t('odbior.noSubmissions')}
+                                                </td>
+                                            </tr>
+                                        ) : filteredSubmissions.map((row, i) => (
+                                            <tr key={row.id} className={cn('border-b last:border-0', i % 2 === 0 ? '' : 'bg-muted/30')}>
+                                                <td className="px-4 py-3">
+                                                    <span className={cn(
+                                                        'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium',
+                                                        STATUS_STYLES[row.status] ?? 'text-gray-600 bg-gray-50 border border-gray-200'
+                                                    )}>
+                                                        {statusLabel(row.status)}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 text-muted-foreground">{row.date}</td>
+                                                <td className="px-4 py-3">{row.from}</td>
+                                                <td className="px-4 py-3">{row.persons}</td>
+                                                <td className="px-4 py-3">{row.recruiter}</td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center gap-8">
                                                         <Button
                                                             variant="outline"
                                                             size="icon"
-                                                            className="h-8 w-8 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                                                            aria-label={t('common.delete')}
-                                                            onClick={() => setDeleteConfirmId(row.id)}
+                                                            className="h-8 w-8"
+                                                            aria-label={t('odbior.details')}
+                                                            onClick={() => handleEyeClick(row.id)}
                                                         >
-                                                            <Trash2 className="h-4 w-4" />
+                                                            <Eye className="h-4 w-4" />
                                                         </Button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </CardContent>
-                </Card>
+                                                        {(_currentUser.isAdmin || !_currentUser.isDriver) && (
+                                                            <Button
+                                                                variant="outline"
+                                                                size="icon"
+                                                                className="h-8 w-8 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                                                                aria-label={t('common.delete')}
+                                                                onClick={() => setDeleteConfirmId(row.id)}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
 
             {/* Dialog potwierdzenia usunięcia */}
