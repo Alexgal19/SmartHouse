@@ -172,39 +172,49 @@ function PhotoUploadWidget({
             <div className="flex justify-between items-center">
                 <Label className="text-xs font-medium">{label}</Label>
                 {canEdit && (
-                    <div className="flex gap-1">
+                    <div className="flex gap-1.5">
                         {/* Aparat */}
-                        <div className="relative">
-                            <input
-                                ref={cameraRef}
-                                type="file"
-                                accept="image/*"
-                                capture="environment"
-                                onChange={(e) => onAddPhotos(e, true)}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                disabled={isUploading}
-                            />
-                            <Button type="button" size="sm" variant="secondary" className="h-7 text-[10px] gap-1 pointer-events-none" disabled={isUploading}>
-                                {isUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Camera className="w-3 h-3" />}
-                                {t('controlCards.camera')}
-                            </Button>
-                        </div>
+                        <input
+                            ref={cameraRef}
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            onChange={(e) => onAddPhotos(e, true)}
+                            className="sr-only"
+                            disabled={isUploading}
+                        />
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            className="h-9 min-h-[44px] sm:h-7 text-xs sm:text-[10px] gap-1.5 touch-manipulation"
+                            disabled={isUploading}
+                            onClick={() => cameraRef.current?.click()}
+                        >
+                            {isUploading ? <Loader2 className="w-4 h-4 sm:w-3 sm:h-3 animate-spin" /> : <Camera className="w-4 h-4 sm:w-3 sm:h-3" />}
+                            <span className="hidden sm:inline">{t('controlCards.camera')}</span>
+                        </Button>
                         {/* Galeria */}
-                        <div className="relative">
-                            <input
-                                ref={galleryRef}
-                                type="file"
-                                accept="image/*"
-                                multiple
-                                onChange={(e) => onAddPhotos(e, false)}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                disabled={isUploading}
-                            />
-                            <Button type="button" size="sm" variant="outline" className="h-7 text-[10px] gap-1 pointer-events-none" disabled={isUploading}>
-                                <ImageIcon className="w-3 h-3" />
-                                {t('controlCards.gallery')}
-                            </Button>
-                        </div>
+                        <input
+                            ref={galleryRef}
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={(e) => onAddPhotos(e, false)}
+                            className="sr-only"
+                            disabled={isUploading}
+                        />
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-9 min-h-[44px] sm:h-7 text-xs sm:text-[10px] gap-1.5 touch-manipulation"
+                            disabled={isUploading}
+                            onClick={() => galleryRef.current?.click()}
+                        >
+                            <ImageIcon className="w-4 h-4 sm:w-3 sm:h-3" />
+                            <span className="hidden sm:inline">{t('controlCards.gallery')}</span>
+                        </Button>
                     </div>
                 )}
             </div>

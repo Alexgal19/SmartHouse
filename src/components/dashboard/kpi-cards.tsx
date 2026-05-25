@@ -64,8 +64,12 @@ export function DashboardKPIs({
     const { t } = useLanguage();
     const { settings } = useMainLayout();
 
+    const EXCLUDED_DEPARTMENTS = ['BOK', 'Odbiór', 'Rekrutacja'];
+
     const stats = useMemo(() => {
-        const activeEmployees = employees.filter(e => e.status === 'active');
+        const activeEmployees = employees.filter(e => 
+            e.status === 'active' && !EXCLUDED_DEPARTMENTS.includes(e.zaklad || '')
+        );
         const activeNonEmployees = nonEmployees.filter(ne => ne.status === 'active');
         const allActiveOccupants = [...activeEmployees, ...activeNonEmployees];
         const upcomingCheckoutsList = allActiveOccupants.filter(o => {

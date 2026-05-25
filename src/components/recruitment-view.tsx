@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { getCandidatesAction, sendCandidateDemandNotificationAction, getCandidateDemandsAction, deleteCandidateAction, acknowledgeCandidateDemandAction, getOdbiorEntriesAction, addCandidateAction } from "@/lib/actions";
+import { getCandidatesAction, sendCandidateDemandNotificationAction, getCandidateDemandsAction, deleteCandidateAction, acknowledgeCandidateDemandAction, getOdbiorEntriesAction, addCandidateAction, updateCandidateAction } from "@/lib/actions";
 import { useMainLayout } from "@/components/main-layout";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
@@ -276,7 +276,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
     };
 
     const filteredCandidates = candidates
-        .filter((c) => c.status === 'wdrodze')
+        .filter((c) => c.status === 'wdrodze' || c.status === 'zakwaterowana')
         .filter((c) => c.lastName.toLowerCase().includes(searchQuery.toLowerCase()));
 
     // O(1) demand lookup
@@ -298,6 +298,36 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
     }, [candidates]);
 
     const demandCandidateMap = candidateMap;
+
+    const findBokResidentForCandidate = (candidate: Candidate): BokResident | undefined => {
+        if (!candidate.sourceOdbiorId) return undefined;
+        const entry = odbiorEntries.find(e => e.id === candidate.sourceOdbiorId);
+        if (!entry?.convertedToBokId) return undefined;
+        return allBokResidents?.find(r => r.id === entry.convertedToBokId);
+    };
+
+    const handleCandidateDemand = (candidate: Candidate) => {
+        const bok = findBokResidentForCandidate(candidate);
+        setDemandCandidate(candidate);
+        setEstimatedTime("");
+        setDemandRoomNumber(bok?.roomNumber || "");
+        setPickupAddress(bok?.address || "Brak adresu");
+        setDemandDialogOpen(true);
+    };
+
+    const handleFinishCandidate = async (candidate: Candidate) => {
+        try {
+            const result = await updateCandidateAction(candidate.id, { status: 'po_rozmowie' });
+            if (result.success) {
+                setCandidates(prev => prev.map(c => c.id === candidate.id ? { ...c, status: 'po_rozmowie' as const } : c));
+                toast({ title: 'Status zmieniony', description: `${candidate.firstName} ${candidate.lastName} - Po rozmowie` });
+            } else {
+                toast({ variant: 'destructive', title: 'Błąd', description: result.error });
+            }
+        } catch (err) {
+            toast({ variant: 'destructive', title: 'Błąd', description: String(err) });
+        }
+    };
 
     const demandStatusBadge = (demand?: CandidateDemand) => {
         if (!demand) return <span className="text-muted-foreground text-sm">—</span>;
@@ -346,9 +376,11 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
             case "zakonczony":
                 return <Badge variant="outline">{t("candidate.statusZakonczony")}</Badge>;
             case "zakwaterowana":
-                return <Badge variant="default" className="bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100">{t("candidate.statusZakwaterowana")}</Badge>;
+                return <Badge variant="default" className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100">{t("candidate.statusZakwaterowana")}</Badge>;
             case "wdrodze":
                 return <Badge variant="secondary">{t("candidate.statusWdrodze")}</Badge>;
+            case "po_rozmowie":
+                return <Badge variant="outline" className="text-muted-foreground">{t("candidate.statusPoRozmowie")}</Badge>;
             default:
                 return <Badge>{status}</Badge>;
         }
@@ -440,17 +472,35 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                                             : "-"}
                                                     </TableCell>
                                                     <TableCell>
-                                                        {currentUser.isAdmin && (
+                                                        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                                                            {c.status === 'zakwaterowana' && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() => handleCandidateDemand(c)}
+                                                                >
+                                                                    {t("candidate.demandBtn")}
+                                                                </Button>
+                                                            )}
                                                             <Button
                                                                 size="sm"
-                                                                variant="ghost"
-                                                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                                disabled={deletingId === c.id}
-                                                                onClick={(e) => { e.stopPropagation(); handleDelete(c); }}
+                                                                variant="secondary"
+                                                                onClick={() => handleFinishCandidate(c)}
                                                             >
-                                                                {deletingId === c.id ? t("common.processing") : t("common.delete")}
+                                                                {t("candidate.finishBtn")}
                                                             </Button>
-                                                        )}
+                                                            {currentUser.isAdmin && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                                    disabled={deletingId === c.id}
+                                                                    onClick={() => handleDelete(c)}
+                                                                >
+                                                                    {deletingId === c.id ? t("common.processing") : t("common.delete")}
+                                                                </Button>
+                                                            )}
+                                                        </div>
                                                     </TableCell>
                                                 </TableRow>
                                             );
@@ -502,8 +552,26 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                             </span>
                                         </div>
 
-                                        {currentUser.isAdmin && (
-                                            <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                                        <div className="flex gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                                            {c.status === 'zakwaterowana' && (
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="flex-1"
+                                                    onClick={() => handleCandidateDemand(c)}
+                                                >
+                                                    {t("candidate.demandBtn")}
+                                                </Button>
+                                            )}
+                                            <Button
+                                                size="sm"
+                                                variant="secondary"
+                                                className="flex-1"
+                                                onClick={() => handleFinishCandidate(c)}
+                                            >
+                                                {t("candidate.finishBtn")}
+                                            </Button>
+                                            {currentUser.isAdmin && (
                                                 <Button
                                                     size="sm"
                                                     variant="ghost"
@@ -513,8 +581,8 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                                 >
                                                     {deletingId === c.id ? t("common.processing") : t("common.delete")}
                                                 </Button>
-                                            </div>
-                                        )}
+                                            )}
+                                        </div>
                                     </CardContent>
                                 </Card>
                             );

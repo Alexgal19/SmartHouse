@@ -1024,6 +1024,8 @@ export const pl = {
     'candidate.statusZakonczony': 'Zakończony',
     'candidate.statusWdrodze': 'W drodze do biura',
     'candidate.statusZakwaterowana': 'Osoba zakwaterowana',
+    'candidate.statusPoRozmowie': 'Po rozmowie',
+    'candidate.finishBtn': 'Zakończ',
     'candidate.dateAdded': 'Data dodania',
     'candidate.searchBySurname': 'Szukaj po nazwisku...',
     'candidate.demandBtn': 'Zapotrzebowanie na kandydata',
