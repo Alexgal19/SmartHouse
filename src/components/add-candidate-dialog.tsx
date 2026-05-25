@@ -101,7 +101,7 @@ export default function AddCandidateDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>{t('candidate.title')}</DialogTitle>
                 </DialogHeader>

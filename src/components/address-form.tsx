@@ -121,7 +121,7 @@ export function AddressForm({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-2xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
+            <DialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-2xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
                 <DialogHeader>
                     <DialogTitle>{address?.name ? t('address.editAddress') : t('address.addNewAddress')}</DialogTitle>
                     <DialogDescription>

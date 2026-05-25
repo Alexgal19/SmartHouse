@@ -598,7 +598,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
 
             {/* Candidate detail dialog */}
             <Dialog open={!!selectedCandidate} onOpenChange={(open) => { if (!open) setSelectedCandidate(null); }}>
-                <DialogContent className="max-w-sm">
+                <DialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-sm">
                     <DialogHeader>
                         <DialogTitle>
                             {selectedCandidate?.lastName} {selectedCandidate?.firstName}
@@ -637,7 +637,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
 
             {/* Demand Dialog */}
             <Dialog open={demandDialogOpen} onOpenChange={setDemandDialogOpen}>
-                <DialogContent className="max-w-sm">
+                <DialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-sm">
                     <DialogHeader>
                         <DialogTitle>Zapotrzebowanie na kandydata</DialogTitle>
                     </DialogHeader>

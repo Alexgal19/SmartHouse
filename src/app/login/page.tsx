@@ -154,7 +154,7 @@ function LoginForm() {
             </form>
 
             <Dialog open={showIOSDialog} onOpenChange={setShowIOSDialog}>
-                <DialogContent className="max-w-sm">
+                <DialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-sm">
                     <DialogHeader>
                         <DialogTitle>{t('pwa.iosTitle')}</DialogTitle>
                     </DialogHeader>

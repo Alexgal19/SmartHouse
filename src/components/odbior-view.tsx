@@ -208,7 +208,7 @@ function ZglosOdbiorDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-lg w-full max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>{t('odbior.dialogTitle')}</DialogTitle>
                     <DialogDescription className="sr-only">{t('odbior.dialogTitle')}</DialogDescription>

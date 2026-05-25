@@ -128,7 +128,7 @@ export function UpcomingCheckoutsDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="flex flex-col h-screen sm:h-[90vh] sm:max-w-3xl">
+            <DialogContent className="max-w-[calc(100vw-1rem)] flex flex-col h-screen sm:h-[90vh] sm:max-w-3xl">
                 <DialogHeader>
                     <DialogTitle>{t('dashboard.upcomingCheckoutsTitle')}</DialogTitle>
                     <DialogDescription>{t('dashboard.upcomingCheckoutsDesc')}</DialogDescription>

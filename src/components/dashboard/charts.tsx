@@ -50,7 +50,7 @@ const EmployeeListDialog = ({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>{t('dashboard.employeesInDepartment', { name: departmentName })}</DialogTitle>
                     <DialogDescription>

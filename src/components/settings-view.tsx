@@ -1156,7 +1156,7 @@ const ExcelImportGuideDialog = ({
     const { t } = useLanguage();
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-xl">
+            <DialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-xl">
                 <DialogHeader>
                     <DialogTitle>{title}</DialogTitle>
                     <DialogDescription>

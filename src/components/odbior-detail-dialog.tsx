@@ -520,7 +520,7 @@ function AddPersonDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-md w-full">
+            <DialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-md w-full">
                 <DialogHeader>
                     <DialogTitle>{t('odbior.addPerson')}</DialogTitle>
                     <DialogDescription className="sr-only">{t('odbior.addPerson')}</DialogDescription>
@@ -817,7 +817,7 @@ function KartaWTrakcie({
             />
 
             <Dialog open={!!nextStepPromptPerson} onOpenChange={(open) => !open && setNextStepPromptPerson(null)}>
-                <DialogContent className="max-w-sm text-center p-6 rounded-2xl">
+                <DialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-sm text-center p-6 rounded-2xl">
                     <DialogHeader className="mb-2">
                         <DialogTitle className="text-xl font-bold">Wybierz następny krok</DialogTitle>
                         <DialogDescription className="text-sm">
