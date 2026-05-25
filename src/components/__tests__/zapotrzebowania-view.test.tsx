@@ -91,6 +91,36 @@ describe('ZapotrzebowaniaView', () => {
     });
   });
 
+  it('admin sees all action buttons on pending demand', async () => {
+    mockGetDemands.mockResolvedValue([makeDemand()]);
+    render(<ZapotrzebowaniaView currentUser={mockAdmin} activeView="zapotrzebowania" />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Akceptuj/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Usuń/i })).toBeInTheDocument();
+    });
+  });
+
+  it('admin sees Dostarczone button on acknowledged demand', async () => {
+    mockGetDemands.mockResolvedValue([makeDemand({ status: 'acknowledged' })]);
+    render(<ZapotrzebowaniaView currentUser={mockAdmin} activeView="zapotrzebowania" />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Dostarczone/i })).toBeInTheDocument();
+    });
+  });
+
+  it('admin can delete a demand', async () => {
+    mockGetDemands.mockResolvedValue([makeDemand()]);
+    mockDeleteDemand.mockResolvedValue({ success: true });
+    render(<ZapotrzebowaniaView currentUser={mockAdmin} activeView="zapotrzebowania" />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Usuń/i })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Usuń/i }));
+    await waitFor(() => {
+      expect(mockDeleteDemand).toHaveBeenCalledWith('dem-1', 'user-1');
+    });
+  });
+
   it('renders pending demand with details', async () => {
     mockGetDemands.mockResolvedValue([makeDemand()]);
     render(<ZapotrzebowaniaView currentUser={mockAdmin} activeView="zapotrzebowania" />);

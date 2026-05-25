@@ -290,11 +290,11 @@ export default function MainLayout({
     }, []);
 
     const visibleNavItems = useMemo(() => {
-        if (currentUser?.isDriver || currentUser?.isBok) {
-            return navItems.filter(item => item.view === 'odbior' || item.view === 'zapotrzebowania' || item.view === 'employees' || item.view === 'housing' || item.view === 'control-cards');
-        }
         if (currentUser?.isAdmin) {
             return navItems;
+        }
+        if (currentUser?.isDriver || currentUser?.isBok) {
+            return navItems.filter(item => item.view === 'odbior' || item.view === 'zapotrzebowania' || item.view === 'employees' || item.view === 'housing' || item.view === 'control-cards');
         }
         if (currentUser?.isRekrutacja) {
             return navItems.filter(item => item.view === 'recruitment' || item.view === 'zapotrzebowania');

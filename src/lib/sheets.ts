@@ -437,6 +437,43 @@ const deserializeBokResident = (row: Record<string, unknown>): BokResident | nul
     };
 };
 
+
+// Polish header aliases found in some Google Sheets (reverse of FIELD_LABELS)
+const HEADER_ALIASES: Record<string, string> = {
+    'Imię': 'firstName',
+    'Nazwisko': 'lastName',
+    'Koordynator': 'coordinatorId',
+    'Narodowość': 'nationality',
+    'Płeć': 'gender',
+    'Adres': 'address',
+    'Adres własny': 'ownAddress',
+    'Pokój': 'roomNumber',
+    'Zakład': 'zaklad',
+    'Data zameldowania': 'checkInDate',
+    'Data wymeldowania': 'checkOutDate',
+    'Komentarz': 'comments',
+    'Status': 'status',
+    'Data rozpoczęcia umowy': 'contractStartDate',
+    'Data zakończenia umowy': 'contractEndDate',
+    'Data raportu wyjazdu': 'departureReportDate',
+    'Typ płatności': 'paymentType',
+    'Kwota płatności': 'paymentAmount',
+    'Rola': 'role',
+    'Data wysyłki': 'sendDate',
+    'Data zwolnienia': 'dismissDate',
+    'Status powrotu': 'returnStatus',
+    'Data dodania': 'createdAt',
+    'Numer paszportu': 'passportNumber',
+};
+
+const normalizeRowKeys = (row: Record<string, string>): Record<string, string> => {
+    const normalized: Record<string, string> = {};
+    for (const [key, value] of Object.entries(row)) {
+        const normalizedKey = HEADER_ALIASES[key] || key;
+        normalized[normalizedKey] = value;
+    }
+    return normalized;
+};
 const getSheetData = async (doc: GoogleSpreadsheet, title: string, retry = 0): Promise<Record<string, string>[]> => {
     const sheet = doc.sheetsByTitle[title];
     if (!sheet) {
@@ -446,7 +483,7 @@ const getSheetData = async (doc: GoogleSpreadsheet, title: string, retry = 0): P
 
     try {
         const rows = await withTimeout(sheet.getRows(), TIMEOUT_MS, `sheet.getRows(${title})`);
-        return rows.map(r => r.toObject());
+        return rows.map(r => normalizeRowKeys(r.toObject()));
     } catch (e: unknown) {
         if (e instanceof Error && (e.message.includes('429') || e.message.includes('Quota exceeded')) && retry < 3) {
             const delay = 1000 * Math.pow(2, retry);

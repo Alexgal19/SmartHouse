@@ -74,7 +74,7 @@ export default function ZapotrzebowaniaView({ currentUser, activeView }: { curre
     };
 
     const handleDeleteDemand = async (demandId: string) => {
-        if (!currentUser.isRekrutacja) return;
+        if (!currentUser.isRekrutacja && !currentUser.isAdmin) return;
         setDeletingId(demandId);
         try {
             const result = await deleteCandidateDemandAction(demandId, currentUser.uid);
@@ -192,12 +192,12 @@ export default function ZapotrzebowaniaView({ currentUser, activeView }: { curre
                                                     Akceptuj
                                                 </Button>
                                             )}
-                                            {demand.status === 'acknowledged' && currentUser.isDriver && (
+                                            {demand.status === 'acknowledged' && (currentUser.isDriver || currentUser.isAdmin) && (
                                                 <Button variant="outline" onClick={() => handleDeliverDemand(demand.id)} className="w-full md:w-auto">
                                                     Dostarczone
                                                 </Button>
                                             )}
-                                            {currentUser.isRekrutacja && (
+                                            {(currentUser.isRekrutacja || currentUser.isAdmin) && (
                                                 <Button
                                                     variant="ghost"
                                                     className="text-destructive hover:text-destructive hover:bg-destructive/10 w-full md:w-auto"
