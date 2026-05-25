@@ -551,7 +551,7 @@ export function OdbiorZakwaterowanieDialog({
         const tempAddresses = settings.addresses.filter((a) => a.isActive && isTempHousingLocality(a.locality));
         const activeEmps = (allEmployees || []).filter((e) => e.status === 'active');
         const activeNE = (allNonEmployees || []).filter((ne) => ne.status === 'active');
-        const activeBok = (allBokResidents || []);
+        const activeBok = (allBokResidents || []).filter((b) => b.status !== 'dismissed');
 
         return tempAddresses
             .map((address) => {

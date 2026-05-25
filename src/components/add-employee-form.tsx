@@ -183,7 +183,7 @@ function AddEmployeeWizard({
             filtered,
             (allEmployees || []).filter((e) => e.status === 'active'),
             (allNonEmployees || []).filter((e) => e.status === 'active'),
-            (allBokResidents || []),
+            (allBokResidents || []).filter((e) => e.status !== 'dismissed'),
         );
     }, [settings.addresses, allEmployees, allNonEmployees, allBokResidents, data.coordinatorId]);
 

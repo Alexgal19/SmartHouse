@@ -398,7 +398,7 @@ export function EditEmployeeForm({
         occupied += allNonEmployees.filter(e => e.status === 'active' && e.address === selectedAddress && e.roomNumber === room.name).length;
       }
       if (allBokResidents) {
-        occupied += allBokResidents.filter(e => e.address === selectedAddress && e.roomNumber === room.name).length;
+        occupied += allBokResidents.filter(e => e.status !== 'dismissed' && e.address === selectedAddress && e.roomNumber === room.name).length;
       }
 
       return {

@@ -640,7 +640,7 @@ const useHousingData = () => {
     const allActiveOccupants: Occupant[] = [
       ...allEmployees.filter((e) => e.status === 'active'),
       ...allNonEmployees.filter((ne) => ne.status === 'active'),
-      ...allBokResidents,
+      ...allBokResidents.filter((r) => r.status !== 'dismissed'),
     ];
 
     return addressesToDisplay.map((address) => {
