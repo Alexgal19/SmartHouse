@@ -398,6 +398,7 @@ const ControlPanel = ({
     viewMode,
     showAddButton,
     currentUser,
+    settings,
 }: {
     search: string;
     onSearch: (value: string) => void;
@@ -405,12 +406,14 @@ const ControlPanel = ({
     onViewChange: (mode: 'list' | 'grid') => void;
     viewMode: 'list' | 'grid';
     showAddButton: boolean;
+    settings: Settings;
     currentUser: SessionData;
 }) => {
     const { t } = useLanguage();
     const { isMobile } = useIsMobile();
-    const canAddEmployee = currentUser.isAdmin;
-    const canAddNonEmployee = currentUser.isAdmin;
+    const isCoordinator = settings?.coordinators?.some(c => c.uid === currentUser.uid) ?? false;
+    const canAddEmployee = currentUser.isAdmin || isCoordinator;
+    const canAddNonEmployee = currentUser.isAdmin || isCoordinator;
     const canAddBokResident = currentUser.isAdmin || currentUser.isDriver || currentUser.isBok;
     const [localSearch, setLocalSearch] = useState(search);
     // Track the last value we committed to the URL ourselves,
@@ -994,6 +997,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                     onViewChange={(mode) => updateSearchParams({ viewMode: mode })}
                     showAddButton={tab !== 'history'}
                     currentUser={currentUser}
+                    settings={settings}
                 />
             </CardHeader>
             <CardContent>
