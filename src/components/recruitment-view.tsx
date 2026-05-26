@@ -278,7 +278,8 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
         setSelectedCandidate(candidate);
     };
 
-    const filteredCandidates = useMemo(() => {
+    // Pre-filtered candidates (status + BOK dismissal filter, no search/status filter)
+    const preFilteredCandidates = useMemo(() => {
         const dismissedBokIds = new Set(
             (allBokResidents || [])
                 .filter(r => r.status === 'dismissed')
@@ -289,7 +290,6 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                 .filter(e => e.convertedToBokId && dismissedBokIds.has(e.convertedToBokId))
                 .map(e => e.id)
         );
-        // Zestaw nazwisk+imion zwolnionych mieszkańców BOK – fallback dla kandydatów bez bokId
         const dismissedBokNames = new Set(
             (allBokResidents || [])
                 .filter(r => r.status === 'dismissed')
@@ -298,25 +298,25 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
         return candidates
             .filter(c => c.status === 'nowy' || c.status === 'wdrodze' || c.status === 'zakwaterowana' || c.status === 'po_rozmowie' || c.status === 'w_biurze')
             .filter(c => {
-                // Sprawdź przez bezpośrednie bokId (najpewniejsza ścieżka)
                 if (c.bokId && dismissedBokIds.has(c.bokId)) return false;
-                // Sprawdź przez łańcuch sourceOdbiorId → OdbiorEntry → BOK
                 if (c.sourceOdbiorId && dismissedSourceIds.has(c.sourceOdbiorId)) return false;
-                // Fallback: dopasowanie imienia i nazwiska (dla starych kandydatów bez bokId)
-                // Nie filtrujemy nowych aplikacji (nowy, wdrodze), bo to może być nowe zgłoszenie lub testy
                 if (c.status !== 'nowy' && c.status !== 'wdrodze') {
                     const nameKey = `${c.firstName.trim().toLowerCase()}|${c.lastName.trim().toLowerCase()}`;
                     if (dismissedBokNames.has(nameKey)) return false;
                 }
                 return true;
-            })
+            });
+    }, [candidates, allBokResidents, odbiorEntries]);
+
+    const filteredCandidates = useMemo(() => {
+        return preFilteredCandidates
             .filter(c => {
                 if (statusFilter === 'po_rozmowie') return c.status === 'po_rozmowie';
                 if (statusFilter === 'oczekujace') return c.status !== 'po_rozmowie';
                 return true;
             })
             .filter(c => c.lastName.toLowerCase().includes(searchQuery.toLowerCase()));
-    }, [candidates, allBokResidents, odbiorEntries, searchQuery, statusFilter]);
+    }, [preFilteredCandidates, searchQuery, statusFilter]);
 
     // O(1) demand lookup
     const demandMap = useMemo(() => {
@@ -493,11 +493,9 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
 
             {/* Status filter buttons */}
             {(() => {
-                const baseList = candidates
-                    .filter(c => c.status === 'nowy' || c.status === 'wdrodze' || c.status === 'zakwaterowana' || c.status === 'po_rozmowie' || c.status === 'w_biurze');
-                const countAll = baseList.length;
-                const countOczekujace = baseList.filter(c => c.status !== 'po_rozmowie').length;
-                const countPoRozmowie = baseList.filter(c => c.status === 'po_rozmowie').length;
+                const countAll = preFilteredCandidates.length;
+                const countOczekujace = preFilteredCandidates.filter(c => c.status !== 'po_rozmowie').length;
+                const countPoRozmowie = preFilteredCandidates.filter(c => c.status === 'po_rozmowie').length;
                 return (
                     <div className="flex justify-center gap-3">
                         <button
