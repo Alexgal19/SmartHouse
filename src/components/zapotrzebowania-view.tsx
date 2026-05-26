@@ -210,6 +210,9 @@ export default function ZapotrzebowaniaView({ currentUser, activeView }: { curre
                                                 <span className="font-medium text-foreground">{t('demand.deliveryTime')}:</span> {demand.estimatedDeliveryTime || t('common.noData')}
                                             </div>
                                             <div>
+                                                <span className="font-medium text-foreground">{t('demand.hasLuggage')}:</span> {demand.hasLuggage ? t('demand.luggageYes') : t('demand.luggageNo')}
+                                            </div>
+                                            <div>
                                                 <span className="font-medium text-foreground">{t('demand.requestedBy')}:</span> {demand.requestedBy}
                                             </div>
                                             <div>
@@ -278,10 +281,13 @@ export default function ZapotrzebowaniaView({ currentUser, activeView }: { curre
                                                         const address = (demand.pickupAddress && demand.pickupAddress !== "Brak adresu") ? demand.pickupAddress : (bok?.address || "");
                                                         const room = demand.roomNumber || bok?.roomNumber || "";
                                                         return (
-                                                            <span>
-                                                                {address || t('common.noData')}
-                                                                {room && ` (Pokój: ${room})`}
-                                                            </span>
+                                                            <>
+                                                                <span>
+                                                                    {address || t('common.noData')}
+                                                                    {room && ` (Pokój: ${room})`}
+                                                                </span>
+                                                                <span>{t('demand.hasLuggage')}: {demand.hasLuggage ? t('demand.luggageYes') : t('demand.luggageNo')}</span>
+                                                            </>
                                                         );
                                                     })()}
                                                     <span>Zgłoszone: {format(new Date(demand.requestedAt), 'dd.MM.yyyy HH:mm', { locale: dateLocale })}</span>

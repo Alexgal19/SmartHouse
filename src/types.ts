@@ -358,6 +358,7 @@ export type CandidateDemand = {
   estimatedDeliveryTime?: string;
   pickupAddress?: string;
   roomNumber?: string;
+  hasLuggage?: boolean;
 }
 
 export type OdbiorEntry = {

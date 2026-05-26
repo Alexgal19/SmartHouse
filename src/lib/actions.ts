@@ -3011,7 +3011,8 @@ export async function sendCandidateDemandNotificationAction(
     candidate: Candidate,
     estimatedDeliveryTime: string,
     pickupAddress: string,
-    roomNumber?: string
+    roomNumber?: string,
+    hasLuggage?: boolean
 ): Promise<{ success: boolean; sentCount: number; error?: string; demandId?: string }> {
     try {
         const session = await requireSession();
@@ -3084,6 +3085,7 @@ export async function sendCandidateDemandNotificationAction(
             estimatedDeliveryTime,
             pickupAddress,
             roomNumber,
+            hasLuggage,
         };
         await addCandidateDemandToSheet(demand);
 

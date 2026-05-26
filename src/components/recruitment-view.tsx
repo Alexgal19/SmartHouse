@@ -60,6 +60,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
     const [estimatedTime, setEstimatedTime] = useState("");
     const [pickupAddress, setPickupAddress] = useState("Brak adresu");
     const [demandRoomNumber, setDemandRoomNumber] = useState("");
+    const [hasLuggage, setHasLuggage] = useState<boolean>(false);
     const [bokDemandLoading, setBokDemandLoading] = useState(false);
 
     const searchParams = useSearchParams();
@@ -157,7 +158,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
         if (!demandCandidate) return;
         setSendingId(demandCandidate.id);
         try {
-            const result = await sendCandidateDemandNotificationAction(demandCandidate, estimatedTime, pickupAddress, demandRoomNumber || undefined);
+            const result = await sendCandidateDemandNotificationAction(demandCandidate, estimatedTime, pickupAddress, demandRoomNumber || undefined, hasLuggage);
             if (result.success) {
                 toast({ title: t("candidate.demandSent"), description: t("candidate.demandSentDesc", { count: result.sentCount }) });
                 const updatedDemands = await getCandidateDemandsAction();
@@ -185,6 +186,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                 setEstimatedTime("");
                 setDemandRoomNumber(bokResident.roomNumber || "");
                 setPickupAddress(bokResident.address || "Brak adresu");
+                setHasLuggage(false);
                 setDemandDialogOpen(true);
                 return;
             }
@@ -200,6 +202,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                 setEstimatedTime("");
                 setDemandRoomNumber(bokResident.roomNumber || "");
                 setPickupAddress(bokResident.address || "Brak adresu");
+                setHasLuggage(false);
                 setDemandDialogOpen(true);
             } else {
                 toast({ variant: "destructive", title: t("common.error"), description: result.error || "Błąd tworzenia kandydata" });
@@ -373,6 +376,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
         setDemandRoomNumber(bok?.roomNumber || "");
         // Use empty string so user sees placeholder; don't pre-fill 'Brak adresu'
         setPickupAddress(bok?.address || "");
+        setHasLuggage(false);
         setDemandDialogOpen(true);
     };
 
@@ -897,6 +901,27 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                 onChange={(e) => setDemandRoomNumber(e.target.value)}
                                 placeholder="Np. 12"
                             />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">{t('demand.hasLuggage')}</label>
+                            <div className="flex gap-2">
+                                <Button
+                                    type="button"
+                                    variant={hasLuggage ? 'default' : 'outline'}
+                                    onClick={() => setHasLuggage(true)}
+                                    className="flex-1"
+                                >
+                                    {t('demand.luggageYes')}
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant={!hasLuggage ? 'default' : 'outline'}
+                                    onClick={() => setHasLuggage(false)}
+                                    className="flex-1"
+                                >
+                                    {t('demand.luggageNo')}
+                                </Button>
+                            </div>
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Czas dostarczenia</label>
