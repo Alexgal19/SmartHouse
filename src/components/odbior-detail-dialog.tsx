@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import type { OdbiorZgloszenie, OsobaWOdbiorze, SessionData, Candidate } from '@/types';
+import type { OdbiorZgloszenie, OsobaWOdbiorze, SessionData } from '@/types';
 import { OdbiorZakwaterowanieDialog } from '@/components/odbior-zakwaterowanie-dialog';
-import AddCandidateDialog from '@/components/add-candidate-dialog';
+import { addCandidateAction } from '@/lib/actions';
 import {
     Dialog,
     DialogContent,
@@ -584,12 +584,11 @@ function AddPersonDialog({
 // ─── Karta — W trakcie ───────────────────────────────────────────────────────
 
 function KartaWTrakcie({
-    z, onAction, onZakwaterowanieClick, onRozmowaClick,
+    z, onAction, onZakwaterowanieClick,
 }: {
     z: OdbiorZgloszenie;
     onAction: (action: 'odrzuc' | 'zakoncz' | 'update', payload: Partial<OdbiorZgloszenie>) => Promise<void>;
     onZakwaterowanieClick?: (osoba: OsobaWOdbiorze | null, idx: number | null) => void;
-    onRozmowaClick?: (osoba: OsobaWOdbiorze | null, idx: number | null) => void;
 }) {
     const { t } = useLanguage();
     const [localOsoby, setLocalOsoby] = useState<OsobaWOdbiorze[]>(() => parseOsoby(z.osoby));
@@ -616,6 +615,7 @@ function KartaWTrakcie({
     }, [localOsoby, z.iloscOsob]);
     
     const [nextStepPromptPerson, setNextStepPromptPerson] = useState<{ person: OsobaWOdbiorze; index: number } | null>(null);
+    const [confirmRozmowaPrompt, setConfirmRozmowaPrompt] = useState<{ person: OsobaWOdbiorze; index: number } | null>(null);
     const [partialArrivalAlertOpen, setPartialArrivalAlertOpen] = useState(false);
     const { toast } = useToast();
 
@@ -653,13 +653,54 @@ function KartaWTrakcie({
         
         if (krok === 'zakwaterowanie') {
             onZakwaterowanieClick?.(updated[index], index);
+            onAction('update', { osoby: JSON.stringify(updated) }).catch(() => {
+                toast({ variant: 'destructive', title: t('common.error'), description: 'Błąd zapisu' });
+            });
         } else {
-            onRozmowaClick?.(updated[index], index);
+            setConfirmRozmowaPrompt(nextStepPromptPerson);
+            setNextStepPromptPerson(null);
         }
+    };
+
+    const handleConfirmRozmowa = async () => {
+        if (!confirmRozmowaPrompt) return;
+        const { index } = confirmRozmowaPrompt;
+        const updated = [...localOsoby];
+        updated[index] = { ...updated[index], wybranyKrok: 'rozmowa', statusKrok: 'pending' };
+        setLocalOsoby(updated);
         
-        onAction('update', { osoby: JSON.stringify(updated) }).catch(() => {
+        setConfirmRozmowaPrompt(null);
+        
+        try {
+            const res = await addCandidateAction({
+                firstName: updated[index].imie,
+                lastName: updated[index].nazwisko,
+                passportNumber: updated[index].paszport || '',
+                passportPhotoUrl: updated[index].paszportFotoUrl,
+                sourceOdbiorId: z.id,
+            });
+            if (res.success) {
+                toast({ title: t('candidate.saved') });
+                updated[index] = { ...updated[index], statusKrok: 'completed' };
+                setLocalOsoby(updated);
+                await onAction('update', { osoby: JSON.stringify(updated) });
+                window.dispatchEvent(new Event('candidates-updated'));
+                return;
+            }
+            toast({ variant: 'destructive', title: t('common.error'), description: res.error });
+        } catch (e) {
+            toast({ variant: 'destructive', title: t('common.error'), description: String(e) });
+        }
+        await onAction('update', { osoby: JSON.stringify(updated) }).catch(() => {
             toast({ variant: 'destructive', title: t('common.error'), description: 'Błąd zapisu' });
         });
+    };
+
+    const handleCancelRozmowa = () => {
+        if (confirmRozmowaPrompt) {
+            setNextStepPromptPerson(confirmRozmowaPrompt);
+        }
+        setConfirmRozmowaPrompt(null);
     };
 
     const handleRemovePerson = async (idx: number) => {
@@ -746,7 +787,7 @@ function KartaWTrakcie({
                                         <div className="flex items-center gap-2">
                                             <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100">
                                                 <Check className="w-3 h-3 mr-1" />
-                                                {o.wybranyKrok === 'zakwaterowanie' ? 'Zakwaterowano' : 'Rozmowa ukończona'}
+                                                {o.wybranyKrok === 'zakwaterowanie' ? 'Zakwaterowano' : 'Przekazano do rekrutacji'}
                                             </Badge>
                                         </div>
                                     ) : o.statusKrok === 'pending' ? (
@@ -757,10 +798,10 @@ function KartaWTrakcie({
                                             <Button 
                                                 size="sm" 
                                                 className={cn("h-7 text-xs shadow-none text-white", o.wybranyKrok === 'zakwaterowanie' ? "bg-blue-600 hover:bg-blue-700" : "bg-purple-600 hover:bg-purple-700")}
-                                                onClick={() => o.wybranyKrok === 'zakwaterowanie' ? onZakwaterowanieClick?.(o, i) : onRozmowaClick?.(o, i)}
+                                                onClick={() => o.wybranyKrok === 'zakwaterowanie' ? onZakwaterowanieClick?.(o, i) : setConfirmRozmowaPrompt({ person: o, index: i })}
                                             >
                                                 {o.wybranyKrok === 'zakwaterowanie' ? <Bed className="w-3.5 h-3.5 mr-1" /> : <Users className="w-3.5 h-3.5 mr-1" />}
-                                                {o.wybranyKrok === 'zakwaterowanie' ? 'Rozpocznij zakwaterowanie' : 'Rozpocznij rozmowę'}
+                                                {o.wybranyKrok === 'zakwaterowanie' ? 'Rozpocznij zakwaterowanie' : 'Przekaż do rekrutacji'}
                                             </Button>
                                         </div>
                                     ) : (
@@ -776,10 +817,7 @@ function KartaWTrakcie({
                                                     <Bed className="w-3.5 h-3.5 mr-1" /> Zakwaterowanie
                                                 </Button>
                                                 <Button size="sm" variant="outline" className="flex-1 h-7 text-xs text-purple-700 border-purple-200 hover:bg-purple-50" onClick={() => {
-                                                    const updated = [...localOsoby];
-                                                    updated[i] = { ...updated[i], wybranyKrok: 'rozmowa', statusKrok: 'pending' };
-                                                    saveOsoby(updated);
-                                                    onRozmowaClick?.(updated[i], i);
+                                                    setConfirmRozmowaPrompt({ person: o, index: i });
                                                 }}>
                                                     <Users className="w-3.5 h-3.5 mr-1" /> Rozmowa
                                                 </Button>
@@ -834,6 +872,19 @@ function KartaWTrakcie({
                     </div>
                 </DialogContent>
             </Dialog>
+
+            <AlertDialog open={!!confirmRozmowaPrompt} onOpenChange={(open) => !open && handleCancelRozmowa()}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Jesteś pewny?</AlertDialogTitle>
+                        <AlertDialogDescription>Czy na pewno chcesz przekazać tę osobę ({confirmRozmowaPrompt?.person.imie} {confirmRozmowaPrompt?.person.nazwisko}) do działu rekrutacji? Spowoduje to utworzenie dla niej profilu kandydata.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="mt-4 gap-2">
+                        <AlertDialogCancel className="w-full sm:w-auto mt-0" onClick={handleCancelRozmowa}>Nie, cofnij</AlertDialogCancel>
+                        <Button className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white" onClick={handleConfirmRozmowa}>Tak, przekaż</Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             <AlertDialog open={partialArrivalAlertOpen} onOpenChange={setPartialArrivalAlertOpen}>
                 <AlertDialogContent>
@@ -975,10 +1026,7 @@ export default function OdbiorDetailDialog({
     const [localZ, setLocalZ] = useState(zgloszenie);
     const [zakwatOpen, setZakwatOpen] = useState(false);
     const [zakwatPrefill, setZakwatPrefill] = useState<{ firstName?: string; lastName?: string; passportNumber?: string; passportPhotoUrl?: string } | undefined>();
-    const [candidateDialogOpen, setCandidateDialogOpen] = useState(false);
-    const [candidatePrefill, setCandidatePrefill] = useState<{ firstName?: string; lastName?: string; passportNumber?: string; passportPhotoUrl?: string } | undefined>();
     const [activePersonIndex, setActivePersonIndex] = useState<number | null>(null);
-    const savedJustNowRef = useRef(false);
 
     React.useEffect(() => { setLocalZ(zgloszenie); }, [zgloszenie]);
 
@@ -1024,33 +1072,9 @@ export default function OdbiorDetailDialog({
         if (!v) handleNextCandidate();
     };
 
-    const handleRozmowaClick = (osoba: OsobaWOdbiorze | null, idx: number | null = null) => {
-        setActivePersonIndex(idx);
-        setCandidatePrefill(osoba ? {
-            firstName: osoba.imie,
-            lastName: osoba.nazwisko,
-            passportNumber: osoba.paszport,
-            passportPhotoUrl: osoba.paszportFotoUrl,
-        } : undefined);
-        setCandidateDialogOpen(true);
-    };
 
-    const handleCandidateDialogOpenChange = (v: boolean) => {
-        setCandidateDialogOpen(v);
-        if (!v) {
-            if (savedJustNowRef.current) {
-                savedJustNowRef.current = false;
-            } else {
-                setActivePersonIndex(null);
-            }
-        }
-    };
 
-    const handleCandidateSaved = (_candidate: Candidate) => {
-        savedJustNowRef.current = true;
-        completeStepForActivePerson();
-        window.dispatchEvent(new Event('candidates-updated'));
-    };
+
 
     const counts = {
         'Nieprzyjęte': allZgloszenia.filter(z => z.status === 'Nieprzyjęte').length,
@@ -1173,7 +1197,7 @@ export default function OdbiorDetailDialog({
                     </TabsContent>
 
                     <TabsContent value="W trakcie" className="mt-4">
-                        <KartaWTrakcie z={localZ} onAction={handleWTrakcieAction} onZakwaterowanieClick={handleZakwaterowanieClick} onRozmowaClick={handleRozmowaClick} />
+                        <KartaWTrakcie z={localZ} onAction={handleWTrakcieAction} onZakwaterowanieClick={handleZakwaterowanieClick} />
                     </TabsContent>
 
                     <TabsContent value="Zakończone" className="mt-4">
@@ -1192,16 +1216,7 @@ export default function OdbiorDetailDialog({
             onSaved={completeStepForActivePerson}
         />
 
-        <AddCandidateDialog
-            open={candidateDialogOpen}
-            onOpenChange={handleCandidateDialogOpenChange}
-            sourceOdbiorId={localZ.id}
-            onSaved={handleCandidateSaved}
-            prefillFirstName={candidatePrefill?.firstName}
-            prefillLastName={candidatePrefill?.lastName}
-            prefillPassportNumber={candidatePrefill?.passportNumber}
-            prefillPassportPhotoUrl={candidatePrefill?.passportPhotoUrl}
-        />
+
         </>
     );
 }

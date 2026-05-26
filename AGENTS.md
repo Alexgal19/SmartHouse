@@ -415,10 +415,15 @@ Dopisz wpis do `LESSONS_LEARNED.md` w formacie:
 
 ### Dev server
 
-Po każdym `npm run build` hook automatycznie restartuje dev server na `http://localhost:3000`.
-Log serwera: `/tmp/smarthouse-dev.log`
+**⚠️ KRYTYCZNA ZASADA RESTARTU:**
+Zawsze po wykonaniu komendy `npm run build` (która weryfikuje poprawność kodu i kompilację), agent ma **bezwzględny obowiązek** zrestartować serwer deweloperski `npm run dev`. Przed jego uruchomieniem należy obowiązkowo wyczyścić/zamknąć wszystkie wiszące procesy na porcie 3000 (localhost), aby uniknąć błędów cache.
 
-Jeśli serwer nie działa, uruchom ręcznie:
+Uruchomienie serwera deweloperskiego (restart) po buildu:
+```bash
+rm -rf .next && lsof -ti:3000 | xargs kill -9 2>/dev/null; npm run dev
+```
+
+Jeśli serwer nie działa, możesz go też uruchomić w tle w następujący sposób:
 ```bash
 lsof -ti:3000 | xargs kill -9 2>/dev/null; nohup npm run dev > /tmp/smarthouse-dev.log 2>&1 &
 ```

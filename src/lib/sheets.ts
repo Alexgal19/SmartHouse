@@ -1341,7 +1341,7 @@ const deserializeCandidate = (row: Record<string, unknown>): import('../types').
         passportPhotoUrl: (row.passportPhotoUrl as string) || undefined,
         sourceOdbiorId: (row.sourceOdbiorId as string) || null,
         bokId: (row.bokId as string) || null,
-        status: ((row.status as string) || 'nowy') as import('../types').Candidate['status'],
+        status: ((row.status as string) || 'wdrodze') as import('../types').Candidate['status'],
         createdAt: (row.createdAt as string) || '',
         interviewHistory,
     };

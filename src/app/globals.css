@@ -113,17 +113,26 @@
 
 @keyframes blink-red {
   0%, 100% {
-    background-color: rgba(239, 68, 68, 0.2);
-    color: rgb(239, 68, 68);
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+    background-color: transparent;
   }
   50% {
-    background-color: rgb(239, 68, 68);
-    color: white;
-    box-shadow: 0 0 12px 4px rgba(239, 68, 68, 0.6);
+    background-color: rgba(239, 68, 68, 1); /* 100% opacity red-500 */
   }
 }
 
 .animate-blink-red {
-  animation: blink-red 1s infinite ease-in-out !important;
+  animation: blink-red 1.2s infinite ease-in-out !important;
+}
+
+@keyframes blink-light-red {
+  0%, 100% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: rgba(239, 68, 68, 0.15); /* light opacity for rows */
+  }
+}
+
+.animate-blink-light-red {
+  animation: blink-light-red 2.5s infinite ease-in-out !important;
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import type { SessionData, CandidateDemand } from "@/types";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import type { SessionData, CandidateDemand, Candidate, BokResident } from "@/types";
 import { useLanguage } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getCandidateDemandsAction, acknowledgeCandidateDemandAction, deliverCandidateDemandAction, deleteCandidateDemandAction } from "@/lib/actions";
+import { useMainLayout } from "@/components/main-layout";
 import { format } from "date-fns";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
@@ -20,6 +21,31 @@ export default function ZapotrzebowaniaView({ currentUser, activeView }: { curre
     const [historyOpen, setHistoryOpen] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const isFetchingRef = useRef(false);
+
+    const { allCandidates, allBokResidents, odbiorEntries } = useMainLayout();
+
+    const findBokResidentForCandidate = useCallback((candidate: Candidate): BokResident | undefined => {
+        if (candidate.bokId) {
+            const byBokId = allBokResidents?.find(r => r.id === candidate.bokId);
+            if (byBokId) return byBokId;
+        }
+        if (!candidate.sourceOdbiorId || !odbiorEntries) return undefined;
+        const entry = odbiorEntries.find(e => e.id === candidate.sourceOdbiorId);
+        if (!entry?.convertedToBokId) return undefined;
+        return allBokResidents?.find(r => r.id === entry.convertedToBokId);
+    }, [allBokResidents, odbiorEntries]);
+
+    const bokLookupMap = useMemo(() => {
+        const map = new Map<string, BokResident>();
+        if (!allCandidates || !demands.length) return map;
+        for (const demand of demands) {
+            const candidate = allCandidates.find(c => c.id === demand.candidateId);
+            if (!candidate) continue;
+            const bok = findBokResidentForCandidate(candidate);
+            if (bok) map.set(demand.id, bok);
+        }
+        return map;
+    }, [demands, allCandidates, findBokResidentForCandidate]);
 
     const loadData = useCallback(async () => {
         if (isFetchingRef.current) return;
@@ -63,7 +89,7 @@ export default function ZapotrzebowaniaView({ currentUser, activeView }: { curre
                         ? { ...d, status: 'acknowledged', acknowledgedBy: currentUser.name, acknowledgedAt: new Date().toISOString() }
                         : d
                 ));
-                toast({ title: t("common.success"), description: "Zapotrzebowanie zaakceptowane" });
+                toast({ title: t("common.success"), description: t("demand.accepted") });
             } else {
                 toast({ variant: "destructive", title: t("common.error"), description: result.error || "Wystąpił błąd" });
             }
@@ -80,7 +106,7 @@ export default function ZapotrzebowaniaView({ currentUser, activeView }: { curre
             const result = await deleteCandidateDemandAction(demandId, currentUser.uid);
             if (result.success) {
                 setDemands(prev => prev.filter(d => d.id !== demandId));
-                toast({ title: t("common.success"), description: "Zapotrzebowanie usunięte" });
+                toast({ title: t("common.success"), description: t("demand.deleted") });
             } else {
                 toast({ variant: "destructive", title: t("common.error"), description: result.error || "Wystąpił błąd" });
             }
@@ -101,7 +127,7 @@ export default function ZapotrzebowaniaView({ currentUser, activeView }: { curre
                         ? { ...d, status: 'delivered', acknowledgedBy: currentUser.name, acknowledgedAt: new Date().toISOString() }
                         : d
                 ));
-                toast({ title: t("common.success"), description: "Kandydat oznaczony jako dostarczony" });
+                toast({ title: t("common.success"), description: t("demand.markedDelivered") });
             } else {
                 toast({ variant: "destructive", title: t("common.error"), description: result.error || "Wystąpił błąd" });
             }
@@ -121,10 +147,10 @@ export default function ZapotrzebowaniaView({ currentUser, activeView }: { curre
         .sort((a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime());
 
     const statusBadge = (demand: CandidateDemand) => {
-        if (demand.status === 'pending') return <Badge variant="secondary" className="text-sm px-3 py-1">Oczekujące</Badge>;
-        if (demand.status === 'acknowledged') return <Badge variant="default" className="text-sm px-3 py-1">Zaakceptowane przez {demand.acknowledgedBy}</Badge>;
-        if (demand.status === 'delivered') return <Badge variant="outline" className="text-sm px-3 py-1 text-green-600 border-green-400">Dostarczone przez {demand.acknowledgedBy}</Badge>;
-        return <Badge variant="outline" className="text-sm px-3 py-1 text-muted-foreground">Wygasłe</Badge>;
+        if (demand.status === 'pending') return <Badge variant="secondary" className="text-sm px-3 py-1">{t('demand.statusPending')}</Badge>;
+        if (demand.status === 'acknowledged') return <Badge variant="default" className="text-sm px-3 py-1">{t('demand.statusAcknowledged').replace('{name}', demand.acknowledgedBy || '—')}</Badge>;
+        if (demand.status === 'delivered') return <Badge variant="outline" className="text-sm px-3 py-1 text-green-600 border-green-400">{t('demand.statusDelivered').replace('{name}', demand.acknowledgedBy || '—')}</Badge>;
+        return <Badge variant="outline" className="text-sm px-3 py-1 text-muted-foreground">{t('demand.statusExpired')}</Badge>;
     };
 
 
@@ -143,13 +169,13 @@ export default function ZapotrzebowaniaView({ currentUser, activeView }: { curre
     return (
         <div className="space-y-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h1 className="text-2xl font-bold tracking-tight">Zapotrzebowania</h1>
+                <h1 className="text-2xl font-bold tracking-tight">{t('demand.title')}</h1>
             </div>
 
             {activeDemands.length === 0 ? (
                 <Card>
                     <CardContent className="pt-6 text-center text-muted-foreground py-12">
-                        Brak aktywnych zapotrzebowań.
+                        {t('demand.noActive')}
                     </CardContent>
                 </Card>
             ) : (
@@ -163,22 +189,31 @@ export default function ZapotrzebowaniaView({ currentUser, activeView }: { curre
                                             {demand.candidateFirstName} {demand.candidateLastName}
                                         </div>
                                         <div className="text-sm text-muted-foreground flex flex-col gap-1">
+                                            {(() => {
+                                                const bok = bokLookupMap.get(demand.id);
+                                                const address = (demand.pickupAddress && demand.pickupAddress !== "Brak adresu") ? demand.pickupAddress : (bok?.address || "");
+                                                const room = demand.roomNumber || bok?.roomNumber || "";
+                                                return (
+                                                    <>
+                                                        <div>
+                                                            <span className="font-medium text-foreground">{t('demand.pickupAddress')}:</span> {address || t('common.noData')}
+                                                        </div>
+                                                        {room && (
+                                                            <div>
+                                                                <span className="font-medium text-foreground">{t('demand.room')}:</span> {room}
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                );
+                                            })()}
                                             <div>
-                                                <span className="font-medium text-foreground">Skąd (adres):</span> {demand.pickupAddress || 'Brak danych'}
+                                                <span className="font-medium text-foreground">{t('demand.deliveryTime')}:</span> {demand.estimatedDeliveryTime || t('common.noData')}
                                             </div>
-                                            {demand.roomNumber && (
-                                                <div>
-                                                    <span className="font-medium text-foreground">Pokój:</span> {demand.roomNumber}
-                                                </div>
-                                            )}
                                             <div>
-                                                <span className="font-medium text-foreground">Czas dostarczenia:</span> {demand.estimatedDeliveryTime || 'Brak danych'}
+                                                <span className="font-medium text-foreground">{t('demand.requestedBy')}:</span> {demand.requestedBy}
                                             </div>
                                             <div>
-                                                <span className="font-medium text-foreground">Zgłoszone przez:</span> {demand.requestedBy}
-                                            </div>
-                                            <div>
-                                                <span className="font-medium text-foreground">Data zgłoszenia:</span> {format(new Date(demand.requestedAt), 'dd.MM.yyyy HH:mm', { locale: dateLocale })}
+                                                <span className="font-medium text-foreground">{t('demand.requestedAt')}:</span> {format(new Date(demand.requestedAt), 'dd.MM.yyyy HH:mm', { locale: dateLocale })}
                                             </div>
                                         </div>
                                     </div>
@@ -189,12 +224,12 @@ export default function ZapotrzebowaniaView({ currentUser, activeView }: { curre
                                         <div className="flex flex-col gap-2 w-full md:w-auto">
                                             {demand.status === 'pending' && (currentUser.isDriver || currentUser.isBok || currentUser.isAdmin) && (
                                                 <Button onClick={() => handleAcceptDemand(demand.id)} className="w-full md:w-auto">
-                                                    Akceptuj
+                                                    {t('demand.accept')}
                                                 </Button>
                                             )}
                                             {demand.status === 'acknowledged' && (currentUser.isDriver || currentUser.isAdmin) && (
                                                 <Button variant="outline" onClick={() => handleDeliverDemand(demand.id)} className="w-full md:w-auto">
-                                                    Dostarczone
+                                                    {t('demand.markDelivered')}
                                                 </Button>
                                             )}
                                             {(currentUser.isRekrutacja || currentUser.isAdmin) && (
@@ -224,7 +259,7 @@ export default function ZapotrzebowaniaView({ currentUser, activeView }: { curre
                         className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                     >
                         {historyOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                        Historia ({historyDemands.length})
+                        {t('demand.history')} ({historyDemands.length})
                     </button>
 
                     {historyOpen && (
@@ -238,11 +273,21 @@ export default function ZapotrzebowaniaView({ currentUser, activeView }: { curre
                                                     {demand.candidateFirstName} {demand.candidateLastName}
                                                 </div>
                                                 <div className="text-xs text-muted-foreground flex flex-col gap-0.5">
-                                                    <span>{demand.pickupAddress || 'Brak adresu'}</span>
+                                                    {(() => {
+                                                        const bok = bokLookupMap.get(demand.id);
+                                                        const address = (demand.pickupAddress && demand.pickupAddress !== "Brak adresu") ? demand.pickupAddress : (bok?.address || "");
+                                                        const room = demand.roomNumber || bok?.roomNumber || "";
+                                                        return (
+                                                            <span>
+                                                                {address || t('common.noData')}
+                                                                {room && ` (Pokój: ${room})`}
+                                                            </span>
+                                                        );
+                                                    })()}
                                                     <span>Zgłoszone: {format(new Date(demand.requestedAt), 'dd.MM.yyyy HH:mm', { locale: dateLocale })}</span>
                                                     {demand.acknowledgedAt && (
                                                         <span>
-                                                            {demand.status === 'delivered' ? 'Dostarczone' : 'Zakończone'}:{' '}
+                                                            {demand.status === 'delivered' ? t('demand.markDelivered') : t('odbior.statusCompleted')}:{' '}
                                                             {format(new Date(demand.acknowledgedAt), 'dd.MM.yyyy HH:mm', { locale: dateLocale })}
                                                         </span>
                                                     )}

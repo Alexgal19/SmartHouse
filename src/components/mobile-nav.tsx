@@ -61,15 +61,12 @@ export function MobileNav({
         >
             <div className={cn(
                 "relative flex items-center justify-center p-2 rounded-lg transition-all duration-200",
-                item.view === 'odbior' && unacceptedCount > 0
-                    ? "animate-blink-red"
-                    : item.view === 'recruitment' && (wdrodzeCount ?? 0) > 0
-                        ? "animate-blink-red"
-                        : item.view === 'zapotrzebowania' && pendingDemandsCount > 0
-                            ? "animate-blink-red"
-                            : activeView === item.view && "bg-primary/10"
+                activeView === item.view && "bg-primary/10"
             )}>
-                <item.icon className="h-5 w-5" />
+                {((item.view === 'odbior' && unacceptedCount > 0) || (item.view === 'recruitment' && (wdrodzeCount ?? 0) > 0) || (item.view === 'zapotrzebowania' && pendingDemandsCount > 0)) && (
+                    <div className="absolute inset-0 rounded-lg animate-blink-red pointer-events-none" />
+                )}
+                <item.icon className="h-5 w-5 relative z-10" />
                 {item.view === 'odbior' && unacceptedCount > 0 && (
                     <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 shadow-sm">
                         {unacceptedCount > 9 ? '9+' : unacceptedCount}
@@ -132,12 +129,11 @@ export function MobileNav({
                                                     : "text-foreground hover:bg-muted"
                                             )}
                                         >
-                                            <div className={cn(
-                                                "relative p-1.5 rounded-lg transition-all duration-200",
-                                                (item.view === 'odbior' && unacceptedCount > 0) && "animate-blink-red",
-                                                (item.view === 'zapotrzebowania' && pendingDemandsCount > 0) && "animate-blink-red"
-                                            )}>
-                                                <item.icon className="h-5 w-5 shrink-0" />
+                                            <div className="relative p-1.5 rounded-lg transition-all duration-200">
+                                                {((item.view === 'odbior' && unacceptedCount > 0) || (item.view === 'zapotrzebowania' && pendingDemandsCount > 0)) && (
+                                                    <div className="absolute inset-0 rounded-lg animate-blink-red pointer-events-none" />
+                                                )}
+                                                <item.icon className="h-5 w-5 shrink-0 relative z-10" />
                                                 {item.view === 'odbior' && unacceptedCount > 0 && (
                                                     <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 shadow-sm">
                                                         {unacceptedCount > 9 ? '9+' : unacceptedCount}

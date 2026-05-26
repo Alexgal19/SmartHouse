@@ -208,7 +208,39 @@ export default function MainLayout({
 
     const [hasNewCheckouts, setHasNewCheckouts] = useState(false);
     const [unacceptedCount, setUnacceptedCount] = useState(0);
-    const [wdrodzeCount, setWdrodzeCount] = useState(0);
+    const wdrodzeCount = useMemo(() => {
+        if (!rawCandidates) return 0;
+        
+        const dismissedBokIds = new Set(
+            (rawBokResidents || [])
+                .filter(r => r.status === 'dismissed')
+                .map(r => r.id)
+        );
+        const dismissedSourceIds = new Set(
+            (odbiorEntries || [])
+                .filter(e => e.convertedToBokId && dismissedBokIds.has(e.convertedToBokId))
+                .map(e => e.id)
+        );
+        const dismissedBokNames = new Set(
+            (rawBokResidents || [])
+                .filter(r => r.status === 'dismissed')
+                .map(r => `${r.firstName.trim().toLowerCase()}|${r.lastName.trim().toLowerCase()}`)
+        );
+
+        return rawCandidates
+            .filter(c => c.status === 'nowy' || c.status === 'wdrodze' || c.status === 'zakwaterowana')
+            .filter(c => {
+                if (c.bokId && dismissedBokIds.has(c.bokId)) return false;
+                if (c.sourceOdbiorId && dismissedSourceIds.has(c.sourceOdbiorId)) return false;
+                // Fallback: dopasowanie imienia i nazwiska (dla starych kandydatów bez bokId)
+                // Nie filtrujemy nowych aplikacji (nowy, wdrodze), bo to może być nowe zgłoszenie lub testy
+                if (c.status !== 'nowy' && c.status !== 'wdrodze') {
+                    const nameKey = `${c.firstName.trim().toLowerCase()}|${c.lastName.trim().toLowerCase()}`;
+                    if (dismissedBokNames.has(nameKey)) return false;
+                }
+                return true;
+            }).length;
+    }, [rawCandidates, rawBokResidents, odbiorEntries]);
     const [pendingDemandsCount, setPendingDemandsCount] = useState(0);
 
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -520,7 +552,7 @@ export default function MainLayout({
             if (currentUser.isAdmin || currentUser.isRekrutacja) {
                 try {
                     const candidates = await getCandidatesAction();
-                    setWdrodzeCount(candidates.filter(c => c.status === 'wdrodze').length);
+                    setRawCandidates(candidates);
                 } catch {
                     // ignore
                 }
@@ -529,6 +561,7 @@ export default function MainLayout({
                 try {
                     const { getCandidateDemandsAction } = await import('@/lib/actions');
                     const demands = await getCandidateDemandsAction();
+                    setRawDemands(demands);
                     setPendingDemandsCount(demands.filter(d => d.status === 'pending').length);
                 } catch {
                     // ignore
@@ -1236,14 +1269,15 @@ export default function MainLayout({
                                         item.view === 'settings' && !currentUser?.isAdmin
                                             ? 'opacity-40 pointer-events-none'
                                             : '',
-                                        (item.view === 'odbior' && unacceptedCount > 0) || (item.view === 'recruitment' && wdrodzeCount > 0) || (item.view === 'zapotrzebowania' && pendingDemandsCount > 0)
-                                            ? 'animate-blink-red'
-                                            : activeView === item.view
-                                                ? 'bg-primary text-primary-foreground shadow-md hover:bg-primary'
-                                                : 'text-muted-foreground'
+                                        activeView === item.view
+                                            ? 'bg-primary text-primary-foreground shadow-md hover:bg-primary'
+                                            : 'text-muted-foreground'
                                     )}
                                 >
-                                    <item.icon className="h-5 w-5" />
+                                    {((item.view === 'odbior' && unacceptedCount > 0) || (item.view === 'recruitment' && wdrodzeCount > 0) || (item.view === 'zapotrzebowania' && pendingDemandsCount > 0)) && (
+                                        <div className="absolute inset-0 rounded-xl animate-blink-red pointer-events-none" />
+                                    )}
+                                    <item.icon className="h-5 w-5 relative z-10" />
                                     {item.view === 'odbior' && unacceptedCount > 0 && (
                                         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 shadow-sm">
                                             {unacceptedCount > 9 ? '9+' : unacceptedCount}

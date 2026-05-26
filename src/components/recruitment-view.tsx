@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import type { SessionData, Candidate, CandidateDemand, OdbiorEntry, BokResident } from "@/types";
+import type { SessionData, Candidate, CandidateDemand, BokResident } from "@/types";
 import { useLanguage } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { getCandidatesAction, sendCandidateDemandNotificationAction, getCandidateDemandsAction, deleteCandidateAction, acknowledgeCandidateDemandAction, getOdbiorEntriesAction, addCandidateAction, updateCandidateAction } from "@/lib/actions";
+import { getCandidatesAction, sendCandidateDemandNotificationAction, getCandidateDemandsAction, deleteCandidateAction, acknowledgeCandidateDemandAction, addCandidateAction, updateCandidateAction } from "@/lib/actions";
 import { useMainLayout } from "@/components/main-layout";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
@@ -34,13 +34,15 @@ import {
 export default function RecruitmentView({ currentUser, activeView }: { currentUser: SessionData; activeView: string }) {
     const { t, dateLocale } = useLanguage();
     const { toast } = useToast();
-    const { allBokResidents, allCandidates, allDemands } = useMainLayout();
+    const { allBokResidents, allCandidates, allDemands, odbiorEntries: contextOdbiorEntries } = useMainLayout();
     const [candidates, setCandidates] = useState<Candidate[]>(allCandidates || []);
     const [demands, setDemands] = useState<CandidateDemand[]>(allDemands || []);
+    const odbiorEntries = useMemo(() => contextOdbiorEntries || [], [contextOdbiorEntries]);
     const [loading, setLoading] = useState(!(allCandidates && allCandidates.length > 0));
     const isFetchingRef = useRef(false);
     const candidatesRef = useRef<Candidate[]>(allCandidates || []);
     const [searchQuery, setSearchQuery] = useState("");
+    const [statusFilter, setStatusFilter] = useState<'all' | 'oczekujace' | 'po_rozmowie'>('all');
     const [sendingId, setSendingId] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [dialogStep, setDialogStep] = useState<'none' | 'confirm' | 'sure'>('none');
@@ -49,7 +51,6 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
     // Candidate detail dialog state
     const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
 
-    const [odbiorEntries, setOdbiorEntries] = useState<OdbiorEntry[]>([]);
     const [bokSearchQuery, setBokSearchQuery] = useState("");
     const [bokPassportVisible, setBokPassportVisible] = useState(false);
     const [passportDialogOpen, setPassportDialogOpen] = useState(false);
@@ -150,15 +151,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
         }
     };
 
-    const handleDemand = (candidate: Candidate, e: React.MouseEvent) => {
-        e.stopPropagation();
-        setDemandCandidate(candidate);
-        setEstimatedTime("");
-        setDemandRoomNumber("");
-        const sourceOdbior = odbiorEntries.find(o => o.id === candidate.sourceOdbiorId);
-        setPickupAddress(sourceOdbior?.addressName || "Brak adresu");
-        setDemandDialogOpen(true);
-    };
+
 
     const submitDemand = async () => {
         if (!demandCandidate) return;
@@ -170,6 +163,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                 const updatedDemands = await getCandidateDemandsAction();
                 setDemands(updatedDemands);
                 setDemandDialogOpen(false);
+                window.dispatchEvent(new Event('candidates-updated'));
             } else {
                 toast({ variant: "destructive", title: t("candidate.demandError"), description: result.error || "" });
             }
@@ -184,7 +178,16 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
     const handleBokDemand = async (bokResident: BokResident) => {
         setBokDemandLoading(true);
         try {
-            // Create candidate from BOK resident
+            // Reuse existing candidate for this BOK resident instead of creating duplicates
+            const existing = candidates.find(c => c.bokId === bokResident.id);
+            if (existing) {
+                setDemandCandidate(existing);
+                setEstimatedTime("");
+                setDemandRoomNumber(bokResident.roomNumber || "");
+                setPickupAddress(bokResident.address || "Brak adresu");
+                setDemandDialogOpen(true);
+                return;
+            }
             const result = await addCandidateAction({
                 firstName: bokResident.firstName,
                 lastName: bokResident.lastName,
@@ -192,6 +195,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                 bokId: bokResident.id,
             });
             if (result.success && result.candidate) {
+                setCandidates(prev => [...prev, result.candidate!]);
                 setDemandCandidate(result.candidate);
                 setEstimatedTime("");
                 setDemandRoomNumber(bokResident.roomNumber || "");
@@ -215,15 +219,13 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
             // If context has no data yet, fetch immediately
             if (!allCandidates || !allDemands) {
                 if (candidates.length === 0) setLoading(true);
-                const [candData, demandData, odbiorData] = await Promise.all([
+                const [candData, demandData] = await Promise.all([
                     Promise.resolve(getCandidatesAction()).catch(() => [] as Candidate[]),
                     Promise.resolve(getCandidateDemandsAction()).catch(() => [] as CandidateDemand[]),
-                    Promise.resolve(getOdbiorEntriesAction()).catch(() => [] as OdbiorEntry[]),
                 ]);
                 setCandidates(candData);
                 candidatesRef.current = candData;
                 setDemands(demandData);
-                setOdbiorEntries(odbiorData);
                 setLoading(false);
             }
         } catch (err) {
@@ -294,19 +296,27 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                 .map(r => `${r.firstName.trim().toLowerCase()}|${r.lastName.trim().toLowerCase()}`)
         );
         return candidates
-            .filter(c => c.status === 'wdrodze' || c.status === 'zakwaterowana')
+            .filter(c => c.status === 'nowy' || c.status === 'wdrodze' || c.status === 'zakwaterowana' || c.status === 'po_rozmowie' || c.status === 'w_biurze')
             .filter(c => {
                 // Sprawdź przez bezpośrednie bokId (najpewniejsza ścieżka)
                 if (c.bokId && dismissedBokIds.has(c.bokId)) return false;
                 // Sprawdź przez łańcuch sourceOdbiorId → OdbiorEntry → BOK
                 if (c.sourceOdbiorId && dismissedSourceIds.has(c.sourceOdbiorId)) return false;
                 // Fallback: dopasowanie imienia i nazwiska (dla starych kandydatów bez bokId)
-                const nameKey = `${c.firstName.trim().toLowerCase()}|${c.lastName.trim().toLowerCase()}`;
-                if (dismissedBokNames.has(nameKey)) return false;
+                // Nie filtrujemy nowych aplikacji (nowy, wdrodze), bo to może być nowe zgłoszenie lub testy
+                if (c.status !== 'nowy' && c.status !== 'wdrodze') {
+                    const nameKey = `${c.firstName.trim().toLowerCase()}|${c.lastName.trim().toLowerCase()}`;
+                    if (dismissedBokNames.has(nameKey)) return false;
+                }
+                return true;
+            })
+            .filter(c => {
+                if (statusFilter === 'po_rozmowie') return c.status === 'po_rozmowie';
+                if (statusFilter === 'oczekujace') return c.status !== 'po_rozmowie';
                 return true;
             })
             .filter(c => c.lastName.toLowerCase().includes(searchQuery.toLowerCase()));
-    }, [candidates, allBokResidents, odbiorEntries, searchQuery]);
+    }, [candidates, allBokResidents, odbiorEntries, searchQuery, statusFilter]);
 
     // O(1) demand lookup
     const demandMap = useMemo(() => {
@@ -329,10 +339,31 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
     const demandCandidateMap = candidateMap;
 
     const findBokResidentForCandidate = (candidate: Candidate): BokResident | undefined => {
-        if (!candidate.sourceOdbiorId) return undefined;
-        const entry = odbiorEntries.find(e => e.id === candidate.sourceOdbiorId);
-        if (!entry?.convertedToBokId) return undefined;
-        return allBokResidents?.find(r => r.id === entry.convertedToBokId);
+        // Try by bokId first (direct link)
+        if (candidate.bokId) {
+            const byBokId = allBokResidents?.find(r => r.id === candidate.bokId);
+            if (byBokId) return byBokId;
+        }
+        // Then try via sourceOdbiorId
+        if (candidate.sourceOdbiorId) {
+            const entry = odbiorEntries.find(e => e.id === candidate.sourceOdbiorId);
+            if (entry?.convertedToBokId) {
+                const bySource = allBokResidents?.find(r => r.id === entry.convertedToBokId);
+                if (bySource) return bySource;
+            }
+        }
+        // Fallback: match by firstName and lastName (especially for 'zakwaterowana' status)
+        if (allBokResidents) {
+            const candFirst = candidate.firstName.trim().toLowerCase();
+            const candLast = candidate.lastName.trim().toLowerCase();
+            const byName = allBokResidents.find(r => 
+                r.firstName.trim().toLowerCase() === candFirst && 
+                r.lastName.trim().toLowerCase() === candLast
+            );
+            if (byName) return byName;
+        }
+        
+        return undefined;
     };
 
     const handleCandidateDemand = (candidate: Candidate) => {
@@ -340,7 +371,8 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
         setDemandCandidate(candidate);
         setEstimatedTime("");
         setDemandRoomNumber(bok?.roomNumber || "");
-        setPickupAddress(bok?.address || "Brak adresu");
+        // Use empty string so user sees placeholder; don't pre-fill 'Brak adresu'
+        setPickupAddress(bok?.address || "");
         setDemandDialogOpen(true);
     };
 
@@ -361,18 +393,25 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
     const demandStatusBadge = (demand?: CandidateDemand) => {
         if (!demand) return <span className="text-muted-foreground text-sm">—</span>;
 
-        const recipients = demand.sentTo && demand.sentTo.length > 0 ? (
-            <div className="text-xs text-muted-foreground mt-1">
-                {t("candidate.sentTo")}: {demand.sentTo.join(', ')}
+        const details = (
+            <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                {(demand.pickupAddress && demand.pickupAddress !== "Brak adresu") ? (
+                    <div>
+                        📍 {demand.pickupAddress} {demand.roomNumber ? `(Pokój: ${demand.roomNumber})` : ''}
+                    </div>
+                ) : null}
+                {(demand.sentTo && demand.sentTo.length > 0) ? (
+                    <div>{t("candidate.sentTo")}: {demand.sentTo.join(', ')}</div>
+                ) : null}
             </div>
-        ) : null;
+        );
 
         switch (demand.status) {
             case 'pending':
                 return (
                     <div>
                         <Badge variant="secondary">{t("candidate.pendingAck")}</Badge>
-                        {recipients}
+                        {details}
                     </div>
                 );
             case 'acknowledged':
@@ -381,18 +420,27 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                         ✅ {t("candidate.acknowledgedBy")}: <span className="font-medium">{demand.acknowledgedBy || '—'}</span>
                         <br />
                         {demand.acknowledgedAt ? format(new Date(demand.acknowledgedAt), "dd.MM.yyyy HH:mm", { locale: dateLocale }) : ''}
-                        {recipients}
+                        {details}
+                    </div>
+                );
+            case 'delivered':
+                return (
+                    <div className="text-xs text-muted-foreground">
+                        🚚 {t("candidate.demandDelivered").replace('{name}', demand.acknowledgedBy || '—')}
+                        <br />
+                        {demand.acknowledgedAt ? format(new Date(demand.acknowledgedAt), "dd.MM.yyyy HH:mm", { locale: dateLocale }) : ''}
+                        {details}
                     </div>
                 );
             case 'expired':
                 return (
                     <div>
                         <Badge variant="destructive">{t("candidate.demandExpired")}</Badge>
-                        {recipients}
+                        {details}
                     </div>
                 );
             default:
-                return <div><Badge>{demand.status}</Badge>{recipients}</div>;
+                return <div><Badge>{demand.status}</Badge>{details}</div>;
         }
     };
 
@@ -407,11 +455,24 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
             case "zakwaterowana":
                 return <Badge variant="default" className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100">{t("candidate.statusZakwaterowana")}</Badge>;
             case "wdrodze":
-                return <Badge variant="secondary">{t("candidate.statusWdrodze")}</Badge>;
+                return <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100">{t("candidate.statusWdrodze")}</Badge>;
+            case "w_biurze":
+                return <Badge variant="default" className="bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100">{t("candidate.statusWBiurze")}</Badge>;
             case "po_rozmowie":
-                return <Badge variant="outline" className="text-muted-foreground">{t("candidate.statusPoRozmowie")}</Badge>;
+                return <Badge variant="default" className="bg-green-600 text-white border-green-600 hover:bg-green-700">{t("candidate.statusPoRozmowie")}</Badge>;
             default:
                 return <Badge>{status}</Badge>;
+        }
+    };
+
+    const rowBgClass = (status: Candidate["status"]) => {
+        switch (status) {
+            case "nowy":         return "";
+            case "wdrodze":      return "bg-blue-50/60 hover:bg-blue-100/60 dark:bg-blue-950/30";
+            case "w_biurze":     return "bg-amber-50/70 hover:bg-amber-100/60 dark:bg-amber-950/30";
+            case "zakwaterowana":return "bg-green-50/60 hover:bg-green-100/60 dark:bg-green-950/30";
+            case "po_rozmowie":  return "bg-green-50/60 hover:bg-green-100/60 dark:bg-green-950/30";
+            default:             return "";
         }
     };
 
@@ -429,6 +490,52 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                     />
                 </div>
             </div>
+
+            {/* Status filter buttons */}
+            {(() => {
+                const baseList = candidates
+                    .filter(c => c.status === 'nowy' || c.status === 'wdrodze' || c.status === 'zakwaterowana' || c.status === 'po_rozmowie' || c.status === 'w_biurze');
+                const countAll = baseList.length;
+                const countOczekujace = baseList.filter(c => c.status !== 'po_rozmowie').length;
+                const countPoRozmowie = baseList.filter(c => c.status === 'po_rozmowie').length;
+                return (
+                    <div className="flex justify-center gap-3">
+                        <button
+                            onClick={() => setStatusFilter('all')}
+                            className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 w-[12cm] shrink-0 transition-all font-semibold text-sm ${
+                                statusFilter === 'all'
+                                    ? 'border-primary bg-primary text-primary-foreground shadow-md scale-[1.02]'
+                                    : 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/20'
+                            }`}
+                        >
+                            <span className="text-2xl font-bold">{countAll}</span>
+                            <span className="text-xs">{t('candidate.filterAll')}</span>
+                        </button>
+                        <button
+                            onClick={() => setStatusFilter('oczekujace')}
+                            className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 w-[12cm] shrink-0 transition-all font-semibold text-sm ${
+                                statusFilter === 'oczekujace'
+                                    ? 'border-red-500 bg-red-500 text-white shadow-md scale-[1.02]'
+                                    : 'border-red-300 bg-red-50 text-red-600 hover:bg-red-100'
+                            }`}
+                        >
+                            <span className="text-2xl font-bold">{countOczekujace}</span>
+                            <span className="text-xs">{t('candidate.filterPending')}</span>
+                        </button>
+                        <button
+                            onClick={() => setStatusFilter('po_rozmowie')}
+                            className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 w-[12cm] shrink-0 transition-all font-semibold text-sm ${
+                                statusFilter === 'po_rozmowie'
+                                    ? 'border-green-600 bg-green-600 text-white shadow-md scale-[1.02]'
+                                    : 'border-green-400 bg-green-50 text-green-700 hover:bg-green-100'
+                            }`}
+                        >
+                            <span className="text-2xl font-bold">{countPoRozmowie}</span>
+                            <span className="text-xs">{t('candidate.filterAfterInterview')}</span>
+                        </button>
+                    </div>
+                );
+            })()}
 
             {(loading && candidates.length === 0) ? (
                 <Card>
@@ -466,6 +573,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                             <TableHead>{t("candidate.passportNumber")}</TableHead>
                                             <TableHead>Status</TableHead>
                                             <TableHead>{t("candidate.dateAdded")}</TableHead>
+                                            <TableHead>{t("candidate.demandStatusLabel")}</TableHead>
                                             <TableHead className="w-[100px]">{t("col.actions")}</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -475,7 +583,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                             return (
                                                 <TableRow
                                                     key={c.id}
-                                                    className="cursor-pointer hover:bg-muted/50"
+                                                    className={`cursor-pointer transition-colors ${rowBgClass(c.status)} ${c.status !== 'po_rozmowie' ? 'animate-blink-light-red' : ''}`}
                                                     onClick={() => handleRowClick(c)}
                                                 >
                                                     <TableCell className="font-medium">{c.lastName}</TableCell>
@@ -487,6 +595,8 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                                             return (
                                                                 <button
                                                                     className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                                                                    title="Pokaż numer paszportu"
+                                                                    aria-label="Pokaż numer paszportu"
                                                                     onClick={() => setPassportDialogOpen(true)}
                                                                 >
                                                                     <Eye className="w-4 h-4" />
@@ -499,6 +609,9 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                                         {c.createdAt
                                                             ? format(new Date(c.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })
                                                             : "-"}
+                                                    </TableCell>
+                                                    <TableCell className="text-xs">
+                                                        {demandStatusBadge(demand)}
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
@@ -547,7 +660,13 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                             return (
                                 <Card
                                     key={c.id}
-                                    className="overflow-hidden cursor-pointer active:opacity-80"
+                                    className={`overflow-hidden cursor-pointer active:opacity-80 border-l-4 ${
+                                        c.status === 'wdrodze'      ? 'border-l-blue-400 bg-blue-50/50 dark:bg-blue-950/20' :
+                                        c.status === 'w_biurze'     ? 'border-l-amber-400 bg-amber-50/60 dark:bg-amber-950/20' :
+                                        c.status === 'zakwaterowana'? 'border-l-green-400 bg-green-50/50 dark:bg-green-950/20' :
+                                        c.status === 'po_rozmowie'  ? 'border-l-green-500 bg-green-50/50 dark:bg-green-950/20' :
+                                        'border-l-transparent'
+                                    } ${c.status !== 'po_rozmowie' ? 'animate-blink-light-red' : ''}`}
                                     onClick={() => handleRowClick(c)}
                                 >
                                     <CardContent className="p-4 space-y-3">
@@ -561,6 +680,8 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                                         return (
                                                             <button
                                                                 className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                                                                title="Pokaż numer paszportu"
+                                                                aria-label="Pokaż numer paszportu"
                                                                 onClick={() => setPassportDialogOpen(true)}
                                                             >
                                                                 <Eye className="w-4 h-4" />
@@ -580,6 +701,13 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                                     : "-"}
                                             </span>
                                         </div>
+
+                                        {demand && (
+                                            <div className="text-xs border-t pt-2">
+                                                <span className="text-muted-foreground">{t("candidate.demandStatusLabel")}: </span>
+                                                {demandStatusBadge(demand)}
+                                            </div>
+                                        )}
 
                                         <div className="flex gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
                                             {c.status === 'zakwaterowana' && (
@@ -639,6 +767,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                         <TableHead>Nazwisko</TableHead>
                                         <TableHead>Imię</TableHead>
                                         <TableHead>Data zameldowania</TableHead>
+                                        <TableHead>Status</TableHead>
                                         <TableHead>Nr paszportu</TableHead>
                                         <TableHead className="w-[160px]">Akcje</TableHead>
                                     </TableRow>
@@ -646,7 +775,8 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                 <TableBody>
                                     {(() => {
                                         const query = bokSearchQuery.toLowerCase();
-                                        const activeBokResidents = allBokResidents.filter(r => r.status !== "dismissed");
+                                        // Show only ACTIVE residents
+                                        const activeBokResidents = allBokResidents.filter(r => r.status !== 'dismissed');
                                         const filtered = query
                                             ? activeBokResidents.filter(r =>
                                                 (r.lastName?.toLowerCase() || '').includes(query) ||
@@ -655,10 +785,16 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                               )
                                             : activeBokResidents.slice(0, 20);
                                         return filtered.map(r => (
-                                            <TableRow key={r.id}>
+                                            <TableRow key={r.id} className={r.status === 'dismissed' ? 'opacity-50' : ''}>
                                                 <TableCell className="font-medium">{r.lastName}</TableCell>
                                                 <TableCell>{r.firstName}</TableCell>
                                                 <TableCell>{r.checkInDate ? format(new Date(r.checkInDate), 'dd.MM.yyyy') : '-'}</TableCell>
+                                                <TableCell>
+                                                    {r.status === 'dismissed'
+                                                        ? <Badge variant="outline" className="text-xs text-muted-foreground">Zwolniony</Badge>
+                                                        : <Badge variant="outline" className="text-xs text-green-700 border-green-300">Aktywny</Badge>
+                                                    }
+                                                </TableCell>
                                                 <TableCell>
                                                     {(() => {
                                                         if (!r.passportNumber) return '-';
@@ -666,6 +802,8 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                                         return (
                                                             <button
                                                                 className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                                                                title="Pokaż numer paszportu"
+                                                                aria-label="Pokaż numer paszportu"
                                                                 onClick={() => setPassportDialogOpen(true)}
                                                             >
                                                                 <Eye className="w-4 h-4" />
@@ -674,6 +812,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                                     })()}
                                                 </TableCell>
                                                 <TableCell>
+                                                    {r.status !== 'dismissed' && (
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
@@ -682,6 +821,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                                     >
                                                         {bokDemandLoading ? t("common.loading") : "Zapotrzebowanie"}
                                                     </Button>
+                                                    )}
                                                 </TableCell>
                                             </TableRow>
                                         ));
@@ -742,11 +882,32 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                         <div className="text-sm">
                             Wybierz przewidywany czas dostarczenia osoby: <strong>{demandCandidate?.firstName} {demandCandidate?.lastName}</strong>
                         </div>
-                        <Input
-                            type="time"
-                            value={estimatedTime}
-                            onChange={(e) => setEstimatedTime(e.target.value)}
-                        />
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Adres odbioru</label>
+                            <Input
+                                type="text"
+                                value={pickupAddress}
+                                onChange={(e) => setPickupAddress(e.target.value)}
+                                placeholder="Np. ul. Warszawska 10/5"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Numer pokoju (opcjonalnie)</label>
+                            <Input
+                                type="text"
+                                value={demandRoomNumber}
+                                onChange={(e) => setDemandRoomNumber(e.target.value)}
+                                placeholder="Np. 12"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Czas dostarczenia</label>
+                            <Input
+                                type="time"
+                                value={estimatedTime}
+                                onChange={(e) => setEstimatedTime(e.target.value)}
+                            />
+                        </div>
                         <div className="flex justify-end gap-2 pt-4">
                             <Button variant="outline" onClick={() => setDemandDialogOpen(false)}>
                                 {t("common.cancel")}

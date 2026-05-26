@@ -109,6 +109,8 @@ These rules are **non-negotiable**. Full details in `AGENTS.md`.
    - If a feature requires deletion, STOP and ask the owner for approval first
    - Existing delete calls in `src/lib/actions.ts` have `// eslint-disable-next-line` comments — do NOT copy this pattern without owner approval
 
+11. **🔄 KRYTYCZNY RESTART SERWERA DEWELOPERSKIEGO:** Po każdym wykonaniu komendy `npm run build` (która waliduje kod przed wdrożeniem), AI agent ma **bezwzględny obowiązek zrestartować serwer deweloperski** (`npm run dev`), uprzednio czyszcząc port 3000 za pomocą `lsof -ti:3000 | xargs kill -9 2>/dev/null` oraz czyszcząc cache `.next` (`rm -rf .next`). Zapobiega to błędom niespójności pamięci podręcznej (biały ekran w przeglądarce).
+
 ---
 
 

@@ -364,11 +364,13 @@ describe('RecruitmentView', () => {
 
         render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
 
-        // Candidate filtered out by direct bokId match
+        // Candidate filtered out by direct bokId match — candidates table not rendered
         await waitFor(() => {
             expect(screen.getByText('Szukaj po nazwisku...')).toBeInTheDocument();
         });
-        expect(screen.queryByText('Dismissed')).toBeNull();
+        // BOK search section may show the dismissed BOK resident as history,
+        // so we check that the candidates TABLE (not the whole page) has no entry
+        expect(screen.queryByTestId('recruitment-desktop')).toBeNull();
     });
 
     it('hides candidates by name fallback when bokId is null and sourceOdbiorId is unlinked', async () => {
@@ -413,11 +415,13 @@ describe('RecruitmentView', () => {
 
         render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
 
-        // Name-based fallback catches it
+        // Name-based fallback catches it — candidates table not rendered
         await waitFor(() => {
             expect(screen.getByText('Szukaj po nazwisku...')).toBeInTheDocument();
         });
-        expect(screen.queryByText('Zwolniony')).toBeNull();
+        // BOK search section now shows all BOK residents (including dismissed) as history,
+        // so we verify the candidate is absent from the CANDIDATES table specifically
+        expect(screen.queryByTestId('recruitment-desktop')).toBeNull();
     });
 
     it('shows candidate when BOK resident is NOT dismissed (name match but active)', async () => {

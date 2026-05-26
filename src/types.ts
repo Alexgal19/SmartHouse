@@ -336,7 +336,7 @@ export type Candidate = {
   passportPhotoUrl?: string;
   sourceOdbiorId?: string | null;
   bokId?: string | null;
-  status: 'nowy' | 'wdrodze' | 'w_trakcie' | 'zakonczony' | 'zakwaterowana' | 'po_rozmowie';
+  status: 'nowy' | 'wdrodze' | 'w_trakcie' | 'zakonczony' | 'zakwaterowana' | 'po_rozmowie' | 'w_biurze';
   createdAt: string;
   interviewHistory: InterviewResult[];
 }

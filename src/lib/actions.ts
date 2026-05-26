@@ -1,6 +1,6 @@
 "use server";
 
-import type { Employee, Settings, Notification, NotificationChange, NonEmployee, DeductionReason, NotificationType, Coordinator, BokResident, ControlCard, ControlCardChangeLogEntry, StartList, OdbiorEntry, OdbiorType, Candidate, InterviewResult } from '../types';
+import type { Employee, Settings, Notification, NotificationChange, NonEmployee, DeductionReason, NotificationType, Coordinator, BokResident, ControlCard, ControlCardChangeLogEntry, StartList, OdbiorEntry, OdbiorType, Candidate, InterviewResult, OsobaWOdbiorze } from '../types';
 import { revalidatePath } from 'next/cache';
 import {
     getSheet,
@@ -27,6 +27,9 @@ import {
     deleteOdbiorEntry as deleteOdbiorEntryFromSheet,
     deleteBokResidentById as deleteBokResidentByIdFromSheet,
     invalidateOdbiorEntriesCache,
+    getOdbiorZgloszenia as getOdbiorZgloszeniaFromSheet,
+    updateOdbiorZgloszenie as updateOdbiorZgloszenieInSheet,
+    invalidateOdbiorCache,
     getCandidates as getCandidatesFromSheet,
     addCandidate as addCandidateToSheet,
     updateCandidate as updateCandidateInSheet,
@@ -2895,12 +2898,13 @@ export async function addCandidateAction(
             passportPhotoUrl: input.passportPhotoUrl || undefined,
             sourceOdbiorId: input.sourceOdbiorId || null,
             bokId: input.bokId || null,
-            status: input.sourceOdbiorId ? 'wdrodze' : 'nowy',
+            status: 'wdrodze',
             createdAt: new Date().toISOString(),
             interviewHistory: [],
         };
         await addCandidateToSheet(candidate);
-        invalidateCandidatesCache();
+        // Do NOT invalidate cache immediately to avoid Google Sheets API returning a stale view
+        // The addCandidateToSheet already updates the local memory cache
         revalidatePath('/dashboard');
         return { success: true, candidate };
     } catch (error) {
@@ -2934,7 +2938,66 @@ export async function deleteCandidateAction(
         if (!session.isAdmin) {
             return { success: false, error: 'Tylko administrator może usuwać kandydatów.' };
         }
-        await deleteCandidateFromSheet(id);
+
+        // 1. Znajdź dane kandydata przed usunięciem
+        const candidates = await getCandidatesFromSheet();
+        const candidate = candidates.find(c => c.id === id);
+
+        if (candidate) {
+            // 2. Usuń samego kandydata
+            await deleteCandidateFromSheet(id);
+
+            // 3. Usuń wszystkie powiązane z nim CandidateDemands (zapotrzebowania)
+            try {
+                const demands = await getCandidateDemandsFromSheet();
+                const matchingDemands = demands.filter(d => d.candidateId === id);
+                for (const d of matchingDemands) {
+                    await deleteCandidateDemandFromSheet(d.id);
+                }
+            } catch (e) {
+                console.error('Failed to clean up demands for candidate:', e);
+            }
+
+            // 4. Jeśli kandydat pochodzi ze zgłoszenia odbioru, usuń go całkowicie ze zgłoszenia (z listy osób)
+            if (candidate.sourceOdbiorId) {
+                try {
+                    const entries = await getOdbiorZgloszeniaFromSheet();
+                    const entry = entries.find(e => e.id === candidate.sourceOdbiorId);
+                    if (entry && entry.osoby) {
+                        let osobyList: OsobaWOdbiorze[] = [];
+                        try {
+                            osobyList = JSON.parse(entry.osoby);
+                        } catch (err) {
+                            // ignore malformed JSON
+                        }
+                        
+                        const beforeCount = osobyList.length;
+                        const cFirst = candidate.firstName.trim().toLowerCase();
+                        const cLast = candidate.lastName.trim().toLowerCase();
+                        
+                        // Przefiltruj listę, usuwając tę konkretną osobę
+                        const updatedOsoby = osobyList.filter((p) => {
+                            const pFirst = (p.imie || '').trim().toLowerCase();
+                            const pLast = (p.nazwisko || '').trim().toLowerCase();
+                            return !(pFirst === cFirst && pLast === cLast);
+                        });
+                        
+                        if (updatedOsoby.length !== beforeCount) {
+                            await updateOdbiorZgloszenieInSheet(candidate.sourceOdbiorId, {
+                                osoby: JSON.stringify(updatedOsoby)
+                            });
+                            invalidateOdbiorCache();
+                        }
+                    }
+                } catch (e) {
+                    console.error('Failed to clean up OdbiorZgloszenie for candidate:', e);
+                }
+            }
+        } else {
+            // Jeśli nie znaleziono w pamięci/arkuszu, spróbuj usunąć fallbackiem
+            await deleteCandidateFromSheet(id);
+        }
+
         invalidateCandidatesCache();
         revalidatePath('/dashboard');
         return { success: true };
@@ -3024,6 +3087,10 @@ export async function sendCandidateDemandNotificationAction(
         };
         await addCandidateDemandToSheet(demand);
 
+        // Update candidate status to 'wdrodze' (transport in progress)
+        await updateCandidateInSheet(candidate.id, { status: 'wdrodze' });
+        invalidateCandidatesCache();
+
         revalidatePath('/dashboard');
         return { success: sentCount > 0, sentCount, demandId };
     } catch (error) {
@@ -3062,6 +3129,15 @@ export async function deliverCandidateDemandAction(
             acknowledgedBy: deliveredByName,
             acknowledgedAt: new Date().toISOString(),
         });
+
+        // Update candidate status to 'w_biurze' (delivered to office, awaiting interview)
+        const demands = await getCandidateDemandsFromSheet();
+        const demand = demands.find(d => d.id === demandId);
+        if (demand?.candidateId) {
+            await updateCandidateInSheet(demand.candidateId, { status: 'w_biurze' });
+            invalidateCandidatesCache();
+        }
+
         revalidatePath('/dashboard');
         return { success: true };
     } catch (error) {
@@ -3076,8 +3152,8 @@ export async function deleteCandidateDemandAction(
 ): Promise<{ success: boolean; error?: string }> {
     try {
         const session = await requireSession();
-        if (!session.isAdmin) {
-            return { success: false, error: 'Tylko administrator może usuwać zapotrzebowania.' };
+        if (!session.isAdmin && !session.isRekrutacja) {
+            return { success: false, error: 'Brak uprawnień do usunięcia zapotrzebowania.' };
         }
         await deleteCandidateDemandFromSheet(id);
         revalidatePath('/dashboard');
