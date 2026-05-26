@@ -1080,6 +1080,7 @@ export const en = {
     'controlCards.savedSuccessDesc': 'Card has been saved.',
     'controlCards.startListSaved': 'Start list saved',
     'controlCards.startListSavedDesc': 'Start list has been saved.',
+    'controlCards.completeStartListFirst': 'Complete the start list first to unlock the control card.',
     'form.addResidentNZ': 'Add NZ resident',
     'form.changeCheckInToRegisterAddressChange': 'Change check-in date to register address change',
     'form.duplicateEmployeeWarning': 'Employee with this passport already exists',

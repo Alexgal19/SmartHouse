@@ -1081,6 +1081,7 @@ export const pl = {
     'controlCards.savedSuccessDesc': 'Karta została zapisana.',
     'controlCards.startListSaved': 'Lista startowa zapisana',
     'controlCards.startListSavedDesc': 'Lista startowa została zapisana.',
+    'controlCards.completeStartListFirst': 'Wypełnij najpierw listę startową, aby odblokować kartę kontroli.',
     'form.addResidentNZ': 'Dodaj mieszkańca NZ',
     'form.changeCheckInToRegisterAddressChange': 'Zmień datę zameldowania, aby zarejestrować zmianę adresu',
     'form.duplicateEmployeeWarning': 'Pracownik o tym paszporcie już istnieje',

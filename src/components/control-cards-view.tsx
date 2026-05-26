@@ -791,7 +791,7 @@ function ControlCardDialog({
     );
 
     const slComplete = isStartListComplete(startList);
-    const [activeTab, setActiveTab] = useState<'startlist' | 'control'>('control');
+    const [activeTab, setActiveTab] = useState<'startlist' | 'control'>(slComplete ? 'control' : 'startlist');
     const prevOpenRef = React.useRef(false);
 
     React.useEffect(() => {
@@ -799,13 +799,13 @@ function ControlCardDialog({
         prevOpenRef.current = open;
         if (justOpened) {
             setForm(existingCard ? buildFormFromCard(existingCard, address) : buildDefaultForm(address));
-            setActiveTab('control');
+            setActiveTab(slComplete ? 'control' : 'startlist');
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [open, existingCard, address]);
-
+    }, [open, existingCard, address, slComplete]);
 
     const handleTabChange = (val: string) => {
+        if (val === 'control' && !slComplete) return;
         setActiveTab(val as 'startlist' | 'control');
     };
 
@@ -1146,7 +1146,12 @@ function ControlCardDialog({
                                 ? <CheckCircle2 className="w-3 h-3 text-green-500" />
                                 : <AlertCircle className="w-3 h-3 text-red-500" />}
                         </TabsTrigger>
-                        <TabsTrigger value="control" className="gap-1.5">
+                        <TabsTrigger
+                            value="control"
+                            disabled={!slComplete}
+                            className={`gap-1.5 ${!slComplete ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            title={!slComplete ? t('controlCards.completeStartListFirst') : undefined}
+                        >
                             <ClipboardCheck className="w-3.5 h-3.5" />
                             <span className="text-xs">{t('controlCards.control')}</span>
                             {formComplete
