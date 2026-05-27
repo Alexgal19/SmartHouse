@@ -7,6 +7,7 @@ import type { Employee, Settings, NonEmployee, SessionData, AddressHistory, BokR
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { MoreHorizontal, PlusCircle, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, Users, UserX, LayoutGrid, List, Trash2, History, Download, Briefcase } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -19,8 +20,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useMainLayout } from '@/components/main-layout';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
-import { Checkbox } from '@/components/ui/checkbox';
+
 import { FilterableHeader } from '@/components/ui/filterable-header';
+import { BokStatsDrillDownDialog } from '@/components/bok-stats-drill-down-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const ITEMS_PER_PAGE = 20;
@@ -49,7 +51,7 @@ const formatDate = (dateString?: string | null) => {
 }
 
 type Entity = Employee | NonEmployee | BokResident;
-type SortableField = 'lastName' | 'firstName' | 'coordinatorId' | 'address' | 'roomNumber' | 'checkInDate' | 'checkOutDate' | 'coordinatorName' | 'department' | 'sendDate' | 'zaklad' | 'returnStatus' | 'status' | 'comments' | 'passportNumber';
+type SortableField = 'lastName' | 'firstName' | 'coordinatorId' | 'address' | 'roomNumber' | 'checkInDate' | 'checkOutDate' | 'coordinatorName' | 'department' | 'sendDate' | 'zaklad' | 'returnStatus' | 'status' | 'comments' | 'passportNumber' | 'hasPermit' | 'hasPesel';
 
 
 const isBokResident = (entity: Entity): entity is BokResident => !('coordinatorId' in entity);
@@ -156,7 +158,7 @@ const PaginationControls = React.memo(({
 PaginationControls.displayName = 'PaginationControls';
 
 
-const EntityTable = React.memo(({ entities, onEdit, onRestore, isDismissed, settings, onPermanentDelete, onSort, sortBy, sortOrder, isBokTab, columnFilters, onColumnFilterChange, columnOptions }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onRestore?: (entity: Entity) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => void; onSort: (field: SortableField) => void; sortBy: SortableField | null; sortOrder: 'asc' | 'desc'; isBokTab?: boolean; columnFilters?: Record<string, string[]>; onColumnFilterChange?: (field: string, values: string[]) => void; columnOptions?: Record<string, { label: string, value: string }[]>; }) => {
+const EntityTable = React.memo(({ entities, onEdit, onRestore, isDismissed, settings, onPermanentDelete, onSort, sortBy, sortOrder, isBokTab, columnFilters, onColumnFilterChange, columnOptions, bokPendingIds }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onRestore?: (entity: Entity) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => void; onSort: (field: SortableField) => void; sortBy: SortableField | null; sortOrder: 'asc' | 'desc'; isBokTab?: boolean; columnFilters?: Record<string, string[]>; onColumnFilterChange?: (field: string, values: string[]) => void; columnOptions?: Record<string, { label: string, value: string }[]>; bokPendingIds?: Set<string>; }) => {
     const { t } = useLanguage();
     const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
 
@@ -174,6 +176,8 @@ const EntityTable = React.memo(({ entities, onEdit, onRestore, isDismissed, sett
                         <FilterableHeader label={t('col.checkIn')} field="checkInDate" currentFilterValues={columnFilters?.checkInDate} onFilterChange={onColumnFilterChange} options={columnOptions?.checkInDate} isDateFilter onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
                         {isBokTab && <FilterableHeader label={t('col.passport')} field="passportNumber" currentFilterValues={columnFilters?.passportNumber} onFilterChange={onColumnFilterChange} options={columnOptions?.passportNumber} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
                         {isBokTab && <FilterableHeader label={t('col.comments')} field="comments" currentFilterValues={columnFilters?.comments} onFilterChange={onColumnFilterChange} options={columnOptions?.comments} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
+                        {isBokTab && <FilterableHeader label={t('col.hasPermit')} field="hasPermit" currentFilterValues={columnFilters?.hasPermit} onFilterChange={onColumnFilterChange} options={columnOptions?.hasPermit} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
+                        {isBokTab && <FilterableHeader label={t('col.hasPesel')} field="hasPesel" currentFilterValues={columnFilters?.hasPesel} onFilterChange={onColumnFilterChange} options={columnOptions?.hasPesel} onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />}
                         <FilterableHeader label={t('col.checkOut')} field="checkOutDate" currentFilterValues={columnFilters?.checkOutDate} onFilterChange={onColumnFilterChange} options={columnOptions?.checkOutDate} isDateFilter onSort={onSort} sortBy={sortBy} sortOrder={sortOrder} />
                         <TableHead><span className="sr-only">{t('col.actions')}</span></TableHead>
                     </TableRow>
@@ -181,8 +185,16 @@ const EntityTable = React.memo(({ entities, onEdit, onRestore, isDismissed, sett
                 <TableBody>
                     {entities.length > 0 ? (
                         entities.map((entity) => {
+                            const isPending = isBokTab && isBokResident(entity) && bokPendingIds?.has(entity.id);
                             return (
-                                <TableRow key={entity.id} onClick={() => onEdit(entity)} className="cursor-pointer">
+                                <TableRow
+                                    key={entity.id}
+                                    onClick={() => onEdit(entity)}
+                                    className={cn(
+                                        'cursor-pointer',
+                                        isPending && 'animate-blink-red'
+                                    )}
+                                >
                                     <TableCell className="font-medium">{entity.lastName}</TableCell>
                                     <TableCell className="font-medium">{entity.firstName}</TableCell>
                                     {!isBokTab && <TableCell>{'coordinatorId' in entity ? getCoordinatorName(entity.coordinatorId) : '-'}</TableCell>}
@@ -196,7 +208,20 @@ const EntityTable = React.memo(({ entities, onEdit, onRestore, isDismissed, sett
                                     <TableCell>{isEmployee(entity) && entity.address?.toLowerCase().startsWith('własne mieszkanie') ? 'N/A' : entity.roomNumber}</TableCell>
                                     <TableCell>{formatDate(entity.checkInDate)}</TableCell>
                                     {isBokTab && <TableCell>{isBokResident(entity) ? entity.passportNumber || '-' : '-'}</TableCell>}
-                                    {isBokTab && <TableCell className="max-w-[150px] truncate" title={isBokResident(entity) ? entity.comments || '' : undefined}>{isBokResident(entity) ? entity.comments || '-' : '-'}</TableCell>}
+                                    {isBokTab && (
+                                        <TableCell className="max-w-[180px]" title={isBokResident(entity) ? entity.comments || '' : undefined}>
+                                            <div className="flex flex-col gap-1">
+                                                {isPending && (
+                                                    <Badge variant="destructive" className="text-[10px] px-1 py-0 w-fit animate-pulse">
+                                                        W oczekiwaniu na rozmowę
+                                                    </Badge>
+                                                )}
+                                                <span className="truncate text-xs">{isBokResident(entity) ? entity.comments || '-' : '-'}</span>
+                                            </div>
+                                        </TableCell>
+                                    )}
+                                    {isBokTab && <TableCell>{isBokResident(entity) ? (entity.hasPermit ? t('common.yes') : t('common.no')) : '-'}</TableCell>}
+                                    {isBokTab && <TableCell>{isBokResident(entity) ? (entity.hasPesel ? t('common.yes') : t('common.no')) : '-'}</TableCell>}
                                     <TableCell>{'checkOutDate' in entity ? formatDate(entity.checkOutDate) : '-'}</TableCell>
                                     <TableCell onClick={(e) => e.stopPropagation()}>
                                         <EntityActions {...{ entity, onEdit, onRestore, onPermanentDelete, isDismissed }} />
@@ -285,43 +310,54 @@ const HistoryTable = ({ history, onSort, sortBy, sortOrder, onDelete, columnFilt
     );
 };
 
-const EntityCardList = ({ entities, onEdit, onRestore, isDismissed, settings, onPermanentDelete }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onRestore?: (entity: Entity) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => void; }) => {
+const EntityCardList = ({ entities, onEdit, onRestore, isDismissed, settings, onPermanentDelete, bokPendingIds }: { entities: Entity[]; settings: Settings; isDismissed: boolean; onEdit: (e: Entity) => void; onRestore?: (entity: Entity) => void; onPermanentDelete: (id: string, type: 'employee' | 'non-employee' | 'bok-resident') => void; bokPendingIds?: Set<string>; }) => {
     const { t } = useLanguage();
     const getCoordinatorName = (id: string) => settings.coordinators.find(c => c.uid === id)?.name || 'N/A';
 
     return (
         <div className="space-y-4">
             {entities.length > 0 ? (
-                entities.map((entity, index) => (
-                    <Card
-                        key={entity.id}
-                        onClick={() => onEdit(entity)}
-                        className="cursor-pointer animate-fade-in-up"
-                        style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}
-                    >
-                        <CardHeader className="flex flex-row items-start justify-between pb-4">
-                            <div>
-                                <CardTitle className="text-base">{`${entity.firstName} ${entity.lastName}`.trim()}</CardTitle>
-                                <CardDescription>
-                                    {isBokResident(entity) ? t('entity.bokResidentLabel') : (isEmployee(entity) ? getCoordinatorName(entity.coordinatorId) : t('entity.nonEmployeeLabel'))}
-                                </CardDescription>
-                            </div>
-                            <div onClick={(e) => e.stopPropagation()}>
-                                <EntityActions {...{ entity, onEdit, onRestore, onPermanentDelete, isDismissed }} />
-                            </div>
-                        </CardHeader>
-                        <CardContent className="text-sm space-y-2">
-                            <p><span className="font-semibold text-muted-foreground">{t('entity.addressLabel')}</span>
-                                {isEmployee(entity) && entity.address?.toLowerCase().startsWith('własne mieszkanie')
-                                    ? ` ${entity.ownAddress || t('entity.ownHousingNoData')}`
-                                    : ` ${entity.address}, ${t('entity.room')} ${entity.roomNumber}`
-                                }
-                            </p>
-                            {isEmployee(entity) && <p><span className="font-semibold text-muted-foreground">{t('entity.nationalityLabel')}</span> {entity.nationality || t('common.none')}</p>}
-                            <p><span className="font-semibold text-muted-foreground">{t('entity.checkInLabel')}</span> {formatDate(entity.checkInDate)}</p>
-                        </CardContent>
-                    </Card>
-                ))
+                entities.map((entity, index) => {
+                    const isPending = isBokResident(entity) && bokPendingIds?.has(entity.id);
+                    return (
+                        <Card
+                            key={entity.id}
+                            onClick={() => onEdit(entity)}
+                            className={cn(
+                                'cursor-pointer animate-fade-in-up',
+                                isPending && 'animate-blink-red border-red-300'
+                            )}
+                            style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}
+                        >
+                            <CardHeader className="flex flex-row items-start justify-between pb-4">
+                                <div>
+                                    <CardTitle className="text-base">{`${entity.firstName} ${entity.lastName}`.trim()}</CardTitle>
+                                    <CardDescription>
+                                        {isBokResident(entity) ? t('entity.bokResidentLabel') : (isEmployee(entity) ? getCoordinatorName(entity.coordinatorId) : t('entity.nonEmployeeLabel'))}
+                                    </CardDescription>
+                                    {isPending && (
+                                        <Badge variant="destructive" className="mt-1 text-[10px] px-1 py-0 animate-pulse">
+                                            W oczekiwaniu na rozmowę
+                                        </Badge>
+                                    )}
+                                </div>
+                                <div onClick={(e) => e.stopPropagation()}>
+                                    <EntityActions {...{ entity, onEdit, onRestore, onPermanentDelete, isDismissed }} />
+                                </div>
+                            </CardHeader>
+                            <CardContent className="text-sm space-y-2">
+                                <p><span className="font-semibold text-muted-foreground">{t('entity.addressLabel')}</span>
+                                    {isEmployee(entity) && entity.address?.toLowerCase().startsWith('własne mieszkanie')
+                                        ? ` ${entity.ownAddress || t('entity.ownHousingNoData')}`
+                                        : ` ${entity.address}, ${t('entity.room')} ${entity.roomNumber}`
+                                    }
+                                </p>
+                                {isEmployee(entity) && <p><span className="font-semibold text-muted-foreground">{t('entity.nationalityLabel')}</span> {entity.nationality || t('common.none')}</p>}
+                                <p><span className="font-semibold text-muted-foreground">{t('entity.checkInLabel')}</span> {formatDate(entity.checkInDate)}</p>
+                            </CardContent>
+                        </Card>
+                    );
+                })
             ) : (
                 <div className="text-center text-muted-foreground py-8">{t('common.noData')}</div>
             )}
@@ -489,11 +525,12 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         allBokResidents,
         addressHistory,
         settings,
+        odbiorEntries,
         handleRestoreEmployee,
         handleRestoreNonEmployee,
         handleRestoreBokResident,
         handleDeleteEmployee,
-        handleDismissBokResident,
+
         handleEditEmployeeClick,
         handleEditNonEmployeeClick,
         handleEditBokResidentClick,
@@ -542,6 +579,18 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
     const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc';
 
     const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
+    const [drillDownField, setDrillDownField] = useState<'hasPermit' | 'hasPesel' | null>(null);
+
+    const bokPendingIds = useMemo(() => {
+        const ids = new Set<string>();
+        if (!odbiorEntries) return ids;
+        for (const entry of odbiorEntries) {
+            if (entry.type === 'zakwaterowanie' && entry.convertedToBokId) {
+                ids.add(entry.convertedToBokId);
+            }
+        }
+        return ids;
+    }, [odbiorEntries]);
 
     const handleColumnFilterChange = (field: string, values: string[]) => {
         setColumnFilters(prev => ({ ...prev, [field]: values }));
@@ -607,6 +656,8 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                         const rawVal = (entity as Record<string, unknown>)[colField];
                         if (colField.includes('Date') && rawVal) {
                             entityVal = formatDate(rawVal as string);
+                        } else if (colField === 'hasPermit' || colField === 'hasPesel') {
+                            entityVal = String(rawVal === true);
                         } else {
                             entityVal = String(rawVal || '');
                         }
@@ -741,10 +792,21 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
             addOptions('checkInDate', item => formatDate((item as Record<string, unknown>).checkInDate as string));
             addOptions('checkOutDate', item => formatDate((item as Record<string, unknown>).checkOutDate as string));
             addOptions('zaklad', item => ('zaklad' in item) ? (item as Record<string, unknown>).zaklad as string : undefined);
+            addOptions('hasPermit', item => ('hasPermit' in item) ? String((item as Record<string, unknown>).hasPermit === true) : undefined);
+            addOptions('hasPesel', item => ('hasPesel' in item) ? String((item as Record<string, unknown>).hasPesel === true) : undefined);
         }
 
+        options['hasPermit'] = [
+            { label: t('common.yes'), value: 'true' },
+            { label: t('common.no'), value: 'false' },
+        ];
+        options['hasPesel'] = [
+            { label: t('common.yes'), value: 'true' },
+            { label: t('common.no'), value: 'false' },
+        ];
+
         return options;
-    }, [tab, dataMap.history, currentData, settings]);
+    }, [tab, dataMap.history, currentData, settings, t]);
 
     // ─── Excel export ───────────────────────────────────────────────────────
     const getCoordName = useCallback((id: string) =>
@@ -774,6 +836,8 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                     'Data zameldowania': formatDate(e.checkInDate),
                     'Data wyjazdu': formatDate((e as BokResident).checkOutDate),
                     'Komentarze': e.comments || '',
+                    'Zezwolenie': (e as BokResident).hasPermit ? 'Tak' : 'Brak',
+                    'PESEL': (e as BokResident).hasPesel ? 'Tak' : 'Brak',
                 };
             }
             const row: Record<string, string | number> = {
@@ -908,6 +972,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                             columnFilters={columnFilters}
                             onColumnFilterChange={handleColumnFilterChange}
                             columnOptions={columnOptions}
+                            bokPendingIds={bokPendingIds}
                         /> :
                         <EntityCardList
                             entities={data}
@@ -916,6 +981,7 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                             onRestore={handleRestore}
                             onPermanentDelete={handlePermanentDelete}
                             isDismissed={isDismissed}
+                            bokPendingIds={bokPendingIds}
                         />
                     )
                     : <div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
@@ -1090,7 +1156,61 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
                                 const bokData = bokSubTab === 'active' ? (filteredAndSortedData.activeBokResidents || []) : (filteredAndSortedData.dismissedBokResidents || []);
                                 const bokTotalPages = Math.ceil(bokData.length / ITEMS_PER_PAGE);
                                 const bokPaginated = bokData.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
-                                return renderContent(bokPaginated, true, bokSubTab === 'dismissed', bokTotalPages);
+                                const permitYesList = bokData.filter((r: Entity) => isBokResident(r) && r.hasPermit) as BokResident[];
+                                const permitNoList = bokData.filter((r: Entity) => isBokResident(r) && !r.hasPermit) as BokResident[];
+                                const peselYesList = bokData.filter((r: Entity) => isBokResident(r) && r.hasPesel) as BokResident[];
+                                const peselNoList = bokData.filter((r: Entity) => isBokResident(r) && !r.hasPesel) as BokResident[];
+                                const stats = {
+                                    permitYes: permitYesList.length,
+                                    permitNo: permitNoList.length,
+                                    peselYes: peselYesList.length,
+                                    peselNo: peselNoList.length,
+                                };
+                                return (
+                                    <>
+                                        <div className="grid grid-cols-2 gap-3 mb-3">
+                                            <Card
+                                                className="p-3 cursor-pointer hover:bg-accent/50 transition-colors"
+                                                onClick={() => setDrillDownField('hasPermit')}
+                                            >
+                                                <p className="text-xs text-muted-foreground mb-1">{t('stats.hasPermit')}</p>
+                                                <div className="flex gap-3 text-sm">
+                                                    <span className="font-medium">{t('stats.yes')}: <span className="text-green-700">{stats.permitYes}</span></span>
+                                                    <span className="font-medium">{t('stats.no')}: <span className="text-red-600">{stats.permitNo}</span></span>
+                                                </div>
+                                            </Card>
+                                            <Card
+                                                className="p-3 cursor-pointer hover:bg-accent/50 transition-colors"
+                                                onClick={() => setDrillDownField('hasPesel')}
+                                            >
+                                                <p className="text-xs text-muted-foreground mb-1">{t('stats.hasPesel')}</p>
+                                                <div className="flex gap-3 text-sm">
+                                                    <span className="font-medium">{t('stats.yes')}: <span className="text-green-700">{stats.peselYes}</span></span>
+                                                    <span className="font-medium">{t('stats.no')}: <span className="text-red-600">{stats.peselNo}</span></span>
+                                                </div>
+                                            </Card>
+                                        </div>
+                                        <BokStatsDrillDownDialog
+                                            isOpen={drillDownField === 'hasPermit'}
+                                            onOpenChange={(open) => { if (!open) setDrillDownField(null); }}
+                                            title={t('stats.hasPermit')}
+                                            yesLabel={t('stats.yes')}
+                                            noLabel={t('stats.no')}
+                                            yesList={permitYesList}
+                                            noList={permitNoList}
+                                        />
+                                        <BokStatsDrillDownDialog
+                                            isOpen={drillDownField === 'hasPesel'}
+                                            onOpenChange={(open) => { if (!open) setDrillDownField(null); }}
+                                            title={t('stats.hasPesel')}
+                                            yesLabel={t('stats.yes')}
+                                            noLabel={t('stats.no')}
+                                            yesList={peselYesList}
+                                            noList={peselNoList}
+                                        />
+                                        {renderContent(bokPaginated, true, bokSubTab === 'dismissed', bokTotalPages)}
+                                    </>
+                                );
                             })()}
                         </TabsContent>
                     )}

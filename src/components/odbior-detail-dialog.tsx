@@ -1025,7 +1025,7 @@ export default function OdbiorDetailDialog({
     const { t } = useLanguage();
     const [localZ, setLocalZ] = useState(zgloszenie);
     const [zakwatOpen, setZakwatOpen] = useState(false);
-    const [zakwatPrefill, setZakwatPrefill] = useState<{ firstName?: string; lastName?: string; passportNumber?: string; passportPhotoUrl?: string } | undefined>();
+    const [zakwatPrefill, setZakwatPrefill] = useState<{ firstName?: string; lastName?: string; passportNumber?: string; passportPhotoUrl?: string; hasPermit?: boolean; hasPesel?: boolean } | undefined>();
     const [activePersonIndex, setActivePersonIndex] = useState<number | null>(null);
 
     React.useEffect(() => { setLocalZ(zgloszenie); }, [zgloszenie]);
@@ -1063,6 +1063,8 @@ export default function OdbiorDetailDialog({
             lastName: osoba.nazwisko,
             passportNumber: osoba.paszport,
             passportPhotoUrl: osoba.paszportFotoUrl,
+            hasPermit: localZ.hasPermit ?? false,
+            hasPesel: localZ.hasPesel ?? false,
         } : undefined);
         setZakwatOpen(true);
     };

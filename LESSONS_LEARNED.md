@@ -24,7 +24,29 @@
 | 13 | DateInput | Double-click przełącza w tryb tekstowy. Ten wzorzec jest w 4+ komponentach — zmiana w jednym = sprawdź pozostałe. |
 | 14 | TypeScript — `.d.ts` | `declare module '...'` nadpisuje typy biblioteki. Gdy dziwne błędy typów z zewnętrznych lib — sprawdź `src/types/` najpierw. |
 | 15 | UI / Dane — filtrowanie | Dane łączone z dwóch źródeł z różnymi ścieżkami ID: zawsze dodawaj fallback przez name matching. `sourceOdbiorId` może być null — nie polegaj wyłącznie na ID-linku. |
+| 16 | React / UI | Znikające stany po re-renderach w formularzach – używaj stałych referencji (np. `useMemo`) zamiast przekazywać obiekty `{...}` bezpośrednio do propów. |
+| 17 | Bazy Danych / Formularze | Nie udawaj rekordu do Edycji z przypisanym sztucznym ID w celu utworzenia nowego – użyj `prefillData`, unikniesz błędu "nie istnieje". |
 
+
+### [React / UI] Znikające stany w formularzach (Oszukiwanie referencji)
+
+**Symptom:** Wartości wpisywane w formularzach (np. OdbiorZakwaterowanieDialog) gubiły się/resetowały natychmiast po wyborze pola Combobox lub jakimkolwiek re-renderze nadrzędnego widoku.
+**Root cause:** Komponent rodzica przekazywał w in-line dynamicznie generowany obiekt `editEntry={{ id: ... }}`. Każdy re-render rodzica produkował nową referencję. Dziecko używało `useEffect` reagującego na zmianę tego propa, więc po zmianie referencji - natychmiastowo nadpisywało i czyściło cały stan wizarda.
+**Rozwiązanie:** Aby przekazywać startowy, domyślny stan/referencję, należy bezwzględnie zamykać obiekt w `useMemo`, aby zapobiec nowym referencjom. ZAMIAST in-line objects `{{}}`. Jeszcze lepszym rozwiązaniem jest po prostu używanie propów typu `prefillData` stworzonych w tych formach.
+**Obszar ryzyka:** Wszystkie komponenty Dialog, Formularze, Comboboxy wymagające parametryzacji `initial state`. Przekazywanie referencji jak Tablic czy Obiektów w klamerkach.
+**Pliki:** `src/components/osoba-do-zakwaterowania-view.tsx`, `src/components/odbior-zakwaterowanie-dialog.tsx`
+
+---
+
+### [Bazy Danych / Formularze] Błąd zapisu "Rekord nie istnieje" w logice Dialogów
+
+**Symptom:** Użytkownik próbował dokończyć i zapisać nową osobę do zakwaterowania, jednak po kliknięciu zapisu na końcu wizarda otrzymał błąd "OdbiorEntry z ID X nie istnieje".
+**Root cause:** Rodzic podał fałszywy rekord z wygenerowanym ID jako parametr "editEntry" w celu wypełnienia pól danymi kandydata. Formularz sztywno sprawdzał `const isEditing = !!editEntry;` i automatycznie wymuszał wywołanie operacji Bazy Danych w trybie "UPDATE" podając owo sztuczne ID.
+**Rozwiązanie:** Zabrania się "oszukiwania" formularzy hybrydowych (tworzonych dla trybów both Edycja/Tworzenie). Należy używać odpowiednich flag przeznaczonych dla trybu tworzenia (w tym wypadku `prefillData`) aby nie aktywować logiki UPDATE.
+**Obszar ryzyka:** Złożone komponenty okien Dialogowych służące zarówno do edycji i tworzenia rekordów (np. Wizardy).
+**Pliki:** `src/components/osoba-do-zakwaterowania-view.tsx`
+
+---
 
 ### [UI / Dane] Filtrowanie kandydatów po dwóch ścieżkach danych – sourceOdbiorId i name matching
 

@@ -92,6 +92,8 @@ function AddBokResidentWizard({
         checkInDate: Date | null;
         checkOutDate: Date | null;
         comments: string;
+        hasPermit: boolean;
+        hasPesel: boolean;
     };
 
     const makeDefault = (): WizardData => ({
@@ -106,6 +108,8 @@ function AddBokResidentWizard({
         checkInDate: new Date(),
         checkOutDate: null,
         comments: '',
+        hasPermit: false,
+        hasPesel: false,
     });
 
     const steps = [
@@ -185,6 +189,8 @@ function AddBokResidentWizard({
                 checkOutDate: fmt(data.checkOutDate),
                 comments: data.comments || undefined,
                 status: "active",
+                hasPermit: data.hasPermit,
+                hasPesel: data.hasPesel,
             };
 
             await onSave(formData);
@@ -210,6 +216,8 @@ function AddBokResidentWizard({
         { label: t('form.room'), value: data.roomNumber || '—', step: 1 },
         { label: t('form.checkIn'), value: fmt(data.checkInDate) ?? '—', step: 2 },
         { label: t('form.checkOutDate'), value: fmt(data.checkOutDate) ?? '—', step: 2 },
+        { label: t('odbior.hasPermit'), value: data.hasPermit ? t('common.yes') : t('common.no'), step: 0 },
+        { label: t('odbior.hasPesel'), value: data.hasPesel ? t('common.yes') : t('common.no'), step: 0 },
     ];
 
     return (
@@ -255,6 +263,22 @@ function AddBokResidentWizard({
                             <div className="space-y-1.5">
                                 <label className="text-sm font-medium">{t('form.passportNumber')}</label>
                                 <Input placeholder={t('form.passportNumberPlaceholder')} value={data.passportNumber} onChange={(e) => set({ passportNumber: e.target.value })} className="h-12 text-base" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium">{t('odbior.hasPermit')}</label>
+                                    <div className="flex gap-2">
+                                        <Button type="button" variant={data.hasPermit ? 'default' : 'outline'} onClick={() => set({ hasPermit: true })} className="flex-1">{t('common.yes')}</Button>
+                                        <Button type="button" variant={!data.hasPermit ? 'default' : 'outline'} onClick={() => set({ hasPermit: false })} className="flex-1">{t('common.no')}</Button>
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium">{t('odbior.hasPesel')}</label>
+                                    <div className="flex gap-2">
+                                        <Button type="button" variant={data.hasPesel ? 'default' : 'outline'} onClick={() => set({ hasPesel: true })} className="flex-1">{t('common.yes')}</Button>
+                                        <Button type="button" variant={!data.hasPesel ? 'default' : 'outline'} onClick={() => set({ hasPesel: false })} className="flex-1">{t('common.no')}</Button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}

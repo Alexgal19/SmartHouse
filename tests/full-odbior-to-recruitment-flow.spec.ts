@@ -35,7 +35,7 @@ test.describe.serial('Pełny flow: Odbiór → Rekrutacja', () => {
     const testPhone = `999888${Math.floor(Math.random() * 9000) + 1000}`;
     const testComment = `E2E-FLOW-${Date.now()}`;
     let createdOdbiorId: string | null = null;
-    let createdCandidateName = 'E2EJan E2EKowalski';
+    const _createdCandidateName = 'E2EJan E2EKowalski';
 
     test.beforeAll(async ({ browser }) => {
         page = await browser.newPage();

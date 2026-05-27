@@ -14,6 +14,7 @@ import ControlCardsView from '@/components/control-cards-view';
 import OdbiorView from '@/components/odbior-view';
 import RecruitmentView from '@/components/recruitment-view';
 import ZapotrzebowaniaView from '@/components/zapotrzebowania-view';
+import OsobaDoZakwaterowaniaView from '@/components/osoba-do-zakwaterowania-view';
 import dynamic from 'next/dynamic';
 
 
@@ -57,6 +58,9 @@ function CurrentView({ activeView, currentUser }: { activeView: View; currentUse
             </div>
             <div className={activeView !== 'zapotrzebowania' ? 'hidden' : ''}>
                 <ZapotrzebowaniaView currentUser={currentUser} activeView={activeView} />
+            </div>
+            <div className={activeView !== 'osoba-do-zakwaterowania' ? 'hidden' : ''}>
+                <OsobaDoZakwaterowaniaView currentUser={currentUser} />
             </div>
             <div className={activeView !== 'settings' ? 'hidden' : ''}>
                 <DynamicSettingsView currentUser={currentUser} />

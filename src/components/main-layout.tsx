@@ -178,8 +178,9 @@ export default function MainLayout({
         { view: 'housing', icon: Building, label: t('nav.housing') },
         { view: 'control-cards', icon: ClipboardCheck, label: t('nav.controlCards') },
         { view: 'recruitment', icon: Briefcase, label: t('nav.recruitment') },
+        (initialSession.isBok || initialSession.isDriver || initialSession.isAdmin) ? { view: 'osoba-do-zakwaterowania', icon: Building, label: 'Osoba do zakwaterowania' } : null,
         { view: 'settings', icon: SettingsIcon, label: t('nav.settings') },
-    ], [t]) as { view: View; icon: React.ElementType; label: string }[];
+    ].filter(Boolean), [t, initialSession.isBok, initialSession.isDriver, initialSession.isAdmin]) as { view: View; icon: React.ElementType; label: string }[];
 
     const activeView = useMemo(() => {
         let view = searchParams.get('view') as View;
@@ -243,6 +244,11 @@ export default function MainLayout({
             }).length;
     }, [rawCandidates, rawBokResidents, odbiorEntries]);
     const [pendingDemandsCount, setPendingDemandsCount] = useState(0);
+
+    const osobaDoZakwaterowaniaCount = useMemo(() => {
+        if (!rawCandidates) return 0;
+        return rawCandidates.filter(c => c.status === 'w_oczekiwaniu_na_zakwaterowanie').length;
+    }, [rawCandidates]);
 
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isNonEmployeeFormOpen, setIsNonEmployeeFormOpen] = useState(false);
@@ -333,9 +339,9 @@ export default function MainLayout({
             return navItems.filter(item => item.view === 'zapotrzebowania' || item.view === 'employees' || item.view === 'housing' || item.view === 'control-cards');
         }
         if (currentUser?.isRekrutacja) {
-            return navItems.filter(item => item.view === 'recruitment' || item.view === 'zapotrzebowania');
+            return navItems.filter(item => item.view === 'recruitment' || item.view === 'zapotrzebowania' || item.view === 'osoba-do-zakwaterowania');
         }
-        return navItems.filter(item => item.view !== 'settings' && item.view !== 'odbior' && item.view !== 'zapotrzebowania' && item.view !== 'recruitment');
+        return navItems.filter(item => item.view !== 'settings' && item.view !== 'odbior' && item.view !== 'zapotrzebowania' && item.view !== 'recruitment' && item.view !== 'osoba-do-zakwaterowania');
     }, [currentUser, navItems]);
 
     const handleLogout = useCallback(async () => {
@@ -1298,7 +1304,7 @@ export default function MainLayout({
                                             : 'text-muted-foreground'
                                     )}
                                 >
-                                    {((item.view === 'odbior' && unacceptedCount > 0) || (item.view === 'recruitment' && wdrodzeCount > 0) || (item.view === 'zapotrzebowania' && pendingDemandsCount > 0)) && (
+                                    {((item.view === 'odbior' && unacceptedCount > 0) || (item.view === 'recruitment' && wdrodzeCount > 0) || (item.view === 'zapotrzebowania' && pendingDemandsCount > 0) || (item.view === 'osoba-do-zakwaterowania' && osobaDoZakwaterowaniaCount > 0)) && (
                                         <div className="absolute inset-0 rounded-xl animate-blink-red pointer-events-none" />
                                     )}
                                     <item.icon className="h-5 w-5 relative z-10" />
@@ -1315,6 +1321,11 @@ export default function MainLayout({
                                     {item.view === 'zapotrzebowania' && pendingDemandsCount > 0 && (
                                         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 shadow-sm">
                                             {pendingDemandsCount > 9 ? '9+' : pendingDemandsCount}
+                                        </span>
+                                    )}
+                                    {item.view === 'osoba-do-zakwaterowania' && osobaDoZakwaterowaniaCount > 0 && (
+                                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 shadow-sm">
+                                            {osobaDoZakwaterowaniaCount > 9 ? '9+' : osobaDoZakwaterowaniaCount}
                                         </span>
                                     )}
                                 </Link>

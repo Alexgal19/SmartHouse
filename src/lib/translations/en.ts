@@ -102,7 +102,15 @@ export const en = {
     'col.checkOut': 'Check-out date',
     'col.passport': 'Passport no.',
     'col.comments': 'Comments',
+    'col.hasPermit': 'Permit',
+    'col.hasPesel': 'PESEL',
     'col.actions': 'Actions',
+
+    // Stats
+    'stats.hasPermit': 'Permit',
+    'stats.hasPesel': 'PESEL',
+    'stats.yes': 'Yes',
+    'stats.no': 'No',
 
     // Tabs
     'tab.active': 'Active',
@@ -847,6 +855,8 @@ export const en = {
     'odbior.changeLogTitle': 'Change history',
     'odbior.cancelFinish': 'Cancel completion',
     'odbior.finishCancelled': 'Completion cancelled',
+    'odbior.hasPermit': 'Permit',
+    'odbior.hasPesel': 'PESEL',
 
     // Odbior zakwaterowanie wizard
     'odbiorZakwaterowanie.personDataTitle': 'Person data',
@@ -1016,6 +1026,7 @@ export const en = {
 
     // Candidate / Recruitment
     'candidate.title': 'Add candidate',
+    'candidate.tableTitle': 'Candidates',
     'candidate.firstName': 'First name',
     'candidate.lastName': 'Last name',
     'candidate.passportNumber': 'Passport number',

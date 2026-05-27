@@ -1,6 +1,6 @@
 // This file contains all the TypeScript type definitions for the application's data structures.
 
-export type View = 'dashboard' | 'employees' | 'settings' | 'housing' | 'control-cards' | 'odbior' | 'recruitment' | 'zapotrzebowania';
+export type View = 'dashboard' | 'employees' | 'settings' | 'housing' | 'control-cards' | 'odbior' | 'recruitment' | 'zapotrzebowania' | 'osoba-do-zakwaterowania';
 
 export type Address = {
   id: string;
@@ -63,6 +63,8 @@ export type BokResident = {
   checkOutDate?: string | null;
   comments?: string | null;
   status?: "active" | "dismissed";
+  hasPermit?: boolean;
+  hasPesel?: boolean;
 };
 
 export type ChartConfig = {
@@ -318,6 +320,8 @@ export type OdbiorZgloszenie = {
     deletedAt: string;
     deletedBy: string;
     changeLog: string;
+    hasPermit?: boolean;
+    hasPesel?: boolean;
 };
 
 export type OdbiorStatus = 'nowy' | 'przekonwertowany';
@@ -336,7 +340,8 @@ export type Candidate = {
   passportPhotoUrl?: string;
   sourceOdbiorId?: string | null;
   bokId?: string | null;
-  status: 'nowy' | 'wdrodze' | 'w_trakcie' | 'zakonczony' | 'zakwaterowana' | 'po_rozmowie' | 'w_biurze';
+  status: 'nowy' | 'wdrodze' | 'w_trakcie' | 'zakonczony' | 'zakwaterowana' | 'po_rozmowie' | 'w_biurze' | 'w_oczekiwaniu_na_zakwaterowanie';
+  interviewOutcome?: 'failed' | 'employed' | 'do_zakwaterowania' | null;
   createdAt: string;
   interviewHistory: InterviewResult[];
 }
@@ -380,4 +385,6 @@ export type OdbiorEntry = {
   convertedToBokId?: string | null;
   sourceOdbiorId?: string | null;
   sourceDemandId?: string | null;
+  hasPermit?: boolean;
+  hasPesel?: boolean;
 }

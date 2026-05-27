@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 /**
  * @jest-environment node
  */
@@ -46,6 +47,7 @@ const mockCandidate: Candidate = {
     passportNumber: 'ABC123456',
     status: 'zakwaterowana',
     createdAt: new Date().toISOString(),
+    interviewHistory: [],
 };
 
 const makeMockSettings = (overrides?: Partial<Settings>): Settings => ({
@@ -72,8 +74,8 @@ const makeMockSettings = (overrides?: Partial<Settings>): Settings => ({
 describe('Demand and Push Notification Lifecycle', () => {
     beforeEach(() => {
         jest.clearAllMocks();
-        if (typeof global !== 'undefined' && global.clearSentPushNotifications) {
-            global.clearSentPushNotifications();
+        if (typeof global !== 'undefined' && (global as any).clearSentPushNotifications) {
+            (global as any).clearSentPushNotifications();
         }
         mockedGetSettings.mockResolvedValue(makeMockSettings());
         mockedGetCandidates.mockResolvedValue([mockCandidate]);

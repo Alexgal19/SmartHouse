@@ -434,6 +434,8 @@ const deserializeBokResident = (row: Record<string, unknown>): BokResident | nul
         checkOutDate: safeFormat(plainObject.checkOutDate) || null,
         comments: (plainObject.comments || '') as string,
         status: ((plainObject.status as string) === 'dismissed' ? 'dismissed' : 'active') as 'active' | 'dismissed',
+        hasPermit: String(plainObject.hasPermit || '').toLowerCase() === 'true',
+        hasPesel: String(plainObject.hasPesel || '').toLowerCase() === 'true',
     };
 };
 
@@ -1097,6 +1099,7 @@ const ODBIOR_ENTRY_HEADERS = [
     'id', 'type', 'status', 'firstName', 'lastName', 'nationality', 'gender',
     'passportNumber', 'addressId', 'addressName', 'roomNumber', 'date',
     'createdAt', 'createdBy', 'createdById', 'convertedToBokId', 'sourceOdbiorId', 'sourceDemandId',
+    'hasPermit', 'hasPesel',
 ];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1122,6 +1125,8 @@ const deserializeOdbiorEntry = (row: Record<string, unknown>): OdbiorEntry | nul
         convertedToBokId: (row.convertedToBokId as string) || null,
         sourceOdbiorId: (row.sourceOdbiorId as string) || null,
         sourceDemandId: (row.sourceDemandId as string) || null,
+        hasPermit: String(row.hasPermit || '').toLowerCase() === 'true',
+        hasPesel: String(row.hasPesel || '').toLowerCase() === 'true',
     };
 };
 
@@ -1158,6 +1163,8 @@ function serializeOdbiorEntry(entry: OdbiorEntry): Record<string, string> {
         convertedToBokId: entry.convertedToBokId || '',
         sourceOdbiorId: entry.sourceOdbiorId || '',
         sourceDemandId: entry.sourceDemandId || '',
+        hasPermit: entry.hasPermit ? 'true' : '',
+        hasPesel: entry.hasPesel ? 'true' : '',
     };
 }
 
@@ -1227,7 +1234,7 @@ const ODBIOR_HEADERS = [
     'id', 'dataZgloszenia', 'numerTelefonu', 'skad', 'komentarzSkad',
     'iloscOsob', 'komentarz', 'zdjeciaUrls', 'rekruterId', 'rekruterNazwa',
     'status', 'kierowcaId', 'kierowcaNazwa', 'osoby', 'nastepnyKrok', 'dataZakonczenia',
-    'przyjeteAt', 'zakonczoneAt', 'deletedAt', 'deletedBy', 'changeLog',
+    'przyjeteAt', 'zakonczoneAt', 'deletedAt', 'deletedBy', 'changeLog', 'hasPermit', 'hasPesel',
 ];
 
 export async function getOdbiorZgloszenia(): Promise<OdbiorZgloszenie[]> {
@@ -1257,6 +1264,8 @@ export async function getOdbiorZgloszenia(): Promise<OdbiorZgloszenie[]> {
             deletedAt: row['deletedAt'] ?? '',
             deletedBy: row['deletedBy'] ?? '',
             changeLog: row['changeLog'] ?? '',
+            hasPermit: String(row['hasPermit'] || '').toLowerCase() === 'true',
+            hasPesel: String(row['hasPesel'] || '').toLowerCase() === 'true',
         }));
         return odbiorCache!;
     });
@@ -1269,6 +1278,8 @@ export async function addOdbiorZgloszenieRow(data: Omit<OdbiorZgloszenie, 'id'>)
         id,
         ...data,
         iloscOsob: String(data.iloscOsob),
+        hasPermit: data.hasPermit ? 'true' : '',
+        hasPesel: data.hasPesel ? 'true' : '',
         przyjeteAt: data.przyjeteAt ?? '',
         zakonczoneAt: data.zakonczoneAt ?? '',
         deletedAt: data.deletedAt ?? '',
@@ -1321,7 +1332,7 @@ export async function deleteOdbiorZgloszenie(id: string): Promise<void> {
 // ─── Candidates ──────────────────────────────────────────────────────────────
 
 const CANDIDATE_HEADERS = [
-    'id', 'firstName', 'lastName', 'passportNumber', 'passportPhotoUrl', 'sourceOdbiorId', 'status', 'createdAt', 'interviewHistory',
+    'id', 'firstName', 'lastName', 'passportNumber', 'passportPhotoUrl', 'sourceOdbiorId', 'status', 'createdAt', 'interviewHistory', 'interviewOutcome', 'bokId',
 ];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1333,6 +1344,8 @@ const deserializeCandidate = (row: Record<string, unknown>): import('../types').
         const raw = (row.interviewHistory as string) || '';
         if (raw) interviewHistory = JSON.parse(raw);
     } catch { /* ignore malformed JSON */ }
+    const interviewOutcomeRaw = (row.interviewOutcome as string) || '';
+    const interviewOutcome = (interviewOutcomeRaw === 'failed' || interviewOutcomeRaw === 'employed' || interviewOutcomeRaw === 'do_zakwaterowania') ? interviewOutcomeRaw : null;
     return {
         id: id as string,
         firstName: (row.firstName as string) || '',
@@ -1342,6 +1355,7 @@ const deserializeCandidate = (row: Record<string, unknown>): import('../types').
         sourceOdbiorId: (row.sourceOdbiorId as string) || null,
         bokId: (row.bokId as string) || null,
         status: ((row.status as string) || 'wdrodze') as import('../types').Candidate['status'],
+        interviewOutcome,
         createdAt: (row.createdAt as string) || '',
         interviewHistory,
     };
@@ -1357,6 +1371,7 @@ function serializeCandidate(candidate: import('../types').Candidate): Record<str
         sourceOdbiorId: candidate.sourceOdbiorId || '',
         bokId: candidate.bokId || '',
         status: candidate.status,
+        interviewOutcome: candidate.interviewOutcome || '',
         createdAt: candidate.createdAt,
         interviewHistory: JSON.stringify(candidate.interviewHistory || []),
     };

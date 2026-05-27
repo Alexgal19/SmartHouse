@@ -20,7 +20,7 @@ import { useMainLayout } from '@/components/main-layout';
 import { useLanguage } from '@/lib/i18n';
 import { addOdbiorZakwaterowanieAction, updateOdbiorZakwaterowanieAction } from '@/lib/actions';
 import { extractPassportData } from '@/ai/flows/extract-passport-data-flow';
-import type { SessionData, Address, OdbiorEntry } from '@/types';
+import type { SessionData, Address, OdbiorEntry, Candidate } from '@/types';
 import { cn } from '@/lib/utils';
 
 type AddressPickerItem = {
@@ -48,6 +48,8 @@ type WizardData = {
     passportNumber: string;
     date: Date;
     passportPhotoUrl?: string;
+    hasPermit?: boolean;
+    hasPesel?: boolean;
 };
 
 type Step = 0 | 1 | 2 | 3;
@@ -72,6 +74,8 @@ const DEFAULT_DATA: Omit<WizardData, 'date'> = {
     gender: '',
     passportNumber: '',
     passportPhotoUrl: '',
+    hasPermit: false,
+    hasPesel: false,
 };
 
 function StepIndicator({ current, steps }: { current: Step; steps: string[] }) {
@@ -425,6 +429,22 @@ function StepSzczegoly({
                     onChange={(d) => onChange({ date: d ?? new Date() })}
                 />
             </div>
+
+            <div className="space-y-1.5">
+                <label className="text-sm font-medium">{t('odbior.hasPermit')}</label>
+                <div className="flex gap-2">
+                    <Button type="button" variant={data.hasPermit ? 'default' : 'outline'} onClick={() => onChange({ hasPermit: true })} className="flex-1">{t('common.yes')}</Button>
+                    <Button type="button" variant={!data.hasPermit ? 'default' : 'outline'} onClick={() => onChange({ hasPermit: false })} className="flex-1">{t('common.no')}</Button>
+                </div>
+            </div>
+
+            <div className="space-y-1.5">
+                <label className="text-sm font-medium">{t('odbior.hasPesel')}</label>
+                <div className="flex gap-2">
+                    <Button type="button" variant={data.hasPesel ? 'default' : 'outline'} onClick={() => onChange({ hasPesel: true })} className="flex-1">{t('common.yes')}</Button>
+                    <Button type="button" variant={!data.hasPesel ? 'default' : 'outline'} onClick={() => onChange({ hasPesel: false })} className="flex-1">{t('common.no')}</Button>
+                </div>
+            </div>
         </div>
     );
 }
@@ -444,6 +464,8 @@ function StepPodsumowanie({
         { label: t('form.room'), value: data.roomNumber || '—', step: 1 },
         { label: t('form.nationality'), value: data.nationality || '—', step: 2 },
         { label: t('form.gender'), value: data.gender || '—', step: 2 },
+        { label: t('odbior.hasPermit'), value: data.hasPermit ? t('common.yes') : t('common.no'), step: 2 },
+        { label: t('odbior.hasPesel'), value: data.hasPesel ? t('common.yes') : t('common.no'), step: 2 },
         { label: t('form.passportNumber'), value: data.passportNumber || '—', step: 2 },
         {
             label: t('odbiorZakwaterowanie.dateLabel'),
@@ -492,14 +514,16 @@ export function OdbiorZakwaterowanieDialog({
     editEntry,
     prefillData,
     sourceOdbiorId,
+    candidateId,
 }: {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     currentUser: SessionData;
     onSaved?: () => void;
     editEntry?: OdbiorEntry | null;
-    prefillData?: { firstName?: string; lastName?: string; passportNumber?: string; passportPhotoUrl?: string };
-    sourceOdbiorId?: string;
+    prefillData?: Partial<Candidate & { hasPermit?: boolean; hasPesel?: boolean }> | null;
+    sourceOdbiorId?: string | null;
+    candidateId?: string | null;
 }) {
     const { toast } = useToast();
     const { t } = useLanguage();
@@ -528,6 +552,8 @@ export function OdbiorZakwaterowanieDialog({
                     passportNumber: editEntry.passportNumber || '',
                     date: isValid(parsed) ? parsed : new Date(),
                     passportPhotoUrl: '',
+                    hasPermit: editEntry.hasPermit ?? false,
+                    hasPesel: editEntry.hasPesel ?? false,
                 });
             } else {
                 setData({
@@ -537,6 +563,8 @@ export function OdbiorZakwaterowanieDialog({
                     lastName: prefillData?.lastName ?? '',
                     passportNumber: prefillData?.passportNumber ?? '',
                     passportPhotoUrl: prefillData?.passportPhotoUrl ?? '',
+                    hasPermit: prefillData?.hasPermit ?? false,
+                    hasPesel: prefillData?.hasPesel ?? false,
                 });
             }
         }
@@ -605,6 +633,8 @@ export function OdbiorZakwaterowanieDialog({
                     addressName: data.addressName,
                     roomNumber: data.roomNumber,
                     date: format(data.date, 'yyyy-MM-dd'),
+                    hasPermit: data.hasPermit,
+                    hasPesel: data.hasPesel,
                 };
                 const result = await updateOdbiorZakwaterowanieAction(
                     editEntry.id,
@@ -629,6 +659,8 @@ export function OdbiorZakwaterowanieDialog({
                         address: patch.addressName,
                         roomNumber: patch.roomNumber,
                         checkInDate: patch.date,
+                        hasPermit: patch.hasPermit,
+                        hasPesel: patch.hasPesel,
                     });
                 }
                 toast({ title: t('common.updated'), description: t('odbiorZakwaterowanie.updatedDesc', { name: `${data.lastName} ${data.firstName}` }) });
@@ -646,8 +678,11 @@ export function OdbiorZakwaterowanieDialog({
                     date: format(data.date, 'yyyy-MM-dd'),
                     createdBy: currentUser.name,
                     createdById: currentUser.uid,
-                    sourceOdbiorId,
+                    sourceOdbiorId: sourceOdbiorId || undefined,
+                    sourceCandidateId: candidateId || undefined,
                     passportPhotoUrl: data.passportPhotoUrl,
+                    hasPermit: data.hasPermit,
+                    hasPesel: data.hasPesel,
                 });
                 if (!result.success) {
                     toast({ variant: 'destructive', title: t('common.saveError'), description: result.error || t('form.submitError') });

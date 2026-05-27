@@ -24,6 +24,8 @@ export async function POST(req: NextRequest) {
         const komentarzSkad = (formData.get('komentarzSkad') as string) ?? '';
         const iloscOsob = parseInt(formData.get('iloscOsob') as string, 10);
         const komentarz = (formData.get('komentarz') as string) ?? '';
+        const hasPermit = formData.get('hasPermit') === 'true';
+        const hasPesel = formData.get('hasPesel') === 'true';
 
         if (!numerTelefonu || !skad || isNaN(iloscOsob)) {
             return NextResponse.json({ error: 'Brakujące wymagane pola.' }, { status: 400 });
@@ -80,6 +82,8 @@ export async function POST(req: NextRequest) {
             komentarzSkad,
             iloscOsob,
             komentarz,
+            hasPermit,
+            hasPesel,
             zdjeciaUrls: uploadedUrls.join(','),
             rekruterId: session.uid ?? '',
             rekruterNazwa: session.name ?? '',

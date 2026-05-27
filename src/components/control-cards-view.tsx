@@ -25,7 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useIsMobile } from "@/hooks/use-mobile";
+
 import { useToast } from "@/components/ui/use-toast";
 import type { SessionData, Address, ControlCard, CleanlinessRating, RoomRating, StartList, StartListHousingType, StartListTransport, StartListStandard, StartListHeating, ControlCardComment, ControlCardCommentStatus } from "@/types";
 import { useMainLayout } from '@/components/main-layout';
@@ -179,10 +179,11 @@ function PhotoUploadWidget({
                             ref={cameraRef}
                             type="file"
                             accept="image/*"
-                            capture="environment"
                             onChange={(e) => onAddPhotos(e, true)}
                             className="sr-only"
                             disabled={isUploading}
+                            title={t('controlCards.camera')}
+                            placeholder={t('controlCards.camera')}
                         />
                         <Button
                             type="button"
@@ -204,6 +205,8 @@ function PhotoUploadWidget({
                             onChange={(e) => onAddPhotos(e, false)}
                             className="sr-only"
                             disabled={isUploading}
+                            title={t('controlCards.gallery') || "Galeria"}
+                            placeholder={t('controlCards.gallery') || "Galeria"}
                         />
                         <Button
                             type="button"
@@ -295,7 +298,7 @@ function Lightbox({ image, onClose }: { image: string | null; onClose: () => voi
                             className="rounded-full shadow-xl h-10 w-10 bg-white/90 hover:bg-white text-black" 
                             asChild
                         >
-                            <a href={image} target="_blank" rel="noopener noreferrer">
+                            <a href={image} target="_blank" rel="noopener noreferrer" title="Pobierz">
                                 <Download className="w-5 h-5" />
                             </a>
                         </Button>
@@ -1423,6 +1426,7 @@ function ControlCardDialog({
                                                     comments: prev.comments.filter(c => c.id !== comment.id)
                                                 }))}
                                                 className="absolute -top-2 -right-2 bg-destructive text-white rounded-full p-1 shadow hover:scale-110 transition-transform"
+                                                title={t('common.delete') || "Usuń"}
                                             >
                                                 <X className="w-3 h-3" />
                                             </button>
@@ -1633,9 +1637,11 @@ function LocalitySection({
                 </div>
                 {/* mini progress */}
                 <div className="w-20 h-1.5 rounded-full bg-muted overflow-hidden shrink-0">
-                    <div
+                    <motion.div
                         className={`h-full rounded-full transition-all duration-500 ${allDone ? 'bg-green-500' : 'bg-primary'}`}
-                        style={{ width: `${total > 0 ? (done / total) * 100 : 0}%` }}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${total > 0 ? (done / total) * 100 : 0}%` }}
+                        transition={{ duration: 0.5, ease: 'easeOut' }}
                     />
                 </div>
                 <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
@@ -1795,7 +1801,7 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
             })
             .catch(() => toast({ title: t('common.error'), description: t('controlCards.loadError'), variant: 'destructive' }))
             .finally(() => setIsLoadingCards(false));
-    }, [isUnlocked]);
+    }, [isUnlocked, t, toast]);
 
     React.useEffect(() => {
         loadControlCards();
@@ -1804,11 +1810,9 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
 
     React.useEffect(() => {
         if (!isUnlocked) return;
-        const interval = setInterval(loadControlCards, 10000);
         const onUpdate = () => loadControlCards();
         window.addEventListener('control-cards-updated', onUpdate);
         return () => {
-            clearInterval(interval);
             window.removeEventListener('control-cards-updated', onUpdate);
         };
     }, [isUnlocked, loadControlCards]);

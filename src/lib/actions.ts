@@ -79,7 +79,7 @@ const NON_EMPLOYEE_HEADERS = [
 
 const BOK_RESIDENT_HEADERS = [
     'id', 'firstName', 'lastName', 'fullName', 'nationality', 'locality', 'address', 'roomNumber',
-    'gender', 'passportNumber', 'checkInDate', 'checkOutDate', 'comments', 'status'
+    'gender', 'passportNumber', 'checkInDate', 'checkOutDate', 'comments', 'status', 'hasPermit', 'hasPesel'
 ];
 
 const SHEET_NAME_EMPLOYEES = 'Employees';
@@ -2598,7 +2598,10 @@ type OdbiorEntryCreateInput = {
     createdBy: string;
     createdById: string;
     sourceOdbiorId?: string;
+    sourceCandidateId?: string;
     passportPhotoUrl?: string;
+    hasPermit?: boolean;
+    hasPesel?: boolean;
 };
 
 export async function addOdbiorEntryAction(
@@ -2678,6 +2681,8 @@ export async function convertOdbiorToBokAction(
             passportNumber: entry.passportNumber,
             checkInDate: entry.date,
             comments: '',
+            hasPermit: false,
+            hasPesel: false,
         }, actorUid);
 
         const candidate: Candidate = {
@@ -2689,6 +2694,7 @@ export async function convertOdbiorToBokAction(
             status: 'zakwaterowana',
             createdAt: new Date().toISOString(),
             interviewHistory: [],
+            bokId: bok.id,
         };
         await addCandidateToSheet(candidate);
         invalidateCandidatesCache();
@@ -2719,6 +2725,8 @@ export async function updateOdbiorZakwaterowanieAction(
         addressName: string;
         roomNumber: string;
         date: string;
+        hasPermit?: boolean;
+        hasPesel?: boolean;
     },
     _actorUid: string,
 ): Promise<{ success: boolean; error?: string }> {
@@ -2736,6 +2744,8 @@ export async function updateOdbiorZakwaterowanieAction(
             addressName: updates.addressName,
             roomNumber: updates.roomNumber,
             date: updates.date,
+            hasPermit: updates.hasPermit,
+            hasPesel: updates.hasPesel,
         });
         await invalidateOdbiorEntriesCache();
 
@@ -2751,6 +2761,8 @@ export async function updateOdbiorZakwaterowanieAction(
                 address: updates.addressName,
                 roomNumber: updates.roomNumber,
                 checkInDate: updates.date,
+                hasPermit: updates.hasPermit,
+                hasPesel: updates.hasPesel,
             }, actorUid);
         }
 
@@ -2784,6 +2796,8 @@ export async function addOdbiorZakwaterowanieAction(
             passportNumber: input.passportNumber.trim(),
             checkInDate: input.date,
             comments: '',
+            hasPermit: input.hasPermit ?? false,
+            hasPesel: input.hasPesel ?? false,
         }, input.createdById);
 
         const entry: OdbiorEntry = {
@@ -2804,25 +2818,36 @@ export async function addOdbiorZakwaterowanieAction(
             createdById: input.createdById,
             convertedToBokId: bok.id,
             sourceOdbiorId: input.sourceOdbiorId || null,
+            hasPermit: input.hasPermit ?? false,
+            hasPesel: input.hasPesel ?? false,
         };
         await addOdbiorEntryToSheet(entry);
         await invalidateOdbiorEntriesCache();
 
-        // Also add as a candidate in Recruitment
-        const candidate: Candidate = {
-            id: `cand-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-            firstName: input.firstName.trim(),
-            lastName: input.lastName.trim(),
-            passportNumber: input.passportNumber.trim(),
-            passportPhotoUrl: input.passportPhotoUrl || undefined,
-            sourceOdbiorId: input.sourceOdbiorId || null,
-            status: 'zakwaterowana',
-            createdAt: new Date().toISOString(),
-            interviewHistory: [],
-        };
-        await addCandidateToSheet(candidate);
-        invalidateCandidatesCache();
-        await invalidateCandidatesCache();
+        // Also update or add as a candidate in Recruitment
+        if (input.sourceCandidateId) {
+            await updateCandidateInSheet(input.sourceCandidateId, {
+                status: 'zakwaterowana',
+                sourceOdbiorId: input.sourceOdbiorId || null,
+                bokId: bok.id,
+            });
+            invalidateCandidatesCache();
+        } else {
+            const candidate: Candidate = {
+                id: `cand-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                firstName: input.firstName.trim(),
+                lastName: input.lastName.trim(),
+                passportNumber: input.passportNumber.trim(),
+                passportPhotoUrl: input.passportPhotoUrl || undefined,
+                sourceOdbiorId: input.sourceOdbiorId || null,
+                status: 'zakwaterowana',
+                createdAt: new Date().toISOString(),
+                interviewHistory: [],
+                bokId: bok.id,
+            };
+            await addCandidateToSheet(candidate);
+            invalidateCandidatesCache();
+        }
 
         revalidatePath('/dashboard');
         return { success: true, bokId: bok.id, entry, bokResident: bok };

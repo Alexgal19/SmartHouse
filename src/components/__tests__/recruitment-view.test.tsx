@@ -315,8 +315,8 @@ describe('RecruitmentView', () => {
         });
 
         const passwordInput = screen.getByPlaceholderText('Hasło');
-        fireEvent.change(passwordInput, { target: { value: '2121' } });
-        fireEvent.click(screen.getByRole('button', { name: /Potwierdź/i }));
+        fireEvent.change(passwordInput, { target: { value: 'SWhouse$21' } });
+        fireEvent.click(screen.getByRole('button', { name: /Zatwierdź/i }));
 
         await waitFor(() => {
             const img = screen.getByAltText('Paszport') as HTMLImageElement;

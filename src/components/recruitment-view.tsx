@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import type { SessionData, Candidate, CandidateDemand, BokResident } from "@/types";
+import type { SessionData, Candidate, CandidateDemand, BokResident, OdbiorEntry } from "@/types";
 import { useLanguage } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,10 +13,17 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { getCandidatesAction, sendCandidateDemandNotificationAction, getCandidateDemandsAction, deleteCandidateAction, acknowledgeCandidateDemandAction, addCandidateAction, updateCandidateAction } from "@/lib/actions";
 import { useMainLayout } from "@/components/main-layout";
 import { Button } from "@/components/ui/button";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Eye, Plus } from 'lucide-react';
+import { Eye, MoreHorizontal } from 'lucide-react';
 import AddCandidateDialog from '@/components/add-candidate-dialog';
+import { BokStatsDrillDownDialog } from '@/components/bok-stats-drill-down-dialog';
 import {
     AlertDialog,
     AlertDialogContent,
@@ -24,6 +31,7 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
+    AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import {
     Dialog,
@@ -31,6 +39,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { OdbiorZakwaterowanieDialog } from '@/components/odbior-zakwaterowanie-dialog';
 
 export default function RecruitmentView({ currentUser, activeView }: { currentUser: SessionData; activeView: string }) {
     const { t, dateLocale } = useLanguage();
@@ -43,7 +52,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
     const isFetchingRef = useRef(false);
     const candidatesRef = useRef<Candidate[]>(allCandidates || []);
     const [searchQuery, setSearchQuery] = useState("");
-    const [statusFilter, setStatusFilter] = useState<'all' | 'oczekujace' | 'po_rozmowie'>('all');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'oczekujace' | 'zatrudniony' | 'nieudana' | 'zakwaterowanie' | 'zatrudniony_do_zakwaterowania'>('all');
     const [sendingId, setSendingId] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [dialogStep, setDialogStep] = useState<'none' | 'confirm' | 'sure'>('none');
@@ -53,7 +62,12 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
     // Candidate detail dialog state
     const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
 
+    const [finishCandidate, setFinishCandidate] = useState<Candidate | null>(null);
+    const [zakwaterowanieDialogOpen, setZakwaterowanieDialogOpen] = useState(false);
+    const [selectedZakwaterowanieEntry, setSelectedZakwaterowanieEntry] = useState<OdbiorEntry | null>(null);
+
     const [bokSearchQuery, setBokSearchQuery] = useState("");
+    const [drillDownField, setDrillDownField] = useState<'hasPermit' | 'hasPesel' | null>(null);
     const [bokPassportVisible, setBokPassportVisible] = useState(false);
     const [passportDialogOpen, setPassportDialogOpen] = useState(false);
     const [passportInput, setPassportInput] = useState("");
@@ -300,7 +314,17 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
     }, []);
 
     const handleRowClick = (candidate: Candidate) => {
-        setSelectedCandidate(candidate);
+        if (candidate.status === 'w_oczekiwaniu_na_zakwaterowanie') {
+            const entry = contextOdbiorEntries?.find(e => e.convertedToBokId === candidate.bokId && e.type === 'zakwaterowanie');
+            if (entry) {
+                setSelectedZakwaterowanieEntry(entry);
+            } else {
+                setSelectedZakwaterowanieEntry(null);
+            }
+            setZakwaterowanieDialogOpen(true);
+        } else {
+            setSelectedCandidate(candidate);
+        }
     };
 
     // Pre-filtered candidates (status + BOK dismissal filter, no search/status filter)
@@ -321,7 +345,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                 .map(r => `${r.firstName.trim().toLowerCase()}|${r.lastName.trim().toLowerCase()}`)
         );
         return candidates
-            .filter(c => c.status === 'nowy' || c.status === 'wdrodze' || c.status === 'zakwaterowana' || c.status === 'po_rozmowie' || c.status === 'w_biurze')
+            .filter(c => c.status === 'nowy' || c.status === 'wdrodze' || c.status === 'zakwaterowana' || c.status === 'po_rozmowie' || c.status === 'w_biurze' || c.status === 'w_oczekiwaniu_na_zakwaterowanie')
             .filter(c => {
                 if (c.bokId && dismissedBokIds.has(c.bokId)) return false;
                 if (c.sourceOdbiorId && dismissedSourceIds.has(c.sourceOdbiorId)) return false;
@@ -336,8 +360,11 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
     const filteredCandidates = useMemo(() => {
         return preFilteredCandidates
             .filter(c => {
-                if (statusFilter === 'po_rozmowie') return c.status === 'po_rozmowie';
-                if (statusFilter === 'oczekujace') return c.status !== 'po_rozmowie';
+                if (statusFilter === 'zatrudniony') return c.status === 'po_rozmowie' && c.interviewOutcome === 'employed';
+                if (statusFilter === 'nieudana') return c.status === 'po_rozmowie' && c.interviewOutcome === 'failed';
+                if (statusFilter === 'zakwaterowanie') return c.status === 'w_oczekiwaniu_na_zakwaterowanie' && (c.interviewOutcome === 'do_zakwaterowania' || !c.interviewOutcome);
+                if (statusFilter === 'zatrudniony_do_zakwaterowania') return c.status === 'w_oczekiwaniu_na_zakwaterowanie' && c.interviewOutcome === 'employed';
+                if (statusFilter === 'oczekujace') return ['nowy', 'wdrodze', 'w_biurze'].includes(c.status);
                 return true;
             })
             .filter(c => c.lastName.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -402,17 +429,24 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
         setDemandDialogOpen(true);
     };
 
-    const handleFinishCandidate = async (candidate: Candidate) => {
+    const handleFinishCandidate = (candidate: Candidate) => {
+        setFinishCandidate(candidate);
+    };
+
+    const handleConfirmFinish = async (status: 'w_oczekiwaniu_na_zakwaterowanie' | 'po_rozmowie', outcome?: 'employed' | 'failed' | 'do_zakwaterowania') => {
+        if (!finishCandidate) return;
         try {
-            const result = await updateCandidateAction(candidate.id, { status: 'po_rozmowie' });
+            const result = await updateCandidateAction(finishCandidate.id, { status, interviewOutcome: outcome });
             if (result.success) {
-                setCandidates(prev => prev.map(c => c.id === candidate.id ? { ...c, status: 'po_rozmowie' as const } : c));
-                toast({ title: 'Status zmieniony', description: `${candidate.firstName} ${candidate.lastName} - Po rozmowie` });
+                setCandidates(prev => prev.map(c => c.id === finishCandidate.id ? { ...c, status, interviewOutcome: outcome } : c));
+                toast({ title: 'Status zmieniony', description: `${finishCandidate.firstName} ${finishCandidate.lastName} - ${status === 'w_oczekiwaniu_na_zakwaterowanie' ? 'Do zakwaterowania' : (outcome === 'employed' ? 'Zatrudniony' : 'Nieudana')}` });
             } else {
                 toast({ variant: 'destructive', title: 'Błąd', description: result.error });
             }
         } catch (err) {
             toast({ variant: 'destructive', title: 'Błąd', description: String(err) });
+        } finally {
+            setFinishCandidate(null);
         }
     };
 
@@ -470,8 +504,8 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
         }
     };
 
-    const statusBadge = (status: Candidate["status"]) => {
-        switch (status) {
+    const statusBadge = (candidate: Candidate) => {
+        switch (candidate.status) {
             case "nowy":
                 return <Badge variant="secondary">{t("candidate.statusNowy")}</Badge>;
             case "w_trakcie":
@@ -484,10 +518,14 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                 return <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100">{t("candidate.statusWdrodze")}</Badge>;
             case "w_biurze":
                 return <Badge variant="default" className="bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100">{t("candidate.statusWBiurze")}</Badge>;
+            case "w_oczekiwaniu_na_zakwaterowanie":
+                return <Badge variant="default" className="bg-orange-500 text-white border-orange-500 hover:bg-orange-600">Osoba do zakwaterowania</Badge>;
             case "po_rozmowie":
-                return <Badge variant="default" className="bg-green-600 text-white border-green-600 hover:bg-green-700">{t("candidate.statusPoRozmowie")}</Badge>;
+                if (candidate.interviewOutcome === 'employed') return <Badge variant="default" className="bg-green-600 text-white border-green-600 hover:bg-green-700">Po rozmowie - zatrudniony</Badge>;
+                if (candidate.interviewOutcome === 'failed') return <Badge variant="default" className="bg-red-600 text-white border-red-600 hover:bg-red-700">Po rozmowie - nieudana</Badge>;
+                return <Badge variant="default" className="bg-gray-500 text-white border-gray-500 hover:bg-gray-600">Po rozmowie</Badge>;
             default:
-                return <Badge>{status}</Badge>;
+                return <Badge>{candidate.status}</Badge>;
         }
     };
 
@@ -516,8 +554,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    <Button onClick={() => setAddCandidateOpen(true)} className="shrink-0">
-                        <Plus className="h-4 w-4 mr-2" />
+                    <Button onClick={() => setAddCandidateOpen(true)}>
                         {t('candidate.title')}
                     </Button>
                 </div>
@@ -526,13 +563,16 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
             {/* Status filter buttons */}
             {(() => {
                 const countAll = preFilteredCandidates.length;
-                const countOczekujace = preFilteredCandidates.filter(c => c.status !== 'po_rozmowie').length;
-                const countPoRozmowie = preFilteredCandidates.filter(c => c.status === 'po_rozmowie').length;
+                const countOczekujace = preFilteredCandidates.filter(c => ['nowy', 'wdrodze', 'w_biurze'].includes(c.status)).length;
+                const countZakwaterowanie = preFilteredCandidates.filter(c => c.status === 'w_oczekiwaniu_na_zakwaterowanie' && (c.interviewOutcome === 'do_zakwaterowania' || !c.interviewOutcome)).length;
+                const countZatrudnionyDoZakwaterowania = preFilteredCandidates.filter(c => c.status === 'w_oczekiwaniu_na_zakwaterowanie' && c.interviewOutcome === 'employed').length;
+                const countZatrudnieni = preFilteredCandidates.filter(c => c.status === 'po_rozmowie' && c.interviewOutcome === 'employed').length;
+                const countNieudani = preFilteredCandidates.filter(c => c.status === 'po_rozmowie' && c.interviewOutcome === 'failed').length;
                 return (
-                    <div className="flex justify-center gap-3 overflow-x-auto pb-1">
+                    <div className="flex flex-wrap justify-center gap-3 overflow-x-auto px-2 py-1.5">
                         <button
                             onClick={() => setStatusFilter('all')}
-                            className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 min-w-0 flex-1 sm:w-[12cm] sm:shrink-0 transition-all font-semibold text-sm ${
+                            className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 min-w-[120px] flex-1 sm:max-w-[200px] sm:shrink-0 transition-all font-semibold text-sm ${
                                 statusFilter === 'all'
                                     ? 'border-primary bg-primary text-primary-foreground shadow-md scale-[1.02]'
                                     : 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/20'
@@ -543,25 +583,58 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                         </button>
                         <button
                             onClick={() => setStatusFilter('oczekujace')}
-                            className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 min-w-0 flex-1 sm:w-[12cm] sm:shrink-0 transition-all font-semibold text-sm ${
+                            className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 min-w-[120px] flex-1 sm:max-w-[200px] sm:shrink-0 transition-all font-semibold text-sm ${
                                 statusFilter === 'oczekujace'
-                                    ? 'border-red-500 bg-red-500 text-white shadow-md scale-[1.02]'
-                                    : 'border-red-300 bg-red-50 text-red-600 hover:bg-red-100'
+                                    ? 'border-orange-500 bg-orange-500 text-white shadow-md scale-[1.02]'
+                                    : 'border-orange-300 bg-orange-50 text-orange-600 hover:bg-orange-100'
                             }`}
                         >
                             <span className="text-2xl font-bold">{countOczekujace}</span>
                             <span className="text-xs">{t('candidate.filterPending')}</span>
                         </button>
                         <button
-                            onClick={() => setStatusFilter('po_rozmowie')}
-                            className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 min-w-0 flex-1 sm:w-[12cm] sm:shrink-0 transition-all font-semibold text-sm ${
-                                statusFilter === 'po_rozmowie'
+                            onClick={() => setStatusFilter('zakwaterowanie')}
+                            className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 min-w-[120px] flex-1 sm:max-w-[200px] sm:shrink-0 transition-all font-semibold text-sm ${
+                                statusFilter === 'zakwaterowanie'
+                                    ? 'border-yellow-500 bg-yellow-500 text-white shadow-md scale-[1.02]'
+                                    : 'border-yellow-300 bg-yellow-50 text-yellow-700 hover:bg-yellow-100'
+                            }`}
+                        >
+                            <span className="text-2xl font-bold">{countZakwaterowanie}</span>
+                            <span className="text-xs">Osoba do zakwaterowania</span>
+                        </button>
+                        <button
+                            onClick={() => setStatusFilter('zatrudniony_do_zakwaterowania')}
+                            className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 min-w-[120px] flex-1 sm:max-w-[200px] sm:shrink-0 transition-all font-semibold text-sm ${
+                                statusFilter === 'zatrudniony_do_zakwaterowania'
+                                    ? 'border-blue-600 bg-blue-600 text-white shadow-md scale-[1.02]'
+                                    : 'border-blue-400 bg-blue-50 text-blue-700 hover:bg-blue-100'
+                            }`}
+                        >
+                            <span className="text-2xl font-bold">{countZatrudnionyDoZakwaterowania}</span>
+                            <span className="text-xs">Zatrudniony do zakwaterowania</span>
+                        </button>
+                        <button
+                            onClick={() => setStatusFilter('zatrudniony')}
+                            className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 min-w-[120px] flex-1 sm:max-w-[200px] sm:shrink-0 transition-all font-semibold text-sm ${
+                                statusFilter === 'zatrudniony'
                                     ? 'border-green-600 bg-green-600 text-white shadow-md scale-[1.02]'
                                     : 'border-green-400 bg-green-50 text-green-700 hover:bg-green-100'
                             }`}
                         >
-                            <span className="text-2xl font-bold">{countPoRozmowie}</span>
-                            <span className="text-xs">{t('candidate.filterAfterInterview')}</span>
+                            <span className="text-2xl font-bold">{countZatrudnieni}</span>
+                            <span className="text-xs">Zatrudniony</span>
+                        </button>
+                        <button
+                            onClick={() => setStatusFilter('nieudana')}
+                            className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 min-w-[120px] flex-1 sm:max-w-[200px] sm:shrink-0 transition-all font-semibold text-sm ${
+                                statusFilter === 'nieudana'
+                                    ? 'border-red-600 bg-red-600 text-white shadow-md scale-[1.02]'
+                                    : 'border-red-400 bg-red-50 text-red-700 hover:bg-red-100'
+                            }`}
+                        >
+                            <span className="text-2xl font-bold">{countNieudani}</span>
+                            <span className="text-xs">Nieudana</span>
                         </button>
                     </div>
                 );
@@ -591,7 +664,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                     {/* Desktop table */}
                     <Card className="hidden sm:block" data-testid="recruitment-desktop">
                         <CardHeader>
-                            <CardTitle>{t("candidate.title")}</CardTitle>
+                            <CardTitle>{t("candidate.tableTitle")}</CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
                             <ScrollArea className="h-[60vh]">
@@ -613,7 +686,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                             return (
                                                 <TableRow
                                                     key={c.id}
-                                                    className={`cursor-pointer transition-colors ${rowBgClass(c.status)} ${c.status !== 'po_rozmowie' ? 'animate-blink-light-red' : ''}`}
+                                                    className={`cursor-pointer transition-colors ${rowBgClass(c.status)} ${!['po_rozmowie', 'zakwaterowana', 'dismissed'].includes(c.status) ? 'animate-blink-light-red' : ''}`}
                                                     onClick={() => handleRowClick(c)}
                                                 >
                                                     <TableCell className="font-medium">{c.lastName}</TableCell>
@@ -634,7 +707,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                                             );
                                                         })()}
                                                     </TableCell>
-                                                    <TableCell>{statusBadge(c.status)}</TableCell>
+                                                    <TableCell>{statusBadge(c)}</TableCell>
                                                     <TableCell>
                                                         {c.createdAt
                                                             ? format(new Date(c.createdAt), "dd.MM.yyyy HH:mm", { locale: dateLocale })
@@ -643,36 +716,34 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                                     <TableCell className="text-xs">
                                                         {demandStatusBadge(demand)}
                                                     </TableCell>
-                                                    <TableCell>
-                                                        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                                                            {c.status === 'zakwaterowana' && (
-                                                                <Button
-                                                                    size="sm"
-                                                                    variant="outline"
-                                                                    onClick={() => handleCandidateDemand(c)}
-                                                                >
-                                                                    {t("candidate.demandBtn")}
+                                                    <TableCell onClick={(e) => e.stopPropagation()}>
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button size="sm" variant="ghost">
+                                                                    <MoreHorizontal className="h-4 w-4" />
+                                                                    <span className="sr-only">Akcje</span>
                                                                 </Button>
-                                                            )}
-                                                            <Button
-                                                                size="sm"
-                                                                variant="secondary"
-                                                                onClick={() => handleFinishCandidate(c)}
-                                                            >
-                                                                {t("candidate.finishBtn")}
-                                                            </Button>
-                                                            {currentUser.isAdmin && (
-                                                                <Button
-                                                                    size="sm"
-                                                                    variant="ghost"
-                                                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                                    disabled={deletingId === c.id}
-                                                                    onClick={() => handleDelete(c)}
-                                                                >
-                                                                    {deletingId === c.id ? t("common.processing") : t("common.delete")}
-                                                                </Button>
-                                                            )}
-                                                        </div>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                {c.status === 'zakwaterowana' && (
+                                                                    <DropdownMenuItem onClick={() => handleCandidateDemand(c)}>
+                                                                        {t("candidate.demandBtn")}
+                                                                    </DropdownMenuItem>
+                                                                )}
+                                                                <DropdownMenuItem onClick={() => handleFinishCandidate(c)}>
+                                                                    {t("candidate.finishBtn")}
+                                                                </DropdownMenuItem>
+                                                                {currentUser.isAdmin && (
+                                                                    <DropdownMenuItem
+                                                                        className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                                                        disabled={deletingId === c.id}
+                                                                        onClick={() => handleDelete(c)}
+                                                                    >
+                                                                        {deletingId === c.id ? t("common.processing") : t("common.delete")}
+                                                                    </DropdownMenuItem>
+                                                                )}
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
                                                     </TableCell>
                                                 </TableRow>
                                             );
@@ -696,7 +767,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                         c.status === 'zakwaterowana'? 'border-l-green-400 bg-green-50/50 dark:bg-green-950/20' :
                                         c.status === 'po_rozmowie'  ? 'border-l-green-500 bg-green-50/50 dark:bg-green-950/20' :
                                         'border-l-transparent'
-                                    } ${c.status !== 'po_rozmowie' ? 'animate-blink-light-red' : ''}`}
+                                    } ${!['po_rozmowie', 'zakwaterowana', 'dismissed'].includes(c.status) ? 'animate-blink-light-red' : ''}`}
                                     onClick={() => handleRowClick(c)}
                                 >
                                     <CardContent className="p-4 space-y-3">
@@ -720,7 +791,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                                     })()}
                                                 </p>
                                             </div>
-                                            {statusBadge(c.status)}
+                                            {statusBadge(c)}
                                         </div>
 
                                         <div className="flex items-center justify-between text-sm">
@@ -739,36 +810,33 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                             </div>
                                         )}
 
-                                        <div className="flex gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
-                                            {c.status === 'zakwaterowana' && (
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    className="flex-1"
-                                                    onClick={() => handleCandidateDemand(c)}
-                                                >
-                                                    {t("candidate.demandBtn")}
-                                                </Button>
-                                            )}
-                                            <Button
-                                                size="sm"
-                                                variant="secondary"
-                                                className="flex-1"
-                                                onClick={() => handleFinishCandidate(c)}
-                                            >
-                                                {t("candidate.finishBtn")}
-                                            </Button>
-                                            {currentUser.isAdmin && (
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    className="text-destructive hover:text-destructive hover:bg-destructive/10 flex-1"
-                                                    disabled={deletingId === c.id}
-                                                    onClick={() => handleDelete(c)}
-                                                >
-                                                    {deletingId === c.id ? t("common.processing") : t("common.delete")}
-                                                </Button>
-                                            )}
+                                        <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button size="sm" variant="outline">
+                                                        Akcje
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    {c.status === 'zakwaterowana' && (
+                                                        <DropdownMenuItem onClick={() => handleCandidateDemand(c)}>
+                                                            {t("candidate.demandBtn")}
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    <DropdownMenuItem onClick={() => handleFinishCandidate(c)}>
+                                                        {t("candidate.finishBtn")}
+                                                    </DropdownMenuItem>
+                                                    {currentUser.isAdmin && (
+                                                        <DropdownMenuItem
+                                                            className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                                            disabled={deletingId === c.id}
+                                                            onClick={() => handleDelete(c)}
+                                                        >
+                                                            {deletingId === c.id ? t("common.processing") : t("common.delete")}
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -785,14 +853,18 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                         <CardTitle>Wyszukiwanie kandydatow w BOK</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <Input
-                            placeholder="Szukaj po nazwisku lub imieniu..."
-                            value={bokSearchQuery}
-                            onChange={(e) => setBokSearchQuery(e.target.value)}
-                        />
+                        <div className="flex flex-col sm:flex-row gap-4">
+                            <Input
+                                placeholder="Szukaj po nazwisku lub imieniu..."
+                                value={bokSearchQuery}
+                                onChange={(e) => setBokSearchQuery(e.target.value)}
+                                className="flex-1"
+                            />
+                        </div>
                         {(() => {
                             const query = bokSearchQuery.toLowerCase();
                             const activeBokResidents = allBokResidents.filter(r => r.status !== 'dismissed');
+
                             const filtered = query
                                 ? activeBokResidents.filter(r =>
                                     (r.lastName?.toLowerCase() || '').includes(query) ||
@@ -800,8 +872,59 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                     `${r.lastName} ${r.firstName}`.toLowerCase().includes(query)
                                   )
                                 : activeBokResidents.slice(0, 20);
+                            const permitYesList = activeBokResidents.filter(r => r.hasPermit);
+                            const permitNoList = activeBokResidents.filter(r => !r.hasPermit);
+                            const peselYesList = activeBokResidents.filter(r => r.hasPesel);
+                            const peselNoList = activeBokResidents.filter(r => !r.hasPesel);
+                            const stats = {
+                                permitYes: permitYesList.length,
+                                permitNo: permitNoList.length,
+                                peselYes: peselYesList.length,
+                                peselNo: peselNoList.length,
+                            };
                             return (
                                 <>
+                                    {/* Statistics panel */}
+                                    <div className="grid grid-cols-2 gap-3 mb-3">
+                                        <Card
+                                            className="p-3 cursor-pointer hover:bg-accent/50 transition-colors"
+                                            onClick={() => setDrillDownField('hasPermit')}
+                                        >
+                                            <p className="text-xs text-muted-foreground mb-1">{t('stats.hasPermit')}</p>
+                                            <div className="flex gap-3 text-sm">
+                                                <span className="font-medium">{t('stats.yes')}: <span className="text-green-700">{stats.permitYes}</span></span>
+                                                <span className="font-medium">{t('stats.no')}: <span className="text-red-600">{stats.permitNo}</span></span>
+                                            </div>
+                                        </Card>
+                                        <Card
+                                            className="p-3 cursor-pointer hover:bg-accent/50 transition-colors"
+                                            onClick={() => setDrillDownField('hasPesel')}
+                                        >
+                                            <p className="text-xs text-muted-foreground mb-1">{t('stats.hasPesel')}</p>
+                                            <div className="flex gap-3 text-sm">
+                                                <span className="font-medium">{t('stats.yes')}: <span className="text-green-700">{stats.peselYes}</span></span>
+                                                <span className="font-medium">{t('stats.no')}: <span className="text-red-600">{stats.peselNo}</span></span>
+                                            </div>
+                                        </Card>
+                                    </div>
+                                    <BokStatsDrillDownDialog
+                                        isOpen={drillDownField === 'hasPermit'}
+                                        onOpenChange={(open) => { if (!open) setDrillDownField(null); }}
+                                        title={t('stats.hasPermit')}
+                                        yesLabel={t('stats.yes')}
+                                        noLabel={t('stats.no')}
+                                        yesList={permitYesList}
+                                        noList={permitNoList}
+                                    />
+                                    <BokStatsDrillDownDialog
+                                        isOpen={drillDownField === 'hasPesel'}
+                                        onOpenChange={(open) => { if (!open) setDrillDownField(null); }}
+                                        title={t('stats.hasPesel')}
+                                        yesLabel={t('stats.yes')}
+                                        noLabel={t('stats.no')}
+                                        yesList={peselYesList}
+                                        noList={peselNoList}
+                                    />
                                     {/* Desktop table */}
                                     <div className="hidden sm:block">
                                         <ScrollArea className="h-[40vh]">
@@ -813,6 +936,8 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                                         <TableHead>Data zameldowania</TableHead>
                                                         <TableHead>Status</TableHead>
                                                         <TableHead>Nr paszportu</TableHead>
+                                                        <TableHead>{t('col.hasPermit')}</TableHead>
+                                                        <TableHead>{t('col.hasPesel')}</TableHead>
                                                         <TableHead className="w-[160px]">Akcje</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
@@ -844,6 +969,8 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                                                     );
                                                                 })()}
                                                             </TableCell>
+                                                            <TableCell>{r.hasPermit ? t('common.yes') : t('common.no')}</TableCell>
+                                                            <TableCell>{r.hasPesel ? t('common.yes') : t('common.no')}</TableCell>
                                                             <TableCell>
                                                                 {r.status !== 'dismissed' && (
                                                                 <Button
@@ -892,6 +1019,10 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                                                 </button>
                                                             );
                                                         })()}
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-2 text-sm">
+                                                        <div>{t('col.hasPermit')}: <span className="font-medium">{r.hasPermit ? t('common.yes') : t('common.no')}</span></div>
+                                                        <div>{t('col.hasPesel')}: <span className="font-medium">{r.hasPesel ? t('common.yes') : t('common.no')}</span></div>
                                                     </div>
                                                     <div className="pt-1">
                                                         <Button
@@ -1072,30 +1203,82 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                                     setPassportInput('');
                                     setTimeout(() => setBokPassportVisible(false), 5000);
                                 } else {
-                                    toast({ variant: 'destructive', title: 'Błędne hasło' });
+                                    toast({ variant: "destructive", title: "Błąd", description: "Nieprawidłowe hasło" });
                                 }
                             }
                         }}
                     />
                     <AlertDialogFooter>
-                        <Button variant="outline" onClick={() => { setPassportDialogOpen(false); setPassportInput(''); }}>
+                        <AlertDialogCancel onClick={() => { setPassportInput(""); setPassportDialogOpen(false); }}>
                             Anuluj
-                        </Button>
+                        </AlertDialogCancel>
                         <Button onClick={() => {
-                            if (passportInput === '2121') {
+                            if (passportInput === 'SWhouse$21') {
                                 setBokPassportVisible(true);
                                 setPassportDialogOpen(false);
-                                setPassportInput('');
-                                setTimeout(() => setBokPassportVisible(false), 5000);
+                                setPassportInput("");
+                                toast({ title: "Sukces", description: "Odsłonięto numery paszportów." });
                             } else {
-                                toast({ variant: 'destructive', title: 'Błędne hasło' });
+                                toast({ variant: "destructive", title: "Błąd", description: "Nieprawidłowe hasło" });
                             }
-                        }}>
-                            Potwierdź
-                        </Button>
+                        }}>Zatwierdź</Button>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Finish Candidate Dialog */}
+            <AlertDialog open={!!finishCandidate} onOpenChange={(open) => { if (!open) setFinishCandidate(null); }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Zakończenie rozmowy</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Wybierz wynik rozmowy rekrutacyjnej dla {finishCandidate?.firstName} {finishCandidate?.lastName}.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <div className="flex flex-col gap-3 py-4">
+                        <Button 
+                            variant="default" 
+                            disabled={finishCandidate?.status === 'zakwaterowana'}
+                            title={finishCandidate?.status === 'zakwaterowana' ? "Osoba już posiada zakwaterowanie" : undefined}
+                            onClick={() => handleConfirmFinish('w_oczekiwaniu_na_zakwaterowanie', 'do_zakwaterowania')}
+                        >
+                            Osoba do zakwaterowania
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="border-blue-500 text-blue-700 hover:bg-blue-50"
+                            onClick={() => handleConfirmFinish('w_oczekiwaniu_na_zakwaterowanie', 'employed')}
+                        >
+                            Po rozmowie - zatrudniony - do zakwaterowania
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="border-green-500 text-green-700 hover:bg-green-50"
+                            onClick={() => handleConfirmFinish('po_rozmowie', 'employed')}
+                        >
+                            Po rozmowie - zatrudniony
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="border-red-500 text-red-700 hover:bg-red-50"
+                            onClick={() => handleConfirmFinish('po_rozmowie', 'failed')}
+                        >
+                            Po rozmowie - nieudana
+                        </Button>
+                    </div>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <OdbiorZakwaterowanieDialog
+                isOpen={zakwaterowanieDialogOpen}
+                onOpenChange={setZakwaterowanieDialogOpen}
+                currentUser={currentUser}
+                editEntry={selectedZakwaterowanieEntry}
+            />
+
             <AddCandidateDialog
                 open={addCandidateOpen}
                 onOpenChange={setAddCandidateOpen}

@@ -119,6 +119,8 @@ type FormValues = {
     fromComment: string;
     persons: number;
     comment: string;
+    hasPermit: boolean;
+    hasPesel: boolean;
 };
 
 // ---------- Dialog zgłoszenia ----------
@@ -146,6 +148,8 @@ function ZglosOdbiorDialog({
         fromComment: z.string().optional(),
         persons:     z.number().min(1, t('odbior.errorMinPersons')).max(99),
         comment:     z.string().optional(),
+        hasPermit:   z.boolean().default(false),
+        hasPesel:    z.boolean().default(false),
     }).superRefine((data, ctx) => {
         if (data.from === 'inne' && !data.fromComment?.trim()) {
             ctx.addIssue({
@@ -158,7 +162,7 @@ function ZglosOdbiorDialog({
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
-        defaultValues: { phone: '', from: undefined, fromComment: '', persons: 1, comment: '' },
+        defaultValues: { phone: '', from: undefined, fromComment: '', persons: 1, comment: '', hasPermit: false, hasPesel: false },
     });
 
     useEffect(() => {
@@ -186,7 +190,9 @@ function ZglosOdbiorDialog({
             fd.append('komentarzSkad', values.fromComment ?? '');
             fd.append('iloscOsob', String(values.persons));
             fd.append('komentarz', values.comment ?? '');
-            
+            fd.append('hasPermit', String(values.hasPermit));
+            fd.append('hasPesel', String(values.hasPesel));
+
             const compressedPhotos = await Promise.all(photoFiles.map(compressImage));
             compressedPhotos.forEach(f => fd.append('zdjecia', f));
 
@@ -315,6 +321,24 @@ function ZglosOdbiorDialog({
                                 <FormControl><Textarea placeholder={t('odbior.commentPlaceholder')} rows={2} {...field} /></FormControl>
                             </FormItem>
                         )} />
+
+                        {/* Zezwolenie i PESEL */}
+                        <div className="space-y-3">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">{t('odbior.hasPermit')}</label>
+                                <div className="flex gap-2">
+                                    <Button type="button" variant={form.watch('hasPermit') ? 'default' : 'outline'} onClick={() => form.setValue('hasPermit', true)} className="flex-1">{t('common.yes')}</Button>
+                                    <Button type="button" variant={!form.watch('hasPermit') ? 'default' : 'outline'} onClick={() => form.setValue('hasPermit', false)} className="flex-1">{t('common.no')}</Button>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">{t('odbior.hasPesel')}</label>
+                                <div className="flex gap-2">
+                                    <Button type="button" variant={form.watch('hasPesel') ? 'default' : 'outline'} onClick={() => form.setValue('hasPesel', true)} className="flex-1">{t('common.yes')}</Button>
+                                    <Button type="button" variant={!form.watch('hasPesel') ? 'default' : 'outline'} onClick={() => form.setValue('hasPesel', false)} className="flex-1">{t('common.no')}</Button>
+                                </div>
+                            </div>
+                        </div>
 
                         {/* Zdjęcia */}
                         <div className="space-y-2">

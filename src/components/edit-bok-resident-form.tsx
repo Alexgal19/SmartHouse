@@ -54,6 +54,8 @@ export const formSchema = z.object({
   checkInDate: z.date({ required_error: "Data zameldowania jest wymagana." }),
   checkOutDate: z.date().nullable().optional(),
   comments: z.string().optional(),
+  hasPermit: z.boolean().optional(),
+  hasPesel: z.boolean().optional(),
 });
 
 export type BokResidentFormData = Omit<z.infer<typeof formSchema>, 'checkInDate' | 'checkOutDate'> & {
@@ -292,6 +294,8 @@ export function EditBokResidentForm({
       checkInDate: new Date(),
       checkOutDate: null,
       comments: '',
+      hasPermit: false,
+      hasPesel: false,
     },
   });
 
@@ -353,6 +357,8 @@ export function EditBokResidentForm({
         checkInDate: parseDate(resident.checkInDate) ?? new Date(),
         checkOutDate: parseDate(resident.checkOutDate) ?? null,
         comments: resident.comments || '',
+        hasPermit: resident.hasPermit ?? false,
+        hasPesel: resident.hasPesel ?? false,
       });
     } else {
       form.reset({
@@ -367,6 +373,8 @@ export function EditBokResidentForm({
         checkInDate: new Date(),
         checkOutDate: null,
         comments: '',
+        hasPermit: false,
+        hasPesel: false,
       });
     }
   }, [resident, isOpen, form, settings, currentUser]);
@@ -649,6 +657,51 @@ export function EditBokResidentForm({
                       </FormItem>
                     )}
                   />
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">{t('odbior.hasPermit')}</label>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant={form.watch('hasPermit') ? 'default' : 'outline'}
+                          onClick={() => form.setValue('hasPermit', true)}
+                          className="flex-1"
+                        >
+                          {t('common.yes')}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={!form.watch('hasPermit') ? 'default' : 'outline'}
+                          onClick={() => form.setValue('hasPermit', false)}
+                          className="flex-1"
+                        >
+                          {t('common.no')}
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">{t('odbior.hasPesel')}</label>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant={form.watch('hasPesel') ? 'default' : 'outline'}
+                          onClick={() => form.setValue('hasPesel', true)}
+                          className="flex-1"
+                        >
+                          {t('common.yes')}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={!form.watch('hasPesel') ? 'default' : 'outline'}
+                          onClick={() => form.setValue('hasPesel', false)}
+                          className="flex-1"
+                        >
+                          {t('common.no')}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
 
                 </div>
               </ScrollArea>
