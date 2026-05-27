@@ -179,6 +179,7 @@ function PhotoUploadWidget({
                             ref={cameraRef}
                             type="file"
                             accept="image/*"
+                            {...{ capture: "environment" }}
                             onChange={(e) => onAddPhotos(e, true)}
                             className="sr-only"
                             disabled={isUploading}

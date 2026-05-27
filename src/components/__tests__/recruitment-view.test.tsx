@@ -38,18 +38,26 @@ jest.mock('@/hooks/use-toast', () => ({
 jest.mock('@/components/ui/dropdown-menu', () => ({
     DropdownMenu: ({ children }: any) => <div data-testid="mock-dropdown">{children}</div>,
     DropdownMenuTrigger: ({ children }: any) => <div data-testid="mock-dropdown-trigger">{children}</div>,
-    DropdownMenuContent: ({ children }: any) => <div data-testid="mock-dropdown-content">{children}</div>,
-    DropdownMenuItem: ({ children, onClick, className }: any) => (
-        <div role="menuitem" className={className} onClick={onClick}>
-            {children}
-        </div>
-    ),
+    DropdownMenuContent: ({ children }: any) => {
+        const props = {
+            'data-testid': 'mock-dropdown-content',
+            role: 'menu',
+        };
+        return <div {...props}>{children}</div>;
+    },
+    DropdownMenuItem: ({ children, onClick, className }: any) => {
+        const props = {
+            role: 'menuitem',
+            className,
+            onClick,
+        };
+        return <div {...props}>{children}</div>;
+    },
 }));
 
 import {
     getCandidatesAction,
     getCandidateDemandsAction,
-    sendCandidateDemandNotificationAction,
     deleteCandidateAction,
     acknowledgeCandidateDemandAction,
     getOdbiorEntriesAction,
@@ -58,7 +66,6 @@ import { useMainLayout } from '@/components/main-layout';
 
 const mockGetCandidates = getCandidatesAction as jest.Mock;
 const mockGetDemands = getCandidateDemandsAction as jest.Mock;
-const mockSendDemand = sendCandidateDemandNotificationAction as jest.Mock;
 const mockDeleteCandidate = deleteCandidateAction as jest.Mock;
 const mockAckDemand = acknowledgeCandidateDemandAction as jest.Mock;
 const mockGetOdbiorEntries = getOdbiorEntriesAction as jest.Mock;

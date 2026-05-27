@@ -188,6 +188,21 @@ describe('ControlCardDialog - Meter Photo Upload', () => {
     expect(screen.getAllByText('Aparat').length).toBeGreaterThan(0);
   });
 
+  test('camera input has capture="environment" attribute, and gallery does not', async () => {
+    await openMeterDialog();
+    const meterLabel = screen.getByText('Zdjęcia liczników (prąd, woda, itp.)');
+    const headerDiv = meterLabel.closest('div')!;
+    
+    const cameraInput = headerDiv.querySelector('input[type="file"]:not([multiple])') as HTMLInputElement;
+    const galleryInput = headerDiv.querySelector('input[type="file"][multiple]') as HTMLInputElement;
+    
+    expect(cameraInput).toBeInTheDocument();
+    expect(cameraInput).toHaveAttribute('capture', 'environment');
+    
+    expect(galleryInput).toBeInTheDocument();
+    expect(galleryInput).not.toHaveAttribute('capture');
+  });
+
   test('calls uploadControlCardPhotoAction with compressed image when a file is selected', async () => {
     (uploadControlCardPhotoAction as jest.Mock).mockResolvedValue({
       url: 'https://storage.example.com/meter-photo.jpg',
