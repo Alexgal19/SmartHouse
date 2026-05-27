@@ -1790,7 +1790,8 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
 
     const loadControlCards = React.useCallback(() => {
         if (!isUnlocked) return;
-        setIsLoadingCards(true);
+        // Don't reset isLoadingCards here — useState(true) handles the initial skeleton.
+        // Subsequent reloads (from control-cards-updated events) update data silently.
         Promise.all([
             fetch('/api/control-cards').then(res => res.json()),
             fetch('/api/start-lists').then(res => res.json()),
@@ -1847,13 +1848,13 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
         });
     }, [rawSettings, currentUser]);
 
-    // Auto-open first locality on load
+    // Auto-open first locality on initial data load (run only once).
+    const hasAutoOpenedRef = React.useRef(false);
     React.useEffect(() => {
-        if (qualifiedAddresses.length > 0 && openLocality === null) {
-            const first = qualifiedAddresses[0].locality || 'Inne';
-            setOpenLocality(first);
+        if (!hasAutoOpenedRef.current && qualifiedAddresses.length > 0) {
+            hasAutoOpenedRef.current = true;
+            setOpenLocality(qualifiedAddresses[0].locality || 'Inne');
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [qualifiedAddresses]);
 
     // Deep-link: open address dialog when ?address=<id> is in URL
