@@ -468,4 +468,61 @@ describe('RecruitmentView', () => {
         });
     });
 
+    it('does NOT open confirmation dialog when demandId is already acknowledged', async () => {
+        mockDemandId = 'dem-acknowledged';
+        mockGetCandidates.mockResolvedValue([makeCandidate()]);
+        mockGetDemands.mockResolvedValue([makeDemand({ id: 'dem-acknowledged', status: 'acknowledged' })]);
+        render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
+
+        await waitFor(() => {
+            expect(screen.getByText('Kowalski')).toBeInTheDocument();
+        });
+
+        // Dialog should NOT appear for already-acknowledged demand
+        expect(screen.queryByText(/Przyjąć zapotrzebowanie na kandydata/i)).not.toBeInTheDocument();
+        expect(mockReplace).toHaveBeenCalled();
+    });
+
+    it('does NOT open confirmation dialog when demandId is delivered', async () => {
+        mockDemandId = 'dem-delivered';
+        mockGetCandidates.mockResolvedValue([makeCandidate()]);
+        mockGetDemands.mockResolvedValue([makeDemand({ id: 'dem-delivered', status: 'delivered' })]);
+        render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
+
+        await waitFor(() => {
+            expect(screen.getByText('Kowalski')).toBeInTheDocument();
+        });
+
+        expect(screen.queryByText(/Przyjąć zapotrzebowanie na kandydata/i)).not.toBeInTheDocument();
+    });
+
+    it('does NOT open confirmation dialog when demandId is expired', async () => {
+        mockDemandId = 'dem-expired';
+        mockGetCandidates.mockResolvedValue([makeCandidate()]);
+        mockGetDemands.mockResolvedValue([makeDemand({ id: 'dem-expired', status: 'expired' })]);
+        render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
+
+        await waitFor(() => {
+            expect(screen.getByText('Kowalski')).toBeInTheDocument();
+        });
+
+        expect(screen.queryByText(/Przyjąć zapotrzebowanie na kandydata/i)).not.toBeInTheDocument();
+    });
+
+    it('opens AddCandidateDialog when Dodaj kandydata button is clicked', async () => {
+        mockGetCandidates.mockResolvedValue([]);
+        render(<RecruitmentView currentUser={mockUser} activeView="recruitment" />);
+
+        await waitFor(() => {
+            expect(screen.getByRole('button', { name: /Dodaj kandydata/i })).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: /Dodaj kandydata/i }));
+
+        await waitFor(() => {
+            // Dialog should appear with role="dialog"
+            expect(screen.getByRole('dialog')).toBeInTheDocument();
+        });
+    });
+
 });

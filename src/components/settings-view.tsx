@@ -21,6 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { AddressForm } from './address-form';
 import { useMainLayout } from './main-layout';
 import { Progress } from '@/components/ui/progress';
@@ -93,6 +94,7 @@ const AddMultipleDialog = ({ open, onOpenChange, onAdd, listTitle }: { open: boo
 const ListManager = ({ name, title, fields, append, remove, control }: { name: FieldPath<z.infer<typeof formSchema>>; title: string; fields: Record<"id", string>[]; append: (obj: { value: string } | { value: string }[]) => void; remove: (index: number) => void; control: Control<z.infer<typeof formSchema>> }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isAddMultipleOpen, setIsAddMultipleOpen] = useState(false);
+    const [newItem, setNewItem] = useState('');
     const { t } = useLanguage();
     const watchedValues = useWatch({ control, name }) as { value: string }[] | undefined;
 
@@ -109,39 +111,65 @@ const ListManager = ({ name, title, fields, append, remove, control }: { name: F
         append(newItems);
     };
 
+    const handleAddSingle = () => {
+        const trimmed = newItem.trim();
+        if (!trimmed) return;
+        append({ value: trimmed });
+        setNewItem('');
+    };
 
     return (
         <AccordionItem value={name} className="border rounded-md px-4">
-            <AccordionTrigger>{title}</AccordionTrigger>
+            <AccordionTrigger>
+                <div className="flex items-center justify-between w-full pr-4">
+                    <span className="font-medium">{title}</span>
+                    <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{fields.length}</span>
+                </div>
+            </AccordionTrigger>
             <AccordionContent>
-                <div className="space-y-2 pt-2">
-                    <div className="flex justify-between items-center mb-4 gap-2">
+                <div className="space-y-3 pt-2">
+                    {/* Quick inline add */}
+                    <div className="flex gap-2">
                         <Input
-                            placeholder={t('settings.searchItems')}
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder={t('settings.addNewItem')}
+                            value={newItem}
+                            onChange={(e) => setNewItem(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddSingle(); } }}
                             className="h-9"
                         />
-                        <Button type="button" variant="outline" size="sm" onClick={() => setIsAddMultipleOpen(true)} className="shrink-0">
-                            <PlusCircle className="mr-2 h-4 w-4" /> {t('settings.addItems')}
+                        <Button type="button" variant="outline" size="sm" onClick={handleAddSingle} className="shrink-0 h-9 px-3">
+                            <PlusCircle className="h-4 w-4" />
+                        </Button>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => setIsAddMultipleOpen(true)} className="shrink-0 h-9 px-3" title={t('settings.addMultipleTitle', { title })}>
+                            <FileWarning className="h-4 w-4" />
                         </Button>
                     </div>
-                    {filteredFields.map((field) => (
-                        <FormField
-                            key={field.id}
-                            name={`${name}.${field.originalIndex}.value`}
-                            render={({ field: formField }) => (
-                                <FormItem className="flex items-center gap-2">
-                                    <FormControl>
-                                        <Input {...formField} />
-                                    </FormControl>
-                                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(field.originalIndex)}>
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </FormItem>
-                            )}
-                        />
-                    ))}
+                    {/* Search */}
+                    <Input
+                        placeholder={t('settings.searchItems')}
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="h-9"
+                    />
+                    {/* List */}
+                    <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-1">
+                        {filteredFields.map((field) => (
+                            <FormField
+                                key={field.id}
+                                name={`${name}.${field.originalIndex}.value`}
+                                render={({ field: formField }) => (
+                                    <FormItem className="flex items-center gap-2">
+                                        <FormControl>
+                                            <Input {...formField} className="h-9" />
+                                        </FormControl>
+                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => remove(field.originalIndex)}>
+                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                        </Button>
+                                    </FormItem>
+                                )}
+                            />
+                        ))}
+                    </div>
                     {filteredFields.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">{t('settings.noItemsFound')}</p>}
                     <AddMultipleDialog
                         open={isAddMultipleOpen}
@@ -203,10 +231,29 @@ const CoordinatorManager = ({ form, fields, append, remove, departments }: { for
                 {filteredFields.map((field) => (
                     <AccordionItem value={field.id} key={field.id} className="border rounded-md px-4 animate-fade-in-up" style={{ animationDelay: `${field.originalIndex * 50}ms`, animationFillMode: 'backwards' }}>
                         <AccordionTrigger>
-                            <div className="flex items-center justify-between w-full pr-4">
-                                <span className="font-semibold">{form.getValues(`coordinators.${field.originalIndex}.name`) || t('settings.newCoordinator')}</span>
-                                <span className="text-sm text-muted-foreground">{form.getValues(`coordinators.${field.originalIndex}.isAdmin`) ? t('common.admin') : t('common.coordinator')}</span>
-                            </div>
+                            {(() => {
+                                const coord = watchedCoordinators?.[field.originalIndex];
+                                const perms: string[] = [];
+                                if (coord?.isAdmin) perms.push('Admin');
+                                if (coord?.isDriver) perms.push('Kierowca');
+                                if (coord?.isRekrutacja) perms.push('Rekrutacja');
+                                const deptCount = (coord?.departments || []).filter(Boolean).length;
+                                return (
+                                    <div className="flex items-center justify-between w-full pr-4 gap-2">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <span className="font-semibold truncate">{(coord?.name || t('settings.newCoordinator'))}</span>
+                                            {perms.length > 0 && (
+                                                <div className="hidden sm:flex gap-1">
+                                                    {perms.map(p => (
+                                                        <span key={p} className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded">{p}</span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <span className="text-xs text-muted-foreground shrink-0">{deptCount > 0 ? `${deptCount} zakł.` : 'Bez zakł.'}</span>
+                                    </div>
+                                );
+                            })()}
                         </AccordionTrigger>
                         <AccordionContent>
                             <div className="space-y-4 pt-2">
@@ -406,6 +453,7 @@ const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove,
     const [filterCoordinatorId, setFilterCoordinatorId] = useState('all');
     const [filterLocality, setFilterLocality] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
+    const [expandedAddressId, setExpandedAddressId] = useState<string | null>(null);
     const { t } = useLanguage();
 
     const coordinatorMap = useMemo(() => new Map(coordinators.map(c => [c.uid, c.name])), [coordinators]);
@@ -499,20 +547,30 @@ const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove,
                         const data = occupancyData.get(address.name) || { occupants: 0, capacity: 0 };
                         const occupancyPercentage = data.capacity > 0 ? (data.occupants / data.capacity) * 100 : 0;
 
+                        const isExpanded = expandedAddressId === address.id;
                         return (
                             <div key={address.id} className="rounded-lg border p-3 animate-fade-in-up" style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}>
                                 <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="font-semibold">{address.name} <span className="text-sm text-muted-foreground font-normal">({address.locality})</span></p>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <p className="font-semibold truncate">{address.name}</p>
+                                            <span className="text-sm text-muted-foreground font-normal shrink-0">({address.locality})</span>
+                                            {address.noMetersRequired && (
+                                                <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">Brak liczników</span>
+                                            )}
+                                        </div>
                                         <p className="text-sm text-muted-foreground">
-                                            {address.coordinatorIds.map(id => coordinatorMap.get(id) || 'B/D').join(', ')}, {address.rooms.length} pokoi, {data.occupants}/{data.capacity} miejsc
+                                            {address.coordinatorIds.map(id => coordinatorMap.get(id) || 'B/D').join(', ')} · {address.rooms.length} pokoi · {data.occupants}/{data.capacity} miejsc
                                         </p>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <Button type="button" variant="ghost" size="icon" onClick={() => onEdit(address)}>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                        <Button type="button" variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => setExpandedAddressId(isExpanded ? null : address.id)}>
+                                            {isExpanded ? 'Ukryj' : 'Pokoje'}
+                                        </Button>
+                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(address)}>
                                             <Edit className="h-4 w-4" />
                                         </Button>
-                                        <Button type="button" variant="ghost" size="icon" onClick={() => onRemove(address.id)}>
+                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => onRemove(address.id)}>
                                             <Trash2 className="h-4 w-4 text-destructive" />
                                         </Button>
                                     </div>
@@ -525,6 +583,22 @@ const AddressManager = ({ addresses, coordinators, localities, onEdit, onRemove,
                                     />
                                     <span className="text-xs font-semibold w-12 text-right">{occupancyPercentage.toFixed(0)}%</span>
                                 </div>
+                                {isExpanded && (
+                                    <div className="mt-3 pt-3 border-t space-y-1">
+                                        {address.rooms.length > 0 ? (
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                                                {address.rooms.map(room => (
+                                                    <div key={room.id} className={`text-xs rounded-md border px-2 py-1.5 flex justify-between items-center ${room.isLocked ? 'bg-destructive/10 border-destructive/30' : 'bg-muted/40'}`}>
+                                                        <span className="font-medium truncate">{room.name}</span>
+                                                        <span className="text-muted-foreground shrink-0 ml-1">{room.capacity}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground">Brak zdefiniowanych pokoi.</p>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         )
                     })}
@@ -568,7 +642,7 @@ const DataMigration = () => {
                                 {t('settings.runMigration')}
                             </Button>
                         </AlertDialogTrigger>
-                        <AlertDialogContent>
+                        <AlertDialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-lg">
                             <AlertDialogHeader>
                                 <AlertDialogTitle>{t('settings.migrationConfirmTitle')}</AlertDialogTitle>
                                 <AlertDialogDescription>
@@ -696,7 +770,7 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
                                     {t('settings.deleteAllActive')}
                                 </Button>
                             </AlertDialogTrigger>
-                            <AlertDialogContent>
+                            <AlertDialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-lg">
                                 <AlertDialogHeader>
                                     <AlertDialogTitle>{t('settings.confirmDeleteAllActive')}</AlertDialogTitle>
                                     <AlertDialogDescription>{t('settings.confirmDeleteAllActiveDesc')}</AlertDialogDescription>
@@ -720,7 +794,7 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
                                     {t('settings.deleteAllDismissed')}
                                 </Button>
                             </AlertDialogTrigger>
-                            <AlertDialogContent>
+                            <AlertDialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-lg">
                                 <AlertDialogHeader>
                                     <AlertDialogTitle>{t('settings.confirmDeleteAllDismissed')}</AlertDialogTitle>
                                     <AlertDialogDescription>{t('settings.confirmDeleteAllDismissedDesc')}</AlertDialogDescription>
@@ -795,7 +869,7 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
                                         {t('settings.deleteEmployees')}
                                     </Button>
                                 </AlertDialogTrigger>
-                                <AlertDialogContent>
+                                <AlertDialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-lg">
                                     <AlertDialogHeader>
                                         <AlertDialogTitle>{t('settings.confirmDeleteByCoordinator')}</AlertDialogTitle>
                                         <AlertDialogDescription>
@@ -840,7 +914,7 @@ const BulkActions = ({ currentUser, rawSettings }: { currentUser: SessionData; r
                                         {t('settings.deleteEmployees')}
                                     </Button>
                                 </AlertDialogTrigger>
-                                <AlertDialogContent>
+                                <AlertDialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-lg">
                                     <AlertDialogHeader>
                                         <AlertDialogTitle>{t('settings.confirmDeleteByDept')}</AlertDialogTitle>
                                         <AlertDialogDescription>
@@ -1532,7 +1606,7 @@ function SettingsManager({ rawSettings, handleUpdateSettings }: { rawSettings: S
                             </AccordionItem>
                         </Accordion>
 
-                        <div className="flex justify-end">
+                        <div className="sticky bottom-4 z-10 flex justify-end mt-4 p-3 bg-background/90 backdrop-blur rounded-xl border shadow-sm">
                             <Button type="submit" disabled={!form.formState.isDirty || form.formState.isSubmitting}>
                                 {form.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                                 {t('settings.saveChanges')}
@@ -1562,6 +1636,7 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
     const [isEmployeeImportLoading, setIsEmployeeImportLoading] = useState(false);
     const [isNonEmployeeImportLoading, setIsNonEmployeeImportLoading] = useState(false);
     const [isBokImportLoading, setIsBokImportLoading] = useState(false);
+    const [settingsSection, setSettingsSection] = useState<'organization' | 'import' | 'tools' | 'bulk'>('organization');
 
     const runEmployeeImport = async (fileContent: string) => {
         if (!rawSettings) {
@@ -1630,42 +1705,87 @@ export default function SettingsView({ currentUser }: { currentUser: SessionData
         );
     }
 
+    const sections: { value: typeof settingsSection; label: string }[] = [
+        { value: 'organization', label: t('settings.sectionOrganization') },
+        { value: 'import', label: t('settings.sectionImport') },
+        { value: 'tools', label: t('settings.sectionTools') },
+        { value: 'bulk', label: t('settings.sectionBulk') },
+    ];
+
     return (
-        <div className="space-y-6">
-            <SettingsManager rawSettings={rawSettings} handleUpdateSettings={handleUpdateSettings} />
-            <DataMigration />
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <ExcelImport
-                    onImport={runEmployeeImport}
-                    title={t('settings.importEmployees')}
-                    description={t('settings.importEmployeesDesc')}
-                    requiredFields={employeeRequiredFields}
-                    optionalFields={employeeOptionalFields}
-                    isLoading={isEmployeeImportLoading}
-                />
-                <ExcelImport
-                    onImport={runNonEmployeeImport}
-                    title={t('settings.importNz')}
-                    description={t('settings.importNzDesc')}
-                    requiredFields={nonEmployeeRequiredFields}
-                    optionalFields={nonEmployeeOptionalFields}
-                    isLoading={isNonEmployeeImportLoading}
-                />
-                <ExcelImport
-                    onImport={runBokResidentImport}
-                    title={t('settings.importBok')}
-                    description={t('settings.importBokDesc')}
-                    requiredFields={bokResidentRequiredFields}
-                    optionalFields={bokResidentOptionalFields}
-                    isLoading={isBokImportLoading}
-                />
+        <div className="space-y-4">
+            {/* Mobile: dropdown select for sections */}
+            <div className="block sm:hidden">
+                <Select value={settingsSection} onValueChange={(v) => setSettingsSection(v as typeof settingsSection)}>
+                    <SelectTrigger className="w-full">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {sections.map(s => (
+                            <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
             </div>
-            <div className="space-y-6">
-                <AccommodationReportGenerator rawSettings={rawSettings} currentUser={currentUser} />
-                <NzReportsGenerator rawSettings={rawSettings} currentUser={currentUser} />
-                <DeductionsReportGenerator rawSettings={rawSettings} currentUser={currentUser} />
+
+            {/* Desktop: horizontal tabs */}
+            <div className="hidden sm:block">
+                <Tabs value={settingsSection} onValueChange={(v) => setSettingsSection(v as typeof settingsSection)}>
+                    <TabsList className="w-full grid grid-cols-4">
+                        {sections.map(s => (
+                            <TabsTrigger key={s.value} value={s.value}>{s.label}</TabsTrigger>
+                        ))}
+                    </TabsList>
+                </Tabs>
             </div>
-            <BulkActions currentUser={currentUser} rawSettings={rawSettings} />
+
+            {settingsSection === 'organization' && (
+                <SettingsManager rawSettings={rawSettings} handleUpdateSettings={handleUpdateSettings} />
+            )}
+
+            {settingsSection === 'import' && (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <ExcelImport
+                            onImport={runEmployeeImport}
+                            title={t('settings.importEmployees')}
+                            description={t('settings.importEmployeesDesc')}
+                            requiredFields={employeeRequiredFields}
+                            optionalFields={employeeOptionalFields}
+                            isLoading={isEmployeeImportLoading}
+                        />
+                        <ExcelImport
+                            onImport={runNonEmployeeImport}
+                            title={t('settings.importNz')}
+                            description={t('settings.importNzDesc')}
+                            requiredFields={nonEmployeeRequiredFields}
+                            optionalFields={nonEmployeeOptionalFields}
+                            isLoading={isNonEmployeeImportLoading}
+                        />
+                        <ExcelImport
+                            onImport={runBokResidentImport}
+                            title={t('settings.importBok')}
+                            description={t('settings.importBokDesc')}
+                            requiredFields={bokResidentRequiredFields}
+                            optionalFields={bokResidentOptionalFields}
+                            isLoading={isBokImportLoading}
+                        />
+                    </div>
+                    <div className="space-y-6">
+                        <AccommodationReportGenerator rawSettings={rawSettings} currentUser={currentUser} />
+                        <NzReportsGenerator rawSettings={rawSettings} currentUser={currentUser} />
+                        <DeductionsReportGenerator rawSettings={rawSettings} currentUser={currentUser} />
+                    </div>
+                </div>
+            )}
+
+            {settingsSection === 'tools' && (
+                <DataMigration />
+            )}
+
+            {settingsSection === 'bulk' && (
+                <BulkActions currentUser={currentUser} rawSettings={rawSettings} />
+            )}
         </div>
     );
 }

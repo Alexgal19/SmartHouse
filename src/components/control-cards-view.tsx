@@ -25,6 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/components/ui/use-toast";
 import type { SessionData, Address, ControlCard, CleanlinessRating, RoomRating, StartList, StartListHousingType, StartListTransport, StartListStandard, StartListHeating, ControlCardComment, ControlCardCommentStatus } from "@/types";
 import { useMainLayout } from '@/components/main-layout';
@@ -608,6 +609,7 @@ function StartListForm({
                 const saved: StartList = { ...payload, updatedAt: new Date().toISOString() };
                 onSaved(saved);
                 toast({ title: t('controlCards.startListSaved'), description: t('controlCards.startListSavedDesc', { name: address.name }) });
+                window.dispatchEvent(new Event('control-cards-updated'));
             } else {
                 toast({ title: t('controlCards.saveError'), description: res.error, variant: 'destructive' });
             }
@@ -1030,7 +1032,9 @@ function ControlCardDialog({
         onClose();
         setShowResetConfirm(false);
         deleteControlCardAction(cardId).then(result => {
-            if (!result.success) {
+            if (result.success) {
+                window.dispatchEvent(new Event('control-cards-updated'));
+            } else {
                 toast({ title: t('controlCards.resetError'), description: result.error, variant: 'destructive' });
             }
         });
@@ -1082,6 +1086,7 @@ function ControlCardDialog({
             editControlCardAction(existingCard.id, currentForm).then(result => {
                 if (result.success) {
                     toast({ title: t('controlCards.updatedSuccess'), description: t('controlCards.savedSuccessDesc', { name: address.name }) });
+                    window.dispatchEvent(new Event('control-cards-updated'));
                 } else {
                     onSaved(existingCard); // revert
                     toast({ title: t('controlCards.saveError'), description: result.error, variant: 'destructive' });
@@ -1106,6 +1111,7 @@ function ControlCardDialog({
                     toast({ title: t('controlCards.savedSuccess'), description: t('controlCards.savedSuccessDesc', { name: address.name }) });
                     onSaved({ id: result.id, ...cardData });
                     onClose();
+                    window.dispatchEvent(new Event('control-cards-updated'));
                 } else {
                     toast({ title: t('controlCards.saveError'), description: result.error, variant: 'destructive' });
                 }
@@ -1138,27 +1144,40 @@ function ControlCardDialog({
                 )}
 
                 <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 h-auto">
-                        <TabsTrigger value="startlist" className="gap-1.5">
-                            <ListChecks className="w-3.5 h-3.5" />
-                            <span className="text-xs">{t('controlCards.startList')}</span>
-                            {slComplete
-                                ? <CheckCircle2 className="w-3 h-3 text-green-500" />
-                                : <AlertCircle className="w-3 h-3 text-red-500" />}
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="control"
-                            disabled={!slComplete}
-                            className={`gap-1.5 ${!slComplete ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            title={!slComplete ? t('controlCards.completeStartListFirst') : undefined}
-                        >
-                            <ClipboardCheck className="w-3.5 h-3.5" />
-                            <span className="text-xs">{t('controlCards.control')}</span>
-                            {formComplete
-                                ? <CheckCircle2 className="w-3 h-3 text-green-500" />
-                                : <AlertCircle className="w-3 h-3 text-orange-400" />}
-                        </TabsTrigger>
-                    </TabsList>
+                    <div className="hidden sm:block">
+                        <TabsList className="grid w-full grid-cols-2 h-auto">
+                            <TabsTrigger value="startlist" className="gap-1.5">
+                                <ListChecks className="w-3.5 h-3.5" />
+                                <span className="text-xs">{t('controlCards.startList')}</span>
+                                {slComplete
+                                    ? <CheckCircle2 className="w-3 h-3 text-green-500" />
+                                    : <AlertCircle className="w-3 h-3 text-red-500" />}
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="control"
+                                disabled={!slComplete}
+                                className={`gap-1.5 ${!slComplete ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                title={!slComplete ? t('controlCards.completeStartListFirst') : undefined}
+                            >
+                                <ClipboardCheck className="w-3.5 h-3.5" />
+                                <span className="text-xs">{t('controlCards.control')}</span>
+                                {formComplete
+                                    ? <CheckCircle2 className="w-3 h-3 text-green-500" />
+                                    : <AlertCircle className="w-3 h-3 text-orange-400" />}
+                            </TabsTrigger>
+                        </TabsList>
+                    </div>
+                    <div className="block sm:hidden mb-4">
+                        <Select value={activeTab} onValueChange={handleTabChange}>
+                            <SelectTrigger className="w-full">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="startlist">{t('controlCards.startList')}</SelectItem>
+                                <SelectItem value="control" disabled={!slComplete}>{t('controlCards.control')}</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
 
                     <TabsContent value="startlist" className="mt-4">
                         <StartListForm
@@ -1324,7 +1343,11 @@ function ControlCardDialog({
                                     onCheckedChange={async (v) => {
                                         onNoMetersToggled(address.id, v);
                                         const res = await setAddressNoMetersRequiredAction(address.id, v);
-                                        if (!res.success) onNoMetersToggled(address.id, !v);
+                                        if (res.success) {
+                                            window.dispatchEvent(new Event('control-cards-updated'));
+                                        } else {
+                                            onNoMetersToggled(address.id, !v);
+                                        }
                                     }}
                                 />
                             </label>
@@ -1759,7 +1782,7 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
     const [isUnlocked, setIsUnlocked] = useState(true);
 
 
-    React.useEffect(() => {
+    const loadControlCards = React.useCallback(() => {
         if (!isUnlocked) return;
         setIsLoadingCards(true);
         Promise.all([
@@ -1772,8 +1795,23 @@ export default function ControlCardsView({ currentUser }: { currentUser: Session
             })
             .catch(() => toast({ title: t('common.error'), description: t('controlCards.loadError'), variant: 'destructive' }))
             .finally(() => setIsLoadingCards(false));
+    }, [isUnlocked]);
+
+    React.useEffect(() => {
+        loadControlCards();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isUnlocked]);
+
+    React.useEffect(() => {
+        if (!isUnlocked) return;
+        const interval = setInterval(loadControlCards, 10000);
+        const onUpdate = () => loadControlCards();
+        window.addEventListener('control-cards-updated', onUpdate);
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('control-cards-updated', onUpdate);
+        };
+    }, [isUnlocked, loadControlCards]);
 
     const startListByAddress = useMemo(() => {
         const map = new Map<string, StartList>();

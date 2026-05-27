@@ -247,4 +247,58 @@ describe('ZapotrzebowaniaView', () => {
       expect(screen.getByText(/Nowak/)).toBeInTheDocument();
     });
   });
+
+  it('shows luggage info when hasLuggage is true', async () => {
+    mockGetDemands.mockResolvedValue([makeDemand({ hasLuggage: true })]);
+    render(<ZapotrzebowaniaView currentUser={mockAdmin} activeView="zapotrzebowania" />);
+    await waitFor(() => {
+      expect(screen.getByText(/Z bagażem\?/)).toBeInTheDocument();
+      expect(screen.getByText(/Tak/)).toBeInTheDocument();
+    });
+  });
+
+  it('shows luggage info when hasLuggage is false', async () => {
+    mockGetDemands.mockResolvedValue([makeDemand({ hasLuggage: false })]);
+    render(<ZapotrzebowaniaView currentUser={mockAdmin} activeView="zapotrzebowania" />);
+    await waitFor(() => {
+      expect(screen.getByText(/Z bagażem\?/)).toBeInTheDocument();
+      expect(screen.getByText(/Nie/)).toBeInTheDocument();
+    });
+  });
+
+  it('dispatches demands-updated event after accepting demand', async () => {
+    mockGetDemands.mockResolvedValue([makeDemand()]);
+    mockAckDemand.mockResolvedValue({ success: true });
+    const eventSpy = jest.spyOn(window, 'dispatchEvent');
+    render(<ZapotrzebowaniaView currentUser={mockDriver} activeView="zapotrzebowania" />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Akceptuj/i })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Akceptuj/i }));
+    await waitFor(() => {
+      expect(mockAckDemand).toHaveBeenCalledWith('dem-1', 'Kierowca');
+    });
+    expect(eventSpy).toHaveBeenCalledWith(expect.any(Event));
+    const dispatchedEvent = eventSpy.mock.calls.find((call) => (call[0] as Event).type === 'demands-updated');
+    expect(dispatchedEvent).toBeDefined();
+    eventSpy.mockRestore();
+  });
+
+  it('dispatches demands-updated event after delivering demand', async () => {
+    mockGetDemands.mockResolvedValue([makeDemand({ status: 'acknowledged' })]);
+    mockDeliverDemand.mockResolvedValue({ success: true });
+    const eventSpy = jest.spyOn(window, 'dispatchEvent');
+    render(<ZapotrzebowaniaView currentUser={mockDriver} activeView="zapotrzebowania" />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Dostarczone/i })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Dostarczone/i }));
+    await waitFor(() => {
+      expect(mockDeliverDemand).toHaveBeenCalledWith('dem-1', 'Kierowca');
+    });
+    expect(eventSpy).toHaveBeenCalledWith(expect.any(Event));
+    const dispatchedEvent = eventSpy.mock.calls.find((call) => (call[0] as Event).type === 'demands-updated');
+    expect(dispatchedEvent).toBeDefined();
+    eventSpy.mockRestore();
+  });
 });

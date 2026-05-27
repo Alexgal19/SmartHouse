@@ -619,7 +619,7 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
                             {t('odbior.noSubmissions')}
                         </div>
                     ) : filteredSubmissions.map((row) => (
-                        <Card key={row.id} className="overflow-hidden">
+                        <Card key={row.id} className="overflow-hidden" data-testid={`odbior-row-${row.id}`}>
                             <CardContent className="p-4 space-y-3">
                                 <div className="flex items-center justify-between">
                                     <span className={cn(
@@ -696,7 +696,7 @@ export default function OdbiorView({ currentUser: _currentUser }: OdbiorViewProp
                                                 </td>
                                             </tr>
                                         ) : filteredSubmissions.map((row, i) => (
-                                            <tr key={row.id} className={cn('border-b last:border-0', i % 2 === 0 ? '' : 'bg-muted/30')}>
+                                            <tr key={row.id} data-testid={`odbior-row-${row.id}`} className={cn('border-b last:border-0', i % 2 === 0 ? '' : 'bg-muted/30')}>
                                                 <td className="px-4 py-3">
                                                     <span className={cn(
                                                         'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium',

@@ -446,11 +446,11 @@ const AddressDetailView = ({
                                       htmlFor={`disable-room-${room.id}`}
                                       className="text-xs text-muted-foreground cursor-pointer font-normal"
                                     >
-                                      {room.isActive ? t('housing.lockRoom') : t('housing.unlockRoom')}
+                                      {room.isLocked ? t('housing.unlockRoom') : t('housing.lockRoom')}
                                     </Label>
                                     <Switch
                                       id={`disable-room-${room.id}`}
-                                      checked={!room.isActive}
+                                      checked={room.isLocked || false}
                                       onCheckedChange={async (checked) => {
                                         if (!settings || !aggregatedAddressesData || aggregatedAddressesData.isMultiple)
                                           return;
@@ -459,7 +459,7 @@ const AddressDetailView = ({
                                             ? {
                                                 ...a,
                                                 rooms: a.rooms.map((r) =>
-                                                  r.id === room.id ? { ...r, isActive: !checked } : r,
+                                                  r.id === room.id ? { ...r, isLocked: checked } : r,
                                                 ),
                                               }
                                             : a,

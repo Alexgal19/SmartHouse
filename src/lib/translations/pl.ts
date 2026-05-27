@@ -221,6 +221,7 @@ export const pl = {
     'settings.searchItems': 'Szukaj...',
     'settings.addItems': 'Dodaj',
     'settings.noItemsFound': 'Brak pozycji pasujących do wyszukiwania.',
+    'settings.addNewItem': 'Dodaj nową pozycję...',
     'settings.addMultipleTitle': 'Dodaj wiele do: {title}',
     'settings.addMultipleDesc': 'Wklej lub wpisz listę elementów, każdy w nowej linii.',
     'settings.addFromList': 'Dodaj z listy',
@@ -241,6 +242,10 @@ export const pl = {
     'settings.importData': 'Importuj dane',
     'settings.exportData': 'Eksportuj dane',
     'settings.dangerZone': 'Strefa niebezpieczna',
+    'settings.sectionOrganization': 'Organizacja',
+    'settings.sectionImport': 'Import i raporty',
+    'settings.sectionTools': 'Narzędzia',
+    'settings.sectionBulk': 'Operacje masowe',
     'settings.deleteAll': 'Usuń wszystkich',
     'settings.migrateFullNames': 'Migruj pełne nazwy',
 

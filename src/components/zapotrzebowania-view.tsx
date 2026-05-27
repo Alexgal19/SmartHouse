@@ -76,9 +76,15 @@ export default function ZapotrzebowaniaView({ currentUser, activeView }: { curre
                 const updated = await getCandidateDemandsAction();
                 setDemands(updated);
             } catch { /* ignore background poll errors */ }
-        }, 30000);
+        }, 5000);
         return () => clearInterval(interval);
     }, [activeView]);
+
+    useEffect(() => {
+        const onUpdate = () => loadData();
+        window.addEventListener('demands-updated', onUpdate);
+        return () => window.removeEventListener('demands-updated', onUpdate);
+    }, [loadData]);
 
     const handleAcceptDemand = async (demandId: string) => {
         try {
@@ -90,6 +96,8 @@ export default function ZapotrzebowaniaView({ currentUser, activeView }: { curre
                         : d
                 ));
                 toast({ title: t("common.success"), description: t("demand.accepted") });
+                window.dispatchEvent(new Event('demands-updated'));
+                await loadData();
             } else {
                 toast({ variant: "destructive", title: t("common.error"), description: result.error || "Wystąpił błąd" });
             }
@@ -107,6 +115,8 @@ export default function ZapotrzebowaniaView({ currentUser, activeView }: { curre
             if (result.success) {
                 setDemands(prev => prev.filter(d => d.id !== demandId));
                 toast({ title: t("common.success"), description: t("demand.deleted") });
+                window.dispatchEvent(new Event('demands-updated'));
+                await loadData();
             } else {
                 toast({ variant: "destructive", title: t("common.error"), description: result.error || "Wystąpił błąd" });
             }
@@ -128,6 +138,8 @@ export default function ZapotrzebowaniaView({ currentUser, activeView }: { curre
                         : d
                 ));
                 toast({ title: t("common.success"), description: t("demand.markedDelivered") });
+                window.dispatchEvent(new Event('demands-updated'));
+                await loadData();
             } else {
                 toast({ variant: "destructive", title: t("common.error"), description: result.error || "Wystąpił błąd" });
             }

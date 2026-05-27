@@ -15,7 +15,8 @@ import { useMainLayout } from "@/components/main-layout";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Eye } from 'lucide-react';
+import { Eye, Plus } from 'lucide-react';
+import AddCandidateDialog from '@/components/add-candidate-dialog';
 import {
     AlertDialog,
     AlertDialogContent,
@@ -47,6 +48,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [dialogStep, setDialogStep] = useState<'none' | 'confirm' | 'sure'>('none');
     const [targetDemand, setTargetDemand] = useState<CandidateDemand | null>(null);
+    const [addCandidateOpen, setAddCandidateOpen] = useState(false);
 
     // Candidate detail dialog state
     const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
@@ -165,6 +167,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                 setDemands(updatedDemands);
                 setDemandDialogOpen(false);
                 window.dispatchEvent(new Event('candidates-updated'));
+                window.dispatchEvent(new Event('demands-updated'));
             } else {
                 toast({ variant: "destructive", title: t("candidate.demandError"), description: result.error || "" });
             }
@@ -261,7 +264,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
         }
     }, [allDemands]);
 
-    // Poll demands every 30s so status updates without page refresh
+    // Poll every 5s + listen to cross-tab events for real-time sync
     useEffect(() => {
         if (activeView !== 'recruitment') return;
         const interval = setInterval(async () => {
@@ -273,9 +276,28 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                 const updated = await getCandidateDemandsAction();
                 setDemands(updated);
             } catch { /* ignore background poll errors */ }
-        }, 30000);
+        }, 5000);
         return () => clearInterval(interval);
     }, [activeView]);
+
+    useEffect(() => {
+        const onUpdate = async () => {
+            try {
+                const updatedCandidates = await getCandidatesAction();
+                setCandidates(updatedCandidates);
+            } catch { /* ignore */ }
+            try {
+                const updated = await getCandidateDemandsAction();
+                setDemands(updated);
+            } catch { /* ignore */ }
+        };
+        window.addEventListener('candidates-updated', onUpdate);
+        window.addEventListener('demands-updated', onUpdate);
+        return () => {
+            window.removeEventListener('candidates-updated', onUpdate);
+            window.removeEventListener('demands-updated', onUpdate);
+        };
+    }, []);
 
     const handleRowClick = (candidate: Candidate) => {
         setSelectedCandidate(candidate);
@@ -486,12 +508,18 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
         <div className="space-y-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <h1 className="text-2xl font-bold tracking-tight">{t("nav.recruitment")}</h1>
-                <div className="w-full sm:w-72">
-                    <Input
-                        placeholder={t("candidate.searchBySurname")}
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <div className="w-full sm:w-72">
+                        <Input
+                            placeholder={t("candidate.searchBySurname")}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+                    <Button onClick={() => setAddCandidateOpen(true)} className="shrink-0">
+                        <Plus className="h-4 w-4 mr-2" />
+                        {t('candidate.title')}
+                    </Button>
                 </div>
             </div>
 
@@ -501,10 +529,10 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                 const countOczekujace = preFilteredCandidates.filter(c => c.status !== 'po_rozmowie').length;
                 const countPoRozmowie = preFilteredCandidates.filter(c => c.status === 'po_rozmowie').length;
                 return (
-                    <div className="flex justify-center gap-3">
+                    <div className="flex justify-center gap-3 overflow-x-auto pb-1">
                         <button
                             onClick={() => setStatusFilter('all')}
-                            className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 w-[12cm] shrink-0 transition-all font-semibold text-sm ${
+                            className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 min-w-0 flex-1 sm:w-[12cm] sm:shrink-0 transition-all font-semibold text-sm ${
                                 statusFilter === 'all'
                                     ? 'border-primary bg-primary text-primary-foreground shadow-md scale-[1.02]'
                                     : 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/20'
@@ -515,7 +543,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                         </button>
                         <button
                             onClick={() => setStatusFilter('oczekujace')}
-                            className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 w-[12cm] shrink-0 transition-all font-semibold text-sm ${
+                            className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 min-w-0 flex-1 sm:w-[12cm] sm:shrink-0 transition-all font-semibold text-sm ${
                                 statusFilter === 'oczekujace'
                                     ? 'border-red-500 bg-red-500 text-white shadow-md scale-[1.02]'
                                     : 'border-red-300 bg-red-50 text-red-600 hover:bg-red-100'
@@ -526,7 +554,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                         </button>
                         <button
                             onClick={() => setStatusFilter('po_rozmowie')}
-                            className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 w-[12cm] shrink-0 transition-all font-semibold text-sm ${
+                            className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 min-w-0 flex-1 sm:w-[12cm] sm:shrink-0 transition-all font-semibold text-sm ${
                                 statusFilter === 'po_rozmowie'
                                     ? 'border-green-600 bg-green-600 text-white shadow-md scale-[1.02]'
                                     : 'border-green-400 bg-green-50 text-green-700 hover:bg-green-100'
@@ -762,75 +790,127 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                             value={bokSearchQuery}
                             onChange={(e) => setBokSearchQuery(e.target.value)}
                         />
-                        <ScrollArea className="h-[40vh]">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Nazwisko</TableHead>
-                                        <TableHead>Imię</TableHead>
-                                        <TableHead>Data zameldowania</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>Nr paszportu</TableHead>
-                                        <TableHead className="w-[160px]">Akcje</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {(() => {
-                                        const query = bokSearchQuery.toLowerCase();
-                                        // Show only ACTIVE residents
-                                        const activeBokResidents = allBokResidents.filter(r => r.status !== 'dismissed');
-                                        const filtered = query
-                                            ? activeBokResidents.filter(r =>
-                                                (r.lastName?.toLowerCase() || '').includes(query) ||
-                                                (r.firstName?.toLowerCase() || '').includes(query) ||
-                                                `${r.lastName} ${r.firstName}`.toLowerCase().includes(query)
-                                              )
-                                            : activeBokResidents.slice(0, 20);
-                                        return filtered.map(r => (
-                                            <TableRow key={r.id} className={r.status === 'dismissed' ? 'opacity-50' : ''}>
-                                                <TableCell className="font-medium">{r.lastName}</TableCell>
-                                                <TableCell>{r.firstName}</TableCell>
-                                                <TableCell>{r.checkInDate ? format(new Date(r.checkInDate), 'dd.MM.yyyy') : '-'}</TableCell>
-                                                <TableCell>
-                                                    {r.status === 'dismissed'
-                                                        ? <Badge variant="outline" className="text-xs text-muted-foreground">Zwolniony</Badge>
-                                                        : <Badge variant="outline" className="text-xs text-green-700 border-green-300">Aktywny</Badge>
-                                                    }
-                                                </TableCell>
-                                                <TableCell>
-                                                    {(() => {
-                                                        if (!r.passportNumber) return '-';
-                                                        if (bokPassportVisible) return r.passportNumber;
-                                                        return (
-                                                            <button
-                                                                className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
-                                                                title="Pokaż numer paszportu"
-                                                                aria-label="Pokaż numer paszportu"
-                                                                onClick={() => setPassportDialogOpen(true)}
-                                                            >
-                                                                <Eye className="w-4 h-4" />
-                                                            </button>
-                                                        );
-                                                    })()}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {r.status !== 'dismissed' && (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        disabled={bokDemandLoading}
-                                                        onClick={() => handleBokDemand(r)}
-                                                    >
-                                                        {bokDemandLoading ? t("common.loading") : "Zapotrzebowanie"}
-                                                    </Button>
-                                                    )}
-                                                </TableCell>
-                                            </TableRow>
-                                        ));
-                                    })()}
-                                </TableBody>
-                            </Table>
-                        </ScrollArea>
+                        {(() => {
+                            const query = bokSearchQuery.toLowerCase();
+                            const activeBokResidents = allBokResidents.filter(r => r.status !== 'dismissed');
+                            const filtered = query
+                                ? activeBokResidents.filter(r =>
+                                    (r.lastName?.toLowerCase() || '').includes(query) ||
+                                    (r.firstName?.toLowerCase() || '').includes(query) ||
+                                    `${r.lastName} ${r.firstName}`.toLowerCase().includes(query)
+                                  )
+                                : activeBokResidents.slice(0, 20);
+                            return (
+                                <>
+                                    {/* Desktop table */}
+                                    <div className="hidden sm:block">
+                                        <ScrollArea className="h-[40vh]">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Nazwisko</TableHead>
+                                                        <TableHead>Imię</TableHead>
+                                                        <TableHead>Data zameldowania</TableHead>
+                                                        <TableHead>Status</TableHead>
+                                                        <TableHead>Nr paszportu</TableHead>
+                                                        <TableHead className="w-[160px]">Akcje</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {filtered.map(r => (
+                                                        <TableRow key={r.id} className={r.status === 'dismissed' ? 'opacity-50' : ''}>
+                                                            <TableCell className="font-medium">{r.lastName}</TableCell>
+                                                            <TableCell>{r.firstName}</TableCell>
+                                                            <TableCell>{r.checkInDate ? format(new Date(r.checkInDate), 'dd.MM.yyyy') : '-'}</TableCell>
+                                                            <TableCell>
+                                                                {r.status === 'dismissed'
+                                                                    ? <Badge variant="outline" className="text-xs text-muted-foreground">Zwolniony</Badge>
+                                                                    : <Badge variant="outline" className="text-xs text-green-700 border-green-300">Aktywny</Badge>
+                                                                }
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {(() => {
+                                                                    if (!r.passportNumber) return '-';
+                                                                    if (bokPassportVisible) return r.passportNumber;
+                                                                    return (
+                                                                        <button
+                                                                            className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                                                                            title="Pokaż numer paszportu"
+                                                                            aria-label="Pokaż numer paszportu"
+                                                                            onClick={() => setPassportDialogOpen(true)}
+                                                                        >
+                                                                            <Eye className="w-4 h-4" />
+                                                                        </button>
+                                                                    );
+                                                                })()}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {r.status !== 'dismissed' && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    disabled={bokDemandLoading}
+                                                                    onClick={() => handleBokDemand(r)}
+                                                                >
+                                                                    {bokDemandLoading ? t("common.loading") : "Zapotrzebowanie"}
+                                                                </Button>
+                                                                )}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </ScrollArea>
+                                    </div>
+                                    {/* Mobile cards */}
+                                    <div className="sm:hidden space-y-3">
+                                        {filtered.map(r => (
+                                            <Card key={r.id} className="overflow-hidden">
+                                                <CardContent className="p-4 space-y-2">
+                                                    <div className="flex items-start justify-between">
+                                                        <div>
+                                                            <p className="font-semibold">{r.lastName} {r.firstName}</p>
+                                                            <p className="text-sm text-muted-foreground">
+                                                                {r.checkInDate ? format(new Date(r.checkInDate), 'dd.MM.yyyy') : '-'}
+                                                            </p>
+                                                        </div>
+                                                        <Badge variant="outline" className="text-xs text-green-700 border-green-300">Aktywny</Badge>
+                                                    </div>
+                                                    <div className="text-sm">
+                                                        {(() => {
+                                                            if (!r.passportNumber) return <span className="text-muted-foreground">Nr paszportu: -</span>;
+                                                            if (bokPassportVisible) return <span className="font-mono">{r.passportNumber}</span>;
+                                                            return (
+                                                                <button
+                                                                    className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                                                                    title="Pokaż numer paszportu"
+                                                                    aria-label="Pokaż numer paszportu"
+                                                                    onClick={() => setPassportDialogOpen(true)}
+                                                                >
+                                                                    <Eye className="w-4 h-4" />
+                                                                    <span className="text-xs">Pokaż paszport</span>
+                                                                </button>
+                                                            );
+                                                        })()}
+                                                    </div>
+                                                    <div className="pt-1">
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            disabled={bokDemandLoading}
+                                                            onClick={() => handleBokDemand(r)}
+                                                            className="w-full"
+                                                        >
+                                                            {bokDemandLoading ? t("common.loading") : "Zapotrzebowanie"}
+                                                        </Button>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                </>
+                            );
+                        })()}
                     </CardContent>
                 </Card>
             )}
@@ -884,24 +964,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                         <div className="text-sm">
                             Wybierz przewidywany czas dostarczenia osoby: <strong>{demandCandidate?.firstName} {demandCandidate?.lastName}</strong>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">Adres odbioru</label>
-                            <Input
-                                type="text"
-                                value={pickupAddress}
-                                onChange={(e) => setPickupAddress(e.target.value)}
-                                placeholder="Np. ul. Warszawska 10/5"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">Numer pokoju (opcjonalnie)</label>
-                            <Input
-                                type="text"
-                                value={demandRoomNumber}
-                                onChange={(e) => setDemandRoomNumber(e.target.value)}
-                                placeholder="Np. 12"
-                            />
-                        </div>
+                        {/* Adres i pokój są pobierane automatycznie z BOK — ukryte w dialogu, widoczne w widoku Zapotrzebowań */}
                         <div className="space-y-2">
                             <label className="text-sm font-medium">{t('demand.hasLuggage')}</label>
                             <div className="flex gap-2">
@@ -948,7 +1011,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
 
             {/* Dialog 1: Accept demand? */}
             <AlertDialog open={dialogStep === 'confirm'}>
-                <AlertDialogContent>
+                <AlertDialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-lg">
                     <AlertDialogHeader>
                         <AlertDialogTitle>{t("candidate.acceptDemandTitle")}</AlertDialogTitle>
                         <AlertDialogDescription>
@@ -974,7 +1037,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
 
             {/* Dialog 2: Are you sure? */}
             <AlertDialog open={dialogStep === 'sure'}>
-                <AlertDialogContent>
+                <AlertDialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-lg">
                     <AlertDialogHeader>
                         <AlertDialogTitle>{t("candidate.areYouSure")}</AlertDialogTitle>
                         <AlertDialogDescription>
@@ -989,7 +1052,7 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
             </AlertDialog>
             {/* Passport password dialog */}
             <AlertDialog open={passportDialogOpen} onOpenChange={setPassportDialogOpen}>
-                <AlertDialogContent>
+                <AlertDialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-lg">
                     <AlertDialogHeader>
                         <AlertDialogTitle>Wprowadź hasło</AlertDialogTitle>
                         <AlertDialogDescription>
@@ -1033,6 +1096,14 @@ export default function RecruitmentView({ currentUser, activeView }: { currentUs
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            <AddCandidateDialog
+                open={addCandidateOpen}
+                onOpenChange={setAddCandidateOpen}
+                onSaved={(candidate) => {
+                    setCandidates((prev) => [...prev, candidate]);
+                    window.dispatchEvent(new Event('candidates-updated'));
+                }}
+            />
         </div>
     );
 }

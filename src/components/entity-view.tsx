@@ -94,7 +94,7 @@ const EntityActions = React.memo(({
                             {t('entity.deletePermanently')}
                         </DropdownMenuItem>
                     </AlertDialogTrigger>
-                    <AlertDialogContent>
+                    <AlertDialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-lg">
                         <AlertDialogHeader>
                             <AlertDialogTitle>{t('entity.confirmDeleteTitle')}</AlertDialogTitle>
                             <AlertDialogDescription>
@@ -252,7 +252,7 @@ const HistoryTable = ({ history, onSort, sortBy, sortOrder, onDelete, columnFilt
                                                     <Trash2 className="h-4 w-4 text-destructive" />
                                                 </Button>
                                             </AlertDialogTrigger>
-                                            <AlertDialogContent>
+                                            <AlertDialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-lg">
                                                 <AlertDialogHeader>
                                                     <AlertDialogTitle>{t('history.confirmDeleteTitle')}</AlertDialogTitle>
                                                     <AlertDialogDescription>
@@ -355,7 +355,7 @@ const HistoryCardList = ({ history, onDelete }: { history: AddressHistory[]; onD
                                                 <Trash2 className="h-4 w-4 text-destructive" />
                                             </Button>
                                         </AlertDialogTrigger>
-                                        <AlertDialogContent>
+                                        <AlertDialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-lg">
                                             <AlertDialogHeader>
                                                 <AlertDialogTitle>{t('history.confirmDeleteTitle')}</AlertDialogTitle>
                                                 <AlertDialogDescription>
@@ -959,8 +959,8 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         </>
     );
 
-    const tabsListContent = (
-        <TabsList className="flex flex-wrap h-auto w-full justify-start gap-2 bg-transparent p-0">
+    const desktopTabsList = (
+        <TabsList className="hidden sm:flex flex-wrap h-auto w-full justify-start gap-2 bg-transparent p-0">
             {showBokTab && (
                 <TabsTrigger value="bok-residents" disabled={isPending} className="flex-1 min-w-[120px] bg-muted data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md px-4 py-2 hover:bg-muted/80">
                     <Briefcase className="mr-2 h-4 w-4 shrink-0" />
@@ -986,6 +986,27 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
         </TabsList>
     );
 
+    const mobileTabSelect = (
+        <div className="block sm:hidden mb-6">
+            <Select value={tab} onValueChange={(v) => updateSearchParams({ tab: v, page: 1 })} disabled={isPending}>
+                <SelectTrigger className="w-full">
+                    <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                    {showBokTab && (
+                        <SelectItem value="bok-residents">
+                            {t('tab.bok')} ({(filteredAndSortedData.activeBokResidents || []).length})
+                        </SelectItem>
+                    )}
+                    <SelectItem value="active">{t('tab.active')} ({dataMap.active.length})</SelectItem>
+                    <SelectItem value="dismissed">{t('tab.dismissed')} ({dataMap.dismissed.length})</SelectItem>
+                    <SelectItem value="non-employees">{t('tab.nonEmployees')} ({dataMap['non-employees'].length})</SelectItem>
+                    <SelectItem value="history">{t('tab.history')} ({dataMap.history.length})</SelectItem>
+                </SelectContent>
+            </Select>
+        </div>
+    );
+
     return (
         <Card>
             <CardHeader>
@@ -1003,7 +1024,8 @@ export default function EntityView({ currentUser }: { currentUser: SessionData }
             <CardContent>
                 <Tabs value={tab} onValueChange={(v) => updateSearchParams({ tab: v, page: 1 })}>
                     <div className="w-full mb-6 relative">
-                        {tabsListContent}
+                        {desktopTabsList}
+                        {mobileTabSelect}
                     </div>
                     <TabsContent forceMount value="active" className="mt-4 data-[state=inactive]:hidden">
                         <ExportButton count={dataMap.active.length} onClick={() => exportEntities(dataMap.active, 'Pracownicy_Aktywni')} />

@@ -221,6 +221,7 @@ export const en = {
     'settings.searchItems': 'Search...',
     'settings.addItems': 'Add',
     'settings.noItemsFound': 'No items matching search.',
+    'settings.addNewItem': 'Add new item...',
     'settings.addMultipleTitle': 'Add multiple to: {title}',
     'settings.addMultipleDesc': 'Paste or type a list of items, one per line.',
     'settings.addFromList': 'Add from list',
@@ -241,6 +242,10 @@ export const en = {
     'settings.importData': 'Import data',
     'settings.exportData': 'Export data',
     'settings.dangerZone': 'Danger zone',
+    'settings.sectionOrganization': 'Organization',
+    'settings.sectionImport': 'Import & Reports',
+    'settings.sectionTools': 'Tools',
+    'settings.sectionBulk': 'Bulk Operations',
     'settings.deleteAll': 'Delete all',
     'settings.migrateFullNames': 'Migrate full names',
 

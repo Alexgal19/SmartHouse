@@ -7,23 +7,42 @@ global.ResizeObserver = class ResizeObserver {
   disconnect() { }
 };
 
-
+// Global array to track all push notifications sent during tests
+// Tests can inspect: global.__sentPushNotifications
+// Helper: clearSentPushNotifications() in jest.setup.mjs
+if (typeof global !== 'undefined') {
+  global.__sentPushNotifications = [];
+  global.clearSentPushNotifications = () => { global.__sentPushNotifications = []; };
+}
 
 // Mock firebase-admin package
 jest.mock('firebase-admin', () => ({
   apps: [],
   credential: { cert: jest.fn() },
   initializeApp: jest.fn(),
-  messaging: jest.fn(() => ({ send: jest.fn() })),
+  messaging: jest.fn(() => ({
+    send: jest.fn((message) => {
+      if (typeof global !== 'undefined' && global.__sentPushNotifications) {
+        global.__sentPushNotifications.push(message);
+      }
+      return Promise.resolve({ success: true });
+    }),
+  })),
   firestore: Object.assign(jest.fn(() => null), {
     FieldValue: { increment: jest.fn((n) => n) },
   }),
 }));
 
-// Mock @/lib/firebase-admin wrapper — ensures adminDb and adminMessaging are
-// always available in tests without needing the real Firebase credentials
+// Mock @/lib/firebase-admin wrapper — track sent notifications for assertions
 jest.mock('@/lib/firebase-admin', () => ({
-  adminMessaging: { send: jest.fn() },
+  adminMessaging: {
+    send: jest.fn((message) => {
+      if (typeof global !== 'undefined' && global.__sentPushNotifications) {
+        global.__sentPushNotifications.push(message);
+      }
+      return Promise.resolve({ success: true });
+    }),
+  },
   adminDb: null,
 }));
 
@@ -134,6 +153,19 @@ jest.mock('@/lib/i18n', () => {
     }),
     LanguageProvider: ({ children }) => children,
   };
+});
+
+// Mock react-webcam globally — used by OcrCameraButton in AddCandidateDialog
+jest.mock('react-webcam', () => {
+  const React = require('react');
+  const Webcam = React.forwardRef((_props, ref) => {
+    React.useImperativeHandle(ref, () => ({
+      getScreenshot: () => 'data:image/jpeg;base64,test',
+    }));
+    return React.createElement('video', { 'data-testid': 'mock-webcam' });
+  });
+  Webcam.displayName = 'Webcam';
+  return { __esModule: true, default: Webcam };
 });
 
 // Mock scrollIntoView for JSDOM

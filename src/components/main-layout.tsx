@@ -10,6 +10,7 @@ import { MobileNav } from './mobile-nav';
 import type { View, Notification, Employee, Settings, Address, SessionData, NonEmployee, AddressHistory, BokResident, OdbiorEntry, Candidate, CandidateDemand } from '@/types';
 import { Home, Settings as SettingsIcon, Users, Building, ClipboardCheck, Truck, Briefcase, ClipboardList } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n';
+import { mergeWithOptimistic } from '@/lib/merge-optimistic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     addEmployee,
@@ -437,13 +438,13 @@ export default function MainLayout({
             });
 
             setAllNotifications(notifications);
-            setRawNonEmployees(nonEmployees);
-            setRawBokResidents(bokResidents);
-            setRawEmployees(employees);
+            setRawNonEmployees((prev) => mergeWithOptimistic(prev, nonEmployees));
+            setRawBokResidents((prev) => mergeWithOptimistic(prev, bokResidents));
+            setRawEmployees((prev) => mergeWithOptimistic(prev, employees));
             setAddressHistory(enrichedAddressHistory);
-            setOdbiorEntries(odbiorEntriesData);
-            setRawCandidates(candidatesResult);
-            setRawDemands(demandsResult);
+            setOdbiorEntries((prev) => mergeWithOptimistic(prev, odbiorEntriesData));
+            setRawCandidates((prev) => mergeWithOptimistic(prev, candidatesResult));
+            setRawDemands((prev) => mergeWithOptimistic(prev, demandsResult));
 
             if (currentUser.isAdmin) {
                 const allActive = [...(employees || []).filter(e => e.status === 'active'), ...(nonEmployees || [])];
@@ -527,12 +528,12 @@ export default function MainLayout({
     useEffect(() => {
         if (currentUser) {
             refreshData(false).then(() => {
-                // Run status check immediately after data loads, then every 5 minutes
                 handleRefreshStatuses(false);
             });
             const intervalId = setInterval(() => {
                 handleRefreshStatuses(false);
-            }, 5 * 60 * 1000); // every 5 minutes
+                refreshData(false);
+            }, 30000); // every 30 seconds
 
             return () => clearInterval(intervalId);
         }
@@ -569,18 +570,26 @@ export default function MainLayout({
             }
         };
         load();
-        const interval = setInterval(load, 30000);
+        const interval = setInterval(load, 5000);
 
         const handleUpdate = () => {
             load();
         };
         window.addEventListener('odbior-status-updated', handleUpdate);
         window.addEventListener('candidates-updated', handleUpdate);
+        window.addEventListener('demands-updated', handleUpdate);
+
+        const handleSettingsUpdate = () => refreshData(false);
+        window.addEventListener('settings-updated', handleSettingsUpdate);
+        window.addEventListener('employees-updated', handleSettingsUpdate);
 
         return () => {
             clearInterval(interval);
             window.removeEventListener('odbior-status-updated', handleUpdate);
             window.removeEventListener('candidates-updated', handleUpdate);
+            window.removeEventListener('demands-updated', handleUpdate);
+            window.removeEventListener('settings-updated', handleSettingsUpdate);
+            window.removeEventListener('employees-updated', handleSettingsUpdate);
         };
     }, [currentUser]);
 
@@ -807,6 +816,7 @@ export default function MainLayout({
             const updatedSettings = await updateSettings(newSettings);
             setRawSettings(prev => ({ ...prev!, ...updatedSettings }));
             toast({ title: t('common.success'), description: t('toast.settingsSaved') });
+            window.dispatchEvent(new Event('settings-updated'));
         } catch (e) {
             setRawSettings(originalSettings);
             toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.settingsError') });
@@ -884,6 +894,7 @@ export default function MainLayout({
             await bulkDeleteEmployees(status, currentUser.uid);
             setRawEmployees(prev => prev ? prev.filter(e => e.status !== status) : null);
             toast({ title: t('common.success'), description: status === 'active' ? t('toast.bulkDeleteActive') : t('toast.bulkDeleteDismissed') });
+            window.dispatchEvent(new Event('employees-updated'));
             return true;
         } catch (e) {
             toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.bulkDeleteError') });
@@ -901,6 +912,7 @@ export default function MainLayout({
             await bulkDeleteEmployeesByCoordinator(coordinatorId, currentUser.uid);
             setRawEmployees(prev => prev ? prev.filter(e => e.coordinatorId !== coordinatorId) : null);
             toast({ title: t('common.success'), description: t('toast.bulkDeleteByCoordinator') });
+            window.dispatchEvent(new Event('employees-updated'));
             return true;
         } catch (e) {
             toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.bulkDeleteError') });
@@ -918,6 +930,7 @@ export default function MainLayout({
             await bulkDeleteEmployeesByDepartment(department, currentUser.uid);
             setRawEmployees(prev => prev ? prev.filter(e => e.zaklad !== department) : null);
             toast({ title: t('common.success'), description: t('toast.bulkDeleteByDepartment', { dept: department }) });
+            window.dispatchEvent(new Event('employees-updated'));
             return true;
         } catch (e) {
             toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.bulkDeleteError') });
@@ -934,6 +947,7 @@ export default function MainLayout({
             await updateEmployee(employeeId, { status: 'dismissed', checkOutDate: formattedDate }, currentUser.uid);
             toast({ title: t('common.success'), description: t('toast.employeeDismissed') });
             refreshNotificationsOnly();
+            window.dispatchEvent(new Event('employees-updated'));
         } catch (e: unknown) {
             setRawEmployees(originalEmployees);
             toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.employeeDismissError') });
@@ -949,6 +963,7 @@ export default function MainLayout({
             await updateBokResident(bokResidentId, { checkOutDate: formattedDate, status: 'dismissed' }, currentUser.uid);
             toast({ title: t('common.success'), description: t('toast.bokResidentDismissed') });
             refreshNotificationsOnly();
+            window.dispatchEvent(new Event('employees-updated'));
         } catch (e: unknown) {
             setRawBokResidents(originalBokResidents);
             toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.bokResidentDismissError') });
@@ -964,6 +979,7 @@ export default function MainLayout({
             await updateNonEmployee(nonEmployeeId, { status: 'dismissed', checkOutDate: formattedDate }, currentUser.uid);
             toast({ title: t('common.success'), description: t('toast.residentDismissed') });
             refreshNotificationsOnly();
+            window.dispatchEvent(new Event('employees-updated'));
         } catch (e: unknown) {
             setRawNonEmployees(originalNonEmployees);
             toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.residentDismissError') });
@@ -978,6 +994,7 @@ export default function MainLayout({
             await updateEmployee(employee.id, { status: 'active', checkOutDate: null }, currentUser.uid);
             toast({ title: t('common.success'), description: t('toast.employeeRestored') });
             refreshNotificationsOnly();
+            window.dispatchEvent(new Event('employees-updated'));
         } catch (e: unknown) {
             setRawEmployees(originalEmployees);
             toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.employeeRestoreError') });
@@ -991,6 +1008,7 @@ export default function MainLayout({
         try {
             await updateNonEmployee(nonEmployee.id, { status: 'active', checkOutDate: null }, currentUser.uid);
             toast({ title: t('common.success'), description: t('toast.residentRestored') });
+            window.dispatchEvent(new Event('employees-updated'));
         } catch (e: unknown) {
             setRawNonEmployees(originalNonEmployees);
             toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.residentRestoreError') });
@@ -1004,6 +1022,7 @@ export default function MainLayout({
         try {
             await updateBokResident(bokResident.id, { checkOutDate: null, status: 'active' }, currentUser.uid);
             toast({ title: t('common.success'), description: t('toast.bokResidentRestored') });
+            window.dispatchEvent(new Event('employees-updated'));
         } catch (e: unknown) {
             setRawBokResidents(originalBokResidents);
             toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.bokResidentRestoreError') });
@@ -1018,6 +1037,7 @@ export default function MainLayout({
         try {
             await deleteEmployee(employeeId, actorUid);
             toast({ title: t('common.success'), description: t('toast.employeeDeleted') });
+            window.dispatchEvent(new Event('employees-updated'));
         } catch (e: unknown) {
             setRawEmployees(originalEmployees);
             toast({ variant: "destructive", title: t('common.error'), description: e instanceof Error ? e.message : t('toast.employeeDeleteError') });
@@ -1051,6 +1071,7 @@ export default function MainLayout({
                 duration: result.errors.length > 0 ? 10000 : 5000,
             });
             refreshData(false);
+            window.dispatchEvent(new Event('employees-updated'));
         } catch (e) {
             toast({
                 variant: "destructive",
@@ -1077,6 +1098,7 @@ export default function MainLayout({
                 duration: result.errors.length > 0 ? 10000 : 5000,
             });
             refreshData(false);
+            window.dispatchEvent(new Event('employees-updated'));
         } catch (e) {
             toast({
                 variant: "destructive",
@@ -1103,6 +1125,7 @@ export default function MainLayout({
                 duration: result.errors.length > 0 ? 10000 : 5000,
             });
             refreshData(false);
+            window.dispatchEvent(new Event('employees-updated'));
         } catch (e) {
             toast({
                 variant: "destructive",
@@ -1118,6 +1141,7 @@ export default function MainLayout({
             const result = await migrateFullNames(currentUser.uid);
             toast({ title: t('common.success'), description: t('toast.migrationSuccess', { employees: result.migratedEmployees, residents: result.migratedNonEmployees }) });
             refreshData(false);
+            window.dispatchEvent(new Event('employees-updated'));
         } catch (e) {
             toast({
                 variant: "destructive",
