@@ -35,6 +35,17 @@ jest.mock('@/hooks/use-toast', () => ({
     useToast: () => ({ toast: mockToast }),
 }));
 
+jest.mock('@/components/ui/dropdown-menu', () => ({
+    DropdownMenu: ({ children }: any) => <div data-testid="mock-dropdown">{children}</div>,
+    DropdownMenuTrigger: ({ children }: any) => <div data-testid="mock-dropdown-trigger">{children}</div>,
+    DropdownMenuContent: ({ children }: any) => <div data-testid="mock-dropdown-content">{children}</div>,
+    DropdownMenuItem: ({ children, onClick, className }: any) => (
+        <div role="menuitem" className={className} onClick={onClick}>
+            {children}
+        </div>
+    ),
+}));
+
 import {
     getCandidatesAction,
     getCandidateDemandsAction,
@@ -148,7 +159,7 @@ describe('RecruitmentView', () => {
 
         await waitFor(() => {
             const desktop = screen.getByTestId('recruitment-desktop');
-            expect(within(desktop).getByRole('button', { name: /Usuń/i })).toBeInTheDocument();
+            expect(within(desktop).getByRole('menuitem', { name: /Usuń/i })).toBeInTheDocument();
         });
     });
 
@@ -159,7 +170,7 @@ describe('RecruitmentView', () => {
 
         await waitFor(() => {
             const desktop = screen.getByTestId('recruitment-desktop');
-            expect(within(desktop).queryByRole('button', { name: /Usuń/i })).not.toBeInTheDocument();
+            expect(within(desktop).queryByRole('menuitem', { name: /Usuń/i })).not.toBeInTheDocument();
         });
     });
 
@@ -171,10 +182,11 @@ describe('RecruitmentView', () => {
         await waitFor(() => {
             const desktop = screen.getByTestId('recruitment-desktop');
             expect(within(desktop).getByText('Kowalski')).toBeInTheDocument();
+            expect(within(desktop).getByRole('menuitem', { name: /Usuń/i })).toBeInTheDocument();
         });
 
         const desktop = screen.getByTestId('recruitment-desktop');
-        fireEvent.click(within(desktop).getByRole('button', { name: /Usuń/i }));
+        fireEvent.click(within(desktop).getByRole('menuitem', { name: /Usuń/i }));
 
         await waitFor(() => {
             expect(mockDeleteCandidate).toHaveBeenCalledWith('cand-1', 'user-1');
